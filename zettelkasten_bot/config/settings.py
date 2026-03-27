@@ -87,6 +87,12 @@ class Settings(BaseSettings):
         "buttondown.email",
         "beehiiv.com",
         "mailchimp.com",
+        "medium.com",
+        "stackoverflow.com",
+        "stackexchange.com",
+        "news.ycombinator.com",
+        "dev.to",
+        "hackernoon.com",
     ]
 
     @classmethod

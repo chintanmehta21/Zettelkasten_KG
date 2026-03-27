@@ -12,7 +12,11 @@ from zettelkasten_bot.models.capture import SourceType
 from zettelkasten_bot.sources.registry import detect_source_type
 
 # Default newsletter domains used across tests (mirrors settings.py defaults)
-_NEWSLETTER_DOMAINS = ["substack.com", "buttondown.email", "beehiiv.com", "mailchimp.com"]
+_NEWSLETTER_DOMAINS = [
+    "substack.com", "buttondown.email", "beehiiv.com", "mailchimp.com",
+    "medium.com", "stackoverflow.com", "stackexchange.com",
+    "news.ycombinator.com", "dev.to", "hackernoon.com",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +100,16 @@ def test_detect_github(url: str):
         "https://myblog.beehiiv.com/p/article",
         # mailchimp archive
         "https://mailchimp.com/resources/email-marketing/",
+        # Medium
+        "https://medium.com/@user/article-title-123abc",
+        # Stack Overflow
+        "https://stackoverflow.com/questions/12345/some-question",
+        # Hacker News
+        "https://news.ycombinator.com/item?id=12345",
+        # dev.to
+        "https://dev.to/user/my-article",
+        # Hackernoon
+        "https://hackernoon.com/some-article",
     ],
 )
 def test_detect_newsletter(url: str):
@@ -128,9 +142,7 @@ def test_detect_newsletter_empty_domains_falls_through_to_generic():
     "url",
     [
         "https://example.com/article",
-        "https://medium.com/@author/my-story",
         "https://arxiv.org/abs/2301.12345",
-        "https://news.ycombinator.com/item?id=12345",
         "https://en.wikipedia.org/wiki/Python_(programming_language)",
         "https://blog.example.org/post",
     ],

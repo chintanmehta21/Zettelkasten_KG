@@ -8,9 +8,10 @@ polling (default) or webhook mode based on :data:`Settings.webhook_mode`.
 from __future__ import annotations
 
 import logging
+import traceback
 
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from zettelkasten_bot.bot.guards import get_chat_filter
 from zettelkasten_bot.bot.handlers import (
@@ -24,6 +25,25 @@ from zettelkasten_bot.bot.handlers import (
 )
 from zettelkasten_bot.config.settings import get_settings
 
+logger = logging.getLogger("bot.main")
+
+
+async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log unhandled exceptions and notify the user when possible."""
+    logger.error(
+        "Unhandled exception while processing update %s:\n%s",
+        update,
+        traceback.format_exc(),
+    )
+    if isinstance(update, Update) and update.effective_chat:
+        try:
+            await context.bot.send_message(
+                update.effective_chat.id,
+                "An unexpected error occurred. Please try again.",
+            )
+        except Exception:
+            logger.error("Failed to send error notification to user")
+
 
 def main() -> None:
     """Build the PTB application and start the bot."""
@@ -33,7 +53,6 @@ def main() -> None:
         level=settings.log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    logger = logging.getLogger("bot.main")
     logger.info("Starting Zettelkasten bot (webhook_mode=%s)", settings.webhook_mode)
 
     app: Application = Application.builder().token(settings.telegram_bot_token).build()
@@ -50,6 +69,9 @@ def main() -> None:
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND & chat_filter, handle_bare_url)
     )
+
+    # ── Global error handler ──────────────────────────────────────────────
+    app.add_error_handler(_error_handler)
 
     # ── Start ─────────────────────────────────────────────────────────────
     if settings.webhook_mode:

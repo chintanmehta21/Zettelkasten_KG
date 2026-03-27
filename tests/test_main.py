@@ -121,6 +121,21 @@ class TestHandlerRegistration:
 
         assert mock_app.add_handler.call_count == 7
 
+    def test_registers_error_handler(self) -> None:
+        """main() must register a global error handler."""
+        from zettelkasten_bot.main import main
+
+        MockApp, mock_app = _wire_app_mock()
+        settings = _make_polling_settings()
+
+        with (
+            patch("zettelkasten_bot.main.Application", MockApp),
+            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+        ):
+            main()
+
+        mock_app.add_error_handler.assert_called_once()
+
 
 class TestWebhookValidation:
     def test_webhook_mode_missing_url_exits(self) -> None:

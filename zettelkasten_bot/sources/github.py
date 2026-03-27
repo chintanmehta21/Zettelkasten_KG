@@ -53,7 +53,7 @@ class GitHubExtractor(SourceExtractor):
             "User-Agent": "ZettelkastenBot/1.0",
         }
 
-        async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
+        async with httpx.AsyncClient(timeout=15.0, headers=headers, follow_redirects=True) as client:
             # ── Repo metadata ─────────────────────────────────────────────
             try:
                 resp = await client.get(f"{_GITHUB_API}/repos/{owner}/{repo}")
