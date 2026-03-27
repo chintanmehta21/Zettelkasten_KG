@@ -83,6 +83,7 @@ class GeminiSummarizer:
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required for summarization")
         self._client = genai.Client(api_key=api_key)
+        self._aio_models = self._client.aio.models
         self._model = model_name
 
     async def summarize(self, content: ExtractedContent) -> SummarizationResult:
@@ -100,7 +101,7 @@ class GeminiSummarizer:
 
         start = time.monotonic()
         try:
-            response = self._client.models.generate_content(
+            response = await self._aio_models.generate_content(
                 model=self._model,
                 contents=prompt,
                 config={
@@ -112,6 +113,8 @@ class GeminiSummarizer:
 
             latency_ms = int((time.monotonic() - start) * 1000)
             raw_text = response.text or ""
+            if not raw_text.strip():
+                raise ValueError("Gemini returned empty response (possible safety block)")
 
             # Parse token usage from response
             tokens_used = 0
