@@ -337,6 +337,21 @@ def test_build_tag_list_format_hierarchical():
         assert value, f"Tag '{tag}' has empty value"
 
 
+def test_build_tag_list_string_difficulty_not_split():
+    """Gemini may return difficulty as a bare string; must not iterate chars."""
+    ai_tags = {
+        "domain": ["AI"],
+        "type": "Tutorial",
+        "difficulty": "Intermediate",
+        "keywords": ["test"],
+    }
+    tags = build_tag_list(SourceType.YOUTUBE, ai_tags)
+    difficulty_tags = [t for t in tags if t.startswith("difficulty/")]
+    assert difficulty_tags == ["difficulty/Intermediate"]
+    type_tags = [t for t in tags if t.startswith("type/")]
+    assert type_tags == ["type/Tutorial"]
+
+
 # ── Construction ─────────────────────────────────────────────────────────────
 
 

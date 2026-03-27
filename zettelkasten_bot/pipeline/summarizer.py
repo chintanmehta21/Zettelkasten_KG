@@ -181,6 +181,20 @@ class GeminiSummarizer:
             )
 
 
+def _ensure_list(value) -> list[str]:
+    """Normalize a tag value to a list of strings.
+
+    Gemini sometimes returns a bare string instead of a list for single-value
+    fields (e.g. ``"difficulty": "Intermediate"``).  Iterating over a string
+    yields individual characters, so we wrap it first.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return value
+    return []
+
+
 def build_tag_list(
     source_type: SourceType,
     ai_tags: dict[str, list[str]],
@@ -198,22 +212,22 @@ def build_tag_list(
     tags.append(f"source/{source_type.value}")
 
     # Axis 2: Domain
-    for domain in ai_tags.get("domain", []):
+    for domain in _ensure_list(ai_tags.get("domain", [])):
         tags.append(f"domain/{domain}")
 
     # Axis 3: Type
-    for content_type in ai_tags.get("type", []):
+    for content_type in _ensure_list(ai_tags.get("type", [])):
         tags.append(f"type/{content_type}")
 
     # Axis 4: Difficulty
-    for diff in ai_tags.get("difficulty", []):
+    for diff in _ensure_list(ai_tags.get("difficulty", [])):
         tags.append(f"difficulty/{diff}")
 
     # Axis 5: Status (set programmatically, not by AI)
     tags.append("status/Processed")
 
     # Axis 6: Keywords
-    for kw in ai_tags.get("keywords", []):
+    for kw in _ensure_list(ai_tags.get("keywords", [])):
         tags.append(f"keyword/{kw}")
 
     return tags
