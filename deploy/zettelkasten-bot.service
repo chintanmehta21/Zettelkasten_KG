@@ -1,0 +1,15 @@
+[Unit]
+Description=Zettelkasten Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=zettelbot
+WorkingDirectory=/opt/zettelkasten-bot
+EnvironmentFile=/opt/zettelkasten-bot/.env
+ExecStart=/opt/zettelkasten-bot/.venv/bin/python -m zettelkasten_bot
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
