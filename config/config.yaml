@@ -1,0 +1,55 @@
+# Zettelkasten Bot — default configuration
+# =========================================
+# Non-secret defaults only. Secrets (tokens, API keys) must be
+# supplied via environment variables — never commit them here.
+#
+# Environment variable names match the field names in ALL_CAPS:
+#   TELEGRAM_BOT_TOKEN, ALLOWED_CHAT_ID, GEMINI_API_KEY, etc.
+
+# ── Telegram ──────────────────────────────────────────────────────────────────
+# Leave empty; set TELEGRAM_BOT_TOKEN env var at runtime.
+telegram_bot_token: ""
+
+# Numeric Telegram chat_id that is allowed to interact with the bot.
+# Leave 0; set ALLOWED_CHAT_ID env var at runtime.
+allowed_chat_id: 0
+
+# ── Google Gemini ─────────────────────────────────────────────────────────────
+# Leave empty; set GEMINI_API_KEY env var at runtime.
+gemini_api_key: ""
+
+# Model to use for summarisation (gemini-2.5-flash is fast and cheap).
+model_name: "gemini-2.5-flash"
+
+# ── Reddit ────────────────────────────────────────────────────────────────────
+# Leave empty; set REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET env vars.
+reddit_client_id: ""
+reddit_client_secret: ""
+reddit_user_agent: "ZettelkastenBot/1.0"
+# Number of top-level comments fetched per thread (D001)
+reddit_comment_depth: 10
+
+# ── Storage paths ─────────────────────────────────────────────────────────────
+# Where generated Obsidian notes are written.
+kg_directory: "./kg_output"
+# Internal data directory (duplicate store, caches, etc.).
+data_dir: "./data"
+
+# ── Webhook (optional, for production deployments) ────────────────────────────
+# Set webhook_mode: true to use webhooks instead of long-polling.
+webhook_mode: false
+webhook_url: ""
+webhook_port: 8443
+webhook_secret: ""
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# One of: DEBUG, INFO, WARNING, ERROR
+log_level: "INFO"
+
+# ── Newsletter source detection ───────────────────────────────────────────────
+# Hostnames whose content is classified as SourceType.NEWSLETTER.
+newsletter_domains:
+  - substack.com
+  - buttondown.email
+  - beehiiv.com
+  - mailchimp.com
