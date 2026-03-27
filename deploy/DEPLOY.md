@@ -24,7 +24,7 @@ sudo useradd --system --shell /sbin/nologin zettelbot
 sudo mkdir -p /opt/zettelkasten-bot
 sudo chown zettelbot:zettelbot /opt/zettelkasten-bot
 
-sudo -u zettelbot git clone https://github.com/your-org/zettelkasten-bot.git \
+sudo -u zettelbot git clone https://github.com/chintanmehta21/zettelkasten-telegram-bot.git \
     /opt/zettelkasten-bot
 
 cd /opt/zettelkasten-bot

@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Zettelkasten Capture Bot — a Telegram bot that captures URLs (Reddit, YouTube, GitHub, newsletters, generic web) and writes AI-summarised Obsidian notes to a local knowledge graph. Python 3, async, uses python-telegram-bot v21+.
 
+**Status**: Production-ready, verified end-to-end (2026-03-28). 255 tests passing.
+**Repo**: https://github.com/chintanmehta21/zettelkasten-telegram-bot
+**Obsidian KG**: `C:\Users\LENOVO\Documents\Syncthing\Obsidian\KG`
+
 ## Commands
 
 ```bash
