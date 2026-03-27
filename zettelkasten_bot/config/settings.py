@@ -15,8 +15,9 @@ from __future__ import annotations
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple, Type
+from typing import Any, Tuple, Type
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from pydantic_settings import YamlConfigSettingsSource
 
@@ -45,6 +46,14 @@ class Settings(BaseSettings):
     # ── Required ──────────────────────────────────────────────────────────────
     telegram_bot_token: str = ""
     allowed_chat_id: int = 0
+
+    @field_validator("allowed_chat_id", mode="before")
+    @classmethod
+    def _coerce_empty_chat_id(cls, v: Any) -> Any:
+        """Treat empty-string ALLOWED_CHAT_ID (from .env template) as 0."""
+        if isinstance(v, str) and v.strip() == "":
+            return 0
+        return v
 
     # ── Optional / secrets ───────────────────────────────────────────────────
     gemini_api_key: str = ""
