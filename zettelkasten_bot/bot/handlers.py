@@ -22,6 +22,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from zettelkasten_bot.config.settings import get_settings
 from zettelkasten_bot.models.capture import SourceType
 from zettelkasten_bot.pipeline.orchestrator import process_url
 from zettelkasten_bot.utils.url_utils import validate_url
@@ -73,6 +74,7 @@ async def handle_command(
         url,
         source_type,
         force=False,
+        data_dir=get_settings().data_dir,
     )
 
 
@@ -115,6 +117,7 @@ async def handle_force(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         url,
         None,  # auto-detect source type
         force=True,
+        data_dir=get_settings().data_dir,
     )
 
 
@@ -139,4 +142,5 @@ async def handle_bare_url(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         candidate,
         None,  # auto-detect
         force=False,
+        data_dir=get_settings().data_dir,
     )

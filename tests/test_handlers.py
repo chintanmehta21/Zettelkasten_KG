@@ -95,8 +95,10 @@ class TestHandleStart:
 # ---------------------------------------------------------------------------
 
 class TestHandleReddit:
+    @patch("zettelkasten_bot.bot.handlers.get_settings")
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_calls_process_url(self, mock_proc):
+    async def test_valid_url_calls_process_url(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://www.reddit.com/r/python/comments/abc123/test/"
         update = _make_update(text=f"/reddit {url}")
         ctx = _make_context(args=[url])
@@ -107,6 +109,7 @@ class TestHandleReddit:
         assert call_args[2] == url
         assert call_args[3] == SourceType.REDDIT
         assert call_kwargs.get("force", call_args[4] if len(call_args) > 4 else False) is False
+        assert call_kwargs.get("data_dir") == "./test-data"
 
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_no_args_replies_usage(self, mock_proc):
@@ -178,8 +181,10 @@ class TestHandleGithub:
 # ---------------------------------------------------------------------------
 
 class TestHandleForce:
+    @patch("zettelkasten_bot.bot.handlers.get_settings")
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_passes_force_true(self, mock_proc):
+    async def test_passes_force_true(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://www.reddit.com/r/python/comments/abc123/test/"
         update = _make_update(text=f"/force {url}")
         ctx = _make_context(args=[url])
@@ -189,6 +194,7 @@ class TestHandleForce:
         # force is the 5th positional arg (index 4)
         force_val = call_kwargs.get("force", call_args[4] if len(call_args) > 4 else None)
         assert force_val is True
+        assert call_kwargs.get("data_dir") == "./test-data"
 
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_source_type_is_none_for_auto_detect(self, mock_proc):
@@ -223,15 +229,18 @@ class TestHandleForce:
 # ---------------------------------------------------------------------------
 
 class TestHandleBareUrl:
+    @patch("zettelkasten_bot.bot.handlers.get_settings")
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_calls_process_url(self, mock_proc):
+    async def test_valid_url_calls_process_url(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://example.com/article"
         update = _make_update(text=url)
         ctx = _make_context()
         await handle_bare_url(update, ctx)
         mock_proc.assert_called_once()
-        _, call_args, _ = mock_proc.mock_calls[0]
+        _, call_args, call_kwargs = mock_proc.mock_calls[0]
         assert call_args[2] == url
+        assert call_kwargs.get("data_dir") == "./test-data"
 
     @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_source_type_is_none(self, mock_proc):
