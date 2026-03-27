@@ -127,6 +127,15 @@ def _validate_settings(settings: Settings) -> None:
         )
         raise SystemExit(1)
 
+    if settings.webhook_mode and not settings.webhook_url.strip():
+        print(
+            "ERROR: webhook_mode is enabled but WEBHOOK_URL is empty.\n"
+            "Set it via environment variable:  export WEBHOOK_URL=https://your-domain.com/hook\n"
+            "Or add it to config/config.yaml under 'webhook_url:'",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
