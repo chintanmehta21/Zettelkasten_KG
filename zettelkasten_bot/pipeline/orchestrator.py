@@ -3,9 +3,9 @@
 Entry point: ``process_url``.  Each phase is logged at INFO level so the
 bot's behaviour can be traced end-to-end via log inspection.
 
-Phases (S01 stubs; real implementations arrive in S02-S04):
+Phases:
   resolve → normalize → detect_source → dedup → ack → extract →
-  summarize → write → mark_seen → done
+  summarize → tag → write → mark_seen → done
 """
 
 from __future__ import annotations
@@ -13,9 +13,12 @@ from __future__ import annotations
 import logging
 import traceback
 
+from zettelkasten_bot.config.settings import get_settings
 from zettelkasten_bot.models.capture import ProcessedNote, SourceType
 from zettelkasten_bot.pipeline.duplicate import DuplicateStore
-from zettelkasten_bot.sources.base import StubExtractor
+from zettelkasten_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
+from zettelkasten_bot.pipeline.writer import ObsidianWriter
+from zettelkasten_bot.sources import get_extractor
 from zettelkasten_bot.sources.registry import detect_source_type
 from zettelkasten_bot.utils.url_utils import normalize_url, resolve_redirects
 
@@ -41,6 +44,8 @@ async def process_url(
         force: When ``True``, reprocess even if the URL was already captured.
         data_dir: Directory used by :class:`DuplicateStore` for persistence.
     """
+    settings = get_settings()
+
     try:
         # ── Phase 1: resolve redirects ────────────────────────────────────
         logger.info("Phase resolve — input URL: %s", url)
@@ -71,36 +76,73 @@ async def process_url(
 
         # ── Phase 5: acknowledge ──────────────────────────────────────────
         logger.info("Phase ack — sending processing message")
-        await bot.send_message(chat_id, f"⚙️ Processing {normalized}...")
+        source_label = source_type.value.capitalize()
+        await bot.send_message(chat_id, f"⚙️ Processing {source_label} link...")
 
-        # ── Phase 6: extract (stub) ───────────────────────────────────────
-        logger.info("Phase extract — using StubExtractor (placeholder for S02)")
-        extractor = StubExtractor()
-        extracted = await extractor.extract(normalized)
-        logger.debug("Extracted title: %s", extracted.title)
+        # ── Phase 6: extract ──────────────────────────────────────────────
+        logger.info("Phase extract — using %s extractor", source_type.value)
+        try:
+            extractor = get_extractor(source_type, settings)
+            extracted = await extractor.extract(normalized)
+            logger.info("Extracted: '%s' (%d chars)", extracted.title, len(extracted.body))
+        except Exception as exc:
+            logger.error("Extraction failed for %s: %s", normalized, exc)
+            await bot.send_message(
+                chat_id,
+                f"❌ Failed to extract content from {source_label} link: {exc}",
+            )
+            return
 
-        # ── Phase 7: summarize (stub) ─────────────────────────────────────
-        logger.info("Phase summarize — stub (placeholder for S03)")
-        note = ProcessedNote(
-            title=extracted.title,
-            summary="[Stub summary — S03 will implement real summarization]",
-            tags=[],
-            source_url=normalized,
-            source_type=source_type,
-            raw_content=extracted.body,
+        # ── Phase 7: summarize via Gemini ─────────────────────────────────
+        logger.info("Phase summarize — sending to Gemini")
+        summarizer = GeminiSummarizer(
+            api_key=settings.gemini_api_key,
+            model_name=settings.model_name,
         )
-        logger.debug("Stub note title: %s", note.title)
+        result = await summarizer.summarize(extracted)
 
-        # ── Phase 8: write (stub) ─────────────────────────────────────────
-        logger.info("Phase write — stub (placeholder for S04): would write note '%s'", note.title)
+        if result.is_raw_fallback:
+            logger.warning(
+                "Gemini failed — saving raw content (R022) for %s", normalized
+            )
+            await bot.send_message(
+                chat_id,
+                "⚠️ AI summarization failed — saving raw content for manual review.",
+            )
 
-        # ── Phase 9: mark seen ────────────────────────────────────────────
+        # ── Phase 8: build tags ───────────────────────────────────────────
+        logger.info("Phase tag — building multi-dimensional tags")
+        tags = build_tag_list(source_type, result.tags)
+        if result.is_raw_fallback:
+            # Override status tag for raw fallback
+            tags = [t for t in tags if not t.startswith("status/")]
+            tags.append("status/Raw")
+        logger.info("Tags: %s", tags)
+
+        # ── Phase 9: write Obsidian note ──────────────────────────────────
+        logger.info("Phase write — writing note to KG directory")
+        writer = ObsidianWriter(settings.kg_directory)
+        note_path = writer.write_note(extracted, result, tags)
+        logger.info("Note written to: %s", note_path)
+
+        # ── Phase 10: mark seen ───────────────────────────────────────────
         logger.info("Phase mark_seen — recording: %s", normalized)
         store.mark_seen(normalized)
 
-        # ── Phase 10: done ────────────────────────────────────────────────
+        # ── Phase 11: done ────────────────────────────────────────────────
+        status_emoji = "✅" if not result.is_raw_fallback else "📝"
+        token_info = ""
+        if result.tokens_used:
+            token_info = f" ({result.tokens_used} tokens, {result.latency_ms}ms)"
+
         logger.info("Phase done — URL captured successfully: %s", normalized)
-        await bot.send_message(chat_id, f"✅ Note captured: {extracted.title}")
+        await bot.send_message(
+            chat_id,
+            f"{status_emoji} **{extracted.title}**\n"
+            f"Note saved to KG{token_info}\n"
+            f"Tags: {', '.join(t.split('/')[-1] for t in tags[:8])}",
+            parse_mode="Markdown",
+        )
 
     except Exception as exc:  # noqa: BLE001
         brief = str(exc) or type(exc).__name__

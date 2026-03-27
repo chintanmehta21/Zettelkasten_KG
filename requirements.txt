@@ -10,6 +10,9 @@ httpx>=0.28
 # HTML parsing
 beautifulsoup4>=4.12
 
+# Article content extraction (readability-style)
+trafilatura>=2.0
+
 # Reddit API
 praw>=7.0
 
