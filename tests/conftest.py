@@ -3,6 +3,21 @@
 import pytest
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        '--live',
+        action='store_true',
+        default=False,
+        help='Run live API integration tests',
+    )
+
+
+@pytest.fixture(autouse=True)
+def skip_live(request):
+    if request.node.get_closest_marker('live') and not request.config.getoption('--live'):
+        pytest.skip('Live test — pass --live to run')
+
+
 @pytest.fixture
 def sample_reddit_url() -> str:
     return "https://www.reddit.com/r/python/comments/abc123/test_post/"
