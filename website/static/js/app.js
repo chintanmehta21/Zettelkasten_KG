@@ -122,7 +122,7 @@
         // Filter out noisy/redundant tags
         if (tag.startsWith('source/')) return false;
         if (tag.startsWith('status/')) return false;
-        if (tag === 'difficulty/Unknown') return false;
+        if (tag.startsWith('difficulty/')) return false;
         return true;
       })
       .forEach(function (tag) {
