@@ -86,9 +86,9 @@ class Settings(BaseSettings):
     webhook_secret: str = ""
 
     # ── AI model ──────────────────────────────────────────────────────────────
-    # gemini-2.5-flash-lite has generous free-tier limits and supports
-    # video understanding for YouTube summarization on cloud IPs.
-    model_name: str = "gemini-2.5-flash-lite"
+    # Primary model — best quality.  On 429 rate-limit, the summarizer
+    # automatically falls back: 2.5-flash → 2.0-flash → 2.5-flash-lite.
+    model_name: str = "gemini-2.5-flash"
 
     # ── Logging ───────────────────────────────────────────────────────────────
     log_level: str = "INFO"

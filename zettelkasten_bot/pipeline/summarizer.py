@@ -1,11 +1,19 @@
 """Gemini AI summarization and multi-dimensional tagging.
 
 Uses the google-genai SDK (NOT the deprecated google-generativeai) to
-send extracted content to Gemini 2.5 Flash and receive structured
-summaries with intelligent tags across 6 axes.
+send extracted content to Gemini and receive structured summaries with
+intelligent tags across 6 axes.
 
-Graceful degradation (R022): if Gemini fails, returns raw content with
-status=raw so it can still be saved to Obsidian for manual review.
+Model fallback hierarchy (best → most available):
+  gemini-2.5-flash → gemini-2.0-flash → gemini-2.5-flash-lite
+
+If the primary model hits a rate limit (429), the next model in the
+chain is tried automatically.  This maximises summary quality while
+ensuring the pipeline never fails just because one model's free-tier
+quota is exhausted.
+
+Graceful degradation (R022): if ALL models fail, returns raw content
+with status=raw so it can still be saved to Obsidian for manual review.
 """
 
 from __future__ import annotations
@@ -17,10 +25,26 @@ from dataclasses import dataclass, field
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 
 from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 
 logger = logging.getLogger(__name__)
+
+# Best-first model fallback chain.  Each entry is tried in order;
+# on a 429 rate-limit the next model is attempted.
+_MODEL_FALLBACK_CHAIN = [
+    "gemini-2.5-flash",       # best quality, 20 RPD free tier
+    "gemini-2.0-flash",       # strong quality, 1500 RPD free tier
+    "gemini-2.5-flash-lite",  # good quality, generous free tier
+]
+
+
+def _is_rate_limited(exc: Exception) -> bool:
+    """Return True if *exc* is a Gemini 429 rate-limit error."""
+    if isinstance(exc, ClientError) and getattr(exc, "code", None) == 429:
+        return True
+    return "429" in str(exc) and "RESOURCE_EXHAUSTED" in str(exc)
 
 # ── Prompt template ──────────────────────────────────────────────────────────
 
@@ -77,17 +101,73 @@ class SummarizationResult:
 class GeminiSummarizer:
     """Summarize and tag content using Google Gemini.
 
+    Tries models in a best-first fallback chain.  If the configured
+    model (or the first model in the chain) hits a 429 rate limit, the
+    next model is tried automatically.
+
     Args:
         api_key: Gemini API key.
-        model_name: Model to use (default: gemini-2.5-flash).
+        model_name: Primary model to try first.
     """
 
-    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash-lite") -> None:
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash") -> None:
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required for summarization")
         self._client = genai.Client(api_key=api_key)
         self._aio_models = self._client.aio.models
         self._model = model_name
+
+    def _build_model_chain(self) -> list[str]:
+        """Return the fallback chain starting with the configured model."""
+        chain = [self._model]
+        for m in _MODEL_FALLBACK_CHAIN:
+            if m not in chain:
+                chain.append(m)
+        return chain
+
+    # ── Low-level generate with fallback ────────────────────────────────
+
+    async def _generate_with_fallback(
+        self,
+        contents,
+        *,
+        label: str = "",
+    ):
+        """Call ``generate_content`` with automatic model fallback on 429.
+
+        Returns ``(response, model_used)`` on success, raises the last
+        exception if every model in the chain fails.
+        """
+        chain = self._build_model_chain()
+        last_exc: Exception | None = None
+
+        for model in chain:
+            try:
+                response = await self._aio_models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config={
+                        "system_instruction": _SYSTEM_PROMPT,
+                        "temperature": 0.3,
+                        "max_output_tokens": 4096,
+                    },
+                )
+                return response, model
+            except Exception as exc:
+                last_exc = exc
+                if _is_rate_limited(exc):
+                    logger.warning(
+                        "%s rate-limited on %s — trying next model",
+                        label or "Gemini", model,
+                    )
+                    continue
+                # Non-rate-limit error → don't try other models
+                raise
+
+        # All models exhausted
+        raise last_exc  # type: ignore[misc]
+
+    # ── YouTube video understanding ─────────────────────────────────────
 
     def _is_youtube_without_transcript(self, content: ExtractedContent) -> bool:
         """Check if this is a YouTube video where transcript extraction failed."""
@@ -96,7 +176,7 @@ class GeminiSummarizer:
             and not content.metadata.get("has_transcript", True)
         )
 
-    async def _summarize_youtube_video(self, content: ExtractedContent) -> SummarizationResult:
+    async def _summarize_youtube_video(self, content: ExtractedContent) -> SummarizationResult | None:
         """Summarize a YouTube video using Gemini's video understanding.
 
         Passes the YouTube URL directly to Gemini as a video reference.
@@ -114,22 +194,15 @@ class GeminiSummarizer:
             body="(Video content — analyze from the video directly)",
         )
 
+        contents = [
+            types.Part.from_uri(file_uri=watch_url, mime_type="video/mp4"),
+            prompt,
+        ]
+
         start = time.monotonic()
         try:
-            response = await self._aio_models.generate_content(
-                model=self._model,
-                contents=[
-                    types.Part.from_uri(
-                        file_uri=watch_url,
-                        mime_type="video/mp4",
-                    ),
-                    prompt,
-                ],
-                config={
-                    "system_instruction": _SYSTEM_PROMPT,
-                    "temperature": 0.3,
-                    "max_output_tokens": 4096,
-                },
+            response, model_used = await self._generate_with_fallback(
+                contents, label="Video understanding",
             )
 
             latency_ms = int((time.monotonic() - start) * 1000)
@@ -142,8 +215,8 @@ class GeminiSummarizer:
                 tokens_used = getattr(response.usage_metadata, "total_token_count", 0)
 
             logger.info(
-                "Gemini video understanding for %s: %d tokens, %dms",
-                watch_url, tokens_used, latency_ms,
+                "Gemini video understanding (%s) for %s: %d tokens, %dms",
+                model_used, watch_url, tokens_used, latency_ms,
             )
 
             result = self._parse_response(raw_text)
@@ -157,14 +230,18 @@ class GeminiSummarizer:
                 "Gemini video understanding failed for %s after %dms: %s",
                 watch_url, latency_ms, exc,
             )
-            # Fall through to text-based summarization
             return None
+
+    # ── Main summarize entry point ──────────────────────────────────────
 
     async def summarize(self, content: ExtractedContent) -> SummarizationResult:
         """Summarize extracted content via Gemini.
 
         For YouTube videos without transcripts (cloud IP blocking),
         uses Gemini's video understanding to analyze the video directly.
+
+        Models are tried best-first; on 429 rate-limit the next model
+        in the chain is attempted automatically.
 
         On failure, returns a raw fallback result (R022) so the content
         is preserved even if summarization fails.
@@ -181,19 +258,13 @@ class GeminiSummarizer:
             source_type=content.source_type.value,
             title=content.title,
             url=content.url,
-            body=content.body[:15000],  # Cap input to avoid token limits
+            body=content.body[:15000],
         )
 
         start = time.monotonic()
         try:
-            response = await self._aio_models.generate_content(
-                model=self._model,
-                contents=prompt,
-                config={
-                    "system_instruction": _SYSTEM_PROMPT,
-                    "temperature": 0.3,
-                    "max_output_tokens": 4096,
-                },
+            response, model_used = await self._generate_with_fallback(
+                prompt, label="Summarization",
             )
 
             latency_ms = int((time.monotonic() - start) * 1000)
@@ -201,19 +272,15 @@ class GeminiSummarizer:
             if not raw_text.strip():
                 raise ValueError("Gemini returned empty response (possible safety block)")
 
-            # Parse token usage from response
             tokens_used = 0
             if hasattr(response, "usage_metadata") and response.usage_metadata:
                 tokens_used = getattr(response.usage_metadata, "total_token_count", 0)
 
             logger.info(
-                "Gemini response for %s: %d tokens, %dms",
-                content.url,
-                tokens_used,
-                latency_ms,
+                "Gemini response (%s) for %s: %d tokens, %dms",
+                model_used, content.url, tokens_used, latency_ms,
             )
 
-            # Parse JSON response
             result = self._parse_response(raw_text)
             result.tokens_used = tokens_used
             result.latency_ms = latency_ms
@@ -223,11 +290,8 @@ class GeminiSummarizer:
             latency_ms = int((time.monotonic() - start) * 1000)
             logger.error(
                 "Gemini summarization failed for %s after %dms: %s",
-                content.url,
-                latency_ms,
-                exc,
+                content.url, latency_ms, exc,
             )
-            # Graceful degradation (R022): return raw content
             return SummarizationResult(
                 summary=content.body[:5000],
                 tags={},
