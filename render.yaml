@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: zettelkasten-bot
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ALLOWED_CHAT_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: WEBHOOK_MODE
+        value: "true"
+      - key: WEBHOOK_PORT
+        value: "10000"
+      - key: WEBHOOK_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
+      - key: GITHUB_BRANCH
+        value: "main"
+      - key: KG_DIRECTORY
+        value: "/tmp/kg_output"
+      - key: DATA_DIR
+        value: "/tmp/data"
