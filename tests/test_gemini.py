@@ -380,3 +380,64 @@ async def test_raw_fallback_summary_truncated_to_5000():
 
     assert result.summary == long_body[:5000]
     assert len(result.summary) == 5000
+
+
+def test_summarization_result_has_brief_summary():
+    """SummarizationResult should have a brief_summary field."""
+    result = SummarizationResult(
+        summary="Detailed content here.",
+        brief_summary="• Key point one\n• Key point two",
+        tags={},
+        one_line_summary="Takeaway.",
+    )
+    assert result.brief_summary == "• Key point one\n• Key point two"
+    assert result.summary == "Detailed content here."
+
+
+async def test_summarize_returns_both_brief_and_detailed():
+    """Gemini JSON with brief_summary and detailed_summary populates both fields."""
+    content = make_content()
+    json_text = json.dumps({
+        "brief_summary": "• Point one\n• Point two",
+        "detailed_summary": "## Section A\n- Detail one\n- Detail two\n\n## Section B\n- Detail three",
+        "tags": {
+            "domain": ["AI"],
+            "type": ["Research"],
+            "difficulty": ["Intermediate"],
+            "keywords": ["test"],
+        },
+        "one_line_summary": "A key takeaway.",
+    })
+
+    with patch(_PATCH_TARGET) as MockClient:
+        mock_instance, _ = make_mock_client(response_text=json_text, token_count=200)
+        MockClient.return_value = mock_instance
+
+        summarizer = GeminiSummarizer(api_key="fake-key")
+        result = await summarizer.summarize(content)
+
+    assert result.brief_summary == "• Point one\n• Point two"
+    assert result.summary == "## Section A\n- Detail one\n- Detail two\n\n## Section B\n- Detail three"
+    assert result.one_line_summary == "A key takeaway."
+    assert result.is_raw_fallback is False
+
+
+async def test_summarize_legacy_single_summary_still_works():
+    """Old-format JSON with only 'summary' field still populates result.summary."""
+    content = make_content()
+    json_text = json.dumps({
+        "summary": "Legacy single summary.",
+        "tags": {"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
+        "one_line_summary": "Legacy takeaway.",
+    })
+
+    with patch(_PATCH_TARGET) as MockClient:
+        mock_instance, _ = make_mock_client(response_text=json_text, token_count=100)
+        MockClient.return_value = mock_instance
+
+        summarizer = GeminiSummarizer(api_key="fake-key")
+        result = await summarizer.summarize(content)
+
+    assert result.summary == "Legacy single summary."
+    assert result.brief_summary == ""
+    assert result.one_line_summary == "Legacy takeaway."

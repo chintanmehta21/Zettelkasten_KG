@@ -47,7 +47,8 @@ CONTENT:
 
 Respond with ONLY a JSON object (no markdown fences) with these fields:
 {{
-  "summary": "Structured summary with markdown bullet points grouped by topic. Use ## headings for major sections, then bullet points with sub-bullets.",
+  "brief_summary": "Concise bullet-point summary under 200 words. Use bullet points (• ) to capture only the key takeaways. No headings, no sub-bullets.",
+  "detailed_summary": "Comprehensive structured summary with markdown ## headings for major sections, then bullet points with sub-bullets for details. Capture ALL major points — do not omit important information.",
   "tags": {{
     "domain": ["list of domain tags like AI, ML, Finance, Security, WebDev, etc."],
     "type": ["content type: Tutorial, Research, Opinion, News, Discussion, Tool, Reference"],
@@ -64,6 +65,7 @@ class SummarizationResult:
     """Result from the Gemini summarization pipeline."""
 
     summary: str
+    brief_summary: str = ""
     tags: dict[str, list[str]] = field(default_factory=dict)
     one_line_summary: str = ""
     tokens_used: int = 0
@@ -166,8 +168,12 @@ class GeminiSummarizer:
 
         try:
             data = json.loads(text)
+            # Support both new dual-summary and legacy single-summary format
+            detailed = data.get("detailed_summary") or data.get("summary", raw_text)
+            brief = data.get("brief_summary", "")
             return SummarizationResult(
-                summary=data.get("summary", raw_text),
+                summary=detailed,
+                brief_summary=brief,
                 tags=data.get("tags", {}),
                 one_line_summary=data.get("one_line_summary", ""),
             )
@@ -176,6 +182,7 @@ class GeminiSummarizer:
             # Fall back to using raw text as summary
             return SummarizationResult(
                 summary=raw_text,
+                brief_summary="",
                 tags={},
                 one_line_summary="",
             )
