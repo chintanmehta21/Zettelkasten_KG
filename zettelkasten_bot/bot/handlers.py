@@ -7,6 +7,7 @@ Registered commands
 -------------------
 /start      — welcome message
 /help       — alias for /start
+/about      — what this bot does
 /status     — bot health, seen URL count, KG note count
 /reddit     — capture a Reddit post
 /yt         — capture a YouTube video
@@ -47,9 +48,24 @@ _WELCOME = (
 )
 
 
+_ABOUT = (
+    "🧠 *About Zettelkasten Capture Bot*\n\n"
+    "I turn URLs into structured Obsidian notes using AI. "
+    "Send me any link — Reddit, YouTube, GitHub, newsletters, or any webpage — "
+    "and I'll extract the content, summarize it with Gemini AI, "
+    "generate tags, and save a formatted Markdown note to your knowledge graph. "
+    "Supports duplicate detection, source auto-detection, and bidirectional backlinks."
+)
+
+
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """/start — send the welcome message."""
     await update.effective_message.reply_text(_WELCOME, parse_mode="Markdown")
+
+
+async def handle_about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/about — explain what the bot does."""
+    await update.effective_message.reply_text(_ABOUT, parse_mode="Markdown")
 
 
 async def handle_command(

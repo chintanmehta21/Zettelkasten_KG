@@ -112,10 +112,10 @@ class TestWebhookMode:
 
 
 class TestHandlerRegistration:
-    def test_registers_exactly_nine_handlers(self) -> None:
-        """main() must register exactly 9 handlers via add_handler.
+    def test_registers_exactly_ten_handlers(self) -> None:
+        """main() must register exactly 10 handlers via add_handler.
 
-        Commands: start, help, status, reddit, yt, newsletter, github, force
+        Commands: start, about, help, status, reddit, yt, newsletter, github, force
         Plus: bare-URL MessageHandler
         """
         from zettelkasten_bot.main import main
@@ -129,7 +129,7 @@ class TestHandlerRegistration:
         ):
             main()
 
-        assert mock_app.add_handler.call_count == 9
+        assert mock_app.add_handler.call_count == 10
 
     def test_registers_error_handler(self) -> None:
         """main() must register a global error handler."""

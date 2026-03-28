@@ -15,6 +15,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 
 from zettelkasten_bot.bot.guards import get_chat_filter
 from zettelkasten_bot.bot.handlers import (
+    handle_about,
     handle_bare_url,
     handle_force,
     handle_github,
@@ -50,6 +51,7 @@ async def _post_init(application: Application) -> None:
     """Register the bot command menu with Telegram on startup."""
     await application.bot.set_my_commands([
         BotCommand("start", "Welcome message and usage guide"),
+        BotCommand("about", "What this bot does"),
         BotCommand("help", "Show available commands"),
         BotCommand("status", "Bot health and statistics"),
         BotCommand("reddit", "Capture a Reddit post"),
@@ -82,6 +84,7 @@ def main() -> None:
 
     # ── Register handlers ─────────────────────────────────────────────────
     app.add_handler(CommandHandler("start",      handle_start,      filters=chat_filter))
+    app.add_handler(CommandHandler("about",      handle_about,      filters=chat_filter))
     app.add_handler(CommandHandler("help",       handle_start,      filters=chat_filter))
     app.add_handler(CommandHandler("status",     handle_status,     filters=chat_filter))
     app.add_handler(CommandHandler("reddit",     handle_reddit,     filters=chat_filter))
