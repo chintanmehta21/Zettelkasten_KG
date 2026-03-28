@@ -177,7 +177,6 @@
     dropdownLabel.textContent = 'Menu';
     dropdownToggle.className = 'dropdown-toggle';
     dropdownItems.forEach(function (i) { i.classList.remove('active'); });
-    dropdownItems[0].classList.add('active');
   }
 
   // Source dropdown logic
