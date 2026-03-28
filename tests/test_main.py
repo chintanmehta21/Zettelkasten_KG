@@ -88,26 +88,25 @@ class TestPollingMode:
 
 
 class TestWebhookMode:
-    def test_webhook_mode_calls_run_webhook(self) -> None:
-        """main() in webhook mode must call run_webhook with the correct kwargs."""
+    def test_webhook_mode_calls_uvicorn(self) -> None:
+        """main() in webhook mode must call uvicorn.run with the FastAPI app."""
         from zettelkasten_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_webhook_settings()
 
+        mock_web_app = MagicMock()
+        mock_create_app = MagicMock(return_value=mock_web_app)
+
         with (
             patch("zettelkasten_bot.main.Application", MockApp),
             patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch.dict("sys.modules", {"uvicorn": MagicMock(), "website.app": MagicMock(create_app=mock_create_app)}),
+            patch("zettelkasten_bot.main._run_webhook") as mock_run_webhook,
         ):
             main()
 
-        mock_app.run_webhook.assert_called_once_with(
-            listen="0.0.0.0",
-            port=8443,
-            url_path="test-token",
-            webhook_url="https://example.com/hook",
-            secret_token="secret123",
-        )
+        mock_run_webhook.assert_called_once_with(settings)
         mock_app.run_polling.assert_not_called()
 
 

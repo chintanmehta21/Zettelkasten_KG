@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zettelkasten Summarizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">&#9670;</span>
+                <span class="logo-text">Zettelkasten</span>
+            </div>
+            <p class="tagline">AI-powered link summarizer for your knowledge graph</p>
+        </header>
+
+        <!-- Input Section -->
+        <main class="main">
+            <div class="input-section" id="input-section">
+                <h1 class="hero-text">Summarize any link</h1>
+                <p class="hero-sub">Paste a URL from YouTube, GitHub, Reddit, newsletters, or any webpage</p>
+                <form id="summarize-form" class="input-form">
+                    <div class="input-wrapper">
+                        <input
+                            type="url"
+                            id="url-input"
+                            placeholder="https://..."
+                            autocomplete="off"
+                            spellcheck="false"
+                            required
+                        >
+                        <button type="submit" id="submit-btn">
+                            <span class="btn-text">Summarize</span>
+                            <span class="btn-icon">&rarr;</span>
+                        </button>
+                    </div>
+                    <p class="error-message" id="error-message"></p>
+                </form>
+                <div class="source-badges">
+                    <span class="badge badge-youtube">YouTube</span>
+                    <span class="badge badge-github">GitHub</span>
+                    <span class="badge badge-reddit">Reddit</span>
+                    <span class="badge badge-newsletter">Newsletter</span>
+                    <span class="badge badge-generic">Web</span>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-section hidden" id="loading-section">
+                <div class="loading-card">
+                    <div class="spinner"></div>
+                    <p class="loading-text" id="loading-text">Detecting source type...</p>
+                    <p class="loading-url" id="loading-url"></p>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div class="result-section hidden" id="result-section">
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="source-badge" id="result-source"></span>
+                        <div class="result-meta">
+                            <span class="meta-item" id="result-tokens"></span>
+                            <span class="meta-item" id="result-latency"></span>
+                        </div>
+                    </div>
+
+                    <h2 class="result-title" id="result-title"></h2>
+                    <p class="result-oneliner" id="result-oneliner"></p>
+
+                    <div class="result-tags" id="result-tags"></div>
+
+                    <!-- Brief Summary -->
+                    <div class="summary-section">
+                        <div class="summary-header">
+                            <h3>Key Takeaways</h3>
+                        </div>
+                        <div class="summary-content brief" id="result-brief"></div>
+                    </div>
+
+                    <!-- Detailed Summary -->
+                    <div class="summary-section">
+                        <div class="summary-header">
+                            <h3>Detailed Summary</h3>
+                            <button class="copy-btn" id="copy-btn" title="Copy summary">
+                                <span class="copy-icon">&#x2398;</span>
+                                <span class="copy-text">Copy</span>
+                            </button>
+                        </div>
+                        <div class="summary-content detailed" id="result-detailed"></div>
+                    </div>
+
+                    <div class="result-footer">
+                        <a class="source-link" id="result-link" href="#" target="_blank" rel="noopener">
+                            View original &nearr;
+                        </a>
+                        <button class="try-another-btn" id="try-another-btn">Try another link</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div class="error-section hidden" id="error-section">
+                <div class="error-card">
+                    <div class="error-icon">&#x26A0;</div>
+                    <h3 class="error-title">Something went wrong</h3>
+                    <p class="error-detail" id="error-detail"></p>
+                    <button class="try-another-btn" id="error-retry-btn">Try again</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by Gemini AI &middot; <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

@@ -3,10 +3,15 @@
 Loads settings, configures logging, builds the PTB Application, registers
 all command and message handlers with the chat-ID guard, then starts either
 polling (default) or webhook mode based on :data:`Settings.webhook_mode`.
+
+In webhook mode, a FastAPI application serves both the web UI and the
+Telegram webhook on the same port, enabling coexistence on Render's free
+tier (single service).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import traceback
 
@@ -63,16 +68,8 @@ async def _post_init(application: Application) -> None:
     logger.info("Bot command menu registered with Telegram")
 
 
-def main() -> None:
-    """Build the PTB application and start the bot."""
-    settings = get_settings()
-
-    logging.basicConfig(
-        level=settings.log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    logger.info("Starting Zettelkasten bot (webhook_mode=%s)", settings.webhook_mode)
-
+def _build_ptb_app(settings) -> Application:
+    """Build and configure the PTB Application with all handlers."""
     app: Application = (
         Application.builder()
         .token(settings.telegram_bot_token)
@@ -98,23 +95,88 @@ def main() -> None:
 
     # ── Global error handler ──────────────────────────────────────────────
     app.add_error_handler(_error_handler)
+    return app
 
-    # ── Start ─────────────────────────────────────────────────────────────
+
+def _run_webhook(settings) -> None:
+    """Run in webhook mode: FastAPI serves web UI + Telegram webhook."""
+    import uvicorn
+    from contextlib import asynccontextmanager
+    from fastapi import FastAPI, Request, Response
+
+    from website.app import create_app
+
+    ptb_app = _build_ptb_app(settings)
+    web_app = create_app()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Start PTB
+        await ptb_app.initialize()
+        await ptb_app.start()
+        await ptb_app.bot.set_webhook(
+            url=settings.webhook_url,
+            secret_token=settings.webhook_secret or None,
+        )
+        logger.info("PTB started, webhook set to %s", settings.webhook_url)
+        yield
+        # Shutdown PTB
+        await ptb_app.stop()
+        await ptb_app.shutdown()
+
+    web_app.router.lifespan_context = lifespan
+
+    # Telegram webhook endpoint
+    token_path = f"/{settings.telegram_bot_token}"
+
+    @web_app.post(token_path)
+    async def telegram_webhook(request: Request) -> Response:
+        """Forward Telegram updates to PTB."""
+        # Verify secret token if configured
+        if settings.webhook_secret:
+            header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+            if header_secret != settings.webhook_secret:
+                return Response(status_code=403)
+
+        data = await request.json()
+        update = Update.de_json(data, ptb_app.bot)
+        await ptb_app.update_queue.put(update)
+        return Response(status_code=200)
+
+    logger.info(
+        "Webhook mode — serving web UI + bot on 0.0.0.0:%d",
+        settings.webhook_port,
+    )
+
+    uvicorn.run(
+        web_app,
+        host="0.0.0.0",
+        port=settings.webhook_port,
+        log_level="info",
+    )
+
+
+def _run_polling(settings) -> None:
+    """Run in polling mode (local dev)."""
+    ptb_app = _build_ptb_app(settings)
+    logger.info("Polling mode — starting long-poll loop")
+    ptb_app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+def main() -> None:
+    """Build the PTB application and start the bot."""
+    settings = get_settings()
+
+    logging.basicConfig(
+        level=settings.log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    logger.info("Starting Zettelkasten bot (webhook_mode=%s)", settings.webhook_mode)
+
     if settings.webhook_mode:
-        logger.info(
-            "Webhook mode — listening on 0.0.0.0:%d, path=/<token>",
-            settings.webhook_port,
-        )
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=settings.webhook_port,
-            url_path=settings.telegram_bot_token,
-            webhook_url=settings.webhook_url,
-            secret_token=settings.webhook_secret,
-        )
+        _run_webhook(settings)
     else:
-        logger.info("Polling mode — starting long-poll loop")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
+        _run_polling(settings)
 
 
 if __name__ == "__main__":

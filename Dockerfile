@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Pre-compile all .pyc files (saves ~1-2s on cold start)
 COPY zettelkasten_bot/ zettelkasten_bot/
-RUN python -m compileall -q zettelkasten_bot/
+COPY website/ website/
+RUN python -m compileall -q zettelkasten_bot/ website/
 
 # ── Final stage (smaller image, faster pull) ─────────────────────────
 FROM python:3.12-slim
@@ -21,6 +22,7 @@ WORKDIR /app
 # Copy only the venv and app code from builder
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app/zettelkasten_bot /app/zettelkasten_bot
+COPY --from=builder /app/website /app/website
 COPY run.py .
 
 ENV PATH="/opt/venv/bin:$PATH"
