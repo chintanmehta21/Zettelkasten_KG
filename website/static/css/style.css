@@ -726,11 +726,50 @@ a:hover {
     margin-right: auto;
 }
 
+/* ── Knowledge Graph CTA ─────────────────────────────────────────── */
+
+.kg-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 1.5rem auto 0;
+    padding: 10px 22px;
+    background: hsla(265, 30%, 50%, 0.08);
+    border: 1px solid hsla(265, 30%, 60%, 0.18);
+    border-radius: 999px;
+    color: hsl(265, 35%, 72%);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: fit-content;
+}
+
+.kg-cta:hover {
+    background: hsla(265, 30%, 50%, 0.14);
+    border-color: hsla(265, 30%, 60%, 0.3);
+    color: hsl(265, 45%, 80%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px hsla(265, 40%, 50%, 0.12);
+}
+
+.kg-cta-icon {
+    display: flex;
+    align-items: center;
+    line-height: 0;
+}
+
+.kg-cta-text {
+    white-space: nowrap;
+}
+
 /* ── Footer ───────────────────────────────────────────────────────── */
 
 .footer {
     text-align: center;
-    padding: 2.5rem 0 1rem;
+    padding: 2rem 0 1rem;
     color: var(--text-muted);
     font-size: 0.75rem;
     letter-spacing: 0.01em;

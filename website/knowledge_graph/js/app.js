@@ -1,25 +1,25 @@
 /* ============================================
-   Knowledge Graph Viewer — Interactive App
+   Knowledge Graph — 3D Interactive Viewer
    ============================================ */
 
 (function () {
   'use strict';
 
-  // ---- Color map (matches CSS variables) ----
+  // ---- Node colors by source (hex for Three.js) ----
   const COLORS = {
-    youtube:  'hsl(355, 65%, 62%)',
-    reddit:   'hsl(24, 70%, 58%)',
-    github:   'hsl(265, 45%, 68%)',
-    substack: 'hsl(205, 55%, 58%)',
-    medium:   'hsl(155, 45%, 52%)'
+    youtube:  '#c75050',
+    reddit:   '#d48a3c',
+    github:   '#9c7bbd',
+    substack: '#5a93c6',
+    medium:   '#5daf6a'
   };
 
-  const COLORS_DIM = {
-    youtube:  'hsla(355, 65%, 62%, 0.2)',
-    reddit:   'hsla(24, 70%, 58%, 0.2)',
-    github:   'hsla(265, 45%, 68%, 0.2)',
-    substack: 'hsla(205, 55%, 58%, 0.2)',
-    medium:   'hsla(155, 45%, 52%, 0.2)'
+  const COLORS_INT = {
+    youtube:  0xc75050,
+    reddit:   0xd48a3c,
+    github:   0x9c7bbd,
+    substack: 0x5a93c6,
+    medium:   0x5daf6a
   };
 
   function escapeHtml(str) {
@@ -41,11 +41,10 @@
   let graphData = { nodes: [], links: [] };
   let fullData = { nodes: [], links: [] };
   let graph = null;
-  let highlightNodes = new Set();
-  let highlightLinks = new Set();
-  let hoverNode = null;
   let selectedNode = null;
   let panelHideTimer = null;
+  let highlightNodes = new Set();
+  let hoverNode = null;
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
 
   // ---- Load data and init ----
@@ -53,7 +52,7 @@
     .then(r => r.json())
     .then(data => {
       fullData = data;
-      graphData = structuredClone(data);
+      graphData = JSON.parse(JSON.stringify(data));
       initGraph();
       updateStats();
     })
@@ -62,180 +61,235 @@
       statsEl.textContent = 'Failed to load data';
     });
 
+  // ---- Starfield background ----
+  function createStarfield(scene) {
+    const starCount = 800;
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(starCount * 3);
+    const sizes = new Float32Array(starCount);
+
+    for (let i = 0; i < starCount; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 2000;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+      sizes[i] = Math.random() * 1.5 + 0.3;
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const mat = new THREE.PointsMaterial({
+      color: 0x445577,
+      size: 1.2,
+      transparent: true,
+      opacity: 0.4,
+      sizeAttenuation: true
+    });
+
+    scene.add(new THREE.Points(geo, mat));
+  }
+
+  // ---- 3D Graph Initialization ----
   function initGraph() {
-    graph = new ForceGraph(container)
+    graph = new ForceGraph3D(container)
       .graphData(graphData)
-      .backgroundColor('hsl(224, 28%, 4%)')
-      .nodeRelSize(6)
-      .nodeColor(node => {
-        if (highlightNodes.size > 0 && !highlightNodes.has(node)) {
-          return COLORS_DIM[node.group] || 'hsla(220, 14%, 30%, 0.2)';
-        }
-        return COLORS[node.group] || 'hsl(220, 14%, 50%)';
+      .backgroundColor('#06060f')
+      .showNavInfo(false)
+
+      // ---- Node rendering: glowing 3D spheres + sprite labels ----
+      .nodeThreeObject(node => {
+        const group = new THREE.Group();
+        const color = COLORS_INT[node.group] || 0x888888;
+
+        const isSelected = selectedNode && selectedNode.id === node.id;
+        const isHovered = hoverNode && hoverNode.id === node.id;
+        const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node.id);
+        const isActive = isSelected || isHovered;
+        const opacity = isHighlighted ? 1.0 : 0.08;
+
+        // Core sphere — larger for better visibility
+        const radius = isActive ? 8 : 6;
+        const coreGeo = new THREE.SphereGeometry(radius, 32, 32);
+        const coreMat = new THREE.MeshStandardMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: isActive ? 0.8 : 0.45,
+          roughness: 0.25,
+          metalness: 0.15,
+          transparent: true,
+          opacity: opacity
+        });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        group.add(core);
+
+        // Inner glow ring
+        const innerGlowGeo = new THREE.SphereGeometry(radius * 1.3, 16, 16);
+        const innerGlowMat = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: (isActive ? 0.2 : 0.08) * opacity
+        });
+        group.add(new THREE.Mesh(innerGlowGeo, innerGlowMat));
+
+        // Outer glow halo — larger and softer
+        const glowGeo = new THREE.SphereGeometry(radius * 2.0, 16, 16);
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: (isActive ? 0.12 : 0.04) * opacity
+        });
+        group.add(new THREE.Mesh(glowGeo, glowMat));
+
+        // Sprite text label — always readable
+        const maxLen = 36;
+        const label = node.name.length > maxLen ? node.name.slice(0, maxLen - 1) + '\u2026' : node.name;
+        const sprite = new SpriteText(label);
+        sprite.color = isHighlighted
+          ? (isActive ? '#ffffff' : 'rgba(232, 234, 237, 0.9)')
+          : 'rgba(232, 234, 237, 0.08)';
+        sprite.textHeight = isActive ? 4.0 : 3.2;
+        sprite.backgroundColor = isActive
+          ? 'rgba(6, 6, 15, 0.85)'
+          : 'rgba(6, 6, 15, 0.5)';
+        sprite.padding = [1.0, 2.0];
+        sprite.borderRadius = 4;
+        sprite.position.set(0, -(radius + 8), 0);
+        group.add(sprite);
+
+        return group;
       })
-      .nodeLabel('')  // We handle tooltips via canvas
+      .nodeThreeObjectExtend(false)
+
+      // ---- Link rendering ----
       .linkColor(link => {
-        if (highlightLinks.size > 0 && !highlightLinks.has(link)) {
-          return 'hsla(220, 16%, 14%, 0.15)';
+        const src = typeof link.source === 'object' ? link.source : null;
+        if (src && hoverNode && (src.id === hoverNode.id || (typeof link.target === 'object' && link.target.id === hoverNode.id))) {
+          return COLORS[src.group] || 'rgba(160, 180, 240, 0.8)';
         }
-        return 'hsla(220, 16%, 50%, 0.3)';
+        return 'rgba(100, 130, 200, 0.25)';
       })
-      .linkWidth(link => highlightLinks.has(link) ? 2 : 1)
-      .linkDirectionalParticles(link => highlightLinks.has(link) ? 2 : 0)
-      .linkDirectionalParticleWidth(2)
-      .linkDirectionalParticleColor(() => 'hsl(172, 66%, 50%)')
-      .onNodeHover(handleNodeHover)
+      .linkWidth(link => {
+        const src = typeof link.source === 'object' ? link.source : null;
+        const tgt = typeof link.target === 'object' ? link.target : null;
+        if (hoverNode && ((src && src.id === hoverNode.id) || (tgt && tgt.id === hoverNode.id))) {
+          return 2.0;
+        }
+        return 0.6;
+      })
+      .linkOpacity(0.6)
+      .linkCurvature(0.15)
+      .linkCurveRotation(0.4)
+      .linkDirectionalParticles(2)
+      .linkDirectionalParticleWidth(1.5)
+      .linkDirectionalParticleSpeed(0.003)
+      .linkDirectionalParticleColor(link => {
+        const src = typeof link.source === 'object' ? link.source : null;
+        return src ? (COLORS[src.group] || '#4466aa') : '#4466aa';
+      })
+
+      // ---- Interactions ----
       .onNodeClick(handleNodeClick)
       .onBackgroundClick(handleBackgroundClick)
-      .nodeCanvasObject(drawNode)
-      .nodeCanvasObjectMode(() => 'replace')
-      .d3AlphaDecay(0.02)
-      .d3VelocityDecay(0.3)
-      .warmupTicks(80)
-      .cooldownTime(3000);
+      .onNodeHover(node => {
+        hoverNode = node || null;
+        container.style.cursor = node ? 'pointer' : 'default';
+        // Re-render to update link highlights
+        graph.nodeThreeObject(graph.nodeThreeObject());
+      })
 
-    // Resize on window resize
+      // ---- Physics — wider spread so all nodes are clearly visible ----
+      .d3AlphaDecay(0.015)
+      .d3VelocityDecay(0.3)
+      .warmupTicks(300)
+      .cooldownTime(5000);
+
+    // ---- Scene enhancements ----
+    const scene = graph.scene();
+
+    // Starfield background
+    createStarfield(scene);
+
+    // Ambient light — warm cool blend
+    scene.add(new THREE.AmbientLight(0x1a1a3e, 2.5));
+
+    // Key light (bright, cool white from above-right)
+    const keyLight = new THREE.PointLight(0x7799dd, 2.0, 800);
+    keyLight.position.set(80, 250, 150);
+    scene.add(keyLight);
+
+    // Fill light (warm accent from below-left)
+    const fillLight = new THREE.PointLight(0xcc8866, 0.8, 500);
+    fillLight.position.set(-120, -120, -80);
+    scene.add(fillLight);
+
+    // Rim light (subtle accent from behind)
+    const rimLight = new THREE.PointLight(0x4466aa, 0.5, 600);
+    rimLight.position.set(0, 0, -200);
+    scene.add(rimLight);
+
+    // Very subtle fog — just enough for depth, never hides nodes
+    scene.fog = new THREE.FogExp2(0x06060f, 0.0004);
+
+    // Force layout: much wider spread for clear visibility
+    graph.d3Force('charge').strength(-120).distanceMax(350);
+    graph.d3Force('link').distance(70);
+
+    // Center force — keep graph centered
+    graph.d3Force('center', null); // re-add with gentle pull
+    const d3 = window.d3 || null;
+    if (d3 && d3.forceCenter) {
+      graph.d3Force('center', d3.forceCenter(0, 0, 0).strength(0.05));
+    }
+
+    // ---- Camera: auto-orbit ----
+    const controls = graph.controls();
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.3;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 80;
+    controls.maxDistance = 600;
+
+    // Stop auto-rotation on user interaction
+    const stopOrbit = () => { controls.autoRotate = false; };
+    container.addEventListener('mousedown', stopOrbit);
+    container.addEventListener('touchstart', stopOrbit);
+
+    // Zoom to fit after physics settle — generous padding
+    setTimeout(() => graph.zoomToFit(2000, 60), 3000);
+
+    // Resize handler
     window.addEventListener('resize', () => {
       graph.width(window.innerWidth).height(window.innerHeight);
     });
-
-    // Initial zoom to fit after settling
-    setTimeout(() => {
-      graph.zoomToFit(600, 60);
-    }, 1500);
   }
 
-  // ---- Node rendering ----
-  function drawNode(node, ctx, globalScale) {
-    const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node);
-    const isSelected = selectedNode === node;
-    const isHovered = hoverNode === node;
-    const baseR = 5;
-    const r = isSelected ? baseR * 1.4 : isHovered ? baseR * 1.2 : baseR;
-    const color = COLORS[node.group] || 'hsl(220, 14%, 50%)';
-    const alpha = isHighlighted ? 1 : 0.15;
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-
-    // Glow for selected/hovered
-    if ((isSelected || isHovered) && isHighlighted) {
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI);
-      ctx.fillStyle = COLORS_DIM[node.group] || 'hsla(220, 14%, 50%, 0.2)';
-      ctx.fill();
-    }
-
-    // Main circle
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-
-    // Border for selected
-    if (isSelected) {
-      ctx.strokeStyle = 'hsl(172, 66%, 50%)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    // Label
-    const showLabel = globalScale > 0.8 || isHovered || isSelected;
-    if (showLabel && isHighlighted) {
-      const fontSize = Math.max(11 / globalScale, 3);
-      ctx.font = `500 ${fontSize}px Inter, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-
-      const label = truncateLabel(node.name, 40);
-      const textWidth = ctx.measureText(label).width;
-
-      // Background pill behind text
-      const padding = 3 / globalScale;
-      ctx.fillStyle = 'hsla(224, 28%, 4%, 0.8)';
-      ctx.beginPath();
-      const pillY = node.y + r + 3;
-      const pillH = fontSize + padding * 2;
-      const pillW = textWidth + padding * 4;
-      const pillR = pillH / 2;
-      roundRect(ctx, node.x - pillW / 2, pillY, pillW, pillH, pillR);
-      ctx.fill();
-
-      // Text
-      ctx.fillStyle = isSelected ? 'hsl(172, 66%, 50%)' : 'hsl(210, 20%, 88%)';
-      ctx.fillText(label, node.x, pillY + padding);
-    }
-
-    ctx.restore();
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
-  function truncateLabel(text, maxLen) {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, maxLen - 1) + '\u2026';
-  }
-
-  // ---- Interactions ----
-  function handleNodeHover(node) {
-    container.style.cursor = node ? 'pointer' : 'default';
-    hoverNode = node;
-
-    highlightNodes.clear();
-    highlightLinks.clear();
-
-    if (node) {
-      highlightNodes.add(node);
-      const nodeLinks = graphData.links.filter(
-        l => l.source === node || l.target === node
-      );
-      nodeLinks.forEach(link => {
-        highlightLinks.add(link);
-        highlightNodes.add(link.source);
-        highlightNodes.add(link.target);
-      });
-    }
-  }
-
+  // ---- Node click → fly to node + open panel ----
   function handleNodeClick(node) {
     selectedNode = node;
     openPanel(node);
 
-    // Highlight the selected node's neighborhood
-    highlightNodes.clear();
-    highlightLinks.clear();
-    highlightNodes.add(node);
-    const nodeLinks = graphData.links.filter(
-      l => l.source === node || l.target === node
+    // Fly camera to node — closer for detail
+    const dist = 80;
+    const ratio = 1 + dist / Math.hypot(node.x, node.y, node.z || 1);
+    graph.cameraPosition(
+      { x: node.x * ratio, y: node.y * ratio, z: (node.z || 0) * ratio },
+      node,
+      1200
     );
-    nodeLinks.forEach(link => {
-      highlightLinks.add(link);
-      highlightNodes.add(link.source);
-      highlightNodes.add(link.target);
-    });
 
-    // Center on node
-    graph.centerAt(node.x, node.y, 600);
-    graph.zoom(2.5, 600);
+    // Stop auto-orbit
+    graph.controls().autoRotate = false;
+
+    // Re-render to highlight selected
+    graph.nodeThreeObject(graph.nodeThreeObject());
   }
 
   function handleBackgroundClick() {
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
-    highlightLinks.clear();
+    graph.nodeThreeObject(graph.nodeThreeObject());
   }
 
   // ---- Side Panel ----
@@ -260,19 +314,20 @@
       t => `<span class="kg-tag">${escapeHtml(t)}</span>`
     ).join('');
 
-    // Connections
+    // Connected notes
     const nodeLinks = graphData.links.filter(
-      l => l.source === node || l.target === node
+      l => l.source === node || l.target === node ||
+           l.source?.id === node.id || l.target?.id === node.id
     );
-    const connectedNodes = nodeLinks.map(l => ({
-      node: l.source === node ? l.target : l.source,
-      relation: l.relation
-    }));
+    const connectedNodes = nodeLinks.map(l => {
+      const other = (l.source === node || l.source?.id === node.id) ? l.target : l.source;
+      return { node: other, relation: l.relation };
+    });
 
     connections.innerHTML = connectedNodes.map(c => `
-      <div class="kg-connection" data-id="${escapeHtml(c.node.id)}">
+      <div class="kg-connection" data-id="${escapeHtml(c.node.id || c.node)}">
         <span class="kg-connection-dot" style="background: ${COLORS[c.node.group] || '#888'}"></span>
-        <span class="kg-connection-name">${escapeHtml(c.node.name)}</span>
+        <span class="kg-connection-name">${escapeHtml(c.node.name || c.node)}</span>
         <span class="kg-connection-relation">${escapeHtml(c.relation)}</span>
       </div>
     `).join('');
@@ -299,40 +354,26 @@
 
   function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   // ---- Search ----
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
-
     highlightNodes.clear();
-    highlightLinks.clear();
     selectedNode = null;
 
-    if (query.length === 0) return;
-
-    graphData.nodes.forEach(node => {
-      const nameMatch = node.name.toLowerCase().includes(query);
-      const tagMatch = node.tags.some(t => t.toLowerCase().includes(query));
-      const summaryMatch = node.summary.toLowerCase().includes(query);
-      if (nameMatch || tagMatch || summaryMatch) {
-        highlightNodes.add(node);
-      }
-    });
-
-    // Also highlight links between matched nodes
-    if (highlightNodes.size > 0) {
-      graphData.links.forEach(link => {
-        if (highlightNodes.has(link.source) && highlightNodes.has(link.target)) {
-          highlightLinks.add(link);
-        }
+    if (query.length > 0) {
+      graphData.nodes.forEach(node => {
+        const match = node.name.toLowerCase().includes(query) ||
+                      node.tags.some(t => t.toLowerCase().includes(query)) ||
+                      node.summary.toLowerCase().includes(query);
+        if (match) highlightNodes.add(node.id);
       });
     }
+
+    // Re-render nodes with updated highlights
+    graph.nodeThreeObject(graph.nodeThreeObject());
   });
 
   // ---- Filter ----
@@ -375,9 +416,8 @@
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
-    highlightLinks.clear();
 
-    setTimeout(() => graph.zoomToFit(600, 60), 500);
+    setTimeout(() => graph.zoomToFit(800, 80), 1000);
   }
 
   // ---- Stats ----
@@ -392,17 +432,18 @@
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
-    highlightLinks.clear();
+    graph.nodeThreeObject(graph.nodeThreeObject());
   });
 
-  // ---- Keyboard shortcut: Escape to close panel ----
+  // ---- Keyboard: Escape ----
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closePanel();
       selectedNode = null;
       highlightNodes.clear();
-      highlightLinks.clear();
+      hoverNode = null;
       searchInput.value = '';
+      graph.nodeThreeObject(graph.nodeThreeObject());
     }
   });
 
