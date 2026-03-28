@@ -20,14 +20,23 @@ logger = logging.getLogger("website.app")
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
-    app = FastAPI(
+def create_app(lifespan=None) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        lifespan: Optional async context manager for startup/shutdown events.
+                  Used in webhook mode to manage the PTB Application lifecycle.
+    """
+    kwargs = dict(
         title="Zettelkasten Summarizer",
         description="Summarize any link with AI",
-        docs_url=None,  # disable /docs in production
+        docs_url=None,
         redoc_url=None,
     )
+    if lifespan is not None:
+        kwargs["lifespan"] = lifespan
+
+    app = FastAPI(**kwargs)
 
     # API routes
     app.include_router(api_router)

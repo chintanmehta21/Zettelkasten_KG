@@ -99,40 +99,43 @@ def _build_ptb_app(settings) -> Application:
 
 
 def _run_webhook(settings) -> None:
-    """Run in webhook mode: FastAPI serves web UI + Telegram webhook."""
+    """Run in webhook mode: FastAPI serves web UI + Telegram webhook.
+
+    Uses the official PTB custom webhook pattern:
+    https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks
+    """
     import uvicorn
     from contextlib import asynccontextmanager
-    from fastapi import FastAPI, Request, Response
+    from fastapi import Request, Response
 
     from website.app import create_app
 
     ptb_app = _build_ptb_app(settings)
-    web_app = create_app()
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        # Start PTB
+    async def lifespan(app):
         await ptb_app.initialize()
         await ptb_app.start()
-        await ptb_app.bot.set_webhook(
-            url=settings.webhook_url,
-            secret_token=settings.webhook_secret or None,
-        )
-        logger.info("PTB started, webhook set to %s", settings.webhook_url)
+        try:
+            await ptb_app.bot.set_webhook(
+                url=settings.webhook_url,
+                secret_token=settings.webhook_secret or None,
+            )
+            logger.info("PTB started, webhook set to %s", settings.webhook_url)
+        except Exception:
+            logger.warning("Failed to set webhook URL — bot may not receive updates")
         yield
-        # Shutdown PTB
         await ptb_app.stop()
         await ptb_app.shutdown()
 
-    web_app.router.lifespan_context = lifespan
+    web_app = create_app(lifespan=lifespan)
 
     # Telegram webhook endpoint
     token_path = f"/{settings.telegram_bot_token}"
 
     @web_app.post(token_path)
     async def telegram_webhook(request: Request) -> Response:
-        """Forward Telegram updates to PTB."""
-        # Verify secret token if configured
+        """Forward Telegram updates to PTB via process_update."""
         if settings.webhook_secret:
             header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
             if header_secret != settings.webhook_secret:
@@ -140,7 +143,7 @@ def _run_webhook(settings) -> None:
 
         data = await request.json()
         update = Update.de_json(data, ptb_app.bot)
-        await ptb_app.update_queue.put(update)
+        await ptb_app.process_update(update)
         return Response(status_code=200)
 
     logger.info(
