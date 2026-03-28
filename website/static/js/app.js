@@ -8,6 +8,12 @@
   const submitBtn = document.getElementById('submit-btn');
   const errorMsg = document.getElementById('error-message');
 
+  // Source dropdown
+  const dropdownToggle = document.getElementById('dropdown-toggle');
+  const dropdownLabel = document.getElementById('dropdown-label');
+  const dropdownMenu = document.getElementById('dropdown-menu');
+  const dropdownItems = dropdownMenu.querySelectorAll('.dropdown-item');
+
   const inputSection = document.getElementById('input-section');
   const loadingSection = document.getElementById('loading-section');
   const resultSection = document.getElementById('result-section');
@@ -167,7 +173,63 @@
     urlInput.focus();
     errorMsg.textContent = '';
     document.querySelector('.input-wrapper').classList.remove('error');
+    // Reset dropdown
+    dropdownLabel.textContent = 'Menu';
+    dropdownToggle.className = 'dropdown-toggle';
+    dropdownItems.forEach(function (i) { i.classList.remove('active'); });
+    dropdownItems[0].classList.add('active');
   }
+
+  // Source dropdown logic
+  dropdownToggle.addEventListener('click', function () {
+    var isOpen = dropdownMenu.classList.contains('open');
+    dropdownMenu.classList.toggle('open');
+    dropdownToggle.classList.toggle('open');
+    if (!isOpen) {
+      // Close on outside click
+      setTimeout(function () {
+        document.addEventListener('click', closeDropdown);
+      }, 0);
+    }
+  });
+
+  function closeDropdown(e) {
+    if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      dropdownMenu.classList.remove('open');
+      dropdownToggle.classList.remove('open');
+      document.removeEventListener('click', closeDropdown);
+    }
+  }
+
+  dropdownItems.forEach(function (item) {
+    item.addEventListener('click', function () {
+      var value = item.getAttribute('data-value');
+      var label = value ? item.textContent : 'Menu';
+
+      // Update label
+      dropdownLabel.textContent = label;
+
+      // Update toggle color class
+      dropdownToggle.className = 'dropdown-toggle selected';
+      if (value) {
+        dropdownToggle.classList.add('src-' + value);
+      } else {
+        dropdownToggle.classList.remove('selected');
+        dropdownToggle.className = 'dropdown-toggle';
+      }
+
+      // Mark active item
+      dropdownItems.forEach(function (i) { i.classList.remove('active'); });
+      item.classList.add('active');
+
+      // Close
+      dropdownMenu.classList.remove('open');
+      dropdownToggle.classList.remove('open');
+      document.removeEventListener('click', closeDropdown);
+
+      urlInput.focus();
+    });
+  });
 
   // Submit handler
   form.addEventListener('submit', function (e) {
