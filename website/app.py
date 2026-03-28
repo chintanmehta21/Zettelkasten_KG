@@ -18,6 +18,7 @@ from website.api.routes import router as api_router
 logger = logging.getLogger("website.app")
 
 STATIC_DIR = Path(__file__).parent / "static"
+KG_DIR = Path(__file__).parent / "knowledge_graph"
 
 
 def create_app(lifespan=None) -> FastAPI:
@@ -45,9 +46,19 @@ def create_app(lifespan=None) -> FastAPI:
     app.mount("/css", StaticFiles(directory=str(STATIC_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(STATIC_DIR / "js")), name="js")
 
+    # Knowledge Graph static assets
+    app.mount("/kg/css", StaticFiles(directory=str(KG_DIR / "css")), name="kg-css")
+    app.mount("/kg/js", StaticFiles(directory=str(KG_DIR / "js")), name="kg-js")
+    app.mount("/kg/data", StaticFiles(directory=str(KG_DIR / "data")), name="kg-data")
+
     # Serve index.html at root
     @app.get("/")
     async def index():
         return FileResponse(str(STATIC_DIR / "index.html"))
+
+    # Serve Knowledge Graph page
+    @app.get("/knowledge-graph")
+    async def knowledge_graph():
+        return FileResponse(str(KG_DIR / "index.html"))
 
     return app

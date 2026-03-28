@@ -734,16 +734,19 @@ a:hover {
     color: var(--text-muted);
     font-size: 0.75rem;
     letter-spacing: 0.01em;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
 }
 
-.footer-github {
+.footer-icon {
     color: var(--text-muted);
     transition: color var(--transition);
     display: inline-block;
     line-height: 0;
 }
 
-.footer-github:hover {
+.footer-icon:hover {
     color: var(--text-secondary);
 }
 

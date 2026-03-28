@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Graph — Zettelkasten</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/kg/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="kg-header">
+    <div class="kg-header-left">
+      <a href="/" class="kg-back" title="Back to Summarizer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </a>
+      <div class="kg-title-group">
+        <h1 class="kg-title">Knowledge Graph</h1>
+        <span class="kg-subtitle" id="graph-stats">Loading...</span>
+      </div>
+    </div>
+    <div class="kg-header-right">
+      <div class="kg-search-wrapper">
+        <svg class="kg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="kg-search" id="search-input" placeholder="Search notes..." autocomplete="off">
+      </div>
+      <button class="kg-filter-btn" id="filter-btn" title="Filter by source">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Filter dropdown -->
+  <div class="kg-filter-dropdown hidden" id="filter-dropdown">
+    <label class="kg-filter-item">
+      <input type="checkbox" value="youtube" checked>
+      <span class="kg-filter-dot" style="background: var(--node-youtube)"></span>
+      YouTube
+    </label>
+    <label class="kg-filter-item">
+      <input type="checkbox" value="reddit" checked>
+      <span class="kg-filter-dot" style="background: var(--node-reddit)"></span>
+      Reddit
+    </label>
+    <label class="kg-filter-item">
+      <input type="checkbox" value="github" checked>
+      <span class="kg-filter-dot" style="background: var(--node-github)"></span>
+      GitHub
+    </label>
+    <label class="kg-filter-item">
+      <input type="checkbox" value="substack" checked>
+      <span class="kg-filter-dot" style="background: var(--node-substack)"></span>
+      Substack
+    </label>
+    <label class="kg-filter-item">
+      <input type="checkbox" value="medium" checked>
+      <span class="kg-filter-dot" style="background: var(--node-medium)"></span>
+      Medium
+    </label>
+  </div>
+
+  <!-- Graph container -->
+  <div id="graph-container"></div>
+
+  <!-- Side panel -->
+  <div class="kg-panel hidden" id="side-panel">
+    <button class="kg-panel-close" id="panel-close" title="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <div class="kg-panel-content">
+      <span class="kg-panel-badge" id="panel-badge">source</span>
+      <h2 class="kg-panel-title" id="panel-title">Note Title</h2>
+      <p class="kg-panel-date" id="panel-date">2026-03-28</p>
+      <p class="kg-panel-summary" id="panel-summary">Summary goes here...</p>
+      <div class="kg-panel-tags" id="panel-tags"></div>
+      <div class="kg-panel-section">
+        <h3 class="kg-panel-section-title">Connected Notes</h3>
+        <div class="kg-panel-connections" id="panel-connections"></div>
+      </div>
+      <a class="kg-panel-link" id="panel-link" href="#" target="_blank" rel="noopener">
+        View Original Source
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="kg-legend" id="legend">
+    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-youtube)"></span>YouTube</div>
+    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-reddit)"></span>Reddit</div>
+    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-github)"></span>GitHub</div>
+    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-substack)"></span>Substack</div>
+    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-medium)"></span>Medium</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/force-graph@1.47.3/dist/force-graph.min.js"></script>
+  <script src="/kg/js/app.js"></script>
+</body>
+</html>
