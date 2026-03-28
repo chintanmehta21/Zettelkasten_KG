@@ -154,15 +154,28 @@ def _run_webhook(settings) -> None:
         from killing long-running pipelines (YouTube extraction can
         take 30–60 s on Render's free tier).
         """
-        if settings.webhook_secret:
-            header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-            if header_secret != settings.webhook_secret:
-                return Response(status_code=403)
+        try:
+            if settings.webhook_secret:
+                header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+                if header_secret != settings.webhook_secret:
+                    logger.warning("Webhook secret mismatch — rejecting update")
+                    return Response(status_code=403)
 
-        data = await request.json()
-        update = Update.de_json(data, ptb_app.bot)
-        await ptb_app.update_queue.put(update)
-        return Response(status_code=200)
+            body = await request.body()
+            if not body:
+                logger.warning("Webhook received empty body")
+                return Response(status_code=200)
+
+            import json as _json
+            data = _json.loads(body)
+            update = Update.de_json(data, ptb_app.bot)
+            await ptb_app.update_queue.put(update)
+            logger.info("Webhook update queued: update_id=%s", data.get("update_id"))
+            return Response(status_code=200)
+        except Exception as exc:
+            logger.error("Webhook handler error: %s", exc, exc_info=True)
+            # Always return 200 to stop Telegram retrying failed updates
+            return Response(status_code=200)
 
     logger.info(
         "Webhook mode — serving web UI + bot on 0.0.0.0:%d",
