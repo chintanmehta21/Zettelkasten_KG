@@ -17,6 +17,7 @@ import traceback
 from zettelkasten_bot.config.settings import get_settings
 from zettelkasten_bot.models.capture import SourceType
 from zettelkasten_bot.pipeline.duplicate import DuplicateStore
+from zettelkasten_bot.pipeline.github_writer import GitHubWriter
 from zettelkasten_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
 from zettelkasten_bot.pipeline.writer import ObsidianWriter
 from zettelkasten_bot.sources import get_extractor
@@ -128,11 +129,21 @@ async def process_url(
             tags.append("status/Raw")
         logger.info("Tags: %s", tags)
 
-        # ── Phase 9: write Obsidian note ──────────────────────────────────
-        logger.info("Phase write — writing note to KG directory")
-        writer = ObsidianWriter(settings.kg_directory)
-        note_path = writer.write_note(extracted, result, tags)
-        logger.info("Note written to: %s", note_path)
+        # ── Phase 9: write note ──────────────────────────────────────────
+        logger.info("Phase write — writing note")
+        note_url = None
+        if settings.github_enabled:
+            gh_writer = GitHubWriter(
+                settings.github_token,
+                settings.github_repo,
+                settings.github_branch,
+            )
+            note_url = await gh_writer.write_note(extracted, result, tags)
+            logger.info("Note pushed to GitHub: %s", note_url)
+        else:
+            writer = ObsidianWriter(settings.kg_directory)
+            note_path = writer.write_note(extracted, result, tags)
+            logger.info("Note written to: %s", note_path)
 
         # ── Phase 10: mark seen ───────────────────────────────────────────
         logger.info("Phase mark_seen — recording: %s", normalized)
@@ -145,11 +156,17 @@ async def process_url(
         if result.tokens_used:
             token_info = f" ({result.tokens_used} tokens, {result.latency_ms}ms)"
 
+        summary_line = ""
+        if result.one_line_summary:
+            summary_line = f"\n_{result.one_line_summary}_"
+
+        location = f"[GitHub]({note_url})" if note_url else "KG"
+
         logger.info("Phase done — URL captured successfully: %s", normalized)
         await bot.send_message(
             chat_id,
-            f"{status_emoji} **{extracted.title}**\n"
-            f"Note saved to KG{token_info}\n"
+            f"{status_emoji} **{extracted.title}**{summary_line}\n"
+            f"Note saved to {location}{token_info}\n"
             f"Tags: {', '.join(t.split('/')[-1] for t in tags[:8])}",
             parse_mode="Markdown",
         )

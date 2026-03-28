@@ -29,6 +29,7 @@ def make_settings(tmp_path: Path) -> MagicMock:
     s.kg_directory = str(tmp_path / "kg")
     s.data_dir = str(tmp_path / "data")
     s.reddit_comment_depth = 10
+    s.github_enabled = False
     return s
 
 
@@ -415,3 +416,85 @@ async def test_phase_logging_order(pipeline_mocks, caplog):
         f"Phase logs out of order. Phases found at indices: {found_indices}\nMessages: {phase_messages}"
     assert len(found_indices) >= 8, \
         f"Expected at least 8 phase log entries, found {len(found_indices)}: {phase_messages}"
+
+
+# ── GitHub writer integration tests ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_github_writer_used_when_configured(pipeline_mocks):
+    """When github_enabled is True, GitHubWriter is used instead of ObsidianWriter."""
+    pipeline_mocks.settings.github_enabled = True
+    pipeline_mocks.settings.github_token = "ghp_test"
+    pipeline_mocks.settings.github_repo = "user/repo"
+    pipeline_mocks.settings.github_branch = "main"
+
+    with patch(
+        "zettelkasten_bot.pipeline.orchestrator.GitHubWriter",
+    ) as mock_gw_cls:
+        mock_gw_inst = mock_gw_cls.return_value
+        mock_gw_inst.write_note = AsyncMock(return_value="https://github.com/user/repo/blob/main/note.md")
+
+        bot = AsyncMock()
+        await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+        mock_gw_cls.assert_called_once_with("ghp_test", "user/repo", "main")
+        mock_gw_inst.write_note.assert_awaited_once()
+
+    # Local ObsidianWriter should NOT be called
+    pipeline_mocks.writer.write_note.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_local_writer_used_when_github_not_configured(pipeline_mocks):
+    """When github_enabled is False, ObsidianWriter is used (existing behavior)."""
+    pipeline_mocks.settings.github_enabled = False
+
+    bot = AsyncMock()
+    await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+    # ObsidianWriter should be called
+    pipeline_mocks.writer.write_note.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_done_message_includes_one_line_summary(pipeline_mocks):
+    """The done message should include the one-line summary."""
+    pipeline_mocks.settings.github_enabled = False
+    pipeline_mocks.summarizer.summarize = AsyncMock(
+        return_value=SummarizationResult(
+            summary="Summary",
+            tags={"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
+            one_line_summary="AI is transforming software development.",
+            tokens_used=500,
+            latency_ms=200,
+            is_raw_fallback=False,
+        )
+    )
+    bot = AsyncMock()
+    await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+    last_msg = bot.send_message.call_args_list[-1].args[1]
+    assert "AI is transforming software development" in last_msg
+
+
+@pytest.mark.asyncio
+async def test_github_writer_failure_sends_error(pipeline_mocks):
+    """When GitHubWriter raises, the bot should send an error and NOT mark seen."""
+    pipeline_mocks.settings.github_enabled = True
+    pipeline_mocks.settings.github_token = "ghp_test"
+    pipeline_mocks.settings.github_repo = "user/repo"
+    pipeline_mocks.settings.github_branch = "main"
+
+    with patch(
+        "zettelkasten_bot.pipeline.orchestrator.GitHubWriter",
+    ) as mock_gw_cls:
+        mock_gw_inst = mock_gw_cls.return_value
+        mock_gw_inst.write_note = AsyncMock(side_effect=RuntimeError("GitHub API error 401"))
+
+        bot = AsyncMock()
+        await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+    all_texts = " ".join(c.args[1] for c in bot.send_message.call_args_list)
+    assert "❌" in all_texts
+    pipeline_mocks.store.mark_seen.assert_not_called()
