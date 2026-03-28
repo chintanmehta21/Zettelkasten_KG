@@ -11,4 +11,4 @@ yt-dlp>=2024.0
 
 # Web frontend
 fastapi>=0.115
-uvicorn[standard]>=0.34
+uvicorn>=0.34
