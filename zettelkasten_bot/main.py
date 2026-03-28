@@ -79,9 +79,8 @@ def main() -> None:
     # ── Start ─────────────────────────────────────────────────────────────
     if settings.webhook_mode:
         logger.info(
-            "Webhook mode — listening on 0.0.0.0:%d, path=/%s",
+            "Webhook mode — listening on 0.0.0.0:%d, path=/<token>",
             settings.webhook_port,
-            settings.telegram_bot_token,
         )
         app.run_webhook(
             listen="0.0.0.0",

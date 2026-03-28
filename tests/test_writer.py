@@ -458,7 +458,7 @@ class TestObsidianWriterWriteNote:
         result = make_result()
         path = writer.write_note(content, result, ["source/reddit"])
         assert re.match(
-            r"reddit_\d{4}-\d{2}-\d{2}_my-test-post\.md", path.name
+            r"reddit_\d{4}-\d{2}-\d{2}_my-test-post-[a-f0-9]{6}\.md", path.name
         )
 
     def test_note_contains_yaml_frontmatter(self, tmp_path):

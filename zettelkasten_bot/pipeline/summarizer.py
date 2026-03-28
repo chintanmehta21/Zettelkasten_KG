@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from google import genai
 
-from zettelkasten_bot.models.capture import ExtractedContent, ProcessedNote, SourceType
+from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,9 @@ and makes a real HTTP request (mocked in tests).
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import socket
 import urllib.parse
 
 import httpx
@@ -44,14 +46,45 @@ _SHORTENER_HOSTS: frozenset[str] = frozenset(
 )
 
 
+def _is_private_ip(hostname: str) -> bool:
+    """Return True if *hostname* resolves to a private, loopback, or reserved IP.
+
+    Used to prevent SSRF attacks when deployed on a VPS — blocks requests to
+    internal services, cloud metadata endpoints (169.254.169.254), and loopback.
+    """
+    try:
+        # Try parsing as a literal IP address first (no DNS lookup needed)
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        pass
+
+    # Hostname — resolve via DNS and check the result
+    try:
+        results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for _family, _type, _proto, _canonname, sockaddr in results:
+            ip_str = sockaddr[0]
+            addr = ipaddress.ip_address(ip_str)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                return True
+    except (socket.gaierror, OSError):
+        # DNS resolution failed — let the caller handle it downstream
+        pass
+    return False
+
+
 def validate_url(url: str) -> bool:
     """Return True if *url* has an http/https scheme and a non-empty hostname.
+
+    Also rejects URLs that resolve to private/reserved IP addresses to
+    prevent SSRF attacks when the bot is deployed on a server.
 
     Args:
         url: The URL string to validate.  Must not be None (TypeError raised).
 
     Returns:
-        True when the URL is well-formed and uses http or https, False otherwise.
+        True when the URL is well-formed, uses http or https, and does not
+        target a private IP.  False otherwise.
 
     Raises:
         TypeError: When *url* is None.
@@ -59,7 +92,15 @@ def validate_url(url: str) -> bool:
     if url is None:
         raise TypeError("url must be a str, not None")
     parsed = urllib.parse.urlparse(url)
-    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return False
+
+    hostname = parsed.hostname or ""
+    if _is_private_ip(hostname):
+        logger.warning("Blocked private/reserved IP in URL: %s", url)
+        return False
+
+    return True
 
 
 def normalize_url(url: str) -> str:

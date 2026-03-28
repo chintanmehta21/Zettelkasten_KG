@@ -64,6 +64,15 @@ def make_result(is_raw_fallback: bool = False) -> SummarizationResult:
 # ── Fixture ──────────────────────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def _reset_dedup_singleton():
+    """Reset the module-level DuplicateStore singleton before each test."""
+    import zettelkasten_bot.pipeline.orchestrator as orch
+    orch._dedup_store = None
+    yield
+    orch._dedup_store = None
+
+
 @pytest.fixture()
 def pipeline_mocks(tmp_path):
     """Patch all 7 orchestrator dependencies at their import sites.

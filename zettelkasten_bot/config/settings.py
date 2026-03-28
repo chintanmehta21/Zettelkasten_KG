@@ -142,6 +142,15 @@ def _validate_settings(settings: Settings) -> None:
         )
         raise SystemExit(1)
 
+    gemini_placeholders = {"", "your-gemini-api-key", "changeme", "<your-key>"}
+    if settings.gemini_api_key.strip().lower() in gemini_placeholders:
+        print(
+            "WARNING: GEMINI_API_KEY is missing or is a placeholder value.\n"
+            "AI summarization will fail — notes will be saved as raw content.\n"
+            "Set it via environment variable:  export GEMINI_API_KEY=<your-key>",
+            file=sys.stderr,
+        )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -1,9 +1,7 @@
-"""Abstract base class for content extractors and a stub implementation.
+"""Abstract base class for content extractors.
 
-All source-specific extractors (S02+) must subclass SourceExtractor and
-implement the async ``extract`` method.  StubExtractor is used during the
-S01 skeleton phase to allow the pipeline to run end-to-end with placeholder
-content.
+All source-specific extractors must subclass SourceExtractor and
+implement the async ``extract`` method.
 """
 
 from __future__ import annotations
@@ -32,24 +30,3 @@ class SourceExtractor(ABC):
         Returns:
             Populated :class:`ExtractedContent` for the given URL.
         """
-
-
-class StubExtractor(SourceExtractor):
-    """Placeholder extractor used in S01 until real extractors are built.
-
-    Returns a minimal :class:`ExtractedContent` with a note that content
-    extraction is not yet implemented.  Replaced by concrete extractors in
-    S02-S04.
-    """
-
-    source_type: SourceType = SourceType.GENERIC
-
-    async def extract(self, url: str) -> ExtractedContent:
-        """Return stub content for *url*."""
-        return ExtractedContent(
-            url=url,
-            source_type=SourceType.GENERIC,
-            title="[Stub] " + url,
-            body="Content extraction not yet implemented.",
-            metadata={},
-        )

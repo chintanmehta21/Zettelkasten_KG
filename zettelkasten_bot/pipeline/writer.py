@@ -32,11 +32,19 @@ def _slugify(text: str, max_length: int = 60) -> str:
     return slug or "untitled"
 
 
-def _build_filename(source_type: SourceType, title: str) -> str:
-    """Build filename: [source]_[YYYY-MM-DD]_[slug].md"""
+def _build_filename(source_type: SourceType, title: str, url: str = "") -> str:
+    """Build filename: [source]_[YYYY-MM-DD]_[slug]-[hash].md
+
+    Appends a short hash of the URL to prevent collisions when two notes
+    share the same source type, date, and slugified title.
+    """
+    import hashlib  # noqa: PLC0415
+
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     slug = _slugify(title)
-    return f"{source_type.value}_{date_str}_{slug}.md"
+    url_hash = hashlib.sha256(url.encode()).hexdigest()[:6] if url else ""
+    suffix = f"-{url_hash}" if url_hash else ""
+    return f"{source_type.value}_{date_str}_{slug}{suffix}.md"
 
 
 def _build_frontmatter(
@@ -182,7 +190,7 @@ class ObsidianWriter:
         Returns:
             Path to the written note file.
         """
-        filename = _build_filename(content.source_type, content.title)
+        filename = _build_filename(content.source_type, content.title, content.url)
         note_path = self._kg_dir / filename
 
         frontmatter = _build_frontmatter(content, result, tags)

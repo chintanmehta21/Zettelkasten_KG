@@ -10,11 +10,12 @@ Phases:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import traceback
 
 from zettelkasten_bot.config.settings import get_settings
-from zettelkasten_bot.models.capture import ProcessedNote, SourceType
+from zettelkasten_bot.models.capture import SourceType
 from zettelkasten_bot.pipeline.duplicate import DuplicateStore
 from zettelkasten_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
 from zettelkasten_bot.pipeline.writer import ObsidianWriter
@@ -23,6 +24,11 @@ from zettelkasten_bot.sources.registry import detect_source_type
 from zettelkasten_bot.utils.url_utils import normalize_url, resolve_redirects
 
 logger = logging.getLogger("pipeline.orchestrator")
+
+# Singleton DuplicateStore + lock to prevent race conditions when
+# multiple messages are processed concurrently (H1 fix).
+_dedup_store: DuplicateStore | None = None
+_dedup_lock = asyncio.Lock()
 
 
 async def process_url(
@@ -65,14 +71,17 @@ async def process_url(
 
         # ── Phase 4: duplicate check ──────────────────────────────────────
         logger.info("Phase dedup — checking: %s", normalized)
-        store = DuplicateStore(data_dir)
-        if store.is_duplicate(normalized) and not force:
-            logger.info("Duplicate detected, skipping: %s", normalized)
-            await bot.send_message(
-                chat_id,
-                "⚠️ Already captured. Use /force to reprocess.",
-            )
-            return
+        global _dedup_store  # noqa: PLW0603
+        async with _dedup_lock:
+            if _dedup_store is None:
+                _dedup_store = DuplicateStore(data_dir)
+            if _dedup_store.is_duplicate(normalized) and not force:
+                logger.info("Duplicate detected, skipping: %s", normalized)
+                await bot.send_message(
+                    chat_id,
+                    "⚠️ Already captured. Use /force to reprocess.",
+                )
+                return
 
         # ── Phase 5: acknowledge ──────────────────────────────────────────
         logger.info("Phase ack — sending processing message")
@@ -89,7 +98,7 @@ async def process_url(
             logger.error("Extraction failed for %s: %s", normalized, exc)
             await bot.send_message(
                 chat_id,
-                f"❌ Failed to extract content from {source_label} link: {exc}",
+                f"❌ Failed to extract content from {source_label} link. Please check the URL and try again.",
             )
             return
 
@@ -127,7 +136,8 @@ async def process_url(
 
         # ── Phase 10: mark seen ───────────────────────────────────────────
         logger.info("Phase mark_seen — recording: %s", normalized)
-        store.mark_seen(normalized)
+        async with _dedup_lock:
+            _dedup_store.mark_seen(normalized)
 
         # ── Phase 11: done ────────────────────────────────────────────────
         status_emoji = "✅" if not result.is_raw_fallback else "📝"
@@ -145,14 +155,13 @@ async def process_url(
         )
 
     except Exception as exc:  # noqa: BLE001
-        brief = str(exc) or type(exc).__name__
         logger.error(
             "Pipeline error for URL %s: %s\n%s",
             url,
-            brief,
+            exc,
             traceback.format_exc(),
         )
         try:
-            await bot.send_message(chat_id, f"❌ Error processing URL: {brief}")
+            await bot.send_message(chat_id, "❌ Error processing URL. Please try again later.")
         except Exception:  # noqa: BLE001
             logger.error("Failed to send error message to chat %d", chat_id)
