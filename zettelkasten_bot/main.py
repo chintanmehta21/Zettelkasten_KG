@@ -114,8 +114,13 @@ def _run_webhook(settings) -> None:
 
     @asynccontextmanager
     async def lifespan(app):
-        await ptb_app.initialize()
-        await ptb_app.start()
+        try:
+            await ptb_app.initialize()
+            await ptb_app.start()
+        except Exception:
+            logger.exception("PTB failed to start — bot handlers will NOT work")
+            yield
+            return
         try:
             await ptb_app.bot.set_webhook(
                 url=settings.webhook_url,

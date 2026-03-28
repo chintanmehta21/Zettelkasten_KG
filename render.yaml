@@ -3,7 +3,7 @@ services:
     name: zettelkasten-bot
     runtime: docker
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
