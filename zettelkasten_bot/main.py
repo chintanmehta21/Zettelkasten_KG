@@ -135,7 +135,13 @@ def _run_webhook(settings) -> None:
 
     @web_app.post(token_path)
     async def telegram_webhook(request: Request) -> Response:
-        """Forward Telegram updates to PTB via process_update."""
+        """Forward Telegram updates to PTB via update queue.
+
+        Returns 200 immediately — PTB processes the update in the
+        background.  This prevents Telegram's ~60 s webhook timeout
+        from killing long-running pipelines (YouTube extraction can
+        take 30–60 s on Render's free tier).
+        """
         if settings.webhook_secret:
             header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
             if header_secret != settings.webhook_secret:
@@ -143,7 +149,7 @@ def _run_webhook(settings) -> None:
 
         data = await request.json()
         update = Update.de_json(data, ptb_app.bot)
-        await ptb_app.process_update(update)
+        await ptb_app.update_queue.put(update)
         return Response(status_code=200)
 
     logger.info(

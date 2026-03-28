@@ -143,63 +143,76 @@ class YouTubeExtractor(SourceExtractor):
     source_type = SourceType.YOUTUBE
 
     async def extract(self, url: str) -> ExtractedContent:
-        """Extract YouTube video transcript and metadata."""
+        """Extract YouTube video transcript and metadata.
+
+        Metadata (yt-dlp) and transcript are fetched in parallel to cut
+        total wall-clock time roughly in half.
+        """
         video_id = _extract_video_id(url)
         if not video_id:
             raise ValueError(f"Cannot extract video ID from URL: {url}")
 
         parts: list[str] = []
         metadata: dict[str, Any] = {"video_id": video_id}
-        title = ""  # Initialize before try blocks to prevent NameError
+        title = ""
 
-        # ── Metadata via yt-dlp (non-blocking) ──────────────────────────
-        try:
-            info = await asyncio.wait_for(
-                asyncio.to_thread(_fetch_metadata_sync, url),
-                timeout=_YTDLP_TIMEOUT,
-            )
-            if info:
-                metadata["channel"] = info.get("channel") or info.get("uploader", "")
-                metadata["duration_seconds"] = info.get("duration", 0)
-                metadata["view_count"] = info.get("view_count", 0)
-                metadata["upload_date"] = info.get("upload_date", "")
-                metadata["description"] = (info.get("description") or "")[:500]
-                metadata["like_count"] = info.get("like_count", 0)
-                title = info.get("title", "")
-        except asyncio.TimeoutError:
-            logger.warning("yt-dlp metadata timed out after %ds for %s", _YTDLP_TIMEOUT, url)
-        except Exception as exc:
-            logger.warning("yt-dlp metadata extraction failed for %s: %s", url, exc)
-
-        # ── Transcript (fallback chain) ──────────────────────────────────
-        transcript_text = None
-
-        # 1. Primary: youtube-transcript-api (fastest)
-        try:
-            transcript_text = await asyncio.wait_for(
-                asyncio.to_thread(_fetch_transcript_sync, video_id),
-                timeout=_TRANSCRIPT_TIMEOUT,
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Transcript API timed out after %ds for %s", _TRANSCRIPT_TIMEOUT, url)
-        except Exception as exc:
-            logger.warning("Transcript API failed for %s: %s", url, exc)
-
-        # 2. Fallback: yt-dlp subtitle extraction
-        if not transcript_text:
+        # ── Fetch metadata + transcript in parallel ──────────────────────
+        async def _get_metadata() -> dict[str, Any] | None:
             try:
-                transcript_text = await asyncio.wait_for(
+                return await asyncio.wait_for(
+                    asyncio.to_thread(_fetch_metadata_sync, url),
+                    timeout=_YTDLP_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("yt-dlp metadata timed out after %ds for %s", _YTDLP_TIMEOUT, url)
+            except Exception as exc:
+                logger.warning("yt-dlp metadata extraction failed for %s: %s", url, exc)
+            return None
+
+        async def _get_transcript() -> str | None:
+            # 1. Primary: youtube-transcript-api (fastest)
+            try:
+                text = await asyncio.wait_for(
+                    asyncio.to_thread(_fetch_transcript_sync, video_id),
+                    timeout=_TRANSCRIPT_TIMEOUT,
+                )
+                if text:
+                    return text
+            except asyncio.TimeoutError:
+                logger.warning("Transcript API timed out after %ds for %s", _TRANSCRIPT_TIMEOUT, url)
+            except Exception as exc:
+                logger.warning("Transcript API failed for %s: %s", url, exc)
+
+            # 2. Fallback: yt-dlp subtitle extraction
+            try:
+                text = await asyncio.wait_for(
                     asyncio.to_thread(_fetch_subtitles_via_ytdlp_sync, url),
                     timeout=_YTDLP_TIMEOUT,
                 )
-                if transcript_text:
+                if text:
                     logger.info("Got transcript via yt-dlp subtitles for %s", url)
+                    return text
             except asyncio.TimeoutError:
                 logger.warning("yt-dlp subtitle extraction timed out for %s", url)
             except Exception as exc:
                 logger.warning("yt-dlp subtitle extraction failed for %s: %s", url, exc)
+            return None
 
-        # 3. Final fallback: use video description
+        info, transcript_text = await asyncio.gather(
+            _get_metadata(), _get_transcript()
+        )
+
+        # ── Process metadata ─────────────────────────────────────────────
+        if info:
+            metadata["channel"] = info.get("channel") or info.get("uploader", "")
+            metadata["duration_seconds"] = info.get("duration", 0)
+            metadata["view_count"] = info.get("view_count", 0)
+            metadata["upload_date"] = info.get("upload_date", "")
+            metadata["description"] = (info.get("description") or "")[:500]
+            metadata["like_count"] = info.get("like_count", 0)
+            title = info.get("title", "")
+
+        # ── Build body from transcript or fallback ───────────────────────
         if transcript_text:
             parts.append(f"## Transcript\n\n{transcript_text}")
             metadata["has_transcript"] = True
