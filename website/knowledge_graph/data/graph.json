@@ -272,7 +272,6 @@
     { "source": "ss-the-batch", "target": "gh-transformers", "relation": "machine-learning" },
     { "source": "ss-the-batch", "target": "md-prompt-eng", "relation": "ai" },
     { "source": "md-clean-arch", "target": "ss-pragmatic-engineer", "relation": "architecture" },
-    { "source": "md-vector-db", "target": "gh-transformers", "relation": "embeddings" },
-    { "source": "md-local-first", "target": "rd-docker-compose", "relation": "self-hosting" }
+    { "source": "md-vector-db", "target": "gh-transformers", "relation": "embeddings" }
   ]
 }

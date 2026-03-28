@@ -45,6 +45,7 @@
   let highlightLinks = new Set();
   let hoverNode = null;
   let selectedNode = null;
+  let panelHideTimer = null;
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
 
   // ---- Load data and init ----
@@ -285,13 +286,15 @@
       });
     });
 
+    if (panelHideTimer) { clearTimeout(panelHideTimer); panelHideTimer = null; }
     sidePanel.classList.remove('hidden');
     requestAnimationFrame(() => sidePanel.classList.add('visible'));
   }
 
   function closePanel() {
     sidePanel.classList.remove('visible');
-    setTimeout(() => sidePanel.classList.add('hidden'), 350);
+    if (panelHideTimer) clearTimeout(panelHideTimer);
+    panelHideTimer = setTimeout(() => { sidePanel.classList.add('hidden'); panelHideTimer = null; }, 350);
   }
 
   function formatDate(dateStr) {
