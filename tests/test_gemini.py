@@ -441,3 +441,23 @@ async def test_summarize_legacy_single_summary_still_works():
     assert result.summary == "Legacy single summary."
     assert result.brief_summary == ""
     assert result.one_line_summary == "Legacy takeaway."
+
+
+async def test_raw_fallback_has_empty_brief_summary():
+    """When API fails (R022), brief_summary should be empty string."""
+    content = make_content(body="Some body text.")
+
+    with patch(_PATCH_TARGET) as MockClient:
+        mock_aio = MagicMock()
+        mock_aio.models.generate_content = AsyncMock(
+            side_effect=Exception("API error")
+        )
+        mock_instance = MagicMock()
+        mock_instance.aio = mock_aio
+        MockClient.return_value = mock_instance
+
+        summarizer = GeminiSummarizer(api_key="fake-key")
+        result = await summarizer.summarize(content)
+
+    assert result.is_raw_fallback is True
+    assert result.brief_summary == ""

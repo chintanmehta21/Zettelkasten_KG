@@ -49,6 +49,7 @@ def make_extracted(
 def make_result(is_raw_fallback: bool = False) -> SummarizationResult:
     return SummarizationResult(
         summary="Structured summary",
+        brief_summary="• Key point one\n• Key point two",
         tags={
             "domain": ["AI"],
             "type": ["Research"],
@@ -458,12 +459,13 @@ async def test_local_writer_used_when_github_not_configured(pipeline_mocks):
 
 
 @pytest.mark.asyncio
-async def test_done_message_includes_one_line_summary(pipeline_mocks):
-    """The done message should include the one-line summary."""
+async def test_done_message_includes_brief_summary_when_present(pipeline_mocks):
+    """The done message should include the brief summary when available."""
     pipeline_mocks.settings.github_enabled = False
     pipeline_mocks.summarizer.summarize = AsyncMock(
         return_value=SummarizationResult(
-            summary="Summary",
+            summary="Detailed summary here.",
+            brief_summary="• AI is transforming software development\n• New tools emerging",
             tags={"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
             one_line_summary="AI is transforming software development.",
             tokens_used=500,
@@ -476,6 +478,8 @@ async def test_done_message_includes_one_line_summary(pipeline_mocks):
 
     last_msg = bot.send_message.call_args_list[-1].args[1]
     assert "AI is transforming software development" in last_msg
+    assert "New tools emerging" in last_msg
+    assert "Full note saved to KG" in last_msg
 
 
 @pytest.mark.asyncio
@@ -498,3 +502,53 @@ async def test_github_writer_failure_sends_error(pipeline_mocks):
     all_texts = " ".join(c.args[1] for c in bot.send_message.call_args_list)
     assert "❌" in all_texts
     pipeline_mocks.store.mark_seen.assert_not_called()
+
+
+# ── Brief summary tests ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_done_message_contains_brief_summary(pipeline_mocks):
+    """Phase 11: the final Telegram message must contain the brief summary bullets."""
+    pipeline_mocks.summarizer.summarize = AsyncMock(
+        return_value=SummarizationResult(
+            summary="Detailed content here.",
+            brief_summary="• Alpha point\n• Beta point",
+            tags={"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
+            one_line_summary="Takeaway",
+            tokens_used=999,
+            latency_ms=100,
+            is_raw_fallback=False,
+        )
+    )
+    bot = AsyncMock()
+
+    await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+    last_msg = bot.send_message.call_args_list[-1].args[1]
+    assert "Alpha point" in last_msg, f"Brief summary missing from done message: {last_msg}"
+    assert "Beta point" in last_msg, f"Brief summary missing from done message: {last_msg}"
+    assert "Full note saved to KG" in last_msg
+
+
+@pytest.mark.asyncio
+async def test_done_message_fallback_when_no_brief_summary(pipeline_mocks):
+    """When brief_summary is empty, fall back to simple done message."""
+    pipeline_mocks.summarizer.summarize = AsyncMock(
+        return_value=SummarizationResult(
+            summary="Detailed only.",
+            brief_summary="",
+            tags={"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
+            one_line_summary="Takeaway",
+            tokens_used=500,
+            latency_ms=100,
+            is_raw_fallback=False,
+        )
+    )
+    bot = AsyncMock()
+
+    await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
+
+    last_msg = bot.send_message.call_args_list[-1].args[1]
+    assert "Note saved to KG" in last_msg
+    assert "Full note saved" not in last_msg

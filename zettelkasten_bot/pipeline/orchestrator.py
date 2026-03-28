@@ -156,20 +156,31 @@ async def process_url(
         if result.tokens_used:
             token_info = f" ({result.tokens_used} tokens, {result.latency_ms}ms)"
 
-        summary_line = ""
-        if result.one_line_summary:
-            summary_line = f"\n_{result.one_line_summary}_"
-
         location = f"[GitHub]({note_url})" if note_url else "KG"
+        tag_line = ", ".join(t.split("/")[-1] for t in tags[:8])
 
         logger.info("Phase done — URL captured successfully: %s", normalized)
-        await bot.send_message(
-            chat_id,
-            f"{status_emoji} **{extracted.title}**{summary_line}\n"
-            f"Note saved to {location}{token_info}\n"
-            f"Tags: {', '.join(t.split('/')[-1] for t in tags[:8])}",
-            parse_mode="Markdown",
-        )
+
+        # Build the reply: brief summary for Telegram, detailed saved to note
+        brief = result.brief_summary.strip() if result.brief_summary else ""
+
+        if brief:
+            await bot.send_message(
+                chat_id,
+                f"{status_emoji} **{extracted.title}**\n\n"
+                f"{brief}\n\n"
+                f"📝 Full note saved to {location}{token_info}\n"
+                f"Tags: {tag_line}",
+                parse_mode="Markdown",
+            )
+        else:
+            await bot.send_message(
+                chat_id,
+                f"{status_emoji} **{extracted.title}**\n"
+                f"Note saved to {location}{token_info}\n"
+                f"Tags: {tag_line}",
+                parse_mode="Markdown",
+            )
 
     except Exception as exc:  # noqa: BLE001
         logger.error(
