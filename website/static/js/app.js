@@ -23,8 +23,6 @@
   const loadingUrl = document.getElementById('loading-url');
 
   const resultSource = document.getElementById('result-source');
-  const resultTokens = document.getElementById('result-tokens');
-  const resultLatency = document.getElementById('result-latency');
   const resultTitle = document.getElementById('result-title');
   const resultOneliner = document.getElementById('result-oneliner');
   const resultTags = document.getElementById('result-tags');
@@ -146,10 +144,6 @@
     // Source badge
     resultSource.textContent = data.source_type;
     resultSource.className = 'source-badge ' + data.source_type;
-
-    // Hide token/latency meta — not useful for end users
-    resultTokens.textContent = '';
-    resultLatency.textContent = '';
 
     // Title & one-liner
     resultTitle.textContent = data.title || 'Untitled';
