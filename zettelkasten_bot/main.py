@@ -104,10 +104,12 @@ def _run_webhook(settings) -> None:
     Uses the official PTB custom webhook pattern:
     https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks
     """
+    import json as _json
     import uvicorn
     from contextlib import asynccontextmanager
     from starlette.requests import Request
-    from starlette.responses import Response
+    from starlette.responses import PlainTextResponse, Response
+    from starlette.routing import Route
 
     from website.app import create_app
 
@@ -140,21 +142,12 @@ def _run_webhook(settings) -> None:
         await ptb_app.stop()
         await ptb_app.shutdown()
 
-    web_app = create_app(lifespan=lifespan)
-
-    # Telegram webhook endpoint — uses /webhook path instead of /{token}
-    # to avoid URL-encoding issues with the colon in bot tokens, which
-    # caused 422 errors when Telegram/reverse-proxies encode the colon
-    # as %3A and Starlette's router doesn't match it.
-    @web_app.post("/webhook")
-    async def telegram_webhook(request: Request) -> Response:
-        """Forward Telegram updates to PTB via update queue.
-
-        Returns 200 immediately — PTB processes the update in the
-        background.  This prevents Telegram's ~60 s webhook timeout
-        from killing long-running pipelines (YouTube extraction can
-        take 30–60 s on Render's free tier).
-        """
+    # Define the webhook handler as a plain Starlette endpoint so it
+    # bypasses FastAPI's dependency-injection parameter resolution,
+    # which was incorrectly treating ``request`` as a query parameter
+    # and returning 422.
+    async def _telegram_webhook(request: Request) -> Response:
+        """Forward Telegram updates to PTB via update queue."""
         try:
             if settings.webhook_secret:
                 header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
@@ -165,18 +158,22 @@ def _run_webhook(settings) -> None:
             body = await request.body()
             if not body:
                 logger.warning("Webhook received empty body")
-                return Response(status_code=200)
+                return PlainTextResponse("ok")
 
-            import json as _json
             data = _json.loads(body)
             update = Update.de_json(data, ptb_app.bot)
             await ptb_app.update_queue.put(update)
             logger.info("Webhook update queued: update_id=%s", data.get("update_id"))
-            return Response(status_code=200)
+            return PlainTextResponse("ok")
         except Exception as exc:
             logger.error("Webhook handler error: %s", exc, exc_info=True)
-            # Always return 200 to stop Telegram retrying failed updates
-            return Response(status_code=200)
+            return PlainTextResponse("ok")
+
+    web_app = create_app(lifespan=lifespan)
+
+    # Insert webhook route at position 0 so it's matched before API
+    # routes and static file mounts.
+    web_app.routes.insert(0, Route("/webhook", _telegram_webhook, methods=["POST"]))
 
     logger.info(
         "Webhook mode — serving web UI + bot on 0.0.0.0:%d",
