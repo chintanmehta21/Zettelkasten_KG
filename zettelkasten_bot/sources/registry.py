@@ -51,15 +51,21 @@ def detect_source_type(
     host: str = parsed.hostname or ""
 
     # ── Reddit ────────────────────────────────────────────────────────────────
-    if "reddit.com" in host or "redd.it" in host:
-        return SourceType.REDDIT
+    # Exclude media-only hosts (i.redd.it, v.redd.it, preview.redd.it) which
+    # are direct image/video links without post context — route to Generic.
+    _REDDIT_MEDIA_HOSTS = {"i.redd.it", "v.redd.it", "preview.redd.it"}
+    if host not in _REDDIT_MEDIA_HOSTS:
+        if "reddit.com" in host or "redd.it" in host or host == "reddit.app.link":
+            return SourceType.REDDIT
 
     # ── YouTube ───────────────────────────────────────────────────────────────
-    if "youtube.com" in host or "youtu.be" in host:
+    # Includes youtube-nocookie.com (privacy/embed variant)
+    if "youtube.com" in host or "youtube-nocookie.com" in host or "youtu.be" in host:
         return SourceType.YOUTUBE
 
     # ── GitHub ────────────────────────────────────────────────────────────────
-    if "github.com" in host:
+    # Exclude gist.github.com — different structure, route to Generic.
+    if "github.com" in host and not host.startswith("gist."):
         return SourceType.GITHUB
 
     # ── Newsletter ────────────────────────────────────────────────────────────

@@ -42,6 +42,13 @@ _SHORTENER_HOSTS: frozenset[str] = frozenset(
         "buff.ly",
         "adf.ly",
         "shorturl.at",
+        "rb.gy",
+        "v.gd",
+        "tiny.cc",
+        "lnkd.in",
+        "amzn.to",
+        "youtu.be",
+        "redd.it",
     }
 )
 

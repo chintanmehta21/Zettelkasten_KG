@@ -243,6 +243,13 @@ async def test_resolve_redirects_returns_original_on_generic_exception():
         "https://buff.ly/post",
         "https://adf.ly/1234",
         "https://shorturl.at/mylink",
+        "https://rb.gy/abc123",
+        "https://v.gd/short",
+        "https://tiny.cc/xyz",
+        "https://lnkd.in/post",
+        "https://amzn.to/product",
+        "https://youtu.be/dQw4w9WgXcQ",
+        "https://redd.it/abc123",
     ],
 )
 def test_is_shortener_true(url: str):
