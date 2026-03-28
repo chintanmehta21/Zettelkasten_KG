@@ -32,11 +32,29 @@ _NEWSLETTER_DOMAINS = [
         "https://old.reddit.com/r/MachineLearning/",
         "https://redd.it/abc123",
         "https://np.reddit.com/r/programming/",
+        "https://sh.reddit.com/r/programming/comments/xyz/",
+        "https://reddit.app.link/abc123xyz",
+        "https://new.reddit.com/r/python/comments/abc/post/",
     ],
 )
 def test_detect_reddit(url: str):
     assert (
         detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.REDDIT
+    )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://i.redd.it/abc123.jpg",
+        "https://v.redd.it/abc123",
+        "https://preview.redd.it/abc123.png",
+    ],
+)
+def test_detect_reddit_media_goes_to_generic(url: str):
+    """Reddit media-only hosts → routed to Generic (no post context)."""
+    assert (
+        detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.GENERIC
     )
 
 
@@ -53,6 +71,9 @@ def test_detect_reddit(url: str):
         "https://youtu.be/dQw4w9WgXcQ",
         "https://www.youtube.com/shorts/abc123",
         "https://m.youtube.com/watch?v=xyz",
+        "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+        "https://music.youtube.com/watch?v=abc123",
+        "https://www.youtube.com/live/abc12345678",
     ],
 )
 def test_detect_youtube(url: str):
@@ -133,6 +154,24 @@ def test_detect_newsletter_empty_domains_falls_through_to_generic():
     assert result == SourceType.GENERIC
 
 
+def test_detect_substack_custom_domain_needs_newsletter_domains():
+    """Custom Substack domain (not *.substack.com) → only matches if in newsletter_domains."""
+    # Without the custom domain in newsletter_domains → Generic
+    result = detect_source_type(
+        "https://nlp.elvissaravia.com/p/top-ai-papers",
+        newsletter_domains=_NEWSLETTER_DOMAINS,
+    )
+    assert result == SourceType.GENERIC
+
+    # With the custom domain added → Newsletter
+    extended_domains = _NEWSLETTER_DOMAINS + ["elvissaravia.com"]
+    result = detect_source_type(
+        "https://nlp.elvissaravia.com/p/top-ai-papers",
+        newsletter_domains=extended_domains,
+    )
+    assert result == SourceType.NEWSLETTER
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Generic
 # ─────────────────────────────────────────────────────────────────────────────
@@ -145,6 +184,7 @@ def test_detect_newsletter_empty_domains_falls_through_to_generic():
         "https://arxiv.org/abs/2301.12345",
         "https://en.wikipedia.org/wiki/Python_(programming_language)",
         "https://blog.example.org/post",
+        "https://gist.github.com/user/abc123def456",
     ],
 )
 def test_detect_generic(url: str):

@@ -195,6 +195,22 @@ def _extract_substack_metadata(html: str) -> dict:
     return meta
 
 
+def _is_substack_html(html: str) -> bool:
+    """Detect Substack from HTML content markers (for custom domain Substacks).
+
+    Looks for Substack-specific CDN references or meta tags that indicate
+    the page is hosted on Substack even if the domain is custom.
+    """
+    indicators = [
+        "substackcdn.com",
+        "substack.com/app",
+        'content="Substack"',
+        "substack-post-media",
+    ]
+    html_lower = html.lower()
+    return any(indicator.lower() in html_lower for indicator in indicators)
+
+
 class NewsletterExtractor(SourceExtractor):
     """Extract article content from newsletters and web articles."""
 
@@ -214,6 +230,8 @@ class NewsletterExtractor(SourceExtractor):
             title, body = _extract_with_trafilatura(html, url)
 
             # Enrich with Substack metadata if applicable
+            if not is_substack and _is_substack_html(html):
+                is_substack = True
             if is_substack:
                 metadata.update(_extract_substack_metadata(html))
 

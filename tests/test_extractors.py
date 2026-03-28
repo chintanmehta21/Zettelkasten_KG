@@ -1326,6 +1326,50 @@ async def test_non_substack_url_unchanged_flow():
     assert "is_substack" not in result.metadata
 
 
+from zettelkasten_bot.sources.newsletter import _is_substack_html
+
+
+_CUSTOM_DOMAIN_SUBSTACK_HTML = """<html>
+<head>
+<link rel="stylesheet" href="https://substackcdn.com/bundle.css">
+<script type="application/ld+json">
+{"@type": "NewsArticle", "isAccessibleForFree": true,
+ "author": {"@type": "Person", "name": "Elvis Saravia"},
+ "publisher": {"@type": "Organization", "name": "NLP Newsletter"},
+ "datePublished": "2026-03-25"}
+</script>
+<title>Custom Domain Article</title>
+</head>
+<body><div class="body markup">Full content here</div></body>
+</html>"""
+
+
+def test_is_substack_html_with_substackcdn():
+    assert _is_substack_html(_CUSTOM_DOMAIN_SUBSTACK_HTML) is True
+
+
+def test_is_substack_html_without_markers():
+    assert _is_substack_html("<html><body>Regular content</body></html>") is False
+
+
+async def test_substack_custom_domain_detected_from_html():
+    """Custom-domain Substack (not *.substack.com) → detected via HTML markers."""
+    custom_url = "https://nlp.elvissaravia.com/p/top-ai-papers"
+    client_ctor = _make_httpx_client_cm([_make_response(text=_CUSTOM_DOMAIN_SUBSTACK_HTML)])
+    mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Custom Domain Article")
+
+    with (
+        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+    ):
+        extractor = NewsletterExtractor()
+        result = await extractor.extract(custom_url)
+
+    assert result.metadata.get("is_substack") is True
+    assert result.metadata["substack_author"] == "Elvis Saravia"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # GitHub test helpers
 # ─────────────────────────────────────────────────────────────────────────────
