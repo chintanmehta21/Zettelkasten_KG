@@ -3,6 +3,11 @@
 Fetches video transcript (auto-generated or manual) and metadata (title,
 channel, duration, description, publish date) without downloading the video.
 
+When running on cloud providers (Render, AWS, GCP) where YouTube blocks
+transcript/yt-dlp requests, falls back to:
+  - YouTube oEmbed API for metadata (title, channel)
+  - Gemini video understanding for content (handled by the summarizer)
+
 All blocking I/O is offloaded to a thread pool via ``asyncio.to_thread``
 so the Telegram event loop stays responsive.
 """
@@ -14,6 +19,8 @@ import logging
 import re
 from typing import Any
 
+import httpx
+
 from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 from zettelkasten_bot.sources.base import SourceExtractor
 
@@ -23,6 +30,7 @@ logger = logging.getLogger(__name__)
 # to avoid blocking the bot on Render.com's free tier.
 _YTDLP_TIMEOUT = 30
 _TRANSCRIPT_TIMEOUT = 15
+_OEMBED_TIMEOUT = 10
 
 
 def _extract_video_id(url: str) -> str | None:
@@ -137,6 +145,30 @@ def _parse_vtt_text(vtt_data: str) -> str:
     return " ".join(lines)
 
 
+async def _fetch_metadata_via_oembed(video_id: str) -> dict[str, Any] | None:
+    """Fetch basic metadata via YouTube oEmbed API.
+
+    Works from any IP (no auth, no blocking) — used as fallback when
+    yt-dlp fails on cloud provider IPs.  Returns title and channel only.
+    """
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        async with httpx.AsyncClient(timeout=_OEMBED_TIMEOUT) as client:
+            resp = await client.get(
+                "https://www.youtube.com/oembed",
+                params={"url": url, "format": "json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return {
+                "title": data.get("title", ""),
+                "channel": data.get("author_name", ""),
+            }
+    except Exception as exc:
+        logger.warning("oEmbed metadata failed for %s: %s", video_id, exc)
+        return None
+
+
 class YouTubeExtractor(SourceExtractor):
     """Extract transcript and metadata from YouTube videos."""
 
@@ -211,6 +243,14 @@ class YouTubeExtractor(SourceExtractor):
             metadata["description"] = (info.get("description") or "")[:500]
             metadata["like_count"] = info.get("like_count", 0)
             title = info.get("title", "")
+        else:
+            # Fallback: oEmbed API works from cloud IPs where yt-dlp is blocked
+            logger.info("yt-dlp failed — trying oEmbed for metadata (%s)", video_id)
+            oembed = await _fetch_metadata_via_oembed(video_id)
+            if oembed:
+                title = oembed.get("title", "")
+                metadata["channel"] = oembed.get("channel", "")
+                logger.info("oEmbed metadata: title='%s', channel='%s'", title, metadata["channel"])
 
         # ── Build body from transcript or fallback ───────────────────────
         if transcript_text:

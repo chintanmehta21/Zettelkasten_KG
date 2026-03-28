@@ -407,10 +407,42 @@ async def test_youtube_no_transcript_no_description():
 
 
 async def test_youtube_ytdlp_fails_transcript_succeeds():
-    """yt-dlp fails → title falls back to 'YouTube Video {id}', transcript still extracted."""
+    """yt-dlp fails → oEmbed provides title, transcript still extracted."""
     with (
         patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
         patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+        patch(f"{_YT_MOD}._fetch_metadata_via_oembed", return_value={"title": "oEmbed Title", "channel": "TestChannel"}),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert result.title == "oEmbed Title"
+    assert "## Transcript" in result.body
+    assert result.metadata["has_transcript"] is True
+
+
+async def test_youtube_both_fail():
+    """Both yt-dlp and transcript fail → oEmbed for metadata, no transcript."""
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("Transcript fail")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
+        patch(f"{_YT_MOD}._fetch_metadata_via_oembed", return_value={"title": "oEmbed Title", "channel": "TestChannel"}),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert result.title == "oEmbed Title"
+    assert result.metadata["video_id"] == _VIDEO_ID
+    assert result.metadata["has_transcript"] is False
+
+
+async def test_youtube_all_metadata_fails():
+    """yt-dlp + oEmbed both fail → generic fallback title 'YouTube Video {id}'."""
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+        patch(f"{_YT_MOD}._fetch_metadata_via_oembed", return_value=None),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -418,21 +450,6 @@ async def test_youtube_ytdlp_fails_transcript_succeeds():
     assert result.title == f"YouTube Video {_VIDEO_ID}"
     assert "## Transcript" in result.body
     assert result.metadata["has_transcript"] is True
-
-
-async def test_youtube_both_fail():
-    """Both yt-dlp and transcript fail → minimal content with video_id."""
-    with (
-        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
-        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("Transcript fail")),
-        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
-    ):
-        extractor = YouTubeExtractor()
-        result = await extractor.extract(_YOUTUBE_URL)
-
-    assert result.title == f"YouTube Video {_VIDEO_ID}"
-    assert result.metadata["video_id"] == _VIDEO_ID
-    assert result.metadata["has_transcript"] is False
 
 
 async def test_youtube_subtitle_fallback():
@@ -451,17 +468,18 @@ async def test_youtube_subtitle_fallback():
 
 
 async def test_youtube_metadata_timeout():
-    """Metadata timeout → graceful degradation with fallback title."""
+    """Metadata timeout → oEmbed fallback for title, transcript still works."""
     import asyncio as _asyncio
 
     with (
         patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=_asyncio.TimeoutError()),
         patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+        patch(f"{_YT_MOD}._fetch_metadata_via_oembed", return_value={"title": "oEmbed Title", "channel": "TestChannel"}),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
 
-    assert result.title == f"YouTube Video {_VIDEO_ID}"
+    assert result.title == "oEmbed Title"
     assert "## Transcript" in result.body
     assert result.metadata["has_transcript"] is True
 

@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 
 from google import genai
+from google.genai import types
 
 from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 
@@ -88,12 +89,94 @@ class GeminiSummarizer:
         self._aio_models = self._client.aio.models
         self._model = model_name
 
+    def _is_youtube_without_transcript(self, content: ExtractedContent) -> bool:
+        """Check if this is a YouTube video where transcript extraction failed."""
+        return (
+            content.source_type == SourceType.YOUTUBE
+            and not content.metadata.get("has_transcript", True)
+        )
+
+    async def _summarize_youtube_video(self, content: ExtractedContent) -> SummarizationResult:
+        """Summarize a YouTube video using Gemini's video understanding.
+
+        Passes the YouTube URL directly to Gemini as a video reference.
+        Google's servers can access YouTube (no IP blocking), so this
+        bypasses the cloud-IP blocking that kills youtube-transcript-api
+        and yt-dlp on services like Render, AWS, GCP.
+        """
+        video_id = content.metadata.get("video_id", "")
+        watch_url = f"https://www.youtube.com/watch?v={video_id}"
+
+        prompt = _USER_PROMPT_TEMPLATE.format(
+            source_type="youtube",
+            title=content.title,
+            url=content.url,
+            body="(Video content — analyze from the video directly)",
+        )
+
+        start = time.monotonic()
+        try:
+            response = await self._aio_models.generate_content(
+                model=self._model,
+                contents=[
+                    types.Part.from_uri(
+                        file_uri=watch_url,
+                        mime_type="video/mp4",
+                    ),
+                    prompt,
+                ],
+                config={
+                    "system_instruction": _SYSTEM_PROMPT,
+                    "temperature": 0.3,
+                    "max_output_tokens": 4096,
+                },
+            )
+
+            latency_ms = int((time.monotonic() - start) * 1000)
+            raw_text = response.text or ""
+            if not raw_text.strip():
+                raise ValueError("Gemini returned empty response for YouTube video")
+
+            tokens_used = 0
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                tokens_used = getattr(response.usage_metadata, "total_token_count", 0)
+
+            logger.info(
+                "Gemini video understanding for %s: %d tokens, %dms",
+                watch_url, tokens_used, latency_ms,
+            )
+
+            result = self._parse_response(raw_text)
+            result.tokens_used = tokens_used
+            result.latency_ms = latency_ms
+            return result
+
+        except Exception as exc:
+            latency_ms = int((time.monotonic() - start) * 1000)
+            logger.error(
+                "Gemini video understanding failed for %s after %dms: %s",
+                watch_url, latency_ms, exc,
+            )
+            # Fall through to text-based summarization
+            return None
+
     async def summarize(self, content: ExtractedContent) -> SummarizationResult:
         """Summarize extracted content via Gemini.
+
+        For YouTube videos without transcripts (cloud IP blocking),
+        uses Gemini's video understanding to analyze the video directly.
 
         On failure, returns a raw fallback result (R022) so the content
         is preserved even if summarization fails.
         """
+        # YouTube without transcript: try Gemini video understanding first
+        if self._is_youtube_without_transcript(content):
+            logger.info("YouTube video without transcript — trying Gemini video understanding")
+            video_result = await self._summarize_youtube_video(content)
+            if video_result is not None:
+                return video_result
+            logger.warning("Gemini video understanding failed — falling back to text summarization")
+
         prompt = _USER_PROMPT_TEMPLATE.format(
             source_type=content.source_type.value,
             title=content.title,

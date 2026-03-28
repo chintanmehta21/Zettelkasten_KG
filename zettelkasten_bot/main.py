@@ -122,11 +122,17 @@ def _run_webhook(settings) -> None:
             yield
             return
         try:
+            # Derive the webhook URL: take the base URL (scheme + host) from
+            # settings.webhook_url and append /webhook.  This decouples the
+            # env-var from the internal path so we never put a colon in the URL.
+            import urllib.parse as _urlparse
+            _parsed = _urlparse.urlparse(settings.webhook_url)
+            webhook_url = f"{_parsed.scheme}://{_parsed.netloc}/webhook"
             await ptb_app.bot.set_webhook(
-                url=settings.webhook_url,
+                url=webhook_url,
                 secret_token=settings.webhook_secret or None,
             )
-            logger.info("PTB started, webhook set to %s", settings.webhook_url)
+            logger.info("PTB started, webhook set to %s", webhook_url)
         except Exception:
             logger.warning("Failed to set webhook URL — bot may not receive updates")
         yield
@@ -135,10 +141,11 @@ def _run_webhook(settings) -> None:
 
     web_app = create_app(lifespan=lifespan)
 
-    # Telegram webhook endpoint
-    token_path = f"/{settings.telegram_bot_token}"
-
-    @web_app.post(token_path)
+    # Telegram webhook endpoint — uses /webhook path instead of /{token}
+    # to avoid URL-encoding issues with the colon in bot tokens, which
+    # caused 422 errors when Telegram/reverse-proxies encode the colon
+    # as %3A and Starlette's router doesn't match it.
+    @web_app.post("/webhook")
     async def telegram_webhook(request: Request) -> Response:
         """Forward Telegram updates to PTB via update queue.
 
