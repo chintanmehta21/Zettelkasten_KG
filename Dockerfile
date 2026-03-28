@@ -1,21 +1,32 @@
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install deps into a virtual env for clean copy
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir -r requirements-prod.txt
+
+# Pre-compile all .pyc files (saves ~1-2s on cold start)
+COPY zettelkasten_bot/ zettelkasten_bot/
+RUN python -m compileall -q zettelkasten_bot/
+
+# ── Final stage (smaller image, faster pull) ─────────────────────────
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install dependencies first (cached layer)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy only the venv and app code from builder
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app/zettelkasten_bot /app/zettelkasten_bot
+COPY run.py .
 
-# Copy application code
-COPY . .
-
-# Install the package
-RUN pip install --no-cache-dir -e .
-
-# Render uses PORT env var; PTB webhook reads WEBHOOK_PORT
-# Default to 8443 for local testing
-ENV WEBHOOK_PORT=8443
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV WEBHOOK_PORT=10000
 
 EXPOSE ${WEBHOOK_PORT}
 
-CMD ["python", "-m", "zettelkasten_bot"]
+CMD ["python", "run.py"]

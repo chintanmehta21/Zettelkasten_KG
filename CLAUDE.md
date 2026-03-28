@@ -98,6 +98,12 @@ To add a new source: (1) add enum value to `SourceType` in `models/capture.py`, 
 
 `models/capture.py` defines the shared Pydantic models: `SourceType` (enum), `CaptureRequest`, `ExtractedContent`, `ProcessedNote`. All pipeline stages communicate through these.
 
+## Git Commits
+
+- **No `Co-Authored-By` lines.** Never append `Co-Authored-By: Claude ...` or any co-author trailer to commit messages.
+- Keep commit messages short and precise — describe *what* changed, not who did it.
+- Follow conventional style: `feat:`, `fix:`, `refactor:`, `docs:`, `test:` prefixes.
+
 ## Testing
 
 - pytest with `asyncio_mode = auto` (pytest.ini)

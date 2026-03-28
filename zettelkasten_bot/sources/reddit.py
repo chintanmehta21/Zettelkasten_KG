@@ -11,7 +11,6 @@ import logging
 from typing import Any
 
 import praw
-from praw.exceptions import PRAWException
 
 from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 from zettelkasten_bot.sources.base import SourceExtractor
@@ -91,9 +90,6 @@ class RedditExtractor(SourceExtractor):
                 metadata=metadata,
             )
 
-        except PRAWException as exc:
-            logger.error("PRAW error extracting %s: %s", url, exc)
-            raise
         except Exception as exc:
-            logger.error("Unexpected error extracting Reddit %s: %s", url, exc)
+            logger.error("Error extracting Reddit %s: %s", url, exc)
             raise
