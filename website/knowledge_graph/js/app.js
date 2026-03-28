@@ -49,7 +49,7 @@
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
 
   // ---- Load data and init ----
-  fetch('/kg/data/graph.json')
+  fetch('/kg/content/graph.json')
     .then(r => r.json())
     .then(data => {
       fullData = data;

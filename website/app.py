@@ -49,7 +49,7 @@ def create_app(lifespan=None) -> FastAPI:
     # Knowledge Graph static assets
     app.mount("/kg/css", StaticFiles(directory=str(KG_DIR / "css")), name="kg-css")
     app.mount("/kg/js", StaticFiles(directory=str(KG_DIR / "js")), name="kg-js")
-    app.mount("/kg/data", StaticFiles(directory=str(KG_DIR / "data")), name="kg-data")
+    app.mount("/kg/content", StaticFiles(directory=str(KG_DIR / "content")), name="kg-data")
 
     # Serve index.html at root
     @app.get("/")
