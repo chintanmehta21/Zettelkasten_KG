@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     reddit_client_secret: str = ""
     reddit_user_agent: str = "ZettelkastenBot/1.0"
 
+    # ── GitHub note storage (optional — for cloud deployment) ────────────
+    github_token: str = ""
+    github_repo: str = ""       # e.g., "user/repo"
+    github_branch: str = "main"
+
+    @property
+    def github_enabled(self) -> bool:
+        """True when both GitHub token and repo are configured."""
+        return bool(self.github_token.strip() and self.github_repo.strip())
+
     # ── Reddit settings ──────────────────────────────────────────────────────
     # D001: reddit_comment_depth controls how many top-level comments to fetch
     reddit_comment_depth: int = 10
