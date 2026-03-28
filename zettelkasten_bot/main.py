@@ -106,7 +106,8 @@ def _run_webhook(settings) -> None:
     """
     import uvicorn
     from contextlib import asynccontextmanager
-    from fastapi import Request, Response
+    from starlette.requests import Request
+    from starlette.responses import Response
 
     from website.app import create_app
 
