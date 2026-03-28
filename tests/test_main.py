@@ -52,10 +52,16 @@ def _make_webhook_settings(**overrides) -> Settings:
 
 
 def _wire_app_mock() -> tuple[MagicMock, MagicMock]:
-    """Return ``(MockApp_class, mock_app_instance)`` with the builder chain wired."""
+    """Return ``(MockApp_class, mock_app_instance)`` with the builder chain wired.
+
+    Builder chain: Application.builder().token(...).post_init(...).build()
+    """
     mock_app = MagicMock()
     MockApp = MagicMock()
-    MockApp.builder.return_value.token.return_value.build.return_value = mock_app
+    builder = MockApp.builder.return_value
+    token_ret = builder.token.return_value
+    post_init_ret = token_ret.post_init.return_value
+    post_init_ret.build.return_value = mock_app
     return MockApp, mock_app
 
 
@@ -199,3 +205,23 @@ class TestLogging:
         mock_logging.basicConfig.assert_called_once()
         call_kwargs = mock_logging.basicConfig.call_args.kwargs
         assert call_kwargs.get("level") == "DEBUG"
+
+
+class TestBotCommandMenu:
+    def test_post_init_sets_commands(self) -> None:
+        """main() must wire a post_init callback that calls set_my_commands."""
+        from zettelkasten_bot.main import main
+
+        MockApp, mock_app = _wire_app_mock()
+        settings = _make_polling_settings()
+
+        with (
+            patch("zettelkasten_bot.main.Application", MockApp),
+            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+        ):
+            main()
+
+        # Verify post_init was wired into the builder chain
+        builder = MockApp.builder.return_value
+        token_call = builder.token.return_value
+        token_call.post_init.assert_called_once()

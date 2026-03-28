@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import traceback
 
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from zettelkasten_bot.bot.guards import get_chat_filter
@@ -46,6 +46,21 @@ async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> 
             logger.error("Failed to send error notification to user")
 
 
+async def _post_init(application: Application) -> None:
+    """Register the bot command menu with Telegram on startup."""
+    await application.bot.set_my_commands([
+        BotCommand("start", "Welcome message and usage guide"),
+        BotCommand("help", "Show available commands"),
+        BotCommand("status", "Bot health and statistics"),
+        BotCommand("reddit", "Capture a Reddit post"),
+        BotCommand("yt", "Capture a YouTube video"),
+        BotCommand("newsletter", "Capture a newsletter or article"),
+        BotCommand("github", "Capture a GitHub repo or issue"),
+        BotCommand("force", "Re-capture a URL (skip duplicate check)"),
+    ])
+    logger.info("Bot command menu registered with Telegram")
+
+
 def main() -> None:
     """Build the PTB application and start the bot."""
     settings = get_settings()
@@ -56,7 +71,12 @@ def main() -> None:
     )
     logger.info("Starting Zettelkasten bot (webhook_mode=%s)", settings.webhook_mode)
 
-    app: Application = Application.builder().token(settings.telegram_bot_token).build()
+    app: Application = (
+        Application.builder()
+        .token(settings.telegram_bot_token)
+        .post_init(_post_init)
+        .build()
+    )
 
     chat_filter = get_chat_filter(settings.allowed_chat_id)
 
