@@ -169,7 +169,9 @@ class GeminiSummarizer:
         try:
             data = json.loads(text)
             # Support both new dual-summary and legacy single-summary format
-            detailed = data.get("detailed_summary") or data.get("summary", raw_text)
+            detailed = data.get("detailed_summary")
+            if detailed is None:
+                detailed = data.get("summary", raw_text)
             brief = data.get("brief_summary", "")
             return SummarizationResult(
                 summary=detailed,

@@ -461,3 +461,24 @@ async def test_raw_fallback_has_empty_brief_summary():
 
     assert result.is_raw_fallback is True
     assert result.brief_summary == ""
+
+
+async def test_empty_detailed_summary_not_replaced_by_raw():
+    """Empty detailed_summary should remain empty, not fall back to raw text."""
+    content = make_content()
+    json_text = json.dumps({
+        "brief_summary": "• Bullets here.",
+        "detailed_summary": "",
+        "tags": {"domain": ["AI"], "type": ["Research"], "difficulty": ["Beginner"], "keywords": ["x"]},
+        "one_line_summary": "Takeaway.",
+    })
+
+    with patch(_PATCH_TARGET) as MockClient:
+        mock_instance, _ = make_mock_client(response_text=json_text, token_count=100)
+        MockClient.return_value = mock_instance
+
+        summarizer = GeminiSummarizer(api_key="fake-key")
+        result = await summarizer.summarize(content)
+
+    assert result.summary == ""
+    assert result.brief_summary == "• Bullets here."
