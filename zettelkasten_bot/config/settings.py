@@ -86,7 +86,9 @@ class Settings(BaseSettings):
     webhook_secret: str = ""
 
     # ── AI model ──────────────────────────────────────────────────────────────
-    model_name: str = "gemini-2.5-flash"
+    # gemini-2.5-flash-lite has generous free-tier limits and supports
+    # video understanding for YouTube summarization on cloud IPs.
+    model_name: str = "gemini-2.5-flash-lite"
 
     # ── Logging ───────────────────────────────────────────────────────────────
     log_level: str = "INFO"
