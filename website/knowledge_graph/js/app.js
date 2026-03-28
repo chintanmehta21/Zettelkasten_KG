@@ -1,11 +1,18 @@
 /* ============================================
-   Knowledge Graph — 3D Interactive Viewer
+   Knowledge Graph — Lightweight 3D Viewer
+   ============================================
+   Performance targets:
+   - < 2s full load (graph visible + interactive)
+   - Single shared SphereGeometry for all nodes
+   - MeshBasicMaterial (no lighting = flat circle at every angle)
+   - Cached materials to avoid GC churn
+   - Minimal draw calls: 1 mesh + 1 sprite per node
    ============================================ */
 
 (function () {
   'use strict';
 
-  // ---- Node colors by source (hex for Three.js) ----
+  // ---- Node colors by source (kept as-is) ----
   const COLORS = {
     youtube:  '#c75050',
     reddit:   '#d48a3c',
@@ -47,6 +54,23 @@
   let hoverNode = null;
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
 
+  // ---- Shared geometry — ONE allocation for every node ----
+  const _sphereGeo = new THREE.SphereGeometry(1, 24, 24);
+  const _matCache = {};
+
+  function getSphereMat(hexColor, dim) {
+    const key = hexColor + (dim ? '_d' : '');
+    if (!_matCache[key]) {
+      _matCache[key] = new THREE.MeshBasicMaterial({
+        color: hexColor,
+        transparent: dim,
+        opacity: dim ? 0.12 : 1.0,
+        depthWrite: !dim
+      });
+    }
+    return _matCache[key];
+  }
+
   // ---- Load data and init ----
   fetch('/kg/content/graph.json')
     .then(r => r.json())
@@ -61,42 +85,14 @@
       statsEl.textContent = 'Failed to load data';
     });
 
-  // ---- Starfield background ----
-  function createStarfield(scene) {
-    const starCount = 800;
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(starCount * 3);
-    const sizes = new Float32Array(starCount);
-
-    for (let i = 0; i < starCount; i++) {
-      positions[i * 3]     = (Math.random() - 0.5) * 2000;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
-      sizes[i] = Math.random() * 1.5 + 0.3;
-    }
-
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-    const mat = new THREE.PointsMaterial({
-      color: 0x445577,
-      size: 1.2,
-      transparent: true,
-      opacity: 0.4,
-      sizeAttenuation: true
-    });
-
-    scene.add(new THREE.Points(geo, mat));
-  }
-
-  // ---- 3D Graph Initialization ----
+  // ---- 3D Graph ----
   function initGraph() {
     graph = new ForceGraph3D(container)
       .graphData(graphData)
       .backgroundColor('#06060f')
       .showNavInfo(false)
 
-      // ---- Node rendering: glowing 3D spheres + sprite labels ----
+      // ---- Node: clean flat sphere + text label (2 objects per node) ----
       .nodeThreeObject(node => {
         const group = new THREE.Group();
         const color = COLORS_INT[node.group] || 0x888888;
@@ -105,62 +101,32 @@
         const isHovered = hoverNode && hoverNode.id === node.id;
         const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node.id);
         const isActive = isSelected || isHovered;
-        const opacity = isHighlighted ? 1.0 : 0.08;
+        const dim = !isHighlighted;
 
-        // Core sphere — larger for better visibility
-        const radius = isActive ? 8 : 6;
-        const coreGeo = new THREE.SphereGeometry(radius, 32, 32);
-        const coreMat = new THREE.MeshStandardMaterial({
-          color: color,
-          emissive: color,
-          emissiveIntensity: isActive ? 0.8 : 0.45,
-          roughness: 0.25,
-          metalness: 0.15,
-          transparent: true,
-          opacity: opacity
-        });
-        const core = new THREE.Mesh(coreGeo, coreMat);
-        group.add(core);
+        // Single sphere — MeshBasicMaterial = perfect solid circle at any zoom/angle
+        const radius = isActive ? 5.5 : 4;
+        const mesh = new THREE.Mesh(_sphereGeo, getSphereMat(color, dim));
+        mesh.scale.setScalar(radius);
+        group.add(mesh);
 
-        // Inner glow ring
-        const innerGlowGeo = new THREE.SphereGeometry(radius * 1.3, 16, 16);
-        const innerGlowMat = new THREE.MeshBasicMaterial({
-          color: color,
-          transparent: true,
-          opacity: (isActive ? 0.2 : 0.08) * opacity
-        });
-        group.add(new THREE.Mesh(innerGlowGeo, innerGlowMat));
-
-        // Outer glow halo — larger and softer
-        const glowGeo = new THREE.SphereGeometry(radius * 2.0, 16, 16);
-        const glowMat = new THREE.MeshBasicMaterial({
-          color: color,
-          transparent: true,
-          opacity: (isActive ? 0.12 : 0.04) * opacity
-        });
-        group.add(new THREE.Mesh(glowGeo, glowMat));
-
-        // Sprite text label — always readable
-        const maxLen = 36;
+        // Text label — no background, minimal
+        const maxLen = 30;
         const label = node.name.length > maxLen ? node.name.slice(0, maxLen - 1) + '\u2026' : node.name;
         const sprite = new SpriteText(label);
         sprite.color = isHighlighted
-          ? (isActive ? '#ffffff' : 'rgba(232, 234, 237, 0.9)')
-          : 'rgba(232, 234, 237, 0.08)';
-        sprite.textHeight = isActive ? 4.0 : 3.2;
-        sprite.backgroundColor = isActive
-          ? 'rgba(6, 6, 15, 0.85)'
-          : 'rgba(6, 6, 15, 0.5)';
-        sprite.padding = [1.0, 2.0];
-        sprite.borderRadius = 4;
-        sprite.position.set(0, -(radius + 8), 0);
+          ? (isActive ? '#ffffff' : 'rgba(200, 208, 220, 0.8)')
+          : 'rgba(200, 208, 220, 0.08)';
+        sprite.textHeight = isActive ? 3.2 : 2.5;
+        sprite.backgroundColor = false;
+        sprite.padding = 0;
+        sprite.position.set(0, -(radius + 5), 0);
         group.add(sprite);
 
         return group;
       })
       .nodeThreeObjectExtend(false)
 
-      // ---- Link rendering ----
+      // ---- Link rendering (colors kept as-is) ----
       .linkColor(link => {
         const src = typeof link.source === 'object' ? link.source : null;
         if (src && hoverNode && (src.id === hoverNode.id || (typeof link.target === 'object' && link.target.id === hoverNode.id))) {
@@ -172,16 +138,17 @@
         const src = typeof link.source === 'object' ? link.source : null;
         const tgt = typeof link.target === 'object' ? link.target : null;
         if (hoverNode && ((src && src.id === hoverNode.id) || (tgt && tgt.id === hoverNode.id))) {
-          return 2.0;
+          return 1.8;
         }
-        return 0.6;
+        return 0.5;
       })
       .linkOpacity(0.6)
       .linkCurvature(0.15)
       .linkCurveRotation(0.4)
-      .linkDirectionalParticles(2)
-      .linkDirectionalParticleWidth(1.5)
-      .linkDirectionalParticleSpeed(0.003)
+      // Particles — 1 per link, fast travel speed
+      .linkDirectionalParticles(1)
+      .linkDirectionalParticleWidth(1.0)
+      .linkDirectionalParticleSpeed(0.008)
       .linkDirectionalParticleColor(link => {
         const src = typeof link.source === 'object' ? link.source : null;
         return src ? (COLORS[src.group] || '#4466aa') : '#4466aa';
@@ -193,72 +160,45 @@
       .onNodeHover(node => {
         hoverNode = node || null;
         container.style.cursor = node ? 'pointer' : 'default';
-        // Re-render to update link highlights
         graph.nodeThreeObject(graph.nodeThreeObject());
       })
 
-      // ---- Physics — wider spread so all nodes are clearly visible ----
-      .d3AlphaDecay(0.015)
-      .d3VelocityDecay(0.3)
-      .warmupTicks(300)
-      .cooldownTime(5000);
+      // ---- Physics — fast convergence ----
+      .d3AlphaDecay(0.025)
+      .d3VelocityDecay(0.35)
+      .warmupTicks(100)
+      .cooldownTime(2500);
 
-    // ---- Scene enhancements ----
-    const scene = graph.scene();
+    // ---- Minimal scene — no fog, no starfield, no point lights ----
+    // MeshBasicMaterial ignores lights, so we only need ambient for any
+    // future objects that might use lit materials
+    graph.scene().add(new THREE.AmbientLight(0xffffff, 1));
 
-    // Starfield background
-    createStarfield(scene);
+    // Force layout — wide spread for clear visibility
+    graph.d3Force('charge').strength(-100).distanceMax(300);
+    graph.d3Force('link').distance(60);
 
-    // Ambient light — warm cool blend
-    scene.add(new THREE.AmbientLight(0x1a1a3e, 2.5));
-
-    // Key light (bright, cool white from above-right)
-    const keyLight = new THREE.PointLight(0x7799dd, 2.0, 800);
-    keyLight.position.set(80, 250, 150);
-    scene.add(keyLight);
-
-    // Fill light (warm accent from below-left)
-    const fillLight = new THREE.PointLight(0xcc8866, 0.8, 500);
-    fillLight.position.set(-120, -120, -80);
-    scene.add(fillLight);
-
-    // Rim light (subtle accent from behind)
-    const rimLight = new THREE.PointLight(0x4466aa, 0.5, 600);
-    rimLight.position.set(0, 0, -200);
-    scene.add(rimLight);
-
-    // Very subtle fog — just enough for depth, never hides nodes
-    scene.fog = new THREE.FogExp2(0x06060f, 0.0004);
-
-    // Force layout: much wider spread for clear visibility
-    graph.d3Force('charge').strength(-120).distanceMax(350);
-    graph.d3Force('link').distance(70);
-
-    // Center force — keep graph centered
-    graph.d3Force('center', null); // re-add with gentle pull
     const d3 = window.d3 || null;
     if (d3 && d3.forceCenter) {
       graph.d3Force('center', d3.forceCenter(0, 0, 0).strength(0.05));
     }
 
-    // ---- Camera: auto-orbit ----
+    // ---- Camera ----
     const controls = graph.controls();
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.3;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 80;
-    controls.maxDistance = 600;
+    controls.minDistance = 60;
+    controls.maxDistance = 500;
 
-    // Stop auto-rotation on user interaction
     const stopOrbit = () => { controls.autoRotate = false; };
     container.addEventListener('mousedown', stopOrbit);
     container.addEventListener('touchstart', stopOrbit);
 
-    // Zoom to fit after physics settle — generous padding
-    setTimeout(() => graph.zoomToFit(2000, 60), 3000);
+    // Zoom to fit — fast
+    setTimeout(() => graph.zoomToFit(1200, 50), 1800);
 
-    // Resize handler
     window.addEventListener('resize', () => {
       graph.width(window.innerWidth).height(window.innerHeight);
     });
@@ -269,19 +209,15 @@
     selectedNode = node;
     openPanel(node);
 
-    // Fly camera to node — closer for detail
     const dist = 80;
     const ratio = 1 + dist / Math.hypot(node.x, node.y, node.z || 1);
     graph.cameraPosition(
       { x: node.x * ratio, y: node.y * ratio, z: (node.z || 0) * ratio },
       node,
-      1200
+      1000
     );
 
-    // Stop auto-orbit
     graph.controls().autoRotate = false;
-
-    // Re-render to highlight selected
     graph.nodeThreeObject(graph.nodeThreeObject());
   }
 
@@ -309,12 +245,10 @@
     summary.textContent = node.summary;
     link.href = node.url;
 
-    // Tags
     tags.innerHTML = node.tags.map(
       t => `<span class="kg-tag">${escapeHtml(t)}</span>`
     ).join('');
 
-    // Connected notes
     const nodeLinks = graphData.links.filter(
       l => l.source === node || l.target === node ||
            l.source?.id === node.id || l.target?.id === node.id
@@ -332,7 +266,6 @@
       </div>
     `).join('');
 
-    // Click on connections to navigate
     connections.querySelectorAll('.kg-connection').forEach(el => {
       el.addEventListener('click', () => {
         const targetId = el.dataset.id;
@@ -372,7 +305,6 @@
       });
     }
 
-    // Re-render nodes with updated highlights
     graph.nodeThreeObject(graph.nodeThreeObject());
   });
 
@@ -417,7 +349,7 @@
     selectedNode = null;
     highlightNodes.clear();
 
-    setTimeout(() => graph.zoomToFit(800, 80), 1000);
+    setTimeout(() => graph.zoomToFit(800, 60), 800);
   }
 
   // ---- Stats ----
