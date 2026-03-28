@@ -14,6 +14,22 @@
         <!-- Header -->
         <header class="header">
             <div class="logo">
+                <svg class="logo-icon" width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Edges -->
+                  <line x1="16" y1="8" x2="8" y2="18" stroke="var(--accent)" stroke-width="1.5" opacity="0.4"/>
+                  <line x1="16" y1="8" x2="24" y2="14" stroke="var(--accent)" stroke-width="1.5" opacity="0.4"/>
+                  <line x1="16" y1="8" x2="22" y2="24" stroke="var(--accent)" stroke-width="1.5" opacity="0.35"/>
+                  <line x1="8" y1="18" x2="22" y2="24" stroke="var(--accent)" stroke-width="1.5" opacity="0.35"/>
+                  <line x1="8" y1="18" x2="14" y2="26" stroke="var(--accent)" stroke-width="1.5" opacity="0.3"/>
+                  <line x1="24" y1="14" x2="22" y2="24" stroke="var(--accent)" stroke-width="1.5" opacity="0.35"/>
+                  <line x1="14" y1="26" x2="22" y2="24" stroke="var(--accent)" stroke-width="1.5" opacity="0.3"/>
+                  <!-- Nodes -->
+                  <circle cx="16" cy="8" r="3.5" fill="var(--accent)"/>
+                  <circle cx="8" cy="18" r="2.8" fill="var(--accent)" opacity="0.75"/>
+                  <circle cx="24" cy="14" r="2.8" fill="var(--accent)" opacity="0.75"/>
+                  <circle cx="22" cy="24" r="2.5" fill="var(--accent)" opacity="0.6"/>
+                  <circle cx="14" cy="26" r="2" fill="var(--accent)" opacity="0.45"/>
+                </svg>
                 <span class="logo-text">Zettelkasten</span>
             </div>
             <p class="tagline">AI-powered link summarizer</p>
@@ -101,7 +117,22 @@
                         <a class="source-link" id="result-link" href="#" target="_blank" rel="noopener">
                             View original &nearr;
                         </a>
-                        <button class="try-another-btn" id="try-another-btn">Try another link</button>
+                        <div class="result-footer-actions">
+                            <a class="kg-open-btn hidden" id="kg-open-btn" href="/knowledge-graph">
+                                <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                                    <line x1="16" y1="8" x2="8" y2="18" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+                                    <line x1="16" y1="8" x2="24" y2="14" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+                                    <line x1="8" y1="18" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                                    <line x1="24" y1="14" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                                    <circle cx="16" cy="8" r="3" fill="currentColor"/>
+                                    <circle cx="8" cy="18" r="2.5" fill="currentColor" opacity="0.75"/>
+                                    <circle cx="24" cy="14" r="2.5" fill="currentColor" opacity="0.75"/>
+                                    <circle cx="22" cy="24" r="2" fill="currentColor" opacity="0.6"/>
+                                </svg>
+                                Knowledge Graph &rarr;
+                            </a>
+                            <button class="try-another-btn" id="try-another-btn">Try another link</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,13 +151,19 @@
         <!-- Knowledge Graph CTA -->
         <a href="/knowledge-graph" class="kg-cta" title="Explore Knowledge Graph">
             <span class="kg-cta-icon">
-                <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
-                    <path d="M50 5 L82 25 L82 65 L50 95 L18 75 L18 25 Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
-                    <path d="M50 5 L50 45 L82 25" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.6"/>
-                    <path d="M50 45 L82 65" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.4"/>
-                    <path d="M50 45 L18 25" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.4"/>
-                    <path d="M50 45 L18 75" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.6"/>
-                    <path d="M50 45 L50 95" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" opacity="0.5"/>
+                <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+                    <line x1="16" y1="8" x2="8" y2="18" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+                    <line x1="16" y1="8" x2="24" y2="14" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+                    <line x1="16" y1="8" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                    <line x1="8" y1="18" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                    <line x1="8" y1="18" x2="14" y2="26" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                    <line x1="24" y1="14" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+                    <line x1="14" y1="26" x2="22" y2="24" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                    <circle cx="16" cy="8" r="3.5" fill="currentColor"/>
+                    <circle cx="8" cy="18" r="2.8" fill="currentColor" opacity="0.75"/>
+                    <circle cx="24" cy="14" r="2.8" fill="currentColor" opacity="0.75"/>
+                    <circle cx="22" cy="24" r="2.5" fill="currentColor" opacity="0.6"/>
+                    <circle cx="14" cy="26" r="2" fill="currentColor" opacity="0.45"/>
                 </svg>
             </span>
             <span class="kg-cta-text">Knowledge Graph</span>

@@ -31,6 +31,7 @@
   const resultLink = document.getElementById('result-link');
 
   const copyBtn = document.getElementById('copy-btn');
+  const kgOpenBtn = document.getElementById('kg-open-btn');
   const tryAnotherBtn = document.getElementById('try-another-btn');
   const errorRetryBtn = document.getElementById('error-retry-btn');
   const errorDetail = document.getElementById('error-detail');
@@ -160,6 +161,14 @@
     // Source link
     resultLink.href = data.source_url;
     resultLink.textContent = 'View original \u2197';
+
+    // Knowledge Graph button
+    if (data.node_id) {
+      kgOpenBtn.href = '/knowledge-graph?node=' + encodeURIComponent(data.node_id);
+      kgOpenBtn.classList.remove('hidden');
+    } else {
+      kgOpenBtn.classList.add('hidden');
+    }
   }
 
   function showError(message) {

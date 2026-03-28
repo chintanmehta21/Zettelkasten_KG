@@ -7,11 +7,12 @@ handles Telegram webhook forwarding so both services share a single port.
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from website.api.routes import router as api_router
 
@@ -19,6 +20,18 @@ logger = logging.getLogger("website.app")
 
 STATIC_DIR = Path(__file__).parent / "static"
 KG_DIR = Path(__file__).parent / "knowledge_graph"
+MOBILE_DIR = Path(__file__).parent / "mobile"
+
+# Regex to detect mobile user-agents
+_MOBILE_RE = re.compile(
+    r"Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile",
+    re.IGNORECASE,
+)
+
+
+def _is_mobile(request: Request) -> bool:
+    ua = request.headers.get("user-agent", "")
+    return bool(_MOBILE_RE.search(ua))
 
 
 def create_app(lifespan=None) -> FastAPI:
@@ -42,23 +55,39 @@ def create_app(lifespan=None) -> FastAPI:
     # API routes
     app.include_router(api_router)
 
-    # Serve static assets (css, js)
+    # ── Mobile static assets (/m/) ──
+    app.mount("/m/css", StaticFiles(directory=str(MOBILE_DIR / "css")), name="m-css")
+    app.mount("/m/js", StaticFiles(directory=str(MOBILE_DIR / "js")), name="m-js")
+
+    # ── Desktop static assets ──
     app.mount("/css", StaticFiles(directory=str(STATIC_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(STATIC_DIR / "js")), name="js")
 
-    # Knowledge Graph static assets
+    # Knowledge Graph static assets (shared by both mobile and desktop)
     app.mount("/kg/css", StaticFiles(directory=str(KG_DIR / "css")), name="kg-css")
     app.mount("/kg/js", StaticFiles(directory=str(KG_DIR / "js")), name="kg-js")
     app.mount("/kg/content", StaticFiles(directory=str(KG_DIR / "content")), name="kg-data")
 
-    # Serve index.html at root
+    # ── Mobile routes ──
+    @app.get("/m/")
+    async def mobile_index():
+        return FileResponse(str(MOBILE_DIR / "index.html"))
+
+    @app.get("/m/knowledge-graph")
+    async def mobile_knowledge_graph():
+        return FileResponse(str(MOBILE_DIR / "knowledge-graph.html"))
+
+    # ── Desktop routes (auto-redirect mobile browsers) ──
     @app.get("/")
-    async def index():
+    async def index(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(STATIC_DIR / "index.html"))
 
-    # Serve Knowledge Graph page
     @app.get("/knowledge-graph")
-    async def knowledge_graph():
+    async def knowledge_graph(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/knowledge-graph", status_code=302)
         return FileResponse(str(KG_DIR / "index.html"))
 
     return app

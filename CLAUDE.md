@@ -11,7 +11,7 @@ Zettelkasten Capture Bot — a Telegram bot that captures URLs (Reddit, YouTube,
 **Obsidian KG**: `C:\Users\LENOVO\Documents\Syncthing\Obsidian\KG`
 **Verified sources**: YouTube, GitHub, Newsletter (Substack), Generic (HN/web)
 
-Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with REST API at `/api/summarize`.
+Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with REST API at `/api/summarize` and an interactive 3D knowledge graph at `/knowledge-graph`.
 
 ## Commands
 
@@ -67,7 +67,8 @@ A GitHub Actions workflow (`.github/workflows/keep-alive.yml`) pings the Render 
 
 ### Note Storage
 - **Local mode:** Notes written to `KG_DIRECTORY` (default `./kg_output`)
-- **Cloud mode:** When `GITHUB_TOKEN` and `GITHUB_REPO` are set, notes are pushed to the GitHub repo via API. Clone/pull the repo into your Obsidian vault for sync.
+- **Cloud mode:** When `GITHUB_TOKEN` and `GITHUB_REPO` are set, notes are pushed via GitHub Contents API (base64-encoded PUT). `settings.github_enabled` property returns True when both are set. `GITHUB_BRANCH` defaults to `main`. Clone/pull the repo into your Obsidian vault for sync.
+- **Render caveat:** `KG_DIRECTORY=/tmp/kg_output` and `DATA_DIR=/tmp/data` are ephemeral on Render — local-only notes won't survive redeploys. Use cloud mode for persistence.
 
 ## Configuration
 
@@ -85,8 +86,12 @@ Key modules in `zettelkasten_bot/pipeline/`:
 - `orchestrator.py` — top-level pipeline entry point
 - `summarizer.py` — Gemini API integration (GeminiSummarizer + tag building)
 - `writer.py` — writes Markdown notes to KG_DIRECTORY (local mode)
-- `github_writer.py` — pushes notes to GitHub repo via REST API (cloud mode)
+- `github_writer.py` — pushes notes to GitHub repo via Contents API (cloud mode, base64-encoded PUT)
 - `duplicate.py` — JSON-file-based seen-URL deduplication store
+
+#### Model Fallback Chain
+
+`summarizer.py` uses a three-model cascade: `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.5-flash-lite`. On a 429 rate-limit error, it switches to the next model with a 60-second per-model cooldown. If ALL models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True` instead of failing. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API (avoids IP-based blocking on cloud hosts like Render).
 
 ### Source Extractors (plugin pattern)
 
@@ -100,11 +105,18 @@ To add a new source: (1) add enum value to `SourceType` in `models/capture.py`, 
 
 `main.py` wires everything: builds the PTB Application, registers CommandHandlers and MessageHandlers with a chat-ID allow-list filter (`bot/guards.py`), then starts polling or webhook mode.
 
+- **Polling mode** (dev): PTB's built-in `run_polling()` with long-poll loop.
+- **Webhook mode** (prod): FastAPI + Uvicorn serve both the web UI and Telegram webhook on a single port (10000). The webhook route is inserted at position 0 in FastAPI routes to match before API/static routes. PTB Application lifecycle is managed via FastAPI's lifespan context manager. Validates `X-Telegram-Bot-Api-Secret-Token` header when `webhook_secret` is set.
+
 `bot/handlers.py` contains all Telegram command handlers. They extract the URL from the message and delegate to `orchestrator.process_url`.
 
 ### Web UI (`website/`)
 
-FastAPI app mounted alongside the bot in webhook mode. `website/api/routes.py` exposes `POST /api/summarize` with in-memory rate limiting (10 req/min per IP). `website/core/pipeline.py` reuses the bot's extraction/summarization pipeline but skips disk writes and dedup. Static assets served from `website/static/`.
+FastAPI app mounted alongside the bot in webhook mode. Two main pages: a URL summarizer at `/` and a 3D knowledge graph visualizer at `/knowledge-graph`.
+
+- `website/api/routes.py` — `POST /api/summarize` with in-memory rate limiting (10 req/min per IP); `GET /api/health` (used by Render health checks)
+- `website/core/pipeline.py` — reuses the bot's extraction/summarization pipeline but is **stateless**: no disk writes, no dedup updates. Returns a structured dict with title, summary, tags, latency_ms, etc.
+- `website/core/graph_store.py` — thread-safe in-memory store backed by `website/knowledge_graph/content/graph.json`. Auto-links new nodes to existing ones based on shared normalized tags. Node IDs use source-type prefixes (`yt-`, `gh-`, `rd-`, `ss-`, `md-`, `web-`) + slugified title.
 
 ### URL Utilities (`utils/url_utils.py`)
 
@@ -127,6 +139,10 @@ Security-conscious URL handling: `validate_url()` blocks private/reserved IPs (S
 - `conftest.py` provides sample URL fixtures (`sample_reddit_url`, `sample_youtube_url`, etc.)
 - Integration tests in `tests/integration_tests/` make real network calls
 - **Settings in tests**: Always mock `get_settings()` via `@patch` — calling it without valid env vars triggers `SystemExit(1)` from `_validate_settings()`
+
+## UI Design
+
+- **No purple.** Never use purple, violet, or lavender (`hsl(250–290)`, `#A78BFA`, etc.) anywhere in the UI. The Knowledge Graph accent is amber/gold (`#D4A024`); the main site accent is teal.
 
 ## Docker
 

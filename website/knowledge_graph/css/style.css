@@ -22,12 +22,12 @@
   --kg-border: hsl(220, 16%, 14%);
   --kg-border-light: hsl(220, 14%, 18%);
 
-  /* Node colors by source */
-  --node-youtube: hsl(355, 65%, 62%);
-  --node-reddit: hsl(24, 70%, 58%);
-  --node-github: hsl(265, 45%, 68%);
-  --node-substack: hsl(205, 55%, 58%);
-  --node-medium: hsl(155, 45%, 52%);
+  /* Node colors by source (refined — higher saturation, dark-bg optimised) */
+  --node-youtube: #E05565;
+  --node-reddit: #E09040;
+  --node-github: #56C8D8;
+  --node-substack: #60A5FA;
+  --node-medium: #4ADE80;
 
   /* Shared */
   --radius: 12px;
@@ -76,6 +76,11 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.kg-logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(212, 160, 36, 0.35));
 }
 
 .kg-header-right {
@@ -338,33 +343,33 @@ body {
 }
 
 .kg-panel-badge.youtube {
-  background: hsla(355, 65%, 62%, 0.12);
+  background: rgba(224, 85, 101, 0.12);
   color: var(--node-youtube);
-  border-color: hsla(355, 65%, 62%, 0.2);
+  border-color: rgba(224, 85, 101, 0.2);
 }
 
 .kg-panel-badge.reddit {
-  background: hsla(24, 70%, 58%, 0.12);
+  background: rgba(224, 144, 64, 0.12);
   color: var(--node-reddit);
-  border-color: hsla(24, 70%, 58%, 0.2);
+  border-color: rgba(224, 144, 64, 0.2);
 }
 
 .kg-panel-badge.github {
-  background: hsla(265, 45%, 68%, 0.12);
+  background: rgba(86, 200, 216, 0.12);
   color: var(--node-github);
-  border-color: hsla(265, 45%, 68%, 0.2);
+  border-color: rgba(86, 200, 216, 0.2);
 }
 
 .kg-panel-badge.substack {
-  background: hsla(205, 55%, 58%, 0.12);
+  background: rgba(96, 165, 250, 0.12);
   color: var(--node-substack);
-  border-color: hsla(205, 55%, 58%, 0.2);
+  border-color: rgba(96, 165, 250, 0.2);
 }
 
 .kg-panel-badge.medium {
-  background: hsla(155, 45%, 52%, 0.12);
+  background: rgba(74, 222, 128, 0.12);
   color: var(--node-medium);
-  border-color: hsla(155, 45%, 52%, 0.2);
+  border-color: rgba(74, 222, 128, 0.2);
 }
 
 .kg-panel-title {

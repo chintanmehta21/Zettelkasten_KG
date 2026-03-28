@@ -27,6 +27,9 @@ from google import genai
 from google.genai import types
 from google.genai.errors import ClientError
 
+# How long (seconds) a model stays on cooldown after a 429 response.
+_RATE_LIMIT_COOLDOWN_SECS = 60
+
 from zettelkasten_bot.models.capture import ExtractedContent, SourceType
 
 logger = logging.getLogger(__name__)
@@ -116,14 +119,35 @@ class GeminiSummarizer:
         self._client = genai.Client(api_key=api_key)
         self._aio_models = self._client.aio.models
         self._model = model_name
+        # model → monotonic timestamp when cooldown expires
+        self._cooldowns: dict[str, float] = {}
 
     def _build_model_chain(self) -> list[str]:
-        """Return the fallback chain starting with the configured model."""
-        chain = [self._model]
+        """Return the fallback chain, skipping models on cooldown.
+
+        The configured model is tried first, followed by the remaining
+        models in ``_MODEL_FALLBACK_CHAIN``.  Any model whose cooldown
+        has not yet expired is omitted.  If *all* models are on cooldown,
+        the full chain is returned anyway (better to retry than to fail
+        without trying).
+        """
+        now = time.monotonic()
+        # Purge expired cooldowns
+        self._cooldowns = {
+            m: exp for m, exp in self._cooldowns.items() if exp > now
+        }
+
+        full_chain = [self._model]
         for m in _MODEL_FALLBACK_CHAIN:
-            if m not in chain:
-                chain.append(m)
-        return chain
+            if m not in full_chain:
+                full_chain.append(m)
+
+        filtered = [m for m in full_chain if m not in self._cooldowns]
+        if not filtered:
+            # All models on cooldown — try them all anyway
+            logger.warning("All models on cooldown — retrying full chain")
+            return full_chain
+        return filtered
 
     # ── Low-level generate with fallback ────────────────────────────────
 
@@ -156,9 +180,12 @@ class GeminiSummarizer:
             except Exception as exc:
                 last_exc = exc
                 if _is_rate_limited(exc):
+                    self._cooldowns[model] = (
+                        time.monotonic() + _RATE_LIMIT_COOLDOWN_SECS
+                    )
                     logger.warning(
-                        "%s rate-limited on %s — trying next model",
-                        label or "Gemini", model,
+                        "%s rate-limited on %s — cooldown %ds, trying next model",
+                        label or "Gemini", model, _RATE_LIMIT_COOLDOWN_SECS,
                     )
                     continue
                 # Non-rate-limit error → don't try other models

@@ -46,7 +46,7 @@
 
     /* Source type colors */
     --youtube: hsl(0, 84%, 60%);
-    --github: hsl(250, 70%, 72%);
+    --github: hsl(192, 55%, 59%);
     --reddit: hsl(24, 94%, 54%);
     --newsletter: hsl(190, 80%, 56%);
     --generic: hsl(215, 20%, 62%);
@@ -360,20 +360,20 @@ a:hover {
 
 /* Muted dropdown colors — shadcn-style desaturated tones for dark slate */
 .item-youtube { color: hsl(355, 45%, 68%); }
-.item-github { color: hsl(260, 30%, 72%); }
+.item-github { color: hsl(192, 35%, 62%); }
 .item-reddit { color: hsl(28, 45%, 68%); }
 .item-newsletter { color: hsl(205, 40%, 68%); }
 .item-generic { color: hsl(220, 14%, 62%); }
 
 .item-youtube:hover { background: hsla(355, 45%, 68%, 0.08); }
-.item-github:hover { background: hsla(260, 30%, 72%, 0.08); }
+.item-github:hover { background: hsla(192, 35%, 62%, 0.08); }
 .item-reddit:hover { background: hsla(28, 45%, 68%, 0.08); }
 .item-newsletter:hover { background: hsla(205, 40%, 68%, 0.08); }
 .item-generic:hover { background: hsla(220, 14%, 62%, 0.08); }
 
 /* Source-colored toggle when a source is selected */
 .dropdown-toggle.src-youtube { color: hsl(355, 45%, 68%); }
-.dropdown-toggle.src-github { color: hsl(260, 30%, 72%); }
+.dropdown-toggle.src-github { color: hsl(192, 35%, 62%); }
 .dropdown-toggle.src-reddit { color: hsl(28, 45%, 68%); }
 .dropdown-toggle.src-newsletter { color: hsl(205, 40%, 68%); }
 .dropdown-toggle.src-generic { color: hsl(220, 14%, 62%); }
@@ -458,7 +458,7 @@ a:hover {
 
 /* Muted outline badges — shadcn-style for dark theme */
 .source-badge.youtube { color: hsl(355, 45%, 68%); border-color: hsla(355, 45%, 68%, 0.25); background: hsla(355, 45%, 68%, 0.08); }
-.source-badge.github { color: hsl(260, 30%, 72%); border-color: hsla(260, 30%, 72%, 0.25); background: hsla(260, 30%, 72%, 0.08); }
+.source-badge.github { color: hsl(192, 35%, 62%); border-color: hsla(192, 35%, 62%, 0.25); background: hsla(192, 35%, 62%, 0.08); }
 .source-badge.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.08); }
 .source-badge.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
 .source-badge.generic { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
@@ -690,6 +690,40 @@ a:hover {
     color: var(--text-primary);
 }
 
+.result-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.kg-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.1rem;
+    background: var(--accent-glow);
+    border: 1px solid hsla(172, 66%, 50%, 0.2);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.kg-open-btn:hover {
+    background: hsla(172, 66%, 50%, 0.18);
+    border-color: var(--accent-muted);
+    color: var(--accent-hover);
+    transform: translateX(2px);
+}
+
+.kg-open-btn svg {
+    flex-shrink: 0;
+}
+
 /* ── Error Card ───────────────────────────────────────────────────── */
 
 .error-section {
@@ -735,10 +769,10 @@ a:hover {
     gap: 10px;
     margin: 1.5rem auto 0;
     padding: 10px 22px;
-    background: hsla(265, 30%, 50%, 0.08);
-    border: 1px solid hsla(265, 30%, 60%, 0.18);
+    background: hsla(42, 78%, 49%, 0.08);
+    border: 1px solid hsla(42, 78%, 49%, 0.18);
     border-radius: 999px;
-    color: hsl(265, 35%, 72%);
+    color: hsl(42, 65%, 62%);
     text-decoration: none;
     font-size: 0.82rem;
     font-weight: 500;
@@ -748,11 +782,11 @@ a:hover {
 }
 
 .kg-cta:hover {
-    background: hsla(265, 30%, 50%, 0.14);
-    border-color: hsla(265, 30%, 60%, 0.3);
-    color: hsl(265, 45%, 80%);
+    background: hsla(42, 78%, 49%, 0.14);
+    border-color: hsla(42, 78%, 49%, 0.3);
+    color: hsl(42, 75%, 72%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px hsla(265, 40%, 50%, 0.12);
+    box-shadow: 0 4px 20px hsla(42, 78%, 49%, 0.12);
 }
 
 .kg-cta-icon {

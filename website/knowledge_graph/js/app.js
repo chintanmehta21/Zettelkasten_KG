@@ -12,21 +12,21 @@
 (function () {
   'use strict';
 
-  // ---- Node colors by source (kept as-is) ----
+  // ---- Node colors by source (refined palette — higher saturation, dark-bg optimised) ----
   const COLORS = {
-    youtube:  '#c75050',
-    reddit:   '#d48a3c',
-    github:   '#9c7bbd',
-    substack: '#5a93c6',
-    medium:   '#5daf6a'
+    youtube:  '#E05565',
+    reddit:   '#E09040',
+    github:   '#56C8D8',
+    substack: '#60A5FA',
+    medium:   '#4ADE80'
   };
 
   const COLORS_INT = {
-    youtube:  0xc75050,
-    reddit:   0xd48a3c,
-    github:   0x9c7bbd,
-    substack: 0x5a93c6,
-    medium:   0x5daf6a
+    youtube:  0xE05565,
+    reddit:   0xE09040,
+    github:   0x56C8D8,
+    substack: 0x60A5FA,
+    medium:   0x4ADE80
   };
 
   function escapeHtml(str) {
@@ -44,6 +44,10 @@
   const panelClose = document.getElementById('panel-close');
   const statsEl = document.getElementById('graph-stats');
 
+  // ---- URL params ----
+  const urlParams = new URLSearchParams(window.location.search);
+  const spotlightId = urlParams.get('node'); // e.g. ?node=yt-attention
+
   // ---- State ----
   let graphData = { nodes: [], links: [] };
   let fullData = { nodes: [], links: [] };
@@ -54,9 +58,99 @@
   let hoverNode = null;
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
 
+  // ---- Smart label shortening ----
+  const SEP = ' \u2014 '; // " — "
+  const LEAD_FILLER = new Set(['the', 'a', 'an', 'my', 'why', 'how', 'what']);
+  const TAIL_FILLER = new Set([
+    'of', 'at', 'is', 'for', 'in', 'the', 'a', 'an', 'that', 'with',
+    'and', 'or', 'to', 'by', 'on', 'as', 'after', 'before', 'from'
+  ]);
+
+  function getShortLabel(node) {
+    const name = node.name;
+    const sepIdx = name.indexOf(SEP);
+
+    // GitHub: show owner/repo only
+    if (node.group === 'github') {
+      return sepIdx > -1 ? name.slice(0, sepIdx) : name.split(' ').slice(0, 2).join(' ');
+    }
+
+    // Reddit: strip r/SubName prefix, use topic part
+    if (node.group === 'reddit' && sepIdx > -1) {
+      const topic = name.slice(sepIdx + SEP.length);
+      return _truncate(topic, 2);
+    }
+
+    // Substack/Medium: topic after separator
+    if ((node.group === 'substack' || node.group === 'medium') && sepIdx > -1) {
+      const topic = name.slice(sepIdx + SEP.length);
+      return _truncate(topic, 2);
+    }
+
+    // YouTube & others: topic before separator
+    const topicPart = sepIdx > -1 ? name.slice(0, sepIdx) : name;
+    return _truncate(topicPart, 2);
+  }
+
+  function _truncate(str, maxWords) {
+    const words = str.trim().split(/\s+/);
+    if (words.length <= maxWords) return str.trim();
+
+    // Strip leading filler
+    while (words.length > 1 && LEAD_FILLER.has(words[0].toLowerCase())) {
+      words.shift();
+    }
+
+    // Take first N words, trim trailing filler
+    let label = words.slice(0, maxWords);
+    while (label.length > 1 && TAIL_FILLER.has(label[label.length - 1].toLowerCase())) {
+      label.pop();
+    }
+
+    // If only 1 word left, grab next non-filler
+    if (label.length === 1 && words.length > 1) {
+      for (let i = 1; i < Math.min(words.length, 4); i++) {
+        if (!TAIL_FILLER.has(words[i].toLowerCase())) {
+          label.push(words[i]);
+          break;
+        }
+      }
+    }
+
+    return label.join(' ');
+  }
+
+  // ---- Node degree (connection count) for sizing ----
+  function computeDegrees(data) {
+    const deg = {};
+    data.nodes.forEach(n => { deg[n.id] = 0; });
+    data.links.forEach(l => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      deg[s] = (deg[s] || 0) + 1;
+      deg[t] = (deg[t] || 0) + 1;
+    });
+    return deg;
+  }
+
   // ---- Shared geometry — ONE allocation for every node ----
-  const _sphereGeo = new THREE.SphereGeometry(1, 24, 24);
+  const _sphereGeo = new THREE.SphereGeometry(1, 48, 48);
   const _matCache = {};
+
+  // Ring sprite texture (billboard — always faces camera)
+  (function () {
+    var s = 256, c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    var ctx = c.getContext('2d'), h = s / 2;
+    ctx.clearRect(0, 0, s, s);
+    ctx.beginPath();
+    ctx.arc(h, h, h * 0.94, 0, Math.PI * 2);
+    ctx.arc(h, h, h * 0.76, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    _matCache['_ringTex'] = new THREE.CanvasTexture(c);
+  })();
 
   function getSphereMat(hexColor, dim) {
     const key = hexColor + (dim ? '_d' : '');
@@ -71,12 +165,17 @@
     return _matCache[key];
   }
 
+  let nodeDegrees = {};
+
   // ---- Load data and init ----
-  fetch('/kg/content/graph.json')
-    .then(r => r.json())
+  // Prefer API (includes runtime nodes) with static fallback
+  fetch('/api/graph')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
+    .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
     .then(data => {
       fullData = data;
       graphData = JSON.parse(JSON.stringify(data));
+      nodeDegrees = computeDegrees(fullData);
       initGraph();
       updateStats();
     })
@@ -92,7 +191,7 @@
       .backgroundColor('#06060f')
       .showNavInfo(false)
 
-      // ---- Node: clean flat sphere + text label (2 objects per node) ----
+      // ---- Node: degree-scaled sphere + short text label ----
       .nodeThreeObject(node => {
         const group = new THREE.Group();
         const color = COLORS_INT[node.group] || 0x888888;
@@ -103,23 +202,54 @@
         const isActive = isSelected || isHovered;
         const dim = !isHighlighted;
 
-        // Single sphere — MeshBasicMaterial = perfect solid circle at any zoom/angle
-        const radius = isActive ? 5.5 : 4;
+        // Degree-based radius: base 2, +0.3 per connection, cap at 5
+        const deg = nodeDegrees[node.id] || 1;
+        const isSpotlight = spotlightId && spotlightId === node.id;
+        const baseRadius = Math.min(2 + deg * 0.3, 5);
+        const radius = isActive ? baseRadius + 1 : (isSpotlight ? baseRadius + 0.5 : baseRadius);
         const mesh = new THREE.Mesh(_sphereGeo, getSphereMat(color, dim));
         mesh.scale.setScalar(radius);
         group.add(mesh);
 
-        // Text label — no background, minimal
-        const maxLen = 30;
-        const label = node.name.length > maxLen ? node.name.slice(0, maxLen - 1) + '\u2026' : node.name;
+        // Spotlight ring
+        if (isSpotlight) {
+          const ringKey = 'ringSpr_' + color;
+          if (!_matCache[ringKey]) {
+            _matCache[ringKey] = new THREE.SpriteMaterial({
+              map: _matCache['_ringTex'],
+              color: new THREE.Color(color).multiplyScalar(0.65),
+              transparent: true,
+              opacity: 0.8,
+              depthWrite: false
+            });
+          }
+          const ring = new THREE.Sprite(_matCache[ringKey]);
+          ring.scale.set(radius * 3, radius * 3, 1);
+          group.add(ring);
+        }
+
+        // Text label — shorter, smaller, tighter to node
+        const label = isActive ? node.name : getShortLabel(node);
         const sprite = new SpriteText(label);
-        sprite.color = isHighlighted
-          ? (isActive ? '#ffffff' : 'rgba(200, 208, 220, 0.8)')
-          : 'rgba(200, 208, 220, 0.08)';
-        sprite.textHeight = isActive ? 3.2 : 2.5;
-        sprite.backgroundColor = false;
-        sprite.padding = 0;
-        sprite.position.set(0, -(radius + 5), 0);
+        sprite.fontFace = 'Inter, -apple-system, sans-serif';
+        sprite.fontWeight = '500';
+        sprite.fontSize = 90;
+        sprite.textHeight = 1.8;
+        sprite.__isLabel = true;
+
+        if (isActive) {
+          sprite.color = '#ffffff';
+          sprite.backgroundColor = 'rgba(8, 12, 24, 0.92)';
+          sprite.padding = 1.0;
+          sprite.borderWidth = 0.12;
+          sprite.borderColor = 'rgba(255, 255, 255, 0.14)';
+          sprite.borderRadius = 0.8;
+        } else {
+          sprite.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
+          sprite.backgroundColor = false;
+          sprite.padding = 0;
+        }
+        sprite.position.set(0, -(radius + 3), 0);
         group.add(sprite);
 
         return group;
@@ -155,6 +285,7 @@
       })
 
       // ---- Interactions ----
+      .nodeLabel(() => '')  // disable default HTML tooltip (prevents double-text)
       .onNodeClick(handleNodeClick)
       .onBackgroundClick(handleBackgroundClick)
       .onNodeHover(node => {
@@ -169,14 +300,15 @@
       .warmupTicks(100)
       .cooldownTime(2500);
 
+    // ---- HiDPI sharpness ----
+    graph.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
     // ---- Minimal scene — no fog, no starfield, no point lights ----
-    // MeshBasicMaterial ignores lights, so we only need ambient for any
-    // future objects that might use lit materials
     graph.scene().add(new THREE.AmbientLight(0xffffff, 1));
 
-    // Force layout — wide spread for clear visibility
-    graph.d3Force('charge').strength(-100).distanceMax(300);
-    graph.d3Force('link').distance(60);
+    // Force layout — wider spread, collision avoidance
+    graph.d3Force('charge').strength(-200).distanceMax(400);
+    graph.d3Force('link').distance(90);
 
     const d3 = window.d3 || null;
     if (d3 && d3.forceCenter) {
@@ -189,39 +321,98 @@
     controls.autoRotateSpeed = 0.3;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 60;
-    controls.maxDistance = 500;
+    controls.minDistance = 80;
+    controls.maxDistance = 600;
 
     const stopOrbit = () => { controls.autoRotate = false; };
     container.addEventListener('mousedown', stopOrbit);
     container.addEventListener('touchstart', stopOrbit);
 
-    // Zoom to fit — fast
-    setTimeout(() => graph.zoomToFit(1200, 50), 1800);
+    // Zoom: if spotlight node, fly to it; otherwise fit all
+    if (spotlightId) {
+      setTimeout(() => {
+        const sNode = graphData.nodes.find(n => n.id === spotlightId);
+        if (sNode) {
+          handleNodeClick(sNode);
+        } else {
+          graph.zoomToFit(1200, 50);
+        }
+      }, 2200);
+    } else {
+      setTimeout(() => graph.zoomToFit(1200, 50), 1800);
+    }
 
     window.addEventListener('resize', () => {
       graph.width(window.innerWidth).height(window.innerHeight);
     });
+
+    // ---- Text scale clamping — cap label size when camera is close ----
+    var _v3 = new THREE.Vector3();
+    var MAX_LABEL_FRAC = 0.025;
+
+    function clampLabelScales() {
+      requestAnimationFrame(clampLabelScales);
+      var cam = graph.camera();
+      if (!cam) return;
+      graphData.nodes.forEach(function (node) {
+        var obj = node.__threeObj;
+        if (!obj || !obj.children) return;
+        for (var i = 0; i < obj.children.length; i++) {
+          var child = obj.children[i];
+          if (!child.__isLabel) continue;
+          if (child.__origSy === undefined) {
+            child.__origSy = child.scale.y;
+            child.__origSx = child.scale.x;
+          }
+          obj.getWorldPosition(_v3);
+          var dist = cam.position.distanceTo(_v3);
+          var maxH = dist * MAX_LABEL_FRAC;
+          if (child.__origSy > maxH && maxH > 0) {
+            var r = maxH / child.__origSy;
+            child.scale.set(child.__origSx * r, child.__origSy * r, 1);
+          } else {
+            child.scale.set(child.__origSx, child.__origSy, 1);
+          }
+        }
+      });
+    }
+    requestAnimationFrame(clampLabelScales);
   }
 
-  // ---- Node click → fly to node + open panel ----
+  // ---- Node click → centre node, fly to it, then open panel ----
+  let _panelOpenTimer = null;
+
   function handleNodeClick(node) {
     selectedNode = node;
-    openPanel(node);
-
-    const dist = 80;
-    const ratio = 1 + dist / Math.hypot(node.x, node.y, node.z || 1);
-    graph.cameraPosition(
-      { x: node.x * ratio, y: node.y * ratio, z: (node.z || 0) * ratio },
-      node,
-      1000
-    );
-
     graph.controls().autoRotate = false;
     graph.nodeThreeObject(graph.nodeThreeObject());
+
+    if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
+
+    // Fly camera to fixed distance from node, keeping current viewing angle
+    const cam = graph.camera();
+    const nx = node.x || 0, ny = node.y || 0, nz = node.z || 0;
+    const dx = cam.position.x - nx;
+    const dy = cam.position.y - ny;
+    const dz = cam.position.z - nz;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const targetDist = 90;
+
+    graph.cameraPosition({
+      x: nx + (dx / len) * targetDist,
+      y: ny + (dy / len) * targetDist,
+      z: nz + (dz / len) * targetDist
+    }, node, 1000);
+
+    // Show panel after camera centres on node
+    _panelOpenTimer = setTimeout(function () {
+      openPanel(node);
+      _panelOpenTimer = null;
+    }, 700);
   }
 
   function handleBackgroundClick() {
+    if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
@@ -342,6 +533,7 @@
     });
 
     graphData = { nodes: filteredNodes, links: filteredLinks };
+    nodeDegrees = computeDegrees(graphData);
     graph.graphData(graphData);
     updateStats();
 
@@ -361,6 +553,7 @@
 
   // ---- Close panel button ----
   panelClose.addEventListener('click', () => {
+    if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
@@ -370,6 +563,7 @@
   // ---- Keyboard: Escape ----
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
       closePanel();
       selectedNode = null;
       highlightNodes.clear();

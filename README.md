@@ -1,6 +1,6 @@
 # Zettelkasten Capture Bot
 
-A Telegram bot that captures URLs from five content sources — Reddit, YouTube, GitHub, newsletters, and generic web articles — and writes AI-summarised Obsidian notes to your local knowledge graph. Send a URL; get a structured Markdown note.
+A Telegram bot and web app that captures URLs from five content sources — Reddit, YouTube, GitHub, newsletters, and generic web articles — and writes AI-summarised Obsidian notes to your knowledge graph. Send a URL via Telegram or the web UI; get a structured Markdown note.
 
 ---
 
@@ -8,10 +8,17 @@ A Telegram bot that captures URLs from five content sources — Reddit, YouTube,
 
 - **Auto-detect source type** — paste any URL and the bot picks the right extractor automatically
 - **Five extractors**: Reddit threads (with top comments), YouTube videos (transcript + metadata), GitHub repos/issues/PRs, newsletter articles (Substack, Beehiiv, Buttondown, Mailchimp), and generic web pages
-- **AI summarisation** — Google Gemini produces a title, summary, and tags for every capture
+- **AI summarisation** — Google Gemini produces a title, summary, and multi-dimensional tags for every capture
+- **Model fallback chain** — cascades through `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.5-flash-lite` on 429 rate limits, with 60-second per-model cooldown. If all models fail, returns raw content for manual review (graceful degradation)
+- **Web UI** — FastAPI-powered frontend with a URL summarizer and an interactive 3D knowledge graph visualizer (Three.js / 3D Force Graph)
+- **Knowledge graph** — summarized URLs are added as nodes with tag-based auto-linking to existing nodes; persisted to `graph.json`
+- **Cloud note storage** — optionally push notes to a GitHub repo via the Contents API (for deployments without persistent disk, e.g. Render free tier)
 - **Duplicate detection** — re-capture the same URL only when you explicitly use `/force`
+- **SSRF protection** — URL validation blocks private/reserved IPs; tracking params are stripped for dedup consistency
 - **Extensible** — drop a new file in `zettelkasten_bot/sources/` and it is picked up automatically
-- **Two run modes** — long-polling for development, webhook for production
+- **Two run modes** — long-polling for development, webhook for production (bot + web UI share a single port)
+- **Docker-ready** — multi-stage build with pre-compiled `.pyc` for fast cold starts
+- **Render.com deploy** — `render.yaml` Blueprint for one-click deploy with GitHub Actions keep-alive to prevent free-tier cold starts
 
 ---
 
@@ -72,6 +79,9 @@ Settings are loaded from three places in priority order:
 | `DATA_DIR` | No | `./data` | Internal data directory (duplicate store, caches) |
 | `MODEL_NAME` | No | `gemini-2.5-flash` | Gemini model to use for summarisation |
 | `LOG_LEVEL` | No | `INFO` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `GITHUB_TOKEN` | For cloud mode | — | GitHub PAT with `repo` scope — enables pushing notes to a GitHub repo |
+| `GITHUB_REPO` | For cloud mode | — | Target repo in `owner/repo` format |
+| `GITHUB_BRANCH` | No | `main` | Branch to push notes to |
 
 ---
 
@@ -96,7 +106,30 @@ Settings are loaded from three places in priority order:
 
 ---
 
-## Production Deployment
+## Web UI
+
+The project includes a FastAPI web frontend served alongside the bot in webhook mode. Two pages:
+
+| Page | URL | Description |
+|---|---|---|
+| **Summarizer** | `/` | Paste any URL, get an AI summary with tags — no Telegram required |
+| **Knowledge Graph** | `/knowledge-graph` | Interactive 3D graph of all summarized nodes (Three.js / 3D Force Graph), with search, filtering by source type, and click-to-open source links |
+
+### API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/summarize` | Summarize a URL (rate-limited: 10 req/min per IP) |
+| `GET` | `/api/graph` | Return the current knowledge graph as JSON |
+| `GET` | `/api/health` | Health check (used by Render) |
+
+Summaries submitted via the web UI are automatically added as nodes to the knowledge graph with tag-based auto-linking to existing nodes.
+
+---
+
+## Deployment
+
+### Self-hosted (VPS)
 
 See **[deploy/DEPLOY.md](deploy/DEPLOY.md)** for the full step-by-step guide covering:
 
@@ -106,6 +139,37 @@ See **[deploy/DEPLOY.md](deploy/DEPLOY.md)** for the full step-by-step guide cov
 - Verification commands and troubleshooting table
 
 Switch to webhook mode by setting `WEBHOOK_MODE=true` and `WEBHOOK_URL` in `.env`.
+
+### Render.com (Free Tier)
+
+One-click deploy using the included `render.yaml` Blueprint:
+
+1. Push to GitHub: `git push origin master`
+2. On Render: **New** → **Blueprint** → select repo → it reads `render.yaml`
+3. Set env vars in Render dashboard: `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_ID`, `GEMINI_API_KEY`, `WEBHOOK_URL`
+4. Optionally set `GITHUB_TOKEN` and `GITHUB_REPO` for persistent note storage via GitHub
+
+A GitHub Actions workflow (`.github/workflows/keep-alive.yml`) pings the Render URL every 14 minutes to prevent cold starts. Requires the `RENDER_URL` secret in your GitHub repo settings.
+
+#### Note Storage Modes
+
+| Mode | When | Notes survive redeploys? |
+|---|---|---|
+| **Local** | Default — writes to `KG_DIRECTORY` | No (ephemeral on Render) |
+| **Cloud** | `GITHUB_TOKEN` + `GITHUB_REPO` set | Yes — pushed to GitHub via Contents API |
+
+For cloud mode, clone the target repo into your Obsidian vault directory for automatic sync.
+
+### Docker
+
+Multi-stage build for minimal image size:
+
+```bash
+docker build -t zettelkasten-bot .
+docker run -p 10000:10000 --env-file .env zettelkasten-bot
+```
+
+Base image: `python:3.12-slim`. Pre-compiles `.pyc` files for ~1-2s faster cold starts.
 
 ---
 
@@ -198,17 +262,36 @@ Integration tests in `tests/integration_tests/` make real network calls and requ
 ```
 zettelkasten-bot/
 ├── run.py                          # Entry point: starts the bot
-├── requirements.txt
+├── Dockerfile                      # Multi-stage Docker build
+├── render.yaml                     # Render.com Blueprint (one-click deploy)
+├── requirements.txt                # Dev dependencies (includes pytest, etc.)
+├── requirements-prod.txt           # Production-only dependencies
 ├── .env.example                    # ← copy to .env and fill in secrets
+├── .github/
+│   └── workflows/
+│       └── keep-alive.yml          # Pings Render every 14 min to prevent cold starts
 ├── config/
 │   └── config.yaml                 # Non-secret defaults
 ├── deploy/
-│   ├── DEPLOY.md                   # Production deployment guide
+│   ├── DEPLOY.md                   # VPS deployment guide
 │   ├── zettelkasten-bot.service    # systemd unit file
 │   └── nginx.conf                  # nginx reverse proxy config
 ├── docs/
 │   ├── SYNCTHING-ALTERNATIVES.md   # Vault sync options
 │   └── VPS-RECOMMENDATIONS.md      # Hosting recommendations
+├── website/                        # FastAPI web frontend
+│   ├── app.py                      # App factory (serves UI + API on one port)
+│   ├── api/
+│   │   └── routes.py               # REST API: /api/summarize, /api/graph, /api/health
+│   ├── core/
+│   │   ├── pipeline.py             # Stateless web pipeline wrapper
+│   │   └── graph_store.py          # Thread-safe in-memory graph with tag-based linking
+│   ├── static/                     # Summarizer page (HTML/CSS/JS)
+│   └── knowledge_graph/            # 3D knowledge graph visualizer
+│       ├── index.html
+│       ├── css/style.css
+│       ├── js/app.js               # Three.js / 3D Force Graph
+│       └── content/graph.json      # Persisted graph data
 ├── zettelkasten_bot/
 │   ├── main.py                     # App wiring: registers handlers, starts bot
 │   ├── bot/
@@ -220,8 +303,9 @@ zettelkasten-bot/
 │   │   └── capture.py              # Shared data models (SourceType, ExtractedContent, …)
 │   ├── pipeline/
 │   │   ├── orchestrator.py         # Top-level pipeline: extract → summarise → write
-│   │   ├── summarizer.py           # Gemini summarisation
-│   │   ├── writer.py               # Obsidian note writer
+│   │   ├── summarizer.py           # Gemini summarisation + model fallback chain
+│   │   ├── writer.py               # Local Obsidian note writer
+│   │   ├── github_writer.py        # Cloud note writer (GitHub Contents API)
 │   │   └── duplicate.py            # Seen-URL deduplication
 │   ├── sources/
 │   │   ├── base.py                 # SourceExtractor ABC
@@ -233,7 +317,7 @@ zettelkasten-bot/
 │   │   ├── github.py               # GitHub extractor (REST API)
 │   │   └── generic.py              # Generic web extractor (trafilatura)
 │   └── utils/
-│       └── url_utils.py            # URL validation helpers
+│       └── url_utils.py            # URL validation + SSRF protection
 └── tests/
     ├── conftest.py
     ├── test_extractors.py
@@ -242,7 +326,13 @@ zettelkasten-bot/
     ├── test_source_registry.py
     ├── test_duplicate.py
     ├── test_gemini.py
+    ├── test_model_fallback.py
     ├── test_writer.py
+    ├── test_github_writer.py
+    ├── test_settings_github.py
+    ├── test_website.py
+    ├── test_youtube_urls.py
+    ├── test_main.py
     ├── test_url_utils.py
     └── integration_tests/
         └── test_live_pipeline.py
@@ -250,11 +340,11 @@ zettelkasten-bot/
 
 ---
 
-## SyncThing Setup
+## Vault Sync
 
-For syncing your Obsidian vault (`KG_DIRECTORY`) across devices without a cloud service, see **[docs/SYNCTHING-ALTERNATIVES.md](docs/SYNCTHING-ALTERNATIVES.md)**.
+**Option A — GitHub (cloud mode):** Set `GITHUB_TOKEN` and `GITHUB_REPO` to push notes to a GitHub repository. Clone that repo into your Obsidian vault for automatic sync across devices.
 
-The recommended setup is a three-node SyncThing network: VPS → desktop → mobile. Notes written by the bot on the VPS propagate to all devices automatically.
+**Option B — SyncThing (self-hosted):** For syncing `KG_DIRECTORY` without a cloud service, see **[docs/SYNCTHING-ALTERNATIVES.md](docs/SYNCTHING-ALTERNATIVES.md)**. Recommended: three-node SyncThing network (VPS → desktop → mobile).
 
 ---
 

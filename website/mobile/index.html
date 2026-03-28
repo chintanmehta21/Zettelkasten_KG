@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0b14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Zettelkasten Summarizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/m/css/mobile.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="m-header">
+    <div>
+      <div class="m-header-title">Zettelkasten</div>
+      <div class="m-header-subtitle">AI-Powered Summarizer</div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="m-hero">
+    <h1>Capture Knowledge</h1>
+    <p>Paste any URL. Get an AI summary in seconds.</p>
+  </section>
+
+  <!-- Form -->
+  <form class="m-form" id="summarize-form" autocomplete="off">
+    <div class="m-input-group">
+      <input type="url" class="m-input" id="url-input" placeholder="Paste a URL..." required inputmode="url">
+    </div>
+    <select class="m-select" id="source-select">
+      <option value="">Auto-detect source</option>
+      <option value="youtube">YouTube</option>
+      <option value="github">GitHub</option>
+      <option value="reddit">Reddit</option>
+      <option value="newsletter">Newsletter</option>
+      <option value="generic">Web page</option>
+    </select>
+    <button type="submit" class="m-btn" id="submit-btn">Summarize</button>
+  </form>
+
+  <!-- Loading -->
+  <div class="m-loading" id="loading">
+    <div class="m-spinner"></div>
+    <div class="m-loading-text" id="loading-text">Analyzing content...</div>
+  </div>
+
+  <!-- Error -->
+  <div class="m-error" id="error"></div>
+
+  <!-- Result -->
+  <div class="m-result" id="result">
+    <span class="m-result-badge" id="result-badge"></span>
+    <h2 id="result-title"></h2>
+    <p class="m-result-brief" id="result-brief"></p>
+    <div class="m-result-tags" id="result-tags"></div>
+    <div class="m-result-detail" id="result-detail"></div>
+    <div class="m-result-actions">
+      <button class="m-btn-secondary" id="copy-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+      <a class="m-btn-secondary" id="source-link" href="#" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Source
+      </a>
+    </div>
+  </div>
+
+  <!-- Knowledge Graph Link -->
+  <a class="m-nav-link" href="/m/knowledge-graph">
+    <div>
+      <div class="m-nav-link-text">Knowledge Graph</div>
+      <div class="m-nav-link-sub">Explore your captured notes</div>
+    </div>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+
+  <!-- Footer -->
+  <footer class="m-footer">
+    <a href="/">Desktop version</a>
+  </footer>
+
+  <script src="/m/js/summarizer.js"></script>
+</body>
+</html>

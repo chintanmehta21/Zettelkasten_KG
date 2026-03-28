@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from website.core.pipeline import summarize_url
+from website.core.graph_store import add_node, get_graph
 
 logger = logging.getLogger("website.api")
 
@@ -53,6 +54,12 @@ async def health():
     return {"status": "ok"}
 
 
+@router.get("/graph")
+async def graph_data():
+    """Return the current knowledge graph (includes runtime-added nodes)."""
+    return get_graph()
+
+
 @router.post("/summarize")
 async def summarize(body: SummarizeRequest, request: Request):
     ip = request.client.host if request.client else "unknown"
@@ -66,6 +73,20 @@ async def summarize(body: SummarizeRequest, request: Request):
 
     try:
         result = await summarize_url(body.url)
+
+        # Add to knowledge graph
+        try:
+            node_id = add_node(
+                title=result["title"],
+                source_type=result["source_type"],
+                source_url=result["source_url"],
+                summary=result.get("brief_summary") or result["summary"][:200],
+                tags=result.get("tags", []),
+            )
+            result["node_id"] = node_id
+        except Exception as kg_err:
+            logger.warning("Failed to add node to KG: %s", kg_err)
+
         return result
     except Exception as exc:
         logger.error("Summarization failed for %s: %s", body.url, exc)
