@@ -358,24 +358,25 @@ a:hover {
     color: var(--accent);
 }
 
-.item-youtube { color: var(--youtube); }
-.item-github { color: var(--github); }
-.item-reddit { color: var(--reddit); }
-.item-newsletter { color: var(--newsletter); }
-.item-generic { color: var(--generic); }
+/* Muted dropdown colors — shadcn-style desaturated tones for dark slate */
+.item-youtube { color: hsl(355, 45%, 68%); }
+.item-github { color: hsl(260, 30%, 72%); }
+.item-reddit { color: hsl(28, 45%, 68%); }
+.item-newsletter { color: hsl(205, 40%, 68%); }
+.item-generic { color: hsl(220, 14%, 62%); }
 
-.item-youtube:hover { background: hsla(0, 84%, 60%, 0.08); }
-.item-github:hover { background: hsla(250, 70%, 72%, 0.08); }
-.item-reddit:hover { background: hsla(24, 94%, 54%, 0.08); }
-.item-newsletter:hover { background: hsla(190, 80%, 56%, 0.08); }
-.item-generic:hover { background: hsla(215, 20%, 62%, 0.08); }
+.item-youtube:hover { background: hsla(355, 45%, 68%, 0.08); }
+.item-github:hover { background: hsla(260, 30%, 72%, 0.08); }
+.item-reddit:hover { background: hsla(28, 45%, 68%, 0.08); }
+.item-newsletter:hover { background: hsla(205, 40%, 68%, 0.08); }
+.item-generic:hover { background: hsla(220, 14%, 62%, 0.08); }
 
 /* Source-colored toggle when a source is selected */
-.dropdown-toggle.src-youtube { color: var(--youtube); }
-.dropdown-toggle.src-github { color: var(--github); }
-.dropdown-toggle.src-reddit { color: var(--reddit); }
-.dropdown-toggle.src-newsletter { color: var(--newsletter); }
-.dropdown-toggle.src-generic { color: var(--generic); }
+.dropdown-toggle.src-youtube { color: hsl(355, 45%, 68%); }
+.dropdown-toggle.src-github { color: hsl(260, 30%, 72%); }
+.dropdown-toggle.src-reddit { color: hsl(28, 45%, 68%); }
+.dropdown-toggle.src-newsletter { color: hsl(205, 40%, 68%); }
+.dropdown-toggle.src-generic { color: hsl(220, 14%, 62%); }
 
 /* ── Loading ──────────────────────────────────────────────────────── */
 
