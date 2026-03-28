@@ -7,7 +7,9 @@ Uses trafilatura for clean content extraction.
 
 from __future__ import annotations
 
+import json
 import logging
+import urllib.parse
 from typing import Any
 
 import httpx
@@ -105,6 +107,94 @@ def _looks_paywalled(body: str) -> bool:
     return len(body.strip()) < 200
 
 
+def _is_substack_url(url: str) -> bool:
+    """Check if a URL is a Substack domain (*.substack.com)."""
+    host = urllib.parse.urlparse(url).hostname or ""
+    return host == "substack.com" or host.endswith(".substack.com")
+
+
+def _detect_substack_paywall(html: str) -> bool:
+    """Detect whether a Substack article is behind a paywall.
+
+    Checks multiple signals:
+    1. JSON-LD structured data with isAccessibleForFree: false
+    2. Paywall-related CSS classes in the HTML
+    """
+    # Signal 1: JSON-LD structured data
+    try:
+        from bs4 import BeautifulSoup  # noqa: PLC0415
+
+        soup = BeautifulSoup(html, "html.parser")
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+                if isinstance(data, dict) and data.get("isAccessibleForFree") is False:
+                    return True
+            except (json.JSONDecodeError, TypeError):
+                continue
+    except Exception:
+        pass
+
+    # Signal 2: Paywall CSS classes
+    paywall_markers = ['class="paywall"', 'class="paywall-content"', "class='paywall'", "class='paywall-content'"]
+    html_lower = html.lower()
+    for marker in paywall_markers:
+        if marker in html_lower:
+            return True
+
+    return False
+
+
+def _extract_substack_metadata(html: str) -> dict:
+    """Extract Substack-specific metadata from HTML.
+
+    Parses JSON-LD structured data for author, publication, date, and paid status.
+    Falls back to empty strings if fields are missing.
+    """
+    meta: dict = {
+        "is_substack": True,
+        "substack_author": "",
+        "substack_publication": "",
+        "substack_date": "",
+        "is_paid": _detect_substack_paywall(html),
+    }
+
+    try:
+        from bs4 import BeautifulSoup  # noqa: PLC0415
+
+        soup = BeautifulSoup(html, "html.parser")
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+                if not isinstance(data, dict):
+                    continue
+
+                # Author — can be a dict or a string
+                author = data.get("author", {})
+                if isinstance(author, dict):
+                    meta["substack_author"] = author.get("name", "")
+                elif isinstance(author, str):
+                    meta["substack_author"] = author
+
+                # Publisher / publication name
+                publisher = data.get("publisher", {})
+                if isinstance(publisher, dict):
+                    meta["substack_publication"] = publisher.get("name", "")
+
+                # Date published
+                meta["substack_date"] = data.get("datePublished", "")
+
+                # Found structured data — stop looking
+                if meta["substack_author"] or meta["substack_publication"]:
+                    break
+            except (json.JSONDecodeError, TypeError):
+                continue
+    except Exception:
+        pass
+
+    return meta
+
+
 class NewsletterExtractor(SourceExtractor):
     """Extract article content from newsletters and web articles."""
 
@@ -113,11 +203,19 @@ class NewsletterExtractor(SourceExtractor):
     async def extract(self, url: str) -> ExtractedContent:
         """Extract article content, attempting paywall bypass if needed."""
         metadata: dict[str, Any] = {"bypass_used": None}
+        is_substack = _is_substack_url(url)
 
         # ── Try direct fetch first ────────────────────────────────────────
+        html = ""
+        title = ""
+        body = ""
         try:
             html = await _fetch_html(url)
             title, body = _extract_with_trafilatura(html, url)
+
+            # Enrich with Substack metadata if applicable
+            if is_substack:
+                metadata.update(_extract_substack_metadata(html))
 
             if not _looks_paywalled(body):
                 logger.info("Direct extraction succeeded for %s", url)
@@ -162,6 +260,18 @@ class NewsletterExtractor(SourceExtractor):
                 logger.debug("Bypass %s failed for %s: %s", service["name"], url, exc)
 
         # ── All bypass attempts failed ────────────────────────────────────
+        # For Substack paid articles: return partial content gracefully
+        if is_substack and metadata.get("is_paid"):
+            logger.info("Returning partial content for paid Substack article: %s", url)
+            metadata["paywall_note"] = "Content may be truncated — this is a paid Substack article"
+            return ExtractedContent(
+                url=url,
+                source_type=SourceType.NEWSLETTER,
+                title=title or url,
+                body=body or "No content could be extracted from this paid article.",
+                metadata=metadata,
+            )
+
         logger.warning("All extraction attempts failed for %s", url)
         raise RuntimeError(
             f"Could not extract content from {url} — all paywall bypass attempts failed"

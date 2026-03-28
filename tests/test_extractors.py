@@ -335,33 +335,7 @@ async def test_reddit_source_type():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _make_yt_dlp_mock(
-    info: dict | None = None,
-    raise_exc: Exception | None = None,
-) -> MagicMock:
-    """Build a MagicMock for yt_dlp.YoutubeDL used as a context manager.
-
-    Returns a mock that, when used as ``with yt_dlp.YoutubeDL(...) as ydl:``,
-    yields a mock whose ``extract_info`` either returns *info* or raises *raise_exc*.
-    """
-    ydl_instance = MagicMock()
-    if raise_exc is not None:
-        ydl_instance.extract_info.side_effect = raise_exc
-    else:
-        ydl_instance.extract_info.return_value = info
-
-    # The mock returned by YoutubeDL(...) must act as a context manager
-    cm_mock = MagicMock()
-    cm_mock.__enter__ = MagicMock(return_value=ydl_instance)
-    cm_mock.__exit__ = MagicMock(return_value=False)
-    return cm_mock
-
-
-def _make_transcript_snippet(text: str) -> MagicMock:
-    snippet = MagicMock()
-    snippet.text = text
-    return snippet
-
+_YT_MOD = "zettelkasten_bot.sources.youtube"
 
 _DEFAULT_YDL_INFO: dict = {
     "title": "Never Gonna Give You Up",
@@ -373,10 +347,7 @@ _DEFAULT_YDL_INFO: dict = {
     "like_count": 50000,
 }
 
-_DEFAULT_TRANSCRIPT = [
-    _make_transcript_snippet("We're no strangers to love"),
-    _make_transcript_snippet("You know the rules and so do I"),
-]
+_DEFAULT_TRANSCRIPT_TEXT = "We're no strangers to love You know the rules and so do I"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -386,13 +357,9 @@ _DEFAULT_TRANSCRIPT = [
 
 async def test_youtube_happy_path():
     """Metadata + transcript available → correct title, body, all metadata fields."""
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
-
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -410,32 +377,40 @@ async def test_youtube_happy_path():
 
 
 async def test_youtube_no_transcript():
-    """Transcript unavailable → body has fallback text, has_transcript==False."""
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.side_effect = Exception("No transcript")
-
+    """Transcript unavailable (all fallbacks fail) → description fallback."""
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("No transcript")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert "Video Description" in result.body
+    assert result.metadata["has_transcript"] is False
+    assert result.title == "Never Gonna Give You Up"
+
+
+async def test_youtube_no_transcript_no_description():
+    """Transcript and description both unavailable → fallback text."""
+    info_no_desc = {**_DEFAULT_YDL_INFO, "description": ""}
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=info_no_desc),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("No transcript")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
 
     assert "(Transcript not available" in result.body
     assert result.metadata["has_transcript"] is False
-    assert result.title == "Never Gonna Give You Up"
 
 
 async def test_youtube_ytdlp_fails_transcript_succeeds():
     """yt-dlp fails → title falls back to 'YouTube Video {id}', transcript still extracted."""
-    ydl_cm = _make_yt_dlp_mock(raise_exc=Exception("yt-dlp fail"))
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
-
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -447,13 +422,10 @@ async def test_youtube_ytdlp_fails_transcript_succeeds():
 
 async def test_youtube_both_fail():
     """Both yt-dlp and transcript fail → minimal content with video_id."""
-    ydl_cm = _make_yt_dlp_mock(raise_exc=Exception("yt-dlp fail"))
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.side_effect = Exception("Transcript fail")
-
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=Exception("yt-dlp fail")),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("Transcript fail")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -461,6 +433,53 @@ async def test_youtube_both_fail():
     assert result.title == f"YouTube Video {_VIDEO_ID}"
     assert result.metadata["video_id"] == _VIDEO_ID
     assert result.metadata["has_transcript"] is False
+
+
+async def test_youtube_subtitle_fallback():
+    """Transcript API fails but yt-dlp subtitles succeed → uses subtitle text."""
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("No transcript")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value="Subtitle fallback text here"),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert "## Transcript" in result.body
+    assert "Subtitle fallback text here" in result.body
+    assert result.metadata["has_transcript"] is True
+
+
+async def test_youtube_metadata_timeout():
+    """Metadata timeout → graceful degradation with fallback title."""
+    import asyncio as _asyncio
+
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", side_effect=_asyncio.TimeoutError()),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert result.title == f"YouTube Video {_VIDEO_ID}"
+    assert "## Transcript" in result.body
+    assert result.metadata["has_transcript"] is True
+
+
+async def test_youtube_transcript_timeout():
+    """Transcript timeout → falls through to subtitle fallback."""
+    import asyncio as _asyncio
+
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=_asyncio.TimeoutError()),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value="Fallback subs"),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(_YOUTUBE_URL)
+
+    assert "Fallback subs" in result.body
+    assert result.metadata["has_transcript"] is True
 
 
 async def test_youtube_invalid_url_raises():
@@ -473,13 +492,11 @@ async def test_youtube_invalid_url_raises():
 async def test_youtube_shorts_url():
     """YouTube Shorts URL → correctly extracts video ID."""
     shorts_url = "https://www.youtube.com/shorts/abc12345678"
-    ydl_cm = _make_yt_dlp_mock(info={"title": "Short video"})
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.side_effect = Exception("no transcript")
 
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value={"title": "Short video"}),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", side_effect=Exception("no transcript")),
+        patch(f"{_YT_MOD}._fetch_subtitles_via_ytdlp_sync", return_value=None),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(shorts_url)
@@ -490,13 +507,10 @@ async def test_youtube_shorts_url():
 async def test_youtube_short_url():
     """youtu.be short URL → correctly extracts video ID."""
     short_url = "https://youtu.be/dQw4w9WgXcQ"
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
 
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(short_url)
@@ -507,13 +521,10 @@ async def test_youtube_short_url():
 async def test_youtube_embed_url():
     """Embed URL → correctly extracts video ID."""
     embed_url = "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
 
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(embed_url)
@@ -521,15 +532,39 @@ async def test_youtube_embed_url():
     assert result.metadata["video_id"] == _VIDEO_ID
 
 
-async def test_youtube_video_id_in_metadata():
-    """video_id always present in metadata, regardless of API failures."""
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
+async def test_youtube_live_url():
+    """YouTube Live URL → correctly extracts video ID."""
+    live_url = "https://www.youtube.com/live/dQw4w9WgXcQ"
 
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(live_url)
+
+    assert result.metadata["video_id"] == _VIDEO_ID
+
+
+async def test_youtube_nocookie_url():
+    """youtube-nocookie.com embed URL → correctly extracts video ID."""
+    nocookie_url = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
+    ):
+        extractor = YouTubeExtractor()
+        result = await extractor.extract(nocookie_url)
+
+    assert result.metadata["video_id"] == _VIDEO_ID
+
+
+async def test_youtube_video_id_in_metadata():
+    """video_id always present in metadata, regardless of API failures."""
+    with (
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -540,13 +575,9 @@ async def test_youtube_video_id_in_metadata():
 
 async def test_youtube_source_type():
     """ExtractedContent.source_type == SourceType.YOUTUBE."""
-    ydl_cm = _make_yt_dlp_mock(info=_DEFAULT_YDL_INFO)
-    transcript_api_cls = MagicMock()
-    transcript_api_cls.return_value.fetch.return_value = _DEFAULT_TRANSCRIPT
-
     with (
-        patch("yt_dlp.YoutubeDL", return_value=ydl_cm),
-        patch("youtube_transcript_api.YouTubeTranscriptApi", transcript_api_cls),
+        patch(f"{_YT_MOD}._fetch_metadata_sync", return_value=_DEFAULT_YDL_INFO),
+        patch(f"{_YT_MOD}._fetch_transcript_sync", return_value=_DEFAULT_TRANSCRIPT_TEXT),
     ):
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
@@ -1047,6 +1078,252 @@ async def test_newsletter_source_type():
         result = await extractor.extract(_NEWSLETTER_URL)
 
     assert result.source_type == SourceType.NEWSLETTER
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Substack-specific tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+from zettelkasten_bot.sources.newsletter import (
+    _is_substack_url,
+    _detect_substack_paywall,
+    _extract_substack_metadata,
+)
+
+
+@pytest.mark.parametrize(
+    "url,expected",
+    [
+        ("https://example.substack.com/p/my-post", True),
+        ("https://substack.com/", True),
+        ("https://nlp.elvissaravia.com/p/top-ai-papers", False),
+        ("https://medium.com/@user/article", False),
+        ("https://example.com/article", False),
+    ],
+)
+def test_is_substack_url(url: str, expected: bool):
+    assert _is_substack_url(url) == expected
+
+
+_SUBSTACK_FREE_HTML = """<html>
+<head><script type="application/ld+json">
+{"@type": "NewsArticle", "isAccessibleForFree": true}
+</script></head>
+<body><div class="body markup">Full article content here...</div></body>
+</html>"""
+
+_SUBSTACK_PAID_HTML = """<html>
+<head><script type="application/ld+json">
+{"@type": "NewsArticle", "isAccessibleForFree": false}
+</script></head>
+<body><div class="body markup">Preview only...</div>
+<div class="paywall-content">Subscribe to read the rest</div></body>
+</html>"""
+
+_SUBSTACK_PAID_CLASS_ONLY_HTML = """<html>
+<body><div class="body markup">Preview...</div>
+<div class="paywall">You need to subscribe</div></body>
+</html>"""
+
+_SUBSTACK_NO_SIGNALS_HTML = """<html>
+<body><div class="body markup">Some article content here</div></body>
+</html>"""
+
+
+def test_substack_paywall_free_article():
+    assert _detect_substack_paywall(_SUBSTACK_FREE_HTML) is False
+
+
+def test_substack_paywall_paid_jsonld():
+    assert _detect_substack_paywall(_SUBSTACK_PAID_HTML) is True
+
+
+def test_substack_paywall_paid_class_only():
+    assert _detect_substack_paywall(_SUBSTACK_PAID_CLASS_ONLY_HTML) is True
+
+
+def test_substack_paywall_no_signals_assumes_free():
+    assert _detect_substack_paywall(_SUBSTACK_NO_SIGNALS_HTML) is False
+
+
+_SUBSTACK_JSONLD_HTML = """<html>
+<head><script type="application/ld+json">
+{
+    "@type": "NewsArticle",
+    "headline": "Top AI Papers of the Week",
+    "author": {"@type": "Person", "name": "Elvis Saravia"},
+    "datePublished": "2026-03-25",
+    "isAccessibleForFree": true,
+    "publisher": {"@type": "Organization", "name": "NLP Newsletter"}
+}
+</script></head>
+<body>Content</body>
+</html>"""
+
+_SUBSTACK_JSONLD_PAID_HTML = """<html>
+<head><script type="application/ld+json">
+{
+    "@type": "NewsArticle",
+    "headline": "Paid Article",
+    "author": {"@type": "Person", "name": "Author Name"},
+    "datePublished": "2026-03-20",
+    "isAccessibleForFree": false,
+    "publisher": {"@type": "Organization", "name": "Some Publication"}
+}
+</script></head>
+<body>Preview<div class="paywall">Subscribe</div></body>
+</html>"""
+
+_SUBSTACK_NO_JSONLD_HTML = """<html>
+<head><meta name="author" content="Fallback Author"></head>
+<body>Content</body>
+</html>"""
+
+
+def test_extract_substack_metadata_full_jsonld():
+    meta = _extract_substack_metadata(_SUBSTACK_JSONLD_HTML)
+    assert meta["substack_author"] == "Elvis Saravia"
+    assert meta["substack_publication"] == "NLP Newsletter"
+    assert meta["substack_date"] == "2026-03-25"
+    assert meta["is_substack"] is True
+    assert meta["is_paid"] is False
+
+
+def test_extract_substack_metadata_paid():
+    meta = _extract_substack_metadata(_SUBSTACK_JSONLD_PAID_HTML)
+    assert meta["is_paid"] is True
+    assert meta["substack_author"] == "Author Name"
+
+
+def test_extract_substack_metadata_no_jsonld():
+    meta = _extract_substack_metadata(_SUBSTACK_NO_JSONLD_HTML)
+    assert meta["is_substack"] is True
+    assert meta["substack_author"] == ""
+    assert meta["substack_publication"] == ""
+    assert meta["substack_date"] == ""
+    assert meta["is_paid"] is False
+
+
+_SUBSTACK_URL = "https://example.substack.com/p/test-article"
+
+_SUBSTACK_FREE_FULL_HTML = """<html>
+<head><script type="application/ld+json">
+{"@type": "NewsArticle", "isAccessibleForFree": true,
+ "author": {"@type": "Person", "name": "Test Author"},
+ "publisher": {"@type": "Organization", "name": "Test Pub"},
+ "datePublished": "2026-03-25"}
+</script><title>Free Article</title></head>
+<body><div class="body markup">Full article content</div></body>
+</html>"""
+
+_SUBSTACK_PAID_PARTIAL_HTML = """<html>
+<head><script type="application/ld+json">
+{"@type": "NewsArticle", "isAccessibleForFree": false,
+ "author": {"@type": "Person", "name": "Paid Author"},
+ "publisher": {"@type": "Organization", "name": "Paid Pub"},
+ "datePublished": "2026-03-20"}
+</script><title>Paid Article</title></head>
+<body><div class="body markup">Preview content only</div>
+<div class="paywall">Subscribe to continue reading</div></body>
+</html>"""
+
+
+async def test_substack_free_article_extracts_with_metadata():
+    """Free Substack article → full content + Substack metadata, is_paid=False."""
+    client_ctor = _make_httpx_client_cm([_make_response(text=_SUBSTACK_FREE_FULL_HTML)])
+    mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Free Article")
+
+    with (
+        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+    ):
+        extractor = NewsletterExtractor()
+        result = await extractor.extract(_SUBSTACK_URL)
+
+    assert result.body == _LONG_BODY
+    assert result.metadata["is_substack"] is True
+    assert result.metadata["is_paid"] is False
+    assert result.metadata["substack_author"] == "Test Author"
+    assert result.metadata["substack_publication"] == "Test Pub"
+    assert result.metadata["bypass_used"] is None
+
+
+async def test_substack_paid_article_returns_partial_content():
+    """Paid Substack article, all bypasses fail → returns partial content + paywall note."""
+    client_ctor = _make_httpx_client_cm([
+        _make_response(text=_SUBSTACK_PAID_PARTIAL_HTML),  # direct fetch
+        _make_response(text="<html>short</html>"),         # removepaywalls.com
+        _make_response(text="<html>short</html>"),         # removepaywall.com
+        _make_response(json_data={"archived_snapshots": {}}),  # wayback API
+        _make_response(text="<html>short</html>"),         # google cache
+    ])
+    mock_extract, mock_meta = _make_trafilatura_mock(body=_SHORT_BODY, title="Paid Article")
+
+    with (
+        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+    ):
+        extractor = NewsletterExtractor()
+        result = await extractor.extract(_SUBSTACK_URL)
+
+    # Should NOT raise — returns partial content gracefully
+    assert result.body == _SHORT_BODY
+    assert result.metadata["is_paid"] is True
+    assert result.metadata["is_substack"] is True
+    assert "paywall_note" in result.metadata
+
+
+async def test_substack_paid_article_bypass_succeeds():
+    """Paid Substack article, bypass succeeds → full content with bypass noted."""
+    client_ctor = _make_httpx_client_cm([
+        _make_response(text=_SUBSTACK_PAID_PARTIAL_HTML),  # direct fetch → short
+        _make_response(text="<html>Full bypassed content here</html>"),  # removepaywalls
+    ])
+
+    call_count = [0]
+    def mock_extract_fn(html, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return _SHORT_BODY  # direct: paywalled
+        return _LONG_BODY  # bypass: full content
+
+    mock_meta = MagicMock()
+    meta_obj = MagicMock()
+    meta_obj.title = "Paid Article"
+    mock_meta.return_value = meta_obj
+
+    with (
+        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract_fn),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+    ):
+        extractor = NewsletterExtractor()
+        result = await extractor.extract(_SUBSTACK_URL)
+
+    assert result.body == _LONG_BODY
+    assert result.metadata["bypass_used"] == "removepaywalls.com"
+    assert result.metadata["is_substack"] is True
+
+
+async def test_non_substack_url_unchanged_flow():
+    """Non-Substack newsletter URL → existing flow, no Substack metadata."""
+    non_substack_url = "https://buttondown.email/user/archive/article"
+    html = f"<html><title>Newsletter</title><body>{_LONG_BODY}</body></html>"
+    client_ctor = _make_httpx_client_cm([_make_response(text=html)])
+    mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Newsletter")
+
+    with (
+        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+    ):
+        extractor = NewsletterExtractor()
+        result = await extractor.extract(non_substack_url)
+
+    assert result.body == _LONG_BODY
+    assert "is_substack" not in result.metadata
 
 
 # ─────────────────────────────────────────────────────────────────────────────
