@@ -6,6 +6,8 @@ lifting to :func:`~zettelkasten_bot.pipeline.orchestrator.process_url`.
 Registered commands
 -------------------
 /start      — welcome message
+/help       — alias for /start
+/status     — bot health, seen URL count, KG note count
 /reddit     — capture a Reddit post
 /yt         — capture a YouTube video
 /newsletter — capture a newsletter article
@@ -18,12 +20,14 @@ Plus a bare-URL ``MessageHandler`` that auto-detects the source type.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from zettelkasten_bot.config.settings import get_settings
 from zettelkasten_bot.models.capture import SourceType
+from zettelkasten_bot.pipeline.duplicate import DuplicateStore
 from zettelkasten_bot.pipeline.orchestrator import process_url
 from zettelkasten_bot.utils.url_utils import validate_url
 
@@ -37,7 +41,8 @@ _WELCOME = (
     "• `/yt <url>` — YouTube video\n"
     "• `/newsletter <url>` — Newsletter article\n"
     "• `/github <url>` — GitHub repo/issue/PR\n"
-    "• `/force <url>` — Re-capture even if already seen\n\n"
+    "• `/force <url>` — Re-capture even if already seen\n"
+    "• `/status` — Bot health and stats\n\n"
     "Just paste a bare URL to auto-detect the source type."
 )
 
@@ -119,6 +124,36 @@ async def handle_force(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         force=True,
         data_dir=get_settings().data_dir,
     )
+
+
+async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/status — show bot health, seen URL count, and KG note count."""
+    settings = get_settings()
+
+    # Count seen URLs
+    try:
+        store = DuplicateStore(settings.data_dir)
+        seen_count = len(store._seen)
+    except Exception:
+        seen_count = "?"
+
+    # Count KG notes
+    try:
+        kg_path = Path(settings.kg_directory)
+        note_count = len(list(kg_path.glob("*.md"))) if kg_path.exists() else 0
+    except Exception:
+        note_count = "?"
+
+    status_text = (
+        "📊 *Bot Status*\n\n"
+        f"• Status: Running\n"
+        f"• URLs captured: {seen_count}\n"
+        f"• Notes in KG: {note_count}\n"
+        f"• AI model: {settings.model_name}\n"
+        f"• KG directory: `{settings.kg_directory}`\n"
+        f"• Mode: {'Webhook' if settings.webhook_mode else 'Polling'}"
+    )
+    await update.effective_message.reply_text(status_text, parse_mode="Markdown")
 
 
 async def handle_bare_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -23,6 +23,7 @@ from zettelkasten_bot.bot.handlers import (
     handle_newsletter,
     handle_reddit,
     handle_start,
+    handle_status,
     handle_yt,
 )
 from zettelkasten_bot.models.capture import SourceType
@@ -318,3 +319,35 @@ class TestNegativeInputs:
         await handle_bare_url(update, ctx)
         mock_proc.assert_not_called()
         update.effective_message.reply_text.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# /status handler
+# ---------------------------------------------------------------------------
+
+
+class TestHandleStatus:
+    @patch("zettelkasten_bot.bot.handlers.DuplicateStore")
+    @patch("zettelkasten_bot.bot.handlers.get_settings")
+    async def test_status_replies_with_stats(self, mock_get_settings, mock_store_cls):
+        mock_settings = MagicMock()
+        mock_settings.data_dir = "./test-data"
+        mock_settings.kg_directory = "./nonexistent-kg"
+        mock_settings.model_name = "gemini-2.5-flash"
+        mock_settings.webhook_mode = False
+        mock_get_settings.return_value = mock_settings
+
+        mock_store = MagicMock()
+        mock_store._seen = {"url1", "url2", "url3"}
+        mock_store_cls.return_value = mock_store
+
+        update = _make_update()
+        ctx = _make_context()
+        await handle_status(update, ctx)
+
+        update.effective_message.reply_text.assert_called_once()
+        text = update.effective_message.reply_text.call_args.args[0]
+        assert "Bot Status" in text
+        assert "3" in text  # 3 seen URLs
+        assert "gemini-2.5-flash" in text
+        assert "Polling" in text

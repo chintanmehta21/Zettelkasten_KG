@@ -21,6 +21,7 @@ from zettelkasten_bot.bot.handlers import (
     handle_newsletter,
     handle_reddit,
     handle_start,
+    handle_status,
     handle_yt,
 )
 from zettelkasten_bot.config.settings import get_settings
@@ -61,6 +62,8 @@ def main() -> None:
 
     # ── Register handlers ─────────────────────────────────────────────────
     app.add_handler(CommandHandler("start",      handle_start,      filters=chat_filter))
+    app.add_handler(CommandHandler("help",       handle_start,      filters=chat_filter))
+    app.add_handler(CommandHandler("status",     handle_status,     filters=chat_filter))
     app.add_handler(CommandHandler("reddit",     handle_reddit,     filters=chat_filter))
     app.add_handler(CommandHandler("yt",         handle_yt,         filters=chat_filter))
     app.add_handler(CommandHandler("newsletter", handle_newsletter, filters=chat_filter))
