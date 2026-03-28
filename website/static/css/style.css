@@ -7,28 +7,28 @@
 }
 
 :root {
-    --bg-primary: #08080d;
-    --bg-secondary: #0f0f18;
-    --bg-tertiary: #16162a;
-    --bg-card: #11111c;
-    --accent: #6c63ff;
-    --accent-hover: #7c74ff;
-    --accent-glow: rgba(108, 99, 255, 0.15);
-    --text-primary: #e4e4ed;
-    --text-secondary: #7a7a96;
-    --text-muted: #4e4e6a;
-    --border: #1e1e36;
-    --border-light: #2a2a48;
-    --success: #4ecdc4;
-    --error: #ff6b6b;
-    --warning: #ffd93d;
+    --bg-primary: #0b1120;
+    --bg-secondary: #101827;
+    --bg-tertiary: #1a2332;
+    --bg-card: #0f1729;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --accent-glow: rgba(59, 130, 246, 0.15);
+    --text-primary: #e2e8f0;
+    --text-secondary: #8b9cb8;
+    --text-muted: #4a5a74;
+    --border: #1e293b;
+    --border-light: #2a3a50;
+    --success: #34d399;
+    --error: #f87171;
+    --warning: #fbbf24;
 
     /* Source colors */
-    --youtube: #ff4444;
-    --github: #8b5cf6;
-    --reddit: #ff6b35;
-    --newsletter: #06b6d4;
-    --generic: #64748b;
+    --youtube: #ef4444;
+    --github: #a78bfa;
+    --reddit: #f97316;
+    --newsletter: #22d3ee;
+    --generic: #94a3b8;
 
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -390,10 +390,10 @@ a:hover {
     border: 1px solid var(--border);
 }
 
-.tag.tag-source { color: var(--accent); border-color: rgba(108, 99, 255, 0.3); }
-.tag.tag-domain { color: var(--success); border-color: rgba(78, 205, 196, 0.3); }
-.tag.tag-type { color: var(--newsletter); border-color: rgba(6, 182, 212, 0.3); }
-.tag.tag-difficulty { color: var(--warning); border-color: rgba(255, 217, 61, 0.3); }
+.tag.tag-source { color: var(--accent); border-color: rgba(59, 130, 246, 0.3); }
+.tag.tag-domain { color: var(--success); border-color: rgba(52, 211, 153, 0.3); }
+.tag.tag-type { color: var(--newsletter); border-color: rgba(34, 211, 238, 0.3); }
+.tag.tag-difficulty { color: var(--warning); border-color: rgba(251, 191, 36, 0.3); }
 .tag.tag-keyword { color: var(--text-secondary); }
 
 /* ── Summary Sections ─────────────────────────────────────────────── */
