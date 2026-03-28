@@ -447,19 +447,21 @@ a:hover {
 
 .source-badge {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.3rem 0.85rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.25rem 0.7rem;
     border-radius: 999px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    border: 1px solid;
 }
 
-.source-badge.youtube { color: #fff; background: var(--youtube); }
-.source-badge.github { color: #fff; background: var(--github); }
-.source-badge.reddit { color: #fff; background: var(--reddit); }
-.source-badge.newsletter { color: var(--text-inverted); background: var(--newsletter); }
-.source-badge.generic { color: #fff; background: var(--generic); }
+/* Muted outline badges — shadcn-style for dark theme */
+.source-badge.youtube { color: hsl(355, 45%, 68%); border-color: hsla(355, 45%, 68%, 0.25); background: hsla(355, 45%, 68%, 0.08); }
+.source-badge.github { color: hsl(260, 30%, 72%); border-color: hsla(260, 30%, 72%, 0.25); background: hsla(260, 30%, 72%, 0.08); }
+.source-badge.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.08); }
+.source-badge.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
+.source-badge.generic { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
 
 .result-meta {
     display: flex;
@@ -482,13 +484,11 @@ a:hover {
 }
 
 .result-oneliner {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    font-size: 0.875rem;
+    color: var(--text-muted);
     margin-bottom: 1.25rem;
-    font-style: italic;
+    font-style: normal;
     line-height: 1.5;
-    border-left: 2px solid var(--accent-muted);
-    padding-left: 0.75rem;
 }
 
 /* ── Tags ─────────────────────────────────────────────────────────── */
@@ -516,10 +516,9 @@ a:hover {
     background: var(--bg-elevated);
 }
 
-.tag.tag-source { color: var(--accent); border-color: hsla(172, 66%, 50%, 0.2); }
-.tag.tag-domain { color: var(--success); border-color: hsla(160, 60%, 52%, 0.2); }
-.tag.tag-type { color: var(--newsletter); border-color: hsla(190, 80%, 56%, 0.2); }
-.tag.tag-difficulty { color: var(--warning); border-color: hsla(38, 92%, 60%, 0.2); }
+/* Muted tag colors — consistent with shadcn dark slate */
+.tag.tag-domain { color: hsl(160, 35%, 58%); border-color: hsla(160, 35%, 58%, 0.2); }
+.tag.tag-type { color: hsl(205, 35%, 62%); border-color: hsla(205, 35%, 62%, 0.2); }
 .tag.tag-keyword { color: var(--text-secondary); }
 
 /* ── Summary Sections ─────────────────────────────────────────────── */

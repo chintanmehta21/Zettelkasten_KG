@@ -119,17 +119,24 @@
 
   function renderTags(tags) {
     resultTags.innerHTML = '';
-    tags.forEach(function (tag) {
-      var el = document.createElement('span');
-      el.className = 'tag';
-      // Add category class
-      var category = tag.split('/')[0];
-      if (['source', 'domain', 'type', 'difficulty', 'keyword'].indexOf(category) !== -1) {
-        el.classList.add('tag-' + category);
-      }
-      el.textContent = tag;
-      resultTags.appendChild(el);
-    });
+    tags
+      .filter(function (tag) {
+        // Filter out noisy/redundant tags
+        if (tag.startsWith('source/')) return false;
+        if (tag.startsWith('status/')) return false;
+        if (tag === 'difficulty/Unknown') return false;
+        return true;
+      })
+      .forEach(function (tag) {
+        var el = document.createElement('span');
+        el.className = 'tag';
+        var category = tag.split('/')[0];
+        if (['domain', 'type', 'keyword'].indexOf(category) !== -1) {
+          el.classList.add('tag-' + category);
+        }
+        el.textContent = tag;
+        resultTags.appendChild(el);
+      });
   }
 
   function showResult(data) {
@@ -140,9 +147,9 @@
     resultSource.textContent = data.source_type;
     resultSource.className = 'source-badge ' + data.source_type;
 
-    // Meta
-    resultTokens.textContent = data.tokens_used ? data.tokens_used + ' tokens' : '';
-    resultLatency.textContent = data.latency_ms ? (data.latency_ms / 1000).toFixed(1) + 's' : '';
+    // Hide token/latency meta — not useful for end users
+    resultTokens.textContent = '';
+    resultLatency.textContent = '';
 
     // Title & one-liner
     resultTitle.textContent = data.title || 'Untitled';
