@@ -2,14 +2,35 @@ name: Keep Render Alive
 
 on:
   schedule:
-    # Ping every 14 minutes (GitHub cron minimum is 5 min, but may drift)
-    - cron: '*/14 * * * *'
+    # Primary: every 5 minutes. GitHub Actions cron drifts 2-15 min, so actual
+    # gaps may be 8-20 min. The double-ping strategy below compensates.
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render service
+      # First ping — wakes the server if cold, confirms alive if warm
+      - name: Ping 1 — health check
         run: |
-          curl -sf --max-time 60 "${{ secrets.RENDER_URL }}" || echo "Ping failed, service may be starting"
+          echo "$(date -u '+%H:%M:%S') Ping 1..."
+          curl -sf --max-time 120 "${{ secrets.RENDER_URL }}/api/health" \
+            && echo " OK" \
+            || echo " Failed (server may be waking)"
+
+      # Wait 7 minutes, then ping again. This guarantees two pings per run,
+      # spaced ~7 min apart. Combined with the next run (even if cron drifts
+      # to 12-15 min), the maximum gap between any two pings is ~8 min —
+      # well under Render's 15-min idle shutdown threshold.
+      - name: Wait 7 minutes
+        run: sleep 420
+
+      # Second ping — catches cases where the first ping triggered a wake-up
+      # that hadn't completed, and resets Render's idle timer again
+      - name: Ping 2 — keep-alive
+        run: |
+          echo "$(date -u '+%H:%M:%S') Ping 2..."
+          curl -sf --max-time 120 "${{ secrets.RENDER_URL }}/api/health" \
+            && echo " OK" \
+            || echo " Failed"

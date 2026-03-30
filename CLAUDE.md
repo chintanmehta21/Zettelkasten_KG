@@ -112,11 +112,21 @@ To add a new source: (1) add enum value to `SourceType` in `models/capture.py`, 
 
 ### Web UI (`website/`)
 
-FastAPI app mounted alongside the bot in webhook mode. Two main pages: a URL summarizer at `/` and a 3D knowledge graph visualizer at `/knowledge-graph`.
+FastAPI app mounted alongside the bot in webhook mode. Two main pages: a URL summarizer at `/` and a 3D knowledge graph visualizer at `/knowledge-graph`. Mobile browsers auto-redirect to `/m/` (detected via user-agent regex in `website/app.py`).
 
-- `website/api/routes.py` — `POST /api/summarize` with in-memory rate limiting (10 req/min per IP); `GET /api/health` (used by Render health checks)
+- `website/api/routes.py` — `POST /api/summarize` with in-memory rate limiting (10 req/min per IP); `GET /api/graph` returns KG data (Supabase-first with 30s TTL cache, file-store fallback); `GET /api/health` (used by Render health checks)
 - `website/core/pipeline.py` — reuses the bot's extraction/summarization pipeline but is **stateless**: no disk writes, no dedup updates. Returns a structured dict with title, summary, tags, latency_ms, etc.
 - `website/core/graph_store.py` — thread-safe in-memory store backed by `website/knowledge_graph/content/graph.json`. Auto-links new nodes to existing ones based on shared normalized tags. Node IDs use source-type prefixes (`yt-`, `gh-`, `rd-`, `ss-`, `md-`, `web-`) + slugified title.
+
+#### Supabase Knowledge Graph (`website/core/supabase_kg/`)
+
+Optional Supabase-backed KG that replaces the file-based `graph.json` store. When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set (`is_supabase_configured()` returns True), the API dual-writes: every `POST /api/summarize` writes to both the file store and Supabase, and `GET /api/graph` reads from Supabase first.
+
+- `client.py` — Supabase client init via `get_supabase_client()`, gated by `is_supabase_configured()`
+- `models.py` — Pydantic models: `KGNode`, `KGLink`, `KGUser`, `KGGraph` (with Create variants)
+- `repository.py` — `KGRepository` with CRUD: `get_or_create_user()`, `add_node()`, `node_exists()`, `get_graph()`
+- Schema: `supabase/website_kg/schema.sql` (tables: `kg_users`, `kg_nodes`, `kg_links`)
+- Migration: `python scripts/migrate_graph_to_supabase.py` — migrates `graph.json` data to Supabase (requires `supabase/.env` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`)
 
 ### URL Utilities (`utils/url_utils.py`)
 

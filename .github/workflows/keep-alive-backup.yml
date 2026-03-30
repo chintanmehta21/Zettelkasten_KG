@@ -1,0 +1,25 @@
+name: Keep Render Alive (Backup)
+
+# Redundant keep-alive offset by 2 minutes from the primary workflow.
+# If the primary workflow drifts or fails, this catches the gap.
+# Two independent workflows with double-ping = ~4 pings per 10-15 min window.
+
+on:
+  schedule:
+    - cron: '2/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping 1
+        run: |
+          curl -sf --max-time 120 "${{ secrets.RENDER_URL }}/api/health" || true
+
+      - name: Wait 7 minutes
+        run: sleep 420
+
+      - name: Ping 2
+        run: |
+          curl -sf --max-time 120 "${{ secrets.RENDER_URL }}/api/health" || true

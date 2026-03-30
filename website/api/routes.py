@@ -11,8 +11,29 @@ from pydantic import BaseModel, field_validator
 
 from website.core.pipeline import summarize_url
 from website.core.graph_store import add_node, get_graph
+from website.core.supabase_kg import is_supabase_configured, KGRepository, KGNodeCreate
 
 logger = logging.getLogger("website.api")
+
+# Lazy-init Supabase repository + user ID (only when Supabase is configured)
+_supabase_repo: KGRepository | None = None
+_supabase_user_id: str | None = None
+
+
+def _get_supabase() -> tuple[KGRepository, str] | None:
+    """Return (repo, user_id) if Supabase is configured, else None."""
+    global _supabase_repo, _supabase_user_id
+    if not is_supabase_configured():
+        return None
+    if _supabase_repo is None:
+        try:
+            _supabase_repo = KGRepository()
+            user = _supabase_repo.get_or_create_user("default-web-user", display_name="Web User")
+            _supabase_user_id = str(user.id)
+        except Exception as exc:
+            logger.warning("Supabase init failed, falling back to file store: %s", exc)
+            return None
+    return _supabase_repo, _supabase_user_id
 
 router = APIRouter(prefix="/api")
 
@@ -20,6 +41,11 @@ router = APIRouter(prefix="/api")
 _rate_store: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10  # requests per minute
 _RATE_WINDOW = 60  # seconds
+
+# In-memory graph cache (30-second TTL)
+_graph_cache: dict | None = None
+_graph_cache_ts: float = 0
+_GRAPH_CACHE_TTL = 30  # seconds
 
 
 class SummarizeRequest(BaseModel):
@@ -56,8 +82,30 @@ async def health():
 
 @router.get("/graph")
 async def graph_data():
-    """Return the current knowledge graph (includes runtime-added nodes)."""
-    return get_graph()
+    """Return the knowledge graph — cached Supabase if configured, else file store."""
+    global _graph_cache, _graph_cache_ts
+
+    now = time.time()
+    if _graph_cache is not None and (now - _graph_cache_ts) < _GRAPH_CACHE_TTL:
+        return _graph_cache
+
+    sb = _get_supabase()
+    if sb:
+        repo, user_id = sb
+        try:
+            from uuid import UUID
+            graph = repo.get_graph(UUID(user_id))
+            result = graph.model_dump()
+            _graph_cache = result
+            _graph_cache_ts = now
+            return result
+        except Exception as exc:
+            logger.warning("Supabase graph fetch failed, falling back: %s", exc)
+
+    result = get_graph()
+    _graph_cache = result
+    _graph_cache_ts = now
+    return result
 
 
 @router.post("/summarize")
@@ -74,7 +122,7 @@ async def summarize(body: SummarizeRequest, request: Request):
     try:
         result = await summarize_url(body.url)
 
-        # Add to knowledge graph
+        # Add to knowledge graph — file store (always) + Supabase (if configured)
         try:
             node_id = add_node(
                 title=result["title"],
@@ -85,7 +133,35 @@ async def summarize(body: SummarizeRequest, request: Request):
             )
             result["node_id"] = node_id
         except Exception as kg_err:
-            logger.warning("Failed to add node to KG: %s", kg_err)
+            logger.warning("Failed to add node to file KG: %s", kg_err)
+
+        # Dual-write to Supabase
+        sb = _get_supabase()
+        if sb:
+            repo, user_id = sb
+            try:
+                import re
+                from uuid import UUID
+                from website.core.graph_store import _SOURCE_PREFIX
+
+                prefix = _SOURCE_PREFIX.get(result["source_type"], "web")
+                slug = re.sub(r"[^a-z0-9]+", "-", result["title"].lower()).strip("-")[:24].rstrip("-")
+                sb_node_id = f"{prefix}-{slug}"
+
+                node_create = KGNodeCreate(
+                    id=sb_node_id,
+                    name=result["title"],
+                    source_type=result["source_type"],
+                    tags=result.get("tags", []),
+                    url=result["source_url"],
+                    summary=result.get("brief_summary") or result["summary"][:200],
+                )
+                if not repo.node_exists(UUID(user_id), result["source_url"]):
+                    repo.add_node(UUID(user_id), node_create)
+                    _graph_cache = None  # invalidate cache
+                    logger.info("Added node %s to Supabase", sb_node_id)
+            except Exception as sb_err:
+                logger.warning("Failed to add node to Supabase: %s", sb_err)
 
         return result
     except Exception as exc:
