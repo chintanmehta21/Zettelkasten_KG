@@ -1,15 +1,15 @@
 # KG Intelligence Layer — Native Design Spec
 
 **Date**: 2026-03-30
-**Status**: Draft — pending user approval
+**Status**: Draft v2 — pending user approval
 **Approach**: B (Native Stack) — zero LangChain, zero Neo4j
-**Research basis**: 17 subagents, 3 rounds, source code analysis of LLMGraphTransformer + GraphCypherQAChain
+**Research basis**: 17 research subagents + 5 review subagents, source code analysis of LLMGraphTransformer + GraphCypherQAChain
 
 ---
 
 ## Executive Summary
 
-Add five intelligence capabilities to the existing Supabase-backed knowledge graph without introducing LangChain, Neo4j, or any heavy framework. The design replaces every LangChain KG feature with a native equivalent that is either superior or equivalent, using only tools already in the stack plus two lightweight additions (`networkx`, `numpy`).
+Add six intelligence capabilities to the existing Supabase-backed knowledge graph without introducing LangChain, Neo4j, or any heavy framework. The design replaces every LangChain KG feature with a native equivalent that is either superior or equivalent, using only tools already in the stack plus two lightweight additions (`networkx`, `numpy`).
 
 **Performance envelope (hard constraints):**
 - `GET /api/graph` — under **2 seconds** (currently ~150ms via `kg_graph_view`)
@@ -18,7 +18,7 @@ Add five intelligence capabilities to the existing Supabase-backed knowledge gra
 - Backend must remain featherweight for mobile web (no heavy imports on cold start)
 
 **New dependencies:**
-- `networkx>=3.2` (~1.5MB, pure Python, no C extensions)
+- `networkx>=3.2` (~1.5MB, pure Python, no C extensions; Louvain built-in since v2.7)
 - `numpy>=1.26` (~15MB, already an indirect dep of several packages)
 
 ---
@@ -27,191 +27,121 @@ Add five intelligence capabilities to the existing Supabase-backed knowledge gra
 
 ```
                      POST /api/summarize
-                            │
-              ┌─────────────┴──────────────┐
-              ▼                             ▼
-     Existing Pipeline              New Intelligence Layer
-     ─────────────────              ──────────────────────
-     extract content                M1: Entity Extraction
-     Gemini summarize        ──►    M2: Embedding Generation
-     tag generation                 M3: Semantic Auto-Link
-     write note                     M4: Graph Analytics (cached)
-              │                             │
-              └─────────────┬──────────────┘
-                            ▼
+                            |
+              +-------------+-------------+
+              v                           v
+     Existing Pipeline            New Intelligence Layer
+     -----------------            ----------------------
+     extract content              M1: Entity Extraction
+     Gemini summarize      -->    M2: Embedding Generation
+     tag generation               M3: Semantic Auto-Link
+     write note                   M4: Graph Analytics (cached)
+              |                           |
+              +-----------+---------------+
+                          v
                      Supabase KG
                  (kg_nodes + kg_links)
-                            │
-              ┌─────────────┴──────────────┐
-              ▼                             ▼
-     GET /api/graph                 New Query Endpoints
-     (existing, + enriched)         ─────────────────────
-     PageRank, community            M5: NL Graph Query
-     labels in response             M6: Graph Traversal RPCs
-                                    M7: Hybrid Retrieval
+                          |
+              +-----------+--------------+
+              v                          v
+     GET /api/graph               New Query Endpoints
+     (existing, + enriched)       ---------------------
+     PageRank, community          M5: NL Graph Query
+     labels in response           M6: Graph Traversal RPCs
+                                  M7: Hybrid Retrieval
 ```
 
 **Modules (parallelizable for implementation):**
 
 | Module | Name | Files Touched | Can Parallel? |
 |--------|------|---------------|---------------|
-| M1 | Entity-Relationship Extraction | new: `website/core/supabase_kg/entity_extractor.py` | Yes |
-| M2 | Semantic Embeddings (pgvector) | new: `website/core/supabase_kg/embeddings.py`, schema migration | Yes |
-| M3 | Graph Intelligence (NetworkX) | new: `website/core/supabase_kg/analytics.py`, modify: `routes.py`, `app.js` | After M2 |
-| M4 | NL Graph Query (Text-to-SQL) | new: `website/core/supabase_kg/nl_query.py`, new route | Yes |
+| M1 | Entity-Relationship Extraction | new: `entity_extractor.py` | Yes |
+| M2 | Semantic Embeddings (pgvector) | new: `embeddings.py`, schema migration | Yes |
+| M3 | Graph Intelligence (NetworkX) | new: `analytics.py`, modify: `routes.py`, `app.js` | After M2 |
+| M4 | NL Graph Query (Text-to-SQL) | new: `nl_query.py`, new route | Yes |
 | M5 | Graph Traversal RPCs | new: SQL migration, modify: `repository.py` | Yes |
-| M6 | Hybrid Retrieval | new: `website/core/supabase_kg/retrieval.py`, new route | After M2 + M5 |
+| M6 | Hybrid Retrieval | new: `retrieval.py`, new route | After M2 + M5 |
+
+All new Python files live under `website/core/supabase_kg/`.
 
 ---
 
-## Module M1: Entity-Relationship Extraction
+## Schema Migration: `supabase/website_kg/002_add_intelligence.sql`
 
-### What LangChain Does (Benchmark)
-
-LLMGraphTransformer (`langchain-experimental`):
-- System prompt: "You are a top-tier algorithm for extracting information in structured formats"
-- Dynamic Pydantic schema generation with `allowed_nodes` / `allowed_relationships`
-- Two modes: tool-calling (structured output) and prompt-based (JSON parse + `json_repair`)
-- Post-processing: title-case IDs, uppercase relationship types, camelCase properties
-- Strict-mode filtering against allowed type lists
-- Entity dedup: exact `(id, type)` set — **no fuzzy matching**
-- Single-pass only, no gleaning, no coreference resolution beyond prompt instructions
-- 5 trivial few-shot examples (Adam/Microsoft scenario)
-
-### What We Build (Superior)
-
-A native entity extractor using Gemini structured output with techniques borrowed from Microsoft GraphRAG and KGGen that LLMGraphTransformer lacks.
-
-**Key advantages over LangChain:**
-1. **Two-step extraction** — free-form analysis first, then structured formatting (+13% accuracy per CleanLab benchmark)
-2. **Gleaning loop** — multi-pass "did you miss anything?" pattern (up to 2x entity recall per GraphRAG paper)
-3. **Embedding-based entity dedup** — cosine similarity at 0.90 threshold (vs LangChain's exact-match-only)
-4. **Relationship strength scoring** — 1-10 numeric weight (LangChain has none)
-5. **Entity descriptions** — rich descriptions per entity (LangChain has none)
-6. **Domain-specific prompt** — tailored to tech articles, not generic
-
-### File: `website/core/supabase_kg/entity_extractor.py`
-
-**Classes:**
-- `ExtractedEntity(BaseModel)`: `id: str`, `type: str`, `description: str`
-- `ExtractedRelationship(BaseModel)`: `source: str`, `target: str`, `type: str`, `strength: int` (1-10), `description: str`
-- `ExtractionResult(BaseModel)`: `entities: list[ExtractedEntity]`, `relationships: list[ExtractedRelationship]`
-- `EntityExtractor`: Main class, takes Gemini client + optional config
-
-**Configuration:**
-```python
-@dataclass
-class ExtractionConfig:
-    allowed_entity_types: list[str] = field(default_factory=lambda: [
-        "Technology", "Concept", "Tool", "Language", "Framework",
-        "Person", "Organization", "Pattern", "Algorithm", "Platform",
-    ])
-    allowed_relationship_types: list[str] = field(default_factory=lambda: [
-        "USES", "IMPLEMENTS", "EXTENDS", "PART_OF", "CREATED_BY",
-        "RELATED_TO", "ALTERNATIVE_TO", "DEPENDS_ON", "INSPIRED_BY",
-    ])
-    max_gleanings: int = 1        # 0 = single-pass, 1 = one extra pass
-    enable_entity_dedup: bool = True
-    dedup_similarity_threshold: float = 0.90
-    model: str = "gemini-2.5-flash"
-```
-
-**Extraction pipeline (3 steps):**
-
-**Step 1 — Free-form analysis** (avoids structured output reasoning degradation):
-```
-System: You are an expert at analyzing technical content and identifying
-entities (technologies, concepts, tools, people, organizations) and
-their relationships. Analyze the following content thoroughly.
-
-User: Identify ALL entities and relationships in this content. For each
-entity, provide its name, type, and a one-sentence description. For
-each relationship, provide source, target, type, strength (1-10), and
-a brief description. Think step by step.
-
-TITLE: {title}
-CONTENT: {summary}
-```
-
-**Step 2 — Structured formatting** (Gemini `response_json_schema`):
-```
-System: Convert the analysis into the exact JSON schema provided.
-Use ONLY these entity types: {allowed_entity_types}
-Use ONLY these relationship types: {allowed_relationship_types}
-
-User: {free_form_analysis_from_step_1}
-```
-
-JSON schema enforced via `response_mime_type="application/json"` + `response_schema` parameter. Schema defined as Pydantic model, converted via `model_json_schema()`.
-
-**Step 3 — Gleaning loop** (optional, `max_gleanings >= 1`):
-```
-System: Review the extraction. MANY entities and relationships were
-missed in the previous extraction. Add any additional entities and
-relationships found in the original content below.
-
-User: Original content: {summary}
-Already extracted: {step_2_result}
-Add ONLY new entities and relationships not already captured.
-```
-
-After gleaning response, merge results. If the LLM returns nothing new, stop.
-
-**Post-processing:**
-1. Normalize entity IDs: lowercase, strip special chars, use most complete form
-2. Normalize relationship types: UPPER_SNAKE_CASE
-3. Deduplicate entities:
-   - Exact match on normalized ID → merge
-   - If `enable_entity_dedup` and embeddings available: embed entity names, merge pairs with cosine similarity > `dedup_similarity_threshold`
-4. Validate against allowed types (case-insensitive), drop non-conforming
-5. Drop entities without IDs, relationships without source/target
-
-**Integration point:** Called from `routes.py` `/api/summarize` AFTER `summarize_url()` returns. Entity extraction runs on the `brief_summary` field (200-500 tokens, well within context window — no chunking needed).
-
-**Latency budget:** Step 1 (~1.5s) + Step 2 (~1s) + Step 3 gleaning (~1.5s if enabled) = **~4s total** with gleaning, ~2.5s without. This runs in parallel with the embedding generation (M2), so net impact on the workflow is the max of (M1, M2) ≈ 4s.
-
-**Graceful degradation:** If entity extraction fails (rate limit, timeout), the summarize endpoint returns normally without entities — existing tag-based linking still works. Entities are additive, never blocking.
-
-### Tests for M1
-
-**Test 1 — `test_entity_extraction_basic`**: Mock Gemini responses. Feed a tech article summary mentioning Python, TensorFlow, and Google. Assert: 3 entities extracted with correct types, at least 1 relationship, all types within allowed lists.
-
-**Test 2 — `test_entity_extraction_gleaning`**: Mock first Gemini call returning 2 entities, gleaning call returning 1 more. Assert: final result has 3 entities. Verify gleaning prompt includes previously extracted entities.
-
-**Test 3 — `test_entity_dedup_embedding`**: Create two entities "JavaScript" and "JS" with mock embeddings having 0.95 cosine similarity. Assert: they merge into a single canonical entity. Create "Python" and "React" with 0.3 similarity. Assert: they remain separate.
-
----
-
-## Module M2: Semantic Embeddings (pgvector)
-
-### What LangChain Does (Benchmark)
-
-`SupabaseVectorStore` (`langchain-community`):
-- Wraps pgvector with LangChain's document abstraction
-- Requires `documents` table and `match_documents` RPC function
-- Supports similarity search with metadata filtering
-- Just a thin wrapper — no algorithmic value over direct pgvector
-
-### What We Build (Equivalent, Zero Framework Overhead)
-
-Direct Gemini embeddings + pgvector in Supabase. No wrapper, no extra package.
-
-### Schema Migration: `supabase/website_kg/002_add_embeddings.sql`
+Consolidated migration for M1, M2, M5, M6 (run once):
 
 ```sql
--- Enable pgvector
-CREATE EXTENSION IF NOT EXISTS vector;
+-- ============================================================================
+-- KG Intelligence Layer — Schema Migration
+-- Adds: pgvector embeddings, link weights, fulltext search, graph RPCs
+-- ============================================================================
 
--- Add embedding column to existing kg_nodes
+-- 1. pgvector extension + embedding column
+CREATE EXTENSION IF NOT EXISTS vector;
 ALTER TABLE kg_nodes ADD COLUMN IF NOT EXISTS embedding vector(768);
 
--- HNSW index for fast cosine similarity (only needed at >1K nodes)
--- Start without index; add when node count exceeds 1000
+-- 2. Link enhancements for M1 entity extraction
+ALTER TABLE kg_links ADD COLUMN IF NOT EXISTS weight INTEGER DEFAULT NULL
+    CHECK (weight IS NULL OR (weight BETWEEN 1 AND 10));
+ALTER TABLE kg_links ADD COLUMN IF NOT EXISTS link_type TEXT DEFAULT 'tag'
+    CHECK (link_type IN ('tag', 'semantic', 'entity'));
+ALTER TABLE kg_links ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
+
+-- 3. Full-text search for M6 hybrid retrieval
+ALTER TABLE kg_nodes ADD COLUMN IF NOT EXISTS fts tsvector
+    GENERATED ALWAYS AS (
+        to_tsvector('english', coalesce(name, '') || ' ' || coalesce(summary, ''))
+    ) STORED;
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_fts ON kg_nodes USING GIN (fts);
+
+-- NOTE: HNSW index deferred until >5K nodes. Sequential scan is fast enough
+-- for <10K vectors (~10ms). HNSW wins at scale (40.5 QPS at 0.998 recall
+-- vs 2.6 QPS for IVFFlat). Params: m=16, ef_construction=64 for <10K.
 -- CREATE INDEX idx_kg_nodes_embedding
 --     ON kg_nodes USING hnsw (embedding vector_cosine_ops)
 --     WITH (m = 16, ef_construction = 64);
 
--- Similarity search RPC function
+-- 4. Update kg_graph_view to include new fields
+CREATE OR REPLACE VIEW kg_graph_view AS
+SELECT
+    u.id AS user_id,
+    jsonb_build_object(
+        'nodes',
+        COALESCE(
+            (SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id',      n.id,
+                    'name',    n.name,
+                    'group',   n.source_type,
+                    'summary', n.summary,
+                    'tags',    n.tags,
+                    'url',     n.url,
+                    'date',    COALESCE(n.node_date::text, '')
+                )
+            )
+            FROM kg_nodes n WHERE n.user_id = u.id),
+            '[]'::jsonb
+        ),
+        'links',
+        COALESCE(
+            (SELECT jsonb_agg(
+                jsonb_build_object(
+                    'source',    l.source_node_id,
+                    'target',    l.target_node_id,
+                    'relation',  l.relation,
+                    'weight',    l.weight,
+                    'link_type', l.link_type
+                )
+            )
+            FROM kg_links l WHERE l.user_id = u.id),
+            '[]'::jsonb
+        )
+    ) AS graph_data
+FROM kg_users u;
+
+-- 5. Similarity search RPC (M2)
+-- IMPORTANT: PostgREST (supabase-py) does NOT support pgvector operators
+-- (<=>). All similarity queries MUST go through RPC functions.
 CREATE OR REPLACE FUNCTION match_kg_nodes(
     query_embedding vector(768),
     match_threshold float DEFAULT 0.75,
@@ -219,25 +149,12 @@ CREATE OR REPLACE FUNCTION match_kg_nodes(
     target_user_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
-    id text,
-    name text,
-    source_type text,
-    summary text,
-    tags text[],
-    url text,
-    similarity float
+    id text, name text, source_type text, summary text,
+    tags text[], url text, similarity float
 )
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
 AS $$
-    SELECT
-        n.id,
-        n.name,
-        n.source_type,
-        n.summary,
-        n.tags,
-        n.url,
+    SELECT n.id, n.name, n.source_type, n.summary, n.tags, n.url,
         1 - (n.embedding <=> query_embedding) AS similarity
     FROM public.kg_nodes n
     WHERE (target_user_id IS NULL OR n.user_id = target_user_id)
@@ -247,371 +164,9 @@ AS $$
     LIMIT least(match_count, 200);
 $$;
 
-REVOKE EXECUTE ON FUNCTION match_kg_nodes FROM public, anon;
-GRANT EXECUTE ON FUNCTION match_kg_nodes TO authenticated, service_role;
-```
-
-### File: `website/core/supabase_kg/embeddings.py`
-
-**Functions:**
-- `generate_embedding(text: str, task_type: str = "SEMANTIC_SIMILARITY") -> list[float]`
-  - Uses existing `genai.Client` from `google-genai` SDK
-  - Model: `gemini-embedding-001`
-  - Dimensions: 768 (via `output_dimensionality` MRL truncation)
-  - L2-normalizes the truncated vector: `embedding / np.linalg.norm(embedding)`
-  - Rate-limit handling: reuses `_is_rate_limited()` pattern from `summarizer.py`
-  - Returns empty list on failure (graceful degradation)
-
-- `generate_embeddings_batch(texts: list[str], task_type: str = "SEMANTIC_SIMILARITY") -> list[list[float]]`
-  - Batch API: up to 250 texts per call
-  - For backfill script usage
-
-- `find_similar_nodes(repo: KGRepository, user_id: UUID, embedding: list[float], threshold: float = 0.75, limit: int = 10) -> list[dict]`
-  - Calls `match_kg_nodes` Supabase RPC function
-  - Returns list of `{id, name, source_type, similarity}` dicts
-
-**Integration into `routes.py` `/api/summarize`:**
-
-After `summarize_url()` returns and before `repo.add_node()`:
-1. Generate embedding from `brief_summary` text (~200ms)
-2. Pass embedding to `KGNodeCreate` (new optional field: `embedding: list[float] | None`)
-3. After node insert, call `find_similar_nodes()` with the new embedding
-4. Create semantic links for matches above threshold that don't already have tag-based links
-5. Semantic links use `relation = "semantic"` to distinguish from tag-based links
-
-**Updated `KGNodeCreate` model:**
-```python
-class KGNodeCreate(BaseModel):
-    id: str
-    name: str
-    source_type: str
-    summary: str | None = None
-    tags: list[str] = Field(default_factory=list)
-    url: str
-    node_date: date | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    embedding: list[float] | None = None  # NEW: 768-dim vector
-```
-
-**Updated `repository.py` `add_node()`:**
-- Include `embedding` in the INSERT payload if present
-- After `_auto_link()` (tag-based), call `_semantic_link()` (embedding-based)
-- `_semantic_link()`: calls `match_kg_nodes` RPC, creates links for similarity > 0.75 that don't already exist as tag links
-
-**Latency budget:** Embedding generation ~200ms. Similarity search via pgvector ~10ms (sequential scan at <1K nodes). Total: **~250ms**. Runs in parallel with M1 entity extraction.
-
-**Backfill script:** `scripts/backfill_embeddings.py`
-- Reads all nodes missing embeddings: `SELECT id, summary FROM kg_nodes WHERE embedding IS NULL`
-- Batches of 50 (Gemini batch limit per request for safe rate-limiting)
-- Generates embeddings, updates rows
-- Reports progress: `Embedded 50/300 nodes...`
-
-### Tests for M2
-
-**Test 1 — `test_generate_embedding`**: Mock `genai.Client.models.embed_content()`. Assert: returns list of 768 floats. Assert: result is L2-normalized (norm ≈ 1.0).
-
-**Test 2 — `test_semantic_link_creation`**: Create two nodes with embeddings having 0.85 cosine similarity. Call `_semantic_link()`. Assert: a link with `relation="semantic"` is created between them. Create a third node with 0.5 similarity. Assert: no link created.
-
-**Test 3 — `test_embedding_graceful_degradation`**: Mock Gemini API to raise `ClientError(429)`. Assert: `generate_embedding()` returns empty list. Assert: node is still created without embedding. Assert: no crash in the summarize pipeline.
-
----
-
-## Module M3: Graph Intelligence (NetworkX)
-
-### What LangChain Does (Benchmark)
-
-LangChain provides **zero** graph algorithm capabilities. No PageRank, no community detection, no centrality. This module has no LangChain equivalent — it's a net-new capability.
-
-Neo4j's Graph Data Science library provides 70+ algorithms, but requires a Neo4j database. NetworkX provides the same algorithms for in-memory graphs, which is sufficient at <10K nodes.
-
-### What We Build
-
-Server-side graph analytics computed on cache refresh, results included in the `/api/graph` response for frontend visualization.
-
-### File: `website/core/supabase_kg/analytics.py`
-
-**Function: `compute_graph_metrics(graph: KGGraph) -> GraphMetrics`**
-
-```python
-@dataclass
-class GraphMetrics:
-    """Pre-computed graph metrics for frontend consumption."""
-    pagerank: dict[str, float]        # node_id -> score
-    communities: dict[str, int]       # node_id -> community_id
-    betweenness: dict[str, float]     # node_id -> centrality score
-    closeness: dict[str, float]       # node_id -> centrality score
-    num_communities: int
-    num_components: int
-    computed_at: str                   # ISO timestamp
-```
-
-**Pipeline:**
-1. Build `nx.Graph()` from `KGGraph.nodes` + `KGGraph.links`
-2. Skip computation if graph has < 3 nodes (return empty metrics)
-3. Compute in order (all sub-5ms at 1K nodes):
-   - `nx.pagerank(G, alpha=0.85)` → node importance for sizing
-   - `nx.community.louvain_communities(G, resolution=1.0)` → topic clusters
-   - `nx.betweenness_centrality(G)` → bridge nodes
-   - `nx.closeness_centrality(G)` → well-connected nodes
-   - `nx.number_connected_components(G)` → isolated clusters
-4. Return `GraphMetrics` dataclass
-
-**Integration into `routes.py` `/api/graph`:**
-
-Modify `graph_data()` to compute metrics alongside graph fetch:
-
-```python
-@router.get("/graph")
-async def graph_data():
-    # ... existing cache logic ...
-    graph = repo.get_graph(UUID(user_id))
-    metrics = compute_graph_metrics(graph)
-
-    result = graph.model_dump()
-    # Enrich nodes with metrics
-    for node in result["nodes"]:
-        nid = node["id"]
-        node["pagerank"] = metrics.pagerank.get(nid, 0)
-        node["community"] = metrics.communities.get(nid, 0)
-        node["betweenness"] = metrics.betweenness.get(nid, 0)
-    result["meta"] = {
-        "communities": metrics.num_communities,
-        "components": metrics.num_components,
-        "computed_at": metrics.computed_at,
-    }
-    # ... cache and return ...
-```
-
-**Frontend changes (`app.js`):**
-
-1. **Node sizing** — replace degree-based sizing with PageRank:
-   ```javascript
-   // Current (app.js ~line 206):
-   // const deg = nodeDegrees[node.id] || 1;
-   // const baseRadius = Math.min(2 + deg * 0.3, 5);
-
-   // New:
-   const pr = node.pagerank || 0;
-   const maxPr = Math.max(...graphData.nodes.map(n => n.pagerank || 0), 0.001);
-   const baseRadius = 2 + (pr / maxPr) * 4; // 2-6 range
-   ```
-
-2. **Community color overlay** — add a thin ring around each node in the community color:
-   - Keep source-type fill colors (amber for YouTube, teal for GitHub, etc.)
-   - Add a `SpriteText` ring or border using a community-indexed palette
-   - Community palette: 10 distinct colors, cycling for > 10 communities
-
-**Latency budget:** All algorithms combined take ~1-5ms at 1K nodes. This runs once per 30s cache refresh cycle. **Zero additional latency** on cache hits. On cache miss: adds ~5ms to the Supabase fetch round-trip (~150ms), negligible.
-
-### Tests for M3
-
-**Test 1 — `test_compute_metrics_basic`**: Create a KGGraph with 5 nodes and 6 links forming a triangle + chain. Assert: all nodes have pagerank > 0, at least 1 community detected, betweenness values exist for all nodes.
-
-**Test 2 — `test_compute_metrics_empty_graph`**: Pass empty KGGraph (0 nodes). Assert: returns empty metrics without crashing. Pass KGGraph with 1 node and 0 links. Assert: returns metrics with pagerank = {node: 1.0}, 1 community, 1 component.
-
-**Test 3 — `test_graph_response_enrichment`**: Mock `get_graph()` to return a test graph. Call `GET /api/graph`. Assert: response nodes contain `pagerank`, `community`, `betweenness` fields. Assert: response contains `meta.communities` and `meta.components`.
-
----
-
-## Module M4: Natural Language Graph Query (Text-to-SQL)
-
-### What LangChain Does (Benchmark)
-
-GraphCypherQAChain (`langchain-neo4j`):
-- Auto-introspects Neo4j schema via APOC `apoc.meta.data()`
-- Prompt: "Generate Cypher statement to query a graph database. Schema: {schema}. Question: {question}"
-- `CypherQueryCorrector`: regex-based relationship direction fixer (direction only, not syntax)
-- Executes Cypher, formats response with second LLM call
-- **No error recovery** — raises on Cypher execution failure
-- **Known SQL injection vulnerability** (CVE-2024-8309)
-- Requires Neo4j (not available on Supabase)
-
-### What We Build (More Robust)
-
-A native NL-to-SQL pipeline using Gemini + Supabase RPC with:
-- Schema-in-prompt (trivial with 2 tables)
-- `EXPLAIN` validation before execution (more robust than CypherQueryCorrector)
-- Error-and-retry loop (feeds SQL errors back to Gemini — LangChain doesn't do this)
-- Read-only execution via `SECURITY DEFINER` function
-- Domain-specific few-shot examples for KG query patterns
-
-### File: `website/core/supabase_kg/nl_query.py`
-
-**Class: `NLGraphQuery`**
-
-```python
-class NLGraphQuery:
-    """Natural language to SQL query engine for the knowledge graph."""
-
-    def __init__(self, genai_client, supabase_client):
-        self._genai = genai_client
-        self._sb = supabase_client
-        self._model = "gemini-2.5-flash"
-
-    async def ask(self, question: str, user_id: UUID) -> NLQueryResult:
-        """Convert natural language question to SQL, execute, format answer."""
-```
-
-**`NLQueryResult` model:**
-```python
-class NLQueryResult(BaseModel):
-    question: str
-    sql: str
-    raw_result: list[dict]
-    answer: str              # Natural language formatted answer
-    latency_ms: int
-    retries: int             # 0 = first attempt succeeded
-```
-
-**System prompt (domain-specific, with schema + few-shot examples):**
-
-```
-You are a PostgreSQL expert that converts natural language questions about
-a personal knowledge graph into SQL queries.
-
-DATABASE SCHEMA:
-- kg_nodes(id TEXT, user_id UUID, name TEXT, source_type TEXT, summary TEXT,
-           tags TEXT[], url TEXT, node_date DATE, embedding vector(768), metadata JSONB)
-- kg_links(id UUID, user_id UUID, source_node_id TEXT, target_node_id TEXT,
-           relation TEXT)
-
-RULES:
-- ALWAYS filter by user_id = '{user_id}'
-- For tag searches: tags @> ARRAY['tag'] or tags && ARRAY['tag1','tag2']
-- For text search: name ILIKE '%term%' or summary ILIKE '%term%'
-- For graph traversal: use WITH RECURSIVE CTEs with depth limits
-- Return ONLY valid PostgreSQL SQL. No markdown, no backticks, no explanation.
-- LIMIT results to 50 rows maximum.
-- NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, or TRUNCATE.
-
-EXAMPLES:
-
-Q: What topics do I read about most?
-A: SELECT unnest(tags) AS tag, COUNT(*) AS frequency FROM kg_nodes
-   WHERE user_id = '{user_id}' GROUP BY tag ORDER BY frequency DESC LIMIT 20;
-
-Q: What articles are related to machine learning?
-A: SELECT id, name, source_type, url FROM kg_nodes
-   WHERE user_id = '{user_id}' AND tags @> ARRAY['machine-learning']
-   ORDER BY node_date DESC LIMIT 20;
-
-Q: How are "attention mechanisms" and "system design" connected?
-A: WITH RECURSIVE search AS (
-     SELECT id AS node_id, ARRAY[id] AS path, 0 AS depth
-     FROM kg_nodes WHERE user_id = '{user_id}' AND name ILIKE '%attention%'
-     UNION ALL
-     SELECT CASE WHEN l.source_node_id = s.node_id THEN l.target_node_id
-            ELSE l.source_node_id END,
-            s.path || CASE WHEN l.source_node_id = s.node_id THEN l.target_node_id
-            ELSE l.source_node_id END, s.depth + 1
-     FROM search s JOIN kg_links l ON l.user_id = '{user_id}'
-       AND (l.source_node_id = s.node_id OR l.target_node_id = s.node_id)
-     WHERE s.depth < 5 AND CASE WHEN l.source_node_id = s.node_id
-       THEN l.target_node_id ELSE l.source_node_id END <> ALL(s.path)
-   ) SELECT s.path, s.depth, n.name FROM search s
-     JOIN kg_nodes n ON n.user_id = '{user_id}' AND n.id = s.node_id
-     WHERE n.name ILIKE '%system design%' ORDER BY s.depth LIMIT 1;
-
-Q: Show me isolated articles with no connections
-A: SELECT n.id, n.name, n.source_type, n.url FROM kg_nodes n
-   LEFT JOIN kg_links l ON l.user_id = '{user_id}'
-     AND (l.source_node_id = n.id OR l.target_node_id = n.id)
-   WHERE n.user_id = '{user_id}' AND l.id IS NULL
-   ORDER BY n.node_date DESC;
-
-Q: What are my most connected articles?
-A: SELECT n.id, n.name, n.source_type, COUNT(DISTINCT l.id) AS connections
-   FROM kg_nodes n LEFT JOIN kg_links l ON l.user_id = '{user_id}'
-     AND (l.source_node_id = n.id OR l.target_node_id = n.id)
-   WHERE n.user_id = '{user_id}' GROUP BY n.id, n.name, n.source_type
-   ORDER BY connections DESC LIMIT 20;
-```
-
-**Pipeline:**
-1. Generate SQL via Gemini (system prompt + user question)
-2. **Safety check**: reject if SQL contains `DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE` (regex)
-3. **Validation**: execute `EXPLAIN {sql}` via Supabase RPC — if it fails, feed error to Gemini for retry (max 1 retry)
-4. Execute validated SQL via Supabase RPC
-5. Format raw results with second Gemini call: "Answer this question based on these query results: {question} Results: {json_results}"
-6. Return `NLQueryResult`
-
-**Supabase RPC for safe execution:**
-
-```sql
--- Migration: 003_add_query_functions.sql
-CREATE OR REPLACE FUNCTION execute_kg_query(
-    query_text TEXT,
-    p_user_id UUID
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-SET statement_timeout = '5s'
-AS $$
-DECLARE
-    result JSONB;
-BEGIN
-    -- Safety: reject mutations
-    IF query_text ~* '(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)' THEN
-        RAISE EXCEPTION 'Only SELECT queries are allowed';
-    END IF;
-
-    EXECUTE format('SELECT jsonb_agg(row_to_json(t)) FROM (%s) t', query_text)
-    INTO result;
-
-    RETURN COALESCE(result, '[]'::jsonb);
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION execute_kg_query FROM public, anon;
-GRANT EXECUTE ON FUNCTION execute_kg_query TO service_role;
-```
-
-**New API endpoint:**
-
-```python
-@router.post("/graph/query")
-async def nl_graph_query(body: NLQueryRequest, request: Request):
-    """Natural language query against the knowledge graph."""
-    # Rate limit: 5 queries/min (more expensive than summarize)
-    ...
-```
-
-**Latency budget:** SQL generation ~1.5s + validation ~50ms + execution ~10ms + formatting ~1s = **~2.5s total**. This is a separate endpoint, not on the critical path of `/api/summarize` or `/api/graph`.
-
-### Tests for M4
-
-**Test 1 — `test_nl_query_basic`**: Mock Gemini to return a simple SELECT SQL. Mock Supabase RPC to return test rows. Assert: `NLQueryResult` has correct SQL, raw_result, and formatted answer.
-
-**Test 2 — `test_nl_query_rejects_mutations`**: Send "Delete all my articles". Assert: safety check rejects the generated SQL. Assert: HTTP 400 response with appropriate error message.
-
-**Test 3 — `test_nl_query_error_retry`**: Mock first Gemini SQL generation to produce invalid SQL (EXPLAIN fails). Mock retry to produce valid SQL. Assert: final result succeeds with `retries=1`.
-
----
-
-## Module M5: Graph Traversal RPCs
-
-### What LangChain Does (Benchmark)
-
-Neo4j Cypher provides elegant pattern matching: `MATCH (a)-[*1..5]->(b)` in one line. LangChain's `CypherQueryCorrector` fixes relationship direction only. No path finding, no component detection built into LangChain itself.
-
-### What We Build (Equivalent at Scale)
-
-PostgreSQL recursive CTE functions exposed as Supabase RPCs. Verbose but functionally equivalent, with sub-5ms execution at 10K nodes.
-
-### Schema Migration: `supabase/website_kg/003_add_graph_functions.sql`
-
-**6 RPC functions:**
-
-#### 1. `find_neighbors(p_user_id, p_node_id, p_depth)`
-K-hop neighbor query — "find articles related to X within N hops".
-
-```sql
+-- 6. Graph traversal RPCs (M5)
 CREATE OR REPLACE FUNCTION find_neighbors(
-    p_user_id UUID,
-    p_node_id TEXT,
-    p_depth INT DEFAULT 2
+    p_user_id UUID, p_node_id TEXT, p_depth INT DEFAULT 2
 )
 RETURNS TABLE (
     node_id TEXT, name TEXT, source_type TEXT, summary TEXT,
@@ -645,12 +200,7 @@ AS $$
     WHERE nb2.depth > 0
     ORDER BY nb2.node_id, nb2.depth;
 $$;
-```
 
-#### 2. `shortest_path(p_user_id, p_source_id, p_target_id, p_max_depth)`
-Path query — "how are X and Y connected?"
-
-```sql
 CREATE OR REPLACE FUNCTION shortest_path(
     p_user_id UUID, p_source_id TEXT, p_target_id TEXT,
     p_max_depth INT DEFAULT 10
@@ -680,71 +230,86 @@ AS $$
     WHERE search.node_id = p_target_id
     ORDER BY search.depth LIMIT 1;
 $$;
-```
 
-#### 3. `top_connected_nodes(p_user_id, p_limit)`
-Degree centrality — "what are my most connected articles?"
+CREATE OR REPLACE FUNCTION top_connected_nodes(
+    p_user_id UUID, p_limit INT DEFAULT 20
+)
+RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT, degree BIGINT)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    SELECT n.id, n.name, n.source_type, COUNT(DISTINCT l.id) AS degree
+    FROM public.kg_nodes n
+    LEFT JOIN public.kg_links l ON l.user_id = p_user_id
+        AND (l.source_node_id = n.id OR l.target_node_id = n.id)
+    WHERE n.user_id = p_user_id
+    GROUP BY n.id, n.name, n.source_type
+    ORDER BY degree DESC LIMIT p_limit;
+$$;
 
-#### 4. `isolated_nodes(p_user_id)`
-Orphan detection — "show me articles with no connections"
+CREATE OR REPLACE FUNCTION isolated_nodes(p_user_id UUID)
+RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT, url TEXT, node_date DATE)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    SELECT n.id, n.name, n.source_type, n.url, n.node_date
+    FROM public.kg_nodes n
+    LEFT JOIN public.kg_links l ON l.user_id = p_user_id
+        AND (l.source_node_id = n.id OR l.target_node_id = n.id)
+    WHERE n.user_id = p_user_id AND l.id IS NULL
+    ORDER BY n.node_date DESC;
+$$;
 
-#### 5. `top_tags(p_user_id, p_limit)`
-Tag frequency — "what are my most common topics?"
+CREATE OR REPLACE FUNCTION top_tags(p_user_id UUID, p_limit INT DEFAULT 20)
+RETURNS TABLE (tag TEXT, frequency BIGINT, node_count BIGINT)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    SELECT unnest(n.tags) AS tag, COUNT(*) AS frequency,
+           COUNT(DISTINCT n.id) AS node_count
+    FROM public.kg_nodes n WHERE n.user_id = p_user_id
+    GROUP BY tag ORDER BY frequency DESC LIMIT p_limit;
+$$;
 
-#### 6. `similar_nodes(p_user_id, p_node_id, p_limit)`
-Tag-overlap similarity — "find nodes sharing the most tags with X"
+CREATE OR REPLACE FUNCTION similar_nodes(
+    p_user_id UUID, p_node_id TEXT, p_limit INT DEFAULT 10
+)
+RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT,
+               shared_tag_count BIGINT, shared_tags TEXT[])
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    WITH seed_tags AS (
+        SELECT unnest(tags) AS tag FROM public.kg_nodes
+        WHERE user_id = p_user_id AND id = p_node_id
+    )
+    SELECT n.id, n.name, n.source_type, COUNT(*) AS shared_tag_count,
+           array_agg(st.tag ORDER BY st.tag) AS shared_tags
+    FROM public.kg_nodes n
+    JOIN LATERAL unnest(n.tags) AS nt(tag) ON TRUE
+    JOIN seed_tags st ON st.tag = nt.tag
+    WHERE n.user_id = p_user_id AND n.id <> p_node_id
+    GROUP BY n.id, n.name, n.source_type
+    ORDER BY shared_tag_count DESC LIMIT p_limit;
+$$;
 
-(Full SQL for 3-6 follows the patterns in the recursive CTE research — see research artifacts.)
+-- 7. NL Query safe executor (M4)
+CREATE OR REPLACE FUNCTION execute_kg_query(query_text TEXT, p_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
+AS $$
+DECLARE result JSONB;
+BEGIN
+    IF query_text ~* '(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)' THEN
+        RAISE EXCEPTION 'Only SELECT queries are allowed';
+    END IF;
+    EXECUTE format('SELECT jsonb_agg(row_to_json(t)) FROM (%s) t', query_text)
+    INTO result;
+    RETURN COALESCE(result, '[]'::jsonb);
+END;
+$$;
 
-**Repository integration:**
-Add methods to `KGRepository`:
-- `find_neighbors(user_id, node_id, depth=2) -> list[dict]`
-- `shortest_path(user_id, source_id, target_id) -> dict | None`
-- `top_connected(user_id, limit=20) -> list[dict]`
-- `isolated_nodes(user_id) -> list[dict]`
-- `top_tags(user_id, limit=20) -> list[dict]`
-
-Each calls `self._client.rpc("function_name", params).execute()`.
-
-**Latency budget:** All RPC functions sub-5ms at 10K nodes. Network round-trip to Supabase ~100ms. Total per call: **~100ms**.
-
-### Tests for M5
-
-**Test 1 — `test_find_neighbors_rpc`**: Seed a small test graph (5 nodes, chain topology: A→B→C→D→E). Call `find_neighbors(A, depth=2)`. Assert: returns B (depth 1) and C (depth 2) but NOT D or E.
-
-**Test 2 — `test_shortest_path_rpc`**: Same chain graph. Call `shortest_path(A, E)`. Assert: path = [A, B, C, D, E], depth = 4. Call `shortest_path(A, A)`. Assert: empty result (no self-path).
-
-**Test 3 — `test_isolated_nodes_rpc`**: Create 3 nodes, link only 2 of them. Call `isolated_nodes()`. Assert: returns exactly the unlinked node.
-
----
-
-## Module M6: Hybrid Retrieval
-
-### What LangChain Does (Benchmark)
-
-`GraphRetriever` (langchain-graph-retriever):
-- Vector search → follow metadata-defined edges → combined results
-- Results combined via **naive string concatenation** — no ranking algorithm
-- No Supabase adapter exists
-
-### What We Build (Superior — Reciprocal Rank Fusion)
-
-Three-stream retrieval: pgvector semantic search + PostgreSQL full-text search (tsvector) + graph traversal (recursive CTE), combined via Reciprocal Rank Fusion (RRF) — the documented Supabase hybrid search pattern.
-
-### Schema Migration Addition (in `002_add_embeddings.sql`):
-
-```sql
--- Add full-text search index
-ALTER TABLE kg_nodes ADD COLUMN IF NOT EXISTS fts tsvector
-    GENERATED ALWAYS AS (to_tsvector('english', coalesce(name, '') || ' ' || coalesce(summary, ''))) STORED;
-
-CREATE INDEX IF NOT EXISTS idx_kg_nodes_fts ON kg_nodes USING GIN (fts);
-
--- Hybrid search RPC (3-stream: semantic + fulltext + graph neighbors)
+-- 8. Hybrid search RPC (M6) — Reciprocal Rank Fusion
+-- RRF formula: score = sum( (1/(k+rank)) * weight ) across streams
+-- k=60 is the standard RRF constant (prevents top-ranked items from dominating)
 CREATE OR REPLACE FUNCTION hybrid_kg_search(
-    query_text TEXT,
-    query_embedding vector(768),
-    p_user_id UUID,
+    query_text TEXT, query_embedding vector(768), p_user_id UUID,
     p_seed_node_id TEXT DEFAULT NULL,
     semantic_weight FLOAT DEFAULT 0.5,
     fulltext_weight FLOAT DEFAULT 0.3,
@@ -765,27 +330,28 @@ AS $$
         LIMIT match_count * 2
     ),
     fulltext AS (
-        SELECT n.id, ROW_NUMBER() OVER (ORDER BY ts_rank(n.fts, websearch_to_tsquery('english', query_text)) DESC) AS rank
+        SELECT n.id, ROW_NUMBER() OVER (
+            ORDER BY ts_rank(n.fts, websearch_to_tsquery('english', query_text)) DESC
+        ) AS rank
         FROM public.kg_nodes n
-        WHERE n.user_id = p_user_id AND n.fts @@ websearch_to_tsquery('english', query_text)
+        WHERE n.user_id = p_user_id
+          AND n.fts @@ websearch_to_tsquery('english', query_text)
         LIMIT match_count * 2
     ),
     graph_neighbors AS (
-        SELECT CASE WHEN l.source_node_id = p_seed_node_id THEN l.target_node_id
-                    ELSE l.source_node_id END AS id,
+        SELECT CASE WHEN l.source_node_id = p_seed_node_id
+                    THEN l.target_node_id ELSE l.source_node_id END AS id,
                ROW_NUMBER() OVER (ORDER BY l.created_at DESC) AS rank
         FROM public.kg_links l
-        WHERE p_seed_node_id IS NOT NULL
-          AND l.user_id = p_user_id
+        WHERE p_seed_node_id IS NOT NULL AND l.user_id = p_user_id
           AND (l.source_node_id = p_seed_node_id OR l.target_node_id = p_seed_node_id)
         LIMIT match_count * 2
     ),
     combined AS (
-        SELECT
-            COALESCE(s.id, f.id, g.id) AS id,
-            COALESCE(1.0 / (k + s.rank), 0) * semantic_weight +
-            COALESCE(1.0 / (k + f.rank), 0) * fulltext_weight +
-            COALESCE(1.0 / (k + g.rank), 0) * graph_weight AS score
+        SELECT COALESCE(s.id, f.id, g.id) AS id,
+            COALESCE(1.0/(k + s.rank), 0) * semantic_weight +
+            COALESCE(1.0/(k + f.rank), 0) * fulltext_weight +
+            COALESCE(1.0/(k + g.rank), 0) * graph_weight AS score
         FROM semantic s
         FULL OUTER JOIN fulltext f ON s.id = f.id
         FULL OUTER JOIN graph_neighbors g ON COALESCE(s.id, f.id) = g.id
@@ -793,122 +359,574 @@ AS $$
     SELECT n.id, n.name, n.source_type, n.summary, n.tags, n.url, c.score
     FROM combined c
     JOIN public.kg_nodes n ON n.user_id = p_user_id AND n.id = c.id
-    ORDER BY c.score DESC
-    LIMIT match_count;
+    ORDER BY c.score DESC LIMIT match_count;
 $$;
+
+-- 9. Permissions
+REVOKE EXECUTE ON FUNCTION match_kg_nodes FROM public, anon;
+REVOKE EXECUTE ON FUNCTION find_neighbors FROM public, anon;
+REVOKE EXECUTE ON FUNCTION shortest_path FROM public, anon;
+REVOKE EXECUTE ON FUNCTION top_connected_nodes FROM public, anon;
+REVOKE EXECUTE ON FUNCTION isolated_nodes FROM public, anon;
+REVOKE EXECUTE ON FUNCTION top_tags FROM public, anon;
+REVOKE EXECUTE ON FUNCTION similar_nodes FROM public, anon;
+REVOKE EXECUTE ON FUNCTION execute_kg_query FROM public, anon;
+REVOKE EXECUTE ON FUNCTION hybrid_kg_search FROM public, anon;
+
+GRANT EXECUTE ON FUNCTION match_kg_nodes TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION find_neighbors TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION shortest_path TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION top_connected_nodes TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION isolated_nodes TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION top_tags TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION similar_nodes TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION execute_kg_query TO service_role;
+GRANT EXECUTE ON FUNCTION hybrid_kg_search TO authenticated, service_role;
 ```
+
+---
+
+## Module M1: Entity-Relationship Extraction
+
+### What LangChain Does (Benchmark)
+
+LLMGraphTransformer (`langchain-experimental`):
+- System prompt: "You are a top-tier algorithm for extracting information in structured formats"
+- Dynamic Pydantic schema generation with `allowed_nodes`/`allowed_relationships`
+- Two modes: tool-calling (structured output) and prompt-based (JSON parse + `json_repair`)
+- Post-processing: title-case IDs, uppercase relationship types, camelCase properties
+- Strict-mode filtering against allowed type lists
+- Entity dedup: exact `(id, type)` set — **no fuzzy matching**
+- Single-pass only, no gleaning, no coreference resolution beyond prompt instructions
+- 5 trivial few-shot examples (Adam/Microsoft scenario)
+- Grounding instruction: "Do not add any information that is not explicitly mentioned in the text"
+- OpenAI gets real enum constraints; other LLMs only get description strings
+
+### What We Build (Superior)
+
+A native entity extractor using Gemini structured output with techniques from Microsoft GraphRAG and KGGen.
+
+**Key advantages over LangChain:**
+1. **Two-step extraction** — free-form analysis first, then structured formatting. Structured output alone degrades reasoning by 10-15% (CleanLab benchmark); two-step improved accuracy from 48% to 61%
+2. **Gleaning loop** — multi-pass "did you miss anything?" pattern. Single-pass captures only 44-66% of facts (MINE benchmark); gleaning achieves up to 2x entity recall (GraphRAG paper)
+3. **Embedding-based entity dedup** — cosine similarity at 0.90 threshold. Without coreference resolution, entity duplication is ~26%; with it drops to ~20% (CORE-KG study). Mem0 uses two-tier: 0.7 for candidate generation, 0.90-0.95 for auto-merge
+4. **Relationship strength scoring** — 1-10 numeric weight stored in new `kg_links.weight` column
+5. **Entity descriptions** — rich descriptions per entity, stored in `kg_nodes.metadata.entities`
+6. **Domain-specific prompt** — tailored to tech articles with relevant few-shot examples
+7. **Hallucination mitigation** — grounding instruction + type validation. Baseline hallucination rate is 15-18% for few-shot extraction (MINE benchmark)
+
+**Relationship to KGGen:** KGGen uses a three-stage pipeline (generate/aggregate/cluster) achieving 66% fact retention vs GraphRAG's 48%. Our approach borrows the core insight — separate free-form generation from structured formatting — but uses a simpler two-step pipeline. The aggregation/clustering stages are addressed by post-processing dedup + embedding-based entity resolution. Full KGGen-style clustering is a future enhancement candidate.
+
+### File: `website/core/supabase_kg/entity_extractor.py`
+
+**Classes:**
+- `ExtractedEntity(BaseModel)`: `id: str`, `type: str`, `description: str`
+- `ExtractedRelationship(BaseModel)`: `source: str`, `target: str`, `type: str`, `strength: int` (1-10), `description: str`
+- `ExtractionResult(BaseModel)`: `entities: list[ExtractedEntity]`, `relationships: list[ExtractedRelationship]`
+- `EntityExtractor`: Main class, takes Gemini client + optional config
+
+**Configuration:**
+```python
+@dataclass
+class ExtractionConfig:
+    allowed_entity_types: list[str] = field(default_factory=lambda: [
+        "Technology", "Concept", "Tool", "Language", "Framework",
+        "Person", "Organization", "Pattern", "Algorithm", "Platform",
+    ])
+    allowed_relationship_types: list[str] = field(default_factory=lambda: [
+        "USES", "IMPLEMENTS", "EXTENDS", "PART_OF", "CREATED_BY",
+        "RELATED_TO", "ALTERNATIVE_TO", "DEPENDS_ON", "INSPIRED_BY",
+    ])
+    max_gleanings: int = 1        # 0 = single-pass, 1 = one extra pass
+    enable_entity_dedup: bool = True
+    dedup_similarity_threshold: float = 0.90
+    model: str = "gemini-2.5-flash"
+```
+
+**Extraction pipeline (3 steps):**
+
+**Step 1 — Free-form analysis** (avoids structured output reasoning degradation):
+```
+System: You are an expert at analyzing technical content and identifying
+entities (technologies, concepts, tools, people, organizations) and their
+relationships. Do NOT add any entity or relationship that is not explicitly
+mentioned in the content. Do NOT infer or hallucinate connections.
+
+User: Identify ALL entities and relationships in this content. For each
+entity, provide its name, type, and a one-sentence description. For each
+relationship, provide source, target, type, strength (1-10), and a brief
+description. Think step by step.
+
+EXAMPLE:
+Input: "React 19 introduces a new compiler that automatically memoizes
+components, developed by Meta's React team led by Andrew Clark."
+Output:
+Entities: React (Technology, "JavaScript UI library for building interfaces"),
+React Compiler (Tool, "Automatic memoization compiler for React 19"),
+Meta (Organization, "Technology company that develops React"),
+Andrew Clark (Person, "Engineering lead on React team at Meta")
+Relationships: React Compiler -PART_OF-> React (9, "Built-in feature"),
+Meta -CREATED_BY-> React (10, "Meta develops React"),
+Andrew Clark -CREATED_BY-> React Compiler (8, "Leads the team")
+
+TITLE: {title}
+CONTENT: {summary}
+```
+
+**Step 2 — Structured formatting** (Gemini `response_json_schema`):
+```
+System: Convert the analysis into the exact JSON schema provided.
+Use ONLY these entity types: {allowed_entity_types}
+Use ONLY these relationship types: {allowed_relationship_types}
+These entity types already exist in the knowledge graph: {existing_types}
+Prefer reusing existing types over creating new ones.
+
+User: {free_form_analysis_from_step_1}
+```
+
+JSON schema enforced via `response_mime_type="application/json"` + `response_schema` parameter. Schema defined as Pydantic model, converted via `model_json_schema()`.
+
+**Step 3 — Gleaning loop** (optional, `max_gleanings >= 1`):
+
+Structured as a multi-turn conversation (LLM sees its own prior reasoning, matching GraphRAG's approach):
+- Messages: [Step 1 system, Step 1 user, Step 1 response, Step 2 prompt, Step 2 response, gleaning prompt]
+
+```
+System: Review the extraction. MANY entities and relationships were
+missed in the previous extraction. Add any additional entities and
+relationships found in the original content below.
+
+User: Original content: {summary}
+Already extracted: {step_2_result}
+Add ONLY new entities and relationships not already captured.
+```
+
+**Termination:** If the gleaning response contains zero entities whose normalized IDs are not already in the extracted set, stop. GraphRAG uses logit bias for forced yes/no; since Gemini lacks logit bias, we use the zero-new-entities check.
+
+**Post-processing:**
+1. Normalize entity IDs: lowercase, strip special chars, use most complete form
+2. Normalize relationship types: UPPER_SNAKE_CASE
+3. Deduplicate entities:
+   - Exact match on normalized ID -> merge
+   - If `enable_entity_dedup` and embeddings available: embed entity names, merge pairs with cosine similarity > `dedup_similarity_threshold`
+4. Validate against allowed types (case-insensitive), drop non-conforming
+5. Drop entities without IDs, relationships without source/target
+6. If Gemini returns malformed JSON despite `response_schema`, attempt `json.loads()` with markdown fence stripping. Log and return empty `ExtractionResult` on failure.
+
+**Entity-to-schema mapping:**
+- Entities are NOT separate `kg_nodes` rows — they are sub-node-level metadata stored in `kg_nodes.metadata.entities` as a JSONB array: `[{id, type, description}, ...]`
+- This preserves the invariant that `kg_nodes` = URL-level content items
+- Extracted relationships become `kg_links` rows with `link_type='entity'`, `weight` = strength score, `description` = relationship description
+- The `source_node_id` and `target_node_id` reference the parent content nodes that mention the related entities
+- Existing UNIQUE constraint on `kg_links` prevents duplicate edges
+
+**Schema drift prevention:** Query existing entity types from the graph and include them in the Step 2 prompt. This mitigates inconsistent typing across sessions (e.g., "Framework" vs "Library" for the same concept).
+
+**Cross-extraction entity description updates:** When an entity (e.g., "Python") is extracted from multiple articles, keep the longer/more informative description. Future: use GraphRAG's approach of summarizing multiple descriptions into a composite using an LLM call.
+
+**Hallucination mitigation:**
+- Grounding instruction in Step 1: "Do NOT add information not explicitly mentioned"
+- Type validation in post-processing (drop non-conforming)
+- Future: add `confidence: float` field to `ExtractedEntity`/`ExtractedRelationship`
+
+**Integration point:** Called from `routes.py` `/api/summarize` AFTER `summarize_url()` returns. Runs on `brief_summary` (200-500 tokens, no chunking needed).
+
+**Latency budget:** Step 1 (~1.5s) + Step 2 (~1s) + Step 3 gleaning (~1.5s) = **~4s total** with gleaning, ~2.5s without. Runs in parallel with M2 embedding generation.
+
+**Graceful degradation:** If extraction fails (rate limit, timeout), summarize returns normally. Entities are additive, never blocking.
+
+### Tests for M1
+
+**Test 1 — `test_entity_extraction_basic`**: Mock Gemini responses. Feed a tech article summary mentioning Python, TensorFlow, Google. Assert: 3 entities extracted with correct types, at least 1 relationship, all types within allowed lists. Assert: grounding instruction present in prompt.
+
+**Test 2 — `test_entity_extraction_gleaning`**: Mock first Gemini call returning 2 entities, gleaning call returning 1 more. Assert: final result has 3 entities. Verify gleaning prompt includes previously extracted entities as multi-turn conversation.
+
+**Test 3 — `test_entity_dedup_embedding`**: Create "JavaScript" and "JS" with mock embeddings (0.95 cosine similarity). Assert: merge into single canonical entity. Create "Python" and "React" (0.3 similarity). Assert: remain separate.
+
+---
+
+## Module M2: Semantic Embeddings (pgvector)
+
+### What LangChain Does (Benchmark)
+
+`SupabaseVectorStore` (`langchain-community`):
+- Wraps pgvector with LangChain's document abstraction
+- Requires `documents` table and `match_documents` RPC function
+- Just a thin wrapper — no algorithmic value over direct pgvector
+
+### What We Build (Equivalent, Zero Framework Overhead)
+
+Direct Gemini embeddings + pgvector in Supabase. No wrapper, no extra package.
+
+**Architecture decision:** Embeddings generated in the application layer (Python API) at insert time, NOT via Supabase triggers/Edge Functions. Rationale: no orphaned nodes without embeddings, no Edge Function complexity (pgmq + pg_net + pg_cron), simpler debugging.
+
+**Important constraint:** PostgREST (supabase-py) does NOT support pgvector operators (`<=>`, `<->`) natively in `.select()` queries. All similarity operations MUST go through Supabase RPC functions. Regular inserts work fine (pass embedding as Python list).
+
+**WARNING:** Embedding spaces are INCOMPATIBLE between Gemini embedding models. If the model is ever upgraded, ALL existing embeddings must be regenerated. Store model version in `kg_nodes.metadata.embedding_model` for tracking.
+
+### File: `website/core/supabase_kg/embeddings.py`
+
+**Functions:**
+- `generate_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]`
+  - Model: `gemini-embedding-001` (GA). Note: `text-embedding-004` is DEPRECATED.
+  - Dimensions: 768 (via `output_dimensionality` MRL truncation)
+  - L2-normalizes the truncated vector. IMPORTANT: MRL-truncated vectors are NOT unit-length from the API. L2-normalization is REQUIRED for cosine similarity to work correctly.
+  - Rate-limit handling: reuses `_is_rate_limited()` pattern from `summarizer.py`
+  - Returns empty list on failure (graceful degradation)
+  - Task type guidance:
+    - `RETRIEVAL_DOCUMENT` — default for stored content (node summaries)
+    - `RETRIEVAL_QUERY` — for search queries (used by M6 hybrid search)
+    - `SEMANTIC_SIMILARITY` — for pairwise comparison (used by M1 entity dedup)
+
+- `generate_embeddings_batch(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]`
+  - Batch API: up to 250 texts per request, max 20,000 tokens per request, first 2,048 tokens per text used (remainder silently truncated)
+  - For backfill script usage
+
+- `find_similar_nodes(repo, user_id, embedding, threshold=0.75, limit=10) -> list[dict]`
+  - Calls `match_kg_nodes` Supabase RPC function
+
+**Cosine similarity reference ranges** (for `gemini-embedding-001` at 768 dims):
+- \> 0.90: near-duplicate content (dedup detection in M1)
+- 0.80-0.90: strongly related, same topic — high-confidence links
+- 0.70-0.80: moderately related — discovery links (default threshold 0.75)
+- 0.60-0.70: loosely related, may be noisy
+- < 0.60: not useful for linking
+
+**Link strategy:** Fixed threshold (0.75) for simplicity at <1K nodes. If popular nodes accumulate too many links, switch to top-K + floor (e.g., top-5 per node with 0.65 minimum floor).
+
+**Link strength scoring for dual-type links:**
+- Tag-based: `strength = shared_tag_count / max(total_tags_a, total_tags_b)`
+- Semantic: `strength = cosine_similarity` (from RPC)
+- Combined: `0.4 * tag_overlap + 0.6 * cosine_similarity`
+
+**Gemini Embedding Pricing:**
+- Free tier: sufficient for dev and low-traffic (<1K nodes/day)
+- Paid: $0.15/1M tokens (batch: $0.075/1M)
+- ~200 tokens/node summary -> ~$0.00003/node. Full backfill of 300 nodes: free.
+
+**Updated `KGNodeCreate` model** — add optional embedding field:
+```python
+embedding: list[float] | None = None  # 768-dim vector
+```
+
+**Integration into `routes.py`:** After `summarize_url()`, before `add_node()`:
+1. Generate embedding from `brief_summary` (~200ms)
+2. Pass to `KGNodeCreate`
+3. After insert, `find_similar_nodes()` -> create semantic links (`link_type='semantic'`)
+
+**Backfill script:** `scripts/backfill_embeddings.py` — reads nodes missing embeddings, batches of 50, generates + updates.
+
+**Latency budget:** Embedding ~200ms + similarity search ~10ms = **~250ms**. Parallel with M1.
+
+### Tests for M2
+
+**Test 1 — `test_generate_embedding`**: Mock `genai.Client.models.embed_content()`. Assert: 768 floats returned, L2-normalized (norm ~= 1.0).
+
+**Test 2 — `test_semantic_link_creation`**: Two nodes with 0.85 cosine similarity. Assert: `link_type='semantic'` link created. Third node at 0.5 similarity: no link.
+
+**Test 3 — `test_embedding_graceful_degradation`**: Mock 429 error. Assert: returns empty list, node created without embedding, no crash.
+
+---
+
+## Module M3: Graph Intelligence (NetworkX)
+
+### What LangChain Does (Benchmark)
+
+LangChain provides **zero** graph algorithm capabilities. NetworkX provides equivalent algorithms to Neo4j GDS for in-memory graphs, sufficient at <10K nodes.
+
+### What We Build
+
+Server-side graph analytics computed on cache refresh, enriching the `/api/graph` response.
+
+### File: `website/core/supabase_kg/analytics.py`
+
+**Graph construction:**
+```python
+def _build_networkx_graph(graph: KGGraph) -> nx.Graph:
+    """Use nx.Graph (UNDIRECTED) — KG links are bidirectional (shared-tag
+    relationships have no direction; source/target is arbitrary)."""
+    G = nx.Graph()
+    for node in graph.nodes:
+        G.add_node(node.id, name=node.name, group=node.group, tags=node.tags)
+    for link in graph.links:
+        G.add_edge(link.source, link.target, relation=link.relation)
+    return G
+```
+
+**Function: `compute_graph_metrics(graph: KGGraph) -> GraphMetrics`**
+
+```python
+@dataclass
+class GraphMetrics:
+    pagerank: dict[str, float]        # node_id -> score
+    communities: dict[str, int]       # node_id -> community_id
+    betweenness: dict[str, float]     # node_id -> centrality score
+    closeness: dict[str, float]       # node_id -> centrality score
+    num_communities: int
+    num_components: int
+    computed_at: str                   # ISO timestamp
+```
+
+**Pipeline:**
+1. Build `nx.Graph()` from nodes + links
+2. Skip if < 3 nodes (return empty metrics)
+3. Compute:
+   - `nx.pagerank(G, alpha=0.85)` -> node importance
+   - `nx.community.louvain_communities(G, resolution=1.0)` -> topic clusters
+     - `resolution` < 1.0 = fewer larger communities; > 1.0 = more smaller. Start at 1.0, tune.
+     - Built into NetworkX since v2.7 — no `python-louvain` package needed
+   - `nx.betweenness_centrality(G, k=min(100, len(G)))` -> bridge nodes
+     - O(VE) Brandes algorithm. `k` parameter for approximate sampling at scale
+   - `nx.closeness_centrality(G, wf_improved=True)` -> well-connected nodes
+     - `wf_improved=True` REQUIRED for correct results on disconnected graphs
+   - `nx.number_connected_components(G)` -> isolated clusters
+4. Return `GraphMetrics`
+
+**Performance benchmarks by scale:**
+
+| Scale | PageRank | Betweenness | Louvain | Total |
+|-------|----------|-------------|---------|-------|
+| 60 nodes (now) | <1ms | <1ms | <1ms | <1ms |
+| 1K nodes | ~1-5ms | ~10-50ms | ~5-20ms | ~20-75ms |
+| 10K nodes | ~50-200ms | ~500ms-2s (use k=100) | ~100-500ms | ~1-3s |
+
+**Scaling (50K+ nodes):** At 50K+ nodes, NetworkX exceeds acceptable latency (~33s PageRank at 875K). Mitigations: (1) use `k=100` for betweenness sampling, (2) move to background task, (3) evaluate `igraph` (14x faster). Current trajectory: ~60 nodes, 50K is ~137 years away.
+
+**Integration into `routes.py`:** Enrich all nodes with metrics:
+```python
+node["pagerank"] = metrics.pagerank.get(nid, 0)
+node["community"] = metrics.communities.get(nid, 0)
+node["betweenness"] = metrics.betweenness.get(nid, 0)
+node["closeness"] = metrics.closeness.get(nid, 0)
+```
+
+**Frontend (`app.js`):**
+1. **Node sizing** — PageRank replaces degree-based:
+   ```javascript
+   const pr = node.pagerank || 0;
+   const maxPr = Math.max(...graphData.nodes.map(n => n.pagerank || 0), 0.001);
+   const baseRadius = 2 + (pr / maxPr) * 4;
+   ```
+2. **Community overlay** — keep source-type fill colors; add thin community-colored ring
+
+**Integration with M6:** NetworkX metrics feed hybrid scoring: `alpha * graph_proximity + (1-alpha) * cosine_similarity`. Graph proximity from shortest path or shared community.
+
+**Latency budget:** ~1-5ms at 1K nodes. Runs once per 30s cache refresh. Zero impact on cache hits.
+
+### Tests for M3
+
+**Test 1 — `test_compute_metrics_basic`**: 5 nodes, 6 links (triangle + chain). Assert: all nodes have pagerank > 0, at least 1 community, betweenness + closeness values exist.
+
+**Test 2 — `test_compute_metrics_empty_graph`**: 0 nodes -> empty metrics, no crash. 1 node -> pagerank = 1.0, 1 community, 1 component.
+
+**Test 3 — `test_graph_response_enrichment`**: Mock graph, call `GET /api/graph`. Assert: nodes contain `pagerank`, `community`, `betweenness`, `closeness`. Assert: `meta.communities` and `meta.components` present.
+
+---
+
+## Module M4: Natural Language Graph Query (Text-to-SQL)
+
+### What LangChain Does (Benchmark)
+
+GraphCypherQAChain (`langchain-neo4j`):
+- Auto-introspects schema via APOC
+- CypherQueryCorrector: only fixes relationship direction (regex), not syntax
+- **No error recovery** — raises on failure
+- **CVE-2024-8309** SQL injection vulnerability
+- Requires Neo4j
+
+### What We Build (More Robust)
+
+NL-to-SQL pipeline with EXPLAIN validation + error-retry (LangChain has neither).
+
+**Note:** supabase-py cannot execute raw SQL — justifies the RPC approach for all queries.
+
+### File: `website/core/supabase_kg/nl_query.py`
+
+**System prompt** includes schema, domain vocabulary mapping, and 5 few-shot examples:
+
+```
+DATABASE SCHEMA:
+- kg_nodes(id TEXT, user_id UUID, name TEXT, source_type TEXT, summary TEXT,
+           tags TEXT[], url TEXT, node_date DATE, embedding vector(768), metadata JSONB)
+- kg_links(id UUID, user_id UUID, source_node_id TEXT, target_node_id TEXT,
+           relation TEXT, weight INTEGER, link_type TEXT)
+
+DOMAIN VOCABULARY:
+- "articles" / "notes" / "content" = kg_nodes
+- "videos" = kg_nodes WHERE source_type = 'youtube'
+- "repos" / "code" = kg_nodes WHERE source_type = 'github'
+- "connections" / "links" = kg_links
+- "topics" / "tags" = unnest(tags) from kg_nodes
+
+RULES:
+- ALWAYS filter by user_id = '{user_id}'
+- Return ONLY valid PostgreSQL SQL. No markdown, no backticks.
+- LIMIT to 50 rows max. NEVER use mutation statements.
+```
+
+**Pipeline:**
+1. Generate SQL via Gemini (strip markdown fences/backticks from output)
+2. Safety check: case-insensitive regex rejects `DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE`
+3. Validation: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for retry (max 1)
+4. Execute via `execute_kg_query` RPC (5s timeout)
+5. Format with second Gemini call
+6. Return `NLQueryResult` (includes `sql`, `raw_result`, `answer`, `latency_ms`, `retries`)
+
+**API endpoint:** `POST /api/graph/query` — rate limit 5/min (more expensive than summarize).
+
+**Latency budget:** ~2.5s (generation 1.5s + validation 50ms + execution 10ms + formatting 1s). Separate endpoint, not on critical path.
+
+### Tests for M4
+
+**Test 1 — `test_nl_query_basic`**: Mock Gemini SQL + Supabase RPC. Assert: correct `NLQueryResult`.
+
+**Test 2 — `test_nl_query_rejects_mutations`**: "Delete all my articles" -> safety check rejects -> HTTP 400.
+
+**Test 3 — `test_nl_query_error_retry`**: First SQL invalid (EXPLAIN fails), retry succeeds. Assert: `retries=1`.
+
+---
+
+## Module M5: Graph Traversal RPCs
+
+### What LangChain Does (Benchmark)
+
+Neo4j Cypher: elegant `MATCH (a)-[*1..5]->(b)`. At <10K nodes, PostgreSQL recursive CTEs are functionally equivalent with sub-5ms execution (Alibaba benchmark: 2.1ms for 3-depth at 10M nodes).
+
+### What We Build
+
+6 RPC functions (full SQL in the consolidated migration above):
+1. `find_neighbors(user_id, node_id, depth)` — k-hop neighbors
+2. `shortest_path(user_id, source, target, max_depth)` — BFS path finding
+3. `top_connected_nodes(user_id, limit)` — degree centrality
+4. `isolated_nodes(user_id)` — orphan detection (LEFT JOIN IS NULL anti-join)
+5. `top_tags(user_id, limit)` — tag frequency
+6. `similar_nodes(user_id, node_id, limit)` — tag-overlap similarity
+
+**Design notes:**
+- All use `UNION ALL` with array-based cycle prevention (`<> ALL(path)`)
+- PG14+ `CYCLE` clause available on Supabase (PG15+) as cleaner alternative
+- `SECURITY DEFINER SET search_path = ''` per Supabase security advisor
+- `statement_timeout = '5s'` on `execute_kg_query` as safety net
+
+**Repository integration:** Add methods to `KGRepository`, each calling `self._client.rpc()`.
+
+**Latency:** Sub-5ms query + ~100ms network = **~100ms** per call.
+
+### Tests for M5
+
+**Test 1 — `test_find_neighbors_rpc`**: Chain A->B->C->D->E. `find_neighbors(A, depth=2)` returns B, C only.
+
+**Test 2 — `test_shortest_path_rpc`**: `shortest_path(A, E)` returns [A,B,C,D,E], depth=4.
+
+**Test 3 — `test_isolated_nodes_rpc`**: 3 nodes, 2 linked. `isolated_nodes()` returns the unlinked one.
+
+---
+
+## Module M6: Hybrid Retrieval
+
+### What LangChain Does (Benchmark)
+
+`GraphRetriever`: vector search + metadata edges, combined via **naive string concatenation**. No Supabase adapter. No ranking algorithm.
+
+### What We Build (Superior — Reciprocal Rank Fusion)
+
+Three-stream retrieval with mathematically principled RRF scoring (documented Supabase pattern):
+- **Semantic**: pgvector cosine similarity (embedding `<=>` operator)
+- **Fulltext**: PostgreSQL tsvector with `websearch_to_tsquery` (natural language input)
+- **Graph**: 1-hop neighbors from `kg_links` (optional, via `p_seed_node_id`)
+
+Default weights: semantic=0.5, fulltext=0.3, graph=0.2. `k=60` (standard RRF constant). `p_seed_node_id` is optional — graph stream skipped when NULL.
+
+**Full SQL in consolidated migration above.**
 
 ### File: `website/core/supabase_kg/retrieval.py`
 
-**Function: `hybrid_search(query: str, user_id: UUID, seed_node_id: str | None = None) -> list[dict]`**
 1. Generate query embedding via `generate_embedding(query, task_type="RETRIEVAL_QUERY")`
-2. Call `hybrid_kg_search` Supabase RPC with query text + embedding + optional seed node
+2. Call `hybrid_kg_search` RPC
 3. Return ranked results
 
-**New API endpoint:**
+**API endpoint:** `POST /api/graph/search`
 
-```python
-@router.post("/graph/search")
-async def graph_search(body: SearchRequest, request: Request):
-    """Hybrid semantic + fulltext + graph search."""
-    ...
-```
-
-**Latency budget:** Embedding generation ~200ms + RPC execution ~50ms + network ~100ms = **~350ms total**.
+**Latency:** Embedding 200ms + RPC 50ms + network 100ms = **~350ms**.
 
 ### Tests for M6
 
-**Test 1 — `test_hybrid_search_all_streams`**: Seed a graph with nodes containing various text and embeddings. Query with a term that matches keyword ("python"), embedding (similar vector), and graph neighbor (linked node). Assert: results from all 3 streams appear, top result has highest combined score.
+**Test 1 — `test_hybrid_search_all_streams`**: Query matching keyword + embedding + neighbor. Assert: all 3 streams contribute, top result has highest combined score.
 
-**Test 2 — `test_hybrid_search_graceful_without_embeddings`**: Query against nodes that have no embeddings. Assert: still returns results from fulltext + graph streams. Assert: no error.
+**Test 2 — `test_hybrid_search_without_embeddings`**: No embeddings on nodes. Assert: fulltext + graph still work.
 
-**Test 3 — `test_hybrid_search_performance`**: Seed 500 nodes with embeddings. Time the search. Assert: total latency < 500ms.
+**Test 3 — `test_hybrid_search_performance`**: 500 nodes with embeddings. Assert: < 500ms.
 
 ---
 
 ## Integration: Updated `/api/summarize` Pipeline
 
-After all modules are integrated, the summarize flow becomes:
-
 ```
 POST /api/summarize { url }
-  │
-  ├─ 1. summarize_url(url)                      [existing, ~8-15s]
-  │     → title, summary, tags, source_type
-  │
-  ├─ 2. PARALLEL:
-  │     ├─ generate_embedding(brief_summary)      [M2, ~200ms]
-  │     └─ extract_entities(brief_summary)        [M1, ~2.5-4s]
-  │
-  ├─ 3. add_node() with embedding                [existing + M2, ~100ms]
-  │     ├─ _auto_link() tag-based                [existing]
-  │     └─ _semantic_link() embedding-based       [M2, ~100ms]
-  │
-  ├─ 4. Store entities in metadata                [M1, ~10ms]
-  │     (kg_nodes.metadata.entities = [...])
-  │
-  └─ 5. Invalidate graph cache                   [existing]
+  |
+  +-- 1. summarize_url(url)                      [existing, ~8-15s]
+  |
+  +-- 2. PARALLEL:
+  |     +-- generate_embedding(brief_summary)     [M2, ~200ms]
+  |     +-- extract_entities(brief_summary)       [M1, ~2.5-4s]
+  |
+  +-- 3. add_node() with embedding               [existing + M2, ~100ms]
+  |     +-- _auto_link() tag-based (link_type='tag')    [existing]
+  |     +-- _semantic_link() embedding-based (link_type='semantic')  [M2]
+  |
+  +-- 4. Store entities in metadata              [M1, ~10ms]
+  |     (kg_nodes.metadata.entities = [...])
+  |     Create entity relationship links (link_type='entity')
+  |
+  +-- 5. Invalidate graph cache                  [existing]
        (next GET /api/graph recomputes M3 analytics)
 
 Total: ~15-20s (within 30s budget)
 ```
 
-**Entity storage strategy:** Entities extracted by M1 are stored in `kg_nodes.metadata.entities` as a JSON array. This avoids schema changes and keeps entities associated with their source node. If entity-level KG queries become needed later, a separate `kg_entities` table can be added as a future enhancement.
-
 ---
 
 ## Performance Budget Summary
 
-| Operation | Current | After Enhancement | Budget | Status |
-|-----------|---------|-------------------|--------|--------|
-| `GET /api/graph` (cache hit) | ~1ms | ~1ms | < 2s | OK |
-| `GET /api/graph` (cache miss) | ~150ms | ~160ms (+NetworkX 5ms) | < 2s | OK |
-| `POST /api/summarize` | ~8-15s | ~15-20s (+embeddings 200ms, +entities ~4s parallel) | < 30s | OK |
-| `POST /api/graph/query` | N/A | ~2.5s | < 5s | OK |
-| `POST /api/graph/search` | N/A | ~350ms | < 1s | OK |
-| RPC: `find_neighbors` | N/A | ~100ms (network) | < 500ms | OK |
-| RPC: `shortest_path` | N/A | ~100ms (network) | < 500ms | OK |
-| Cold start (import overhead) | ~200ms | ~250ms (+networkx ~50ms) | < 500ms | OK |
+| Operation | Current | After | Budget | Status |
+|-----------|---------|-------|--------|--------|
+| `GET /api/graph` (hit) | ~1ms | ~1ms | < 2s | OK |
+| `GET /api/graph` (miss) | ~150ms | ~155-230ms (+NetworkX) | < 2s | OK |
+| `POST /api/summarize` | ~8-15s | ~15-20s (+M1 parallel, +M2) | < 30s | OK |
+| `POST /graph/query` | N/A | ~2.5s | < 5s | OK |
+| `POST /graph/search` | N/A | ~350ms | < 1s | OK |
+| RPC calls | N/A | ~100ms (network) | < 500ms | OK |
+| Cold start | ~200ms | ~250ms (+networkx) | < 500ms | OK |
 
-**Latency verification plan:** After each module is implemented, spawn a latency measurement subagent that:
-1. Calls each endpoint 10 times
-2. Measures p50, p95, p99 latency
-3. Compares against the budget above
-4. Flags any endpoint exceeding its budget
+**Latency verification:** After each module, spawn a subagent that calls each endpoint 10x, measures p50/p95/p99, compares against budget, flags violations.
 
 ---
 
-## New Dependencies (requirements.txt additions)
+## New Dependencies
 
 ```
-# Graph algorithms (PageRank, community detection, centrality)
-networkx>=3.2
-
-# Vector normalization for MRL-truncated embeddings
-numpy>=1.26
+networkx>=3.2    # Louvain built-in since 2.7
+numpy>=1.26      # L2 normalization for MRL-truncated embeddings
 ```
-
-**No other new dependencies.** Everything else uses existing packages: `google-genai` (Gemini API), `supabase` (database), `fastapi` (routes), `pydantic` (models).
 
 ---
 
 ## File Change Summary
 
-| File | Change Type | Module |
-|------|-------------|--------|
+| File | Change | Module |
+|------|--------|--------|
 | `website/core/supabase_kg/entity_extractor.py` | **NEW** | M1 |
 | `website/core/supabase_kg/embeddings.py` | **NEW** | M2 |
 | `website/core/supabase_kg/analytics.py` | **NEW** | M3 |
 | `website/core/supabase_kg/nl_query.py` | **NEW** | M4 |
 | `website/core/supabase_kg/retrieval.py` | **NEW** | M6 |
-| `supabase/website_kg/002_add_embeddings.sql` | **NEW** | M2, M6 |
-| `supabase/website_kg/003_add_graph_functions.sql` | **NEW** | M4, M5 |
-| `website/core/supabase_kg/models.py` | MODIFY (add embedding field to KGNodeCreate, add NLQueryResult, SearchResult) | M2, M4 |
-| `website/core/supabase_kg/repository.py` | MODIFY (add _semantic_link, add RPC wrappers) | M2, M5 |
-| `website/core/supabase_kg/__init__.py` | MODIFY (export new modules) | All |
-| `website/api/routes.py` | MODIFY (enrich /api/graph, add /graph/query, /graph/search) | M3, M4, M6 |
-| `website/knowledge_graph/js/app.js` | MODIFY (PageRank sizing, community overlay) | M3 |
-| `requirements.txt` | MODIFY (add networkx, numpy) | M3 |
+| `supabase/website_kg/002_add_intelligence.sql` | **NEW** | All |
+| `website/core/supabase_kg/models.py` | MODIFY (embedding field, NLQueryResult) | M2, M4 |
+| `website/core/supabase_kg/repository.py` | MODIFY (_semantic_link, RPC wrappers) | M2, M5 |
+| `website/core/supabase_kg/__init__.py` | MODIFY (exports) | All |
+| `website/api/routes.py` | MODIFY (enrich graph, new endpoints) | M3-M6 |
+| `website/knowledge_graph/js/app.js` | MODIFY (PageRank sizing, community) | M3 |
+| `requirements.txt` | MODIFY (networkx, numpy) | M3 |
 | `scripts/backfill_embeddings.py` | **NEW** | M2 |
 | `tests/test_entity_extractor.py` | **NEW** | M1 |
 | `tests/test_embeddings.py` | **NEW** | M2 |
@@ -919,29 +937,29 @@ numpy>=1.26
 
 ---
 
-## Implementation Order & Parallelism
+## Implementation Order
 
 ```
-Phase 1 (parallel — no dependencies between them):
-  ├─ M1: Entity Extraction
-  ├─ M2: Semantic Embeddings + pgvector migration
-  ├─ M4: NL Graph Query
-  └─ M5: Graph Traversal RPCs + SQL migration
+Phase 1 (parallel — no dependencies):
+  +-- M1: Entity Extraction
+  +-- M2: Semantic Embeddings + migration
+  +-- M4: NL Graph Query
+  +-- M5: Graph Traversal RPCs
 
 Phase 2 (depends on M2):
-  ├─ M3: Graph Intelligence (needs graph data for NetworkX)
-  └─ M6: Hybrid Retrieval (needs embeddings + RPCs)
+  +-- M3: Graph Intelligence (NetworkX)
+  +-- M6: Hybrid Retrieval
 
 Phase 3 (integration):
-  ├─ Wire all modules into /api/summarize pipeline
-  ├─ Update /api/graph response with analytics
-  └─ Add /api/graph/query and /api/graph/search endpoints
+  +-- Wire into /api/summarize pipeline
+  +-- Enrich /api/graph with analytics
+  +-- Add /graph/query and /graph/search endpoints
 
 Phase 4 (verification):
-  ├─ Run all tests
-  ├─ Spawn latency measurement subagent
-  ├─ Verify all performance budgets met
-  └─ Backfill embeddings for existing nodes
+  +-- Run all 18 tests
+  +-- Spawn latency measurement subagent per endpoint
+  +-- Verify all performance budgets met
+  +-- Backfill embeddings for existing nodes
 ```
 
 Each Phase 1 module can be assigned to a separate subagent for parallel execution.
