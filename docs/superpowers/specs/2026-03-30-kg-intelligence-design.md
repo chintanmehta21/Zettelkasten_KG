@@ -290,17 +290,27 @@ AS $$
 $$;
 
 -- 7. NL Query safe executor (M4)
+-- RETURNS JSONB (not TABLE) because NL queries produce varying column sets.
 CREATE OR REPLACE FUNCTION execute_kg_query(query_text TEXT, p_user_id UUID)
 RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
 DECLARE result JSONB;
 BEGIN
+    -- Safety: reject mutations (case-insensitive)
     IF query_text ~* '(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)' THEN
         RAISE EXCEPTION 'Only SELECT queries are allowed';
     END IF;
+    -- Security: enforce user scoping — reject queries not filtering by user_id
+    IF query_text !~* ('user_id\s*=\s*''' || p_user_id::text || '''') THEN
+        RAISE EXCEPTION 'Query must filter by the authenticated user_id';
+    END IF;
     EXECUTE format('SELECT jsonb_agg(row_to_json(t)) FROM (%s) t', query_text)
     INTO result;
+    -- Defense-in-depth: truncate large result sets
+    IF jsonb_array_length(COALESCE(result, '[]'::jsonb)) > 50 THEN
+        result := (SELECT jsonb_agg(elem) FROM jsonb_array_elements(result) WITH ORDINALITY AS t(elem, idx) WHERE idx <= 50);
+    END IF;
     RETURN COALESCE(result, '[]'::jsonb);
 END;
 $$;
@@ -740,9 +750,11 @@ NL-to-SQL pipeline with EXPLAIN validation + error-retry (LangChain has neither)
 
 **Note:** supabase-py cannot execute raw SQL — justifies the RPC approach for all queries.
 
+**CVE-2024-8309 mitigation (defense-in-depth):** LangChain's GraphCypherQAChain was vulnerable to prompt injection generating destructive queries. Our defense is layered: (1) Python-side case-insensitive regex rejects mutations, (2) RPC independently re-validates, (3) RPC enforces user_id scoping (rejects queries not filtering by authenticated user), (4) RPC runs as SECURITY DEFINER with service_role only, (5) statement_timeout prevents resource exhaustion. Strictly more robust than LangChain.
+
 ### File: `website/core/supabase_kg/nl_query.py`
 
-**System prompt** includes schema, domain vocabulary mapping, and 5 few-shot examples:
+**System prompt** includes schema, domain vocabulary, source_type enum, and few-shot examples:
 
 ```
 DATABASE SCHEMA:
@@ -751,30 +763,57 @@ DATABASE SCHEMA:
 - kg_links(id UUID, user_id UUID, source_node_id TEXT, target_node_id TEXT,
            relation TEXT, weight INTEGER, link_type TEXT)
 
+VALID source_type VALUES: 'youtube', 'github', 'reddit', 'substack', 'medium', 'generic'
+
 DOMAIN VOCABULARY:
-- "articles" / "notes" / "content" = kg_nodes
-- "videos" = kg_nodes WHERE source_type = 'youtube'
-- "repos" / "code" = kg_nodes WHERE source_type = 'github'
-- "connections" / "links" = kg_links
-- "topics" / "tags" = unnest(tags) from kg_nodes
+- "articles" / "notes" / "content" / "saves" = kg_nodes
+- "videos" / "YouTube" = kg_nodes WHERE source_type = 'youtube'
+- "repos" / "code" / "GitHub" = kg_nodes WHERE source_type = 'github'
+- "newsletters" / "Substack" = kg_nodes WHERE source_type = 'substack'
+- "Reddit posts" / "discussions" = kg_nodes WHERE source_type = 'reddit'
+- "connections" / "links" / "edges" = kg_links
+- "topics" / "tags" / "categories" = unnest(tags) from kg_nodes
+- "related to X" = JOIN kg_links on source/target
+- "isolated" / "orphaned" = LEFT JOIN kg_links ... WHERE l.id IS NULL
 
 RULES:
 - ALWAYS filter by user_id = '{user_id}'
-- Return ONLY valid PostgreSQL SQL. No markdown, no backticks.
+- Return ONLY valid PostgreSQL SQL. No markdown, no backticks, no explanation.
 - LIMIT to 50 rows max. NEVER use mutation statements.
 ```
 
 **Pipeline:**
-1. Generate SQL via Gemini (strip markdown fences/backticks from output)
-2. Safety check: case-insensitive regex rejects `DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE`
-3. Validation: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for retry (max 1)
-4. Execute via `execute_kg_query` RPC (5s timeout)
-5. Format with second Gemini call
-6. Return `NLQueryResult` (includes `sql`, `raw_result`, `answer`, `latency_ms`, `retries`)
+1. Generate SQL via Gemini
+1b. **Strip LLM artifacts**: `re.sub(r'^```(?:sql)?\s*|\s*```$', '', output.strip(), flags=re.MULTILINE).strip()` — LLMs frequently add markdown fences despite instructions
+2. **Safety check**: `re.search(r'(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)', sql, re.IGNORECASE)` — must be case-insensitive, must include GRANT/REVOKE
+3. **Validation**: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for retry (max 1)
+4. Execute via `execute_kg_query` RPC (5s timeout, enforces user_id scoping)
+5. If RPC times out, return user-friendly error (not raw PG timeout)
+6. Format with second Gemini call
+7. Return `NLQueryResult`
 
-**API endpoint:** `POST /api/graph/query` — rate limit 5/min (more expensive than summarize).
+**Error responses:**
+
+| Failure | HTTP | Message |
+|---------|------|---------|
+| Safety check rejects | 400 | "I can only answer questions, not modify the graph." |
+| EXPLAIN fails after retry | 400 | "I couldn't understand that question. Try rephrasing." |
+| RPC timeout (>5s) | 504 | "That query was too complex. Try a simpler question." |
+| RPC error | 500 | "Something went wrong. Please try again." |
+| Rate limit | 429 | "Too many queries. Wait {seconds}s." |
+| Empty results | 200 | Answer: "No results found. Try different keywords." |
+
+**API endpoint:** `POST /api/graph/query` — rate limit 5/min per IP (reuse existing `_check_rate_limit` with separate bucket). Return HTTP 429 with retry-after.
 
 **Latency budget:** ~2.5s (generation 1.5s + validation 50ms + execution 10ms + formatting 1s). Separate endpoint, not on critical path.
+
+### Future Enhancement: Vanna.ai
+
+If NL query accuracy proves insufficient, Vanna.ai (MIT) is a drop-in upgrade:
+- Native PostgreSQL + Gemini support
+- RAG-based: train with `vn.train(ddl=..., sql=..., question=...)`
+- FastAPI integration: `register_chat_routes(app, vn)`
+- Self-improving: stores successful query pairs for future retrieval
 
 ### Tests for M4
 
@@ -783,6 +822,10 @@ RULES:
 **Test 2 — `test_nl_query_rejects_mutations`**: "Delete all my articles" -> safety check rejects -> HTTP 400.
 
 **Test 3 — `test_nl_query_error_retry`**: First SQL invalid (EXPLAIN fails), retry succeeds. Assert: `retries=1`.
+
+**Test 4 — `test_nl_query_timeout`**: Mock RPC timeout. Assert: HTTP 504, user-friendly message, no raw PG error leaked.
+
+**Test 5 — `test_nl_query_strips_markdown`**: Mock Gemini returning SQL in \`\`\`sql fences. Assert: fences stripped, query executes successfully.
 
 ---
 
@@ -803,12 +846,19 @@ Neo4j Cypher: elegant `MATCH (a)-[*1..5]->(b)`. At <10K nodes, PostgreSQL recurs
 6. `similar_nodes(user_id, node_id, limit)` — tag-overlap similarity
 
 **Design notes:**
-- All use `UNION ALL` with array-based cycle prevention (`<> ALL(path)`)
+- All use `UNION ALL` with array-based cycle prevention (`<> ALL(path)`). For connected-component queries, `UNION` (auto-dedup) preferred over `UNION ALL`.
 - PG14+ `CYCLE` clause available on Supabase (PG15+) as cleaner alternative
 - `SECURITY DEFINER SET search_path = ''` per Supabase security advisor
-- `statement_timeout = '5s'` on `execute_kg_query` as safety net
+- All M5 RPCs should include `SET statement_timeout = '5s'` to prevent runaway recursive CTEs (add to each function's SET line in the migration)
+- I/O optimization (optional): `CLUSTER kg_links USING idx_kg_links_user_source;` periodically for large graphs
 
-**Repository integration:** Add methods to `KGRepository`, each calling `self._client.rpc()`.
+**Repository integration:** Add methods to `KGRepository`, each calling `self._client.rpc()`:
+- `find_neighbors(user_id, node_id, depth=2) -> list[dict]`
+- `shortest_path(user_id, source_id, target_id) -> dict | None`
+- `top_connected(user_id, limit=20) -> list[dict]`
+- `isolated_nodes(user_id) -> list[dict]`
+- `top_tags(user_id, limit=20) -> list[dict]`
+- `similar_nodes(user_id, node_id, limit=10) -> list[dict]`
 
 **Latency:** Sub-5ms query + ~100ms network = **~100ms** per call.
 
@@ -830,12 +880,18 @@ Neo4j Cypher: elegant `MATCH (a)-[*1..5]->(b)`. At <10K nodes, PostgreSQL recurs
 
 ### What We Build (Superior — Reciprocal Rank Fusion)
 
-Three-stream retrieval with mathematically principled RRF scoring (documented Supabase pattern):
-- **Semantic**: pgvector cosine similarity (embedding `<=>` operator)
-- **Fulltext**: PostgreSQL tsvector with `websearch_to_tsquery` (natural language input)
+**Why RRF over concatenation:** LangChain's GraphRetriever merges via naive string concatenation — a mediocre vector match sits alongside a strong keyword match with no quality distinction. RRF normalizes ranks so documents appearing in multiple streams (high semantic similarity AND strong keyword match) are boosted to the top.
+
+**RRF formula:** For each document, score per stream = `1 / (k + rank)` where `rank` is position (1-indexed) and `k=60` (standard constant from Cormack et al. RRF paper — dampens high-rank dominance). Each stream's RRF score is multiplied by its weight, then summed.
+
+Three streams:
+- **Semantic**: pgvector cosine similarity (`<=>` operator)
+- **Fulltext**: PostgreSQL tsvector with `websearch_to_tsquery` (handles natural language syntax: "machine learning -beginner", "react OR vue" — no explicit tsquery syntax needed from user)
 - **Graph**: 1-hop neighbors from `kg_links` (optional, via `p_seed_node_id`)
 
-Default weights: semantic=0.5, fulltext=0.3, graph=0.2. `k=60` (standard RRF constant). `p_seed_node_id` is optional — graph stream skipped when NULL.
+**Weight defaults:** semantic=0.5 (dominant — captures meaning beyond keywords), fulltext=0.3 (catches exact terms embeddings miss: acronyms, proper nouns), graph=0.2 (leverages user's existing KG structure). For conversational queries, increase graph_weight to 0.3-0.4.
+
+**Graph stream behavior:** `p_seed_node_id` is optional (DEFAULT NULL). When NULL, the graph stream is silently skipped — RRF runs with semantic + fulltext only. The `fts` column uses `GENERATED ALWAYS AS` (auto-updates when name/summary change, zero application code).
 
 **Full SQL in consolidated migration above.**
 
@@ -895,10 +951,15 @@ Total: ~15-20s (within 30s budget)
 | `POST /api/summarize` | ~8-15s | ~15-20s (+M1 parallel, +M2) | < 30s | OK |
 | `POST /graph/query` | N/A | ~2.5s | < 5s | OK |
 | `POST /graph/search` | N/A | ~350ms | < 1s | OK |
-| RPC calls | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `find_neighbors` | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `shortest_path` | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `top_connected_nodes` | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `isolated_nodes` | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `top_tags` | N/A | ~100ms (network) | < 500ms | OK |
+| RPC: `similar_nodes` | N/A | ~100ms (network) | < 500ms | OK |
 | Cold start | ~200ms | ~250ms (+networkx) | < 500ms | OK |
 
-**Latency verification:** After each module, spawn a subagent that calls each endpoint 10x, measures p50/p95/p99, compares against budget, flags violations.
+**Latency verification:** After each module, spawn a subagent that calls each endpoint 10x, measures p50/p95/p99, compares against budget, flags violations. Runs in Phase 4 against deployed Render instance (not localhost) to capture real network conditions. For `/api/summarize`, measure incremental overhead (compare with/without intelligence modules). If any endpoint exceeds budget, the implementing agent must optimize before completion.
 
 ---
 
