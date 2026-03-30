@@ -1,7 +1,7 @@
 # KG Intelligence Layer — Native Design Spec
 
 **Date**: 2026-03-30
-**Status**: Draft v2 — pending user approval
+**Status**: Draft v4 — pending user approval
 **Approach**: B (Native Stack) — zero LangChain, zero Neo4j
 **Research basis**: 17 research subagents + 5 review subagents, source code analysis of LLMGraphTransformer + GraphCypherQAChain
 
@@ -46,9 +46,9 @@ Add six intelligence capabilities to the existing Supabase-backed knowledge grap
               v                          v
      GET /api/graph               New Query Endpoints
      (existing, + enriched)       ---------------------
-     PageRank, community          M5: NL Graph Query
-     labels in response           M6: Graph Traversal RPCs
-                                  M7: Hybrid Retrieval
+     PageRank, community          M4: NL Graph Query
+     labels in response           M5: Graph Traversal RPCs
+                                  M6: Hybrid Retrieval
 ```
 
 **Modules (parallelizable for implementation):**
@@ -130,7 +130,8 @@ SELECT
                     'target',    l.target_node_id,
                     'relation',  l.relation,
                     'weight',    l.weight,
-                    'link_type', l.link_type
+                    'link_type', l.link_type,
+                    'description', l.description
                 )
             )
             FROM kg_links l WHERE l.user_id = u.id),
@@ -541,7 +542,19 @@ Add ONLY new entities and relationships not already captured.
 
 **Integration point:** Called from `routes.py` `/api/summarize` AFTER `summarize_url()` returns. Runs on `brief_summary` (200-500 tokens, no chunking needed).
 
-**Latency budget:** Step 1 (~1.5s) + Step 2 (~1s) + Step 3 gleaning (~1.5s) = **~4s total** with gleaning, ~2.5s without. Runs in parallel with M2 embedding generation.
+**Latency budget:** Step 1 (~1.5s) + Step 2 (~1s) + Step 3 gleaning (~1.5s) = **~4s total** with gleaning, ~2.5s without. Runs in parallel with M2 embedding generation. Each Gemini call uses a 10-second `timeout` parameter on the `generate_content()` call as a circuit-breaker; if any step exceeds it, skip remaining steps and return partial results.
+
+**`max_gleanings` safety:** Config enforces `max_gleanings <= 3` (hard cap). At `max_gleanings=3`, worst-case latency = ~7s, still within the 30s budget when parallel with existing summarization. Default is 1 (one extra pass).
+
+**`existing_types` query:** On each extraction call, query existing types via: `SELECT DISTINCT jsonb_array_elements(metadata->'entities')->>'type' AS entity_type FROM kg_nodes WHERE user_id = $1 AND metadata ? 'entities' LIMIT 50`. Cache the result in-memory with the same 30s TTL as the graph cache.
+
+**Entity dedup embedding dependency:** M1 entity dedup uses `generate_embedding()` from M2's `embeddings.py`. This is NOT a circular dependency — M1 and M2 are both Phase 1 modules but M1's dedup is an internal post-processing step that imports M2's pure function, not M2's pipeline integration. The `generate_embedding()` function has no state dependencies on M2 being "complete."
+
+**Cross-node entity relationship mapping:** When M1 extracts a relationship like "Python USES TensorFlow" from Article A:
+1. Check if a `kg_links` row already exists between Article A and any other node whose `metadata.entities` contains "TensorFlow" (search via `metadata @> '{"entities": [{"id": "tensorflow"}]}'::jsonb`)
+2. If found: create link between Article A and that node with `link_type='entity'`, `relation='USES'`, `weight=strength`
+3. If not found (target entity only exists in the same article): skip — self-referencing entity links add no graph value
+4. Future enhancement: when a new article mentions a known entity, retroactively create entity links to all articles containing that same entity
 
 **Graceful degradation:** If extraction fails (rate limit, timeout), summarize returns normally. Entities are additive, never blocking.
 
@@ -791,8 +804,11 @@ RULES:
 3. **Validation**: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for retry (max 1)
 4. Execute via `execute_kg_query` RPC (5s timeout, enforces user_id scoping)
 5. If RPC times out, return user-friendly error (not raw PG timeout)
-6. Format with second Gemini call
-7. Return `NLQueryResult`
+6. **Python-side result cap (defense-in-depth):** `results = results[:50]` before formatting, in case RPC truncation is ever bypassed
+7. Format with second Gemini call
+8. Return `NLQueryResult`
+
+**user_id regex trade-off:** The RPC's `user_id` check (`user_id\s*=\s*'<uuid>'`) may false-reject valid SQL using `IN (...)` or `::uuid` cast syntax. This is an accepted trade-off — false-reject (query fails, user rephrases) is strictly safer than false-accept (cross-user data leak). Document as intentional.
 
 **Error responses:**
 
