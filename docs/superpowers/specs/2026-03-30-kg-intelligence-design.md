@@ -298,9 +298,13 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' SET statement_time
 AS $$
 DECLARE result JSONB;
 BEGIN
-    -- Safety: reject mutations (case-insensitive)
-    IF query_text ~* '(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)' THEN
+    -- Safety: SELECT-only allowlist (more robust than denylist)
+    IF NOT (query_text ~* '^\s*SELECT\b') THEN
         RAISE EXCEPTION 'Only SELECT queries are allowed';
+    END IF;
+    -- Block multi-statement injection
+    IF query_text ~ ';' THEN
+        RAISE EXCEPTION 'Multi-statement queries are not allowed';
     END IF;
     -- Security: enforce user scoping — reject queries not filtering by user_id
     IF query_text !~* ('user_id\s*=\s*''' || p_user_id::text || '''') THEN
@@ -519,7 +523,7 @@ Add ONLY new entities and relationships not already captured.
 2. Normalize relationship types: UPPER_SNAKE_CASE
 3. Deduplicate entities:
    - Exact match on normalized ID -> merge
-   - If `enable_entity_dedup` and embeddings available: embed entity names using `generate_embedding(name, task_type="SEMANTIC_SIMILARITY")`, merge pairs with cosine similarity > `dedup_similarity_threshold`
+   - If `enable_entity_dedup` and embeddings available: embed entity names using `generate_embedding(name, task_type="SEMANTIC_SIMILARITY")`, merge pairs ONLY when cosine similarity > `dedup_similarity_threshold` AND entity types match (case-insensitive). Type-matching prevents false merges like "React" (Technology) vs "React team" (Organization).
 4. Validate against allowed types (case-insensitive), drop non-conforming
 5. Drop entities without IDs, relationships without source/target
 6. If Gemini returns malformed JSON despite `response_schema`, attempt `json.loads()` with markdown fence stripping. Log and return empty `ExtractionResult` on failure.
@@ -697,7 +701,7 @@ class GraphMetrics:
 2. Skip if < 3 nodes (return empty metrics)
 3. Compute:
    - `nx.pagerank(G, alpha=0.85)` -> node importance
-   - `nx.community.louvain_communities(G, resolution=1.0)` -> topic clusters
+   - `nx.community.louvain_communities(G, resolution=1.0, seed=42)` -> topic clusters (seed=42 ensures deterministic community assignments across cache refreshes, preventing visual color flicker on the frontend)
      - `resolution` < 1.0 = fewer larger communities; > 1.0 = more smaller. Start at 1.0, tune.
      - Built into NetworkX since v2.7 — no `python-louvain` package needed
    - `nx.betweenness_centrality(G, k=min(100, len(G)))` -> bridge nodes
@@ -800,8 +804,8 @@ RULES:
 **Pipeline:**
 1. Generate SQL via Gemini
 1b. **Strip LLM artifacts**: `re.sub(r'^```(?:sql)?\s*|\s*```$', '', output.strip(), flags=re.MULTILINE).strip()` — LLMs frequently add markdown fences despite instructions
-2. **Safety check**: `re.search(r'(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|GRANT|REVOKE)', sql, re.IGNORECASE)` — must be case-insensitive, must include GRANT/REVOKE
-3. **Validation**: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for retry (max 1)
+2. **Safety check (SELECT-only allowlist)**: Verify `re.match(r'^\s*SELECT\b', sql.strip(), re.IGNORECASE)`. Reject if the SQL does not start with SELECT. An allowlist is strictly more robust than a denylist — denylist misses CREATE/COPY/DO/SET which can achieve code execution via SECURITY DEFINER RPC. Also reject if SQL contains `;` (prevents multi-statement injection).
+3. **Validation**: `EXPLAIN {sql}` via RPC. On failure, feed error to Gemini for guided retry (max 1). The retry prompt includes a COMMON_MISTAKES section: "Common errors for this schema: (1) tags is an ARRAY — use unnest(tags) or tags @> ARRAY['x'], not tags='x'; (2) source_type values must be quoted strings from: youtube/github/reddit/substack/medium/generic; (3) use node_date not date for date filtering; (4) kg_links uses source_node_id/target_node_id not source/target; (5) always qualify table names with public. prefix." SQL-of-Thought research shows structured error taxonomy achieves 91.59% accuracy vs naive retry.
 4. Execute via `execute_kg_query` RPC (5s timeout, enforces user_id scoping)
 5. If RPC times out, return user-friendly error (not raw PG timeout)
 6. **Python-side result cap (defense-in-depth):** `results = results[:50]` before formatting, in case RPC truncation is ever bypassed
