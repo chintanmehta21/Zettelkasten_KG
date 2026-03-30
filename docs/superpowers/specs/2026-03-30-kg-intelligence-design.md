@@ -172,7 +172,7 @@ RETURNS TABLE (
     node_id TEXT, name TEXT, source_type TEXT, summary TEXT,
     tags TEXT[], url TEXT, depth INT
 )
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     WITH RECURSIVE neighbors AS (
         SELECT n.id AS node_id, 0 AS depth, ARRAY[n.id] AS path
@@ -206,7 +206,7 @@ CREATE OR REPLACE FUNCTION shortest_path(
     p_max_depth INT DEFAULT 10
 )
 RETURNS TABLE (path TEXT[], depth INT)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     WITH RECURSIVE search AS (
         SELECT n.id AS node_id, ARRAY[n.id] AS path, 0 AS depth
@@ -235,7 +235,7 @@ CREATE OR REPLACE FUNCTION top_connected_nodes(
     p_user_id UUID, p_limit INT DEFAULT 20
 )
 RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT, degree BIGINT)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     SELECT n.id, n.name, n.source_type, COUNT(DISTINCT l.id) AS degree
     FROM public.kg_nodes n
@@ -248,7 +248,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION isolated_nodes(p_user_id UUID)
 RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT, url TEXT, node_date DATE)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     SELECT n.id, n.name, n.source_type, n.url, n.node_date
     FROM public.kg_nodes n
@@ -260,7 +260,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION top_tags(p_user_id UUID, p_limit INT DEFAULT 20)
 RETURNS TABLE (tag TEXT, frequency BIGINT, node_count BIGINT)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     SELECT unnest(n.tags) AS tag, COUNT(*) AS frequency,
            COUNT(DISTINCT n.id) AS node_count
@@ -273,7 +273,7 @@ CREATE OR REPLACE FUNCTION similar_nodes(
 )
 RETURNS TABLE (node_id TEXT, name TEXT, source_type TEXT,
                shared_tag_count BIGINT, shared_tags TEXT[])
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' SET statement_timeout = '5s'
 AS $$
     WITH seed_tags AS (
         SELECT unnest(tags) AS tag FROM public.kg_nodes
@@ -518,7 +518,7 @@ Add ONLY new entities and relationships not already captured.
 2. Normalize relationship types: UPPER_SNAKE_CASE
 3. Deduplicate entities:
    - Exact match on normalized ID -> merge
-   - If `enable_entity_dedup` and embeddings available: embed entity names, merge pairs with cosine similarity > `dedup_similarity_threshold`
+   - If `enable_entity_dedup` and embeddings available: embed entity names using `generate_embedding(name, task_type="SEMANTIC_SIMILARITY")`, merge pairs with cosine similarity > `dedup_similarity_threshold`
 4. Validate against allowed types (case-insensitive), drop non-conforming
 5. Drop entities without IDs, relationships without source/target
 6. If Gemini returns malformed JSON despite `response_schema`, attempt `json.loads()` with markdown fence stripping. Log and return empty `ExtractionResult` on failure.
@@ -624,7 +624,9 @@ embedding: list[float] | None = None  # 768-dim vector
 2. Pass to `KGNodeCreate`
 3. After insert, `find_similar_nodes()` -> create semantic links (`link_type='semantic'`)
 
-**Backfill script:** `scripts/backfill_embeddings.py` — reads nodes missing embeddings, batches of 50, generates + updates.
+**Backfill script:** `scripts/backfill_embeddings.py` — reads nodes missing embeddings, batches of 50 (conservative for rate-limiting; API supports up to 250 per call but smaller batches avoid 429s on free tier), generates + updates.
+
+**Note:** The `metadata JSONB` column already exists in the original schema (`schema.sql` line 48: `metadata JSONB NOT NULL DEFAULT '{}'`). No migration needed for `metadata.entities` or `metadata.embedding_model` — they use existing JSONB column.
 
 **Latency budget:** Embedding ~200ms + similarity search ~10ms = **~250ms**. Parallel with M1.
 
@@ -719,7 +721,7 @@ node["closeness"] = metrics.closeness.get(nid, 0)
    ```
 2. **Community overlay** — keep source-type fill colors; add thin community-colored ring
 
-**Integration with M6:** NetworkX metrics feed hybrid scoring: `alpha * graph_proximity + (1-alpha) * cosine_similarity`. Graph proximity from shortest path or shared community.
+**Integration with M6:** NetworkX community membership and graph structure feed M6's RRF ranking. The graph stream in M6 uses 1-hop neighbors from `kg_links` with `graph_weight=0.2` in the fusion. Community labels from Louvain can further boost same-community results. For M2's semantic auto-linking, a simpler formula applies: `link_strength = 0.4 * tag_overlap + 0.6 * cosine_similarity`.
 
 **Latency budget:** ~1-5ms at 1K nodes. Runs once per 30s cache refresh. Zero impact on cache hits.
 
