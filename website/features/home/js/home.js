@@ -8,7 +8,7 @@
 (function () {
   'use strict';
 
-  var AVATAR_COUNT = 30;
+  var AVATAR_COUNT = 60;
   var _supabaseClient = null;
   var _currentSession = null;
   var _currentAvatarId = null;

@@ -109,7 +109,7 @@ class AvatarUpdateRequest(BaseModel):
     @field_validator("avatar_id")
     @classmethod
     def validate_avatar_id(cls, v: int) -> int:
-        if not (0 <= v <= 29):
+        if not (0 <= v <= 59):
             raise ValueError("avatar_id must be between 0 and 29")
         return v
 

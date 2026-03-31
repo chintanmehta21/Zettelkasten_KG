@@ -7,10 +7,10 @@ import os
 import urllib.request
 
 STYLES = [
-    "adventurer", "bottts", "fun-emoji", "notionists",
-    "thumbs", "big-ears", "lorelei",
+    "adventurer", "bottts", "micah", "notionists",
+    "big-smile", "big-ears", "lorelei",
 ]
-COUNT = 30
+COUNT = 60
 OUTPUT_DIR = os.path.join(
     os.path.dirname(__file__), "..", "..", "website", "artifacts", "avatars"
 )
