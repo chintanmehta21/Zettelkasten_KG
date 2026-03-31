@@ -24,7 +24,15 @@ _supabase_user_id: str | None = None
 
 
 def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, str] | None:
-    """Return (repo, user_id) if Supabase is configured, else None."""
+    """Return (repo, user_id) if Supabase is configured, else None.
+
+    When ``user_id_override`` is the Supabase Auth UUID of an
+    authenticated user, we first look for an existing kg_users row
+    with that ID.  If none exists, we check whether the legacy
+    default user ("naruto") can be claimed — i.e. its render_user_id
+    is updated to the real Auth UUID so all existing zettels become
+    accessible under the authenticated identity.
+    """
     global _supabase_repo, _supabase_user_id
     if not is_supabase_configured():
         return None
@@ -36,6 +44,22 @@ def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, st
             return None
     if user_id_override:
         try:
+            # Fast path: user already exists with this Auth UUID
+            existing = _supabase_repo.get_user_by_render_id(user_id_override)
+            if existing:
+                return _supabase_repo, str(existing.id)
+
+            # Claim the legacy default user if it still has the
+            # placeholder render_user_id ("naruto")
+            legacy = _supabase_repo.get_user_by_render_id("naruto")
+            if legacy:
+                claimed = _supabase_repo.claim_user("naruto", user_id_override)
+                if claimed:
+                    # Invalidate cached default user_id
+                    _supabase_user_id = None
+                    return _supabase_repo, str(claimed.id)
+
+            # No legacy user to claim — create fresh
             user = _supabase_repo.get_or_create_user(user_id_override, display_name="Web User")
             return _supabase_repo, str(user.id)
         except Exception as exc:

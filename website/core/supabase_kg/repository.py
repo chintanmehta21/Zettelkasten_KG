@@ -105,6 +105,27 @@ class KGRepository:
         )
         return KGUser(**resp.data[0]) if resp.data else None
 
+    def claim_user(self, old_render_id: str, new_render_id: str) -> KGUser | None:
+        """Re-link an existing kg_users row to a new render_user_id.
+
+        Used when an authenticated user (Supabase Auth UUID) should take
+        ownership of a legacy user created with a placeholder ID (e.g.
+        "naruto").  Updates render_user_id so all existing nodes/links
+        become accessible under the new identity.
+        """
+        resp = (
+            self._client.table("kg_users")
+            .update({"render_user_id": new_render_id})
+            .eq("render_user_id", old_render_id)
+            .execute()
+        )
+        if resp.data:
+            logger.info(
+                "Claimed kg_user: %s -> %s", old_render_id, new_render_id,
+            )
+            return KGUser(**resp.data[0])
+        return None
+
     def update_user_avatar(self, render_user_id: str, avatar_url: str) -> KGUser | None:
         """Update a user's avatar URL. Returns updated user or None if not found."""
         resp = (
