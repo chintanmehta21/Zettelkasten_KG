@@ -44,16 +44,14 @@
     --error: hsl(0, 72%, 63%);
     --warning: hsl(38, 92%, 60%);
 
-    /* KG accent — cool slate-blue from "Slate & Seafoam" teal palette */
-    /* Source: media.io/color-palette/teal — #64748b family */
-    --kg-accent: hsl(215, 16%, 47%);
-    --kg-accent-muted: hsl(215, 14%, 35%);
-    --kg-bg: hsla(215, 18%, 45%, 0.12);
-    --kg-border: hsla(215, 16%, 50%, 0.25);
-    --kg-text: hsl(215, 18%, 72%);
-    --kg-hover-bg: hsla(215, 20%, 50%, 0.2);
-    --kg-hover-border: hsla(215, 20%, 58%, 0.4);
-    --kg-hover-text: hsl(215, 22%, 85%);
+    /* KG accent — warm cream bg (#f4f1de) with dark text (#1b1f24) */
+    --kg-bg: #f4f1de;
+    --kg-border: hsla(45, 30%, 75%, 0.5);
+    --kg-text: #1b1f24;
+    --kg-logo-color: #1b1f24;
+    --kg-hover-bg: #ebe8d5;
+    --kg-hover-border: hsla(45, 35%, 65%, 0.6);
+    --kg-hover-text: #0d1117;
 
     /* Source type colors */
     --youtube: hsl(0, 84%, 60%);
@@ -165,14 +163,14 @@ a:hover {
 }
 
 .logo-icon {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     color: var(--accent);
 }
 
 .logo-text {
-    font-size: 1.2rem;
+    font-size: 1.35rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--text-primary);
@@ -187,7 +185,7 @@ a:hover {
 }
 
 .hero-text {
-    font-size: 2.75rem;
+    font-size: 2.6rem;
     font-weight: 700;
     letter-spacing: -0.04em;
     margin-bottom: 0.5rem;
@@ -196,7 +194,7 @@ a:hover {
 }
 
 .hero-sub {
-    font-size: 1rem;
+    font-size: 0.92rem;
     color: var(--text-secondary);
     margin-bottom: 2.5rem;
     max-width: 480px;
@@ -815,13 +813,21 @@ a:hover {
     border-color: var(--kg-hover-border);
     color: var(--kg-hover-text);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px hsla(215, 20%, 45%, 0.1);
+    box-shadow: 0 4px 20px hsla(45, 30%, 50%, 0.12);
 }
 
 .kg-cta-icon {
     display: flex;
     align-items: center;
     line-height: 0;
+    filter: drop-shadow(0 0 3px hsla(172, 50%, 50%, 0.4));
+    opacity: 0.85;
+    transition: filter var(--transition), opacity var(--transition);
+}
+
+.kg-cta:hover .kg-cta-icon {
+    filter: drop-shadow(0 0 5px hsla(172, 60%, 50%, 0.55));
+    opacity: 1;
 }
 
 .kg-cta-text {
