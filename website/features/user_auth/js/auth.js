@@ -54,8 +54,12 @@
       _supabaseClient.auth.onAuthStateChange(function (event, session) {
         _currentSession = session;
         updateUI(session);
-        if (event === 'SIGNED_IN' && loginModal) {
-          closeModal();
+        if (event === 'SIGNED_IN') {
+          if (loginModal) closeModal();
+          // Redirect to home page after login (only from landing page)
+          if (window.location.pathname === '/') {
+            window.location.href = '/home';
+          }
         }
       });
 
@@ -191,7 +195,7 @@
       console.error('[auth] Supabase client not initialized');
       return;
     }
-    sessionStorage.setItem('auth_return_to', window.location.pathname);
+    sessionStorage.setItem('auth_return_to', '/home');
     closeModal();
 
     var result = await _supabaseClient.auth.signInWithOAuth({

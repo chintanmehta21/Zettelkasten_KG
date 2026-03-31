@@ -73,7 +73,7 @@
             if (result.error) throw result.error;
 
             statusEl.textContent = 'Signed in! Redirecting...';
-            var returnTo = sessionStorage.getItem('auth_return_to') || '/';
+            var returnTo = sessionStorage.getItem('auth_return_to') || '/home';
             sessionStorage.removeItem('auth_return_to');
             // Validate returnTo is a same-origin path (not protocol-relative or absolute URL)
             if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {

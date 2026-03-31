@@ -105,6 +105,16 @@ class KGRepository:
         )
         return KGUser(**resp.data[0]) if resp.data else None
 
+    def update_user_avatar(self, render_user_id: str, avatar_url: str) -> KGUser | None:
+        """Update a user's avatar URL. Returns updated user or None if not found."""
+        resp = (
+            self._client.table("kg_users")
+            .update({"avatar_url": avatar_url})
+            .eq("render_user_id", render_user_id)
+            .execute()
+        )
+        return KGUser(**resp.data[0]) if resp.data else None
+
     # ── Nodes ────────────────────────────────────────────────────────────
 
     def add_node(self, user_id: UUID, node: KGNodeCreate) -> KGNode:
@@ -383,3 +393,153 @@ class KGRepository:
                 len(created_links),
             )
         return created_links
+
+    def rebuild_links(self, user_id: UUID) -> int:
+        """Rebuild all tag-based links for a user by re-running auto-link on every node.
+
+        Deletes existing tag-based links first, then re-creates from scratch.
+        Returns the number of links created.
+        """
+        # Delete all existing links for this user
+        self._client.table("kg_links").delete().eq(
+            "user_id", str(user_id)
+        ).execute()
+
+        # Fetch all nodes
+        resp = (
+            self._client.table("kg_nodes")
+            .select("id, tags")
+            .eq("user_id", str(user_id))
+            .execute()
+        )
+        nodes = resp.data or []
+
+        total_links = 0
+        for node in nodes:
+            tags = node.get("tags", [])
+            if tags:
+                links = self._auto_link(user_id, node["id"], tags)
+                total_links += len(links)
+
+        logger.info(
+            "Rebuilt links for user %s: %d links from %d nodes",
+            user_id, total_links, len(nodes),
+        )
+        return total_links
+
+    # ── Global Graph ────────────────────────────────────────────────────
+
+    def get_global_graph(self) -> KGGraph:
+        """Return the combined graph across ALL users (for global view)."""
+        nodes_resp = (
+            self._client.table("kg_nodes")
+            .select("id, name, source_type, summary, tags, url, node_date")
+            .order("node_date", desc=True)
+            .execute()
+        )
+        links_resp = (
+            self._client.table("kg_links")
+            .select("source_node_id, target_node_id, relation")
+            .execute()
+        )
+
+        # Deduplicate nodes by id (same node_id may exist for multiple users)
+        seen_ids: set[str] = set()
+        graph_nodes: list[KGGraphNode] = []
+        for row in nodes_resp.data:
+            if row["id"] not in seen_ids:
+                seen_ids.add(row["id"])
+                graph_nodes.append(KGGraphNode(
+                    id=row["id"],
+                    name=row["name"],
+                    group=row["source_type"],
+                    summary=row.get("summary", ""),
+                    tags=row.get("tags", []),
+                    url=row["url"],
+                    date=row.get("node_date") or "",
+                ))
+
+        # Deduplicate links by (source, target, relation)
+        seen_links: set[tuple[str, str, str]] = set()
+        graph_links: list[KGGraphLink] = []
+        for row in links_resp.data:
+            key = (row["source_node_id"], row["target_node_id"], row["relation"])
+            if key not in seen_links:
+                seen_links.add(key)
+                graph_links.append(KGGraphLink(
+                    source=row["source_node_id"],
+                    target=row["target_node_id"],
+                    relation=row["relation"],
+                ))
+
+        return KGGraph(nodes=graph_nodes, links=graph_links)
+
+    # ── Graph Traversal RPCs ────────────────────────────────────────────
+
+    def find_neighbors(self, user_id: UUID, node_id: str, depth: int = 2) -> list[dict]:
+        """K-hop neighbors via find_neighbors RPC."""
+        depth = min(depth, 8)
+        try:
+            resp = self._client.rpc("find_neighbors", {
+                "p_user_id": str(user_id), "p_node_id": node_id, "p_depth": depth,
+            }).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("find_neighbors RPC failed: %s", exc)
+            return []
+
+    def shortest_path(self, user_id: UUID, source_id: str, target_id: str, max_depth: int = 10) -> dict | None:
+        """Shortest path via shortest_path RPC."""
+        try:
+            resp = self._client.rpc("shortest_path", {
+                "p_user_id": str(user_id), "p_source_id": source_id,
+                "p_target_id": target_id, "p_max_depth": min(max_depth, 10),
+            }).execute()
+            return resp.data[0] if resp.data else None
+        except Exception as exc:
+            logger.warning("shortest_path RPC failed: %s", exc)
+            return None
+
+    def top_connected(self, user_id: UUID, limit: int = 20) -> list[dict]:
+        """Most connected nodes via top_connected_nodes RPC."""
+        try:
+            resp = self._client.rpc("top_connected_nodes", {
+                "p_user_id": str(user_id), "p_limit": limit,
+            }).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("top_connected RPC failed: %s", exc)
+            return []
+
+    def isolated_nodes(self, user_id: UUID) -> list[dict]:
+        """Nodes with zero links via isolated_nodes RPC."""
+        try:
+            resp = self._client.rpc("isolated_nodes", {
+                "p_user_id": str(user_id),
+            }).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("isolated_nodes RPC failed: %s", exc)
+            return []
+
+    def top_tags(self, user_id: UUID, limit: int = 20) -> list[dict]:
+        """Most frequent tags via top_tags RPC."""
+        try:
+            resp = self._client.rpc("top_tags", {
+                "p_user_id": str(user_id), "p_limit": limit,
+            }).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("top_tags RPC failed: %s", exc)
+            return []
+
+    def similar_by_tags(self, user_id: UUID, node_id: str, limit: int = 10) -> list[dict]:
+        """Nodes sharing most tags via similar_nodes RPC."""
+        try:
+            resp = self._client.rpc("similar_nodes", {
+                "p_user_id": str(user_id), "p_node_id": node_id, "p_limit": limit,
+            }).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("similar_by_tags RPC failed: %s", exc)
+            return []

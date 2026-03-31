@@ -23,6 +23,7 @@ KG_DIR = Path(__file__).parent / "features" / "knowledge_graph"
 MOBILE_DIR = Path(__file__).parent / "mobile"
 AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
+HOME_DIR = Path(__file__).parent / "features" / "home"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -74,6 +75,10 @@ def create_app(lifespan=None) -> FastAPI:
     app.mount("/auth/css", StaticFiles(directory=str(AUTH_DIR / "css")), name="auth-css")
     app.mount("/auth/js", StaticFiles(directory=str(AUTH_DIR / "js")), name="auth-js")
 
+    # Home page static assets
+    app.mount("/home/css", StaticFiles(directory=str(HOME_DIR / "css")), name="home-css")
+    app.mount("/home/js", StaticFiles(directory=str(HOME_DIR / "js")), name="home-js")
+
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
 
@@ -102,5 +107,11 @@ def create_app(lifespan=None) -> FastAPI:
     @app.get("/auth/callback")
     async def auth_callback():
         return FileResponse(str(AUTH_DIR / "callback.html"))
+
+    @app.get("/home")
+    async def home(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(HOME_DIR / "index.html"))
 
     return app
