@@ -192,53 +192,64 @@
       });
       var data = await resp.json();
       var nodes = data.nodes || [];
+      var links = data.links || [];
 
       // Sort by date descending
       nodes.sort(function (a, b) {
         return (b.date || '').localeCompare(a.date || '');
       });
 
-      renderCards(nodes);
+      // Update KG stats panel
+      var kgNodeCount = document.getElementById('kg-node-count');
+      var kgLinkCount = document.getElementById('kg-link-count');
+      if (kgNodeCount) kgNodeCount.textContent = nodes.length;
+      if (kgLinkCount) kgLinkCount.textContent = links.length;
+
+      // Show only latest 3 zettels in the preview
+      renderCards(nodes.slice(0, 3), nodes.length);
     } catch (e) {
       console.error('[home] Zettels load failed:', e);
-      renderCards([]);
+      renderCards([], 0);
     }
   }
 
-  function renderCards(nodes) {
+  function renderCards(previewNodes, totalCount) {
     if (!cardGrid || !emptyState || !zettelCount) return;
 
-    zettelCount.textContent = nodes.length;
+    zettelCount.textContent = totalCount;
 
-    if (nodes.length === 0) {
+    if (totalCount === 0) {
       cardGrid.innerHTML = '';
       emptyState.classList.remove('hidden');
+      // Hide fade when empty
+      var fade = document.querySelector('.home-card-fade');
+      if (fade) fade.style.display = 'none';
       return;
     }
 
     emptyState.classList.add('hidden');
     cardGrid.innerHTML = '';
 
-    nodes.forEach(function (node, i) {
+    // Show fade only when there are cards
+    var fade = document.querySelector('.home-card-fade');
+    if (fade) fade.style.display = previewNodes.length > 0 ? '' : 'none';
+
+    previewNodes.forEach(function (node, i) {
       var card = document.createElement('a');
       card.className = 'home-card';
       card.href = node.url || '#';
       card.target = '_blank';
       card.rel = 'noopener';
-      card.style.animationDelay = Math.min(i * 0.04, 0.5) + 's';
+      card.style.animationDelay = (i * 0.08) + 's';
 
       var sourceClass = (node.group || 'generic').toLowerCase();
-      var tags = (node.tags || []).slice(0, 3);
-      var tagsHtml = tags.map(function (t) {
-        return '<span class="home-card-tag">' + escapeHtml(t) + '</span>';
-      }).join('');
 
       card.innerHTML =
         '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
-        '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
-        '<p class="home-card-summary">' + escapeHtml(node.summary || '') + '</p>' +
-        (tagsHtml ? '<div class="home-card-tags">' + tagsHtml + '</div>' : '') +
-        (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '');
+        '<div class="home-card-body">' +
+          '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
+          (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
+        '</div>';
 
       cardGrid.appendChild(card);
     });

@@ -62,13 +62,33 @@
                 <h1 class="home-welcome-text">Welcome back, <span id="user-display-name">User</span></h1>
             </div>
 
-            <!-- My Zettels Vault -->
-            <section class="home-vault" id="home-vault">
-                <div class="home-vault-header">
-                    <div class="home-vault-title-row">
-                        <h2 class="home-vault-title">My Zettels</h2>
-                        <span class="home-vault-count" id="zettel-count">0</span>
+            <!-- Two-panel layout: Zettels + Knowledge Graph -->
+            <div class="home-panels">
+                <!-- My Zettels Panel -->
+                <section class="home-panel home-vault" id="home-vault">
+                    <div class="home-vault-header">
+                        <div class="home-vault-title-row">
+                            <h2 class="home-vault-title">My Zettels</h2>
+                            <span class="home-vault-count" id="zettel-count">0</span>
+                        </div>
                     </div>
+
+                    <!-- Latest 3 Cards (with fade-out) -->
+                    <div class="home-card-preview" id="card-preview">
+                        <div class="home-card-grid" id="card-grid">
+                            <!-- Latest 3 cards injected by home.js -->
+                        </div>
+                        <div class="home-card-fade"></div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="home-empty" id="empty-state">
+                        <div class="home-empty-icon">&#x1F4D6;</div>
+                        <h3 class="home-empty-title">No zettels yet</h3>
+                        <p class="home-empty-text">Add your first zettel by pasting a URL above</p>
+                    </div>
+
+                    <!-- Add Zettel (always visible at bottom) -->
                     <div class="home-add-zettel" id="add-zettel-wrap">
                         <button class="home-add-btn" id="add-zettel-btn">
                             <span class="home-add-btn-text">+ Add Zettel</span>
@@ -88,32 +108,37 @@
                             </form>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Card Grid -->
-                <div class="home-card-grid" id="card-grid">
-                    <!-- Cards injected by home.js -->
-                </div>
-
-                <!-- Empty State -->
-                <div class="home-empty" id="empty-state">
-                    <div class="home-empty-icon">&#x1F4D6;</div>
-                    <h3 class="home-empty-title">No zettels yet</h3>
-                    <p class="home-empty-text">Add your first zettel by pasting a URL above</p>
-                </div>
-            </section>
-
-            <!-- Knowledge Graph Button -->
-            <a href="/knowledge-graph" class="home-kg-btn">
-                <div class="home-kg-btn-left">
-                    <img src="/artifacts/logo-knowledge-graph.svg" alt="" width="28" height="28" class="home-kg-icon" />
-                    <div class="home-kg-btn-text">
-                        <span class="home-kg-btn-title">My Knowledge Graph</span>
-                        <span class="home-kg-btn-sub">Explore connections between your zettels</span>
+                <!-- My Knowledge Graph Panel -->
+                <section class="home-panel home-kg-panel">
+                    <div class="home-kg-panel-header">
+                        <div class="home-vault-title-row">
+                            <img src="/artifacts/logo-knowledge-graph.svg" alt="" width="24" height="24" class="home-kg-icon" />
+                            <h2 class="home-vault-title">My Knowledge Graph</h2>
+                        </div>
                     </div>
-                </div>
-                <span class="home-kg-btn-arrow">&rarr;</span>
-            </a>
+
+                    <div class="home-kg-panel-body">
+                        <p class="home-kg-panel-desc">Explore connections between your zettels</p>
+                        <div class="home-kg-stats" id="kg-stats">
+                            <div class="home-kg-stat">
+                                <span class="home-kg-stat-value" id="kg-node-count">0</span>
+                                <span class="home-kg-stat-label">Nodes</span>
+                            </div>
+                            <div class="home-kg-stat">
+                                <span class="home-kg-stat-value" id="kg-link-count">0</span>
+                                <span class="home-kg-stat-label">Connections</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="/knowledge-graph" class="home-kg-explore-btn">
+                        <span>Explore Graph</span>
+                        <span class="home-kg-btn-arrow">&rarr;</span>
+                    </a>
+                </section>
+            </div>
         </main>
 
         <!-- Avatar Picker Modal -->

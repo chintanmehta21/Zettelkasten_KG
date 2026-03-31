@@ -164,18 +164,32 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Vault Section ──────────────────────────────────────────────── */
+/* ── Two-Panel Layout ───────────────────────────────────────────── */
 
-.home-vault {
+.home-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.5s ease 0.1s both;
+}
+
+.home-panel {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 48px 48px var(--radius-lg) var(--radius-lg);
-    padding: 2rem;
-    margin-bottom: 1.5rem;
+    padding: 1.75rem;
     box-shadow: var(--shadow-md);
-    animation: fadeIn 0.5s ease 0.1s both;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Vault Section ──────────────────────────────────────────────── */
+
+.home-vault {
+    margin-bottom: 0;
 }
 
 .home-vault::before {
@@ -191,10 +205,7 @@
 }
 
 .home-vault-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     position: relative;
     z-index: 1;
 }
@@ -226,6 +237,9 @@
 
 .home-add-zettel {
     position: relative;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    text-align: center;
 }
 
 .home-add-btn {
@@ -358,12 +372,31 @@
     to { transform: rotate(360deg); }
 }
 
+/* ── Card Preview (latest 3 with fade) ──────────────────────────── */
+
+.home-card-preview {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.home-card-fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--bg-card));
+    pointer-events: none;
+    z-index: 2;
+}
+
 /* ── Card Grid ──────────────────────────────────────────────────── */
 
 .home-card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     position: relative;
     z-index: 1;
 }
@@ -371,13 +404,15 @@
 .home-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem;
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
     cursor: pointer;
     transition: all var(--transition);
     text-decoration: none;
     color: inherit;
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
     animation: cardIn 0.3s ease both;
 }
 
@@ -413,44 +448,19 @@
 .home-card-source.generic { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
 .home-card-source.medium { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.08); }
 
+.home-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
 .home-card-title {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.82rem;
+    font-weight: 500;
     color: var(--text-primary);
-    margin-bottom: 0.4rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
     line-height: 1.3;
-}
-
-.home-card-summary {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.6rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-height: 1.5;
-}
-
-.home-card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.home-card-tag {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    background: var(--bg-tertiary);
-    color: var(--text-muted);
-    border: 1px solid var(--border);
 }
 
 .home-card-date {
@@ -490,33 +500,21 @@
     color: var(--text-muted);
 }
 
-/* ── Knowledge Graph Button ─────────────────────────────────────── */
+/* ── Knowledge Graph Panel ───────────────────────────────────────── */
 
-.home-kg-btn {
+.home-kg-panel {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.25s ease;
-    box-shadow: var(--shadow-sm);
-    animation: fadeIn 0.5s ease 0.2s both;
+    flex-direction: column;
 }
 
-.home-kg-btn:hover {
-    border-color: hsla(172, 66%, 50%, 0.3);
-    box-shadow: var(--shadow-md), 0 0 20px hsla(172, 66%, 50%, 0.08);
-    transform: translateY(-1px);
+.home-kg-panel-header {
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 1;
 }
 
-.home-kg-btn-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.home-kg-panel-header .home-vault-title-row {
+    gap: 0.5rem;
 }
 
 .home-kg-icon {
@@ -524,27 +522,82 @@
     filter: drop-shadow(0 0 4px hsla(172, 50%, 50%, 0.3));
 }
 
-.home-kg-btn-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: block;
+.home-kg-panel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
-.home-kg-btn-sub {
-    font-size: 0.78rem;
+.home-kg-panel-desc {
+    font-size: 0.85rem;
     color: var(--text-muted);
-    display: block;
-    margin-top: 0.15rem;
+    margin-bottom: 1.5rem;
+}
+
+.home-kg-stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.home-kg-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.home-kg-stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.home-kg-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.home-kg-explore-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.5rem;
+    background: var(--accent-glow);
+    border: 1px solid hsla(172, 66%, 50%, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all var(--transition);
+    margin-top: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.home-kg-explore-btn:hover {
+    background: hsla(172, 66%, 50%, 0.18);
+    border-color: var(--accent-muted);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px hsla(172, 66%, 50%, 0.15);
 }
 
 .home-kg-btn-arrow {
-    font-size: 1.2rem;
-    color: var(--accent);
+    font-size: 1rem;
     transition: transform var(--transition);
 }
 
-.home-kg-btn:hover .home-kg-btn-arrow {
+.home-kg-explore-btn:hover .home-kg-btn-arrow {
     transform: translateX(4px);
 }
 
@@ -645,13 +698,19 @@
 
 /* ── Responsive ─────────────────────────────────────────────────── */
 
+@media (max-width: 768px) {
+    .home-panels {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 640px) {
-    .home-vault {
+    .home-panel {
         border-radius: var(--radius-lg);
         padding: 1.25rem;
     }
 
-    .home-vault::before {
+    .home-panel::before {
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     }
 
@@ -675,15 +734,19 @@
         width: 100%;
     }
 
-    .home-card-grid {
-        grid-template-columns: 1fr;
-    }
-
     .home-avatar-grid {
         grid-template-columns: repeat(5, 1fr);
     }
 
     .home-welcome-text {
         font-size: 1.25rem;
+    }
+
+    .home-kg-stats {
+        gap: 1.5rem;
+    }
+
+    .home-kg-stat-value {
+        font-size: 1.4rem;
     }
 }
