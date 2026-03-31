@@ -22,6 +22,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 KG_DIR = Path(__file__).parent / "features" / "knowledge_graph"
 MOBILE_DIR = Path(__file__).parent / "mobile"
 AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
+ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -72,6 +73,9 @@ def create_app(lifespan=None) -> FastAPI:
     # User Auth static assets
     app.mount("/auth/css", StaticFiles(directory=str(AUTH_DIR / "css")), name="auth-css")
     app.mount("/auth/js", StaticFiles(directory=str(AUTH_DIR / "js")), name="auth-js")
+
+    # Shared artifacts (logos, icons, etc.)
+    app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
 
     # ── Mobile routes ──
     @app.get("/m/")

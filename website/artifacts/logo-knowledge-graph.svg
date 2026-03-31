@@ -1,0 +1,39 @@
+<svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Knowledge Graph logo: Sharp, geometric graph with clear nodes + edges -->
+  <!-- Distinct from Zettelkasten logo — focuses on interconnected structure -->
+
+  <!-- Edges (drawn first, behind nodes) -->
+  <!-- Central hub connections -->
+  <line x1="16" y1="7" x2="7" y2="15" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <line x1="16" y1="7" x2="25" y2="13" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+  <line x1="16" y1="7" x2="16" y2="18" stroke="currentColor" stroke-width="1.2" opacity="0.25"/>
+
+  <!-- Lower connections -->
+  <line x1="7" y1="15" x2="12" y2="25" stroke="currentColor" stroke-width="1.0" opacity="0.28"/>
+  <line x1="25" y1="13" x2="21" y2="24" stroke="currentColor" stroke-width="1.0" opacity="0.28"/>
+  <line x1="16" y1="18" x2="12" y2="25" stroke="currentColor" stroke-width="1.0" opacity="0.22"/>
+  <line x1="16" y1="18" x2="21" y2="24" stroke="currentColor" stroke-width="1.0" opacity="0.22"/>
+
+  <!-- Cross link (shows interconnection) -->
+  <line x1="7" y1="15" x2="16" y2="18" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+  <line x1="25" y1="13" x2="16" y2="18" stroke="currentColor" stroke-width="0.8" opacity="0.18"/>
+
+  <!-- Nodes — sharp hexagonal style for a modern graph feel -->
+  <!-- Central hub (largest) -->
+  <polygon points="16,4 19,5.5 19,8.5 16,10 13,8.5 13,5.5" fill="currentColor" opacity="0.95"/>
+
+  <!-- Left node -->
+  <polygon points="7,12.5 9.5,13.8 9.5,16.2 7,17.5 4.5,16.2 4.5,13.8" fill="currentColor" opacity="0.75"/>
+
+  <!-- Right node -->
+  <polygon points="25,10.5 27.2,11.8 27.2,14.2 25,15.5 22.8,14.2 22.8,11.8" fill="currentColor" opacity="0.75"/>
+
+  <!-- Center-lower node (smaller) -->
+  <polygon points="16,16 18,17 18,19 16,20 14,19 14,17" fill="currentColor" opacity="0.55"/>
+
+  <!-- Bottom-left node -->
+  <polygon points="12,23 14,24 14,26 12,27 10,26 10,24" fill="currentColor" opacity="0.45"/>
+
+  <!-- Bottom-right node -->
+  <polygon points="21,22 23,23 23,25 21,26 19,25 19,23" fill="currentColor" opacity="0.45"/>
+</svg>
