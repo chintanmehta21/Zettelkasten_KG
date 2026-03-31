@@ -284,22 +284,6 @@
     align-items: center;
 }
 
-.home-add-select {
-    padding: 0.5rem 0.6rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    cursor: pointer;
-    min-width: 100px;
-}
-
-.home-add-select:focus {
-    outline: none;
-    border-color: var(--accent-muted);
-}
 
 .home-add-input {
     flex: 1;
@@ -686,7 +670,6 @@
         flex-direction: column;
     }
 
-    .home-add-select,
     .home-add-input,
     .home-add-submit {
         width: 100%;
