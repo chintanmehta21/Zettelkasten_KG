@@ -45,13 +45,13 @@
     --warning: hsl(38, 92%, 60%);
 
     /* KG accent — warm cream bg (#f4f1de) with dark text (#1b1f24) */
-    --kg-bg: #f4f1de;
-    --kg-border: hsla(45, 30%, 75%, 0.5);
-    --kg-text: #1b1f24;
-    --kg-logo-color: #1b1f24;
-    --kg-hover-bg: #ebe8d5;
-    --kg-hover-border: hsla(45, 35%, 65%, 0.6);
-    --kg-hover-text: #0d1117;
+    --kg-bg: #BFDBF7;
+    --kg-border: hsla(210, 50%, 75%, 0.5);
+    --kg-text: #0B1320;
+    --kg-logo-color: #0B1320;
+    --kg-hover-bg: #a8cdef;
+    --kg-hover-border: hsla(210, 55%, 65%, 0.6);
+    --kg-hover-text: #0B1320;
 
     /* Source type colors */
     --youtube: hsl(0, 84%, 60%);
@@ -163,14 +163,14 @@ a:hover {
 }
 
 .logo-icon {
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     flex-shrink: 0;
     color: var(--accent);
 }
 
 .logo-text {
-    font-size: 1.35rem;
+    font-size: 1.55rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--text-primary);
@@ -185,7 +185,7 @@ a:hover {
 }
 
 .hero-text {
-    font-size: 2.6rem;
+    font-size: 2.4rem;
     font-weight: 700;
     letter-spacing: -0.04em;
     margin-bottom: 0.5rem;
@@ -194,7 +194,7 @@ a:hover {
 }
 
 .hero-sub {
-    font-size: 0.92rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin-bottom: 2.5rem;
     max-width: 480px;
@@ -813,7 +813,7 @@ a:hover {
     border-color: var(--kg-hover-border);
     color: var(--kg-hover-text);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px hsla(45, 30%, 50%, 0.12);
+    box-shadow: 0 4px 20px hsla(210, 50%, 60%, 0.15);
 }
 
 .kg-cta-icon {
@@ -832,6 +832,7 @@ a:hover {
 
 .kg-cta-text {
     white-space: nowrap;
+    font-weight: 700;
 }
 
 /* ── Footer ───────────────────────────────────────────────────────── */
