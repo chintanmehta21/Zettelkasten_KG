@@ -1,24 +1,27 @@
-<svg width="22" height="22" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- KG logo — matches KG_Graph_Updated.png exactly -->
-  <!-- Large central white ring + 4 satellite rings connected by thick bars -->
-  <!-- Top-left open ring, top-right dumbbell pair, bottom-left ring -->
+<svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- KG logo — share-network icon, rose/coral accent (#D4637B) -->
+  <!-- Clean sharp edges, no overlapping strokes -->
 
-  <!-- Connector bars (behind nodes) -->
-  <line x1="26" y1="28" x2="14" y2="14" stroke="#3ECFB4" stroke-width="5.5" stroke-linecap="round"/>
-  <line x1="38" y1="26" x2="46" y2="14" stroke="#3ECFB4" stroke-width="5.5" stroke-linecap="round"/>
-  <line x1="52" y1="12" x2="46" y2="14" stroke="#3ECFB4" stroke-width="5.5" stroke-linecap="round"/>
-  <line x1="26" y1="40" x2="16" y2="54" stroke="#3ECFB4" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- Arms: thick bars from center outward -->
+  <line x1="28" y1="30" x2="15" y2="14" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="38" y1="28" x2="52" y2="14" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="30" y1="42" x2="16" y2="54" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Central node — large hollow white ring -->
-  <circle cx="32" cy="34" r="11" stroke="#CBD5E1" stroke-width="5" fill="none"/>
+  <!-- Top-right dumbbell connector -->
+  <line x1="52" y1="14" x2="58" y2="10" stroke="#D4637B" stroke-width="4" stroke-linecap="round"/>
 
-  <!-- Top-left node — open ring (gap at bottom-left like reference) -->
-  <path d="M 8,8 A 7,7 0 1 1 7,18" stroke="#3ECFB4" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <!-- Central node — large ring -->
+  <circle cx="32" cy="34" r="10" stroke="#D4637B" stroke-width="4.5" fill="#0D1117"/>
 
-  <!-- Top-right node pair — two connected small rings (dumbbell) -->
-  <circle cx="46" cy="12" r="5" stroke="#3ECFB4" stroke-width="4" fill="none"/>
-  <circle cx="58" cy="10" r="4" stroke="#3ECFB4" stroke-width="3.5" fill="none"/>
+  <!-- Top-left satellite — open ring -->
+  <circle cx="12" cy="11" r="6.5" stroke="#D4637B" stroke-width="4" fill="#0D1117"/>
 
-  <!-- Bottom-left node — small ring -->
-  <circle cx="14" cy="56" r="5.5" stroke="#3ECFB4" stroke-width="4" fill="none"/>
+  <!-- Top-right satellite -->
+  <circle cx="52" cy="12" r="5" stroke="#D4637B" stroke-width="3.5" fill="#0D1117"/>
+
+  <!-- Top-right mini satellite -->
+  <circle cx="59" cy="8" r="3.5" stroke="#D4637B" stroke-width="3" fill="#0D1117"/>
+
+  <!-- Bottom-left satellite -->
+  <circle cx="14" cy="55" r="5.5" stroke="#D4637B" stroke-width="4" fill="#0D1117"/>
 </svg>

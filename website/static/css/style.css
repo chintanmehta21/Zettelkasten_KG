@@ -44,6 +44,16 @@
     --error: hsl(0, 72%, 63%);
     --warning: hsl(38, 92%, 60%);
 
+    /* KG accent — rose/coral: warm complement to teal, distinct, premium */
+    --kg-accent: hsl(350, 55%, 58%);
+    --kg-accent-muted: hsl(350, 35%, 42%);
+    --kg-bg: hsla(350, 40%, 45%, 0.12);
+    --kg-border: hsla(350, 45%, 50%, 0.22);
+    --kg-text: hsl(350, 40%, 72%);
+    --kg-hover-bg: hsla(350, 45%, 50%, 0.2);
+    --kg-hover-border: hsla(350, 50%, 55%, 0.35);
+    --kg-hover-text: hsl(350, 50%, 82%);
+
     /* Source type colors */
     --youtube: hsl(0, 84%, 60%);
     --github: hsl(192, 55%, 59%);
@@ -120,34 +130,37 @@ a:hover {
 }
 
 /* ── Header ───────────────────────────────────────────────────────── */
-/* STRICT: single-row flex, never wraps, logo left, auth right       */
+/* PERMANENT: branding centered, login absolute top-right             */
 
 .header {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 1rem 0 0.25rem;
-    width: 100%;
-    box-sizing: border-box;
-    text-align: left;
+    position: relative !important;
+    display: block !important;
+    padding: 1rem 0 0 !important;
+    width: 100% !important;
+    text-align: center !important;
+}
+
+/* ── Branding: logo + tagline as one centered unit ───────────────── */
+
+.branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
 }
 
 .logo {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    flex-shrink: 0;
-    min-width: 0;
 }
 
 .tagline {
-    text-align: center;
-    padding-bottom: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
+    margin: 0;
+    padding: 0;
 }
 
 .logo-icon {
@@ -196,6 +209,7 @@ a:hover {
 
 .input-wrapper {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -781,12 +795,12 @@ a:hover {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin: 1.5rem auto 0;
+    margin: 0.75rem auto 0;
     padding: 10px 22px;
-    background: hsla(172, 30%, 30%, 0.12);
-    border: 1px solid hsla(172, 40%, 40%, 0.2);
+    background: var(--kg-bg);
+    border: 1px solid var(--kg-border);
     border-radius: 999px;
-    color: hsl(172, 30%, 70%);
+    color: var(--kg-text);
     text-decoration: none;
     font-size: 0.82rem;
     font-weight: 500;
@@ -796,11 +810,11 @@ a:hover {
 }
 
 .kg-cta:hover {
-    background: hsla(172, 35%, 35%, 0.2);
-    border-color: hsla(172, 50%, 50%, 0.35);
-    color: hsl(172, 40%, 80%);
+    background: var(--kg-hover-bg);
+    border-color: var(--kg-hover-border);
+    color: var(--kg-hover-text);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px hsla(172, 40%, 40%, 0.1);
+    box-shadow: 0 4px 20px hsla(350, 45%, 45%, 0.1);
 }
 
 .kg-cta-icon {

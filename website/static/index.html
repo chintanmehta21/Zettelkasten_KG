@@ -9,11 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/auth/css/auth.css">
-    <!-- CRITICAL: inline header layout — cannot be cached/overridden -->
+    <!-- CRITICAL: inline header layout — immune to CSS caching -->
     <style>
-      .header { display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important; align-items:center!important; justify-content:space-between!important; width:100%!important; }
-      .header-auth { margin-left:auto!important; flex-shrink:0!important; display:flex!important; }
-      .logo { flex-shrink:0!important; }
+      .header { position:relative!important; display:block!important; text-align:center!important; width:100%!important; }
+      .header-auth { position:absolute!important; top:0!important; right:0!important; display:flex!important; }
+      .branding { display:flex!important; flex-direction:column!important; align-items:center!important; }
     </style>
     <link rel="preconnect" href="https://wcgqmjcxlutrmbnijzyz.supabase.co">
     <link rel="preconnect" href="https://accounts.google.com">
@@ -24,9 +24,12 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <div class="logo">
-                <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="28" height="28" />
-                <span class="logo-text">Zettelkasten</span>
+            <div class="branding">
+                <div class="logo">
+                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="28" height="28" />
+                    <span class="logo-text">Zettelkasten</span>
+                </div>
+                <p class="tagline">The second brain you were promised!</p>
             </div>
             <div class="header-auth">
                 <!-- Pre-auth: Login button + dropdown arrow -->
@@ -69,7 +72,6 @@
                 </div>
             </div>
         </header>
-        <p class="tagline">AI-powered link summarizer</p>
 
         <!-- Login Modal -->
         <div class="login-modal" id="login-modal">
@@ -136,6 +138,13 @@
                     </div>
                     <p class="error-message" id="error-message"></p>
                 </form>
+                <!-- Knowledge Graph CTA — inside input section, close to URL bar -->
+                <a href="/knowledge-graph" class="kg-cta" title="Explore Knowledge Graph">
+                    <span class="kg-cta-icon">
+                        <img src="/artifacts/logo-knowledge-graph.svg" alt="" width="20" height="20" />
+                    </span>
+                    <span class="kg-cta-text">Knowledge Graph</span>
+                </a>
             </div>
 
             <!-- Loading State -->
@@ -204,14 +213,6 @@
                 </div>
             </div>
         </main>
-
-        <!-- Knowledge Graph CTA -->
-        <a href="/knowledge-graph" class="kg-cta" title="Explore Knowledge Graph">
-            <span class="kg-cta-icon">
-                <img src="/artifacts/logo-knowledge-graph.svg" alt="" width="22" height="22" />
-            </span>
-            <span class="kg-cta-text">Knowledge Graph</span>
-        </a>
 
         <!-- Footer -->
         <footer class="footer">

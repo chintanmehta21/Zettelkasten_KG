@@ -5,14 +5,14 @@
 
 /* ── Header Auth Container ───────────────────────────────────────── */
 
-/* STRICT: auth container always stays right, never wraps or shifts */
+/* PERMANENT: auth container pinned top-right of header */
 .header-auth {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
     display: flex !important;
     align-items: stretch;
     gap: 0;
-    position: relative;
-    flex-shrink: 0;
-    margin-left: auto;
 }
 
 /* ── Login Button (text only, no logo) ───────────────────────────── */
