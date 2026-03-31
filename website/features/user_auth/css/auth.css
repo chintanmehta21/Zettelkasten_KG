@@ -96,7 +96,7 @@
     position: relative;
 }
 
-/* Vertical separators — short lines that don't reach top/bottom */
+/* Vertical separators — teal accent, don't reach top/bottom */
 .provider-item:nth-child(3n+1)::after,
 .provider-item:nth-child(3n+2)::after {
     content: '';
@@ -105,10 +105,10 @@
     top: 20%;
     height: 60%;
     width: 1px;
-    background: var(--border);
+    background: hsla(172, 66%, 50%, 0.25);
 }
 
-/* Horizontal separator — short lines that don't reach left/right edges */
+/* Horizontal separator — teal accent, don't reach left/right edges */
 .provider-item:nth-child(-n+3)::before {
     content: '';
     position: absolute;
@@ -116,7 +116,7 @@
     left: 15%;
     width: 70%;
     height: 1px;
-    background: var(--border);
+    background: hsla(172, 66%, 50%, 0.25);
 }
 
 .provider-item:hover {

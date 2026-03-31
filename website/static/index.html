@@ -9,6 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/auth/css/auth.css">
+    <!-- CRITICAL: inline header layout — cannot be cached/overridden -->
+    <style>
+      .header { display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important; align-items:center!important; justify-content:space-between!important; width:100%!important; }
+      .header-auth { margin-left:auto!important; flex-shrink:0!important; display:flex!important; }
+      .logo { flex-shrink:0!important; }
+    </style>
     <link rel="preconnect" href="https://wcgqmjcxlutrmbnijzyz.supabase.co">
     <link rel="preconnect" href="https://accounts.google.com">
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script" crossorigin>
@@ -99,7 +105,7 @@
         <main class="main">
             <div class="input-section" id="input-section">
                 <h1 class="hero-text">Summarize any link</h1>
-                <p class="hero-sub">Paste a URL from YouTube, GitHub, Reddit, newsletters, or any webpage</p>
+                <p class="hero-sub">Paste a URL from YouTube, GitHub, Reddit, Substack, or any webpage</p>
                 <form id="summarize-form" class="input-form">
                     <div class="input-wrapper">
                         <div class="source-dropdown" id="source-dropdown">

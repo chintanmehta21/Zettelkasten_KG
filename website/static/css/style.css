@@ -783,10 +783,10 @@ a:hover {
     gap: 10px;
     margin: 1.5rem auto 0;
     padding: 10px 22px;
-    background: hsla(210, 8%, 40%, 0.15);
-    border: 1px solid hsla(210, 12%, 50%, 0.35);
+    background: hsla(172, 30%, 30%, 0.12);
+    border: 1px solid hsla(172, 40%, 40%, 0.2);
     border-radius: 999px;
-    color: hsl(210, 15%, 78%);
+    color: hsl(172, 30%, 70%);
     text-decoration: none;
     font-size: 0.82rem;
     font-weight: 500;
@@ -796,11 +796,11 @@ a:hover {
 }
 
 .kg-cta:hover {
-    background: hsla(210, 10%, 45%, 0.25);
-    border-color: hsla(210, 15%, 58%, 0.5);
-    color: hsl(210, 20%, 88%);
+    background: hsla(172, 35%, 35%, 0.2);
+    border-color: hsla(172, 50%, 50%, 0.35);
+    color: hsl(172, 40%, 80%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px hsla(210, 15%, 50%, 0.12);
+    box-shadow: 0 4px 20px hsla(172, 40%, 40%, 0.1);
 }
 
 .kg-cta-icon {
