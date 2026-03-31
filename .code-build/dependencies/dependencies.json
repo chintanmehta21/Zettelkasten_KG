@@ -1,0 +1,186 @@
+{
+  "version": "1.0.0",
+  "description": "Dependencies manifest for code-pipeline. Lists all required MCPs, skills, and agents with install methods.",
+  "last_checked": "2026-03-29T21:09:05Z",
+  "dependencies": {
+    "skills": [
+      {
+        "name": "superpowers:brainstorming",
+        "required": true,
+        "purpose": "Requirements exploration and design brainstorming in planning phase",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      },
+      {
+        "name": "superpowers:writing-plans",
+        "required": true,
+        "purpose": "Implementation plan creation after brainstorming",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      },
+      {
+        "name": "superpowers:subagent-driven-development",
+        "required": true,
+        "purpose": "Parallel subagent task execution during execution phase",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      },
+      {
+        "name": "superpowers:test-driven-development",
+        "required": true,
+        "purpose": "RED-GREEN-REFACTOR cycle for each implementation task",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      },
+      {
+        "name": "superpowers:requesting-code-review",
+        "required": true,
+        "purpose": "Code review dispatch in testing phase (theory-tester)",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      },
+      {
+        "name": "superpowers:executing-plans",
+        "required": false,
+        "purpose": "Alternative plan execution in separate session",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "unknown"
+      },
+      {
+        "name": "superpowers:finishing-a-development-branch",
+        "required": false,
+        "purpose": "Branch completion and merge workflow",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "unknown"
+      },
+      {
+        "name": "superpowers:verification-before-completion",
+        "required": false,
+        "purpose": "Final verification before claiming work is done",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      }
+    ],
+    "mcps": [
+      {
+        "name": "shadcn-ui",
+        "required": false,
+        "purpose": "UI component library for web frontend projects - used in execution and testing phases",
+        "install_method": "builtin",
+        "tool_prefix": "mcp__Shadcn_UI__",
+        "status": "missing"
+      },
+      {
+        "name": "github",
+        "required": true,
+        "purpose": "Version control, PR management, code search",
+        "install_method": "plugin",
+        "plugin": "github@claude-plugins-official",
+        "tool_prefix": "mcp__github__",
+        "status": "available"
+      },
+      {
+        "name": "playwright",
+        "required": false,
+        "purpose": "Browser automation for UI screenshots and E2E testing in practical-tester",
+        "install_method": "mcp-registry",
+        "registry_keywords": ["playwright", "browser", "testing"],
+        "status": "available"
+      },
+      {
+        "name": "context7",
+        "required": false,
+        "purpose": "Library documentation lookup during execution",
+        "install_method": "builtin",
+        "tool_prefix": "mcp__claude_ai_Context7__",
+        "status": "available"
+      },
+      {
+        "name": "vercel",
+        "required": false,
+        "purpose": "Deployment verification and log checking for Vercel-hosted projects",
+        "install_method": "plugin",
+        "plugin": "vercel@claude-plugins-official",
+        "tool_prefix": "mcp__plugin_vercel_vercel__",
+        "status": "available"
+      },
+      {
+        "name": "supabase",
+        "required": false,
+        "purpose": "Database management and log checking for Supabase-backed projects",
+        "install_method": "mcp-registry",
+        "registry_keywords": ["supabase", "database"],
+        "status": "missing"
+      },
+      {
+        "name": "render",
+        "required": false,
+        "purpose": "Deployment and log checking for Render-hosted projects",
+        "install_method": "mcp-registry",
+        "registry_keywords": ["render", "deployment"],
+        "status": "available"
+      },
+      {
+        "name": "obsidian",
+        "required": false,
+        "purpose": "Knowledge graph queries and documentation management",
+        "install_method": "mcp-registry",
+        "registry_keywords": ["obsidian", "knowledge", "notes"],
+        "status": "missing"
+      },
+      {
+        "name": "claude-preview",
+        "required": false,
+        "purpose": "Dev server preview, screenshots, and UI inspection",
+        "install_method": "builtin",
+        "tool_prefix": "mcp__Claude_Preview__",
+        "status": "missing"
+      },
+      {
+        "name": "claude-in-chrome",
+        "required": false,
+        "purpose": "Browser automation fallback for screenshots and interaction",
+        "install_method": "builtin",
+        "tool_prefix": "mcp__Claude_in_Chrome__",
+        "status": "missing"
+      }
+    ],
+    "agents": [
+      {
+        "name": "code-reviewer",
+        "required": true,
+        "purpose": "Code review agent dispatched by superpowers:requesting-code-review",
+        "install_method": "plugin",
+        "plugin": "superpowers@claude-plugins-official",
+        "status": "available"
+      }
+    ]
+  },
+  "phase_assignments": {
+    "planning": {
+      "skills": ["superpowers:brainstorming", "superpowers:writing-plans"],
+      "mcps": []
+    },
+    "execution": {
+      "skills": ["superpowers:subagent-driven-development", "superpowers:test-driven-development"],
+      "mcps": ["shadcn-ui", "context7", "github"]
+    },
+    "testing_theory": {
+      "skills": ["superpowers:requesting-code-review"],
+      "mcps": ["github"],
+      "agents": ["code-reviewer"]
+    },
+    "testing_practical": {
+      "skills": [],
+      "mcps": ["playwright", "claude-preview", "claude-in-chrome", "vercel", "render", "supabase", "shadcn-ui"]
+    }
+  }
+}

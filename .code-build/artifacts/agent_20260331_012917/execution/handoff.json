@@ -1,0 +1,11 @@
+{
+  "phase": "execution",
+  "agent_id": "20260331_012917",
+  "plan_file": ".code-build/artifacts/agent_20260331_012917/planning/plan.md",
+  "lead_review": ".code-build/artifacts/agent_20260331_012917/planning/lead-review.md",
+  "architecture": ".code-build/artifacts/agent_20260331_012917/discovery/architecture.json",
+  "available_tools": ".code-build/artifacts/agent_20260331_012917/execution/available-tools.json",
+  "execution_mode": "loop",
+  "iteration": 1,
+  "artifacts_root": ".code-build/artifacts/agent_20260331_012917"
+}

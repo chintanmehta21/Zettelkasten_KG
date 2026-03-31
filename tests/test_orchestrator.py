@@ -1,4 +1,4 @@
-"""Offline test suite for zettelkasten_bot.pipeline.orchestrator.process_url.
+"""Offline test suite for telegram_bot.pipeline.orchestrator.process_url.
 
 Covers:
   R016 — error visibility (no partial writes on failure)
@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.pipeline.orchestrator import process_url
-from zettelkasten_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.orchestrator import process_url
+from telegram_bot.pipeline.summarizer import SummarizationResult
 
 
 # ── Factory helpers ──────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ def make_result(is_raw_fallback: bool = False) -> SummarizationResult:
 @pytest.fixture(autouse=True)
 def _reset_dedup_singleton():
     """Reset the module-level DuplicateStore singleton before each test."""
-    import zettelkasten_bot.pipeline.orchestrator as orch
+    import telegram_bot.pipeline.orchestrator as orch
     orch._dedup_store = None
     yield
     orch._dedup_store = None
@@ -88,28 +88,28 @@ def pipeline_mocks(tmp_path):
 
     with (
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.get_settings",
+            "telegram_bot.pipeline.orchestrator.get_settings",
             return_value=settings,
         ) as mock_get_settings,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.resolve_redirects",
+            "telegram_bot.pipeline.orchestrator.resolve_redirects",
             new_callable=AsyncMock,
             side_effect=lambda url: url,
         ) as mock_resolve,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.DuplicateStore",
+            "telegram_bot.pipeline.orchestrator.DuplicateStore",
         ) as mock_ds_cls,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.GeminiSummarizer",
+            "telegram_bot.pipeline.orchestrator.GeminiSummarizer",
         ) as mock_gs_cls,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.ObsidianWriter",
+            "telegram_bot.pipeline.orchestrator.ObsidianWriter",
         ) as mock_ow_cls,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.get_extractor",
+            "telegram_bot.pipeline.orchestrator.get_extractor",
         ) as mock_get_extractor,
         patch(
-            "zettelkasten_bot.pipeline.orchestrator.detect_source_type",
+            "telegram_bot.pipeline.orchestrator.detect_source_type",
             return_value=SourceType.GENERIC,
         ) as mock_detect,
     ):
@@ -431,7 +431,7 @@ async def test_github_writer_used_when_configured(pipeline_mocks):
     pipeline_mocks.settings.github_branch = "main"
 
     with patch(
-        "zettelkasten_bot.pipeline.orchestrator.GitHubWriter",
+        "telegram_bot.pipeline.orchestrator.GitHubWriter",
     ) as mock_gw_cls:
         mock_gw_inst = mock_gw_cls.return_value
         mock_gw_inst.write_note = AsyncMock(return_value="https://github.com/user/repo/blob/main/note.md")
@@ -491,7 +491,7 @@ async def test_github_writer_failure_sends_error(pipeline_mocks):
     pipeline_mocks.settings.github_branch = "main"
 
     with patch(
-        "zettelkasten_bot.pipeline.orchestrator.GitHubWriter",
+        "telegram_bot.pipeline.orchestrator.GitHubWriter",
     ) as mock_gw_cls:
         mock_gw_inst = mock_gw_cls.return_value
         mock_gw_inst.write_note = AsyncMock(side_effect=RuntimeError("GitHub API error 401"))

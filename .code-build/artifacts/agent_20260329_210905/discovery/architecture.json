@@ -1,0 +1,20 @@
+{
+  "project_type": "python_backend",
+  "framework": "FastAPI + python-telegram-bot",
+  "existing_supabase_kg_status": "90% complete",
+  "files_present": {
+    "supabase/website_kg/schema.sql": true,
+    "website/core/supabase_kg/__init__.py": true,
+    "website/core/supabase_kg/client.py": true,
+    "website/core/supabase_kg/models.py": true,
+    "website/core/supabase_kg/repository.py": true
+  },
+  "gaps": [
+    "No unit tests for supabase_kg code",
+    "Missing kg_graph_view in schema.sql (spec requires it alongside kg_user_stats)",
+    "Settings.py has no Supabase fields (client.py uses own dotenv — acceptable)"
+  ],
+  "test_framework": "pytest with asyncio_mode=auto",
+  "test_pattern": "Mock get_settings() via @patch; mock external clients",
+  "coexistence_check": "graph_store.py unchanged — file-based system intact"
+}

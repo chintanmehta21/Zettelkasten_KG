@@ -1,4 +1,4 @@
-"""Tests for zettelkasten_bot.utils.url_utils.
+"""Tests for telegram_bot.utils.url_utils.
 
 All tests are fully offline — httpx is mocked so no real network calls happen.
 """
@@ -9,7 +9,7 @@ import pytest
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from zettelkasten_bot.utils.url_utils import (
+from telegram_bot.utils.url_utils import (
     validate_url,
     normalize_url,
     resolve_redirects,
@@ -145,7 +145,7 @@ async def test_resolve_redirects_follows():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("zettelkasten_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
+    with patch("telegram_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
         result = await resolve_redirects("https://bit.ly/short")
 
     assert result == final_url
@@ -170,7 +170,7 @@ async def test_resolve_redirects_falls_back_to_get_on_4xx():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("zettelkasten_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
+    with patch("telegram_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
         result = await resolve_redirects("https://bit.ly/short")
 
     assert result == final_url
@@ -186,7 +186,7 @@ async def test_resolve_redirects_returns_original_on_connection_error():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("zettelkasten_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
+    with patch("telegram_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
         result = await resolve_redirects(original)
 
     assert result == original
@@ -204,7 +204,7 @@ async def test_resolve_redirects_returns_original_on_timeout():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("zettelkasten_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
+    with patch("telegram_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
         result = await resolve_redirects(original)
 
     assert result == original
@@ -220,7 +220,7 @@ async def test_resolve_redirects_returns_original_on_generic_exception():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("zettelkasten_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
+    with patch("telegram_bot.utils.url_utils.httpx.AsyncClient", return_value=mock_client):
         result = await resolve_redirects(original)
 
     assert result == original

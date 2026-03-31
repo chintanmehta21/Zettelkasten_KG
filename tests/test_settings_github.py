@@ -1,6 +1,6 @@
 """Tests for GitHub-related settings fields."""
 
-from zettelkasten_bot.config.settings import Settings
+from telegram_bot.config.settings import Settings
 
 
 class TestGitHubSettings:

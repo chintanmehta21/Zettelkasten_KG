@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 
-from zettelkasten_bot.models.capture import SourceType
-from zettelkasten_bot.sources.registry import detect_source_type
-from zettelkasten_bot.sources.youtube import _extract_video_id
-from zettelkasten_bot.utils.url_utils import normalize_url
+from telegram_bot.models.capture import SourceType
+from telegram_bot.sources.registry import detect_source_type
+from telegram_bot.sources.youtube import _extract_video_id
+from telegram_bot.utils.url_utils import normalize_url
 
 VIDEO_ID = "dQw4w9WgXcQ"
 

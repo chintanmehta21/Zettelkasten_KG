@@ -1,10 +1,10 @@
 """Migrate graph.json data into Supabase.
 
 Usage:
-    python scripts/migrate_graph_to_supabase.py
+    python ops/scripts/migrate_graph_to_supabase.py
 
 Prerequisites:
-    1. Tables must exist in Supabase (run supabase/website_kg/schema.sql first)
+    1. Tables must exist in Supabase (run supabase/website/kg_public/schema.sql first)
     2. Credentials in supabase/.env
 """
 
@@ -16,8 +16,8 @@ import time
 from pathlib import Path
 from uuid import UUID
 
-# Add project root to path
-ROOT = Path(__file__).resolve().parent.parent
+# Add project root to path (ops/scripts/file.py -> ops/ -> project root)
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
@@ -31,8 +31,8 @@ import os
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
-GRAPH_JSON = ROOT / "website" / "knowledge_graph" / "content" / "graph.json"
-SCHEMA_SQL = ROOT / "supabase" / "website_kg" / "schema.sql"
+GRAPH_JSON = ROOT / "website" / "features" / "knowledge_graph" / "content" / "graph.json"
+SCHEMA_SQL = ROOT / "supabase" / "website" / "kg_public" / "schema.sql"
 
 # Map graph.json group names to source_type values
 GROUP_TO_SOURCE = {

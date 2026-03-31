@@ -30,7 +30,7 @@ from google.genai.errors import ClientError
 # How long (seconds) a model stays on cooldown after a 429 response.
 _RATE_LIMIT_COOLDOWN_SECS = 60
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.models.capture import ExtractedContent, SourceType
 
 logger = logging.getLogger(__name__)
 

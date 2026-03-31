@@ -1,0 +1,20 @@
+{
+  "stage": "execution",
+  "assigned_skills": ["superpowers:subagent-driven-development", "superpowers:test-driven-development"],
+  "assigned_mcps": [
+    {"name": "github", "tools_prefix": "mcp__github__", "use_for": "Version control operations"},
+    {"name": "render", "tools_prefix": "mcp__render__", "use_for": "Deployment verification if needed"}
+  ],
+  "per_task_assignments": {
+    "Task 1: Supabase Schema + Feature Scaffold": [],
+    "Task 2: Settings + Environment Configuration": [],
+    "Task 3: FastAPI Auth Dependency": [],
+    "Task 4: Protected API Routes": [],
+    "Task 5: Auth Callback Page": [],
+    "Task 6: Frontend Auth Module": [],
+    "Task 7: Update Index HTML + Header Layout": [],
+    "Task 8: App Factory Wiring + API Auth Headers": [],
+    "Task 9: Delete .gitkeep Placeholders + Final Verification": []
+  },
+  "instructions": "Use superpowers:subagent-driven-development to dispatch tasks. Follow TDD for all backend tasks (3, 4). Frontend tasks (5, 6, 7) can be implemented directly. Task 9 runs the full test suite for final verification. IMPORTANT: Install PyJWT first before running Task 3 tests."
+}

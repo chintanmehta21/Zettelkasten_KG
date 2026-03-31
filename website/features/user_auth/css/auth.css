@@ -1,0 +1,339 @@
+/* ═══════════════════════════════════════════════════════════════════
+   User Authentication Styles
+   Design: Zettelkasten dark theme, teal accent, NO purple
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Header Auth Container ───────────────────────────────────────── */
+
+.header-auth {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+}
+
+/* ── Login Button (text only, no logo) ───────────────────────────── */
+
+.login-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-muted);
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.login-btn:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+}
+
+/* ── Dropdown Arrow ──────────────────────────────────────────────── */
+
+.login-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.5rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-muted);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 0.65rem;
+}
+
+.login-arrow:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+}
+
+/* ── Provider Grid (dropdown) ────────────────────────────────────── */
+
+.provider-grid {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    z-index: 100;
+    box-shadow: var(--shadow-lg);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    min-width: 240px;
+}
+
+.provider-grid.open {
+    display: grid;
+}
+
+.provider-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.6rem 0.4rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition);
+    border: 1px solid transparent;
+}
+
+.provider-item:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+}
+
+.provider-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.provider-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.provider-name {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-align: center;
+}
+
+/* ── User Menu (post-login) ──────────────────────────────────────── */
+
+.user-menu {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+.user-name {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+}
+
+.logout-btn:hover {
+    color: var(--error);
+}
+
+/* ── Login Modal ─────────────────────────────────────────────────── */
+
+.login-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-modal.open {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: hsla(0, 0%, 0%, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1;
+}
+
+.modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    line-height: 1;
+    transition: color var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.modal-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+}
+
+/* ── Modal Form ──────────────────────────────────────────────────── */
+
+.login-field {
+    margin-bottom: 0.75rem;
+}
+
+.login-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+}
+
+.login-field input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    transition: border-color var(--transition);
+}
+
+.login-field input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.login-field input::placeholder {
+    color: var(--text-muted);
+}
+
+.login-submit {
+    width: 100%;
+    padding: 0.6rem;
+    background: var(--accent);
+    color: var(--text-inverted);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition);
+    margin-top: 0.25rem;
+}
+
+.login-submit:hover {
+    background: var(--accent-hover);
+}
+
+.login-error {
+    display: none;
+    color: var(--error);
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+/* ── Modal Divider ───────────────────────────────────────────────── */
+
+.modal-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.modal-divider::before,
+.modal-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ── Modal OAuth Button ──────────────────────────────────────────── */
+
+.modal-oauth-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-bottom: 0.4rem;
+}
+
+.modal-oauth-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-light);
+}
+
+.modal-oauth-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from zettelkasten_bot.pipeline.duplicate import DuplicateStore
+from telegram_bot.pipeline.duplicate import DuplicateStore
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

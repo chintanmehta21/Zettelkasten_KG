@@ -10,12 +10,12 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict
 
-from zettelkasten_bot.config.settings import get_settings
-from zettelkasten_bot.models.capture import SourceType
-from zettelkasten_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
-from zettelkasten_bot.sources import get_extractor
-from zettelkasten_bot.sources.registry import detect_source_type
-from zettelkasten_bot.utils.url_utils import normalize_url, resolve_redirects
+from telegram_bot.config.settings import get_settings
+from telegram_bot.models.capture import SourceType
+from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
+from telegram_bot.sources import get_extractor
+from telegram_bot.sources.registry import detect_source_type
+from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
 
 logger = logging.getLogger("website.pipeline")
 

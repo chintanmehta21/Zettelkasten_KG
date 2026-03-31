@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signing in...</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: hsl(224, 28%, 5%);
+            color: hsl(210, 20%, 92%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .callback-card {
+            text-align: center;
+            padding: 2rem;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid hsl(220, 16%, 14%);
+            border-top-color: hsl(172, 66%, 50%);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status { color: hsl(215, 14%, 58%); font-size: 0.9rem; }
+        .error { color: hsl(0, 72%, 63%); margin-top: 1rem; }
+        .retry-link {
+            color: hsl(172, 66%, 50%);
+            text-decoration: none;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="callback-card">
+        <div class="spinner" id="spinner"></div>
+        <p class="status" id="status">Completing sign-in...</p>
+        <p class="error" id="error" style="display:none"></p>
+        <a class="retry-link" id="retry" href="/" style="display:none">Back to home</a>
+    </div>
+
+    <script>
+    (async function() {
+        var statusEl = document.getElementById('status');
+        var errorEl = document.getElementById('error');
+        var spinnerEl = document.getElementById('spinner');
+        var retryEl = document.getElementById('retry');
+
+        try {
+            var configResp = await fetch('/api/auth/config');
+            var config = await configResp.json();
+
+            if (!config.supabase_url || !config.supabase_anon_key) {
+                throw new Error('Authentication is not configured on this server.');
+            }
+
+            var createClient = supabase.createClient;
+            var sb = createClient(config.supabase_url, config.supabase_anon_key);
+
+            var result = await sb.auth.exchangeCodeForSession(window.location.href);
+
+            if (result.error) throw result.error;
+
+            statusEl.textContent = 'Signed in! Redirecting...';
+            var returnTo = sessionStorage.getItem('auth_return_to') || '/';
+            sessionStorage.removeItem('auth_return_to');
+            // Validate returnTo is a same-origin path (not protocol-relative or absolute URL)
+            if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+                returnTo = '/';
+            }
+            window.location.href = returnTo;
+        } catch (err) {
+            spinnerEl.style.display = 'none';
+            statusEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Sign-in failed: ' + (err.message || 'Unknown error');
+            retryEl.style.display = 'inline-block';
+        }
+    })();
+    </script>
+</body>
+</html>

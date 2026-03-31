@@ -1,4 +1,4 @@
-"""Tests for zettelkasten_bot.sources.registry.detect_source_type.
+"""Tests for telegram_bot.sources.registry.detect_source_type.
 
 No network calls; no Telegram credentials needed.  The newsletter_domains
 argument is passed explicitly so these tests bypass get_settings() entirely.
@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from zettelkasten_bot.models.capture import SourceType
-from zettelkasten_bot.sources.registry import detect_source_type
+from telegram_bot.models.capture import SourceType
+from telegram_bot.sources.registry import detect_source_type
 
 # Default newsletter domains used across tests (mirrors settings.py defaults)
 _NEWSLETTER_DOMAINS = [
@@ -202,14 +202,14 @@ def test_detect_source_type_uses_settings_when_no_domains_given(monkeypatch):
     """When newsletter_domains=None, the function reads from settings."""
     # Patch get_settings to return a mock with known domains
     from unittest.mock import MagicMock
-    import zettelkasten_bot.sources.registry as reg
+    import telegram_bot.sources.registry as reg
 
     mock_settings = MagicMock()
     mock_settings.newsletter_domains = ["custom-newsletter.io"]
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(
-            "zettelkasten_bot.sources.registry.get_settings",
+            "telegram_bot.sources.registry.get_settings",
             lambda: mock_settings,
             raising=False,
         )

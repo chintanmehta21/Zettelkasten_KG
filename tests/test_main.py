@@ -1,10 +1,10 @@
-"""Tests for zettelkasten_bot.main — entry point.
+"""Tests for telegram_bot.main — entry point.
 
 Strategy
 --------
-- Patch ``Application`` at ``zettelkasten_bot.main.Application`` to avoid
+- Patch ``Application`` at ``telegram_bot.main.Application`` to avoid
   real network connections and PTB initialisation.
-- Patch ``get_settings`` at ``zettelkasten_bot.main.get_settings`` (import
+- Patch ``get_settings`` at ``telegram_bot.main.get_settings`` (import
   site) so the lru_cache is bypassed and env-var validation is skipped.
 - Patch ``logging.basicConfig`` where it matters to verify it is called.
 - Call ``_validate_settings`` directly for the webhook-URL-guard tests.
@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from telegram import Update
 
-from zettelkasten_bot.config.settings import Settings, _validate_settings
+from telegram_bot.config.settings import Settings, _validate_settings
 
 
 # ---------------------------------------------------------------------------
@@ -72,14 +72,14 @@ def _wire_app_mock() -> tuple[MagicMock, MagicMock]:
 class TestPollingMode:
     def test_polling_mode_calls_run_polling(self) -> None:
         """main() in polling mode must call run_polling and NOT run_webhook."""
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_polling_settings()
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
         ):
             main()
 
@@ -90,7 +90,7 @@ class TestPollingMode:
 class TestWebhookMode:
     def test_webhook_mode_calls_uvicorn(self) -> None:
         """main() in webhook mode must call uvicorn.run with the FastAPI app."""
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_webhook_settings()
@@ -99,10 +99,10 @@ class TestWebhookMode:
         mock_create_app = MagicMock(return_value=mock_web_app)
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
             patch.dict("sys.modules", {"uvicorn": MagicMock(), "website.app": MagicMock(create_app=mock_create_app)}),
-            patch("zettelkasten_bot.main._run_webhook") as mock_run_webhook,
+            patch("telegram_bot.main._run_webhook") as mock_run_webhook,
         ):
             main()
 
@@ -117,14 +117,14 @@ class TestHandlerRegistration:
         Commands: start, about, help, status, reddit, yt, newsletter, github, force
         Plus: bare-URL MessageHandler
         """
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_polling_settings()
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
         ):
             main()
 
@@ -132,14 +132,14 @@ class TestHandlerRegistration:
 
     def test_registers_error_handler(self) -> None:
         """main() must register a global error handler."""
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_polling_settings()
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
         ):
             main()
 
@@ -186,15 +186,15 @@ class TestWebhookValidation:
 class TestLogging:
     def test_logging_configured(self) -> None:
         """main() must call logging.basicConfig with the settings log_level."""
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_polling_settings(log_level="DEBUG")
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
-            patch("zettelkasten_bot.main.logging") as mock_logging,
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.logging") as mock_logging,
         ):
             # Re-expose basicConfig so the module-level call succeeds
             mock_logging.basicConfig = MagicMock()
@@ -209,14 +209,14 @@ class TestLogging:
 class TestBotCommandMenu:
     def test_post_init_sets_commands(self) -> None:
         """main() must wire a post_init callback that calls set_my_commands."""
-        from zettelkasten_bot.main import main
+        from telegram_bot.main import main
 
         MockApp, mock_app = _wire_app_mock()
         settings = _make_polling_settings()
 
         with (
-            patch("zettelkasten_bot.main.Application", MockApp),
-            patch("zettelkasten_bot.main.get_settings", return_value=settings),
+            patch("telegram_bot.main.Application", MockApp),
+            patch("telegram_bot.main.get_settings", return_value=settings),
         ):
             main()
 

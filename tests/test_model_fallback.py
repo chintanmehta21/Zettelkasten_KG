@@ -15,14 +15,14 @@ import pytest
 
 from google.genai.errors import ClientError
 
-from zettelkasten_bot.pipeline.summarizer import (
+from telegram_bot.pipeline.summarizer import (
     GeminiSummarizer,
     _MODEL_FALLBACK_CHAIN,
     _RATE_LIMIT_COOLDOWN_SECS,
     _is_rate_limited,
 )
 
-_PATCH_TARGET = "zettelkasten_bot.pipeline.summarizer.genai.Client"
+_PATCH_TARGET = "telegram_bot.pipeline.summarizer.genai.Client"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

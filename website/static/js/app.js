@@ -259,9 +259,15 @@
 
     startLoading(url);
 
+    var fetchHeaders = { 'Content-Type': 'application/json' };
+    var authToken = typeof getAuthToken === 'function' ? getAuthToken() : null;
+    if (authToken) {
+      fetchHeaders['Authorization'] = 'Bearer ' + authToken;
+    }
+
     fetch('/api/summarize', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: fetchHeaders,
       body: JSON.stringify({ url: url }),
     })
       .then(function (res) {

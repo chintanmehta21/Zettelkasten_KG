@@ -1,4 +1,4 @@
-"""Tests for zettelkasten_bot.pipeline.github_writer — GitHub API note pusher.
+"""Tests for telegram_bot.pipeline.github_writer — GitHub API note pusher.
 
 Uses pytest-httpx to mock GitHub API calls without hitting the network.
 """
@@ -11,9 +11,9 @@ import json
 import httpx
 import pytest
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.pipeline.github_writer import GitHubWriter
-from zettelkasten_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.github_writer import GitHubWriter
+from telegram_bot.pipeline.summarizer import SummarizationResult
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

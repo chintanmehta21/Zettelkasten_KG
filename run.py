@@ -3,7 +3,7 @@
 Run the bot from the project root:
     python run.py
 """
-from zettelkasten_bot.main import main
+from telegram_bot.main import main
 
 if __name__ == "__main__":
     main()

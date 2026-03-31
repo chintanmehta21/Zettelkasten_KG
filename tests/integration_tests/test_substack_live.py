@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from zettelkasten_bot.sources.newsletter import NewsletterExtractor
+from telegram_bot.sources.newsletter import NewsletterExtractor
 
 
 @pytest.mark.live

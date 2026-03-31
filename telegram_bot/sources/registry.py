@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import urllib.parse
 
-from zettelkasten_bot.models.capture import SourceType
+from telegram_bot.models.capture import SourceType
 
 
 def detect_source_type(
@@ -29,7 +29,7 @@ def detect_source_type(
         url: A well-formed URL string.
         newsletter_domains: Optional list of newsletter domain suffixes to
             match against.  When *None*, the list is loaded from
-            :func:`~zettelkasten_bot.config.settings.get_settings`.
+            :func:`~telegram_bot.config.settings.get_settings`.
 
     Returns:
         The inferred :class:`SourceType`.
@@ -37,7 +37,7 @@ def detect_source_type(
     if newsletter_domains is None:
         # Import lazily to avoid circular imports and to allow the module to be
         # imported without valid credentials (useful in tests).
-        from zettelkasten_bot.config.settings import get_settings  # noqa: PLC0415
+        from telegram_bot.config.settings import get_settings  # noqa: PLC0415
 
         try:
             newsletter_domains = get_settings().newsletter_domains

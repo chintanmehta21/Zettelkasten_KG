@@ -1,0 +1,177 @@
+{
+  "projectType": "python-fullstack-bot",
+  "projectCategory": "web-fullstack",
+  "framework": "FastAPI (website) + python-telegram-bot v21 (bot layer)",
+  "language": "Python 3.12",
+  "uiLibrary": "Vanilla HTML/CSS/JS (teal accent for main site, amber/gold for KG)",
+  "database": "Supabase (PostgreSQL) — optional; file-based fallback (graph.json)",
+  "orm": "supabase-py client (raw table queries, no ORM)",
+  "testing": "pytest + pytest-asyncio (asyncio_mode=auto), pytest-httpx",
+  "deployment": "Render.com (primary) or VPS via systemd+nginx; Docker multi-stage build available",
+  "architecture": "Single-process: FastAPI web UI + Telegram webhook on one Uvicorn port (10000); polling mode for local dev",
+
+  "tech_stack": {
+    "web_framework": "FastAPI",
+    "asgi_server": "Uvicorn",
+    "bot_library": "python-telegram-bot v21+",
+    "ai_model": "Google Gemini (gemini-2.5-flash, with 3-model fallback chain)",
+    "settings": "Pydantic BaseSettings v2 + pydantic-settings YAML source",
+    "supabase_client": "supabase-py",
+    "static_assets": "StaticFiles mounts (no bundler, plain CSS/JS)",
+    "mobile_detection": "User-Agent regex in website/app.py, redirects to /m/"
+  },
+
+  "directory_structure": {
+    "website/": "FastAPI web application — factory in website/app.py",
+    "website/app.py": "create_app() factory: mounts static assets, registers routes, handles mobile redirects",
+    "website/api/routes.py": "APIRouter(prefix='/api'): GET /health, GET /graph, POST /summarize; in-memory rate limiter (10 req/min per IP)",
+    "website/core/pipeline.py": "Stateless URL summarization pipeline reusing bot extractors; no disk writes, no dedup",
+    "website/core/graph_store.py": "Thread-safe in-memory graph store backed by features/knowledge_graph/content/graph.json",
+    "website/core/supabase_kg/": "Supabase-backed KG: client.py (singleton), models.py (Pydantic), repository.py (CRUD)",
+    "website/features/": "Production feature modules — each subfolder is self-contained (HTML+CSS+JS+content)",
+    "website/features/knowledge_graph/": "3D knowledge graph viewer; graph.json lives at features/knowledge_graph/content/graph.json",
+    "website/experimental_features/": "Staging area for features under development before promotion to features/",
+    "website/static/": "Desktop main page assets (css/style.css, js/app.js, index.html)",
+    "website/mobile/": "Mobile-optimised pages: index.html, knowledge-graph.html, css/, js/",
+    "supabase/": "SQL schema files (not Supabase CLI project — manual schema management)",
+    "supabase/website/kg_public/schema.sql": "Full PostgreSQL schema: kg_users, kg_nodes, kg_links, indexes, RLS policies, views (kg_user_stats, kg_graph_view)",
+    "supabase/.env": "Supabase credentials (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) — gitignored",
+    "telegram_bot/": "Bot layer: config, pipeline, sources (extractors), bot handlers",
+    "telegram_bot/config/settings.py": "Pydantic Settings singleton via get_settings() (lru_cache); validates required fields on first call",
+    "telegram_bot/pipeline/orchestrator.py": "Top-level pipeline: redirect -> normalize -> detect -> dedup -> extract -> summarize -> write -> mark seen",
+    "telegram_bot/pipeline/summarizer.py": "GeminiSummarizer with 3-model fallback cascade; graceful raw-content fallback on total failure",
+    "telegram_bot/pipeline/writer.py": "Writes Obsidian Markdown notes to KG_DIRECTORY (local mode)",
+    "telegram_bot/pipeline/github_writer.py": "Pushes notes to GitHub via Contents API (cloud mode, base64 PUT)",
+    "telegram_bot/pipeline/duplicate.py": "JSON-file deduplication store",
+    "telegram_bot/sources/": "Plugin-pattern source extractors; auto-discovered via __init__.py scan for SourceExtractor subclasses",
+    "telegram_bot/models/capture.py": "Shared Pydantic models: SourceType (enum), CaptureRequest, ExtractedContent, ProcessedNote",
+    "telegram_bot/main.py": "Wires PTB app + FastAPI; webhook mode uses lifespan context for PTB lifecycle",
+    "telegram_bot/bot/handlers.py": "All Telegram command handlers, delegating to orchestrator.process_url",
+    "telegram_bot/bot/guards.py": "Chat-ID allow-list filter for bot handlers",
+    "ops/": "Operations: requirements.txt, config.yaml, .env.example, Dockerfile, deploy/",
+    "ops/deploy/DEPLOY.md": "VPS deployment guide (systemd + nginx + certbot)",
+    "ops/Dockerfile": "Multi-stage build: python:3.12-slim, exposes port 10000, entry: python run.py",
+    "ops/scripts/migrate_graph_to_supabase.py": "One-time migration of graph.json to Supabase",
+    "tests/": "Unit + integration tests; tests/integration_tests/ for live network tests",
+    "run.py": "CLI entry point, delegates to telegram_bot.main",
+    "pyproject.toml": "pytest config: asyncio_mode=auto; 'live' marker for real-API tests"
+  },
+
+  "existing_patterns": {
+    "feature_promotion_workflow": "Features are developed in website/experimental_features/<feature-name>/ (self-contained: HTML+CSS+JS), then promoted to website/features/<feature-name>/ for production. No build step — plain static files.",
+    "feature_registration": "To expose a feature, add StaticFiles mounts and route handlers in website/app.py create_app(). No auto-discovery — manual wiring required.",
+    "supabase_usage": "Optional dual-write pattern: every POST /api/summarize writes to both file store (graph.json) and Supabase. GET /api/graph reads from Supabase first with 30s TTL cache, falls back to file store. Supabase is activated by setting SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY env vars.",
+    "supabase_client_init": "Lazy singleton via get_supabase_client() (lru_cache). Credentials read from supabase/.env (loaded with dotenv override=False, so env vars take precedence). Uses SERVICE_ROLE_KEY for server-side operations (bypasses RLS).",
+    "supabase_user_model": "kg_users table stores external user IDs in render_user_id TEXT column. Currently uses a single hardcoded 'default-web-user' — designed to be replaced with real auth user IDs.",
+    "api_security": "Only IP-based rate limiting (10 req/min per IP, in-memory dict). No authentication on any API endpoint currently. Telegram webhook validates X-Telegram-Bot-Api-Secret-Token header when webhook_secret is set.",
+    "settings_pattern": "Pydantic BaseSettings singleton via get_settings() (lru_cache). Priority: constructor args > env vars > .env file > ops/config.yaml. Tests must mock get_settings() to avoid SystemExit(1) from _validate_settings().",
+    "mobile_routing": "User-agent detection in website/app.py _is_mobile(). GET / and GET /knowledge-graph redirect mobile browsers to /m/ and /m/knowledge-graph respectively.",
+    "source_extractor_plugin": "Subclasses of SourceExtractor in telegram_bot/sources/ are auto-registered. To add a source: add SourceType enum value, create extractor module, add URL pattern to sources/registry.py."
+  },
+
+  "key_files": {
+    "auth_integration_targets": [
+      "website/app.py — add auth middleware or protected route wrappers in create_app()",
+      "website/api/routes.py — add auth dependency to /api/summarize and /api/graph endpoints",
+      "website/core/supabase_kg/client.py — already loads supabase/.env; ANON_KEY needed for client-side Supabase auth",
+      "website/core/supabase_kg/models.py — KGUser.render_user_id field is the external ID slot for auth provider user IDs",
+      "website/core/supabase_kg/repository.py — get_or_create_user() accepts any string render_user_id; wire real auth user IDs here",
+      "supabase/website/kg_public/schema.sql — RLS policies already use auth.uid(); schema is auth-ready",
+      "website/static/index.html — login UI would hook in here (header area, before main content)",
+      "website/static/js/app.js — JS auth flow (Supabase JS client or session token handling)",
+      "ops/.env.example — SUPABASE_ANON_KEY is already present as optional var"
+    ],
+    "schema": "supabase/website/kg_public/schema.sql",
+    "supabase_env": "supabase/.env",
+    "main_html": "website/static/index.html",
+    "main_js": "website/static/js/app.js",
+    "main_css": "website/static/css/style.css",
+    "api_routes": "website/api/routes.py",
+    "app_factory": "website/app.py",
+    "settings": "telegram_bot/config/settings.py",
+    "kg_feature_index": "website/features/knowledge_graph/index.html"
+  },
+
+  "integration_points": {
+    "supabase_auth_readiness": {
+      "status": "Partially ready — schema has auth.uid()-based RLS; backend bypasses RLS with service role key; no actual auth flow exists yet",
+      "kg_users_render_user_id": "The render_user_id TEXT column in kg_users is the intended slot for external auth provider user IDs (named for Render Auth but can hold any provider's user ID string)",
+      "current_default_user": "Routes hardcode 'default-web-user' as render_user_id in _get_supabase() — this is the placeholder to replace with session-authenticated user IDs",
+      "rls_policies": "All three tables (kg_users, kg_nodes, kg_links) have RLS enabled with auth.uid() policies for client-side access AND service_role bypass for server-side"
+    },
+    "where_auth_middleware_goes": "FastAPI middleware or Depends() injection in website/api/routes.py — FastAPI's dependency injection is the standard pattern",
+    "where_login_ui_goes": "website/static/index.html header section; a login modal or sidebar component can be added before the <main> block. The header div.logo area is the natural placement.",
+    "session_token_flow": "For Supabase Auth: Supabase JS client (CDN or bundled) in app.js handles sign-in; JWT passed as Authorization: Bearer header to /api/* endpoints; FastAPI dependency verifies JWT using Supabase ANON_KEY",
+    "graph_scoping": "POST /api/summarize and GET /api/graph currently use a single global user. With auth, the authenticated user's UUID replaces 'default-web-user' in _get_supabase() calls, scoping all KG data per user.",
+    "new_api_routes_pattern": "Add new APIRouter or extend existing router in website/api/routes.py. Include router in website/app.py via app.include_router(). Auth endpoints (login, logout, callback) would be a new router e.g. website/api/auth.py."
+  },
+
+  "deployment": {
+    "primary": "Render.com free tier",
+    "render_config": "render.yaml (deleted in current working tree — managed via Render dashboard)",
+    "port": 10000,
+    "mode": "Webhook mode (WEBHOOK_MODE=true) in production; single Uvicorn process serves both web UI and Telegram webhook",
+    "env_vars_required": ["TELEGRAM_BOT_TOKEN", "ALLOWED_CHAT_ID", "GEMINI_API_KEY", "WEBHOOK_URL"],
+    "env_vars_optional_supabase": ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+    "storage_caveat": "Render filesystem is ephemeral — graph.json and KG notes do not survive redeploys. Use Supabase for graph persistence; use GITHUB_TOKEN+GITHUB_REPO for note persistence.",
+    "docker": "ops/Dockerfile — multi-stage python:3.12-slim build, entry: python run.py, exposes 10000",
+    "vps_alternative": "ops/deploy/DEPLOY.md — systemd service + nginx reverse proxy + certbot TLS",
+    "keep_alive": ".github/workflows/keep-alive.yml pings Render URL every 14 min to prevent cold starts"
+  },
+
+  "keyDirectories": {
+    "web_app_factory": "website/app.py",
+    "api": "website/api/",
+    "core_logic": "website/core/",
+    "supabase_integration": "website/core/supabase_kg/",
+    "production_features": "website/features/",
+    "experimental_features": "website/experimental_features/",
+    "desktop_static": "website/static/",
+    "mobile_static": "website/mobile/",
+    "bot": "telegram_bot/",
+    "pipeline": "telegram_bot/pipeline/",
+    "extractors": "telegram_bot/sources/",
+    "config": "telegram_bot/config/",
+    "shared_models": "telegram_bot/models/",
+    "tests": "tests/",
+    "ops": "ops/",
+    "supabase_schema": "supabase/website/kg_public/"
+  },
+
+  "entryPoints": [
+    "run.py",
+    "telegram_bot/main.py",
+    "website/app.py (create_app)",
+    "website/api/routes.py",
+    "website/static/index.html",
+    "website/features/knowledge_graph/index.html"
+  ],
+
+  "criticalFiles": [
+    "supabase/website/kg_public/schema.sql",
+    "website/core/supabase_kg/client.py",
+    "website/core/supabase_kg/repository.py",
+    "website/core/supabase_kg/models.py",
+    "website/api/routes.py",
+    "website/app.py",
+    "website/static/index.html",
+    "telegram_bot/config/settings.py"
+  ],
+
+  "conventions": {
+    "naming": "snake_case modules/files, PascalCase classes, UPPER_SNAKE env vars",
+    "state_management": "No frontend framework — plain DOM manipulation in app.js; show/hide sections with .hidden CSS class",
+    "api_pattern": "FastAPI APIRouter under /api prefix; JSON request/response bodies; Pydantic models for validation",
+    "async_pattern": "Full async/await throughout pipeline and API handlers; pytest asyncio_mode=auto",
+    "feature_isolation": "Each website feature is a self-contained directory with its own HTML+CSS+JS; no shared build step",
+    "settings_injection": "get_settings() lru_cache singleton; always mock in tests via @patch",
+    "no_purple": "UI accent colors: teal (#20B2AA range) for main site, amber/gold (#D4A024) for knowledge graph — no purple/violet/lavender",
+    "commit_style": "Conventional commits: feat:, fix:, refactor:, docs:, test: — no Co-Authored-By trailers"
+  },
+
+  "hasTests": true,
+  "hasCICD": true,
+  "testCount": 305,
+  "testFramework": "pytest + pytest-asyncio",
+  "cicd": ".github/workflows/keep-alive.yml (Render keep-alive ping)"
+}

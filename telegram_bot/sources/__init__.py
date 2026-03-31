@@ -1,13 +1,13 @@
 """Dynamic source extractor registry.
 
 Auto-discovers all SourceExtractor subclasses in this package at import time.
-To add a new source: create a module in ``zettelkasten_bot/sources/`` with a
+To add a new source: create a module in ``telegram_bot/sources/`` with a
 class inheriting from :class:`SourceExtractor`. It will be registered
 automatically — no manual wiring needed (R014).
 
 Usage::
 
-    from zettelkasten_bot.sources import get_extractor, list_extractors
+    from telegram_bot.sources import get_extractor, list_extractors
     extractor = get_extractor(SourceType.REDDIT, settings)
     content = await extractor.extract(url)
 """
@@ -19,11 +19,11 @@ import logging
 import pkgutil
 from typing import TYPE_CHECKING
 
-from zettelkasten_bot.models.capture import SourceType
-from zettelkasten_bot.sources.base import SourceExtractor
+from telegram_bot.models.capture import SourceType
+from telegram_bot.sources.base import SourceExtractor
 
 if TYPE_CHECKING:
-    from zettelkasten_bot.config.settings import Settings
+    from telegram_bot.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 

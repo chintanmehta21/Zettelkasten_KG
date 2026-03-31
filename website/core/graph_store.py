@@ -15,7 +15,7 @@ from pathlib import Path
 
 logger = logging.getLogger("website.graph_store")
 
-GRAPH_JSON = Path(__file__).resolve().parent.parent / "knowledge_graph" / "content" / "graph.json"
+GRAPH_JSON = Path(__file__).resolve().parent.parent / "features" / "knowledge_graph" / "content" / "graph.json"
 
 _lock = threading.Lock()
 _graph: dict | None = None

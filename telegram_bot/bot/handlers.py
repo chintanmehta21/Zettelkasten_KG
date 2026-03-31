@@ -1,7 +1,7 @@
 """Telegram command and message handlers for the Zettelkasten capture bot.
 
 Handlers are kept thin: they validate user input and delegate all heavy
-lifting to :func:`~zettelkasten_bot.pipeline.orchestrator.process_url`.
+lifting to :func:`~telegram_bot.pipeline.orchestrator.process_url`.
 
 Registered commands
 -------------------
@@ -26,11 +26,11 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from zettelkasten_bot.config.settings import get_settings
-from zettelkasten_bot.models.capture import SourceType
-from zettelkasten_bot.pipeline.duplicate import DuplicateStore
-from zettelkasten_bot.pipeline.orchestrator import process_url
-from zettelkasten_bot.utils.url_utils import validate_url
+from telegram_bot.config.settings import get_settings
+from telegram_bot.models.capture import SourceType
+from telegram_bot.pipeline.duplicate import DuplicateStore
+from telegram_bot.pipeline.orchestrator import process_url
+from telegram_bot.utils.url_utils import validate_url
 
 logger = logging.getLogger("bot.handlers")
 

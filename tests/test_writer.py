@@ -1,4 +1,4 @@
-"""Comprehensive test suite for zettelkasten_bot.pipeline.writer.
+"""Comprehensive test suite for telegram_bot.pipeline.writer.
 
 Covers R010 (structured markdown + YAML frontmatter + filename convention),
 R011 (tag-based backlinks and bidirectional linking),
@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.pipeline.summarizer import SummarizationResult
-from zettelkasten_bot.pipeline.writer import (
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.pipeline.writer import (
     ObsidianWriter,
     _add_backlink_to_existing,
     _atomic_write,

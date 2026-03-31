@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.models.capture import ExtractedContent, SourceType
 
 
 class SourceExtractor(ABC):

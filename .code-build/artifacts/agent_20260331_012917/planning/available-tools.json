@@ -1,0 +1,6 @@
+{
+  "stage": "planning",
+  "assigned_skills": ["superpowers:brainstorming", "superpowers:writing-plans"],
+  "assigned_mcps": [],
+  "instructions": "You MUST invoke superpowers:brainstorming first. Let it complete its full flow. It will invoke writing-plans automatically. Use the comprehensive Supabase Auth research at discovery/supabase-auth-research.md to inform the plan."
+}

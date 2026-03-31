@@ -1,0 +1,35 @@
+{
+  "phase": "planning",
+  "agent_id": "20260331_012917",
+  "task_description": "Setup user authentication end-to-end using Supabase Auth with Google OAuth on the Render-hosted FastAPI website. Requirements:\n\n1. LOGIN BUTTON: Add 'Login' button at top-right of home screen (website/static/index.html)\n2. GOOGLE OAUTH: Login by Google using Supabase Auth (PKCE flow, supabase-js CDN client)\n3. FLEXIBLE ARCHITECTURE: Design so other OAuth providers (GitHub, Twitter) can be added later\n4. SUPABASE SCHEMA: Create user_auth schema in supabase/website/user_auth/ folder\n5. FEATURE FOLDER: Create website/features/user_auth/ with self-contained auth assets\n6. UPDATE ABOUT: Add user_auth to website/features/About.md\n7. SESSION MANAGEMENT: Persist user session, show avatar/name after login\n8. LOGOUT: Add logout functionality\n9. PERFORMANCE: Full auth flow must complete under 5 seconds (click login -> select Google account -> allow permissions -> logged in)\n10. SERVER-SIDE: FastAPI JWT validation dependency for protected API routes\n11. USER LINKING: Link Supabase auth.users to existing kg_users table (replace hardcoded 'default-web-user')\n\nCritical constraints:\n- Vanilla HTML/CSS/JS frontend (no React/Vue/npm)\n- No purple in UI (use teal accent for main site)\n- Supabase MCP not available this session; use SQL files for schema, manual dashboard config for Google OAuth provider\n- Must work on Render.com deployment (port 10000, ephemeral filesystem)",
+  "architecture_file": ".code-build/artifacts/agent_20260331_012917/discovery/architecture.json",
+  "research_file": ".code-build/artifacts/agent_20260331_012917/discovery/supabase-auth-research.md",
+  "tools_file": ".code-build/artifacts/agent_20260331_012917/discovery/tools.json",
+  "available_tools": ".code-build/artifacts/agent_20260331_012917/planning/available-tools.json",
+  "execution_mode": "loop",
+  "iteration": 1,
+  "previous_findings": null,
+  "artifacts_root": ".code-build/artifacts/agent_20260331_012917",
+  "key_existing_files": {
+    "main_html": "website/static/index.html",
+    "main_js": "website/static/js/app.js",
+    "main_css": "website/static/css/style.css",
+    "api_routes": "website/api/routes.py",
+    "app_factory": "website/app.py",
+    "supabase_client": "website/core/supabase_kg/client.py",
+    "supabase_models": "website/core/supabase_kg/models.py",
+    "supabase_repo": "website/core/supabase_kg/repository.py",
+    "existing_schema": "supabase/website/kg_public/schema.sql",
+    "settings": "telegram_bot/config/settings.py",
+    "kg_feature": "website/features/knowledge_graph/",
+    "features_about": "website/features/About.md"
+  },
+  "supabase_project": {
+    "url": "https://wcgqmjcxlutrmbnijzyz.supabase.co",
+    "ref": "wcgqmjcxlutrmbnijzyz",
+    "anon_key_available": true,
+    "service_role_key_available": true,
+    "rls_already_configured": true,
+    "kg_users_render_user_id": "TEXT column, currently 'default-web-user', designed for auth provider IDs"
+  }
+}

@@ -1,0 +1,162 @@
+====================================================
+EXECUTION CHANGELOG (Auto-generated safety net)
+Date: 31/03/2026 12:46
+Agent: agent_20260331_012917
+====================================================
+
+RECENT COMMITS
+--------------
+fc258ab docs: add KG intelligence implementation plan (10 tasks, 20 tests)
+56701d6 docs: KG intelligence spec v5 — apply 4 essential improvements
+78866b9 docs: KG intelligence spec v4 — final review loop complete
+8be893f docs: KG intelligence spec v3.1 — fix final review gaps
+ab79b38 docs: KG intelligence spec v3 — fix M4/M5/M6 review gaps
+f5f55b5 docs: KG intelligence spec v2 — fill 36+ gaps from review subagents
+83e17e7 docs: add KG intelligence layer design spec (Approach B — Native Stack)
+050f12f feat: Supabase KG integration + bulletproof keep-alive
+cb2db32 feat: mobile web UI with 3D knowledge graph and auto-redirect
+c4f742a perf: lightweight 3D graph — flat spheres, no glow, faster particles
+bc7b27e feat: enhance 3D knowledge graph visibility and add prominent CTA
+c5b37f0 feat: model fallback chain — best-first with 429 auto-cascade
+8a7478a fix: rename data/ to content/ to avoid dockerignore exclusion
+9449568 fix: remove duplicate link, fix panel race condition, add a11y
+a9770d3 feat: add knowledge graph data (25 notes, 47 connections)
+60bcc22 feat: add interactive knowledge graph viewer
+965df63 fix: switch to gemini-2.5-flash-lite, pin aiohttp>=3.10
+814f1ef fix: use raw Starlette Route for webhook to bypass FastAPI param resolution
+8eaf371 fix: use starlette Request/Response directly to fix webhook 422
+83af3a8 fix: filter all difficulty tags from result card
+
+FILES CHANGED
+-------------
+ .bg-shell/manifest.json                            |    1 -
+ CLAUDE.md                                          |   26 +-
+ README.md                                          |  299 +---
+ docs/VPS-RECOMMENDATIONS.md                        |    4 +-
+ .../plans/2026-03-28-24x7-deployment.md            |  928 -------------
+ .../plans/2026-03-30-kg-intelligence.md            | 1443 ++++++++++++++++++++
+ .../specs/2026-03-28-24x7-deployment-design.md     |  191 ---
+ .../specs/2026-03-28-web-summarizer-design.md      |  236 ----
+ .env.example => ops/.env.example                   |    7 +-
+ Dockerfile => ops/Dockerfile                       |   14 +-
+ ops/{ => deploy}/DEPLOY.md                         |    6 +-
+ ops/{ => deploy}/nginx.conf                        |    0
+ ops/{ => deploy}/zettelkasten-bot.service          |    2 +-
+ requirements.txt => ops/requirements.txt           |    3 +
+ ops/{ => scripts}/migrate_graph_to_supabase.py     |   12 +-
+ pytest.ini                                         |    4 -
+ render.yaml                                        |   31 -
+ requirements-prod.txt                              |   15 -
+ run.py                                             |    2 +-
+ telegram_bot/__init__.py                           |    2 +-
+ telegram_bot/__main__.py                           |    4 +-
+ telegram_bot/bot/handlers.py                       |   12 +-
+ telegram_bot/config/settings.py                    |   14 +-
+ telegram_bot/main.py                               |    6 +-
+ telegram_bot/models/capture.py                     |    2 +-
+ telegram_bot/pipeline/duplicate.py                 |    2 +-
+ telegram_bot/pipeline/github_writer.py             |    6 +-
+ telegram_bot/pipeline/orchestrator.py              |   18 +-
+ telegram_bot/pipeline/summarizer.py                |    2 +-
+ telegram_bot/pipeline/writer.py                    |    4 +-
+ telegram_bot/sources/__init__.py                   |   10 +-
+ telegram_bot/sources/base.py                       |    2 +-
+ telegram_bot/sources/generic.py                    |    4 +-
+ telegram_bot/sources/github.py                     |    4 +-
+ telegram_bot/sources/newsletter.py                 |    4 +-
+ telegram_bot/sources/reddit.py                     |    4 +-
+ telegram_bot/sources/registry.py                   |    6 +-
+ telegram_bot/sources/youtube.py                    |    4 +-
+ tests/__init__.py                                  |    2 +-
+ tests/conftest.py                                  |    2 +-
+ tests/integration_tests/test_substack_live.py      |    2 +-
+ tests/test_duplicate.py                            |    2 +-
+ tests/test_extractors.py                           |  208 +--
+ tests/test_gemini.py                               |    8 +-
+ tests/test_github_writer.py                        |    8 +-
+ tests/test_handlers.py                             |   58 +-
+ tests/test_main.py                                 |   48 +-
+ tests/test_model_fallback.py                       |    4 +-
+ tests/test_orchestrator.py                         |   28 +-
+ tests/test_settings_github.py                      |    2 +-
+ tests/test_source_registry.py                      |   10 +-
+ tests/test_url_utils.py                            |   14 +-
+ tests/test_writer.py                               |    8 +-
+ tests/test_youtube_urls.py                         |    8 +-
+ website/api/routes.py                              |   50 +-
+ website/app.py                                     |   11 +-
+ website/core/graph_store.py                        |    2 +-
+ website/core/pipeline.py                           |   12 +-
+ website/static/css/style.css                       |   15 +-
+ website/static/index.html                          |   33 +-
+ website/static/js/app.js                           |    8 +-
+ 61 files changed, 1906 insertions(+), 1971 deletions(-)
+
+CHANGED FILE LIST
+-----------------
+.bg-shell/manifest.json
+CLAUDE.md
+README.md
+docs/VPS-RECOMMENDATIONS.md
+docs/superpowers/plans/2026-03-28-24x7-deployment.md
+docs/superpowers/plans/2026-03-30-kg-intelligence.md
+docs/superpowers/specs/2026-03-28-24x7-deployment-design.md
+docs/superpowers/specs/2026-03-28-web-summarizer-design.md
+ops/.env.example
+ops/Dockerfile
+ops/deploy/DEPLOY.md
+ops/deploy/nginx.conf
+ops/deploy/zettelkasten-bot.service
+ops/requirements.txt
+ops/scripts/migrate_graph_to_supabase.py
+pytest.ini
+render.yaml
+requirements-prod.txt
+run.py
+telegram_bot/__init__.py
+telegram_bot/__main__.py
+telegram_bot/bot/handlers.py
+telegram_bot/config/settings.py
+telegram_bot/main.py
+telegram_bot/models/capture.py
+telegram_bot/pipeline/duplicate.py
+telegram_bot/pipeline/github_writer.py
+telegram_bot/pipeline/orchestrator.py
+telegram_bot/pipeline/summarizer.py
+telegram_bot/pipeline/writer.py
+telegram_bot/sources/__init__.py
+telegram_bot/sources/base.py
+telegram_bot/sources/generic.py
+telegram_bot/sources/github.py
+telegram_bot/sources/newsletter.py
+telegram_bot/sources/reddit.py
+telegram_bot/sources/registry.py
+telegram_bot/sources/youtube.py
+tests/__init__.py
+tests/conftest.py
+tests/integration_tests/test_substack_live.py
+tests/test_duplicate.py
+tests/test_extractors.py
+tests/test_gemini.py
+tests/test_github_writer.py
+tests/test_handlers.py
+tests/test_main.py
+tests/test_model_fallback.py
+tests/test_orchestrator.py
+tests/test_settings_github.py
+tests/test_source_registry.py
+tests/test_url_utils.py
+tests/test_writer.py
+tests/test_youtube_urls.py
+website/api/routes.py
+website/app.py
+website/core/graph_store.py
+website/core/pipeline.py
+website/static/css/style.css
+website/static/index.html
+website/static/js/app.js
+
+====================================================
+NOTE: This was auto-generated by the hook.
+The execution skill generates a more detailed version.
+====================================================

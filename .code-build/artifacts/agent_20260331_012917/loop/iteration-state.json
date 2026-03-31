@@ -1,0 +1,38 @@
+{
+  "mode": "loop",
+  "agent_id": "20260331_012917",
+  "completion_criteria": [
+    "Login button visible at top-right of home screen (website/static/index.html)",
+    "Login by Google authentication flow works end-to-end via Supabase Auth",
+    "Supabase schema for user_auth created in supabase/website/user_auth/",
+    "user_auth feature folder created at website/features/user_auth/",
+    "user_auth listed in website/features/About.md",
+    "Auth architecture supports adding future OAuth providers (GitHub, Twitter, etc.)",
+    "Full auth flow completes under 5 seconds (login -> select account -> permissions -> logged in)",
+    "User session persisted and displayed after login (e.g., avatar/name shown)",
+    "Logout functionality available"
+  ],
+  "max_iterations": 10,
+  "current_iteration": 1,
+  "iterations": [
+    {
+      "iteration": 1,
+      "started_at": "2026-03-31T01:29:17Z",
+      "completed_at": "2026-03-31T08:05:00Z",
+      "theory_status": "PASS",
+      "practical_status": "PASS",
+      "criteria_met": [
+        "Login button visible at top-right of home screen",
+        "Login by Google authentication flow works end-to-end via Supabase Auth",
+        "Supabase schema for user_auth created in supabase/website/user_auth/",
+        "user_auth feature folder created at website/features/user_auth/",
+        "user_auth listed in website/features/About.md",
+        "Auth architecture supports adding future OAuth providers",
+        "Full auth flow completes under 5 seconds",
+        "User session persisted and displayed after login",
+        "Logout functionality available"
+      ],
+      "criteria_unmet": []
+    }
+  ]
+}

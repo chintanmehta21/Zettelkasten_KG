@@ -18,8 +18,8 @@ import traceback
 from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-from zettelkasten_bot.bot.guards import get_chat_filter
-from zettelkasten_bot.bot.handlers import (
+from telegram_bot.bot.guards import get_chat_filter
+from telegram_bot.bot.handlers import (
     handle_about,
     handle_bare_url,
     handle_force,
@@ -30,7 +30,7 @@ from zettelkasten_bot.bot.handlers import (
     handle_status,
     handle_yt,
 )
-from zettelkasten_bot.config.settings import get_settings
+from telegram_bot.config.settings import get_settings
 
 logger = logging.getLogger("bot.main")
 

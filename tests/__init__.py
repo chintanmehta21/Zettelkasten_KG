@@ -1,1 +1,1 @@
-"""Test suite for zettelkasten_bot."""
+"""Test suite for telegram_bot."""

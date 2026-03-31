@@ -1,4 +1,4 @@
-"""Tests for zettelkasten_bot.bot.handlers and zettelkasten_bot.bot.guards.
+"""Tests for telegram_bot.bot.handlers and telegram_bot.bot.guards.
 
 Strategy
 --------
@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from telegram.ext import filters
 
-from zettelkasten_bot.bot.guards import get_chat_filter
-from zettelkasten_bot.bot.handlers import (
+from telegram_bot.bot.guards import get_chat_filter
+from telegram_bot.bot.handlers import (
     handle_bare_url,
     handle_force,
     handle_github,
@@ -26,7 +26,7 @@ from zettelkasten_bot.bot.handlers import (
     handle_status,
     handle_yt,
 )
-from zettelkasten_bot.models.capture import SourceType
+from telegram_bot.models.capture import SourceType
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,8 +96,8 @@ class TestHandleStart:
 # ---------------------------------------------------------------------------
 
 class TestHandleReddit:
-    @patch("zettelkasten_bot.bot.handlers.get_settings")
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.get_settings")
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_calls_process_url(self, mock_proc, mock_get_settings):
         mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://www.reddit.com/r/python/comments/abc123/test/"
@@ -112,7 +112,7 @@ class TestHandleReddit:
         assert call_kwargs.get("force", call_args[4] if len(call_args) > 4 else False) is False
         assert call_kwargs.get("data_dir") == "./test-data"
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_no_args_replies_usage(self, mock_proc):
         update = _make_update(text="/reddit")
         ctx = _make_context(args=[])
@@ -122,7 +122,7 @@ class TestHandleReddit:
         text = update.effective_message.reply_text.call_args.args[0]
         assert "Usage" in text or "usage" in text
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_invalid_url_replies_error(self, mock_proc):
         update = _make_update(text="/reddit not-a-url")
         ctx = _make_context(args=["not-a-url"])
@@ -133,7 +133,7 @@ class TestHandleReddit:
 
 
 class TestHandleYt:
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_calls_process_url_with_youtube(self, mock_proc):
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         update = _make_update(text=f"/yt {url}")
@@ -143,7 +143,7 @@ class TestHandleYt:
         _, call_args, _ = mock_proc.mock_calls[0]
         assert call_args[3] == SourceType.YOUTUBE
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_no_args_replies_usage(self, mock_proc):
         update = _make_update(text="/yt")
         ctx = _make_context(args=[])
@@ -154,7 +154,7 @@ class TestHandleYt:
 
 
 class TestHandleNewsletter:
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_calls_process_url_with_newsletter(self, mock_proc):
         url = "https://example.substack.com/p/article"
         update = _make_update(text=f"/newsletter {url}")
@@ -166,7 +166,7 @@ class TestHandleNewsletter:
 
 
 class TestHandleGithub:
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_calls_process_url_with_github(self, mock_proc):
         url = "https://github.com/user/repo"
         update = _make_update(text=f"/github {url}")
@@ -182,8 +182,8 @@ class TestHandleGithub:
 # ---------------------------------------------------------------------------
 
 class TestHandleForce:
-    @patch("zettelkasten_bot.bot.handlers.get_settings")
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.get_settings")
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_passes_force_true(self, mock_proc, mock_get_settings):
         mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://www.reddit.com/r/python/comments/abc123/test/"
@@ -197,7 +197,7 @@ class TestHandleForce:
         assert force_val is True
         assert call_kwargs.get("data_dir") == "./test-data"
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_source_type_is_none_for_auto_detect(self, mock_proc):
         url = "https://github.com/user/repo"
         update = _make_update(text=f"/force {url}")
@@ -206,7 +206,7 @@ class TestHandleForce:
         _, call_args, _ = mock_proc.mock_calls[0]
         assert call_args[3] is None  # auto-detect
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_no_args_replies_usage(self, mock_proc):
         update = _make_update(text="/force")
         ctx = _make_context(args=[])
@@ -215,7 +215,7 @@ class TestHandleForce:
         text = update.effective_message.reply_text.call_args.args[0]
         assert "Usage" in text or "usage" in text
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_invalid_url_replies_error(self, mock_proc):
         update = _make_update(text="/force not-a-url")
         ctx = _make_context(args=["not-a-url"])
@@ -230,8 +230,8 @@ class TestHandleForce:
 # ---------------------------------------------------------------------------
 
 class TestHandleBareUrl:
-    @patch("zettelkasten_bot.bot.handlers.get_settings")
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.get_settings")
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_calls_process_url(self, mock_proc, mock_get_settings):
         mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://example.com/article"
@@ -243,7 +243,7 @@ class TestHandleBareUrl:
         assert call_args[2] == url
         assert call_kwargs.get("data_dir") == "./test-data"
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_valid_url_source_type_is_none(self, mock_proc):
         url = "https://example.com/article"
         update = _make_update(text=url)
@@ -252,7 +252,7 @@ class TestHandleBareUrl:
         _, call_args, _ = mock_proc.mock_calls[0]
         assert call_args[3] is None  # auto-detect
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_not_a_url_silently_ignored(self, mock_proc):
         update = _make_update(text="hello there, just chatting")
         ctx = _make_context()
@@ -261,7 +261,7 @@ class TestHandleBareUrl:
         # Must NOT reply — silent ignore
         update.effective_message.reply_text.assert_not_called()
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_empty_text_silently_ignored(self, mock_proc):
         update = _make_update(text="")
         ctx = _make_context()
@@ -269,7 +269,7 @@ class TestHandleBareUrl:
         mock_proc.assert_not_called()
         update.effective_message.reply_text.assert_not_called()
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_multiple_tokens_uses_first_url(self, mock_proc):
         url = "https://example.com/article"
         update = _make_update(text=f"{url} some extra text")
@@ -285,7 +285,7 @@ class TestHandleBareUrl:
 # ---------------------------------------------------------------------------
 
 class TestNegativeInputs:
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_reddit_no_url_gives_usage(self, mock_proc):
         update = _make_update(text="/reddit")
         ctx = _make_context(args=[])
@@ -294,7 +294,7 @@ class TestNegativeInputs:
         text = update.effective_message.reply_text.call_args.args[0]
         assert "reddit" in text.lower() or "Usage" in text
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_reddit_invalid_url_gives_invalid_url_message(self, mock_proc):
         update = _make_update(text="/reddit not-a-url")
         ctx = _make_context(args=["not-a-url"])
@@ -303,7 +303,7 @@ class TestNegativeInputs:
         text = update.effective_message.reply_text.call_args.args[0]
         assert "Invalid" in text
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_force_no_url_gives_usage(self, mock_proc):
         update = _make_update(text="/force")
         ctx = _make_context(args=[])
@@ -312,7 +312,7 @@ class TestNegativeInputs:
         text = update.effective_message.reply_text.call_args.args[0]
         assert "Usage" in text or "force" in text.lower()
 
-    @patch("zettelkasten_bot.bot.handlers.process_url", new_callable=AsyncMock)
+    @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
     async def test_bare_message_not_url_no_reply(self, mock_proc):
         update = _make_update(text="just some random text")
         ctx = _make_context()
@@ -327,8 +327,8 @@ class TestNegativeInputs:
 
 
 class TestHandleStatus:
-    @patch("zettelkasten_bot.bot.handlers.DuplicateStore")
-    @patch("zettelkasten_bot.bot.handlers.get_settings")
+    @patch("telegram_bot.bot.handlers.DuplicateStore")
+    @patch("telegram_bot.bot.handlers.get_settings")
     async def test_status_replies_with_stats(self, mock_get_settings, mock_store_cls):
         mock_settings = MagicMock()
         mock_settings.data_dir = "./test-data"

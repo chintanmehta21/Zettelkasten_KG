@@ -19,7 +19,7 @@ Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with RE
 # Run the bot (polling/dev mode)
 python run.py
 # or
-python -m zettelkasten_bot
+python -m telegram_bot
 
 # Run all tests
 pytest
@@ -34,12 +34,10 @@ pytest tests/ --ignore=tests/integration_tests
 pytest --live
 
 # Coverage
-pytest --cov=zettelkasten_bot --cov-report=term-missing
+pytest --cov=telegram_bot --cov-report=term-missing
 
-# Install dependencies (dev — includes pytest, pytest-asyncio, pytest-httpx)
-pip install -r requirements.txt
-# Production only (no test deps — used by Dockerfile)
-pip install -r requirements-prod.txt
+# Install dependencies (includes pytest, pytest-asyncio, pytest-httpx)
+pip install -r ops/requirements.txt
 # Editable install
 pip install -e .
 ```
@@ -72,7 +70,7 @@ A GitHub Actions workflow (`.github/workflows/keep-alive.yml`) pings the Render 
 
 ## Configuration
 
-Settings are loaded by `zettelkasten_bot/config/settings.py` (Pydantic BaseSettings) from three sources in priority order: env vars > `.env` file > `config/config.yaml`. Secrets (TELEGRAM_BOT_TOKEN, GEMINI_API_KEY, REDDIT_CLIENT_*) must be in env vars or `.env`, never in config.yaml. Copy `.env.example` to `.env` to get started.
+Settings are loaded by `telegram_bot/config/settings.py` (Pydantic BaseSettings) from three sources in priority order: env vars > `.env` file > `ops/config.yaml`. Secrets (TELEGRAM_BOT_TOKEN, GEMINI_API_KEY, REDDIT_CLIENT_*) must be in env vars or `.env`, never in config.yaml. Copy `ops/.env.example` to `.env` to get started.
 
 The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache). Tests that need settings without valid credentials should be careful — `get_settings()` calls `_validate_settings()` which does `SystemExit(1)` on missing required fields.
 
@@ -82,7 +80,7 @@ The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache)
 
 `orchestrator.process_url` sequences the full capture: resolve redirects -> normalize URL -> detect source type -> dedup check -> extract content -> Gemini summarise -> build tags -> write Obsidian note -> mark seen.
 
-Key modules in `zettelkasten_bot/pipeline/`:
+Key modules in `telegram_bot/pipeline/`:
 - `orchestrator.py` — top-level pipeline entry point
 - `summarizer.py` — Gemini API integration (GeminiSummarizer + tag building)
 - `writer.py` — writes Markdown notes to KG_DIRECTORY (local mode)
@@ -95,7 +93,7 @@ Key modules in `zettelkasten_bot/pipeline/`:
 
 ### Source Extractors (plugin pattern)
 
-Extractors live in `zettelkasten_bot/sources/`. **Auto-discovery**: `__init__.py` scans the package at import time, finds all `SourceExtractor` subclasses with a `source_type` attribute, and registers them in `_REGISTRY`. No manual wiring needed.
+Extractors live in `telegram_bot/sources/`. **Auto-discovery**: `__init__.py` scans the package at import time, finds all `SourceExtractor` subclasses with a `source_type` attribute, and registers them in `_REGISTRY`. No manual wiring needed.
 
 To add a new source: (1) add enum value to `SourceType` in `models/capture.py`, (2) create extractor module in `sources/`, (3) add URL pattern to `sources/registry.py`, (4) add handler in `bot/handlers.py` + wire in `main.py`.
 
@@ -116,7 +114,7 @@ FastAPI app mounted alongside the bot in webhook mode. Two main pages: a URL sum
 
 - `website/api/routes.py` — `POST /api/summarize` with in-memory rate limiting (10 req/min per IP); `GET /api/graph` returns KG data (Supabase-first with 30s TTL cache, file-store fallback); `GET /api/health` (used by Render health checks)
 - `website/core/pipeline.py` — reuses the bot's extraction/summarization pipeline but is **stateless**: no disk writes, no dedup updates. Returns a structured dict with title, summary, tags, latency_ms, etc.
-- `website/core/graph_store.py` — thread-safe in-memory store backed by `website/knowledge_graph/content/graph.json`. Auto-links new nodes to existing ones based on shared normalized tags. Node IDs use source-type prefixes (`yt-`, `gh-`, `rd-`, `ss-`, `md-`, `web-`) + slugified title.
+- `website/core/graph_store.py` — thread-safe in-memory store backed by `website/features/knowledge_graph/content/graph.json`. Auto-links new nodes to existing ones based on shared normalized tags. Node IDs use source-type prefixes (`yt-`, `gh-`, `rd-`, `ss-`, `md-`, `web-`) + slugified title.
 
 #### Supabase Knowledge Graph (`website/core/supabase_kg/`)
 
@@ -125,8 +123,8 @@ Optional Supabase-backed KG that replaces the file-based `graph.json` store. Whe
 - `client.py` — Supabase client init via `get_supabase_client()`, gated by `is_supabase_configured()`
 - `models.py` — Pydantic models: `KGNode`, `KGLink`, `KGUser`, `KGGraph` (with Create variants)
 - `repository.py` — `KGRepository` with CRUD: `get_or_create_user()`, `add_node()`, `node_exists()`, `get_graph()`
-- Schema: `supabase/website_kg/schema.sql` (tables: `kg_users`, `kg_nodes`, `kg_links`)
-- Migration: `python scripts/migrate_graph_to_supabase.py` — migrates `graph.json` data to Supabase (requires `supabase/.env` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`)
+- Schema: `supabase/website/kg_public/schema.sql` (tables: `kg_users`, `kg_nodes`, `kg_links`)
+- Migration: `python ops/scripts/migrate_graph_to_supabase.py` — migrates `graph.json` data to Supabase (requires `supabase/.env` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`)
 
 ### URL Utilities (`utils/url_utils.py`)
 
@@ -144,7 +142,7 @@ Security-conscious URL handling: `validate_url()` blocks private/reserved IPs (S
 
 ## Testing
 
-- pytest with `asyncio_mode = auto` (pytest.ini)
+- pytest with `asyncio_mode = auto` (`pyproject.toml`)
 - Custom `--live` flag: tests marked `@pytest.mark.live` are skipped by default; pass `--live` to run them (they hit real APIs and need `.env` credentials)
 - `conftest.py` provides sample URL fixtures (`sample_reddit_url`, `sample_youtube_url`, etc.)
 - Integration tests in `tests/integration_tests/` make real network calls
@@ -156,4 +154,4 @@ Security-conscious URL handling: `validate_url()` blocks private/reserved IPs (S
 
 ## Docker
 
-Multi-stage build (`Dockerfile`): Stage 1 installs `requirements-prod.txt` into `/opt/venv` and pre-compiles `.pyc` files for cold-start optimization. Stage 2 copies only the venv and compiled code. Base image: `python:3.12-slim`. Exposes port 10000 (Render default). Entry point: `python run.py`.
+Multi-stage build (`ops/Dockerfile`): Stage 1 installs `ops/requirements.txt` into `/opt/venv` and pre-compiles `.pyc` files for cold-start optimization. Stage 2 copies only the venv and compiled code. Base image: `python:3.12-slim`. Exposes port 10000 (Render default). Entry point: `python run.py`. Build with `docker build -f ops/Dockerfile -t zettelkasten-bot .` from the repo root.

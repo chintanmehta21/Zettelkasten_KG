@@ -14,9 +14,9 @@ import logging
 
 import httpx
 
-from zettelkasten_bot.models.capture import ExtractedContent
-from zettelkasten_bot.pipeline.summarizer import SummarizationResult
-from zettelkasten_bot.pipeline.writer import _build_body, _build_filename, _build_frontmatter
+from telegram_bot.models.capture import ExtractedContent
+from telegram_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.pipeline.writer import _build_body, _build_filename, _build_frontmatter
 
 logger = logging.getLogger(__name__)
 

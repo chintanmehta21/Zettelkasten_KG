@@ -21,8 +21,8 @@ from typing import Any
 
 import httpx
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.sources.base import SourceExtractor
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.sources.base import SourceExtractor
 
 logger = logging.getLogger(__name__)
 

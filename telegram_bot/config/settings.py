@@ -1,9 +1,9 @@
-"""Application settings loaded from environment variables and config/config.yaml.
+"""Application settings loaded from environment variables and ops/config.yaml.
 
 Priority (highest to lowest):
   1. Explicit constructor arguments (init)
   2. Environment variables (e.g. TELEGRAM_BOT_TOKEN=...)
-  3. config/config.yaml values
+  3. ops/config.yaml values
   4. Field defaults defined below
 
 Secrets (bot token, API keys) must be provided via environment variables —
@@ -21,10 +21,10 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from pydantic_settings import YamlConfigSettingsSource
 
-# Resolve config/config.yaml relative to the project root (two levels above this file:
-# zettelkasten_bot/config/settings.py → zettelkasten_bot/ → project root)
+# Resolve ops/config.yaml relative to the project root (two levels above this file:
+# telegram_bot/config/settings.py → telegram_bot/ → project root)
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
-_DEFAULT_CONFIG_YAML = _PROJECT_ROOT / "config" / "config.yaml"
+_DEFAULT_CONFIG_YAML = _PROJECT_ROOT / "ops" / "config.yaml"
 _DEFAULT_ENV_FILE = _PROJECT_ROOT / ".env"
 
 
@@ -132,7 +132,7 @@ def _validate_settings(settings: Settings) -> None:
         print(
             "ERROR: TELEGRAM_BOT_TOKEN is missing or is a placeholder value.\n"
             "Set it via environment variable:  export TELEGRAM_BOT_TOKEN=<your-token>\n"
-            "Or add it to config/config.yaml under 'telegram_bot_token:'",
+            "Or add it to ops/config.yaml under 'telegram_bot_token:'",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -149,7 +149,7 @@ def _validate_settings(settings: Settings) -> None:
         print(
             "ERROR: webhook_mode is enabled but WEBHOOK_URL is empty.\n"
             "Set it via environment variable:  export WEBHOOK_URL=https://your-domain.com/hook\n"
-            "Or add it to config/config.yaml under 'webhook_url:'",
+            "Or add it to ops/config.yaml under 'webhook_url:'",
             file=sys.stderr,
         )
         raise SystemExit(1)

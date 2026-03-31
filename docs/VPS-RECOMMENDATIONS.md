@@ -53,7 +53,7 @@ This is massively over-provisioned for a bot that idles at ~80 MB RAM. You could
 - Python 3.10 in the default repos (sufficient); Python 3.11 available via the [deadsnakes PPA](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) if needed
 - Long-term support through April 2027 (standard) / April 2032 (extended)
 - Wide community support and extensive documentation
-- Systemd for managing the bot as a service (see `deploy/DEPLOY.md`)
+- Systemd for managing the bot as a service (see `ops/deploy/DEPLOY.md`)
 
 To install Python 3.11 on Ubuntu 22.04 if needed:
 ```bash
@@ -78,7 +78,7 @@ sudo apt update && sudo apt install python3.11 python3.11-venv
 
 ## Server Setup
 
-Once your VPS is running, follow **[deploy/DEPLOY.md](../deploy/DEPLOY.md)** for the complete server setup steps:
+Once your VPS is running, follow **[ops/deploy/DEPLOY.md](../ops/deploy/DEPLOY.md)** for the complete server setup steps:
 
 - Python environment and dependency installation
 - nginx reverse proxy configuration for Telegram webhooks

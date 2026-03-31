@@ -1,1 +1,1 @@
-"""Zettelkasten Telegram bot — capture pipeline package."""
+"""Telegram bot — capture pipeline package."""

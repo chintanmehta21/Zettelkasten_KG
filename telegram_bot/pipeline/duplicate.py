@@ -21,7 +21,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from zettelkasten_bot.utils.url_utils import normalize_url
+from telegram_bot.utils.url_utils import normalize_url
 
 logger = logging.getLogger(__name__)
 

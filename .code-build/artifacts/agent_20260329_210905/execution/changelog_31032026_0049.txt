@@ -1,0 +1,120 @@
+====================================================
+EXECUTION CHANGELOG (Auto-generated safety net)
+Date: 31/03/2026 00:49
+Agent: agent_20260329_210905
+====================================================
+
+RECENT COMMITS
+--------------
+78866b9 docs: KG intelligence spec v4 — final review loop complete
+8be893f docs: KG intelligence spec v3.1 — fix final review gaps
+ab79b38 docs: KG intelligence spec v3 — fix M4/M5/M6 review gaps
+f5f55b5 docs: KG intelligence spec v2 — fill 36+ gaps from review subagents
+83e17e7 docs: add KG intelligence layer design spec (Approach B — Native Stack)
+050f12f feat: Supabase KG integration + bulletproof keep-alive
+cb2db32 feat: mobile web UI with 3D knowledge graph and auto-redirect
+c4f742a perf: lightweight 3D graph — flat spheres, no glow, faster particles
+bc7b27e feat: enhance 3D knowledge graph visibility and add prominent CTA
+c5b37f0 feat: model fallback chain — best-first with 429 auto-cascade
+8a7478a fix: rename data/ to content/ to avoid dockerignore exclusion
+9449568 fix: remove duplicate link, fix panel race condition, add a11y
+a9770d3 feat: add knowledge graph data (25 notes, 47 connections)
+60bcc22 feat: add interactive knowledge graph viewer
+965df63 fix: switch to gemini-2.5-flash-lite, pin aiohttp>=3.10
+814f1ef fix: use raw Starlette Route for webhook to bypass FastAPI param resolution
+8eaf371 fix: use starlette Request/Response directly to fix webhook 422
+83af3a8 fix: filter all difficulty tags from result card
+6980e0c fix: add error logging to webhook handler, always return 200
+c9dc439 fix: remove references to deleted meta elements
+
+FILES CHANGED
+-------------
+ .bg-shell/manifest.json                            |   1 -
+ Dockerfile                                         |   6 +-
+ .../plans/2026-03-28-24x7-deployment.md            | 928 ---------------------
+ .../specs/2026-03-28-24x7-deployment-design.md     | 191 -----
+ .../specs/2026-03-28-web-summarizer-design.md      | 236 ------
+ .../specs/2026-03-30-kg-intelligence-design.md     |  32 +-
+ {deploy => ops}/DEPLOY.md                          |   0
+ {config => ops}/config.yaml                        |   0
+ {scripts => ops}/migrate_graph_to_supabase.py      |   4 +-
+ {deploy => ops}/nginx.conf                         |   0
+ {deploy => ops}/zettelkasten-bot.service           |   0
+ render.yaml                                        |  31 -
+ requirements-prod.txt                              |  15 -
+ {zettelkasten_bot => telegram_bot}/__init__.py     |   0
+ {zettelkasten_bot => telegram_bot}/__main__.py     |   0
+ {zettelkasten_bot => telegram_bot}/bot/__init__.py |   0
+ {zettelkasten_bot => telegram_bot}/bot/guards.py   |   0
+ {zettelkasten_bot => telegram_bot}/bot/handlers.py |   0
+ .../config/__init__.py                             |   0
+ .../config/settings.py                             |   8 +-
+ {zettelkasten_bot => telegram_bot}/main.py         |   0
+ .../models/__init__.py                             |   0
+ .../models/capture.py                              |   0
+ .../pipeline/__init__.py                           |   0
+ .../pipeline/duplicate.py                          |   0
+ .../pipeline/github_writer.py                      |   0
+ .../pipeline/orchestrator.py                       |   0
+ .../pipeline/summarizer.py                         |   0
+ .../pipeline/writer.py                             |   0
+ .../sources/__init__.py                            |   0
+ {zettelkasten_bot => telegram_bot}/sources/base.py |   0
+ .../sources/generic.py                             |   0
+ .../sources/github.py                              |   0
+ .../sources/newsletter.py                          |   0
+ .../sources/reddit.py                              |   0
+ .../sources/registry.py                            |   0
+ .../sources/youtube.py                             |   0
+ .../utils/__init__.py                              |   0
+ .../utils/url_utils.py                             |   0
+ website/static/index.html                          |  16 -
+ 40 files changed, 33 insertions(+), 1435 deletions(-)
+
+CHANGED FILE LIST
+-----------------
+.bg-shell/manifest.json
+Dockerfile
+docs/superpowers/plans/2026-03-28-24x7-deployment.md
+docs/superpowers/specs/2026-03-28-24x7-deployment-design.md
+docs/superpowers/specs/2026-03-28-web-summarizer-design.md
+docs/superpowers/specs/2026-03-30-kg-intelligence-design.md
+ops/DEPLOY.md
+ops/config.yaml
+ops/migrate_graph_to_supabase.py
+ops/nginx.conf
+ops/zettelkasten-bot.service
+render.yaml
+requirements-prod.txt
+telegram_bot/__init__.py
+telegram_bot/__main__.py
+telegram_bot/bot/__init__.py
+telegram_bot/bot/guards.py
+telegram_bot/bot/handlers.py
+telegram_bot/config/__init__.py
+telegram_bot/config/settings.py
+telegram_bot/main.py
+telegram_bot/models/__init__.py
+telegram_bot/models/capture.py
+telegram_bot/pipeline/__init__.py
+telegram_bot/pipeline/duplicate.py
+telegram_bot/pipeline/github_writer.py
+telegram_bot/pipeline/orchestrator.py
+telegram_bot/pipeline/summarizer.py
+telegram_bot/pipeline/writer.py
+telegram_bot/sources/__init__.py
+telegram_bot/sources/base.py
+telegram_bot/sources/generic.py
+telegram_bot/sources/github.py
+telegram_bot/sources/newsletter.py
+telegram_bot/sources/reddit.py
+telegram_bot/sources/registry.py
+telegram_bot/sources/youtube.py
+telegram_bot/utils/__init__.py
+telegram_bot/utils/url_utils.py
+website/static/index.html
+
+====================================================
+NOTE: This was auto-generated by the hook.
+The execution skill generates a more detailed version.
+====================================================

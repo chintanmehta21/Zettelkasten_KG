@@ -39,7 +39,7 @@ sudo -u zettelbot .venv/bin/pip install -e .
 Copy the template and populate every required variable:
 
 ```bash
-sudo cp .env.example /opt/zettelkasten-bot/.env
+sudo cp ops/.env.example /opt/zettelkasten-bot/.env
 sudo chown zettelbot:zettelbot /opt/zettelkasten-bot/.env
 sudo chmod 600 /opt/zettelkasten-bot/.env
 sudo nano /opt/zettelkasten-bot/.env
@@ -80,7 +80,7 @@ DATA_DIR=./data
 ## 3  Install and Start the systemd Service
 
 ```bash
-sudo cp /opt/zettelkasten-bot/deploy/zettelkasten-bot.service \
+sudo cp /opt/zettelkasten-bot/ops/deploy/zettelkasten-bot.service \
     /etc/systemd/system/zettelkasten-bot.service
 
 sudo systemctl daemon-reload
@@ -95,7 +95,7 @@ sudo systemctl start zettelkasten-bot
 ### 4.1  Install the nginx config
 
 ```bash
-sudo cp /opt/zettelkasten-bot/deploy/nginx.conf \
+sudo cp /opt/zettelkasten-bot/ops/deploy/nginx.conf \
     /etc/nginx/sites-available/zettelkasten-bot
 
 # Edit the two placeholders: YOUR_DOMAIN and YOUR_BOT_TOKEN

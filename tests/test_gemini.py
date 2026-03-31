@@ -7,7 +7,7 @@ Covers:
            hierarchical format)
   Construction — empty API key, raw fallback truncation
 
-All tests mock `zettelkasten_bot.pipeline.summarizer.genai.Client` so zero
+All tests mock `telegram_bot.pipeline.summarizer.genai.Client` so zero
 real API calls are made. asyncio_mode=auto is already set in pytest.ini, so
 no @pytest.mark.asyncio decorators are needed.
 """
@@ -17,8 +17,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.pipeline.summarizer import (
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.summarizer import (
     GeminiSummarizer,
     SummarizationResult,
     build_tag_list,
@@ -26,7 +26,7 @@ from zettelkasten_bot.pipeline.summarizer import (
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-_PATCH_TARGET = "zettelkasten_bot.pipeline.summarizer.genai.Client"
+_PATCH_TARGET = "telegram_bot.pipeline.summarizer.genai.Client"
 
 
 def make_content(

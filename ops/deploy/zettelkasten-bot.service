@@ -7,7 +7,7 @@ Type=simple
 User=zettelbot
 WorkingDirectory=/opt/zettelkasten-bot
 EnvironmentFile=/opt/zettelkasten-bot/.env
-ExecStart=/opt/zettelkasten-bot/.venv/bin/python -m zettelkasten_bot
+ExecStart=/opt/zettelkasten-bot/.venv/bin/python -m telegram_bot
 Restart=on-failure
 RestartSec=5
 

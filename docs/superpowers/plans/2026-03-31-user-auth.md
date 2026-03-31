@@ -1,0 +1,1209 @@
+# User Authentication Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add Google OAuth login to the Zettelkasten website using Supabase Auth, with a Login button in the header, JWT-protected API routes, and per-user knowledge graph scoping.
+
+**Architecture:** Browser-side supabase-js (CDN) handles the full PKCE OAuth flow and session management. FastAPI validates JWTs via PyJWT (HS256) and scopes KG data per authenticated user. A Supabase trigger auto-creates kg_users rows on signup.
+
+**Tech Stack:** Python 3.12, FastAPI, PyJWT, supabase-js v2 (CDN), Supabase Auth, vanilla HTML/CSS/JS
+
+**Spec:** `docs/superpowers/specs/2026-03-31-user-auth-design.md`
+
+---
+
+## File Structure
+
+| File | Action | Responsibility |
+|------|--------|---------------|
+| `supabase/website/user_auth/schema.sql` | CREATE | Auth trigger + RLS policy updates |
+| `website/api/auth.py` | CREATE | JWT validation dependency (`get_current_user`, `get_optional_user`) |
+| `website/features/user_auth/js/auth.js` | CREATE | Client-side auth (supabase-js init, login, logout, session) |
+| `website/features/user_auth/css/auth.css` | CREATE | Login button, user menu, callback styles |
+| `website/features/user_auth/callback.html` | CREATE | PKCE code exchange page |
+| `website/api/routes.py` | MODIFY | Add `/api/me`, `/api/auth/config`, auth-scoped graph/summarize |
+| `website/app.py` | MODIFY | Mount auth static files, add callback route |
+| `website/static/index.html` | MODIFY | Add login button + user menu in header, load supabase-js |
+| `website/static/js/app.js` | MODIFY | Add auth headers to API calls |
+| `website/static/css/style.css` | MODIFY | Header layout for login button |
+| `website/features/About.md` | MODIFY | Add user_auth entry |
+| `ops/.env.example` | MODIFY | Add SUPABASE_JWT_SECRET |
+| `tests/test_auth.py` | CREATE | JWT validation + auth route tests |
+| `tests/test_website.py` | MODIFY | Update existing tests for auth-optional routes |
+
+## Parallel Task Groups
+
+- **Group A (independent):** Task 1, Task 2
+- **Group B (depends on A):** Task 3, Task 4
+- **Group C (independent of B):** Task 5, Task 6
+- **Group D (depends on B+C):** Task 7, Task 8
+
+---
+
+### Task 1: Supabase Schema + Feature Scaffold
+
+**Files:**
+- Create: `supabase/website/user_auth/schema.sql`
+- Create: `website/features/user_auth/js/.gitkeep`
+- Create: `website/features/user_auth/css/.gitkeep`
+- Modify: `website/features/About.md`
+
+- [ ] **Step 1: Create the user_auth schema SQL**
+
+```sql
+-- supabase/website/user_auth/schema.sql
+-- ============================================================================
+-- Supabase Auth Integration Schema
+-- Run this in the Supabase SQL Editor AFTER the base kg_public schema.
+-- Creates a trigger to auto-provision kg_users when new auth users sign up.
+-- ============================================================================
+
+-- ── Trigger: auto-create kg_users on Supabase Auth signup ───────────────────
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.kg_users (render_user_id, display_name, email, avatar_url)
+  VALUES (
+    NEW.id::text,
+    NEW.raw_user_meta_data ->> 'full_name',
+    NEW.email,
+    COALESCE(
+      NEW.raw_user_meta_data ->> 'avatar_url',
+      NEW.raw_user_meta_data ->> 'picture'
+    )
+  )
+  ON CONFLICT (render_user_id) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    email = EXCLUDED.email,
+    avatar_url = EXCLUDED.avatar_url,
+    updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+-- Drop existing trigger if present (idempotent re-runs)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+COMMENT ON FUNCTION public.handle_new_user IS
+  'Auto-provisions a kg_users row when a new Supabase Auth user signs up (Google OAuth, etc.)';
+```
+
+- [ ] **Step 2: Create the feature folder structure**
+
+Create these directories and placeholder files:
+- `website/features/user_auth/js/.gitkeep`
+- `website/features/user_auth/css/.gitkeep`
+
+- [ ] **Step 3: Update About.md**
+
+Add to `website/features/About.md`:
+
+```markdown
+## user_auth
+
+User authentication via Supabase Auth with Google OAuth. Provides login/logout UI,
+JWT-based API protection, and per-user knowledge graph scoping.
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add supabase/website/user_auth/schema.sql website/features/user_auth/ website/features/About.md
+git commit -m "feat: add user_auth schema and feature scaffold"
+```
+
+---
+
+### Task 2: Settings + Environment Configuration
+
+**Files:**
+- Modify: `ops/.env.example`
+- Create: `tests/test_auth.py` (settings test only)
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/test_auth.py`:
+
+```python
+"""Tests for user authentication."""
+
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
+
+
+class TestAuthSettings:
+    """SUPABASE_JWT_SECRET is available from environment."""
+
+    def test_jwt_secret_loaded_from_env(self):
+        """Auth module reads SUPABASE_JWT_SECRET from environment."""
+        import os
+        os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-at-least-32-chars-long!!")
+        from website.api.auth import _get_jwt_secret
+        secret = _get_jwt_secret()
+        assert secret is not None
+        assert len(secret) > 0
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `pytest tests/test_auth.py::TestAuthSettings::test_jwt_secret_loaded_from_env -v`
+Expected: FAIL — `website.api.auth` does not exist yet
+
+- [ ] **Step 3: Update ops/.env.example**
+
+Add to `ops/.env.example` at the end:
+
+```bash
+
+# ── Supabase Auth (optional — for user authentication) ──────────────────────
+# JWT secret for validating Supabase Auth tokens server-side.
+# Get this from Supabase Dashboard → Settings → API → JWT Secret.
+# SUPABASE_JWT_SECRET=your-supabase-jwt-secret
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add ops/.env.example tests/test_auth.py
+git commit -m "feat: add SUPABASE_JWT_SECRET to env template and auth test skeleton"
+```
+
+---
+
+### Task 3: FastAPI Auth Dependency
+
+**Files:**
+- Create: `website/api/auth.py`
+- Modify: `tests/test_auth.py`
+
+- [ ] **Step 1: Write failing tests for JWT validation**
+
+Add to `tests/test_auth.py`:
+
+```python
+import time
+from unittest.mock import patch
+
+import jwt as pyjwt
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from website.api.auth import get_current_user, get_optional_user, _get_jwt_secret
+
+TEST_SECRET = "test-jwt-secret-that-is-long-enough-for-hs256!!"
+
+
+def _make_jwt(payload: dict, secret: str = TEST_SECRET) -> str:
+    """Create a signed JWT for testing."""
+    defaults = {
+        "sub": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "test@example.com",
+        "aud": "authenticated",
+        "role": "authenticated",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+        "user_metadata": {
+            "full_name": "Test User",
+            "avatar_url": "https://example.com/avatar.png",
+        },
+    }
+    defaults.update(payload)
+    return pyjwt.encode(defaults, secret, algorithm="HS256")
+
+
+class TestGetCurrentUser:
+    """get_current_user validates JWT and returns claims."""
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_valid_token_returns_claims(self, mock_secret):
+        from fastapi import Depends
+        from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict = Depends(get_current_user)):
+            return {"sub": user["sub"], "email": user["email"]}
+
+        client = TestClient(app)
+        token = _make_jwt({})
+        resp = client.get("/test", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json()["sub"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert resp.json()["email"] == "test@example.com"
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_expired_token_returns_401(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict = Depends(get_current_user)):
+            return user
+
+        client = TestClient(app)
+        token = _make_jwt({"exp": int(time.time()) - 100})
+        resp = client.get("/test", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 401
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_missing_token_returns_401(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict = Depends(get_current_user)):
+            return user
+
+        client = TestClient(app)
+        resp = client.get("/test")
+        assert resp.status_code == 401
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_malformed_token_returns_401(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict = Depends(get_current_user)):
+            return user
+
+        client = TestClient(app)
+        resp = client.get("/test", headers={"Authorization": "Bearer not.a.valid.jwt"})
+        assert resp.status_code == 401
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_wrong_secret_returns_401(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict = Depends(get_current_user)):
+            return user
+
+        client = TestClient(app)
+        token = _make_jwt({}, secret="wrong-secret-wrong-secret-wrong-secret!!")
+        resp = client.get("/test", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 401
+
+
+class TestGetOptionalUser:
+    """get_optional_user returns None instead of 401 when no auth."""
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_no_token_returns_none(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict | None = Depends(get_optional_user)):
+            return {"user": user}
+
+        client = TestClient(app)
+        resp = client.get("/test")
+        assert resp.status_code == 200
+        assert resp.json()["user"] is None
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_valid_token_returns_claims(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict | None = Depends(get_optional_user)):
+            return {"sub": user["sub"] if user else None}
+
+        client = TestClient(app)
+        token = _make_jwt({})
+        resp = client.get("/test", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json()["sub"] == "550e8400-e29b-41d4-a716-446655440000"
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_invalid_token_returns_none(self, mock_secret):
+        app = FastAPI()
+
+        @app.get("/test")
+        async def test_route(user: dict | None = Depends(get_optional_user)):
+            return {"user": user}
+
+        client = TestClient(app)
+        resp = client.get("/test", headers={"Authorization": "Bearer garbage"})
+        assert resp.status_code == 200
+        assert resp.json()["user"] is None
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `pytest tests/test_auth.py -v -k "not TestAuthSettings"`
+Expected: FAIL — `website.api.auth` does not exist yet
+
+- [ ] **Step 3: Implement the auth dependency**
+
+Create `website/api/auth.py`:
+
+```python
+"""Supabase Auth JWT validation for FastAPI.
+
+Provides two dependency functions:
+- get_current_user: requires a valid JWT, raises 401 if missing/invalid
+- get_optional_user: returns None if no JWT present, raises nothing
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from typing import Annotated
+
+import jwt as pyjwt
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+logger = logging.getLogger(__name__)
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _get_jwt_secret() -> str:
+    """Read SUPABASE_JWT_SECRET from environment."""
+    return os.environ.get("SUPABASE_JWT_SECRET", "")
+
+
+def _decode_token(token: str) -> dict:
+    """Decode and validate a Supabase JWT. Raises on any failure."""
+    secret = _get_jwt_secret()
+    if not secret:
+        raise ValueError("SUPABASE_JWT_SECRET not configured")
+    return pyjwt.decode(
+        token,
+        secret,
+        algorithms=["HS256"],
+        audience="authenticated",
+    )
+
+
+async def get_current_user(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ] = None,
+) -> dict:
+    """Validate Supabase JWT and return decoded claims.
+
+    Returns a dict with keys: sub, email, aud, role, user_metadata, etc.
+    Raises HTTPException(401) if token is missing, expired, or invalid.
+    """
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        return _decode_token(credentials.credentials)
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except (pyjwt.InvalidTokenError, ValueError) as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
+
+
+async def get_optional_user(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ] = None,
+) -> dict | None:
+    """Like get_current_user, but returns None instead of 401.
+
+    Use this for endpoints that work with or without auth
+    (e.g., /api/graph returns global data when unauthenticated,
+    user-scoped data when authenticated).
+    """
+    if credentials is None:
+        return None
+
+    try:
+        return _decode_token(credentials.credentials)
+    except Exception:
+        return None
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `pytest tests/test_auth.py -v`
+Expected: ALL PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add website/api/auth.py tests/test_auth.py
+git commit -m "feat: add FastAPI JWT auth dependency for Supabase tokens"
+```
+
+---
+
+### Task 4: Protected API Routes
+
+**Files:**
+- Modify: `website/api/routes.py`
+- Modify: `tests/test_auth.py` (add route tests)
+- Modify: `tests/test_website.py` (ensure existing tests still pass)
+
+- [ ] **Step 1: Write failing tests for /api/auth/config and /api/me**
+
+Add to `tests/test_auth.py`:
+
+```python
+from website.app import create_app
+
+
+@pytest.fixture
+def auth_client():
+    """TestClient with rate limiter cleared."""
+    from website.api import routes
+    routes._rate_store.clear()
+    app = create_app()
+    return TestClient(app)
+
+
+class TestAuthConfigEndpoint:
+    """GET /api/auth/config returns Supabase public config."""
+
+    @patch.dict("os.environ", {
+        "SUPABASE_URL": "https://test.supabase.co",
+        "SUPABASE_ANON_KEY": "test-anon-key",
+    })
+    def test_returns_supabase_config(self, auth_client):
+        resp = auth_client.get("/api/auth/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["supabase_url"] == "https://test.supabase.co"
+        assert data["supabase_anon_key"] == "test-anon-key"
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_returns_empty_when_not_configured(self, auth_client):
+        resp = auth_client.get("/api/auth/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["supabase_url"] == ""
+
+
+class TestMeEndpoint:
+    """GET /api/me returns user profile when authenticated."""
+
+    @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+    def test_authenticated_returns_profile(self, mock_secret, auth_client):
+        token = _make_jwt({
+            "sub": "550e8400-e29b-41d4-a716-446655440000",
+            "email": "user@example.com",
+            "user_metadata": {"full_name": "Test User", "avatar_url": "https://img.test/a.png"},
+        })
+        resp = auth_client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["id"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert data["email"] == "user@example.com"
+        assert data["name"] == "Test User"
+        assert data["avatar_url"] == "https://img.test/a.png"
+
+    def test_unauthenticated_returns_401(self, auth_client):
+        resp = auth_client.get("/api/me")
+        assert resp.status_code == 401
+
+
+class TestGraphEndpointAuth:
+    """GET /api/graph works with and without auth."""
+
+    def test_unauthenticated_returns_graph(self, auth_client):
+        """Backwards compatible — no auth still works."""
+        resp = auth_client.get("/api/graph")
+        assert resp.status_code == 200
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `pytest tests/test_auth.py -v -k "TestAuthConfig or TestMeEndpoint or TestGraphEndpointAuth"`
+Expected: FAIL — endpoints don't exist yet
+
+- [ ] **Step 3: Implement the route changes**
+
+Modify `website/api/routes.py` — add these imports at the top:
+
+```python
+import os
+from typing import Annotated
+from fastapi import Depends
+from website.api.auth import get_current_user, get_optional_user
+```
+
+Add these new endpoints after the existing `health` endpoint:
+
+```python
+@router.get("/auth/config")
+async def auth_config():
+    """Return public Supabase config for client-side auth init."""
+    return {
+        "supabase_url": os.environ.get("SUPABASE_URL", ""),
+        "supabase_anon_key": os.environ.get("SUPABASE_ANON_KEY", ""),
+    }
+
+
+@router.get("/me")
+async def me(user: Annotated[dict, Depends(get_current_user)]):
+    """Return the authenticated user's profile."""
+    metadata = user.get("user_metadata", {})
+    return {
+        "id": user["sub"],
+        "email": user.get("email", ""),
+        "name": metadata.get("full_name", ""),
+        "avatar_url": metadata.get("avatar_url", ""),
+    }
+```
+
+Modify the `graph_data` endpoint signature to accept optional auth:
+
+```python
+@router.get("/graph")
+async def graph_data(user: Annotated[dict | None, Depends(get_optional_user)] = None):
+```
+
+Inside `graph_data`, change the Supabase lookup to use the authenticated user when available:
+
+```python
+    sb = _get_supabase(user_id_override=user["sub"] if user else None)
+```
+
+Modify the `summarize` endpoint signature similarly:
+
+```python
+@router.post("/summarize")
+async def summarize(body: SummarizeRequest, request: Request, user: Annotated[dict | None, Depends(get_optional_user)] = None):
+```
+
+Inside `summarize`, pass the user ID override to `_get_supabase`:
+
+```python
+        sb = _get_supabase(user_id_override=user["sub"] if user else None)
+```
+
+Modify `_get_supabase` to accept an optional user ID:
+
+```python
+def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, str] | None:
+    """Return (repo, user_id) if Supabase is configured, else None."""
+    global _supabase_repo, _supabase_user_id
+    if not is_supabase_configured():
+        return None
+
+    if _supabase_repo is None:
+        try:
+            _supabase_repo = KGRepository()
+        except Exception as exc:
+            logger.warning("Supabase init failed, falling back to file store: %s", exc)
+            return None
+
+    # Use authenticated user ID if provided, otherwise default
+    if user_id_override:
+        try:
+            user = _supabase_repo.get_or_create_user(
+                user_id_override,
+                display_name="Web User",
+            )
+            return _supabase_repo, str(user.id)
+        except Exception as exc:
+            logger.warning("Supabase user lookup failed: %s", exc)
+
+    # Fallback to default user
+    if _supabase_user_id is None:
+        try:
+            user = _supabase_repo.get_or_create_user("default-web-user", display_name="Web User")
+            _supabase_user_id = str(user.id)
+        except Exception as exc:
+            logger.warning("Supabase default user init failed: %s", exc)
+            return None
+
+    return _supabase_repo, _supabase_user_id
+```
+
+- [ ] **Step 4: Run all tests**
+
+Run: `pytest tests/test_auth.py tests/test_website.py -v`
+Expected: ALL PASS (including existing website tests — backwards compatible)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add website/api/routes.py tests/test_auth.py tests/test_website.py
+git commit -m "feat: add /api/me, /api/auth/config, auth-scoped graph and summarize"
+```
+
+---
+
+### Task 5: Auth Callback Page
+
+**Files:**
+- Create: `website/features/user_auth/callback.html`
+
+- [ ] **Step 1: Create the callback HTML page**
+
+Create `website/features/user_auth/callback.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signing in...</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: hsl(224, 28%, 5%);
+            color: hsl(210, 20%, 92%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .callback-card {
+            text-align: center;
+            padding: 2rem;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid hsl(220, 16%, 14%);
+            border-top-color: hsl(172, 66%, 50%);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status { color: hsl(215, 14%, 58%); font-size: 0.9rem; }
+        .error { color: hsl(0, 72%, 63%); margin-top: 1rem; }
+        .retry-link {
+            color: hsl(172, 66%, 50%);
+            text-decoration: none;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="callback-card">
+        <div class="spinner" id="spinner"></div>
+        <p class="status" id="status">Completing sign-in...</p>
+        <p class="error" id="error" style="display:none"></p>
+        <a class="retry-link" id="retry" href="/" style="display:none">Back to home</a>
+    </div>
+
+    <script>
+    (async function() {
+        const statusEl = document.getElementById('status');
+        const errorEl = document.getElementById('error');
+        const spinnerEl = document.getElementById('spinner');
+        const retryEl = document.getElementById('retry');
+
+        try {
+            // Fetch Supabase config from backend
+            const configResp = await fetch('/api/auth/config');
+            const config = await configResp.json();
+
+            if (!config.supabase_url || !config.supabase_anon_key) {
+                throw new Error('Authentication is not configured on this server.');
+            }
+
+            const { createClient } = supabase;
+            const sb = createClient(config.supabase_url, config.supabase_anon_key);
+
+            // supabase-js v2 auto-detects ?code= in the URL and exchanges it
+            // for a session via PKCE. We just need to wait for the session.
+            const { data, error } = await sb.auth.exchangeCodeForSession(window.location.href);
+
+            if (error) throw error;
+
+            statusEl.textContent = 'Signed in! Redirecting...';
+            // Redirect to the page the user was on, or home
+            const returnTo = sessionStorage.getItem('auth_return_to') || '/';
+            sessionStorage.removeItem('auth_return_to');
+            window.location.href = returnTo;
+        } catch (err) {
+            spinnerEl.style.display = 'none';
+            statusEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Sign-in failed: ' + (err.message || 'Unknown error');
+            retryEl.style.display = 'inline-block';
+        }
+    })();
+    </script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add website/features/user_auth/callback.html
+git commit -m "feat: add OAuth callback page for PKCE code exchange"
+```
+
+---
+
+### Task 6: Frontend Auth Module
+
+**Files:**
+- Create: `website/features/user_auth/js/auth.js`
+- Create: `website/features/user_auth/css/auth.css`
+
+- [ ] **Step 1: Create the auth.js module**
+
+Create `website/features/user_auth/js/auth.js`:
+
+```javascript
+/**
+ * Zettelkasten Auth Module
+ *
+ * Handles Supabase Auth lifecycle: init, login, logout, session state.
+ * Loaded as a regular script (not module) so it can set globals that
+ * app.js uses for adding auth headers to API calls.
+ */
+
+(function () {
+  'use strict';
+
+  // ── State ─────────────────────────────────────────────────────────
+  var _supabaseClient = null;
+  var _currentSession = null;
+
+  // ── DOM references ────────────────────────────────────────────────
+  var loginBtn = document.getElementById('login-btn');
+  var userMenu = document.getElementById('user-menu');
+  var userAvatar = document.getElementById('user-avatar');
+  var userName = document.getElementById('user-name');
+  var logoutBtn = document.getElementById('logout-btn');
+
+  // ── Init ──────────────────────────────────────────────────────────
+
+  async function init() {
+    try {
+      var resp = await fetch('/api/auth/config');
+      var config = await resp.json();
+
+      if (!config.supabase_url || !config.supabase_anon_key) {
+        console.log('[auth] Supabase not configured, auth disabled');
+        return;
+      }
+
+      var createClient = supabase.createClient;
+      _supabaseClient = createClient(config.supabase_url, config.supabase_anon_key);
+
+      // Listen for auth state changes
+      _supabaseClient.auth.onAuthStateChange(function (event, session) {
+        _currentSession = session;
+        updateUI(session);
+      });
+
+      // Check for existing session (from localStorage)
+      var result = await _supabaseClient.auth.getSession();
+      _currentSession = result.data.session;
+      updateUI(_currentSession);
+    } catch (err) {
+      console.error('[auth] Init failed:', err);
+    }
+  }
+
+  // ── UI Updates ────────────────────────────────────────────────────
+
+  function updateUI(session) {
+    if (!loginBtn || !userMenu) return;
+
+    if (session && session.user) {
+      var meta = session.user.user_metadata || {};
+      loginBtn.style.display = 'none';
+      userMenu.style.display = 'flex';
+      if (userAvatar) {
+        userAvatar.src = meta.avatar_url || meta.picture || '';
+        userAvatar.alt = meta.full_name || 'User';
+      }
+      if (userName) {
+        userName.textContent = meta.full_name || session.user.email || 'User';
+      }
+    } else {
+      loginBtn.style.display = 'flex';
+      userMenu.style.display = 'none';
+    }
+  }
+
+  // ── Public Actions ────────────────────────────────────────────────
+
+  window.signInWithGoogle = async function () {
+    if (!_supabaseClient) {
+      console.error('[auth] Supabase client not initialized');
+      return;
+    }
+    // Remember current page for post-login redirect
+    sessionStorage.setItem('auth_return_to', window.location.pathname);
+
+    var result = await _supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/auth/callback',
+      },
+    });
+    if (result.error) {
+      console.error('[auth] Sign-in error:', result.error.message);
+    }
+  };
+
+  window.signOut = async function () {
+    if (!_supabaseClient) return;
+    await _supabaseClient.auth.signOut();
+    _currentSession = null;
+    updateUI(null);
+  };
+
+  /**
+   * Returns the current access token, or null if not authenticated.
+   * Used by app.js to add Authorization headers to API calls.
+   */
+  window.getAuthToken = function () {
+    return _currentSession ? _currentSession.access_token : null;
+  };
+
+  // ── Start ─────────────────────────────────────────────────────────
+  // Wait for DOM before accessing elements, but init ASAP
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      loginBtn = document.getElementById('login-btn');
+      userMenu = document.getElementById('user-menu');
+      userAvatar = document.getElementById('user-avatar');
+      userName = document.getElementById('user-name');
+      logoutBtn = document.getElementById('logout-btn');
+      init();
+    });
+  } else {
+    init();
+  }
+})();
+```
+
+- [ ] **Step 2: Create the auth.css stylesheet**
+
+Create `website/features/user_auth/css/auth.css`:
+
+```css
+/* ═══════════════════════════════════════════════════════════════════
+   User Authentication Styles
+   Design: matches Zettelkasten dark theme with teal accent
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Login Button ────────────────────────────────────────────────── */
+
+.login-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-muted);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.login-btn:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+}
+
+.login-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ── User Menu (post-login) ──────────────────────────────────────── */
+
+.user-menu {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+.user-name {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+}
+
+.logout-btn:hover {
+    color: var(--error);
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add website/features/user_auth/js/auth.js website/features/user_auth/css/auth.css
+git commit -m "feat: add client-side auth module and styles"
+```
+
+---
+
+### Task 7: Update Index HTML + Header Layout
+
+**Files:**
+- Modify: `website/static/index.html`
+- Modify: `website/static/css/style.css`
+
+- [ ] **Step 1: Add supabase-js and auth assets to index.html `<head>`**
+
+In `website/static/index.html`, add these lines after the existing `<link rel="stylesheet" href="/css/style.css">` (line 10):
+
+```html
+    <link rel="stylesheet" href="/auth/css/auth.css">
+    <link rel="preconnect" href="https://wcgqmjcxlutrmbnijzyz.supabase.co">
+    <link rel="preconnect" href="https://accounts.google.com">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+```
+
+- [ ] **Step 2: Add login button and user menu to the header**
+
+Replace the existing header section (lines 15-20) in `website/static/index.html`:
+
+```html
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-text">Zettelkasten</span>
+            </div>
+            <div class="header-auth">
+                <button class="login-btn" id="login-btn" onclick="signInWithGoogle()">
+                    <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.08 24.08 0 0 0 0 21.56l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    Login
+                </button>
+                <div class="user-menu" id="user-menu">
+                    <img class="user-avatar" id="user-avatar" src="" alt="User" />
+                    <span class="user-name" id="user-name"></span>
+                    <button class="logout-btn" id="logout-btn" onclick="signOut()">Logout</button>
+                </div>
+            </div>
+            <p class="tagline">AI-powered link summarizer</p>
+        </header>
+```
+
+- [ ] **Step 3: Add auth.js script before app.js**
+
+At the bottom of `website/static/index.html`, before the existing `<script src="/js/app.js"></script>` (line 164):
+
+```html
+    <script src="/auth/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+```
+
+Remove the existing `<script src="/js/app.js"></script>` line so it's not duplicated.
+
+- [ ] **Step 4: Update header CSS for flex layout**
+
+In `website/static/css/style.css`, replace the existing `.header` and `.logo` styles (around lines 124-134):
+
+```css
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 0.5rem;
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-auth {
+    margin-left: auto;
+}
+
+.tagline {
+    width: 100%;
+    text-align: center;
+}
+```
+
+- [ ] **Step 5: Run existing tests to verify no breakage**
+
+Run: `pytest tests/test_website.py -v`
+Expected: ALL PASS
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add website/static/index.html website/static/css/style.css
+git commit -m "feat: add login button and user menu to header"
+```
+
+---
+
+### Task 8: App Factory Wiring + API Auth Headers
+
+**Files:**
+- Modify: `website/app.py`
+- Modify: `website/static/js/app.js`
+
+- [ ] **Step 1: Mount auth feature in app.py**
+
+In `website/app.py`, add the auth directory constant after the existing directory constants (line 23):
+
+```python
+AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
+```
+
+Add the static file mounts inside `create_app()`, after the KG mounts (after line 69):
+
+```python
+    # User Auth static assets
+    app.mount("/auth/css", StaticFiles(directory=str(AUTH_DIR / "css")), name="auth-css")
+    app.mount("/auth/js", StaticFiles(directory=str(AUTH_DIR / "js")), name="auth-js")
+```
+
+Add the callback route inside `create_app()`, after the knowledge-graph route (after line 91):
+
+```python
+    @app.get("/auth/callback")
+    async def auth_callback():
+        return FileResponse(str(AUTH_DIR / "callback.html"))
+```
+
+- [ ] **Step 2: Add auth headers to API calls in app.js**
+
+In `website/static/js/app.js`, modify the `fetch('/api/summarize', ...)` call (around line 262). Replace:
+
+```javascript
+    fetch('/api/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url }),
+    })
+```
+
+With:
+
+```javascript
+    var fetchHeaders = { 'Content-Type': 'application/json' };
+    var authToken = typeof getAuthToken === 'function' ? getAuthToken() : null;
+    if (authToken) {
+      fetchHeaders['Authorization'] = 'Bearer ' + authToken;
+    }
+
+    fetch('/api/summarize', {
+      method: 'POST',
+      headers: fetchHeaders,
+      body: JSON.stringify({ url: url }),
+    })
+```
+
+- [ ] **Step 3: Run all tests**
+
+Run: `pytest tests/test_auth.py tests/test_website.py -v`
+Expected: ALL PASS
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add website/app.py website/static/js/app.js
+git commit -m "feat: wire auth feature into app factory and add auth headers to API calls"
+```
+
+---
+
+### Task 9: Delete .gitkeep Placeholders + Final Verification
+
+**Files:**
+- Delete: `website/features/user_auth/js/.gitkeep`
+- Delete: `website/features/user_auth/css/.gitkeep`
+
+- [ ] **Step 1: Remove placeholder files**
+
+Now that real files exist in the directories, remove the `.gitkeep` files:
+
+```bash
+rm website/features/user_auth/js/.gitkeep website/features/user_auth/css/.gitkeep 2>/dev/null
+```
+
+- [ ] **Step 2: Run the full test suite**
+
+Run: `pytest tests/ --ignore=tests/integration_tests -v`
+Expected: ALL PASS, no regressions
+
+- [ ] **Step 3: Verify auth feature structure**
+
+```bash
+find website/features/user_auth -type f
+```
+
+Expected output:
+```
+website/features/user_auth/callback.html
+website/features/user_auth/js/auth.js
+website/features/user_auth/css/auth.css
+```
+
+- [ ] **Step 4: Final commit**
+
+```bash
+git add -A website/features/user_auth/
+git commit -m "feat: complete user_auth feature — Google OAuth via Supabase Auth"
+```
+
+---
+
+## Manual Post-Implementation Steps
+
+These require access to external dashboards and cannot be automated:
+
+1. **Google Cloud Console**: Create OAuth 2.0 client ID → copy client ID and secret
+2. **Supabase Dashboard**: Authentication → Providers → Enable Google → paste credentials
+3. **Supabase Dashboard**: Authentication → URL Configuration → Add redirect URLs:
+   - `https://<render-app>.onrender.com/auth/callback`
+   - `http://localhost:8000/auth/callback`
+4. **Supabase Dashboard**: Settings → API → Copy JWT Secret
+5. **Set env vars**: Add `SUPABASE_JWT_SECRET` to `.env` and Render dashboard
+6. **Supabase SQL Editor**: Run `supabase/website/user_auth/schema.sql`
+7. **Install PyJWT**: Add `PyJWT>=2.8.0` to `ops/requirements.txt`

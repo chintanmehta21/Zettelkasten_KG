@@ -1,4 +1,4 @@
-"""Shared data models for the Zettelkasten capture pipeline.
+"""Shared data models for the capture pipeline.
 
 All pipeline stages communicate through these Pydantic models.
 """

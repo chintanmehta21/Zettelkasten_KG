@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections import defaultdict
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
+from website.api.auth import get_current_user, get_optional_user
 from website.core.pipeline import summarize_url
 from website.core.graph_store import add_node, get_graph
 from website.core.supabase_kg import is_supabase_configured, KGRepository, KGNodeCreate
@@ -20,7 +23,7 @@ _supabase_repo: KGRepository | None = None
 _supabase_user_id: str | None = None
 
 
-def _get_supabase() -> tuple[KGRepository, str] | None:
+def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, str] | None:
     """Return (repo, user_id) if Supabase is configured, else None."""
     global _supabase_repo, _supabase_user_id
     if not is_supabase_configured():
@@ -28,10 +31,22 @@ def _get_supabase() -> tuple[KGRepository, str] | None:
     if _supabase_repo is None:
         try:
             _supabase_repo = KGRepository()
-            user = _supabase_repo.get_or_create_user("default-web-user", display_name="Web User")
-            _supabase_user_id = str(user.id)
         except Exception as exc:
             logger.warning("Supabase init failed, falling back to file store: %s", exc)
+            return None
+    if user_id_override:
+        try:
+            user = _supabase_repo.get_or_create_user(user_id_override, display_name="Web User")
+            return _supabase_repo, str(user.id)
+        except Exception as exc:
+            logger.warning("Supabase user lookup failed: %s", exc)
+            return None
+    if _supabase_user_id is None:
+        try:
+            user = _supabase_repo.get_or_create_user("naruto", display_name="Naruto")
+            _supabase_user_id = str(user.id)
+        except Exception as exc:
+            logger.warning("Supabase default user init failed: %s", exc)
             return None
     return _supabase_repo, _supabase_user_id
 
@@ -80,8 +95,29 @@ async def health():
     return {"status": "ok"}
 
 
+@router.get("/auth/config")
+async def auth_config():
+    """Return public Supabase config for client-side auth init."""
+    return {
+        "supabase_url": os.environ.get("SUPABASE_URL", ""),
+        "supabase_anon_key": os.environ.get("SUPABASE_ANON_KEY", ""),
+    }
+
+
+@router.get("/me")
+async def me(user: Annotated[dict, Depends(get_current_user)]):
+    """Return the authenticated user's profile."""
+    metadata = user.get("user_metadata", {})
+    return {
+        "id": user["sub"],
+        "email": user.get("email", ""),
+        "name": metadata.get("full_name", ""),
+        "avatar_url": metadata.get("avatar_url", ""),
+    }
+
+
 @router.get("/graph")
-async def graph_data():
+async def graph_data(user: Annotated[dict | None, Depends(get_optional_user)] = None):
     """Return the knowledge graph — cached Supabase if configured, else file store."""
     global _graph_cache, _graph_cache_ts
 
@@ -89,7 +125,7 @@ async def graph_data():
     if _graph_cache is not None and (now - _graph_cache_ts) < _GRAPH_CACHE_TTL:
         return _graph_cache
 
-    sb = _get_supabase()
+    sb = _get_supabase(user_id_override=user["sub"] if user else None)
     if sb:
         repo, user_id = sb
         try:
@@ -109,7 +145,7 @@ async def graph_data():
 
 
 @router.post("/summarize")
-async def summarize(body: SummarizeRequest, request: Request):
+async def summarize(body: SummarizeRequest, request: Request, user: Annotated[dict | None, Depends(get_optional_user)] = None):
     ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(ip):
         raise HTTPException(
@@ -136,7 +172,7 @@ async def summarize(body: SummarizeRequest, request: Request):
             logger.warning("Failed to add node to file KG: %s", kg_err)
 
         # Dual-write to Supabase
-        sb = _get_supabase()
+        sb = _get_supabase(user_id_override=user["sub"] if user else None)
         if sb:
             repo, user_id = sb
             try:

@@ -19,8 +19,9 @@ from website.api.routes import router as api_router
 logger = logging.getLogger("website.app")
 
 STATIC_DIR = Path(__file__).parent / "static"
-KG_DIR = Path(__file__).parent / "knowledge_graph"
+KG_DIR = Path(__file__).parent / "features" / "knowledge_graph"
 MOBILE_DIR = Path(__file__).parent / "mobile"
+AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -68,6 +69,10 @@ def create_app(lifespan=None) -> FastAPI:
     app.mount("/kg/js", StaticFiles(directory=str(KG_DIR / "js")), name="kg-js")
     app.mount("/kg/content", StaticFiles(directory=str(KG_DIR / "content")), name="kg-data")
 
+    # User Auth static assets
+    app.mount("/auth/css", StaticFiles(directory=str(AUTH_DIR / "css")), name="auth-css")
+    app.mount("/auth/js", StaticFiles(directory=str(AUTH_DIR / "js")), name="auth-js")
+
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index():
@@ -89,5 +94,9 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/knowledge-graph", status_code=302)
         return FileResponse(str(KG_DIR / "index.html"))
+
+    @app.get("/auth/callback")
+    async def auth_callback():
+        return FileResponse(str(AUTH_DIR / "callback.html"))
 
     return app

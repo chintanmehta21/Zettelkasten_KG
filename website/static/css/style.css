@@ -122,15 +122,26 @@ a:hover {
 /* ── Header ───────────────────────────────────────────────────────── */
 
 .header {
-    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     padding: 1rem 0;
+    gap: 0.5rem;
 }
 
 .logo {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
+}
+
+.header-auth {
+    margin-left: auto;
+}
+
+.tagline {
+    width: 100%;
+    text-align: center;
 }
 
 .logo-icon {

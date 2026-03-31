@@ -4,14 +4,14 @@ All mocks use unittest.mock — no real API calls are made.
 asyncio_mode=auto (pytest.ini) — no @pytest.mark.asyncio needed.
 
 Patch sites:
-  - Reddit: zettelkasten_bot.sources.reddit.praw.Reddit
+  - Reddit: telegram_bot.sources.reddit.praw.Reddit
   - YouTube yt_dlp: yt_dlp.YoutubeDL  (imported locally inside extract())
   - YouTube transcript: youtube_transcript_api.YouTubeTranscriptApi  (imported locally)
-  - Newsletter httpx: zettelkasten_bot.sources.newsletter.httpx.AsyncClient
-  - Newsletter trafilatura: zettelkasten_bot.sources.newsletter.trafilatura
-  - GitHub httpx: zettelkasten_bot.sources.github.httpx.AsyncClient
-  - Generic httpx: zettelkasten_bot.sources.generic.httpx.AsyncClient
-  - Generic trafilatura: zettelkasten_bot.sources.generic.trafilatura
+  - Newsletter httpx: telegram_bot.sources.newsletter.httpx.AsyncClient
+  - Newsletter trafilatura: telegram_bot.sources.newsletter.trafilatura
+  - GitHub httpx: telegram_bot.sources.github.httpx.AsyncClient
+  - Generic httpx: telegram_bot.sources.generic.httpx.AsyncClient
+  - Generic trafilatura: telegram_bot.sources.generic.trafilatura
 """
 
 from __future__ import annotations
@@ -20,13 +20,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.sources import get_extractor, list_extractors
-from zettelkasten_bot.sources.generic import GenericExtractor
-from zettelkasten_bot.sources.github import GitHubExtractor
-from zettelkasten_bot.sources.newsletter import NewsletterExtractor
-from zettelkasten_bot.sources.reddit import RedditExtractor
-from zettelkasten_bot.sources.youtube import YouTubeExtractor
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.sources import get_extractor, list_extractors
+from telegram_bot.sources.generic import GenericExtractor
+from telegram_bot.sources.github import GitHubExtractor
+from telegram_bot.sources.newsletter import NewsletterExtractor
+from telegram_bot.sources.reddit import RedditExtractor
+from telegram_bot.sources.youtube import YouTubeExtractor
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ def _make_submission(
 
 async def test_reddit_happy_path_selftext_with_comments():
     """Selftext post with comments → correct title, body sections, metadata."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(
@@ -147,7 +147,7 @@ async def test_reddit_happy_path_selftext_with_comments():
 
 async def test_reddit_link_post_no_selftext():
     """Link post (empty selftext) → body has comments only, metadata.media_url set."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(
@@ -168,7 +168,7 @@ async def test_reddit_link_post_no_selftext():
 
 async def test_reddit_post_no_comments():
     """Post with no comments → body has post content, no comments section."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(
@@ -186,7 +186,7 @@ async def test_reddit_post_no_comments():
 
 async def test_reddit_deleted_post_author():
     """Post with deleted author → metadata.author == '[deleted]'."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(author=None)
@@ -200,7 +200,7 @@ async def test_reddit_deleted_post_author():
 
 async def test_reddit_deleted_comment_author():
     """Comment with deleted author → comment line shows u/[deleted]."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         deleted_comment = _make_comment(body="Top comment text", author=None)
@@ -215,7 +215,7 @@ async def test_reddit_deleted_comment_author():
 
 async def test_reddit_custom_comment_depth():
     """comment_depth=5 → only 5 comments extracted, not 6+."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         many_comments = [
@@ -234,7 +234,7 @@ async def test_reddit_custom_comment_depth():
 
 async def test_reddit_default_comment_depth():
     """Default comment_depth=10 → up to 10 comments extracted, not 11+."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         many_comments = [
@@ -255,7 +255,7 @@ async def test_reddit_praw_exception_reraised():
     """PRAWException raised by PRAW → re-raised from extractor."""
     from praw.exceptions import PRAWException
 
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         mock_reddit.submission.side_effect = PRAWException("PRAW fail")
@@ -267,7 +267,7 @@ async def test_reddit_praw_exception_reraised():
 
 async def test_reddit_generic_exception_reraised():
     """Generic exception raised by PRAW → re-raised from extractor."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         mock_reddit.submission.side_effect = RuntimeError("Network fail")
@@ -279,7 +279,7 @@ async def test_reddit_generic_exception_reraised():
 
 async def test_reddit_post_with_flair():
     """Post with flair → metadata.flair is set."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(link_flair_text="Discussion")
@@ -293,7 +293,7 @@ async def test_reddit_post_with_flair():
 
 async def test_reddit_metadata_score_and_ratio_fields():
     """Metadata includes score, upvote_ratio, num_comments, created_utc."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission(
@@ -315,7 +315,7 @@ async def test_reddit_metadata_score_and_ratio_fields():
 
 async def test_reddit_source_type():
     """ExtractedContent.source_type == SourceType.REDDIT."""
-    with patch("zettelkasten_bot.sources.reddit.praw.Reddit") as MockReddit:
+    with patch("telegram_bot.sources.reddit.praw.Reddit") as MockReddit:
         mock_reddit = MockReddit.return_value
         mock_reddit.read_only = True
         submission = _make_submission()
@@ -331,11 +331,11 @@ async def test_reddit_source_type():
 # YouTube test helpers
 #
 # yt_dlp and youtube_transcript_api are imported locally *inside* extract(),
-# so we patch at the library root, not at zettelkasten_bot.sources.youtube.*
+# so we patch at the library root, not at telegram_bot.sources.youtube.*
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-_YT_MOD = "zettelkasten_bot.sources.youtube"
+_YT_MOD = "telegram_bot.sources.youtube"
 
 _DEFAULT_YDL_INFO: dict = {
     "title": "Never Gonna Give You Up",
@@ -607,7 +607,7 @@ async def test_youtube_source_type():
 # Newsletter test helpers
 #
 # _fetch_html and _fetch_wayback_url each open their own httpx.AsyncClient.
-# We patch zettelkasten_bot.sources.newsletter.httpx.AsyncClient so every
+# We patch telegram_bot.sources.newsletter.httpx.AsyncClient so every
 # call goes through our mock.  The mock is configured as a context manager
 # that returns a mock client with an AsyncMock .get() method.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -689,9 +689,9 @@ async def test_newsletter_direct_fetch_succeeds():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="My Article")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -721,9 +721,9 @@ async def test_newsletter_bypass1_removepaywalls_succeeds():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -769,9 +769,9 @@ async def test_newsletter_bypass2_removepaywall_succeeds():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -821,9 +821,9 @@ async def test_newsletter_wayback_succeeds():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -865,9 +865,9 @@ async def test_newsletter_wayback_no_snapshot_skips_to_next():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -909,9 +909,9 @@ async def test_newsletter_wayback_api_request_fails_skips_to_next():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -951,9 +951,9 @@ async def test_newsletter_all_bypasses_fail_raises_runtime_error():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         with pytest.raises(RuntimeError, match="all paywall bypass attempts failed"):
@@ -990,9 +990,9 @@ async def test_newsletter_direct_fetch_raises_proceeds_to_bypass():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -1030,9 +1030,9 @@ async def test_newsletter_trafilatura_returns_none_body_is_empty_string():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -1049,9 +1049,9 @@ async def test_newsletter_title_from_trafilatura_metadata():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Trafilatura Title")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -1071,9 +1071,9 @@ async def test_newsletter_title_fallback_to_html_title_tag():
     mock_meta = MagicMock(return_value=meta_mock)
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -1088,9 +1088,9 @@ async def test_newsletter_source_type():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Article")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_NEWSLETTER_URL)
@@ -1102,7 +1102,7 @@ async def test_newsletter_source_type():
 # Substack-specific tests
 # ─────────────────────────────────────────────────────────────────────────────
 
-from zettelkasten_bot.sources.newsletter import (
+from telegram_bot.sources.newsletter import (
     _is_substack_url,
     _detect_substack_paywall,
     _extract_substack_metadata,
@@ -1252,9 +1252,9 @@ async def test_substack_free_article_extracts_with_metadata():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Free Article")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_SUBSTACK_URL)
@@ -1279,9 +1279,9 @@ async def test_substack_paid_article_returns_partial_content():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_SHORT_BODY, title="Paid Article")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_SUBSTACK_URL)
@@ -1313,9 +1313,9 @@ async def test_substack_paid_article_bypass_succeeds():
     mock_meta.return_value = meta_obj
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract_fn),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract_fn),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(_SUBSTACK_URL)
@@ -1333,9 +1333,9 @@ async def test_non_substack_url_unchanged_flow():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Newsletter")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(non_substack_url)
@@ -1344,7 +1344,7 @@ async def test_non_substack_url_unchanged_flow():
     assert "is_substack" not in result.metadata
 
 
-from zettelkasten_bot.sources.newsletter import _is_substack_html
+from telegram_bot.sources.newsletter import _is_substack_html
 
 
 _CUSTOM_DOMAIN_SUBSTACK_HTML = """<html>
@@ -1377,9 +1377,9 @@ async def test_substack_custom_domain_detected_from_html():
     mock_extract, mock_meta = _make_trafilatura_mock(body=_LONG_BODY, title="Custom Domain Article")
 
     with (
-        patch("zettelkasten_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.newsletter.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.newsletter.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = NewsletterExtractor()
         result = await extractor.extract(custom_url)
@@ -1454,7 +1454,7 @@ async def test_github_happy_path():
     """Repo + languages + README all succeed → correct title, body sections, metadata."""
     client_ctor = _make_github_client_cm()
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         result = await extractor.extract(_GITHUB_URL)
 
@@ -1479,7 +1479,7 @@ async def test_github_readme_missing_404():
     readme_404 = _make_response(status_code=404)
     client_ctor = _make_github_client_cm(readme_response=readme_404)
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         result = await extractor.extract(_GITHUB_URL)
 
@@ -1501,7 +1501,7 @@ async def test_github_repo_not_found_raises_value_error():
 
     client_ctor = _make_github_client_cm(repo_response=repo_response)
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         with pytest.raises(ValueError, match="not found"):
             await extractor.extract(_GITHUB_URL)
@@ -1513,7 +1513,7 @@ async def test_github_long_readme_truncated():
     readme_resp = _make_response(text=long_readme, status_code=200)
     client_ctor = _make_github_client_cm(readme_response=readme_resp)
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         result = await extractor.extract(_GITHUB_URL)
 
@@ -1534,7 +1534,7 @@ async def test_github_url_formats():
     client_ctor = _make_github_client_cm()
 
     for url in urls:
-        with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+        with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
             extractor = GitHubExtractor()
             result = await extractor.extract(url)
         assert result.title == "octocat/Hello-World", f"Failed for URL: {url}"
@@ -1569,7 +1569,7 @@ async def test_github_languages_endpoint_fails():
     cm.__aexit__ = AsyncMock(return_value=False)
     client_ctor = MagicMock(return_value=cm)
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         result = await extractor.extract(_GITHUB_URL)
 
@@ -1583,7 +1583,7 @@ async def test_github_source_type():
     """ExtractedContent.source_type == SourceType.GITHUB."""
     client_ctor = _make_github_client_cm()
 
-    with patch("zettelkasten_bot.sources.github.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.github.httpx.AsyncClient", client_ctor):
         extractor = GitHubExtractor()
         result = await extractor.extract(_GITHUB_URL)
 
@@ -1654,9 +1654,9 @@ async def test_generic_happy_path():
     mock_extract, mock_meta = _make_generic_trafilatura_mock()
 
     with (
-        patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.generic.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = GenericExtractor()
         result = await extractor.extract(_GENERIC_URL)
@@ -1677,9 +1677,9 @@ async def test_generic_trafilatura_returns_none_falls_back_to_bs4():
     mock_extract, mock_meta = _make_generic_trafilatura_mock(body=None)
 
     with (
-        patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.generic.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = GenericExtractor()
         result = await extractor.extract(_GENERIC_URL)
@@ -1705,9 +1705,9 @@ async def test_generic_both_trafilatura_and_bs4_empty_raises():
     mock_meta = MagicMock(return_value=meta)
 
     with (
-        patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.generic.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = GenericExtractor()
         with pytest.raises(RuntimeError, match="Could not extract any content"):
@@ -1720,9 +1720,9 @@ async def test_generic_title_from_trafilatura_metadata():
     mock_extract, mock_meta = _make_generic_trafilatura_mock(title="Trafilatura Title")
 
     with (
-        patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.generic.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = GenericExtractor()
         result = await extractor.extract(_GENERIC_URL)
@@ -1746,9 +1746,9 @@ async def test_generic_title_fallback_to_html_title_tag():
     mock_meta = MagicMock(return_value=meta)
 
     with (
-        patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract", mock_extract),
-        patch("zettelkasten_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
+        patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor),
+        patch("telegram_bot.sources.generic.trafilatura.extract", mock_extract),
+        patch("telegram_bot.sources.generic.trafilatura.extract_metadata", mock_meta),
     ):
         extractor = GenericExtractor()
         result = await extractor.extract(_GENERIC_URL)
@@ -1770,7 +1770,7 @@ async def test_generic_httpx_raises_propagates():
     cm.__aexit__ = AsyncMock(return_value=False)
     client_ctor = MagicMock(return_value=cm)
 
-    with patch("zettelkasten_bot.sources.generic.httpx.AsyncClient", client_ctor):
+    with patch("telegram_bot.sources.generic.httpx.AsyncClient", client_ctor):
         extractor = GenericExtractor()
         with pytest.raises(_httpx.ConnectError):
             await extractor.extract(_GENERIC_URL)

@@ -17,8 +17,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from zettelkasten_bot.models.capture import ExtractedContent, SourceType
-from zettelkasten_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.summarizer import SummarizationResult
 
 logger = logging.getLogger(__name__)
 
