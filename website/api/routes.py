@@ -143,11 +143,21 @@ async def auth_config():
 async def me(user: Annotated[dict, Depends(get_current_user)]):
     """Return the authenticated user's profile."""
     metadata = user.get("user_metadata", {})
+    avatar_url = metadata.get("avatar_url", "")
+
+    # Prefer avatar from kg_users table (set via PUT /api/me/avatar)
+    sb = _get_supabase(user_id_override=user["sub"])
+    if sb:
+        repo, _ = sb
+        kg_user = repo.get_user_by_render_id(user["sub"])
+        if kg_user and kg_user.avatar_url:
+            avatar_url = kg_user.avatar_url
+
     return {
         "id": user["sub"],
         "email": user.get("email", ""),
         "name": metadata.get("full_name", ""),
-        "avatar_url": metadata.get("avatar_url", ""),
+        "avatar_url": avatar_url,
     }
 
 

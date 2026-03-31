@@ -225,7 +225,7 @@
       card.href = node.url || '#';
       card.target = '_blank';
       card.rel = 'noopener';
-      card.style.animationDelay = (i * 0.04) + 's';
+      card.style.animationDelay = Math.min(i * 0.04, 0.5) + 's';
 
       var sourceClass = (node.group || 'generic').toLowerCase();
       var tags = (node.tags || []).slice(0, 3);
@@ -264,7 +264,7 @@
           'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ url: url })
+        body: JSON.stringify({ url: url, source_type: addSourceType ? addSourceType.value : '' })
       });
 
       if (!resp.ok) {
@@ -390,6 +390,18 @@
     // Avatar modal close
     if (avatarModalClose) avatarModalClose.addEventListener('click', closeAvatarPicker);
     if (avatarModalOverlay) avatarModalOverlay.addEventListener('click', closeAvatarPicker);
+
+    // Escape key closes modals
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeAvatarPicker();
+        if (avatarDropdown) avatarDropdown.classList.remove('open');
+        if (addZettelDropdown) {
+          addZettelDropdown.classList.remove('open');
+          if (addZettelBtn) addZettelBtn.classList.remove('open');
+        }
+      }
+    });
   }
 
   // ── Start ─────────────────────────────────────────────────────────
