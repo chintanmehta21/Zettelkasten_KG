@@ -1,27 +1,27 @@
 <svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- KG logo — share-network icon, rose/coral accent (#D4637B) -->
-  <!-- Clean sharp edges, no overlapping strokes -->
+  <!-- KG logo — share-network icon, slate-blue accent (#7B8FA3) -->
+  <!-- Sharp edges, no overlapping strokes, clear separation -->
 
   <!-- Arms: thick bars from center outward -->
-  <line x1="28" y1="30" x2="15" y2="14" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
-  <line x1="38" y1="28" x2="52" y2="14" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
-  <line x1="30" y1="42" x2="16" y2="54" stroke="#D4637B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="28" y1="30" x2="15" y2="14" stroke="#7B8FA3" stroke-width="5" stroke-linecap="round"/>
+  <line x1="38" y1="28" x2="52" y2="14" stroke="#7B8FA3" stroke-width="5" stroke-linecap="round"/>
+  <line x1="30" y1="42" x2="16" y2="54" stroke="#7B8FA3" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Top-right dumbbell connector -->
-  <line x1="52" y1="14" x2="58" y2="10" stroke="#D4637B" stroke-width="4" stroke-linecap="round"/>
+  <!-- Top-right → mini node connector (going DOWN-right, not up) -->
+  <line x1="54" y1="16" x2="60" y2="24" stroke="#7B8FA3" stroke-width="4" stroke-linecap="round"/>
 
   <!-- Central node — large ring -->
-  <circle cx="32" cy="34" r="10" stroke="#D4637B" stroke-width="4.5" fill="#0D1117"/>
+  <circle cx="32" cy="34" r="10" stroke="#7B8FA3" stroke-width="4.5" fill="#0D1117"/>
 
-  <!-- Top-left satellite — open ring -->
-  <circle cx="12" cy="11" r="6.5" stroke="#D4637B" stroke-width="4" fill="#0D1117"/>
+  <!-- Top-left satellite -->
+  <circle cx="12" cy="11" r="6.5" stroke="#7B8FA3" stroke-width="4" fill="#0D1117"/>
 
   <!-- Top-right satellite -->
-  <circle cx="52" cy="12" r="5" stroke="#D4637B" stroke-width="3.5" fill="#0D1117"/>
+  <circle cx="52" cy="12" r="5" stroke="#7B8FA3" stroke-width="3.5" fill="#0D1117"/>
 
-  <!-- Top-right mini satellite -->
-  <circle cx="59" cy="8" r="3.5" stroke="#D4637B" stroke-width="3" fill="#0D1117"/>
+  <!-- Mini satellite — positioned DOWN-RIGHT from top-right node -->
+  <circle cx="61" cy="26" r="3.5" stroke="#7B8FA3" stroke-width="3" fill="#0D1117"/>
 
   <!-- Bottom-left satellite -->
-  <circle cx="14" cy="55" r="5.5" stroke="#D4637B" stroke-width="4" fill="#0D1117"/>
+  <circle cx="14" cy="55" r="5.5" stroke="#7B8FA3" stroke-width="4" fill="#0D1117"/>
 </svg>
