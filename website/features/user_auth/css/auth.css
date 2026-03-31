@@ -7,8 +7,8 @@
 
 .header-auth {
     display: flex;
-    align-items: center;
-    gap: 2px;
+    align-items: stretch;
+    gap: 0;
     position: relative;
 }
 
@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
+    padding: 0.5rem 0.9rem;
     background: transparent;
     color: var(--accent);
     border: 1px solid var(--accent-muted);
@@ -30,6 +30,7 @@
     cursor: pointer;
     transition: all var(--transition);
     white-space: nowrap;
+    line-height: 1.2;
 }
 
 .login-btn:hover {
@@ -37,20 +38,20 @@
     border-color: var(--accent);
 }
 
-/* ── Dropdown Arrow ──────────────────────────────────────────────── */
+/* ── Dropdown Arrow (same height as Login via align-items: stretch) ── */
 
 .login-arrow {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.45rem 0.5rem;
+    padding: 0 0.45rem;
     background: transparent;
     color: var(--accent);
     border: 1px solid var(--accent-muted);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     cursor: pointer;
     transition: all var(--transition);
-    font-size: 0.65rem;
+    font-size: 0.6rem;
 }
 
 .login-arrow:hover {
@@ -68,12 +69,13 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.75rem;
+    padding: 0;
     z-index: 100;
     box-shadow: var(--shadow-lg);
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
+    gap: 0;
     min-width: 240px;
+    overflow: hidden;
 }
 
 .provider-grid.open {
@@ -85,16 +87,37 @@
     flex-direction: column;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.6rem 0.4rem;
-    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.5rem;
     cursor: pointer;
     transition: background var(--transition);
-    border: 1px solid transparent;
+    position: relative;
+}
+
+/* Vertical separators — short lines that don't reach top/bottom */
+.provider-item:nth-child(3n+1)::after,
+.provider-item:nth-child(3n+2)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--border);
+}
+
+/* Horizontal separator — short lines that don't reach left/right edges */
+.provider-item:nth-child(-n+3)::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 15%;
+    width: 70%;
+    height: 1px;
+    background: var(--border);
 }
 
 .provider-item:hover {
     background: var(--bg-elevated);
-    border-color: var(--border-light);
 }
 
 .provider-icon {
