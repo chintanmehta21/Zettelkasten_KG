@@ -36,6 +36,12 @@ supabase>=2.0
 # JWT validation (Supabase Auth token verification)
 PyJWT>=2.8.0
 
+# Graph algorithms (PageRank, community detection, centrality)
+networkx>=3.2
+
+# Vector normalization for MRL-truncated embeddings
+numpy>=1.26
+
 # Testing
 pytest>=9.0
 pytest-asyncio>=0.23

@@ -131,6 +131,42 @@ body {
   gap: 2px;
 }
 
+/* ---- Graph View Toggle (shown only for logged-in users) ---- */
+.kg-view-toggle {
+  display: flex;
+  align-items: center;
+  background: rgba(15, 18, 35, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 36px;
+}
+
+.kg-view-btn {
+  padding: 0 14px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--kg-text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.kg-view-btn:hover {
+  color: var(--kg-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.kg-view-btn.active {
+  background: var(--kg-accent-dim);
+  color: var(--kg-accent);
+}
+
 /* ---- Search ---- */
 .kg-search-wrapper {
   position: relative;

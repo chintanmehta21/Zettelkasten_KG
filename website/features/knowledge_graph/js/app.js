@@ -57,6 +57,47 @@
   let highlightNodes = new Set();
   let hoverNode = null;
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
+  let currentView = 'global'; // 'global' or 'my'
+  let isLoggedIn = false;
+
+  // ---- View toggle (shown only when logged in) ----
+  const viewToggle = document.getElementById('view-toggle');
+
+  // Check auth status
+  fetch('/api/me', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
+    .then(() => {
+      isLoggedIn = true;
+      viewToggle.classList.remove('hidden');
+    })
+    .catch(() => { isLoggedIn = false; });
+
+  // Also check for Supabase auth token in localStorage
+  (function checkSupabaseAuth() {
+    try {
+      const keys = Object.keys(localStorage);
+      const sbKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      if (sbKey) {
+        const data = JSON.parse(localStorage.getItem(sbKey));
+        if (data && data.access_token) {
+          isLoggedIn = true;
+          viewToggle.classList.remove('hidden');
+        }
+      }
+    } catch (e) { /* ignore */ }
+  })();
+
+  viewToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.kg-view-btn');
+    if (!btn) return;
+    const newView = btn.dataset.view;
+    if (newView === currentView) return;
+
+    currentView = newView;
+    viewToggle.querySelectorAll('.kg-view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadGraphData();
+  });
 
   // ---- Smart label shortening ----
   const SEP = ' \u2014 '; // " — "
@@ -166,23 +207,94 @@
   }
 
   let nodeDegrees = {};
+  let _maxPagerank = 0;
 
-  // ---- Load data and init ----
-  // Prefer API (includes runtime nodes) with static fallback
-  fetch('/api/graph')
-    .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
-    .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
-    .then(data => {
-      fullData = data;
-      graphData = JSON.parse(JSON.stringify(data));
-      nodeDegrees = computeDegrees(fullData);
-      initGraph();
-      updateStats();
-    })
-    .catch(err => {
-      console.error('Failed to load graph data:', err);
-      statsEl.textContent = 'Failed to load data';
-    });
+  // ---- Load data ----
+  function loadGraphData() {
+    const viewParam = currentView === 'my' ? '?view=my' : '';
+    fetch('/api/graph' + viewParam)
+      .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
+      .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
+      .then(data => {
+        fullData = data;
+        graphData = JSON.parse(JSON.stringify(data));
+        nodeDegrees = computeDegrees(fullData);
+        _maxPagerank = Math.max(...(fullData.nodes || []).map(n => n.pagerank || 0), 0.001);
+        if (graph) {
+          // Re-apply active filters
+          applyFilters();
+        } else {
+          initGraph();
+          updateStats();
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load graph data:', err);
+        statsEl.textContent = 'Failed to load data';
+      });
+  }
+
+  // Initial load
+  loadGraphData();
+
+  // ---- In-place node visual update (avoids full rebuild flicker) ----
+  function _updateNodeVisual(node) {
+    const obj = node.__threeObj;
+    if (!obj || !obj.children) return;
+
+    const color = COLORS_INT[node.group] || 0x888888;
+    const isSelected = selectedNode && selectedNode.id === node.id;
+    const isHovered = hoverNode && hoverNode.id === node.id;
+    const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node.id);
+    const isActive = isSelected || isHovered;
+    const dim = !isHighlighted;
+
+    const deg = nodeDegrees[node.id] || 1;
+    const isSpotlight = spotlightId && spotlightId === node.id;
+    let baseRadius;
+    if (node.pagerank !== undefined && _maxPagerank > 0) {
+      baseRadius = 2 + (node.pagerank / _maxPagerank) * 4;
+    } else {
+      baseRadius = Math.min(2 + deg * 0.3, 5);
+    }
+    const radius = isActive ? baseRadius + 1 : (isSpotlight ? baseRadius + 0.5 : baseRadius);
+
+    for (let i = 0; i < obj.children.length; i++) {
+      const child = obj.children[i];
+
+      // Update sphere mesh scale + material
+      if (child.isMesh) {
+        child.scale.setScalar(radius);
+        child.material = getSphereMat(color, dim);
+      }
+
+      // Update text label
+      if (child.__isLabel) {
+        const label = isActive ? node.name : getShortLabel(node);
+        if (child.text !== label) child.text = label;
+        child.position.set(0, -(radius + 3), 0);
+
+        if (isActive) {
+          child.color = '#ffffff';
+          child.backgroundColor = 'rgba(8, 12, 24, 0.92)';
+          child.padding = 1.0;
+          child.borderWidth = 0.12;
+          child.borderColor = 'rgba(255, 255, 255, 0.14)';
+          child.borderRadius = 0.8;
+        } else {
+          child.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
+          child.backgroundColor = false;
+          child.padding = 0;
+          child.borderWidth = 0;
+        }
+      }
+    }
+  }
+
+  // Batch update all visible nodes (used for search/filter highlight changes)
+  function _refreshAllNodeVisuals() {
+    graphData.nodes.forEach(n => _updateNodeVisual(n));
+  }
 
   // ---- 3D Graph ----
   function initGraph() {
@@ -202,10 +314,15 @@
         const isActive = isSelected || isHovered;
         const dim = !isHighlighted;
 
-        // Degree-based radius: base 2, +0.3 per connection, cap at 5
+        // PageRank-based radius (if available), fallback to degree-based
         const deg = nodeDegrees[node.id] || 1;
         const isSpotlight = spotlightId && spotlightId === node.id;
-        const baseRadius = Math.min(2 + deg * 0.3, 5);
+        let baseRadius;
+        if (node.pagerank !== undefined && _maxPagerank > 0) {
+          baseRadius = 2 + (node.pagerank / _maxPagerank) * 4;
+        } else {
+          baseRadius = Math.min(2 + deg * 0.3, 5);
+        }
         const radius = isActive ? baseRadius + 1 : (isSpotlight ? baseRadius + 0.5 : baseRadius);
         const mesh = new THREE.Mesh(_sphereGeo, getSphereMat(color, dim));
         mesh.scale.setScalar(radius);
@@ -289,9 +406,12 @@
       .onNodeClick(handleNodeClick)
       .onBackgroundClick(handleBackgroundClick)
       .onNodeHover(node => {
+        const prevHover = hoverNode;
         hoverNode = node || null;
         container.style.cursor = node ? 'pointer' : 'default';
-        graph.nodeThreeObject(graph.nodeThreeObject());
+        // Only update the two affected nodes in-place (not a full rebuild)
+        if (prevHover && prevHover !== node) _updateNodeVisual(prevHover);
+        if (node) _updateNodeVisual(node);
       })
 
       // ---- Physics — fast convergence ----
@@ -383,9 +503,12 @@
   let _panelOpenTimer = null;
 
   function handleNodeClick(node) {
+    const prevSelected = selectedNode;
     selectedNode = node;
     graph.controls().autoRotate = false;
-    graph.nodeThreeObject(graph.nodeThreeObject());
+    // Update only the affected nodes
+    if (prevSelected && prevSelected !== node) _updateNodeVisual(prevSelected);
+    _updateNodeVisual(node);
 
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
 
@@ -416,7 +539,7 @@
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
-    graph.nodeThreeObject(graph.nodeThreeObject());
+    _refreshAllNodeVisuals();
   }
 
   // ---- Side Panel ----
@@ -496,7 +619,7 @@
       });
     }
 
-    graph.nodeThreeObject(graph.nodeThreeObject());
+    _refreshAllNodeVisuals();
   });
 
   // ---- Filter ----
@@ -557,7 +680,7 @@
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
-    graph.nodeThreeObject(graph.nodeThreeObject());
+    _refreshAllNodeVisuals();
   });
 
   // ---- Keyboard: Escape ----
@@ -569,7 +692,7 @@
       highlightNodes.clear();
       hoverNode = null;
       searchInput.value = '';
-      graph.nodeThreeObject(graph.nodeThreeObject());
+      _refreshAllNodeVisuals();
     }
   });
 
