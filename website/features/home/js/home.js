@@ -245,10 +245,10 @@
       var sourceClass = (node.group || 'generic').toLowerCase();
 
       card.innerHTML =
-        '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
-        '<div class="home-card-body">' +
-          '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
+        '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
+        '<div class="home-card-meta">' +
           (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
+          '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
         '</div>';
 
       cardGrid.appendChild(card);
