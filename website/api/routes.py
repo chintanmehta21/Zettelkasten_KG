@@ -47,6 +47,22 @@ def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, st
             # Fast path: user already exists with this Auth UUID
             existing = _supabase_repo.get_user_by_render_id(user_id_override)
             if existing:
+                # Check if this user was pre-created by the Supabase Auth
+                # trigger but has no data yet.  If the legacy "naruto" user
+                # has nodes, transfer them to this authenticated user.
+                stats = _supabase_repo.get_stats(existing.id)
+                if stats["node_count"] == 0:
+                    legacy = _supabase_repo.get_user_by_render_id("naruto")
+                    if legacy and legacy.id != existing.id:
+                        legacy_stats = _supabase_repo.get_stats(legacy.id)
+                        if legacy_stats["node_count"] > 0:
+                            _supabase_repo.transfer_data(legacy.id, existing.id)
+                            _supabase_user_id = None
+                            logger.info(
+                                "Transferred %d nodes from naruto to %s",
+                                legacy_stats["node_count"],
+                                user_id_override,
+                            )
                 return _supabase_repo, str(existing.id)
 
             # Claim the legacy default user if it still has the

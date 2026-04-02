@@ -126,6 +126,41 @@ class KGRepository:
             return KGUser(**resp.data[0])
         return None
 
+    def transfer_data(self, from_user_id: UUID, to_user_id: UUID) -> int:
+        """Transfer all nodes and links from one user to another.
+
+        Used when the Supabase Auth trigger pre-creates a kg_users row
+        (with 0 nodes) before the Python claim logic can run.  Moves all
+        KG data from the legacy user to the authenticated user.
+        """
+        # Delete links first (composite FK: user_id + node_id)
+        self._client.table("kg_links").delete().eq(
+            "user_id", str(from_user_id)
+        ).execute()
+
+        # Move nodes to new user
+        resp = (
+            self._client.table("kg_nodes")
+            .update({"user_id": str(to_user_id)})
+            .eq("user_id", str(from_user_id))
+            .execute()
+        )
+        count = len(resp.data) if resp.data else 0
+
+        if count > 0:
+            # Rebuild links for the new user
+            self.rebuild_links(to_user_id)
+            # Deactivate the old user
+            self._client.table("kg_users").update(
+                {"is_active": False}
+            ).eq("id", str(from_user_id)).execute()
+
+        logger.info(
+            "Transferred %d nodes from user %s to %s",
+            count, from_user_id, to_user_id,
+        )
+        return count
+
     def update_user_avatar(self, render_user_id: str, avatar_url: str) -> KGUser | None:
         """Update a user's avatar URL. Returns updated user or None if not found."""
         resp = (

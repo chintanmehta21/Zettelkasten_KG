@@ -233,26 +233,66 @@
     border: 1px solid hsla(172, 66%, 50%, 0.2);
 }
 
+/* ── Vault Action Buttons ──────────────────────────────────────── */
+
+.home-vault-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    position: relative;
+    z-index: 1;
+}
+
+.home-view-all-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.5rem;
+    background: var(--accent-glow);
+    border: 1px solid hsla(172, 66%, 50%, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all var(--transition);
+}
+
+.home-view-all-btn:hover {
+    background: hsla(172, 66%, 50%, 0.18);
+    border-color: var(--accent-muted);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px hsla(172, 66%, 50%, 0.15);
+}
+
+.home-view-all-arrow {
+    font-size: 1rem;
+    transition: transform var(--transition);
+}
+
+.home-view-all-btn:hover .home-view-all-arrow {
+    transform: translateX(4px);
+}
+
 /* ── Add Zettel ─────────────────────────────────────────────────── */
 
 .home-add-zettel {
     position: relative;
-    margin-top: auto;
-    padding-top: 0.75rem;
-    text-align: center;
 }
 
 .home-add-btn {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
+    padding: 0.65rem 1.5rem;
     background: var(--accent);
     color: var(--text-inverted);
-    border: none;
+    border: 1px solid transparent;
     border-radius: var(--radius-sm);
     font-family: var(--font-body);
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all var(--transition);

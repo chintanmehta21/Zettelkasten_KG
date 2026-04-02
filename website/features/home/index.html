@@ -88,24 +88,30 @@
                         <p class="home-empty-text">Add your first zettel by pasting a URL above</p>
                     </div>
 
-                    <!-- Add Zettel (always visible at bottom) -->
-                    <div class="home-add-zettel" id="add-zettel-wrap">
-                        <button class="home-add-btn" id="add-zettel-btn">
-                            <span class="home-add-btn-text">+ Add Zettel</span>
-                            <span class="home-add-btn-chevron">&#9662;</span>
-                        </button>
-                        <div class="home-add-dropdown" id="add-zettel-dropdown">
-                            <form id="add-zettel-form" class="home-add-form">
-                                <div class="home-add-row">
-                                    <input type="url" id="add-url-input" class="home-add-input" placeholder="https://..." required />
-                                    <button type="submit" class="home-add-submit" id="add-submit-btn">Add</button>
-                                </div>
-                                <p class="home-add-error" id="add-error"></p>
-                                <div class="home-add-loading hidden" id="add-loading">
-                                    <div class="home-add-spinner"></div>
-                                    <span>Processing...</span>
-                                </div>
-                            </form>
+                    <!-- Action buttons (always visible at bottom) -->
+                    <div class="home-vault-actions">
+                        <a href="/home/zettels" class="home-view-all-btn" id="view-all-btn">
+                            <span>View All</span>
+                            <span class="home-view-all-arrow">&rarr;</span>
+                        </a>
+                        <div class="home-add-zettel" id="add-zettel-wrap">
+                            <button class="home-add-btn" id="add-zettel-btn">
+                                <span class="home-add-btn-text">+ Add Zettel</span>
+                                <span class="home-add-btn-chevron">&#9662;</span>
+                            </button>
+                            <div class="home-add-dropdown" id="add-zettel-dropdown">
+                                <form id="add-zettel-form" class="home-add-form">
+                                    <div class="home-add-row">
+                                        <input type="url" id="add-url-input" class="home-add-input" placeholder="https://..." required />
+                                        <button type="submit" class="home-add-submit" id="add-submit-btn">Add</button>
+                                    </div>
+                                    <p class="home-add-error" id="add-error"></p>
+                                    <div class="home-add-loading hidden" id="add-loading">
+                                        <div class="home-add-spinner"></div>
+                                        <span>Processing...</span>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </section>
