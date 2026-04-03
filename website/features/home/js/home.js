@@ -401,23 +401,33 @@
     var fade = document.querySelector('.home-card-fade');
     if (fade) fade.style.display = '';
 
-    // Measure an existing card's height for exact spacing
-    var firstCard = cardGrid ? cardGrid.firstElementChild : null;
-    var cardH = firstCard ? firstCard.offsetHeight : 72;
-    var cardGap = 12; // matches .home-card-grid gap (0.75rem)
+    // Measure exact skeleton height by briefly inserting a hidden one
+    var measureSkeleton = document.createElement('div');
+    measureSkeleton.className = 'home-card home-card-skeleton';
+    measureSkeleton.style.cssText = 'visibility:hidden;position:absolute;';
+    measureSkeleton.innerHTML =
+      '<div class="skeleton-line skeleton-title"></div>' +
+      '<div class="home-card-meta"><div class="skeleton-line skeleton-date"></div><div class="skeleton-line skeleton-source"></div></div>';
+    if (cardGrid) {
+      cardGrid.appendChild(measureSkeleton);
+      var cardH = measureSkeleton.offsetHeight;
+      cardGrid.removeChild(measureSkeleton);
+    } else {
+      var cardH = 72;
+    }
 
     var spacer = document.createElement('div');
     spacer.className = 'home-card-spacer';
-    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.4s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
 
     if (cardGrid) {
       cardGrid.insertBefore(spacer, cardGrid.firstChild);
       while (cardGrid.children.length > 4) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
-      // Expand to exact card height — pushes existing cards down slowly and smoothly
+      // Expand to exact skeleton card height
       requestAnimationFrame(function () {
-        spacer.style.height = (cardH + cardGap) + 'px';
+        spacer.style.height = cardH + 'px';
       });
     }
 
