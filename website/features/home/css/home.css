@@ -313,19 +313,18 @@
 .home-add-btn {
     display: flex;
     align-items: center;
-    gap: 0;
+    justify-content: center;
     height: 42px;
-    padding: 0;
+    padding: 0 1.5rem;
     background: var(--accent);
-    color: hsl(220, 50%, 22%);
-    border: 1.5px solid transparent;
-    border-radius: 999px;
+    color: hsl(220, 55%, 15%);
+    border: none;
+    border-radius: var(--radius-sm);
     font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    overflow: hidden;
 }
 
 .home-add-btn:hover {
@@ -337,28 +336,6 @@
 .home-add-btn:active {
     transform: translateY(0) scale(0.98);
     box-shadow: 0 1px 4px hsla(172, 66%, 40%, 0.2);
-}
-
-.home-add-btn-text {
-    padding: 0 1rem;
-    line-height: 42px;
-}
-
-.home-add-btn-chevron {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 100%;
-    border-left: 1.5px solid hsla(172, 66%, 50%, 0.3);
-    font-size: 0.55rem;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    color: var(--accent);
-    background: var(--bg-card);
-}
-
-.home-add-btn.open .home-add-btn-chevron {
-    transform: rotate(180deg);
 }
 
 .home-add-dropdown {
@@ -618,9 +595,9 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid hsla(172, 50%, 28%, 0.5);
-    background: hsla(172, 50%, 28%, 0.15);
-    color: hsl(172, 40%, 32%);
+    border: 1px solid hsla(172, 50%, 45%, 0.35);
+    background: hsla(172, 50%, 45%, 0.1);
+    color: hsl(172, 45%, 48%);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -633,10 +610,10 @@
 }
 
 .home-card-summary-btn:hover {
-    background: hsla(172, 50%, 28%, 0.3);
-    border-color: hsl(172, 45%, 38%);
-    color: hsl(172, 45%, 42%);
-    box-shadow: 0 0 8px hsla(172, 50%, 30%, 0.3);
+    background: hsla(172, 55%, 50%, 0.2);
+    border-color: hsl(172, 55%, 50%);
+    color: hsl(172, 60%, 55%);
+    box-shadow: 0 0 8px hsla(172, 55%, 50%, 0.3);
     transform: scale(1.1);
 }
 

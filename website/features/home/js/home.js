@@ -417,7 +417,6 @@
       }
       if (addZettelDropdown && !document.getElementById('add-zettel-wrap').contains(e.target)) {
         addZettelDropdown.classList.remove('open');
-        if (addZettelBtn) addZettelBtn.classList.remove('open');
       }
     });
 
@@ -445,7 +444,6 @@
       addZettelBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         addZettelDropdown.classList.toggle('open');
-        addZettelBtn.classList.toggle('open');
         if (addZettelDropdown.classList.contains('open') && addUrlInput) {
           addUrlInput.focus();
         }
@@ -479,7 +477,6 @@
         if (avatarDropdown) avatarDropdown.classList.remove('open');
         if (addZettelDropdown) {
           addZettelDropdown.classList.remove('open');
-          if (addZettelBtn) addZettelBtn.classList.remove('open');
         }
       }
     });
