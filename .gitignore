@@ -1,5 +1,4 @@
-
-# ── GSD baseline (auto-generated) ──
+# General
 .gsd
 .DS_Store
 Thumbs.db
@@ -9,9 +8,20 @@ Thumbs.db
 .idea/
 .vscode/
 *.code-workspace
+
+# Environment / secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.kubeconfig
+id_rsa
+id_ed25519
+
+# Dependencies / build
 node_modules/
 .next/
 dist/
@@ -22,14 +32,22 @@ __pycache__/
 venv/
 target/
 vendor/
+
+# Logs / coverage / caches
 *.log
 coverage/
 .cache/
 tmp/
+.pytest_cache/
 
-# ── Project-specific ──
+# Project outputs
 data/
 kg_output/
+
+# Local tooling artifacts (do not publish)
 .claude/
 .bg-shell/
-.pytest_cache/
+.code-build/
+.playwright-mcp/
+.agents/
+.mcp.local.json

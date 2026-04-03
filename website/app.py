@@ -24,6 +24,7 @@ MOBILE_DIR = Path(__file__).parent / "mobile"
 AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 HOME_DIR = Path(__file__).parent / "features" / "home"
+USER_ZETTELS_DIR = Path(__file__).parent / "features" / "user_zettels"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -78,6 +79,16 @@ def create_app(lifespan=None) -> FastAPI:
     # Home page static assets
     app.mount("/home/css", StaticFiles(directory=str(HOME_DIR / "css")), name="home-css")
     app.mount("/home/js", StaticFiles(directory=str(HOME_DIR / "js")), name="home-js")
+    app.mount(
+        "/home/zettels/css",
+        StaticFiles(directory=str(USER_ZETTELS_DIR / "css")),
+        name="home-zettels-css",
+    )
+    app.mount(
+        "/home/zettels/js",
+        StaticFiles(directory=str(USER_ZETTELS_DIR / "js")),
+        name="home-zettels-js",
+    )
 
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
@@ -113,5 +124,11 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(HOME_DIR / "index.html"))
+
+    @app.get("/home/zettels")
+    async def user_zettels(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(USER_ZETTELS_DIR / "index.html"))
 
     return app

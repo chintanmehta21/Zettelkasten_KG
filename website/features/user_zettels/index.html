@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Zettels - Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260403m">
+    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260403m">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container zettels-container">
+        <header class="header zettels-header">
+            <div class="zettels-header-start">
+                <a class="zettels-back-btn" href="/home" aria-label="Back to Home">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                </a>
+            </div>
+
+            <div class="branding">
+                <div class="logo">
+                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
+                    <span class="logo-text">Zettelkasten</span>
+                </div>
+                <p class="tagline">Everything you have captured in one place</p>
+            </div>
+
+            <div class="zettels-header-end">
+                <div class="home-avatar-wrap" id="avatar-wrap">
+                    <button class="home-avatar-btn" id="avatar-btn" title="Account menu" aria-label="Open account menu">
+                        <img class="home-avatar-img" id="avatar-img" src="" alt="User avatar" width="32" height="32" />
+                        <span class="home-avatar-fallback" id="avatar-fallback"></span>
+                    </button>
+                    <div class="home-dropdown" id="avatar-dropdown" role="menu">
+                        <a class="home-dropdown-item" href="/home" role="menuitem">
+                            <span class="home-dropdown-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 11.5L12 5L20 11.5V19A1 1 0 0 1 19 20H5A1 1 0 0 1 4 19V11.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </span>
+                            Dashboard
+                        </a>
+                        <a class="home-dropdown-item" href="/home/zettels" role="menuitem">
+                            <span class="home-dropdown-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 4H18A1 1 0 0 1 19 5V19A1 1 0 0 1 18 20H6A1 1 0 0 1 5 19V5A1 1 0 0 1 6 4Z" stroke="currentColor" stroke-width="1.8"></path>
+                                    <path d="M8.5 8.5H15.5M8.5 12H15.5M8.5 15.5H13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            My Zettels
+                        </a>
+                        <a class="home-dropdown-item" href="/knowledge-graph" role="menuitem">
+                            <span class="home-dropdown-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="6.5" r="2" stroke="currentColor" stroke-width="1.8"></circle>
+                                    <circle cx="6.5" cy="16.5" r="2" stroke="currentColor" stroke-width="1.8"></circle>
+                                    <circle cx="17.5" cy="16.5" r="2" stroke="currentColor" stroke-width="1.8"></circle>
+                                    <path d="M10.4 7.8L7.8 14.1M13.6 7.8L16.2 14.1M8.5 16.5H15.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            Knowledge Graph
+                        </a>
+                        <div class="home-dropdown-divider"></div>
+                        <button class="home-dropdown-item home-dropdown-signout" id="menu-signout" role="menuitem">
+                            <span class="home-dropdown-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M14 17L19 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M19 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                                    <path d="M12 20H6A1 1 0 0 1 5 19V5A1 1 0 0 1 6 4H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            Sign out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="main zettels-main" id="main-content">
+            <section class="zettels-hero">
+                <div class="zettels-hero-copy">
+                    <h1 class="zettels-title">My Zettels</h1>
+                    <p class="zettels-subtitle">Search, filter, and revisit every idea you have captured.</p>
+                </div>
+                <a class="zettels-add-btn" href="/home" aria-label="Go back to home and add a zettel">
+                    Add New Zettel
+                </a>
+            </section>
+
+            <section class="zettels-stats" aria-label="Zettel statistics">
+                <article class="zettels-stat-card">
+                    <p class="zettels-stat-label">Total Zettels</p>
+                    <p class="zettels-stat-value" id="stat-total">0</p>
+                </article>
+                <article class="zettels-stat-card">
+                    <p class="zettels-stat-label">Sources</p>
+                    <p class="zettels-stat-value" id="stat-sources">0</p>
+                </article>
+                <article class="zettels-stat-card">
+                    <p class="zettels-stat-label">Latest Capture</p>
+                    <p class="zettels-stat-value zettels-stat-date" id="stat-latest">-</p>
+                </article>
+            </section>
+
+            <section class="zettels-toolbar" aria-label="Search and filter zettels">
+                <label class="zettels-search-wrap" for="zettels-search">
+                    <span class="zettels-search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+                            <path d="M20 20L16.8 16.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                        </svg>
+                    </span>
+                    <input id="zettels-search" class="zettels-search-input" name="search" type="search" placeholder="Search title, summary, tags…" autocomplete="off" />
+                </label>
+
+                <label class="zettels-select-wrap" for="source-filter">
+                    <span class="zettels-select-label">Source</span>
+                    <select id="source-filter" class="zettels-select" name="source">
+                        <option value="all">All Sources</option>
+                    </select>
+                </label>
+
+                <label class="zettels-select-wrap" for="sort-filter">
+                    <span class="zettels-select-label">Sort</span>
+                    <select id="sort-filter" class="zettels-select" name="sort">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="title">Title (A-Z)</option>
+                    </select>
+                </label>
+            </section>
+
+            <section class="zettels-list-section" aria-live="polite">
+                <div class="zettels-list" id="zettels-list"></div>
+                <div class="zettels-empty hidden" id="zettels-empty">
+                    <h2>No matching zettels</h2>
+                    <p>Try adjusting your search or source filter.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="zettels-summary-overlay hidden" id="summary-overlay">
+        <div class="zettels-summary-backdrop" id="summary-backdrop"></div>
+        <section class="zettels-summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+            <button class="zettels-summary-close" id="summary-close" aria-label="Close summary">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+            </button>
+            <div class="zettels-summary-meta-row">
+                <span class="zettels-source-badge" id="summary-source">Source</span>
+                <span class="zettels-summary-date" id="summary-date"></span>
+            </div>
+            <h2 class="zettels-summary-title" id="summary-title"></h2>
+            <p class="zettels-summary-text" id="summary-text"></p>
+            <div class="zettels-summary-tags" id="summary-tags"></div>
+        </section>
+    </div>
+
+    <script src="/home/zettels/js/user_zettels.js?v=20260403m"></script>
+</body>
+</html>

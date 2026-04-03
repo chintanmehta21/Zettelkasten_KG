@@ -4,7 +4,7 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "SUPABASE_TOKEN_REDACTED"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     },
     "playwright": {
