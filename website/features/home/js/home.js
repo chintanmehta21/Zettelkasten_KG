@@ -286,8 +286,7 @@
       container.style.cssText = 'position:fixed;inset:0;z-index:600;pointer-events:none;overflow:hidden;';
       document.body.appendChild(container);
 
-      // Create shards — grid of small pieces from the dropdown
-      var cols = 8, rows = 4;
+      var cols = 10, rows = 4;
       var shardW = rect.width / cols;
       var shardH = rect.height / rows;
       var shards = [];
@@ -295,78 +294,98 @@
         'hsla(172, 66%, 50%, 0.7)',
         'hsla(172, 50%, 40%, 0.6)',
         'hsla(172, 40%, 35%, 0.5)',
-        'hsla(190, 50%, 30%, 0.4)',
-        'hsla(210, 30%, 20%, 0.6)',
-        'hsla(172, 66%, 50%, 0.3)',
+        'hsla(190, 50%, 30%, 0.5)',
+        'hsla(210, 30%, 25%, 0.5)',
+        'hsla(172, 66%, 50%, 0.4)',
       ];
+
+      // Target card grid dimensions
+      var tCols = 10, tRows = 4;
+      var tShardW = targetRect.width / tCols;
+      var tShardH = targetRect.height / tRows;
 
       for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
           var shard = document.createElement('div');
           var startX = rect.left + c * shardW;
           var startY = rect.top + r * shardH;
-          var w = shardW + Math.random() * 4 - 2;
-          var h = shardH + Math.random() * 4 - 2;
 
           shard.style.cssText =
             'position:fixed;' +
             'left:' + startX + 'px;top:' + startY + 'px;' +
-            'width:' + w + 'px;height:' + h + 'px;' +
+            'width:' + shardW + 'px;height:' + shardH + 'px;' +
             'background:' + colors[Math.floor(Math.random() * colors.length)] + ';' +
-            'border:0.5px solid hsla(172, 66%, 50%, 0.15);' +
-            'border-radius:' + (Math.random() * 3) + 'px;' +
-            'transition:all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);' +
-            'box-shadow:0 0 4px hsla(172, 66%, 50%, 0.2);';
+            'border:0.5px solid hsla(172, 66%, 50%, 0.12);' +
+            'border-radius:' + (Math.random() * 2) + 'px;' +
+            'transition:all 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);' +
+            'box-shadow:0 0 3px hsla(172, 66%, 50%, 0.15);' +
+            'opacity:1;';
 
           container.appendChild(shard);
+
+          // Calculate where this shard should land in the target card grid
+          var idx = r * cols + c;
+          var tR = Math.floor(idx / tCols) % tRows;
+          var tC = idx % tCols;
+
           shards.push({
             el: shard,
             startX: startX,
             startY: startY,
-            // Random explosion vector
-            explodeX: startX + (Math.random() - 0.5) * 300,
-            explodeY: startY + (Math.random() - 0.5) * 200 - 80,
-            explodeRot: (Math.random() - 0.5) * 360,
+            explodeX: startX + (Math.random() - 0.5) * 280,
+            explodeY: startY + (Math.random() - 0.5) * 180 - 60,
+            explodeRot: (Math.random() - 0.5) * 300,
+            // Exact grid position on the target card
+            targetX: targetRect.left + tC * tShardW,
+            targetY: targetRect.top + tR * tShardH,
+            targetW: tShardW,
+            targetH: tShardH,
           });
         }
       }
 
-      // Hide original dropdown immediately
+      // Hide dropdown
       sourceEl.classList.remove('open');
 
-      // Phase 1: Explode outward (0ms)
+      // Phase 1: Explode outward
       requestAnimationFrame(function () {
         shards.forEach(function (s) {
           s.el.style.left = s.explodeX + 'px';
           s.el.style.top = s.explodeY + 'px';
-          s.el.style.transform = 'rotate(' + s.explodeRot + 'deg) scale(' + (0.5 + Math.random() * 0.8) + ')';
-          s.el.style.opacity = '0.8';
+          s.el.style.transform = 'rotate(' + s.explodeRot + 'deg) scale(' + (0.6 + Math.random() * 0.6) + ')';
+          s.el.style.opacity = '0.85';
         });
       });
 
-      // Phase 2: Converge to target position (600ms)
+      // Phase 2: Assemble into card shape (650ms) — shards snap into a tight grid
       setTimeout(function () {
-        var tCx = targetRect.left + targetRect.width / 2;
-        var tCy = targetRect.top + targetRect.height / 2;
-
         shards.forEach(function (s, i) {
-          s.el.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-          // Converge to random spot within target card
-          var tx = tCx + (Math.random() - 0.5) * targetRect.width * 0.8;
-          var ty = tCy + (Math.random() - 0.5) * targetRect.height * 0.6;
-          s.el.style.left = tx + 'px';
-          s.el.style.top = ty + 'px';
-          s.el.style.transform = 'rotate(0deg) scale(0.3)';
-          s.el.style.opacity = '0';
-          s.el.style.filter = 'blur(2px)';
+          var delay = (i % 5) * 0.02;
+          s.el.style.transition = 'all 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) ' + delay + 's';
+          s.el.style.left = s.targetX + 'px';
+          s.el.style.top = s.targetY + 'px';
+          s.el.style.width = s.targetW + 'px';
+          s.el.style.height = s.targetH + 'px';
+          s.el.style.transform = 'rotate(0deg) scale(1)';
+          s.el.style.opacity = '0.7';
+          s.el.style.borderRadius = '1px';
         });
-      }, 650);
+      }, 600);
 
-      // Phase 3: Cleanup (1200ms total)
+      // Phase 3: Flash glow then fade — card shape is visible, then dissolves (1200ms)
+      setTimeout(function () {
+        shards.forEach(function (s) {
+          s.el.style.transition = 'all 0.3s ease-out';
+          s.el.style.opacity = '0';
+          s.el.style.boxShadow = '0 0 12px hsla(172, 66%, 50%, 0.4)';
+        });
+      }, 1250);
+
+      // Phase 4: Cleanup (1600ms total)
       setTimeout(function () {
         container.remove();
         resolve();
-      }, 1200);
+      }, 1600);
     });
   }
 
