@@ -421,8 +421,8 @@
       });
     }
 
-    // Wait for slide-down to be fully visible (1.3s)
-    await new Promise(function (r) { setTimeout(r, 1300); });
+    // Start shatter slightly before slide-down finishes (overlap for seamless feel)
+    await new Promise(function (r) { setTimeout(r, 900); });
 
     var targetRect = spacer.getBoundingClientRect();
 
