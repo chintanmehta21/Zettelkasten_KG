@@ -350,10 +350,11 @@
     justify-content: center;
     width: 32px;
     height: 100%;
-    border-left: 1.5px solid hsla(220, 50%, 22%, 0.25);
+    border-left: 1.5px solid hsla(172, 66%, 50%, 0.3);
     font-size: 0.55rem;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    color: hsl(220, 50%, 22%);
+    color: var(--accent);
+    background: var(--bg-card);
 }
 
 .home-add-btn.open .home-add-btn-chevron {
@@ -674,6 +675,82 @@
 @keyframes tooltipIn {
     from { opacity: 0; transform: translateX(-50%) translateY(4px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Summary Loader Animation ──────────────────────────────────── */
+
+.summary-loader-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 950;
+    align-items: center;
+    justify-content: center;
+}
+
+.summary-loader-overlay.active {
+    display: flex;
+}
+
+.summary-loader-backdrop {
+    position: absolute;
+    inset: 0;
+    background: hsla(0, 0%, 0%, 0.7);
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease;
+}
+
+.summary-loader-icon {
+    position: relative;
+    z-index: 1;
+    animation: loaderZoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes loaderZoomIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.summary-loader-svg {
+    width: 120px;
+    height: 120px;
+    color: hsl(172, 45%, 42%);
+    filter: drop-shadow(0 0 20px hsla(172, 66%, 50%, 0.3));
+}
+
+/* Animated text lines — draw in sequentially */
+.sl-line {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+}
+
+.summary-loader-overlay.active .sl-line-1 {
+    animation: lineWrite 0.4s ease 0.3s forwards;
+}
+.summary-loader-overlay.active .sl-line-2 {
+    animation: lineWrite 0.4s ease 0.6s forwards;
+}
+.summary-loader-overlay.active .sl-line-3 {
+    animation: lineWrite 0.4s ease 0.9s forwards;
+}
+
+@keyframes lineWrite {
+    0% { stroke-dashoffset: 20; opacity: 0.3; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/* Gear rotation */
+.sl-gear {
+    transform-origin: 18px 16px;
+}
+
+.summary-loader-overlay.active .sl-gear {
+    animation: gearSpin 1.5s linear infinite;
+}
+
+@keyframes gearSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* ── Summary Popup ─────────────────────────────────────────────── */

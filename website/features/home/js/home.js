@@ -315,6 +315,7 @@
   // ── Summary Popup ────────────────────────────────────────────────
 
   function openSummaryPopup(node) {
+    var loader = document.getElementById('summary-loader');
     var overlay = document.getElementById('summary-overlay');
     var title = document.getElementById('summary-title');
     var meta = document.getElementById('summary-meta');
@@ -322,6 +323,7 @@
     var tags = document.getElementById('summary-tags');
     if (!overlay) return;
 
+    // Prepare popup content while loader plays
     title.textContent = node.name || 'Untitled';
 
     var sourceClass = (node.group || 'generic').toLowerCase();
@@ -340,8 +342,17 @@
       tags.appendChild(el);
     });
 
-    overlay.classList.add('open');
+    // Show loader animation first
     document.body.style.overflow = 'hidden';
+    if (loader) {
+      loader.classList.add('active');
+      setTimeout(function () {
+        loader.classList.remove('active');
+        overlay.classList.add('open');
+      }, 1500);
+    } else {
+      overlay.classList.add('open');
+    }
   }
 
   function closeSummaryPopup() {
