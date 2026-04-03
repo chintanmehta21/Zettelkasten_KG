@@ -640,9 +640,9 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid hsla(172, 50%, 45%, 0.35);
-    background: hsla(172, 50%, 45%, 0.1);
-    color: hsl(172, 45%, 48%);
+    border: 1px solid hsla(172, 66%, 50%, 0.4);
+    background: hsla(172, 66%, 50%, 0.12);
+    color: var(--accent);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -655,11 +655,11 @@
 }
 
 .home-card-summary-btn:hover {
-    background: hsla(172, 55%, 50%, 0.2);
-    border-color: hsl(172, 55%, 50%);
-    color: hsl(172, 60%, 55%);
-    box-shadow: 0 0 8px hsla(172, 55%, 50%, 0.3);
-    transform: scale(1.1);
+    background: hsla(172, 66%, 50%, 0.22);
+    border-color: var(--accent);
+    color: var(--accent-hover);
+    box-shadow: 0 0 10px hsla(172, 66%, 50%, 0.35);
+    transform: scale(1.12);
 }
 
 .home-card-summary-btn img,
