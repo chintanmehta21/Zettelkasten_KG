@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=20260403">
-    <link rel="stylesheet" href="/home/css/home.css?v=20260403">
+    <link rel="stylesheet" href="/css/style.css?v=20260403b">
+    <link rel="stylesheet" href="/home/css/home.css?v=20260403b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -147,6 +147,18 @@
                 </section>
             </div>
         </main>
+
+        <!-- Summary Popup -->
+        <div class="home-summary-overlay" id="summary-overlay">
+            <div class="home-summary-backdrop" id="summary-backdrop"></div>
+            <div class="home-summary-popup">
+                <button class="home-summary-close" id="summary-close">&times;</button>
+                <h2 class="home-summary-title" id="summary-title"></h2>
+                <div class="home-summary-meta" id="summary-meta"></div>
+                <div class="home-summary-text" id="summary-text"></div>
+                <div class="home-summary-tags" id="summary-tags"></div>
+            </div>
+        </div>
 
         <!-- Avatar Picker Modal -->
         <div class="home-avatar-modal" id="avatar-modal">

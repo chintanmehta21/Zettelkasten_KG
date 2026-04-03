@@ -249,7 +249,18 @@
         '<div class="home-card-meta">' +
           (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
           '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
+          '<button class="home-card-summary-btn" data-node-idx="' + i + '" title="Summary">' +
+            '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
+            '<span class="tooltip">Summary</span>' +
+          '</button>' +
         '</div>';
+
+      // Store node data for popup
+      card.querySelector('.home-card-summary-btn').addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openSummaryPopup(node);
+      });
 
       cardGrid.appendChild(card);
     });
@@ -296,6 +307,44 @@
       if (addLoading) addLoading.classList.add('hidden');
       if (addSubmitBtn) addSubmitBtn.disabled = false;
     }
+  }
+
+  // ── Summary Popup ────────────────────────────────────────────────
+
+  function openSummaryPopup(node) {
+    var overlay = document.getElementById('summary-overlay');
+    var title = document.getElementById('summary-title');
+    var meta = document.getElementById('summary-meta');
+    var text = document.getElementById('summary-text');
+    var tags = document.getElementById('summary-tags');
+    if (!overlay) return;
+
+    title.textContent = node.name || 'Untitled';
+
+    var sourceClass = (node.group || 'generic').toLowerCase();
+    meta.innerHTML =
+      (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
+      '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';
+
+    text.textContent = node.summary || node.description || 'No summary available for this zettel.';
+
+    tags.innerHTML = '';
+    var nodeTags = node.tags || [];
+    nodeTags.forEach(function (tag) {
+      var el = document.createElement('span');
+      el.className = 'home-summary-tag';
+      el.textContent = '#' + tag;
+      tags.appendChild(el);
+    });
+
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSummaryPopup() {
+    var overlay = document.getElementById('summary-overlay');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
   }
 
   // ── Avatar Picker Modal ──────────────────────────────────────────
@@ -398,6 +447,12 @@
       });
     }
 
+    // Summary popup close
+    var summaryClose = document.getElementById('summary-close');
+    var summaryBackdrop = document.getElementById('summary-backdrop');
+    if (summaryClose) summaryClose.addEventListener('click', closeSummaryPopup);
+    if (summaryBackdrop) summaryBackdrop.addEventListener('click', closeSummaryPopup);
+
     // Avatar modal close
     if (avatarModalClose) avatarModalClose.addEventListener('click', closeAvatarPicker);
     if (avatarModalOverlay) avatarModalOverlay.addEventListener('click', closeAvatarPicker);
@@ -405,6 +460,7 @@
     // Escape key closes modals
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        closeSummaryPopup();
         closeAvatarPicker();
         if (avatarDropdown) avatarDropdown.classList.remove('open');
         if (addZettelDropdown) {
