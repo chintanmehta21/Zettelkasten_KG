@@ -268,6 +268,7 @@
     padding-top: 0.75rem;
     position: relative;
     z-index: 1;
+    width: 100%;
 }
 
 .home-view-all-btn {
@@ -276,7 +277,7 @@
     justify-content: center;
     gap: 0.5rem;
     height: 42px;
-    padding: 0 1.5rem;
+    flex: 1;
     background: var(--accent-glow);
     border: 1px solid hsla(172, 66%, 50%, 0.25);
     border-radius: var(--radius-sm);
@@ -308,6 +309,7 @@
 
 .home-add-zettel {
     position: relative;
+    flex: 1;
 }
 
 .home-add-btn {
@@ -315,7 +317,7 @@
     align-items: center;
     justify-content: center;
     height: 42px;
-    padding: 0 1.5rem;
+    width: 100%;
     background: var(--accent);
     color: hsl(220, 55%, 15%);
     border: none;
