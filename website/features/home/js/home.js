@@ -255,11 +255,14 @@
           '</button>' +
         '</div>';
 
-      // Store node data for popup
-      card.querySelector('.home-card-summary-btn').addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openSummaryPopup(node);
+      // Intercept card clicks — if summary button was clicked, show popup instead of navigating
+      card.addEventListener('click', function (e) {
+        var btn = e.target.closest('.home-card-summary-btn');
+        if (btn) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSummaryPopup(node);
+        }
       });
 
       cardGrid.appendChild(card);
