@@ -640,9 +640,8 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid hsla(172, 66%, 50%, 0.4);
-    background: hsla(172, 66%, 50%, 0.12);
-    color: var(--accent);
+    border: 1px solid hsla(210, 50%, 55%, 0.4);
+    background: hsla(210, 50%, 55%, 0.1);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -655,10 +654,9 @@
 }
 
 .home-card-summary-btn:hover {
-    background: hsla(172, 66%, 50%, 0.22);
-    border-color: var(--accent);
-    color: var(--accent-hover);
-    box-shadow: 0 0 10px hsla(172, 66%, 50%, 0.35);
+    background: hsla(210, 50%, 55%, 0.2);
+    border-color: hsl(210, 55%, 60%);
+    box-shadow: 0 0 10px hsla(210, 50%, 55%, 0.3);
     transform: scale(1.12);
 }
 
@@ -670,6 +668,12 @@
 .home-card-summary-btn img {
     width: 14px;
     height: 14px;
+    filter: brightness(0) saturate(100%) invert(55%) sepia(30%) saturate(500%) hue-rotate(185deg) brightness(95%);
+    transition: filter var(--transition);
+}
+
+.home-card-summary-btn:hover img {
+    filter: brightness(0) saturate(100%) invert(65%) sepia(35%) saturate(600%) hue-rotate(185deg) brightness(100%);
 }
 
 .home-card-summary-btn .tooltip {

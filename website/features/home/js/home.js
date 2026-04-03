@@ -277,14 +277,131 @@
 
   // ── Add Zettel ────────────────────────────────────────────────────
 
+  // ── Glass Shatter Animation ─────────────────────────────────────
+
+  function shatterElement(sourceEl, targetRect) {
+    return new Promise(function (resolve) {
+      var rect = sourceEl.getBoundingClientRect();
+      var container = document.createElement('div');
+      container.style.cssText = 'position:fixed;inset:0;z-index:600;pointer-events:none;overflow:hidden;';
+      document.body.appendChild(container);
+
+      // Create shards — grid of small pieces from the dropdown
+      var cols = 8, rows = 4;
+      var shardW = rect.width / cols;
+      var shardH = rect.height / rows;
+      var shards = [];
+      var colors = [
+        'hsla(172, 66%, 50%, 0.7)',
+        'hsla(172, 50%, 40%, 0.6)',
+        'hsla(172, 40%, 35%, 0.5)',
+        'hsla(190, 50%, 30%, 0.4)',
+        'hsla(210, 30%, 20%, 0.6)',
+        'hsla(172, 66%, 50%, 0.3)',
+      ];
+
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var shard = document.createElement('div');
+          var startX = rect.left + c * shardW;
+          var startY = rect.top + r * shardH;
+          var w = shardW + Math.random() * 4 - 2;
+          var h = shardH + Math.random() * 4 - 2;
+
+          shard.style.cssText =
+            'position:fixed;' +
+            'left:' + startX + 'px;top:' + startY + 'px;' +
+            'width:' + w + 'px;height:' + h + 'px;' +
+            'background:' + colors[Math.floor(Math.random() * colors.length)] + ';' +
+            'border:0.5px solid hsla(172, 66%, 50%, 0.15);' +
+            'border-radius:' + (Math.random() * 3) + 'px;' +
+            'transition:all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);' +
+            'box-shadow:0 0 4px hsla(172, 66%, 50%, 0.2);';
+
+          container.appendChild(shard);
+          shards.push({
+            el: shard,
+            startX: startX,
+            startY: startY,
+            // Random explosion vector
+            explodeX: startX + (Math.random() - 0.5) * 300,
+            explodeY: startY + (Math.random() - 0.5) * 200 - 80,
+            explodeRot: (Math.random() - 0.5) * 360,
+          });
+        }
+      }
+
+      // Hide original dropdown immediately
+      sourceEl.classList.remove('open');
+
+      // Phase 1: Explode outward (0ms)
+      requestAnimationFrame(function () {
+        shards.forEach(function (s) {
+          s.el.style.left = s.explodeX + 'px';
+          s.el.style.top = s.explodeY + 'px';
+          s.el.style.transform = 'rotate(' + s.explodeRot + 'deg) scale(' + (0.5 + Math.random() * 0.8) + ')';
+          s.el.style.opacity = '0.8';
+        });
+      });
+
+      // Phase 2: Converge to target position (600ms)
+      setTimeout(function () {
+        var tCx = targetRect.left + targetRect.width / 2;
+        var tCy = targetRect.top + targetRect.height / 2;
+
+        shards.forEach(function (s, i) {
+          s.el.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          // Converge to random spot within target card
+          var tx = tCx + (Math.random() - 0.5) * targetRect.width * 0.8;
+          var ty = tCy + (Math.random() - 0.5) * targetRect.height * 0.6;
+          s.el.style.left = tx + 'px';
+          s.el.style.top = ty + 'px';
+          s.el.style.transform = 'rotate(0deg) scale(0.3)';
+          s.el.style.opacity = '0';
+          s.el.style.filter = 'blur(2px)';
+        });
+      }, 650);
+
+      // Phase 3: Cleanup (1200ms total)
+      setTimeout(function () {
+        container.remove();
+        resolve();
+      }, 1200);
+    });
+  }
+
   async function addZettel(url, token) {
     if (addError) addError.textContent = '';
     if (addSubmitBtn) addSubmitBtn.disabled = true;
 
-    // Step 1: Close dropdown smoothly
-    if (addZettelDropdown) addZettelDropdown.classList.remove('open');
+    // Capture dropdown rect before hiding
+    var dropdownRect = addZettelDropdown ? addZettelDropdown.getBoundingClientRect() : null;
 
-    // Step 2: Insert skeleton card at top of grid
+    // Calculate target rect (first card position in grid)
+    var firstCard = cardGrid ? cardGrid.firstElementChild : null;
+    var targetRect = firstCard ? firstCard.getBoundingClientRect() : (cardGrid ? cardGrid.getBoundingClientRect() : { left: 0, top: 0, width: 300, height: 80 });
+
+    // Start API call immediately (runs in parallel with animation)
+    var apiPromise = fetch('/api/summarize', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url: url, source_type: addSourceType ? addSourceType.value : '' })
+    });
+
+    // Run shatter animation on the dropdown
+    if (dropdownRect && addZettelDropdown) {
+      await shatterElement(addZettelDropdown, targetRect);
+    } else {
+      if (addZettelDropdown) addZettelDropdown.classList.remove('open');
+    }
+
+    // Clear form
+    if (addUrlInput) addUrlInput.value = '';
+
+    // Insert skeleton card at top of grid
     if (emptyState) emptyState.classList.add('hidden');
     var fade = document.querySelector('.home-card-fade');
     if (fade) fade.style.display = '';
@@ -300,21 +417,13 @@
 
     if (cardGrid) {
       cardGrid.insertBefore(skeleton, cardGrid.firstChild);
-      // Limit to 3 visible cards
       while (cardGrid.children.length > 3) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
     }
 
     try {
-      var resp = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url: url, source_type: addSourceType ? addSourceType.value : '' })
-      });
+      var resp = await apiPromise;
 
       if (!resp.ok) {
         var err = await resp.json();
@@ -323,7 +432,7 @@
 
       var result = await resp.json();
 
-      // Step 3: Morph skeleton into real card
+      // Morph skeleton into real card
       var today = new Date().toISOString().slice(0, 10);
       var sourceType = (result.source_type || 'generic').toLowerCase();
       var newNode = {
@@ -335,7 +444,6 @@
         tags: result.tags || []
       };
 
-      // Replace skeleton with real card
       var realCard = document.createElement('a');
       realCard.className = 'home-card home-card-new';
       realCard.href = newNode.url;
@@ -366,17 +474,11 @@
         cardGrid.replaceChild(realCard, skeleton);
       }
 
-      // Update count
       var count = parseInt(zettelCount.textContent || '0', 10) + 1;
       zettelCount.textContent = count;
-
-      // Clear form
-      if (addUrlInput) addUrlInput.value = '';
     } catch (e) {
-      // Remove skeleton on error
       if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (addError) addError.textContent = e.message;
-      // Reopen dropdown to show error
       if (addZettelDropdown) addZettelDropdown.classList.add('open');
     } finally {
       if (addSubmitBtn) addSubmitBtn.disabled = false;
