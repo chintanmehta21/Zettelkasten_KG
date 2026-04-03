@@ -418,7 +418,7 @@
 
     var spacer = document.createElement('div');
     spacer.className = 'home-card-spacer';
-    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.4s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
 
     if (cardGrid) {
       cardGrid.insertBefore(spacer, cardGrid.firstChild);
@@ -427,7 +427,7 @@
       }
       // Expand to exact skeleton card height
       requestAnimationFrame(function () {
-        spacer.style.height = cardH + 'px';
+        spacer.style.height = Math.round(cardH * 0.85) + 'px';
       });
     }
 
