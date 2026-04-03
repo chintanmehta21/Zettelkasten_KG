@@ -408,7 +408,7 @@
 
     var spacer = document.createElement('div');
     spacer.className = 'home-card-spacer';
-    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.6s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
 
     if (cardGrid) {
       cardGrid.insertBefore(spacer, cardGrid.firstChild);
@@ -421,8 +421,8 @@
       });
     }
 
-    // Start shatter slightly before slide-down finishes (overlap for seamless feel)
-    await new Promise(function (r) { setTimeout(r, 900); });
+    // Start shatter early while cards are still sliding down
+    await new Promise(function (r) { setTimeout(r, 500); });
 
     var targetRect = spacer.getBoundingClientRect();
 
