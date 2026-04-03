@@ -279,8 +279,32 @@
 
   async function addZettel(url, token) {
     if (addError) addError.textContent = '';
-    if (addLoading) addLoading.classList.remove('hidden');
     if (addSubmitBtn) addSubmitBtn.disabled = true;
+
+    // Step 1: Close dropdown smoothly
+    if (addZettelDropdown) addZettelDropdown.classList.remove('open');
+
+    // Step 2: Insert skeleton card at top of grid
+    if (emptyState) emptyState.classList.add('hidden');
+    var fade = document.querySelector('.home-card-fade');
+    if (fade) fade.style.display = '';
+
+    var skeleton = document.createElement('div');
+    skeleton.className = 'home-card home-card-skeleton';
+    skeleton.innerHTML =
+      '<div class="skeleton-line skeleton-title"></div>' +
+      '<div class="home-card-meta">' +
+        '<div class="skeleton-line skeleton-date"></div>' +
+        '<div class="skeleton-line skeleton-source"></div>' +
+      '</div>';
+
+    if (cardGrid) {
+      cardGrid.insertBefore(skeleton, cardGrid.firstChild);
+      // Limit to 3 visible cards
+      while (cardGrid.children.length > 3) {
+        cardGrid.removeChild(cardGrid.lastChild);
+      }
+    }
 
     try {
       var resp = await fetch('/api/summarize', {
@@ -297,17 +321,64 @@
         throw new Error(err.detail || 'Failed to process URL');
       }
 
+      var result = await resp.json();
+
+      // Step 3: Morph skeleton into real card
+      var today = new Date().toISOString().slice(0, 10);
+      var sourceType = (result.source_type || 'generic').toLowerCase();
+      var newNode = {
+        name: result.title || 'Untitled',
+        date: today,
+        group: sourceType,
+        url: result.source_url || url,
+        summary: result.brief_summary || result.summary || '',
+        tags: result.tags || []
+      };
+
+      // Replace skeleton with real card
+      var realCard = document.createElement('a');
+      realCard.className = 'home-card home-card-new';
+      realCard.href = newNode.url;
+      realCard.target = '_blank';
+      realCard.rel = 'noopener';
+
+      realCard.innerHTML =
+        '<h3 class="home-card-title">' + escapeHtml(newNode.name) + '</h3>' +
+        '<div class="home-card-meta">' +
+          '<span class="home-card-date">' + escapeHtml(newNode.date) + '</span>' +
+          '<span class="home-card-source ' + sourceType + '">' + escapeHtml(newNode.group) + '</span>' +
+          '<button class="home-card-summary-btn" title="Summary">' +
+            '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
+            '<span class="tooltip">Summary</span>' +
+          '</button>' +
+        '</div>';
+
+      realCard.addEventListener('click', function (e) {
+        var btn = e.target.closest('.home-card-summary-btn');
+        if (btn) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSummaryPopup(newNode);
+        }
+      });
+
+      if (cardGrid && skeleton.parentNode) {
+        cardGrid.replaceChild(realCard, skeleton);
+      }
+
+      // Update count
+      var count = parseInt(zettelCount.textContent || '0', 10) + 1;
+      zettelCount.textContent = count;
+
       // Clear form
       if (addUrlInput) addUrlInput.value = '';
-      if (addZettelDropdown) addZettelDropdown.classList.remove('open');
-      if (addZettelBtn) addZettelBtn.classList.remove('open');
-
-      // Reload zettels
-      await loadZettels(token);
     } catch (e) {
+      // Remove skeleton on error
+      if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (addError) addError.textContent = e.message;
+      // Reopen dropdown to show error
+      if (addZettelDropdown) addZettelDropdown.classList.add('open');
     } finally {
-      if (addLoading) addLoading.classList.add('hidden');
       if (addSubmitBtn) addSubmitBtn.disabled = false;
     }
   }
