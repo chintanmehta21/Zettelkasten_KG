@@ -225,7 +225,14 @@
 
 .home-vault-logo {
     flex-shrink: 0;
-    filter: brightness(0) saturate(100%) invert(60%) sepia(50%) saturate(600%) hue-rotate(130deg) brightness(95%) contrast(90%);
+    filter: brightness(0) saturate(100%) invert(60%) sepia(50%) saturate(600%) hue-rotate(130deg) brightness(95%) contrast(90%)
+            drop-shadow(0 0 6px hsla(172, 66%, 50%, 0.5));
+    animation: vaultLogoPulse 3s ease-in-out infinite;
+}
+
+@keyframes vaultLogoPulse {
+    0%, 100% { filter: brightness(0) saturate(100%) invert(60%) sepia(50%) saturate(600%) hue-rotate(130deg) brightness(95%) contrast(90%) drop-shadow(0 0 6px hsla(172, 66%, 50%, 0.5)); }
+    50% { filter: brightness(0) saturate(100%) invert(60%) sepia(50%) saturate(600%) hue-rotate(130deg) brightness(95%) contrast(90%) drop-shadow(0 0 12px hsla(172, 66%, 50%, 0.8)); }
 }
 
 .home-vault-icon {
