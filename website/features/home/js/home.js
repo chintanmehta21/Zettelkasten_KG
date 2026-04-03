@@ -408,21 +408,21 @@
 
     var spacer = document.createElement('div');
     spacer.className = 'home-card-spacer';
-    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);border:none;background:none;padding:0;margin:0;';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
 
     if (cardGrid) {
       cardGrid.insertBefore(spacer, cardGrid.firstChild);
       while (cardGrid.children.length > 4) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
-      // Expand to exact card height — pushes existing cards down smoothly
+      // Expand to exact card height — pushes existing cards down slowly and smoothly
       requestAnimationFrame(function () {
-        spacer.style.height = cardH + 'px';
+        spacer.style.height = (cardH + cardGap) + 'px';
       });
     }
 
-    // Wait for slide-down
-    await new Promise(function (r) { setTimeout(r, 380); });
+    // Wait for slide-down to be fully visible (1.3s)
+    await new Promise(function (r) { setTimeout(r, 1300); });
 
     var targetRect = spacer.getBoundingClientRect();
 
