@@ -396,9 +396,35 @@
     // Capture dropdown rect before hiding
     var dropdownRect = addZettelDropdown ? addZettelDropdown.getBoundingClientRect() : null;
 
-    // Calculate target rect (first card position in grid)
+    // Step 0: Insert an invisible spacer at top and animate cards sliding down
+    if (emptyState) emptyState.classList.add('hidden');
+    var fade = document.querySelector('.home-card-fade');
+    if (fade) fade.style.display = '';
+
+    // Measure an existing card's height for exact spacing
     var firstCard = cardGrid ? cardGrid.firstElementChild : null;
-    var targetRect = firstCard ? firstCard.getBoundingClientRect() : (cardGrid ? cardGrid.getBoundingClientRect() : { left: 0, top: 0, width: 300, height: 80 });
+    var cardH = firstCard ? firstCard.offsetHeight : 72;
+    var cardGap = 12; // matches .home-card-grid gap (0.75rem)
+
+    var spacer = document.createElement('div');
+    spacer.className = 'home-card-spacer';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);border:none;background:none;padding:0;margin:0;';
+
+    if (cardGrid) {
+      cardGrid.insertBefore(spacer, cardGrid.firstChild);
+      while (cardGrid.children.length > 4) {
+        cardGrid.removeChild(cardGrid.lastChild);
+      }
+      // Expand to exact card height — pushes existing cards down smoothly
+      requestAnimationFrame(function () {
+        spacer.style.height = cardH + 'px';
+      });
+    }
+
+    // Wait for slide-down
+    await new Promise(function (r) { setTimeout(r, 380); });
+
+    var targetRect = spacer.getBoundingClientRect();
 
     // Start API call immediately (runs in parallel with animation)
     var apiPromise = fetch('/api/summarize', {
@@ -420,11 +446,7 @@
     // Clear form
     if (addUrlInput) addUrlInput.value = '';
 
-    // Insert skeleton card at top of grid
-    if (emptyState) emptyState.classList.add('hidden');
-    var fade = document.querySelector('.home-card-fade');
-    if (fade) fade.style.display = '';
-
+    // Replace spacer with skeleton card
     var skeleton = document.createElement('div');
     skeleton.className = 'home-card home-card-skeleton';
     skeleton.innerHTML =
@@ -434,8 +456,8 @@
         '<div class="skeleton-line skeleton-source"></div>' +
       '</div>';
 
-    if (cardGrid) {
-      cardGrid.insertBefore(skeleton, cardGrid.firstChild);
+    if (cardGrid && spacer.parentNode) {
+      cardGrid.replaceChild(skeleton, spacer);
       while (cardGrid.children.length > 3) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
