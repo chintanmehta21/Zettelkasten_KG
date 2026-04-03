@@ -279,7 +279,7 @@
 
   // ── Glass Shatter Animation ─────────────────────────────────────
 
-  function shatterElement(sourceEl, targetRect) {
+  function shatterElement(sourceEl, targetRect, revealEl) {
     return new Promise(function (resolve) {
       var rect = sourceEl.getBoundingClientRect();
       var container = document.createElement('div');
@@ -357,7 +357,7 @@
         });
       });
 
-      // Phase 2: Assemble into card shape (650ms) — shards snap into a tight grid
+      // Phase 2: Assemble into card shape (600ms) — shards snap into a tight grid
       setTimeout(function () {
         shards.forEach(function (s, i) {
           var delay = (i % 5) * 0.02;
@@ -370,22 +370,28 @@
           s.el.style.opacity = '0.7';
           s.el.style.borderRadius = '1px';
         });
+        // Start revealing skeleton underneath as shards settle
+        if (revealEl) {
+          setTimeout(function () {
+            revealEl.style.opacity = '1';
+          }, 300);
+        }
       }, 600);
 
-      // Phase 3: Flash glow then fade — card shape is visible, then dissolves (1200ms)
+      // Phase 3: Dissolve shards — skeleton is already visible beneath (1150ms)
       setTimeout(function () {
         shards.forEach(function (s) {
-          s.el.style.transition = 'all 0.3s ease-out';
+          s.el.style.transition = 'all 0.35s ease-out';
           s.el.style.opacity = '0';
-          s.el.style.boxShadow = '0 0 12px hsla(172, 66%, 50%, 0.4)';
+          s.el.style.transform = 'scale(0.95)';
         });
-      }, 1250);
+      }, 1200);
 
       // Phase 4: Cleanup (1600ms total)
       setTimeout(function () {
         container.remove();
         resolve();
-      }, 1600);
+      }, 1550);
     });
   }
 
@@ -446,19 +452,11 @@
       body: JSON.stringify({ url: url, source_type: addSourceType ? addSourceType.value : '' })
     });
 
-    // Run shatter animation on the dropdown
-    if (dropdownRect && addZettelDropdown) {
-      await shatterElement(addZettelDropdown, targetRect);
-    } else {
-      if (addZettelDropdown) addZettelDropdown.classList.remove('open');
-    }
-
-    // Clear form
-    if (addUrlInput) addUrlInput.value = '';
-
-    // Replace spacer with skeleton card
+    // Create skeleton now — it'll be revealed seamlessly during shatter
     var skeleton = document.createElement('div');
     skeleton.className = 'home-card home-card-skeleton';
+    skeleton.style.opacity = '0';
+    skeleton.style.transition = 'opacity 0.4s ease';
     skeleton.innerHTML =
       '<div class="skeleton-line skeleton-title"></div>' +
       '<div class="home-card-meta">' +
@@ -466,12 +464,24 @@
         '<div class="skeleton-line skeleton-source"></div>' +
       '</div>';
 
+    // Replace spacer with hidden skeleton before shatter starts
     if (cardGrid && spacer.parentNode) {
       cardGrid.replaceChild(skeleton, spacer);
       while (cardGrid.children.length > 3) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
     }
+
+    // Run shatter — shards assemble on top of the skeleton, then skeleton fades in
+    if (dropdownRect && addZettelDropdown) {
+      await shatterElement(addZettelDropdown, skeleton.getBoundingClientRect(), skeleton);
+    } else {
+      if (addZettelDropdown) addZettelDropdown.classList.remove('open');
+      skeleton.style.opacity = '1';
+    }
+
+    // Clear form
+    if (addUrlInput) addUrlInput.value = '';
 
     try {
       var resp = await apiPromise;
