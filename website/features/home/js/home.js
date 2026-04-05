@@ -242,7 +242,7 @@
       card.rel = 'noopener';
       card.style.animationDelay = (i * 0.08) + 's';
 
-      var sourceClass = (node.group || 'generic').toLowerCase();
+      var sourceClass = (node.group || 'web').toLowerCase();
 
       card.innerHTML =
         '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
@@ -495,7 +495,7 @@
 
       // Morph skeleton into real card
       var today = new Date().toISOString().slice(0, 10);
-      var sourceType = (result.source_type || 'generic').toLowerCase();
+      var sourceType = (result.source_type || 'web').toLowerCase();
       var newNode = {
         name: result.title || 'Untitled',
         date: today,
@@ -560,7 +560,7 @@
     // Prepare popup content while loader plays
     title.textContent = node.name || 'Untitled';
 
-    var sourceClass = (node.group || 'generic').toLowerCase();
+    var sourceClass = (node.group || 'web').toLowerCase();
     meta.innerHTML =
       (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
       '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';

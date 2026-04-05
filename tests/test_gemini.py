@@ -33,7 +33,7 @@ def make_content(
     body: str = "Some article body text.",
     title: str = "Test Article",
     url: str = "https://example.com/article",
-    source_type: SourceType = SourceType.GENERIC,
+    source_type: SourceType = SourceType.WEB,
 ) -> ExtractedContent:
     """Build an ExtractedContent with controllable fields."""
     return ExtractedContent(
@@ -328,7 +328,7 @@ def test_build_tag_list_format_hierarchical():
         "difficulty": ["Beginner"],
         "keywords": ["flask", "api"],
     }
-    tags = build_tag_list(SourceType.GENERIC, ai_tags)
+    tags = build_tag_list(SourceType.WEB, ai_tags)
 
     for tag in tags:
         assert "/" in tag, f"Tag '{tag}' is not hierarchical (missing '/')"

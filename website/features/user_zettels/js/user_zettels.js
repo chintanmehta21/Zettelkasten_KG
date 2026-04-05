@@ -155,7 +155,7 @@
   }
 
   function normalizeNode(node) {
-    var source = normalizeSource(node.group || node.source_type || 'generic');
+    var source = normalizeSource(node.group || node.source_type || 'web');
     return {
       id: node.id || '',
       title: node.name || 'Untitled',
@@ -169,10 +169,10 @@
   }
 
   function normalizeSource(value) {
-    var raw = (value || 'generic').toString().trim().toLowerCase();
-    if (raw === 'web') return 'generic';
+    var raw = (value || 'web').toString().trim().toLowerCase();
+    if (raw === 'generic') return 'web';
     if (raw === 'news' || raw === 'newsletter') return 'newsletter';
-    if (raw === 'hackernews') return 'generic';
+    if (raw === 'hackernews') return 'web';
     return raw;
   }
 

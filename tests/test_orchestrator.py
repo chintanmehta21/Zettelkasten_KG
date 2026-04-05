@@ -34,7 +34,7 @@ def make_settings(tmp_path: Path) -> MagicMock:
 
 
 def make_extracted(
-    source_type: SourceType = SourceType.GENERIC,
+    source_type: SourceType = SourceType.WEB,
     title: str = "Test Title",
 ) -> ExtractedContent:
     return ExtractedContent(
@@ -110,7 +110,7 @@ def pipeline_mocks(tmp_path):
         ) as mock_get_extractor,
         patch(
             "telegram_bot.pipeline.orchestrator.detect_source_type",
-            return_value=SourceType.GENERIC,
+            return_value=SourceType.WEB,
         ) as mock_detect,
     ):
         # Wire up instances returned by class constructors
@@ -150,8 +150,8 @@ def pipeline_mocks(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_happy_path_generic_full_pipeline(pipeline_mocks):
-    """All 11 phases run for a GENERIC URL in default (happy-path) mode."""
+async def test_happy_path_web_full_pipeline(pipeline_mocks):
+    """All 11 phases run for a Web URL in default (happy-path) mode."""
     bot = AsyncMock()
     await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
 

@@ -25,6 +25,10 @@ AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 HOME_DIR = Path(__file__).parent / "features" / "home"
 USER_ZETTELS_DIR = Path(__file__).parent / "features" / "user_zettels"
+BROWSER_CACHE_DIR = Path(__file__).parent / "features" / "browser_cache"
+FOOTER_DIR = Path(__file__).parent / "footer"
+ABOUT_DIR = FOOTER_DIR / "about"
+PRICING_DIR = FOOTER_DIR / "pricing"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -75,6 +79,11 @@ def create_app(lifespan=None) -> FastAPI:
     # User Auth static assets
     app.mount("/auth/css", StaticFiles(directory=str(AUTH_DIR / "css")), name="auth-css")
     app.mount("/auth/js", StaticFiles(directory=str(AUTH_DIR / "js")), name="auth-js")
+    app.mount(
+        "/browser-cache/js",
+        StaticFiles(directory=str(BROWSER_CACHE_DIR / "js")),
+        name="browser-cache-js",
+    )
 
     # Home page static assets
     app.mount("/home/css", StaticFiles(directory=str(HOME_DIR / "css")), name="home-css")
@@ -89,6 +98,14 @@ def create_app(lifespan=None) -> FastAPI:
         StaticFiles(directory=str(USER_ZETTELS_DIR / "js")),
         name="home-zettels-js",
     )
+    app.mount("/about/css", StaticFiles(directory=str(ABOUT_DIR / "css")), name="about-css")
+    app.mount("/about/js", StaticFiles(directory=str(ABOUT_DIR / "js")), name="about-js")
+    app.mount(
+        "/pricing/css",
+        StaticFiles(directory=str(PRICING_DIR / "css")),
+        name="pricing-css",
+    )
+    app.mount("/pricing/js", StaticFiles(directory=str(PRICING_DIR / "js")), name="pricing-js")
 
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
@@ -130,5 +147,17 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(USER_ZETTELS_DIR / "index.html"))
+
+    @app.get("/about")
+    async def about(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(ABOUT_DIR / "index.html"))
+
+    @app.get("/pricing")
+    async def pricing(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(PRICING_DIR / "index.html"))
 
     return app

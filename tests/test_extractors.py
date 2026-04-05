@@ -1,4 +1,4 @@
-"""Offline tests for all content extractors (Reddit, YouTube, Newsletter, GitHub, Generic).
+"""Offline tests for all content extractors (Reddit, YouTube, Newsletter, GitHub, Web).
 
 All mocks use unittest.mock — no real API calls are made.
 asyncio_mode=auto (pytest.ini) — no @pytest.mark.asyncio needed.
@@ -10,8 +10,8 @@ Patch sites:
   - Newsletter httpx: telegram_bot.sources.newsletter.httpx.AsyncClient
   - Newsletter trafilatura: telegram_bot.sources.newsletter.trafilatura
   - GitHub httpx: telegram_bot.sources.github.httpx.AsyncClient
-  - Generic httpx: telegram_bot.sources.generic.httpx.AsyncClient
-  - Generic trafilatura: telegram_bot.sources.generic.trafilatura
+  - Web httpx: telegram_bot.sources.generic.httpx.AsyncClient
+  - Web trafilatura: telegram_bot.sources.generic.trafilatura
 """
 
 from __future__ import annotations
@@ -1591,7 +1591,7 @@ async def test_github_source_type():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Generic extractor helpers
+# Web extractor helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 _GENERIC_URL = "https://blog.example.com/my-article"
@@ -1606,7 +1606,7 @@ _GENERIC_BODY = "First paragraph with some content here.\n\nSecond paragraph wit
 
 
 def _make_generic_client_cm(response: MagicMock | None = None) -> MagicMock:
-    """Build an httpx.AsyncClient context-manager mock for Generic tests."""
+    """Build an httpx.AsyncClient context-manager mock for Web tests."""
     if response is None:
         response = _make_response(text=_GENERIC_HTML)
 
@@ -1630,7 +1630,7 @@ def _make_generic_trafilatura_mock(
     date: str | None = "2024-01-15",
     sitename: str | None = "Example Blog",
 ) -> tuple[MagicMock, MagicMock]:
-    """Return (mock_extract_fn, mock_extract_metadata_fn) for generic extractor."""
+    """Return (mock_extract_fn, mock_extract_metadata_fn) for web extractor."""
     mock_extract = MagicMock(return_value=body)
     meta = MagicMock()
     meta.title = title
@@ -1644,7 +1644,7 @@ def _make_generic_trafilatura_mock(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Generic extractor tests
+# Web extractor tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1667,7 +1667,7 @@ async def test_generic_happy_path():
     assert result.metadata["author"] == "Alice Smith"
     assert result.metadata["date"] == "2024-01-15"
     assert result.metadata["site_name"] == "Example Blog"
-    assert result.source_type == SourceType.GENERIC
+    assert result.source_type == SourceType.WEB
 
 
 async def test_generic_trafilatura_returns_none_falls_back_to_bs4():
@@ -1790,7 +1790,7 @@ def test_registry_list_extractors_returns_all_five():
         SourceType.YOUTUBE,
         SourceType.NEWSLETTER,
         SourceType.GITHUB,
-        SourceType.GENERIC,
+        SourceType.WEB,
     }
     assert set(extractors.keys()) == expected_types
 

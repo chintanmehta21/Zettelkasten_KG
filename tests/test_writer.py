@@ -143,7 +143,7 @@ class TestBuildFilename:
         assert re.match(r"github_\d{4}-\d{2}-\d{2}_awesome-repo\.md", filename)
 
     def test_ends_with_md(self):
-        assert _build_filename(SourceType.GENERIC, "Some title").endswith(".md")
+        assert _build_filename(SourceType.WEB, "Some title").endswith(".md")
 
     def test_source_prefix_matches_enum_value(self):
         for source_type in SourceType:

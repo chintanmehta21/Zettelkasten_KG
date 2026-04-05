@@ -51,10 +51,10 @@ def test_detect_reddit(url: str):
         "https://preview.redd.it/abc123.png",
     ],
 )
-def test_detect_reddit_media_goes_to_generic(url: str):
-    """Reddit media-only hosts → routed to Generic (no post context)."""
+def test_detect_reddit_media_goes_to_web(url: str):
+    """Reddit media-only hosts → routed to Web (no post context)."""
     assert (
-        detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.GENERIC
+        detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.WEB
     )
 
 
@@ -148,20 +148,20 @@ def test_detect_newsletter_custom_domains():
     assert result == SourceType.NEWSLETTER
 
 
-def test_detect_newsletter_empty_domains_falls_through_to_generic():
-    """Empty newsletter_domains list → newsletter domains detected as Generic."""
+def test_detect_newsletter_empty_domains_falls_through_to_web():
+    """Empty newsletter_domains list → newsletter domains detected as Web."""
     result = detect_source_type("https://example.substack.com/p/post", newsletter_domains=[])
-    assert result == SourceType.GENERIC
+    assert result == SourceType.WEB
 
 
 def test_detect_substack_custom_domain_needs_newsletter_domains():
     """Custom Substack domain (not *.substack.com) → only matches if in newsletter_domains."""
-    # Without the custom domain in newsletter_domains → Generic
+    # Without the custom domain in newsletter_domains → Web
     result = detect_source_type(
         "https://nlp.elvissaravia.com/p/top-ai-papers",
         newsletter_domains=_NEWSLETTER_DOMAINS,
     )
-    assert result == SourceType.GENERIC
+    assert result == SourceType.WEB
 
     # With the custom domain added → Newsletter
     extended_domains = _NEWSLETTER_DOMAINS + ["elvissaravia.com"]
@@ -173,7 +173,7 @@ def test_detect_substack_custom_domain_needs_newsletter_domains():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Generic
+# Web
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -187,10 +187,15 @@ def test_detect_substack_custom_domain_needs_newsletter_domains():
         "https://gist.github.com/user/abc123def456",
     ],
 )
-def test_detect_generic(url: str):
+def test_detect_web(url: str):
     assert (
-        detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.GENERIC
+        detect_source_type(url, newsletter_domains=_NEWSLETTER_DOMAINS) == SourceType.WEB
     )
+
+
+def test_legacy_source_type_string_maps_to_web():
+    assert SourceType("generic") is SourceType.WEB
+    assert SourceType.GENERIC is SourceType.WEB
 
 
 # ─────────────────────────────────────────────────────────────────────────────

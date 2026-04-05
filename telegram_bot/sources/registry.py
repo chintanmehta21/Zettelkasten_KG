@@ -2,7 +2,7 @@
 
 Maps a URL to the appropriate :class:`SourceType` by inspecting its hostname.
 The detection order matters: more specific patterns (Reddit, YouTube, GitHub)
-are checked before the newsletter list, which falls back to Generic.
+are checked before the newsletter list, which falls back to Web.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def detect_source_type(
     2. **YouTube** — hostname contains ``youtube.com`` or ``youtu.be``
     3. **GitHub** — hostname contains ``github.com``
     4. **Newsletter** — hostname ends with any domain in *newsletter_domains*
-    5. **Generic** — everything else
+    5. **Web** — everything else
 
     Args:
         url: A well-formed URL string.
@@ -52,7 +52,7 @@ def detect_source_type(
 
     # ── Reddit ────────────────────────────────────────────────────────────────
     # Exclude media-only hosts (i.redd.it, v.redd.it, preview.redd.it) which
-    # are direct image/video links without post context — route to Generic.
+    # are direct image/video links without post context — route to Web.
     _REDDIT_MEDIA_HOSTS = {"i.redd.it", "v.redd.it", "preview.redd.it"}
     if host not in _REDDIT_MEDIA_HOSTS:
         if "reddit.com" in host or "redd.it" in host or host == "reddit.app.link":
@@ -64,7 +64,7 @@ def detect_source_type(
         return SourceType.YOUTUBE
 
     # ── GitHub ────────────────────────────────────────────────────────────────
-    # Exclude gist.github.com — different structure, route to Generic.
+    # Exclude gist.github.com — different structure, route to Web.
     if "github.com" in host and not host.startswith("gist."):
         return SourceType.GITHUB
 
@@ -74,5 +74,5 @@ def detect_source_type(
         if host == domain or host.endswith("." + domain):
             return SourceType.NEWSLETTER
 
-    # ── Generic ───────────────────────────────────────────────────────────────
-    return SourceType.GENERIC
+    # ── Web ───────────────────────────────────────────────────────────────────
+    return SourceType.WEB

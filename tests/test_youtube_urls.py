@@ -173,7 +173,7 @@ def test_detect_source_type_youtube(url: str):
 _NON_YOUTUBE_URLS = [
     ("https://github.com/user/repo", SourceType.GITHUB),
     ("https://www.reddit.com/r/python/comments/abc/title/", SourceType.REDDIT),
-    ("https://example.com/article", SourceType.GENERIC),
+    ("https://example.com/article", SourceType.WEB),
 ]
 
 

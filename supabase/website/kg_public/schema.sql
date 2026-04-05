@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS kg_nodes (
     user_id         UUID        NOT NULL REFERENCES kg_users(id) ON DELETE CASCADE,
     name            TEXT        NOT NULL,
     source_type     TEXT        NOT NULL CHECK (source_type IN (
-                        'youtube', 'reddit', 'github', 'substack', 'medium', 'generic'
+                        'youtube', 'reddit', 'github', 'substack', 'medium', 'web', 'generic'
                     )),
     summary         TEXT,
     tags            TEXT[]      NOT NULL DEFAULT '{}',
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS kg_nodes (
 
 COMMENT ON TABLE  kg_nodes IS 'Knowledge graph nodes — one per captured URL per user';
 COMMENT ON COLUMN kg_nodes.id IS 'Node slug, e.g. yt-attention, gh-transformers';
-COMMENT ON COLUMN kg_nodes.source_type IS 'Content source: youtube, reddit, github, substack, medium, generic';
+COMMENT ON COLUMN kg_nodes.source_type IS 'Content source: youtube, reddit, github, substack, medium, web (legacy: generic)';
 COMMENT ON COLUMN kg_nodes.tags IS 'Normalized tags for linking and filtering';
 COMMENT ON COLUMN kg_nodes.metadata IS 'Extensible JSON for source-specific extras';
 

@@ -58,7 +58,7 @@
     --github: hsl(192, 55%, 59%);
     --reddit: hsl(24, 94%, 54%);
     --newsletter: hsl(190, 80%, 56%);
-    --generic: hsl(215, 20%, 62%);
+    --web: hsl(215, 20%, 62%);
 
     /* Typography */
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -390,20 +390,20 @@ a:hover {
 .item-github { color: hsl(192, 35%, 62%); }
 .item-reddit { color: hsl(28, 45%, 68%); }
 .item-newsletter { color: hsl(205, 40%, 68%); }
-.item-generic { color: hsl(220, 14%, 62%); }
+.item-web { color: hsl(220, 14%, 62%); }
 
 .item-youtube:hover { background: hsla(355, 45%, 68%, 0.08); }
 .item-github:hover { background: hsla(192, 35%, 62%, 0.08); }
 .item-reddit:hover { background: hsla(28, 45%, 68%, 0.08); }
 .item-newsletter:hover { background: hsla(205, 40%, 68%, 0.08); }
-.item-generic:hover { background: hsla(220, 14%, 62%, 0.08); }
+.item-web:hover { background: hsla(220, 14%, 62%, 0.08); }
 
 /* Source-colored toggle when a source is selected */
 .dropdown-toggle.src-youtube { color: hsl(355, 45%, 68%); }
 .dropdown-toggle.src-github { color: hsl(192, 35%, 62%); }
 .dropdown-toggle.src-reddit { color: hsl(28, 45%, 68%); }
 .dropdown-toggle.src-newsletter { color: hsl(205, 40%, 68%); }
-.dropdown-toggle.src-generic { color: hsl(220, 14%, 62%); }
+.dropdown-toggle.src-web { color: hsl(220, 14%, 62%); }
 
 /* ── Loading ──────────────────────────────────────────────────────── */
 
@@ -488,7 +488,7 @@ a:hover {
 .source-badge.github { color: hsl(192, 35%, 62%); border-color: hsla(192, 35%, 62%, 0.25); background: hsla(192, 35%, 62%, 0.08); }
 .source-badge.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.08); }
 .source-badge.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
-.source-badge.generic { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
+.source-badge.web { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
 
 .result-meta {
     display: flex;
@@ -859,6 +859,20 @@ a:hover {
 
 .footer-icon:hover {
     color: var(--text-secondary);
+}
+
+.footer-icon img {
+    display: block;
+    width: 20px;
+    height: 20px;
+    opacity: 0.78;
+    filter: grayscale(1) brightness(1.15);
+    transition: opacity var(--transition), filter var(--transition);
+}
+
+.footer-icon:hover img {
+    opacity: 1;
+    filter: grayscale(0.1) brightness(1.22);
 }
 
 /* ── Utilities ────────────────────────────────────────────────────── */

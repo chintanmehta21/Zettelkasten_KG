@@ -12,14 +12,16 @@
     reddit:   '#E09040',
     github:   '#56C8D8',
     substack: '#60A5FA',
-    medium:   '#4ADE80'
+    medium:   '#4ADE80',
+    web:      '#94A3B8'
   };
   var COLORS_INT = {
     youtube:  0xE05565,
     reddit:   0xE09040,
     github:   0x56C8D8,
     substack: 0x60A5FA,
-    medium:   0x4ADE80
+    medium:   0x4ADE80,
+    web:      0x94A3B8
   };
 
   // ── DOM refs ────────────────────────────────────────────
@@ -41,8 +43,12 @@
   var selectedNode = null;
   var hoverNode    = null;
   var highlightNodes = new Set();
-  var activeFilters  = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
+  var activeFilters  = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
   var nodeDegrees = {};
+
+  function normalizeGroup(group) {
+    return (group || '').toLowerCase() === 'generic' ? 'web' : (group || 'web');
+  }
 
   // ── Smart label shortening (same as desktop) ────────────
   var SEP = ' \u2014 ';
@@ -135,7 +141,15 @@
     .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
     .then(function (data) {
       fullData = data;
+      fullData.nodes = (fullData.nodes || []).map(function (node) {
+        node.group = normalizeGroup(node.group);
+        return node;
+      });
       graphData = JSON.parse(JSON.stringify(data));
+      graphData.nodes = (graphData.nodes || []).map(function (node) {
+        node.group = normalizeGroup(node.group);
+        return node;
+      });
       nodeDegrees = computeDegrees(fullData);
       initGraph();
       updateStats();
@@ -382,7 +396,7 @@
   // ── Bottom Sheet ────────────────────────────────────────
   function openSheet(node) {
     var badge = document.getElementById('sheet-badge');
-    badge.textContent = node.group || 'generic';
+    badge.textContent = normalizeGroup(node.group) || 'web';
     badge.style.background = COLORS[node.group] || '#888';
     badge.style.color = (node.group === 'github' || node.group === 'substack' || node.group === 'medium') ? '#000' : '#fff';
 

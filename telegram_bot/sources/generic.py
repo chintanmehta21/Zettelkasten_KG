@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class GenericExtractor(SourceExtractor):
     """Fallback extractor for arbitrary web pages."""
 
-    source_type = SourceType.GENERIC
+    source_type = SourceType.WEB
 
     async def extract(self, url: str) -> ExtractedContent:
         """Extract main article content from any web page."""
@@ -90,7 +90,7 @@ class GenericExtractor(SourceExtractor):
 
         return ExtractedContent(
             url=url,
-            source_type=SourceType.GENERIC,
+            source_type=SourceType.WEB,
             title=title,
             body=body,
             metadata=metadata,

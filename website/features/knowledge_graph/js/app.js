@@ -18,7 +18,8 @@
     reddit:   '#E09040',
     github:   '#56C8D8',
     substack: '#60A5FA',
-    medium:   '#4ADE80'
+    medium:   '#4ADE80',
+    web:      '#94A3B8'
   };
 
   const COLORS_INT = {
@@ -26,7 +27,8 @@
     reddit:   0xE09040,
     github:   0x56C8D8,
     substack: 0x60A5FA,
-    medium:   0x4ADE80
+    medium:   0x4ADE80,
+    web:      0x94A3B8
   };
 
   function escapeHtml(str) {
@@ -56,7 +58,7 @@
   let panelHideTimer = null;
   let highlightNodes = new Set();
   let hoverNode = null;
-  let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium']);
+  let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
 
@@ -217,7 +219,15 @@
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
         fullData = data;
+        fullData.nodes = (fullData.nodes || []).map(node => {
+          node.group = normalizeGroup(node.group);
+          return node;
+        });
         graphData = JSON.parse(JSON.stringify(data));
+        graphData.nodes = (graphData.nodes || []).map(node => {
+          node.group = normalizeGroup(node.group);
+          return node;
+        });
         nodeDegrees = computeDegrees(fullData);
         _maxPagerank = Math.max(...(fullData.nodes || []).map(n => n.pagerank || 0), 0.001);
         if (graph) {
@@ -552,8 +562,9 @@
     const connections = document.getElementById('panel-connections');
     const link = document.getElementById('panel-link');
 
-    badge.textContent = node.group;
-    badge.className = 'kg-panel-badge ' + node.group;
+    const nodeGroup = normalizeGroup(node.group);
+    badge.textContent = nodeGroup;
+    badge.className = 'kg-panel-badge ' + nodeGroup;
     title.textContent = node.name;
     date.textContent = formatDate(node.date);
     summary.textContent = node.summary;
@@ -695,5 +706,10 @@
       _refreshAllNodeVisuals();
     }
   });
+
+  function normalizeGroup(group) {
+    var normalized = (group || '').toString().trim().toLowerCase();
+    return normalized === 'generic' ? 'web' : (normalized || 'web');
+  }
 
 })();

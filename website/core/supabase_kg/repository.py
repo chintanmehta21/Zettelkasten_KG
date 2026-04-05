@@ -28,6 +28,8 @@ _SOURCE_PREFIXES: dict[str, str] = {
     "substack": "ss",
     "newsletter": "ss",
     "medium": "md",
+    "web": "web",
+    # Backward compatibility for legacy stored value.
     "generic": "web",
 }
 
@@ -42,6 +44,13 @@ def _normalize_tag(raw: str) -> str:
     ``prefix/value`` tag is reduced to ``value``.
     """
     return raw.strip().split("/", 1)[-1].lower()
+
+
+def _normalize_source_type(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if value in {"", "web", "generic"}:
+        return "web"
+    return value
 
 
 class KGRepository:
@@ -190,6 +199,7 @@ class KGRepository:
         payload = node.model_dump(exclude_none=True)
         payload["user_id"] = str(user_id)
         payload["tags"] = clean_tags
+        payload["source_type"] = _normalize_source_type(payload["source_type"])
 
         resp = self._client.table("kg_nodes").insert(payload).execute()
         created = KGNode(**resp.data[0])
@@ -366,7 +376,7 @@ class KGRepository:
             KGGraphNode(
                 id=row["id"],
                 name=row["name"],
-                group=row["source_type"],
+                group=_normalize_source_type(row["source_type"]),
                 summary=row.get("summary", ""),
                 tags=row.get("tags", []),
                 url=row["url"],
@@ -508,7 +518,7 @@ class KGRepository:
                 graph_nodes.append(KGGraphNode(
                     id=row["id"],
                     name=row["name"],
-                    group=row["source_type"],
+                    group=_normalize_source_type(row["source_type"]),
                     summary=row.get("summary", ""),
                     tags=row.get("tags", []),
                     url=row["url"],

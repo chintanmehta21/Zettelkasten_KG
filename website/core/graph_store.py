@@ -28,8 +28,17 @@ _SOURCE_PREFIX = {
     "substack": "ss",
     "newsletter": "ss",
     "medium": "md",
+    "web": "web",
+    # Backward compatibility for legacy stored value.
     "generic": "web",
 }
+
+
+def _normalize_source_type(source_type: str) -> str:
+    normalized = (source_type or "").strip().lower()
+    if normalized in {"", "web", "generic"}:
+        return "web"
+    return normalized
 
 
 def _load() -> dict:
@@ -94,7 +103,8 @@ def add_node(
     Automatically discovers links to existing nodes based on shared tags.
     """
     graph = _load()
-    prefix = _SOURCE_PREFIX.get(source_type, "web")
+    normalized_source = _normalize_source_type(source_type)
+    prefix = _SOURCE_PREFIX.get(normalized_source, "web")
     slug = _slugify(title)
     node_id = f"{prefix}-{slug}"
 
@@ -106,12 +116,15 @@ def add_node(
     # Normalize tags for matching (strip domain/, keyword/, etc.)
     clean_tags = [_normalize_tag(t) for t in tags if not t.startswith("status/")]
     # Remove source/ prefix tags too
-    clean_tags = [t for t in clean_tags if t not in ("youtube", "reddit", "github", "substack", "medium", "generic", "newsletter")]
+    clean_tags = [
+        t for t in clean_tags
+        if t not in ("youtube", "reddit", "github", "substack", "medium", "web", "generic", "newsletter")
+    ]
 
     node = {
         "id": node_id,
         "name": title,
-        "group": prefix if prefix in ("yt", "rd", "gh", "ss", "md") else "medium",
+        "group": prefix if prefix in ("yt", "rd", "gh", "ss", "md", "web") else "web",
         "summary": summary,
         "tags": clean_tags,
         "url": source_url,
@@ -119,8 +132,8 @@ def add_node(
     }
 
     # Map prefix back to group name used in colors
-    group_map = {"yt": "youtube", "rd": "reddit", "gh": "github", "ss": "substack", "md": "medium"}
-    node["group"] = group_map.get(prefix, "medium")
+    group_map = {"yt": "youtube", "rd": "reddit", "gh": "github", "ss": "substack", "md": "medium", "web": "web"}
+    node["group"] = group_map.get(prefix, "web")
 
     with _lock:
         graph["nodes"].append(node)

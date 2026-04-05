@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/browser-cache/js/cache.js?v=20260404f"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -57,6 +58,10 @@
         var spinnerEl = document.getElementById('spinner');
         var retryEl = document.getElementById('retry');
 
+        function isSafePath(value) {
+            return typeof value === 'string' && value.length > 0 && value[0] === '/' && value.indexOf('//') !== 0;
+        }
+
         try {
             var configResp = await fetch('/api/auth/config');
             var config = await configResp.json();
@@ -66,20 +71,42 @@
             }
 
             var createClient = supabase.createClient;
-            var sb = createClient(config.supabase_url, config.supabase_anon_key);
+            var sb = createClient(config.supabase_url, config.supabase_anon_key, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true,
+                    storage: window.localStorage,
+                    storageKey: 'zk-auth-token',
+                }
+            });
 
             var result = await sb.auth.exchangeCodeForSession(window.location.href);
 
             if (result.error) throw result.error;
 
             statusEl.textContent = 'Signed in! Redirecting...';
-            var returnTo = sessionStorage.getItem('auth_return_to') || '/home';
-            sessionStorage.removeItem('auth_return_to');
-            // Validate returnTo is a same-origin path (not protocol-relative or absolute URL)
-            if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
-                returnTo = '/';
+            if (window.browserCache && typeof window.browserCache.patchState === 'function') {
+                window.browserCache.patchState({
+                    hasLoggedIn: true,
+                    allowCredentialStorage: true,
+                    landingPath: '/home'
+                });
             }
-            window.location.href = returnTo;
+
+            var returnTo = null;
+            if (window.browserCache && typeof window.browserCache.consumeReturnPath === 'function') {
+                returnTo = window.browserCache.consumeReturnPath();
+            }
+            if (!returnTo) {
+                returnTo = sessionStorage.getItem('zk.bc.return.v1') || sessionStorage.getItem('auth_return_to') || '/home';
+                sessionStorage.removeItem('zk.bc.return.v1');
+                sessionStorage.removeItem('auth_return_to');
+            }
+            if (!isSafePath(returnTo)) {
+                returnTo = '/home';
+            }
+            window.location.replace(returnTo);
         } catch (err) {
             spinnerEl.style.display = 'none';
             statusEl.style.display = 'none';

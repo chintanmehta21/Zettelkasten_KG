@@ -15,7 +15,16 @@ class SourceType(str, Enum):
     YOUTUBE = "youtube"
     NEWSLETTER = "newsletter"
     GITHUB = "github"
-    GENERIC = "generic"
+    WEB = "web"
+    # Backward-compatible alias for legacy references in older code/tests.
+    GENERIC = "web"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Map legacy persisted values to the current enum."""
+        if isinstance(value, str) and value.strip().lower() in {"web", "generic"}:
+            return cls.WEB
+        return super()._missing_(value)
 
 
 class CaptureRequest(BaseModel):

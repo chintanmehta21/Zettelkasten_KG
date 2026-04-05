@@ -25,6 +25,7 @@ from website.core.supabase_kg.models import (
     KGUser,
     KGUserCreate,
 )
+from telegram_bot.models.capture import SourceType
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ def _sample_node_row(node_id: str = "web-test-node", user_id: UUID | None = None
         "id": node_id,
         "user_id": str(uid),
         "name": "Test Node",
-        "source_type": "generic",
+        "source_type": "web",
         "summary": "A test summary",
         "tags": ["python", "testing"],
         "url": "https://example.com/test",
@@ -283,7 +284,7 @@ class TestKGNodeModel:
             id="web-test",
             user_id=uid,
             name="Test",
-            source_type="generic",
+            source_type="web",
             url="https://example.com",
         )
         assert node.tags == []
@@ -312,13 +313,22 @@ class TestKGNodeCreateModel:
         create = KGNodeCreate(
             id="web-x",
             name="X",
-            source_type="generic",
+            source_type="web",
             url="https://example.com",
         )
         assert create.tags == []
         assert create.metadata == {}
         assert create.summary is None
         assert create.node_date is None
+
+    def test_legacy_source_type_is_allowed_and_normalized_by_repo(self) -> None:
+        create = KGNodeCreate(
+            id="web-generic",
+            name="Legacy Web",
+            source_type="generic",
+            url="https://example.com",
+        )
+        assert create.source_type == "generic"
 
 
 class TestKGLinkModel:
@@ -369,7 +379,7 @@ class TestKGGraphModel:
                 KGGraphNode(
                     id="web-a",
                     name="Node A",
-                    group="generic",
+                    group="web",
                     summary="summary",
                     tags=["tag1"],
                     url="https://a.com",
@@ -394,11 +404,31 @@ class TestKGGraphModel:
 
     def test_graph_node_defaults(self) -> None:
         node = KGGraphNode(
-            id="x", name="X", group="generic", url="https://x.com"
+            id="x", name="X", group="web", url="https://x.com"
         )
         assert node.summary == ""
         assert node.tags == []
         assert node.date == ""
+
+
+class TestSourceTypeCompatibility:
+    def test_legacy_source_type_string_maps_to_web(self) -> None:
+        assert SourceType("generic") is SourceType.WEB
+        assert SourceType.GENERIC is SourceType.WEB
+
+
+class TestNormalizeSourceType:
+    def test_repository_normalizes_legacy_source_type_to_web(self) -> None:
+        from website.core.supabase_kg.repository import _normalize_source_type
+
+        assert _normalize_source_type("generic") == "web"
+        assert _normalize_source_type("  GENERIC  ") == "web"
+
+    def test_graph_store_normalizes_legacy_source_type_to_web(self) -> None:
+        from website.core.graph_store import _normalize_source_type
+
+        assert _normalize_source_type("generic") == "web"
+        assert _normalize_source_type("  GENERIC  ") == "web"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -477,7 +507,7 @@ class TestAddNode:
         node_create = KGNodeCreate(
             id="web-new-node",
             name="Test Node",
-            source_type="generic",
+            source_type="web",
             tags=["python", "testing"],
             url="https://example.com/test",
         )
@@ -487,6 +517,27 @@ class TestAddNode:
         assert result.id == "web-new-node"
         # The overlaps query should have been called
         query.overlaps.assert_called()
+
+    def test_add_node_normalizes_legacy_source_type(self) -> None:
+        """Legacy source types should be stored as web."""
+        client, query = _mock_supabase_client()
+
+        node_row = _sample_node_row("web-generic-node")
+        query.execute.return_value = _make_execute_response(data=[node_row])
+
+        repo = _make_repo(client)
+        node_create = KGNodeCreate(
+            id="web-generic-node",
+            name="Generic Node",
+            source_type="generic",
+            tags=[],
+            url="https://example.com/generic",
+        )
+        result = repo.add_node(USER_ID, node_create)
+
+        assert isinstance(result, KGNode)
+        payload = query.insert.call_args.args[0]
+        assert payload["source_type"] == "web"
 
     def test_add_node_no_tags(self) -> None:
         """When tags are empty, _auto_link should NOT be called."""
@@ -500,7 +551,7 @@ class TestAddNode:
         node_create = KGNodeCreate(
             id="web-no-tags",
             name="No Tags Node",
-            source_type="generic",
+            source_type="web",
             tags=[],
             url="https://example.com/no-tags",
         )
@@ -591,7 +642,7 @@ class TestSearchNodes:
             USER_ID,
             query="test",
             tags=["python"],
-            source_types=["generic", "youtube"],
+            source_types=["web", "youtube"],
             limit=50,
             offset=0,
         )
@@ -600,7 +651,7 @@ class TestSearchNodes:
         assert isinstance(results[0], KGNode)
         query.ilike.assert_called_once_with("name", r"%test%")
         query.overlaps.assert_called_once_with("tags", ["python"])
-        query.in_.assert_called_once_with("source_type", ["generic", "youtube"])
+        query.in_.assert_called_once_with("source_type", ["web", "youtube"])
         query.order.assert_called_once_with("node_date", desc=True)
         query.range.assert_called_once_with(0, 49)
 
@@ -980,7 +1031,7 @@ class TestAddNodeTagFiltering:
         node_create = KGNodeCreate(
             id="web-filtered",
             name="Filtered",
-            source_type="generic",
+            source_type="web",
             tags=["keyword/python", "status/raw"],
             url="https://example.com/filtered",
         )

@@ -22,7 +22,7 @@ from telegram_bot.pipeline.summarizer import SummarizationResult
 def make_content(
     title: str = "Test Note",
     url: str = "https://example.com/article",
-    source_type: SourceType = SourceType.GENERIC,
+    source_type: SourceType = SourceType.WEB,
 ) -> ExtractedContent:
     return ExtractedContent(
         url=url,
@@ -80,7 +80,7 @@ class TestGitHubWriterWriteNote:
         content = make_content()
         result = make_result()
 
-        file_url = await writer.write_note(content, result, ["source/generic", "domain/AI"])
+        file_url = await writer.write_note(content, result, ["source/web", "domain/AI"])
 
         assert "github.com" in file_url
 
@@ -126,7 +126,7 @@ class TestGitHubWriterWriteNote:
         result = make_result()
 
         with pytest.raises(RuntimeError, match="GitHub API error"):
-            await writer.write_note(content, result, ["source/generic"])
+            await writer.write_note(content, result, ["source/web"])
 
     @pytest.mark.asyncio
     async def test_note_content_has_frontmatter_and_body(self, httpx_mock):
@@ -137,7 +137,7 @@ class TestGitHubWriterWriteNote:
         content = make_content(title="Frontmatter Test")
         result = make_result(one_line_summary="A key takeaway.")
 
-        await writer.write_note(content, result, ["source/generic", "domain/AI"])
+        await writer.write_note(content, result, ["source/web", "domain/AI"])
 
         request = httpx_mock.get_request()
         body = json.loads(request.content)
@@ -145,7 +145,7 @@ class TestGitHubWriterWriteNote:
 
         # Must start with YAML frontmatter
         assert decoded.startswith("---")
-        assert "source_type: generic" in decoded
+        assert "source_type: web" in decoded
         # Must have body with title and summary
         assert "# Frontmatter Test" in decoded
         assert "> A key takeaway." in decoded

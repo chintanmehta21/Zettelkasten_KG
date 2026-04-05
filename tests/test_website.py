@@ -52,8 +52,8 @@ class TestSummarizeEndpoint:
             "title": "Test Title",
             "summary": "Test summary",
             "brief_summary": "Brief",
-            "tags": ["source/generic"],
-            "source_type": "generic",
+            "tags": ["source/web"],
+            "source_type": "web",
             "source_url": "https://example.com",
             "one_line_summary": "One liner",
             "is_raw_fallback": False,
@@ -68,7 +68,7 @@ class TestSummarizeEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["title"] == "Test Title"
-        assert data["source_type"] == "generic"
+        assert data["source_type"] == "web"
 
     def test_pipeline_error_returns_500(self, client: TestClient) -> None:
         with patch("website.api.routes.summarize_url", new_callable=AsyncMock, side_effect=RuntimeError("boom")):

@@ -82,7 +82,7 @@
 
     // Badge
     const badge = document.getElementById('result-badge');
-    const src = data.source_type || 'generic';
+    const src = (data.source_type === 'generic' ? 'web' : data.source_type) || 'web';
     badge.textContent = src;
     badge.className = 'm-result-badge ' + src.toLowerCase();
 

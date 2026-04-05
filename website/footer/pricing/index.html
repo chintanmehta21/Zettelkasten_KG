@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing - Zettelkasten</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=20260404f">
+  <link rel="stylesheet" href="/pricing/css/pricing.css?v=20260404f">
+</head>
+<body>
+  <div class="pricing-shell">
+    <header class="pricing-header">
+      <a class="pricing-back" href="/home">Back</a>
+      <a class="pricing-brand" href="/">
+        <img src="/artifacts/logo-zettelkasten.svg" alt="" width="28" height="28">
+        <span>Zettelkasten</span>
+      </a>
+      <a class="pricing-about-link" href="/about">About</a>
+    </header>
+
+    <main>
+      <section class="pricing-hero">
+        <p class="pricing-kicker">Pricing</p>
+        <h1>Choose a pace: recurring or on-demand.</h1>
+        <p>
+          Start with subscription plans for steady capture workflows, or use ad-hoc packs when you only need bursts.
+        </p>
+      </section>
+
+      <section class="pricing-switcher" aria-label="Pricing mode">
+        <div class="pricing-tabs" role="tablist">
+          <button class="pricing-tab is-active" role="tab" aria-selected="true" aria-controls="subscription-panel" id="subscription-tab" data-tab="subscription">Subscription</button>
+          <button class="pricing-tab" role="tab" aria-selected="false" aria-controls="adhoc-panel" id="adhoc-tab" data-tab="adhoc">Ad-Hoc</button>
+        </div>
+      </section>
+
+      <section class="pricing-panel is-active" id="subscription-panel" role="tabpanel" aria-labelledby="subscription-tab">
+        <div class="pricing-grid">
+          <article class="price-card">
+            <p class="price-tier">Starter</p>
+            <p class="price-amount">$9<span>/month</span></p>
+            <ul>
+              <li>120 summaries per month</li>
+              <li>Personal graph + zettel vault</li>
+              <li>Email support</li>
+            </ul>
+            <a href="/" class="price-cta">Start Starter</a>
+          </article>
+          <article class="price-card featured">
+            <p class="price-tier">Builder</p>
+            <p class="price-amount">$19<span>/month</span></p>
+            <ul>
+              <li>400 summaries per month</li>
+              <li>Priority model fallback queue</li>
+              <li>Advanced graph filters</li>
+            </ul>
+            <a href="/" class="price-cta">Start Builder</a>
+          </article>
+          <article class="price-card">
+            <p class="price-tier">Studio</p>
+            <p class="price-amount">$39<span>/month</span></p>
+            <ul>
+              <li>1000 summaries per month</li>
+              <li>Shared team workspace</li>
+              <li>Priority support channel</li>
+            </ul>
+            <a href="/" class="price-cta">Start Studio</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="pricing-panel" id="adhoc-panel" role="tabpanel" aria-labelledby="adhoc-tab">
+        <div class="pricing-grid adhoc-grid">
+          <article class="price-card">
+            <p class="price-tier">Sprint Pack</p>
+            <p class="price-amount">$6<span> one-time</span></p>
+            <ul>
+              <li>60 one-time summaries</li>
+              <li>Expires in 45 days</li>
+              <li>Best for focused reading sprints</li>
+            </ul>
+            <a href="/" class="price-cta">Buy Sprint</a>
+          </article>
+          <article class="price-card">
+            <p class="price-tier">Research Pack</p>
+            <p class="price-amount">$15<span> one-time</span></p>
+            <ul>
+              <li>180 one-time summaries</li>
+              <li>Expires in 90 days</li>
+              <li>Best for project-heavy months</li>
+            </ul>
+            <a href="/" class="price-cta">Buy Research</a>
+          </article>
+          <article class="price-card">
+            <p class="price-tier">Deep Work Pack</p>
+            <p class="price-amount">$28<span> one-time</span></p>
+            <ul>
+              <li>400 one-time summaries</li>
+              <li>Expires in 180 days</li>
+              <li>Best for long-form capture cycles</li>
+            </ul>
+            <a href="/" class="price-cta">Buy Deep Work</a>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" title="View on GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      </a>
+      <a href="/about" class="footer-icon" title="About">
+        <img src="/artifacts/footer_icons/about.svg" alt="About" width="20" height="20">
+      </a>
+      <a href="/pricing" class="footer-icon" title="Pricing">
+        <img src="/artifacts/footer_icons/pricing.svg" alt="Pricing" width="20" height="20">
+      </a>
+      <a href="https://www.buymeacoffee.com/chintanmehta21" target="_blank" rel="noopener" class="footer-icon" title="BuyMeACoffee">
+        <img src="/artifacts/footer_icons/support.svg" alt="BuyMeACoffee" width="20" height="20">
+      </a>
+    </footer>
+  </div>
+
+  <script src="/pricing/js/pricing.js?v=20260404f"></script>
+</body>
+</html>
+

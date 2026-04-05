@@ -62,7 +62,7 @@ SCHEMA:
     id          text PRIMARY KEY,
     user_id     uuid NOT NULL,
     name        text NOT NULL,
-    source_type text NOT NULL,   -- enum: 'youtube', 'github', 'reddit', 'newsletter', 'generic'
+    source_type text NOT NULL,   -- enum: 'youtube', 'github', 'reddit', 'newsletter', 'web'
     summary     text,
     tags        text[],          -- PostgreSQL array of tags
     url         text NOT NULL,
@@ -94,7 +94,7 @@ SCHEMA:
   )
 
 DOMAIN VOCABULARY:
-  source_type values: youtube, github, reddit, newsletter, generic
+  source_type values: youtube, github, reddit, newsletter, web
   Common tag patterns: lowercase, hyphenated (e.g. 'machine-learning')
   relation examples: shared_tag, semantic_similarity
 

@@ -1,0 +1,224 @@
+.about-shell {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 0.5rem;
+}
+
+.about-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.about-back,
+.about-pricing-link {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.75rem;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.about-back:hover,
+.about-pricing-link:hover {
+  border-color: var(--border-light);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.about-brand {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.about-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(140% 90% at 0% 0%, hsla(172, 66%, 50%, 0.18), transparent 58%),
+    radial-gradient(120% 80% at 100% 100%, hsla(210, 55%, 58%, 0.12), transparent 62%),
+    linear-gradient(145deg, hsl(223, 24%, 8%), hsl(224, 22%, 6%));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 2.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.about-shell main section {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.about-shell main section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.about-kicker {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+  font-size: 0.69rem;
+  margin-bottom: 0.75rem;
+}
+
+.about-hero h1 {
+  font-size: clamp(2rem, 5.5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  max-width: 18ch;
+  margin-bottom: 0.9rem;
+}
+
+.about-hero-copy {
+  max-width: 58ch;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.about-panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg-card);
+  padding: 1.35rem;
+}
+
+.about-panel h2 {
+  font-size: 1.22rem;
+  margin-bottom: 0.7rem;
+}
+
+.about-panel p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  margin-bottom: 0.6rem;
+}
+
+.about-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.about-features li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.about-features span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid hsla(172, 66%, 50%, 0.3);
+  background: hsla(172, 66%, 50%, 0.12);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.05rem;
+}
+
+.about-features h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.about-features p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.about-team,
+.about-legal {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg-card);
+  padding: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+.about-team h2,
+.about-legal h2 {
+  font-size: 1.22rem;
+  margin-bottom: 0.9rem;
+}
+
+.about-team-list,
+.about-legal-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.about-team article,
+.about-legal article {
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  border-radius: 14px;
+  padding: 0.9rem;
+}
+
+.about-team h3,
+.about-legal h3 {
+  font-size: 0.84rem;
+  margin-bottom: 0.35rem;
+}
+
+.about-team p,
+.about-legal p {
+  color: var(--text-secondary);
+  font-size: 0.79rem;
+  line-height: 1.55;
+}
+
+.footer {
+  margin-top: 0.2rem;
+}
+
+.footer-icon img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  opacity: 0.78;
+  filter: grayscale(1) brightness(1.15);
+  transition: opacity var(--transition), filter var(--transition);
+}
+
+.footer-icon:hover img {
+  opacity: 1;
+  filter: grayscale(0.1) brightness(1.22);
+}
+
+@media (max-width: 900px) {
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-team-list,
+  .about-legal-list {
+    grid-template-columns: 1fr;
+  }
+}

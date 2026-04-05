@@ -30,7 +30,7 @@
   --node-github: #56C8D8;
   --node-substack: #60A5FA;
   --node-medium: #4ADE80;
-  --node-generic: hsl(215, 20%, 62%);
+  --node-web: hsl(215, 20%, 62%);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -280,6 +280,7 @@ p { color: var(--text-secondary); }
 .m-result-badge.github { background: var(--node-github); color: #000; }
 .m-result-badge.substack { background: var(--node-substack); color: #000; }
 .m-result-badge.medium { background: var(--node-medium); color: #000; }
+.m-result-badge.web { background: var(--node-web); color: #000; }
 
 .m-result h2 { margin-bottom: 8px; line-height: 1.3; }
 
