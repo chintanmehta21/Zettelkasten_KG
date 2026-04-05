@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Callable
 
@@ -58,14 +58,15 @@ class ExtractionResult(BaseModel):
 class ExtractionConfig:
     """Tuning knobs for entity extraction."""
 
-    allowed_entity_types: list[str] = field(default_factory=lambda: [
+    allowed_entity_types: tuple[str, ...] = (
         "PERSON", "ORGANIZATION", "TECHNOLOGY", "CONCEPT",
-        "TOOL", "LANGUAGE", "FRAMEWORK", "PLATFORM", "TOPIC",
-    ])
-    allowed_relationship_types: list[str] = field(default_factory=lambda: [
-        "USES", "CREATED_BY", "RELATED_TO", "PART_OF",
-        "DEPENDS_ON", "ALTERNATIVE_TO", "IMPLEMENTS", "EXTENDS",
-    ])
+        "TOOL", "LANGUAGE", "FRAMEWORK", "PLATFORM",
+        "PATTERN", "ALGORITHM",
+    )
+    allowed_relationship_types: tuple[str, ...] = (
+        "USES", "IMPLEMENTS", "EXTENDS", "PART_OF", "CREATED_BY",
+        "RELATED_TO", "ALTERNATIVE_TO", "DEPENDS_ON", "INSPIRED_BY",
+    )
     max_gleanings: int = 1          # capped at 3 in extract()
     enable_entity_dedup: bool = True
     dedup_similarity_threshold: float = 0.90
@@ -94,6 +95,23 @@ basis.  If you are unsure, leave it out.
 Allowed entity types: {entity_types}
 Allowed relationship types: {relationship_types}
 
+EXAMPLE:
+Input: "React Compiler, developed by Andrew Clark and the Meta team, is an
+optimizing compiler that automatically memoizes React components. It uses
+MLIR under the hood and is inspired by the Forget framework."
+
+Expected entities:
+- React Compiler (TECHNOLOGY)
+- Andrew Clark (PERSON)
+- Meta (ORGANIZATION)
+- MLIR (FRAMEWORK)
+- Forget (FRAMEWORK)
+
+Expected relationships:
+- React Compiler CREATED_BY Meta
+- React Compiler USES MLIR
+- React Compiler INSPIRED_BY Forget
+
 ---
 Title: {title}
 
@@ -115,23 +133,9 @@ Analysis:
 {analysis}
 """
 
-_GLEANING_PROMPT = """\
-Review the original text again.  Are there any entities or relationships
-that were missed in the previous extraction?  If yes, return ONLY the
-NEW entities and relationships as JSON matching the same schema.  If
-nothing was missed, return {{"entities": [], "relationships": []}}.
-
-Original text:
-Title: {title}
-
-{summary}
-
-Previously extracted:
-{previous_json}
-
-Schema:
-{schema}
-"""
+_GLEANING_PROMPT_MULTI_TURN = """Review the original text one more time. Are there any entities \
+or relationships you missed in your previous extraction? If yes, return ONLY the NEW ones as \
+JSON (same schema). If nothing was missed, return {"entities": [], "relationships": []}."""
 
 
 # ── Post-processing helpers ─────────────────────────────────────────────────
@@ -207,6 +211,7 @@ class EntityExtractor:
         self,
         summary: str,
         title: str = "",
+        existing_types: list[str] | None = None,
     ) -> ExtractionResult:
         """Run the full extraction pipeline.
 
@@ -227,30 +232,39 @@ class EntityExtractor:
 
         try:
             # ── Step 1: Free-form analysis ──────────────────────────────
+            analysis_prompt = _ANALYSIS_PROMPT.format(
+                entity_types=entity_types,
+                relationship_types=relationship_types,
+                title=title,
+                summary=summary,
+            )
             analysis_text = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: client.models.generate_content(
                         model=model,
-                        contents=_ANALYSIS_PROMPT.format(
-                            entity_types=entity_types,
-                            relationship_types=relationship_types,
-                            title=title,
-                            summary=summary,
-                        ),
+                        contents=analysis_prompt,
                     ).text
                 ),
                 timeout=10.0,
             )
 
             # ── Step 2: Structured JSON extraction ──────────────────────
-            structured_resp = await asyncio.wait_for(
+            type_hint = ""
+            if existing_types:
+                type_hint = (
+                    f"\nTYPES ALREADY USED IN THIS KG: {', '.join(sorted(existing_types))}\n"
+                    "Prefer these over creating new ones when the meaning is the same.\n"
+                )
+            structured_prompt = _STRUCTURED_PROMPT.format(
+                schema=schema,
+                analysis=analysis_text,
+            ) + type_hint
+
+            structured_text = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: client.models.generate_content(
                         model=model,
-                        contents=_STRUCTURED_PROMPT.format(
-                            schema=schema,
-                            analysis=analysis_text,
-                        ),
+                        contents=structured_prompt,
                         config=types.GenerateContentConfig(
                             response_mime_type="application/json",
                             response_schema=ExtractionResult,
@@ -260,20 +274,30 @@ class EntityExtractor:
                 timeout=10.0,
             )
 
-            result = ExtractionResult.model_validate_json(structured_resp)
+            result = ExtractionResult.model_validate_json(structured_text)
 
-            # ── Step 3: Gleaning loop ───────────────────────────────────
+            # ── Step 3: Multi-turn gleaning loop ────────────────────────
+            # Build conversation history so the model sees its own prior
+            # turns (matches GraphRAG's multi-turn gleaning approach).
+            conversation_contents = [
+                types.Content(role="user", parts=[types.Part(text=analysis_prompt)]),
+                types.Content(role="model", parts=[types.Part(text=analysis_text)]),
+                types.Content(role="user", parts=[types.Part(text=structured_prompt)]),
+                types.Content(role="model", parts=[types.Part(text=structured_text)]),
+            ]
+
             for _glean_round in range(max_gleanings):
-                glean_resp = await asyncio.wait_for(
+                conversation_contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=_GLEANING_PROMPT_MULTI_TURN)],
+                    )
+                )
+                glean_text = await asyncio.wait_for(
                     asyncio.to_thread(
                         lambda: client.models.generate_content(
                             model=model,
-                            contents=_GLEANING_PROMPT.format(
-                                title=title,
-                                summary=summary,
-                                previous_json=result.model_dump_json(),
-                                schema=schema,
-                            ),
+                            contents=conversation_contents,
                             config=types.GenerateContentConfig(
                                 response_mime_type="application/json",
                                 response_schema=ExtractionResult,
@@ -283,14 +307,23 @@ class EntityExtractor:
                     timeout=10.0,
                 )
 
-                glean_result = ExtractionResult.model_validate_json(glean_resp)
+                glean_result = ExtractionResult.model_validate_json(glean_text)
 
-                # Zero-new-entities termination.
-                if not glean_result.entities:
+                # Zero-new-entities termination (check against existing IDs).
+                existing_ids = {e.id for e in result.entities}
+                new_entities = [
+                    e for e in glean_result.entities if e.id not in existing_ids
+                ]
+                if not new_entities:
                     break
 
-                result.entities.extend(glean_result.entities)
+                result.entities.extend(new_entities)
                 result.relationships.extend(glean_result.relationships)
+
+                # Append model response for next iteration's context.
+                conversation_contents.append(
+                    types.Content(role="model", parts=[types.Part(text=glean_text)])
+                )
 
             # ── Post-processing ─────────────────────────────────────────
             result = self._postprocess(result)

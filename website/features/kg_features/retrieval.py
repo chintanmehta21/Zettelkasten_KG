@@ -99,13 +99,13 @@ def hybrid_search(
 
     # Build RPC parameters.
     rpc_params: dict = {
+        "query_text": query,
+        "query_embedding": query_embedding if query_embedding else None,
         "p_user_id": user_id,
-        "p_query_text": query,
-        "p_query_embedding": query_embedding if query_embedding else None,
-        "p_semantic_weight": sem_w,
-        "p_fulltext_weight": ft_w,
-        "p_graph_weight": gr_w,
         "p_limit": limit,
+        "semantic_weight": sem_w,
+        "fulltext_weight": ft_w,
+        "graph_weight": gr_w,
     }
     if seed_node_id:
         rpc_params["p_seed_node_id"] = seed_node_id
@@ -126,13 +126,13 @@ def hybrid_search(
         try:
             results.append(
                 HybridSearchResult(
-                    id=row.get("id", ""),
+                    id=row.get("node_id", ""),
                     name=row.get("name", ""),
                     source_type=row.get("source_type", ""),
                     summary=row.get("summary", ""),
                     tags=row.get("tags", []) or [],
                     url=row.get("url", ""),
-                    score=float(row.get("score", 0.0)),
+                    score=float(row.get("rrf_score", 0.0)),
                 )
             )
         except Exception as exc:

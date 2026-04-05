@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_kg_nodes_embedding
     ON kg_nodes USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
 
-COMMENT ON COLUMN kg_nodes.embedding IS 'Semantic embedding vector (768-dim, e.g. text-embedding-004)';
+COMMENT ON COLUMN kg_nodes.embedding IS 'Semantic embedding vector (768-dim, gemini-embedding-001 via MRL truncation)';
 
 
 -- ── 2. Enriched link columns ───────────────────────────────────────────────
@@ -145,25 +145,29 @@ CREATE OR REPLACE FUNCTION find_neighbors(
     p_depth    int DEFAULT 1
 )
 RETURNS TABLE (
-    node_id    text,
-    name       text,
+    node_id     text,
+    name        text,
     source_type text,
-    depth      int,
-    path       text[]
+    summary     text,
+    tags        text[],
+    url         text,
+    depth       int,
+    path        text[]
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     WITH RECURSIVE neighbors AS (
         -- Base case: the starting node at depth 0
         SELECT
             n.id            AS node_id,
             n.name          AS name,
             n.source_type   AS source_type,
+            n.summary       AS summary,
+            n.tags          AS tags,
+            n.url           AS url,
             0               AS depth,
             ARRAY[n.id]     AS path
         FROM public.kg_nodes n
@@ -177,6 +181,9 @@ BEGIN
             n2.id           AS node_id,
             n2.name         AS name,
             n2.source_type  AS source_type,
+            n2.summary      AS summary,
+            n2.tags         AS tags,
+            n2.url          AS url,
             nb.depth + 1    AS depth,
             nb.path || n2.id AS path
         FROM neighbors nb
@@ -199,12 +206,14 @@ BEGIN
         neighbors.node_id,
         neighbors.name,
         neighbors.source_type,
+        neighbors.summary,
+        neighbors.tags,
+        neighbors.url,
         neighbors.depth,
         neighbors.path
     FROM neighbors
     WHERE neighbors.depth > 0
     ORDER BY neighbors.node_id, neighbors.depth;
-END;
 $$;
 
 COMMENT ON FUNCTION find_neighbors IS 'K-hop graph traversal from a starting node with cycle prevention';
@@ -222,13 +231,11 @@ RETURNS TABLE (
     path        text[],
     depth       int
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     WITH RECURSIVE bfs AS (
         -- Base case: start from source
         SELECT
@@ -269,7 +276,6 @@ BEGIN
     WHERE bfs.current_node = p_target_id
     ORDER BY bfs.depth
     LIMIT 1;
-END;
 $$;
 
 COMMENT ON FUNCTION shortest_path IS 'BFS shortest path between two nodes in a user graph';
@@ -287,13 +293,11 @@ RETURNS TABLE (
     source_type text,
     degree      bigint
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     SELECT
         n.id            AS node_id,
         n.name          AS name,
@@ -307,7 +311,6 @@ BEGIN
     GROUP BY n.id, n.name, n.source_type
     ORDER BY degree DESC
     LIMIT p_limit;
-END;
 $$;
 
 COMMENT ON FUNCTION top_connected_nodes IS 'Nodes with the highest edge count (degree centrality)';
@@ -322,28 +325,27 @@ RETURNS TABLE (
     node_id     text,
     name        text,
     source_type text,
-    url         text
+    url         text,
+    node_date   date
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     SELECT
         n.id            AS node_id,
         n.name          AS name,
         n.source_type   AS source_type,
-        n.url           AS url
+        n.url           AS url,
+        n.node_date     AS node_date
     FROM public.kg_nodes n
     LEFT JOIN public.kg_links l
         ON l.user_id = p_user_id
        AND (l.source_node_id = n.id OR l.target_node_id = n.id)
     WHERE n.user_id = p_user_id
       AND l.id IS NULL
-    ORDER BY n.created_at DESC;
-END;
+    ORDER BY n.node_date DESC NULLS LAST, n.created_at DESC;
 $$;
 
 COMMENT ON FUNCTION isolated_nodes IS 'Nodes with zero edges (orphans)';
@@ -356,26 +358,25 @@ CREATE OR REPLACE FUNCTION top_tags(
     p_limit    int DEFAULT 20
 )
 RETURNS TABLE (
-    tag        text,
-    frequency  bigint
+    tag         text,
+    frequency   bigint,
+    node_count  bigint
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     SELECT
-        unnested        AS tag,
-        COUNT(*)        AS frequency
+        unnested                  AS tag,
+        COUNT(*)                  AS frequency,
+        COUNT(DISTINCT n.id)      AS node_count
     FROM public.kg_nodes n,
          unnest(n.tags) AS unnested
     WHERE n.user_id = p_user_id
     GROUP BY unnested
     ORDER BY frequency DESC
     LIMIT p_limit;
-END;
 $$;
 
 COMMENT ON FUNCTION top_tags IS 'Most frequently used tags across a user knowledge graph';
@@ -395,13 +396,11 @@ RETURNS TABLE (
     shared_tags   text[],
     overlap_count bigint
 )
-LANGUAGE plpgsql
+LANGUAGE sql STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET statement_timeout = '5s'
 AS $$
-BEGIN
-    RETURN QUERY
     SELECT
         n2.id                       AS node_id,
         n2.name                     AS name,
@@ -420,7 +419,6 @@ BEGIN
     GROUP BY n2.id, n2.name, n2.source_type
     ORDER BY overlap_count DESC
     LIMIT p_limit;
-END;
 $$;
 
 COMMENT ON FUNCTION similar_nodes IS 'Find nodes with the most shared tags to a given node';
@@ -472,6 +470,46 @@ $$;
 COMMENT ON FUNCTION execute_kg_query IS 'Execute SELECT-only SQL with user_id enforcement and 50-row limit';
 
 
+-- ── 12b. RPC: explain_kg_query (EXPLAIN plan for SELECT queries) ──────────
+
+CREATE OR REPLACE FUNCTION explain_kg_query(
+    query_text  text,
+    p_user_id   uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+SET statement_timeout = '2s'
+AS $$
+DECLARE
+    trimmed_query text;
+    explain_result jsonb;
+BEGIN
+    -- Basic safety: allowlist SELECT only (defense-in-depth; Python allowlist runs first)
+    trimmed_query := regexp_replace(trim(query_text), ';\s*$', '');
+    IF upper(left(trimmed_query, 6)) != 'SELECT' THEN
+        RAISE EXCEPTION 'Only SELECT queries are allowed';
+    END IF;
+    IF trimmed_query ~* '(insert|update|delete|drop|alter|create|truncate|grant|revoke|copy|do|set|call|comment|vacuum|analyze|reindex)\b' THEN
+        RAISE EXCEPTION 'Mutation keywords not allowed';
+    END IF;
+    IF NOT (trimmed_query ~* ('user_id\s*=\s*''' || p_user_id::text || '''')) THEN
+        RAISE EXCEPTION 'Query must filter by user_id = ''%''', p_user_id;
+    END IF;
+
+    -- Run EXPLAIN (no ANALYZE — we don't want to actually execute)
+    EXECUTE 'EXPLAIN (FORMAT JSON) ' || trimmed_query INTO explain_result;
+    RETURN jsonb_build_object('ok', true, 'plan', explain_result);
+EXCEPTION WHEN others THEN
+    RETURN jsonb_build_object('ok', false, 'error', SQLERRM);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION explain_kg_query(text, uuid) FROM public;
+GRANT EXECUTE ON FUNCTION explain_kg_query(text, uuid) TO service_role;
+
+
 -- ── 13. RPC: hybrid_kg_search (RRF fusion) ─────────────────────────────────
 
 CREATE OR REPLACE FUNCTION hybrid_kg_search(
@@ -479,10 +517,11 @@ CREATE OR REPLACE FUNCTION hybrid_kg_search(
     query_embedding  vector(768) DEFAULT NULL,
     p_user_id        uuid        DEFAULT NULL,
     p_limit          int         DEFAULT 20,
-    semantic_weight  float       DEFAULT 1.0,
-    fulltext_weight  float       DEFAULT 1.0,
-    graph_weight     float       DEFAULT 0.5,
-    p_k              int         DEFAULT 60
+    semantic_weight  float       DEFAULT 0.5,
+    fulltext_weight  float       DEFAULT 0.3,
+    graph_weight     float       DEFAULT 0.2,
+    p_k              int         DEFAULT 60,
+    p_seed_node_id   text        DEFAULT NULL
 )
 RETURNS TABLE (
     node_id     text,
@@ -532,8 +571,23 @@ BEGIN
         LIMIT p_limit * 3
     ),
 
-    -- Stream 3: Graph neighbors of top semantic hits (1-hop expansion)
+    -- Stream 3: Graph neighbors (1-hop expansion)
+    -- When p_seed_node_id IS NOT NULL: expand from that seed node
+    -- When p_seed_node_id IS NULL: expand from top-5 semantic hits
     graph_neighbors AS (
+        SELECT
+            CASE
+                WHEN l.source_node_id = p_seed_node_id THEN l.target_node_id
+                ELSE l.source_node_id
+            END                                         AS node_id,
+            ROW_NUMBER() OVER (ORDER BY l.created_at DESC) AS rank
+        FROM public.kg_links l
+        WHERE p_seed_node_id IS NOT NULL
+          AND (p_user_id IS NULL OR l.user_id = p_user_id)
+          AND (l.source_node_id = p_seed_node_id OR l.target_node_id = p_seed_node_id)
+
+        UNION ALL
+
         SELECT DISTINCT
             CASE
                 WHEN l.source_node_id = s.node_id THEN l.target_node_id
@@ -544,7 +598,8 @@ BEGIN
         JOIN public.kg_links l
             ON (p_user_id IS NULL OR l.user_id = p_user_id)
            AND (l.source_node_id = s.node_id OR l.target_node_id = s.node_id)
-        WHERE s.rank <= 5  -- expand only from top-5 semantic hits
+        WHERE p_seed_node_id IS NULL
+          AND s.rank <= 5  -- expand only from top-5 semantic hits
     ),
 
     -- Reciprocal Rank Fusion
@@ -602,7 +657,7 @@ GRANT EXECUTE ON FUNCTION top_connected_nodes TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION isolated_nodes      TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION top_tags            TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION similar_nodes       TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION execute_kg_query    TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION execute_kg_query    TO service_role;
 GRANT EXECUTE ON FUNCTION hybrid_kg_search    TO authenticated, service_role;
 
 

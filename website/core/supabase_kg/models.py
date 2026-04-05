@@ -44,6 +44,7 @@ class KGNode(BaseModel):
     url: str
     node_date: date | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    embedding: list[float] | None = Field(default=None, description="Semantic embedding vector (768-dim)")
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -58,6 +59,7 @@ class KGNodeCreate(BaseModel):
     url: str
     node_date: date | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    embedding: list[float] | None = Field(default=None, description="Semantic embedding vector (768-dim)")
 
 
 # ── Link ─────────────────────────────────────────────────────────────────────
@@ -69,6 +71,9 @@ class KGLink(BaseModel):
     source_node_id: str
     target_node_id: str
     relation: str
+    weight: int | None = Field(default=None, ge=1, le=10, description="Link strength 1-10; null for auto-derived links")
+    link_type: str = Field(default="tag", description="Link origin: 'tag' | 'semantic' | 'entity'")
+    description: str | None = Field(default=None, description="Human-readable link description")
     created_at: datetime | None = None
 
 
@@ -77,6 +82,9 @@ class KGLinkCreate(BaseModel):
     source_node_id: str
     target_node_id: str
     relation: str
+    weight: int | None = Field(default=None, ge=1, le=10, description="Link strength 1-10; null for auto-derived links")
+    link_type: str = Field(default="tag", description="Link origin: 'tag' | 'semantic' | 'entity'")
+    description: str | None = Field(default=None, description="Human-readable link description")
 
 
 # ── Graph (aggregate) ────────────────────────────────────────────────────────
@@ -97,6 +105,9 @@ class KGGraphLink(BaseModel):
     source: str
     target: str
     relation: str
+    weight: int | None = Field(default=None, ge=1, le=10, description="Link strength 1-10; null for auto-derived links")
+    link_type: str = Field(default="tag", description="Link origin: 'tag' | 'semantic' | 'entity'")
+    description: str | None = Field(default=None, description="Human-readable link description")
 
 
 class KGGraph(BaseModel):

@@ -62,7 +62,7 @@ SCHEMA:
     id          text PRIMARY KEY,
     user_id     uuid NOT NULL,
     name        text NOT NULL,
-    source_type text NOT NULL,   -- enum: 'youtube', 'github', 'reddit', 'newsletter', 'web'
+    source_type text NOT NULL,   -- enum: 'youtube', 'github', 'reddit', 'substack', 'medium', 'generic'
     summary     text,
     tags        text[],          -- PostgreSQL array of tags
     url         text NOT NULL,
@@ -94,7 +94,7 @@ SCHEMA:
   )
 
 DOMAIN VOCABULARY:
-  source_type values: youtube, github, reddit, newsletter, web
+  source_type values: youtube, github, reddit, substack, medium, generic
   Common tag patterns: lowercase, hyphenated (e.g. 'machine-learning')
   relation examples: shared_tag, semantic_similarity
 
@@ -137,10 +137,7 @@ Generate a corrected SELECT query.  Return ONLY raw SQL.
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 _SQL_FENCE_RE = re.compile(r"```(?:sql)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
-_UNSAFE_RE = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\b",
-    re.IGNORECASE,
-)
+_SELECT_ONLY_RE = re.compile(r"^\s*SELECT\b", re.IGNORECASE)
 
 
 def _strip_sql_artifacts(text: str) -> str:
@@ -152,15 +149,12 @@ def _strip_sql_artifacts(text: str) -> str:
 
 
 def _safety_check(sql: str) -> None:
-    """Raise :class:`NLQueryError` if the SQL is not a pure SELECT.
-
-    Rejects statements containing mutation keywords and multiple
-    statements (semicolons).
-    """
-    if _UNSAFE_RE.search(sql):
+    """Raise :class:`NLQueryError` if the SQL is not a pure SELECT statement."""
+    stripped = sql.strip().rstrip(";").strip()
+    if not _SELECT_ONLY_RE.match(stripped):
         raise NLQueryError(400, "Only SELECT queries are allowed.")
     # Reject multiple statements.
-    if ";" in sql.rstrip(";").strip():
+    if ";" in stripped:
         raise NLQueryError(400, "Multiple SQL statements are not allowed.")
 
 
@@ -169,13 +163,15 @@ def _safety_check(sql: str) -> None:
 class NLGraphQuery:
     """Natural-language query engine over the Supabase knowledge graph."""
 
-    def __init__(self, supabase_client) -> None:
+    def __init__(self, supabase_client, user_id: str, model: str = "gemini-2.5-flash") -> None:
         self._sb = supabase_client
+        self._user_id = user_id
+        self._model = model
 
     async def ask(
         self,
         question: str,
-        user_id: str,
+        user_id: str | None = None,
     ) -> NLQueryResult:
         """Translate *question* to SQL, execute, and format an answer.
 
@@ -183,12 +179,14 @@ class NLGraphQuery:
         """
         start = time.monotonic()
         client = _get_genai_client()
-        model = "gemini-2.5-flash"
+        model = self._model
         retries = 0
+        # Backwards-compat: allow user_id override, otherwise use instance value.
+        effective_user_id = str(user_id) if user_id is not None else str(self._user_id)
 
         try:
             # ── 1. Generate SQL ─────────────────────────────────────────
-            system = _SYSTEM_PROMPT.replace("{user_id}", user_id)
+            system = _SYSTEM_PROMPT.replace("{user_id}", effective_user_id)
             sql_raw = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: client.models.generate_content(
@@ -203,22 +201,42 @@ class NLGraphQuery:
             sql = _strip_sql_artifacts(sql_raw)
             _safety_check(sql)
 
-            # ── 2. Execute SQL via RPC ──────────────────────────────────
+            # ── 2. EXPLAIN pre-validation + execute ─────────────────────
+            last_error: str | None = None
+            raw_result: list[dict] = []
+
+            # Cheap ~1ms sanity check; returns NULL on success or error string.
             try:
-                response = self._sb.rpc(
-                    "execute_kg_query",
-                    {"query_text": sql},
+                explain_resp = self._sb.rpc(
+                    "explain_kg_query",
+                    {"query_text": sql, "p_user_id": effective_user_id},
                 ).execute()
-                raw_result = response.data or []
-            except Exception as db_exc:
-                # ── 3. Guided retry on DB error ─────────────────────────
+                explain_err = explain_resp.data
+            except Exception as explain_exc:
+                explain_err = str(explain_exc)
+
+            if explain_err:
+                last_error = str(explain_err)
+                logger.info("EXPLAIN validation failed, will retry: %s", last_error)
+            else:
+                try:
+                    response = self._sb.rpc(
+                        "execute_kg_query",
+                        {"query_text": sql, "p_user_id": effective_user_id},
+                    ).execute()
+                    raw_result = response.data or []
+                except Exception as db_exc:
+                    last_error = str(db_exc)
+
+            if last_error is not None:
+                # ── 3. Guided retry (max 1 total) ───────────────────────
                 retries = 1
                 retry_prompt = _COMMON_MISTAKES.format(
-                    error=str(db_exc),
+                    error=last_error,
                     question=question,
-                    user_id=user_id,
+                    user_id=effective_user_id,
                 )
-                retry_system = _SYSTEM_PROMPT.replace("{user_id}", user_id)
+                retry_system = _SYSTEM_PROMPT.replace("{user_id}", effective_user_id)
                 sql_raw2 = await asyncio.wait_for(
                     asyncio.to_thread(
                         lambda: client.models.generate_content(
@@ -232,9 +250,10 @@ class NLGraphQuery:
                 sql = _strip_sql_artifacts(sql_raw2)
                 _safety_check(sql)
 
+                # Execute directly (no second EXPLAIN — 1 retry total per spec).
                 response = self._sb.rpc(
                     "execute_kg_query",
-                    {"query_text": sql},
+                    {"query_text": sql, "p_user_id": effective_user_id},
                 ).execute()
                 raw_result = response.data or []
 
@@ -271,5 +290,5 @@ class NLGraphQuery:
         except asyncio.TimeoutError:
             raise NLQueryError(504, "Query timed out. Please try a simpler question.")
         except Exception as exc:
-            logger.error("NL query failed: %s", exc)
-            raise NLQueryError(500, f"Query failed: {exc}") from exc
+            logger.error("NL query execution failed: %s", exc)
+            raise NLQueryError(500, "Query execution failed. Please rephrase and try again.") from exc

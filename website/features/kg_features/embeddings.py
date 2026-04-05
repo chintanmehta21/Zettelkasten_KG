@@ -67,9 +67,11 @@ def generate_embedding(
         response = client.models.embed_content(
             model=_EMBEDDING_MODEL,
             contents=text,
-            config={"task_type": task_type},
+            config={"task_type": task_type, "output_dimensionality": _EMBEDDING_DIMS},
         )
         raw = response.embeddings[0].values
+        if len(raw) != _EMBEDDING_DIMS:
+            logger.warning("Embedding returned %d dims, expected %d", len(raw), _EMBEDDING_DIMS)
         # L2-normalise so cosine similarity == dot product.
         vec = np.array(raw, dtype=np.float64)
         norm = np.linalg.norm(vec)
@@ -114,12 +116,15 @@ def generate_embeddings_batch(
         response = client.models.embed_content(
             model=_EMBEDDING_MODEL,
             contents=texts,
-            config={"task_type": task_type},
+            config={"task_type": task_type, "output_dimensionality": _EMBEDDING_DIMS},
         )
 
         results: list[list[float]] = []
         for emb in response.embeddings:
-            vec = np.array(emb.values, dtype=np.float64)
+            raw = emb.values
+            if len(raw) != _EMBEDDING_DIMS:
+                logger.warning("Embedding returned %d dims, expected %d", len(raw), _EMBEDDING_DIMS)
+            vec = np.array(raw, dtype=np.float64)
             norm = np.linalg.norm(vec)
             if norm > 0:
                 vec = vec / norm
@@ -165,7 +170,7 @@ def find_similar_nodes(
             "match_kg_nodes",
             {
                 "query_embedding": embedding,
-                "match_user_id": user_id,
+                "target_user_id": user_id,
                 "match_threshold": threshold,
                 "match_count": limit,
             },

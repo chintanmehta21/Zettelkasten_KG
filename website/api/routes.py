@@ -15,6 +15,7 @@ from website.api.auth import get_current_user, get_optional_user
 from website.core.pipeline import summarize_url
 from website.core.graph_store import add_node, get_graph
 from website.core.supabase_kg import is_supabase_configured, KGRepository, KGNodeCreate, KGGraph
+from website.features.kg_features.embeddings import find_similar_nodes, generate_embedding
 
 logger = logging.getLogger("website.api")
 
@@ -101,6 +102,25 @@ _RATE_WINDOW = 60  # seconds
 _graph_cache: dict | None = None
 _graph_cache_ts: float = 0
 _GRAPH_CACHE_TTL = 30  # seconds
+
+# TTL cache for distinct entity types per user (schema-drift prevention)
+_EXISTING_TYPES_CACHE: dict[str, tuple[float, list[str]]] = {}
+_EXISTING_TYPES_TTL = 60.0
+
+
+def _get_cached_existing_types(repo: KGRepository, user_id: str) -> list[str]:
+    """Return the user's distinct entity types with a 60s TTL cache."""
+    from uuid import UUID
+    now = time.monotonic()
+    cached = _EXISTING_TYPES_CACHE.get(user_id)
+    if cached and cached[0] > now:
+        return cached[1]
+    try:
+        types_list = repo.get_distinct_entity_types(UUID(user_id))
+    except Exception:
+        types_list = []
+    _EXISTING_TYPES_CACHE[user_id] = (now + _EXISTING_TYPES_TTL, types_list)
+    return types_list
 
 
 def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
@@ -363,7 +383,7 @@ async def graph_query(
         from uuid import UUID
         from website.features.kg_features.nl_query import NLGraphQuery, NLQueryError
 
-        query_engine = NLGraphQuery(repo._client)
+        query_engine = NLGraphQuery(repo._client, user_id=user_id)
         result = await query_engine.ask(body.question, UUID(user_id))
         return result.model_dump()
     except Exception as exc:
@@ -445,36 +465,56 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                 slug = re.sub(r"[^a-z0-9]+", "-", result["title"].lower()).strip("-")[:24].rstrip("-")
                 sb_node_id = f"{prefix}-{slug}"
 
-                node_create = KGNodeCreate(
-                    id=sb_node_id,
-                    name=result["title"],
-                    source_type=result["source_type"],
-                    tags=result.get("tags", []),
-                    url=result["source_url"],
-                    summary=result.get("brief_summary") or result["summary"][:200],
-                )
                 if not repo.node_exists(UUID(user_id), result["source_url"]):
-                    # Generate embedding for the summary (M2)
+                    # Generate embedding BEFORE insert so it goes in one round trip (M2)
+                    emb: list[float] | None = None
                     try:
-                        from website.features.kg_features.embeddings import generate_embedding
                         brief = result.get("brief_summary") or result["summary"][:500]
                         embedding = generate_embedding(brief)
-                        if embedding:
-                            node_create.metadata["embedding_model"] = "gemini-embedding-001"
+                        emb = embedding if embedding else None
                     except Exception as emb_err:
                         logger.warning("Embedding generation failed: %s", emb_err)
-                        embedding = []
+                        emb = None
+
+                    node_metadata: dict = {}
+                    if emb:
+                        node_metadata["embedding_model"] = "gemini-embedding-001"
+
+                    node_create = KGNodeCreate(
+                        id=sb_node_id,
+                        name=result["title"],
+                        source_type=result["source_type"],
+                        tags=result.get("tags", []),
+                        url=result["source_url"],
+                        summary=result.get("brief_summary") or result["summary"][:200],
+                        embedding=emb,
+                        metadata=node_metadata,
+                    )
 
                     repo.add_node(UUID(user_id), node_create)
 
-                    # Store embedding if generated
-                    if embedding:
+                    # Auto-link to semantically similar existing nodes (M2 auto-linking).
+                    if emb:
                         try:
-                            repo._client.table("kg_nodes").update(
-                                {"embedding": embedding}
-                            ).eq("user_id", str(user_id)).eq("id", sb_node_id).execute()
-                        except Exception as emb_store_err:
-                            logger.warning("Embedding storage failed: %s", emb_store_err)
+                            similar = find_similar_nodes(
+                                supabase_client=repo._client,
+                                user_id=user_id,
+                                embedding=emb,
+                                threshold=0.75,
+                                limit=5,  # cap at top 5 to control link density
+                            )
+                            for hit in similar:
+                                hit_id = hit.get("node_id") or hit.get("id")
+                                hit_sim = float(hit.get("similarity") or 0.0)
+                                if hit_id and hit_id != node_create.id and hit_sim >= 0.75:
+                                    repo.add_semantic_link(
+                                        user_id=UUID(user_id),
+                                        source_id=node_create.id,
+                                        target_id=hit_id,
+                                        similarity=hit_sim,
+                                    )
+                        except Exception as exc:
+                            logger.warning("Semantic auto-linking skipped: %s", exc)
 
                     # Entity extraction (M1) — async, non-blocking
                     try:
@@ -483,9 +523,16 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
 
                         async def _extract_entities():
                             try:
+                                # Fetch entity types already used in this user's KG
+                                # (schema-drift prevention, cached 60s).
+                                existing_types = _get_cached_existing_types(repo, user_id)
                                 extractor = EntityExtractor()
                                 brief = result.get("brief_summary") or result["summary"][:500]
-                                extraction = await extractor.extract(brief, result["title"])
+                                extraction = await extractor.extract(
+                                    summary=brief,
+                                    title=result["title"],
+                                    existing_types=existing_types,
+                                )
                                 if extraction.entities:
                                     # Store entities in node metadata
                                     entities_data = [e.model_dump() for e in extraction.entities]

@@ -188,6 +188,12 @@ class KGRepository:
         Returns the created node.  Duplicate node IDs (same user) are
         handled by Supabase's PK constraint — callers should check first
         or handle the conflict.
+
+        Embedding support: ``KGNodeCreate.embedding`` (optional 768-dim
+        vector) is persisted as a first-class column via the same insert
+        payload.  Callers may pass ``embedding=None`` (or omit it) for
+        backward-compatible behavior — ``model_dump(exclude_none=True)``
+        drops the key and the DB default applies.
         """
         clean_tags = [
             _normalize_tag(t) for t in node.tags
@@ -301,6 +307,49 @@ class KGRepository:
                 return None
             raise
 
+    def add_semantic_link(
+        self,
+        user_id: UUID,
+        source_id: str,
+        target_id: str,
+        similarity: float,
+    ) -> bool:
+        """Create a bidirectional semantic link between two nodes based on embedding similarity.
+
+        Args:
+            user_id: Owner user ID (data isolation)
+            source_id: Source node ID
+            target_id: Target node ID
+            similarity: Cosine similarity score (0.0 - 1.0); used to derive link weight
+
+        Returns:
+            True if link was inserted, False if it already exists or insert failed.
+
+        The link is stored with:
+            - relation: "semantic_similarity"
+            - link_type: "semantic"
+            - weight: round(similarity * 10) clamped to 1-10
+            - description: f"Auto-linked (cosine={similarity:.3f})"
+        """
+        if source_id == target_id:
+            return False
+        weight = max(1, min(10, round(similarity * 10)))
+        try:
+            self._client.table("kg_links").insert({
+                "user_id": str(user_id),
+                "source_node_id": source_id,
+                "target_node_id": target_id,
+                "relation": "semantic_similarity",
+                "link_type": "semantic",
+                "weight": weight,
+                "description": f"Auto-linked (cosine={similarity:.3f})",
+            }).execute()
+            return True
+        except Exception as exc:
+            # Unique-constraint violation or transient error; skip silently
+            logger.debug("add_semantic_link skipped (%s -> %s): %s", source_id, target_id, exc)
+            return False
+
     def get_links_for_node(self, user_id: UUID, node_id: str) -> list[KGLink]:
         """Get all links where this node is source or target."""
         source_resp = (
@@ -325,6 +374,40 @@ class KGRepository:
                 seen.add(row["id"])
                 unique.append(KGLink(**row))
         return unique
+
+    # ── Schema-drift helpers ─────────────────────────────────────────────
+
+    def get_distinct_entity_types(
+        self, user_id: UUID, limit_nodes: int = 200
+    ) -> list[str]:
+        """Return the set of entity types already used across recent nodes' metadata.
+
+        Scans kg_nodes.metadata->'entities' JSONB field for up to ``limit_nodes``
+        recent nodes owned by ``user_id``, collects distinct ``.type`` values.
+        Returns empty list on error (graceful degradation; schema-drift
+        prevention is advisory).
+        """
+        try:
+            rows = (
+                self._client.table("kg_nodes")
+                .select("metadata")
+                .eq("user_id", str(user_id))
+                .order("created_at", desc=True)
+                .limit(limit_nodes)
+                .execute()
+                .data or []
+            )
+            types_seen: set[str] = set()
+            for row in rows:
+                entities = ((row.get("metadata") or {}).get("entities") or [])
+                for e in entities:
+                    t = e.get("type")
+                    if t:
+                        types_seen.add(t)
+            return sorted(types_seen)
+        except Exception as exc:
+            logger.debug("get_distinct_entity_types skipped: %s", exc)
+            return []
 
     # ── Graph (full) ─────────────────────────────────────────────────────
 
@@ -566,16 +649,19 @@ class KGRepository:
             logger.warning("shortest_path RPC failed: %s", exc)
             return None
 
-    def top_connected(self, user_id: UUID, limit: int = 20) -> list[dict]:
-        """Most connected nodes via top_connected_nodes RPC."""
+    def top_connected_nodes(self, user_id: UUID, limit: int = 20) -> list[dict]:
+        """Return nodes with highest link count (SQL: top_connected_nodes)."""
         try:
             resp = self._client.rpc("top_connected_nodes", {
                 "p_user_id": str(user_id), "p_limit": limit,
             }).execute()
             return resp.data or []
         except Exception as exc:
-            logger.warning("top_connected RPC failed: %s", exc)
+            logger.warning("top_connected_nodes RPC failed: %s", exc)
             return []
+
+    # Backward-compatible alias
+    top_connected = top_connected_nodes
 
     def isolated_nodes(self, user_id: UUID) -> list[dict]:
         """Nodes with zero links via isolated_nodes RPC."""
@@ -599,13 +685,16 @@ class KGRepository:
             logger.warning("top_tags RPC failed: %s", exc)
             return []
 
-    def similar_by_tags(self, user_id: UUID, node_id: str, limit: int = 10) -> list[dict]:
-        """Nodes sharing most tags via similar_nodes RPC."""
+    def similar_nodes(self, user_id: UUID, node_id: str, limit: int = 10) -> list[dict]:
+        """Return nodes sharing most tags (SQL: similar_nodes)."""
         try:
             resp = self._client.rpc("similar_nodes", {
                 "p_user_id": str(user_id), "p_node_id": node_id, "p_limit": limit,
             }).execute()
             return resp.data or []
         except Exception as exc:
-            logger.warning("similar_by_tags RPC failed: %s", exc)
+            logger.warning("similar_nodes RPC failed: %s", exc)
             return []
+
+    # Backward-compatible alias
+    similar_by_tags = similar_nodes
