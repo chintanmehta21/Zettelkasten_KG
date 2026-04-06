@@ -29,11 +29,7 @@ async def test_extract_entities_from_text(stub_settings):
     """Mock Gemini to return 2 entities + 1 relationship.  Assert the
     result has the expected shape after post-processing.
     """
-    # Build fake Gemini responses for each of the 3 pipeline steps:
-    # analysis, structured, gleaning.
-    analysis_resp = MagicMock()
-    analysis_resp.text = "Found: Python (language), TensorFlow (framework)."
-
+    # Single structured call returns entities + relationships directly.
     structured_payload = (
         '{"entities": ['
         ' {"id": "python", "type": "LANGUAGE", "description": "lang"},'
@@ -46,24 +42,15 @@ async def test_extract_entities_from_text(stub_settings):
     structured_resp = MagicMock()
     structured_resp.text = structured_payload
 
-    # Gleaning returns empty so the loop exits after 1 iteration.
-    glean_resp = MagicMock()
-    glean_resp.text = '{"entities": [], "relationships": []}'
-
     # pool.generate_content is async and returns (response, model, key_idx)
     async def fake_generate(*args, **kwargs):
-        return fake_generate._responses.pop(0)
-    fake_generate._responses = [
-        (analysis_resp, "gemini-2.5-flash", 0),
-        (structured_resp, "gemini-2.5-flash", 0),
-        (glean_resp, "gemini-2.5-flash", 0),
-    ]
+        return (structured_resp, "gemini-2.5-flash", 0)
 
     fake_pool = MagicMock()
     fake_pool.generate_content = fake_generate
 
     with patch.object(ext_mod, "get_key_pool", return_value=fake_pool):
-        extractor = EntityExtractor(ExtractionConfig(max_gleanings=1))
+        extractor = EntityExtractor(ExtractionConfig(max_gleanings=0))
         result = await extractor.extract(
             summary="Python is used by TensorFlow.",
             title="ML Article",

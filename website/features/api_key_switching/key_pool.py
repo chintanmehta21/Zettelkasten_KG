@@ -6,11 +6,9 @@ tracking.  Provides two entry points:
   - generate_content() — for summarization, NL query, entity extraction
   - embed_content()    — for embedding generation (single model, key rotation)
 
-Traversal order is key-first: all keys are tried for the best model before
-falling back to the next model tier.  This maximizes summary quality.
-
-Cooldown state is global (singleton), so all consumers — including per-request
-web pipeline instances — share the same rate-limit awareness.
+Traversal order: last-successful key first (fast path), then key-first
+across model tiers.  Cooldowns are short (10s) since Gemini rate limits
+reset per-minute.
 """
 
 from __future__ import annotations
@@ -18,6 +16,7 @@ from __future__ import annotations
 import logging
 import time
 
+import httpx
 from google import genai
 from google.genai.errors import ClientError
 
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ────────────────────────────────────────────────────────────────
 
 _MAX_KEYS = 10
-_RATE_LIMIT_COOLDOWN_SECS = 60
+_RATE_LIMIT_COOLDOWN_SECS = 10  # Short cooldown; Gemini resets per-minute
 
 _GENERATIVE_MODEL_CHAIN = [
     "gemini-2.5-flash",
@@ -34,6 +33,9 @@ _GENERATIVE_MODEL_CHAIN = [
 ]
 
 _EMBEDDING_MODEL = "gemini-embedding-001"
+
+# Connection/read timeouts to prevent hanging on slow Gemini responses
+_HTTP_TIMEOUT = httpx.Timeout(connect=5.0, read=25.0, write=5.0, pool=5.0)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,22 +77,40 @@ class GeminiKeyPool:
         self._clients: dict[int, genai.Client] = {}
         # (key_index, model_name) → cooldown expiry (monotonic timestamp)
         self._cooldowns: dict[tuple[int, str], float] = {}
+        # Track last successful (key_index, model) for fast-path
+        self._last_success_gen: tuple[int, str] | None = None
+        self._last_success_emb: int | None = None
 
     # ── Client management ────────────────────────────────────────────
 
     def _get_client(self, key_index: int) -> genai.Client:
         """Return (lazily create) the genai.Client for key at *key_index*."""
         if key_index not in self._clients:
-            self._clients[key_index] = genai.Client(api_key=self._keys[key_index])
+            http_client = httpx.Client(timeout=_HTTP_TIMEOUT)
+            async_http_client = httpx.AsyncClient(timeout=_HTTP_TIMEOUT)
+            self._clients[key_index] = genai.Client(
+                api_key=self._keys[key_index],
+                http_options={"timeout": 25_000},  # 25s in ms
+            )
         return self._clients[key_index]
 
     # ── Cooldown management ──────────────────────────────────────────
 
     def _mark_cooldown(self, key_index: int, model: str) -> None:
-        """Put (key_index, model) on cooldown for 60 seconds."""
+        """Put (key_index, model) on cooldown."""
         self._cooldowns[(key_index, model)] = (
             time.monotonic() + _RATE_LIMIT_COOLDOWN_SECS
         )
+
+    def _is_on_cooldown(self, key_index: int, model: str) -> bool:
+        """Check if a slot is on cooldown without full purge."""
+        exp = self._cooldowns.get((key_index, model))
+        if exp is None:
+            return False
+        if exp <= time.monotonic():
+            del self._cooldowns[(key_index, model)]
+            return False
+        return True
 
     def _purge_expired(self) -> None:
         """Remove expired cooldown entries."""
@@ -107,8 +127,8 @@ class GeminiKeyPool:
     ) -> list[tuple[int, str]]:
         """Build the (key_index, model) attempt chain.
 
-        Key-first traversal: for each model tier, try all keys before
-        moving to the next model.
+        Fast path: if the last successful slot is still available, put it first.
+        Then key-first traversal for remaining slots.
         """
         self._purge_expired()
 
@@ -135,6 +155,11 @@ class GeminiKeyPool:
             logger.warning("All key/model slots on cooldown — retrying full chain")
             return full_chain
 
+        # Fast path: promote last-successful slot to front
+        if self._last_success_gen and self._last_success_gen in filtered:
+            filtered.remove(self._last_success_gen)
+            filtered.insert(0, self._last_success_gen)
+
         return filtered
 
     def _build_embedding_chain(self) -> list[tuple[int, str]]:
@@ -151,6 +176,13 @@ class GeminiKeyPool:
         if not filtered:
             logger.warning("All embedding key slots on cooldown — retrying full chain")
             return full_chain
+
+        # Fast path: promote last-successful key to front
+        if self._last_success_emb is not None:
+            target = (self._last_success_emb, _EMBEDDING_MODEL)
+            if target in filtered:
+                filtered.remove(target)
+                filtered.insert(0, target)
 
         return filtered
 
@@ -180,6 +212,7 @@ class GeminiKeyPool:
                     contents=contents,
                     config=config or {},
                 )
+                self._last_success_gen = (key_index, model)
                 return response, model, key_index
             except Exception as exc:
                 last_exc = exc
@@ -216,6 +249,7 @@ class GeminiKeyPool:
                     contents=contents,
                     config=config or {},
                 )
+                self._last_success_emb = key_index
                 return response
             except Exception as exc:
                 last_exc = exc

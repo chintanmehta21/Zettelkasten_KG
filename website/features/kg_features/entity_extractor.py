@@ -1,12 +1,11 @@
 """M1 — Entity Extraction via Gemini structured output.
 
 Extracts named entities and their relationships from summarised KG node
-content.  Uses a multi-step pipeline:
+content.  Uses a streamlined pipeline:
 
-1. Free-form analysis (grounded — no hallucinated entities).
-2. Structured JSON extraction via ``response_mime_type``.
-3. Optional gleaning loop to catch missed entities.
-4. Post-processing: dedup, normalisation, type validation.
+1. Single structured JSON extraction (analysis + extraction in one call).
+2. Optional gleaning loop to catch missed entities.
+3. Post-processing: dedup, normalisation, type validation.
 """
 
 from __future__ import annotations
@@ -73,13 +72,13 @@ class ExtractionConfig:
 
 # ── Prompts ─────────────────────────────────────────────────────────────────
 
-_ANALYSIS_PROMPT = """\
-You are an expert knowledge-graph builder.  Analyse the following content
-and identify ALL explicitly mentioned entities and relationships.
+# Single-call prompt: combines analysis + structured extraction into one step.
+_EXTRACT_PROMPT = """\
+You are an expert knowledge-graph builder.  Extract ALL explicitly mentioned
+entities and relationships from the content below.
 
-GROUNDING RULE: Do NOT add any entity or relationship that is not
-explicitly mentioned in the text.  Every entity must have a direct textual
-basis.  If you are unsure, leave it out.
+GROUNDING RULE: Do NOT add any entity or relationship that is not explicitly
+mentioned in the text.  Every entity must have a direct textual basis.
 
 Allowed entity types: {entity_types}
 Allowed relationship types: {relationship_types}
@@ -89,17 +88,21 @@ Input: "React Compiler, developed by Andrew Clark and the Meta team, is an
 optimizing compiler that automatically memoizes React components. It uses
 MLIR under the hood and is inspired by the Forget framework."
 
-Expected entities:
-- React Compiler (TECHNOLOGY)
-- Andrew Clark (PERSON)
-- Meta (ORGANIZATION)
-- MLIR (FRAMEWORK)
-- Forget (FRAMEWORK)
-
-Expected relationships:
-- React Compiler CREATED_BY Meta
-- React Compiler USES MLIR
-- React Compiler INSPIRED_BY Forget
+Expected output:
+{{
+  "entities": [
+    {{"id": "react_compiler", "type": "TECHNOLOGY", "description": "Optimizing compiler for React"}},
+    {{"id": "andrew_clark", "type": "PERSON", "description": "Developer at Meta"}},
+    {{"id": "meta", "type": "ORGANIZATION", "description": "Tech company"}},
+    {{"id": "mlir", "type": "FRAMEWORK", "description": "Compiler infrastructure"}},
+    {{"id": "forget", "type": "FRAMEWORK", "description": "Inspiration for React Compiler"}}
+  ],
+  "relationships": [
+    {{"source": "react_compiler", "target": "meta", "type": "CREATED_BY", "strength": 8}},
+    {{"source": "react_compiler", "target": "mlir", "type": "USES", "strength": 7}},
+    {{"source": "react_compiler", "target": "forget", "type": "INSPIRED_BY", "strength": 6}}
+  ]
+}}
 
 ---
 Title: {title}
@@ -107,20 +110,8 @@ Title: {title}
 {summary}
 ---
 
-List the entities and relationships you found in free-form text.
-"""
-
-_STRUCTURED_PROMPT = """\
-Given this analysis, produce a JSON object matching the schema below.
-Only include entities and relationships that were identified in the
-analysis.  Do NOT invent new ones.
-
-Schema:
-{schema}
-
-Analysis:
-{analysis}
-"""
+Return a JSON object with "entities" and "relationships" arrays.
+{type_hint}"""
 
 _GLEANING_PROMPT_MULTI_TURN = """Review the original text one more time. Are there any entities \
 or relationships you missed in your previous extraction? If yes, return ONLY the NEW ones as \
@@ -147,18 +138,13 @@ def _deduplicate_entities(
     embed_fn: Callable[[list[str]], list[list[float]]] | None,
     threshold: float = 0.90,
 ) -> list[ExtractedEntity]:
-    """Remove near-duplicate entities using cosine similarity.
-
-    Two entities are considered duplicates only if they share the same
-    ``type`` AND their name embeddings exceed *threshold*.
-    """
+    """Remove near-duplicate entities using cosine similarity."""
     if not embed_fn or len(entities) <= 1:
         return entities
 
     texts = [e.id for e in entities]
     embeddings = embed_fn(texts)
 
-    # If embedding failed, return as-is.
     if not embeddings or any(len(v) == 0 for v in embeddings):
         return entities
 
@@ -169,7 +155,6 @@ def _deduplicate_entities(
         vec = np.array(vec_list, dtype=np.float64)
         is_dup = False
         for kept_ent, kept_vec in zip(keep, keep_vecs):
-            # Type-matching guard: only dedup within the same type.
             if entity.type != kept_ent.type:
                 continue
             sim = float(np.dot(vec, kept_vec))
@@ -202,7 +187,7 @@ class EntityExtractor:
         title: str = "",
         existing_types: list[str] | None = None,
     ) -> ExtractionResult:
-        """Run the full extraction pipeline.
+        """Run the extraction pipeline.
 
         Returns an empty :class:`ExtractionResult` on any failure so the
         caller never has to handle exceptions.
@@ -217,102 +202,78 @@ class EntityExtractor:
         entity_types = ", ".join(self.config.allowed_entity_types)
         relationship_types = ", ".join(self.config.allowed_relationship_types)
 
-        schema = ExtractionResult.model_json_schema()
+        type_hint = ""
+        if existing_types:
+            type_hint = (
+                f"\nTYPES ALREADY USED IN THIS KG: {', '.join(sorted(existing_types))}\n"
+                "Prefer these over creating new ones when the meaning is the same.\n"
+            )
 
         try:
-            # ── Step 1: Free-form analysis ──────────────────────────────
-            analysis_prompt = _ANALYSIS_PROMPT.format(
+            # ── Single-call extraction (merged analysis + structured) ──
+            extract_prompt = _EXTRACT_PROMPT.format(
                 entity_types=entity_types,
                 relationship_types=relationship_types,
                 title=title,
                 summary=summary,
+                type_hint=type_hint,
             )
-            analysis_response, _, _ = await asyncio.wait_for(
+            extract_response, _, _ = await asyncio.wait_for(
                 pool.generate_content(
-                    analysis_prompt,
-                    starting_model=model,
-                    label="Entity analysis",
-                ),
-                timeout=30.0,
-            )
-            analysis_text = analysis_response.text
-
-            # ── Step 2: Structured JSON extraction ──────────────────────
-            type_hint = ""
-            if existing_types:
-                type_hint = (
-                    f"\nTYPES ALREADY USED IN THIS KG: {', '.join(sorted(existing_types))}\n"
-                    "Prefer these over creating new ones when the meaning is the same.\n"
-                )
-            structured_prompt = _STRUCTURED_PROMPT.format(
-                schema=schema,
-                analysis=analysis_text,
-            ) + type_hint
-
-            structured_response, _, _ = await asyncio.wait_for(
-                pool.generate_content(
-                    structured_prompt,
+                    extract_prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=ExtractionResult,
                     ),
                     starting_model=model,
-                    label="Entity structured",
+                    label="Entity extraction",
                 ),
-                timeout=30.0,
+                timeout=15.0,
             )
-            structured_text = structured_response.text
+            result = ExtractionResult.model_validate_json(extract_response.text)
 
-            result = ExtractionResult.model_validate_json(structured_text)
-
-            # ── Step 3: Multi-turn gleaning loop ────────────────────────
-            # Build conversation history so the model sees its own prior
-            # turns (matches GraphRAG's multi-turn gleaning approach).
-            conversation_contents = [
-                types.Content(role="user", parts=[types.Part(text=analysis_prompt)]),
-                types.Content(role="model", parts=[types.Part(text=analysis_text)]),
-                types.Content(role="user", parts=[types.Part(text=structured_prompt)]),
-                types.Content(role="model", parts=[types.Part(text=structured_text)]),
-            ]
-
-            for _glean_round in range(max_gleanings):
-                conversation_contents.append(
-                    types.Content(
-                        role="user",
-                        parts=[types.Part(text=_GLEANING_PROMPT_MULTI_TURN)],
-                    )
-                )
-                glean_response, _, _ = await asyncio.wait_for(
-                    pool.generate_content(
-                        conversation_contents,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=ExtractionResult,
-                        ),
-                        starting_model=model,
-                        label="Entity gleaning",
-                    ),
-                    timeout=30.0,
-                )
-                glean_text = glean_response.text
-
-                glean_result = ExtractionResult.model_validate_json(glean_text)
-
-                # Zero-new-entities termination (check against existing IDs).
-                existing_ids = {e.id for e in result.entities}
-                new_entities = [
-                    e for e in glean_result.entities if e.id not in existing_ids
+            # ── Optional gleaning (skip if already found enough) ──────���
+            if max_gleanings > 0 and len(result.entities) < 3:
+                conversation_contents = [
+                    types.Content(role="user", parts=[types.Part(text=extract_prompt)]),
+                    types.Content(role="model", parts=[types.Part(text=extract_response.text)]),
                 ]
-                if not new_entities:
-                    break
 
-                result.entities.extend(new_entities)
-                result.relationships.extend(glean_result.relationships)
+                for _glean_round in range(max_gleanings):
+                    conversation_contents.append(
+                        types.Content(
+                            role="user",
+                            parts=[types.Part(text=_GLEANING_PROMPT_MULTI_TURN)],
+                        )
+                    )
+                    glean_response, _, _ = await asyncio.wait_for(
+                        pool.generate_content(
+                            conversation_contents,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                response_schema=ExtractionResult,
+                            ),
+                            starting_model=model,
+                            label="Entity gleaning",
+                        ),
+                        timeout=15.0,
+                    )
+                    glean_text = glean_response.text
+                    glean_result = ExtractionResult.model_validate_json(glean_text)
 
-                # Append model response for next iteration's context.
-                conversation_contents.append(
-                    types.Content(role="model", parts=[types.Part(text=glean_text)])
-                )
+                    existing_ids = {e.id for e in result.entities}
+                    new_entities = [
+                        e for e in glean_result.entities if e.id not in existing_ids
+                    ]
+                    if not new_entities:
+                        break
+
+                    result.entities.extend(new_entities)
+                    result.relationships.extend(glean_result.relationships)
+
+                    conversation_contents.append(
+                        types.Content(role="model", parts=[types.Part(text=glean_text)])
+                    )
 
             # ── Post-processing ─────────────────────────────────────────
             result = self._postprocess(result)
@@ -331,7 +292,6 @@ class EntityExtractor:
         allowed_entity_set = {t.upper() for t in self.config.allowed_entity_types}
         allowed_rel_set = {t.upper() for t in self.config.allowed_relationship_types}
 
-        # Normalise entity IDs and filter invalid types.
         normalised_entities: list[ExtractedEntity] = []
         for e in result.entities:
             e.id = _normalize_id(e.id)
@@ -339,7 +299,6 @@ class EntityExtractor:
             if e.type in allowed_entity_set and e.id:
                 normalised_entities.append(e)
 
-        # Deduplicate entities.
         if self.config.enable_entity_dedup:
             normalised_entities = _deduplicate_entities(
                 normalised_entities,
@@ -347,10 +306,8 @@ class EntityExtractor:
                 self.config.dedup_similarity_threshold,
             )
 
-        # Build a set of valid entity IDs for relationship validation.
         valid_ids = {e.id for e in normalised_entities}
 
-        # Normalise relationships and filter.
         normalised_rels: list[ExtractedRelationship] = []
         for r in result.relationships:
             r.source = _normalize_id(r.source)

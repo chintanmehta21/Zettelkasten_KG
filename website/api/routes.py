@@ -592,7 +592,7 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                                         title=result["title"],
                                         existing_types=existing_types,
                                     ),
-                                    timeout=90.0,
+                                    timeout=40.0,
                                 )
                                 if extraction.entities:
                                     entities_data = [e.model_dump() for e in extraction.entities]
