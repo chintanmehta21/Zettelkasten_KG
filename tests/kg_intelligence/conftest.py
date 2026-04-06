@@ -52,7 +52,7 @@ def _mk_node(node_id: str, name: str | None = None) -> KGGraphNode:
     return KGGraphNode(
         id=node_id,
         name=name or node_id,
-        group="generic",
+        group="web",
         summary="",
         tags=[],
         url=f"https://example.com/{node_id}",

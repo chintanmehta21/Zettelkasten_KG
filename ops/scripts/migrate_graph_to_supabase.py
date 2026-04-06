@@ -41,7 +41,8 @@ GROUP_TO_SOURCE = {
     "github": "github",
     "substack": "substack",
     "medium": "medium",
-    "generic": "generic",
+    "generic": "web",
+    "web": "web",
 }
 
 
@@ -144,7 +145,7 @@ def migrate_data() -> dict:
     print(f"[..] Inserting {len(graph['nodes'])} nodes...")
 
     for node in graph["nodes"]:
-        source_type = GROUP_TO_SOURCE.get(node["group"], "generic")
+        source_type = GROUP_TO_SOURCE.get(node["group"], "web")
 
         payload = {
             "id": node["id"],
