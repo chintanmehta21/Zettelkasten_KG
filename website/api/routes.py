@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import re
 import time
 from collections import defaultdict
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -106,6 +109,94 @@ _GRAPH_CACHE_TTL = 30  # seconds
 # TTL cache for distinct entity types per user (schema-drift prevention)
 _EXISTING_TYPES_CACHE: dict[str, tuple[float, list[str]]] = {}
 _EXISTING_TYPES_TTL = 60.0
+
+
+def _normalize_summary_text(value: str | None) -> str:
+    return (
+        str(value or "")
+        .replace("\r\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\r", "\r")
+        .replace("\\t", "\t")
+        .replace('\\"', '"')
+        .strip()
+    )
+
+
+def _extract_summary_field_by_regex(text: str, field_name: str) -> str:
+    pattern = re.compile(rf'"{re.escape(field_name)}"\s*:\s*"((?:\\.|[^"\\])*)"', re.IGNORECASE | re.DOTALL)
+    match = pattern.search(text)
+    if not match:
+        return ""
+    return _normalize_summary_text(match.group(1))
+
+
+def _try_parse_summary_object(raw_text: str | None) -> dict | None:
+    cleaned = str(raw_text or "").strip()
+    if not cleaned:
+        return None
+
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^json\s*", "", cleaned, flags=re.IGNORECASE).strip()
+
+    candidates = [cleaned]
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(cleaned[start : end + 1])
+
+    for candidate in candidates:
+        candidate = candidate.strip()
+        if not candidate:
+            continue
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, str):
+                nested = json.loads(parsed)
+                if isinstance(nested, dict):
+                    return nested
+        except Exception:
+            continue
+
+    regex_brief = _extract_summary_field_by_regex(cleaned, "brief_summary")
+    regex_detailed = _extract_summary_field_by_regex(cleaned, "detailed_summary")
+    if regex_brief or regex_detailed:
+        return {
+            "brief_summary": regex_brief,
+            "detailed_summary": regex_detailed,
+        }
+
+    return None
+
+
+def _extract_summary_parts(raw_summary: str | None, fallback_brief: str | None = None) -> tuple[str, str]:
+    fallback_brief_text = _normalize_summary_text(fallback_brief)
+    parsed = _try_parse_summary_object(raw_summary)
+    if parsed:
+        brief = _normalize_summary_text(
+            parsed.get("brief_summary")
+            or parsed.get("briefSummary")
+            or parsed.get("one_line_summary")
+            or parsed.get("summary")
+        )
+        detailed = _normalize_summary_text(
+            parsed.get("detailed_summary")
+            or parsed.get("detailedSummary")
+            or parsed.get("summary")
+        )
+        if brief or detailed:
+            resolved_brief = brief or detailed or fallback_brief_text
+            resolved_detailed = detailed or brief or fallback_brief_text
+            return (
+                resolved_brief or "No summary available for this zettel.",
+                resolved_detailed or resolved_brief or "No summary available for this zettel.",
+            )
+
+    fallback = fallback_brief_text or _normalize_summary_text(raw_summary) or "No summary available for this zettel."
+    return fallback, fallback
 
 
 def _get_cached_existing_types(repo: KGRepository, user_id: str) -> list[str]:
@@ -481,6 +572,15 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
 
     try:
         result = await summarize_url(body.url)
+        captured_on = date.today()
+        brief_summary, detailed_summary = _extract_summary_parts(
+            result.get("summary", ""),
+            result.get("brief_summary", ""),
+        )
+        result["brief_summary"] = brief_summary
+        result["detailed_summary"] = detailed_summary
+        result["summary"] = detailed_summary
+        result["captured_at"] = captured_on.isoformat()
 
         # Add to knowledge graph — file store (always) + Supabase (if configured)
         try:
@@ -500,7 +600,6 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
         if sb:
             repo, user_id = sb
             try:
-                import re
                 from uuid import UUID
                 from website.core.graph_store import _SOURCE_PREFIX
 
@@ -534,6 +633,7 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                         tags=result.get("tags", []),
                         url=result["source_url"],
                         summary=result.get("brief_summary") or result["summary"][:200],
+                        node_date=captured_on,
                         embedding=emb,
                         metadata=node_metadata,
                     )

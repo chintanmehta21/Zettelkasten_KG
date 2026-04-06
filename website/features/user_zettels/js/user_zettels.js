@@ -235,7 +235,7 @@
       tags: uniqueStrings(cleanTags),
       normalizedTags: uniqueStrings(cleanTags.map(function (tag) { return tag.toLowerCase(); })),
       url: (node.url || '').trim(),
-      date: (node.date || '').trim(),
+      date: normalizeCaptureDate(node.date || node.node_date || node.captured_at || node.created_at || ''),
       source: source,
       sourceLabel: sourceLabel(source),
       summaryLength: summaryParts.detailed.length || summaryParts.brief.length
@@ -755,7 +755,7 @@
         tags: Array.isArray(result.tags) ? result.tags : [],
         url: result.source_url || url,
         group: result.source_type || 'web',
-        date: new Date().toISOString().slice(0, 10)
+        date: result.captured_at || new Date().toISOString().slice(0, 10)
       });
 
       upsertNodeAtTop(newNode);
@@ -1248,8 +1248,9 @@
   }
 
   function extractSummaryParts(rawSummary) {
-    var rawText = normalizeSummaryText(rawSummary || '');
-    var parsed = tryParseSummaryObject(rawText);
+    var rawInput = rawSummary == null ? '' : String(rawSummary);
+    var rawText = normalizeSummaryText(rawInput);
+    var parsed = tryParseSummaryObject(rawInput);
 
     if (parsed) {
       var briefFromParsed = normalizeSummaryText(
@@ -1274,7 +1275,9 @@
   }
 
   function tryParseSummaryObject(rawText) {
-    var cleaned = normalizeSummaryText(rawText || '');
+    var cleaned = String(rawText || '')
+      .replace(/\r\n/g, '\n')
+      .trim();
     if (!cleaned) return null;
 
     cleaned = cleaned
@@ -1318,20 +1321,24 @@
   }
 
   function extractSummaryFieldByRegex(text, fieldName) {
-    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|})', 'i');
+    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i');
     var match = text.match(pattern);
     if (!match || !match[1]) return '';
     return normalizeSummaryText(match[1]);
   }
 
-  function normalizeSummaryText(value) {
-    return String(value || '')
+  function normalizeSummaryText(value, options) {
+    var opts = options || {};
+    var text = String(value || '')
       .replace(/\r\n/g, '\n')
       .replace(/\\n/g, '\n')
       .replace(/\\r/g, '\r')
       .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"')
       .trim();
+    if (!opts.preserveEscapedQuotes) {
+      text = text.replace(/\\"/g, '"');
+    }
+    return text;
   }
 
   function truncate(value, limit) {
@@ -1347,6 +1354,17 @@
       month: 'short',
       day: '2-digit'
     }).format(parsed);
+  }
+
+  function normalizeCaptureDate(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    var parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+    var match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : '';
   }
 
   function titleCase(value) {
