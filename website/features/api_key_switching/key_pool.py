@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import time
 
-import httpx
 from google import genai
 from google.genai.errors import ClientError
 
@@ -33,9 +32,6 @@ _GENERATIVE_MODEL_CHAIN = [
 ]
 
 _EMBEDDING_MODEL = "gemini-embedding-001"
-
-# Connection/read timeouts to prevent hanging on slow Gemini responses
-_HTTP_TIMEOUT = httpx.Timeout(connect=5.0, read=25.0, write=5.0, pool=5.0)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,17 +73,15 @@ class GeminiKeyPool:
         self._clients: dict[int, genai.Client] = {}
         # (key_index, model_name) → cooldown expiry (monotonic timestamp)
         self._cooldowns: dict[tuple[int, str], float] = {}
-        # Track last successful (key_index, model) for fast-path
-        self._last_success_gen: tuple[int, str] | None = None
-        self._last_success_emb: int | None = None
+        # Round-robin counters — spread load across all keys evenly
+        self._next_gen_key: int = 0
+        self._next_emb_key: int = 0
 
     # ── Client management ────────────────────────────────────────────
 
     def _get_client(self, key_index: int) -> genai.Client:
         """Return (lazily create) the genai.Client for key at *key_index*."""
         if key_index not in self._clients:
-            http_client = httpx.Client(timeout=_HTTP_TIMEOUT)
-            async_http_client = httpx.AsyncClient(timeout=_HTTP_TIMEOUT)
             self._clients[key_index] = genai.Client(
                 api_key=self._keys[key_index],
                 http_options={"timeout": 25_000},  # 25s in ms
@@ -127,12 +121,13 @@ class GeminiKeyPool:
     ) -> list[tuple[int, str]]:
         """Build the (key_index, model) attempt chain.
 
-        Fast path: if the last successful slot is still available, put it first.
-        Then key-first traversal for remaining slots.
+        Round-robin: starts from the next key in rotation so load is
+        spread evenly across all keys (prevents pinning to one paid key).
+        Key-first traversal: all keys tried per model before fallback.
         """
         self._purge_expired()
+        n = len(self._keys)
 
-        # Build model order: starting model first, then remaining.
         if starting_model and starting_model in _GENERATIVE_MODEL_CHAIN:
             models = [starting_model] + [
                 m for m in _GENERATIVE_MODEL_CHAIN if m != starting_model
@@ -140,9 +135,9 @@ class GeminiKeyPool:
         else:
             models = list(_GENERATIVE_MODEL_CHAIN)
 
-        key_indices = list(range(len(self._keys)))
+        # Rotate key order starting from _next_gen_key
+        key_indices = [(self._next_gen_key + i) % n for i in range(n)]
 
-        # Key-first: for each model, try all keys.
         full_chain = [
             (ki, model) for model in models for ki in key_indices
         ]
@@ -155,18 +150,14 @@ class GeminiKeyPool:
             logger.warning("All key/model slots on cooldown — retrying full chain")
             return full_chain
 
-        # Fast path: promote last-successful slot to front
-        if self._last_success_gen and self._last_success_gen in filtered:
-            filtered.remove(self._last_success_gen)
-            filtered.insert(0, self._last_success_gen)
-
         return filtered
 
     def _build_embedding_chain(self) -> list[tuple[int, str]]:
-        """Build the embedding attempt chain (key rotation only, single model)."""
+        """Build the embedding attempt chain with round-robin key rotation."""
         self._purge_expired()
+        n = len(self._keys)
 
-        key_indices = list(range(len(self._keys)))
+        key_indices = [(self._next_emb_key + i) % n for i in range(n)]
         full_chain = [(ki, _EMBEDDING_MODEL) for ki in key_indices]
 
         filtered = [
@@ -176,13 +167,6 @@ class GeminiKeyPool:
         if not filtered:
             logger.warning("All embedding key slots on cooldown — retrying full chain")
             return full_chain
-
-        # Fast path: promote last-successful key to front
-        if self._last_success_emb is not None:
-            target = (self._last_success_emb, _EMBEDDING_MODEL)
-            if target in filtered:
-                filtered.remove(target)
-                filtered.insert(0, target)
 
         return filtered
 
@@ -212,7 +196,8 @@ class GeminiKeyPool:
                     contents=contents,
                     config=config or {},
                 )
-                self._last_success_gen = (key_index, model)
+                # Advance round-robin so next call starts from a different key
+                self._next_gen_key = (key_index + 1) % len(self._keys)
                 return response, model, key_index
             except Exception as exc:
                 last_exc = exc
@@ -249,7 +234,7 @@ class GeminiKeyPool:
                     contents=contents,
                     config=config or {},
                 )
-                self._last_success_emb = key_index
+                self._next_emb_key = (key_index + 1) % len(self._keys)
                 return response
             except Exception as exc:
                 last_exc = exc
