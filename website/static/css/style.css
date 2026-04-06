@@ -868,6 +868,12 @@ a:hover {
     fill: currentColor;
 }
 
+.footer-icon:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.22), 0 0 0 4px rgba(20, 184, 166, 0.08);
+    border-radius: 6px;
+}
+
 /* ── Utilities ────────────────────────────────────────────────────── */
 
 .hidden {

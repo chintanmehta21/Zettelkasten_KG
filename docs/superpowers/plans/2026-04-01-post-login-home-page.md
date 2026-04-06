@@ -4,7 +4,7 @@
 
 **Goal:** Build a post-login dashboard at `/home` with user avatar, zettel vault, KG link, and avatar management — all in the existing dark theme.
 
-**Architecture:** Self-contained feature in `website/features/home/` following existing pattern (own HTML/CSS/JS). Client-side auth check via `/api/me`. One new API endpoint (`PUT /api/me/avatar`). 30 pre-generated DiceBear SVG avatars stored in `website/artifacts/avatars/`.
+**Architecture:** Self-contained feature in `website/features/user_home/` following existing pattern (own HTML/CSS/JS). Client-side auth check via `/api/me`. One new API endpoint (`PUT /api/me/avatar`). 30 pre-generated DiceBear SVG avatars stored in `website/artifacts/avatars/`.
 
 **Tech Stack:** Python/FastAPI (backend route + API), vanilla HTML/CSS/JS (frontend), Supabase (auth + data), DiceBear API (avatar generation)
 
@@ -192,11 +192,11 @@ Note: Mobile redirect goes to `/m/` for now (mobile home page is out of scope). 
 Create the directory structure so the static mounts don't fail on app startup:
 
 ```bash
-mkdir -p website/features/home/css
-mkdir -p website/features/home/js
-touch website/features/home/css/home.css
-touch website/features/home/js/home.js
-echo "<!DOCTYPE html><html><body>Home placeholder</body></html>" > website/features/home/index.html
+mkdir -p website/features/user_home/css
+mkdir -p website/features/user_home/js
+touch website/features/user_home/css/home.css
+touch website/features/user_home/js/home.js
+echo "<!DOCTYPE html><html><body>Home placeholder</body></html>" > website/features/user_home/index.html
 ```
 
 - [ ] **Step 4: Verify app starts**
@@ -207,7 +207,7 @@ Expected: `OK`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add website/app.py website/features/home/
+git add website/app.py website/features/user_home/
 git commit -m "feat: add /home route and feature directory"
 ```
 
@@ -289,7 +289,7 @@ git commit -m "feat: redirect to /home after login"
 ### Task 5: Build Home Page HTML
 
 **Files:**
-- Create: `website/features/home/index.html`
+- Create: `website/features/user_home/index.html`
 
 - [ ] **Step 1: Write the complete home page HTML**
 
@@ -448,7 +448,7 @@ git commit -m "feat: redirect to /home after login"
 - [ ] **Step 2: Commit**
 
 ```bash
-git add website/features/home/index.html
+git add website/features/user_home/index.html
 git commit -m "feat: home page HTML structure"
 ```
 
@@ -457,7 +457,7 @@ git commit -m "feat: home page HTML structure"
 ### Task 6: Build Home Page CSS
 
 **Files:**
-- Create: `website/features/home/css/home.css`
+- Create: `website/features/user_home/css/home.css`
 
 - [ ] **Step 1: Write the complete home page CSS**
 
@@ -1173,7 +1173,7 @@ git commit -m "feat: home page HTML structure"
 - [ ] **Step 2: Commit**
 
 ```bash
-git add website/features/home/css/home.css
+git add website/features/user_home/css/home.css
 git commit -m "feat: home page CSS with vault, cards, avatar, KG button"
 ```
 
@@ -1182,7 +1182,7 @@ git commit -m "feat: home page CSS with vault, cards, avatar, KG button"
 ### Task 7: Build Home Page JavaScript
 
 **Files:**
-- Create: `website/features/home/js/home.js`
+- Create: `website/features/user_home/js/home.js`
 
 - [ ] **Step 1: Write the complete home page JavaScript**
 
@@ -1594,7 +1594,7 @@ git commit -m "feat: home page CSS with vault, cards, avatar, KG button"
 - [ ] **Step 2: Commit**
 
 ```bash
-git add website/features/home/js/home.js
+git add website/features/user_home/js/home.js
 git commit -m "feat: home page JS — auth, avatar, zettels, add-zettel"
 ```
 
@@ -1603,9 +1603,9 @@ git commit -m "feat: home page JS — auth, avatar, zettels, add-zettel"
 ### Task 8: Integration Testing and Polish
 
 **Files:**
-- Modify: `website/features/home/index.html` (if needed)
-- Modify: `website/features/home/css/home.css` (if needed)
-- Modify: `website/features/home/js/home.js` (if needed)
+- Modify: `website/features/user_home/index.html` (if needed)
+- Modify: `website/features/user_home/css/home.css` (if needed)
+- Modify: `website/features/user_home/js/home.js` (if needed)
 
 - [ ] **Step 1: Verify full app starts with no import errors**
 
@@ -1629,13 +1629,13 @@ Check that `home/index.html` references:
 - `/home/css/home.css` (home-specific styles)
 - `/home/js/home.js` (home page logic)
 
-Run: `grep -c 'style.css\|home.css\|home.js' website/features/home/index.html`
+Run: `grep -c 'style.css\|home.css\|home.js' website/features/user_home/index.html`
 Expected: `3`
 
 - [ ] **Step 5: Final commit**
 
 ```bash
-git add -A website/features/home/ website/api/routes.py website/app.py website/core/supabase_kg/repository.py website/features/user_auth/
+git add -A website/features/user_home/ website/api/routes.py website/app.py website/core/supabase_kg/repository.py website/features/user_auth/
 git commit -m "feat: complete post-login home page with vault, avatars, KG link"
 ```
 
@@ -1663,6 +1663,8 @@ Tasks 1–4 are independent and can run in parallel. Tasks 5–7 are sequential 
 | `website/app.py` | Modify | Add `/home` route + static mounts |
 | `website/features/user_auth/js/auth.js` | Modify | Redirect to `/home` after login |
 | `website/features/user_auth/callback.html` | Modify | Default return path → `/home` |
-| `website/features/home/index.html` | Create | Home page HTML structure |
-| `website/features/home/css/home.css` | Create | Home page styles |
-| `website/features/home/js/home.js` | Create | Home page logic |
+| `website/features/user_home/index.html` | Create | Home page HTML structure |
+| `website/features/user_home/css/home.css` | Create | Home page styles |
+| `website/features/user_home/js/home.js` | Create | Home page logic |
+
+

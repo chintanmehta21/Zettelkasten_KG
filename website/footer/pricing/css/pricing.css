@@ -213,10 +213,6 @@
     var(--bg-card);
 }
 
-.footer {
-  margin-top: 0.2rem;
-}
-
 @media (max-width: 940px) {
   .pricing-grid {
     grid-template-columns: 1fr;

@@ -39,7 +39,6 @@
 
 .about-back-btn:focus-visible,
 .about-legal-card:focus-visible,
-.footer-icon:focus-visible,
 .about-doc-close:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.22), 0 0 0 4px rgba(20, 184, 166, 0.08);
@@ -369,27 +368,6 @@
   color: rgba(20, 184, 166, 0.92);
   font-size: 0.8rem;
   font-weight: 600;
-}
-
-.about-footer {
-  margin-top: 0.2rem;
-}
-
-.footer-icon {
-  width: 20px;
-  height: 20px;
-  color: rgba(234, 240, 245, 0.88);
-}
-
-.footer-icon svg {
-  display: block;
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-}
-
-.footer-icon:hover {
-  color: #ffffff;
 }
 
 .about-doc-dialog {

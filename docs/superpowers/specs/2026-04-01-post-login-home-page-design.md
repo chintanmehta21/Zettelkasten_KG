@@ -8,12 +8,12 @@
 
 ## Overview
 
-A new post-login home page at `/home` that serves as the authenticated user's dashboard. The existing landing page (`/`) remains unchanged for unauthenticated visitors. The home page follows the self-contained feature pattern used throughout the codebase (`website/features/home/`).
+A new post-login home page at `/home` that serves as the authenticated user's dashboard. The existing landing page (`/`) remains unchanged for unauthenticated visitors. The home page follows the self-contained feature pattern used throughout the codebase (`website/features/user_home/`).
 
 ## File Structure
 
 ```
-website/features/home/
+website/features/user_home/
 ├── index.html              # Home page HTML
 ├── css/
 │   └── home.css            # Home-specific styles
@@ -35,9 +35,9 @@ ops/scripts/generate_avatars.py   # One-time DiceBear download script
 
 | Route | Method | Behavior |
 |-------|--------|----------|
-| `/home` | GET | Serve `features/home/index.html`; redirect mobile to `/m/home`; redirect unauthenticated to `/` |
-| `/home/css` | mount | Static: `features/home/css/` |
-| `/home/js` | mount | Static: `features/home/js/` |
+| `/home` | GET | Serve `features/user_home/index.html`; redirect mobile to `/m/home`; redirect unauthenticated to `/` |
+| `/home/css` | mount | Static: `features/user_home/css/` |
+| `/home/js` | mount | Static: `features/user_home/js/` |
 
 The `/artifacts` mount already serves `website/artifacts/`, so `website/artifacts/avatars/` is automatically available at `/artifacts/avatars/`.
 
@@ -237,3 +237,5 @@ Add Zettel:
 - Profile page — placeholder link in dropdown
 - Settings page — placeholder link in dropdown
 - About page — links to existing content
+
+
