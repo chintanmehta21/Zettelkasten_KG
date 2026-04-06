@@ -15,15 +15,13 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Callable
 
 import numpy as np
-from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-from telegram_bot.config.settings import get_settings
+from website.features.api_key_switching import get_key_pool
 
 logger = logging.getLogger(__name__)
 
@@ -71,15 +69,6 @@ class ExtractionConfig:
     enable_entity_dedup: bool = True
     dedup_similarity_threshold: float = 0.90
     model: str = "gemini-2.5-flash"
-
-
-# ── Client ──────────────────────────────────────────────────────────────────
-
-@lru_cache(maxsize=1)
-def _get_genai_client() -> genai.Client:
-    """Return a cached google-genai Client."""
-    settings = get_settings()
-    return genai.Client(api_key=settings.gemini_api_key)
 
 
 # ── Prompts ─────────────────────────────────────────────────────────────────
@@ -221,7 +210,7 @@ class EntityExtractor:
         if not summary or not summary.strip():
             return ExtractionResult()
 
-        client = _get_genai_client()
+        pool = get_key_pool()
         model = self.config.model
         max_gleanings = min(self.config.max_gleanings, 3)
 
@@ -238,15 +227,15 @@ class EntityExtractor:
                 title=title,
                 summary=summary,
             )
-            analysis_text = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: client.models.generate_content(
-                        model=model,
-                        contents=analysis_prompt,
-                    ).text
+            analysis_response, _, _ = await asyncio.wait_for(
+                pool.generate_content(
+                    analysis_prompt,
+                    starting_model=model,
+                    label="Entity analysis",
                 ),
                 timeout=10.0,
             )
+            analysis_text = analysis_response.text
 
             # ── Step 2: Structured JSON extraction ──────────────────────
             type_hint = ""
@@ -260,19 +249,19 @@ class EntityExtractor:
                 analysis=analysis_text,
             ) + type_hint
 
-            structured_text = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: client.models.generate_content(
-                        model=model,
-                        contents=structured_prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=ExtractionResult,
-                        ),
-                    ).text
+            structured_response, _, _ = await asyncio.wait_for(
+                pool.generate_content(
+                    structured_prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=ExtractionResult,
+                    ),
+                    starting_model=model,
+                    label="Entity structured",
                 ),
                 timeout=10.0,
             )
+            structured_text = structured_response.text
 
             result = ExtractionResult.model_validate_json(structured_text)
 
@@ -293,19 +282,19 @@ class EntityExtractor:
                         parts=[types.Part(text=_GLEANING_PROMPT_MULTI_TURN)],
                     )
                 )
-                glean_text = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        lambda: client.models.generate_content(
-                            model=model,
-                            contents=conversation_contents,
-                            config=types.GenerateContentConfig(
-                                response_mime_type="application/json",
-                                response_schema=ExtractionResult,
-                            ),
-                        ).text
+                glean_response, _, _ = await asyncio.wait_for(
+                    pool.generate_content(
+                        conversation_contents,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=ExtractionResult,
+                        ),
+                        starting_model=model,
+                        label="Entity gleaning",
                     ),
                     timeout=10.0,
                 )
+                glean_text = glean_response.text
 
                 glean_result = ExtractionResult.model_validate_json(glean_text)
 

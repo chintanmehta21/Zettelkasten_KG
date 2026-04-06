@@ -50,13 +50,19 @@ async def test_extract_entities_from_text(stub_settings):
     glean_resp = MagicMock()
     glean_resp.text = '{"entities": [], "relationships": []}'
 
-    fake_client = MagicMock()
-    fake_client.models.generate_content.side_effect = [
-        analysis_resp, structured_resp, glean_resp,
+    # pool.generate_content is async and returns (response, model, key_idx)
+    async def fake_generate(*args, **kwargs):
+        return fake_generate._responses.pop(0)
+    fake_generate._responses = [
+        (analysis_resp, "gemini-2.5-flash", 0),
+        (structured_resp, "gemini-2.5-flash", 0),
+        (glean_resp, "gemini-2.5-flash", 0),
     ]
 
-    with patch.object(ext_mod, "_get_genai_client", return_value=fake_client), \
-         patch.object(ext_mod, "get_settings", return_value=stub_settings):
+    fake_pool = MagicMock()
+    fake_pool.generate_content = fake_generate
+
+    with patch.object(ext_mod, "get_key_pool", return_value=fake_pool):
         extractor = EntityExtractor(ExtractionConfig(max_gleanings=1))
         result = await extractor.extract(
             summary="Python is used by TensorFlow.",
@@ -114,19 +120,13 @@ async def test_extraction_returns_empty_on_timeout(stub_settings):
     """When Gemini hangs > 10s, extract() should catch the TimeoutError
     and return an empty ExtractionResult rather than raising.
     """
-    def hang_forever(*args, **kwargs):
-        # Sleep longer than the 10s timeout in extract().
-        import time
-        time.sleep(30)
-        return MagicMock(text="never reached")
+    async def hang_forever(*args, **kwargs):
+        raise asyncio.TimeoutError()
 
-    fake_client = MagicMock()
-    fake_client.models.generate_content.side_effect = hang_forever
+    fake_pool = MagicMock()
+    fake_pool.generate_content = hang_forever
 
-    with patch.object(ext_mod, "_get_genai_client", return_value=fake_client), \
-         patch.object(ext_mod, "get_settings", return_value=stub_settings), \
-         patch.object(asyncio, "wait_for",
-                      side_effect=asyncio.TimeoutError()):
+    with patch.object(ext_mod, "get_key_pool", return_value=fake_pool):
         extractor = EntityExtractor(ExtractionConfig(max_gleanings=0))
         result = await extractor.extract(summary="Some content.", title="T")
 

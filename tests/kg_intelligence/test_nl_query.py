@@ -72,8 +72,16 @@ async def test_nl_query_happy_path(stub_settings, mock_supabase_client):
     answer_resp = MagicMock()
     answer_resp.text = "You have 2 articles: Alpha, Beta."
 
-    fake_client = MagicMock()
-    fake_client.models.generate_content.side_effect = [sql_resp, answer_resp]
+    # pool.generate_content is async and returns (response, model, key_idx)
+    async def fake_generate(*args, **kwargs):
+        return fake_generate._responses.pop(0)
+    fake_generate._responses = [
+        (sql_resp, "gemini-2.5-flash", 0),
+        (answer_resp, "gemini-2.5-flash", 0),
+    ]
+
+    fake_pool = MagicMock()
+    fake_pool.generate_content = fake_generate
 
     # EXPLAIN returns NULL (success), execute returns rows.
     explain_resp = MagicMock()
@@ -85,8 +93,7 @@ async def test_nl_query_happy_path(stub_settings, mock_supabase_client):
     rpc_handle.execute = execute_mock
     mock_supabase_client.rpc.return_value = rpc_handle
 
-    with patch.object(nl_mod, "_get_genai_client", return_value=fake_client), \
-         patch.object(nl_mod, "get_settings", return_value=stub_settings):
+    with patch.object(nl_mod, "get_key_pool", return_value=fake_pool):
         engine = NLGraphQuery(mock_supabase_client, user_id="u")
         result = await engine.ask("How many articles do I have?", user_id="u")
 
@@ -109,10 +116,17 @@ async def test_nl_query_retry_on_db_error(stub_settings):
     answer_resp = MagicMock()
     answer_resp.text = "Here are your nodes."
 
-    fake_client = MagicMock()
-    fake_client.models.generate_content.side_effect = [
-        sql_resp_1, sql_resp_2, answer_resp,
+    # pool.generate_content is async and returns (response, model, key_idx)
+    async def fake_generate(*args, **kwargs):
+        return fake_generate._responses.pop(0)
+    fake_generate._responses = [
+        (sql_resp_1, "gemini-2.5-flash", 0),
+        (sql_resp_2, "gemini-2.5-flash", 0),
+        (answer_resp, "gemini-2.5-flash", 0),
     ]
+
+    fake_pool = MagicMock()
+    fake_pool.generate_content = fake_generate
 
     # First rpc execute raises; second returns data.
     good_resp = MagicMock()
@@ -127,8 +141,7 @@ async def test_nl_query_retry_on_db_error(stub_settings):
     rpc_handle.execute = execute_mock
     sb.rpc.return_value = rpc_handle
 
-    with patch.object(nl_mod, "_get_genai_client", return_value=fake_client), \
-         patch.object(nl_mod, "get_settings", return_value=stub_settings):
+    with patch.object(nl_mod, "get_key_pool", return_value=fake_pool):
         engine = NLGraphQuery(sb, user_id="u")
         result = await engine.ask("list my notes", user_id="u")
 

@@ -7,15 +7,14 @@ executes them against Supabase via RPC, and formats human-readable answers.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import time
-from functools import lru_cache
 
-from google import genai
 from pydantic import BaseModel, Field
 
-from telegram_bot.config.settings import get_settings
+from website.features.api_key_switching import get_key_pool
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +38,6 @@ class NLQueryError(Exception):
         self.status_code = status_code
         self.user_message = user_message
         super().__init__(user_message)
-
-
-# ── Client ──────────────────────────────────────────────────────────────────
-
-@lru_cache(maxsize=1)
-def _get_genai_client() -> genai.Client:
-    """Return a cached google-genai Client."""
-    settings = get_settings()
-    return genai.Client(api_key=settings.gemini_api_key)
 
 
 # ── Prompts ─────────────────────────────────────────────────────────────────
@@ -178,7 +168,7 @@ class NLGraphQuery:
         Raises :class:`NLQueryError` on safety violations or timeouts.
         """
         start = time.monotonic()
-        client = _get_genai_client()
+        pool = get_key_pool()
         model = self._model
         retries = 0
         # Backwards-compat: allow user_id override, otherwise use instance value.
@@ -187,16 +177,16 @@ class NLGraphQuery:
         try:
             # ── 1. Generate SQL ─────────────────────────────────────────
             system = _SYSTEM_PROMPT.replace("{user_id}", effective_user_id)
-            sql_raw = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: client.models.generate_content(
-                        model=model,
-                        contents=question,
-                        config={"system_instruction": system},
-                    ).text
+            sql_response, _, _ = await asyncio.wait_for(
+                pool.generate_content(
+                    question,
+                    config={"system_instruction": system},
+                    starting_model=model,
+                    label="NL query SQL",
                 ),
                 timeout=10.0,
             )
+            sql_raw = sql_response.text
 
             sql = _strip_sql_artifacts(sql_raw)
             _safety_check(sql)
@@ -241,17 +231,16 @@ class NLGraphQuery:
                     user_id=effective_user_id,
                 )
                 retry_system = _SYSTEM_PROMPT.replace("{user_id}", effective_user_id)
-                sql_raw2 = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        lambda: client.models.generate_content(
-                            model=model,
-                            contents=retry_prompt,
-                            config={"system_instruction": retry_system},
-                        ).text
+                sql_response2, _, _ = await asyncio.wait_for(
+                    pool.generate_content(
+                        retry_prompt,
+                        config={"system_instruction": retry_system},
+                        starting_model=model,
+                        label="NL query retry",
                     ),
                     timeout=10.0,
                 )
-                sql = _strip_sql_artifacts(sql_raw2)
+                sql = _strip_sql_artifacts(sql_response2.text)
                 _safety_check(sql)
 
                 # Execute directly (no second EXPLAIN — 1 retry total per spec).
@@ -265,19 +254,18 @@ class NLGraphQuery:
             raw_result = raw_result[:50]
 
             # ── 4. Format answer ────────────────────────────────────────
-            import json
-            answer_text = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: client.models.generate_content(
-                        model=model,
-                        contents=_ANSWER_PROMPT.format(
-                            question=question,
-                            results=json.dumps(raw_result, default=str)[:4000],
-                        ),
-                    ).text
+            answer_response, _, _ = await asyncio.wait_for(
+                pool.generate_content(
+                    _ANSWER_PROMPT.format(
+                        question=question,
+                        results=json.dumps(raw_result, default=str)[:4000],
+                    ),
+                    starting_model=model,
+                    label="NL query answer",
                 ),
                 timeout=10.0,
             )
+            answer_text = answer_response.text.strip()
 
             elapsed = (time.monotonic() - start) * 1000
             return NLQueryResult(

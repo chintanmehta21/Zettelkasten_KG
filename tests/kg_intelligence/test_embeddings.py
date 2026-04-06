@@ -30,10 +30,6 @@ def test_generate_embedding_returns_768_dim_vector(stub_settings):
     MUST pass ``output_dimensionality=768`` via config for pgvector inserts
     to succeed.
     """
-    # Reset module cooldown state from prior tests.
-    emb_mod._last_rate_limit_ts = 0.0
-    emb_mod._get_genai_client.cache_clear()
-
     # Build a fake 768-dim embedding response.
     fake_vec = [0.01 * i for i in range(768)]
     fake_embedding = MagicMock()
@@ -41,11 +37,10 @@ def test_generate_embedding_returns_768_dim_vector(stub_settings):
     fake_response = MagicMock()
     fake_response.embeddings = [fake_embedding]
 
-    fake_client = MagicMock()
-    fake_client.models.embed_content.return_value = fake_response
+    fake_pool = MagicMock()
+    fake_pool.embed_content_safe.return_value = fake_response
 
-    with patch.object(emb_mod, "_get_genai_client", return_value=fake_client), \
-         patch.object(emb_mod, "get_settings", return_value=stub_settings):
+    with patch.object(emb_mod, "get_key_pool", return_value=fake_pool):
         result = generate_embedding("hello world")
 
     # Length check — current code does NOT truncate, so this documents the
@@ -63,8 +58,8 @@ def test_generate_embedding_returns_768_dim_vector(stub_settings):
     )
 
     # Verify the call was made with output_dimensionality=768 in config.
-    call_kwargs = fake_client.models.embed_content.call_args.kwargs
-    config = call_kwargs.get("config", {})
+    call_kwargs = fake_pool.embed_content_safe.call_args
+    config = call_kwargs.kwargs.get("config", {})
     assert config.get("output_dimensionality") == 768, (
         "Call config must include output_dimensionality=768. "
         "EXPECTED FAILURE: documents P1 bug #1 from verification report."
