@@ -411,36 +411,54 @@ class KGRepository:
 
     # ── Graph (full) ─────────────────────────────────────────────────────
 
-    def get_graph(self, user_id: UUID) -> KGGraph:
-        """Return the full graph for a user in frontend-compatible format.
+    def get_graph(
+        self,
+        user_id: UUID | None = None,
+        limit: int = 5000,
+        offset: int = 0,
+    ) -> KGGraph:
+        """Return graph in frontend-compatible format.
 
-        Uses the ``kg_graph_view`` SQL view for a single-query fetch when
-        available, falling back to two separate queries.
+        Args:
+            user_id: Scope to a single user, or None for global graph.
+            limit: Max nodes to return (pagination).
+            offset: Skip this many nodes (pagination).
+
+        Uses the ``get_kg_graph`` RPC for a single optimized query.
+        Global view deduplicates nodes by slug and merges links across users.
+        Falls back to the legacy two-query approach if the RPC is unavailable.
         """
         try:
-            return self._get_graph_view(user_id)
-        except Exception:
-            return self._get_graph_two_queries(user_id)
+            return self._get_graph_rpc(user_id, limit, offset)
+        except Exception as exc:
+            logger.debug("get_kg_graph RPC unavailable, using fallback: %s", exc)
+            if user_id is not None:
+                return self._get_graph_two_queries(user_id)
+            return self._get_global_graph_fallback()
 
-    def _get_graph_view(self, user_id: UUID) -> KGGraph:
-        """Single-query graph fetch via kg_graph_view (faster)."""
-        resp = (
-            self._client.table("kg_graph_view")
-            .select("graph_data")
-            .eq("user_id", str(user_id))
-            .limit(1)
-            .execute()
-        )
+    def _get_graph_rpc(
+        self,
+        user_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> KGGraph:
+        """Single-query graph fetch via get_kg_graph RPC."""
+        params: dict = {"p_limit": limit, "p_offset": offset}
+        if user_id is not None:
+            params["p_user_id"] = str(user_id)
+
+        resp = self._client.rpc("get_kg_graph", params).execute()
         if not resp.data:
             return KGGraph(nodes=[], links=[])
 
-        data = resp.data[0]["graph_data"]
+        data = resp.data
         graph_nodes = [KGGraphNode(**n) for n in data.get("nodes", [])]
         graph_links = [KGGraphLink(**lk) for lk in data.get("links", [])]
-        return KGGraph(nodes=graph_nodes, links=graph_links)
+        total = data.get("total_nodes")
+        return KGGraph(nodes=graph_nodes, links=graph_links, total_nodes=total)
 
     def _get_graph_two_queries(self, user_id: UUID) -> KGGraph:
-        """Fallback: two-query graph fetch."""
+        """Fallback: two-query per-user graph fetch."""
         nodes_resp = (
             self._client.table("kg_nodes")
             .select("*")
@@ -576,10 +594,14 @@ class KGRepository:
         )
         return total_links
 
-    # ── Global Graph ────────────────────────────────────────────────────
+    # ── Global Graph (fallback) ────────────────────────────────────────
 
-    def get_global_graph(self) -> KGGraph:
-        """Return the combined graph across ALL users (for global view)."""
+    def _get_global_graph_fallback(self) -> KGGraph:
+        """Fallback global graph when get_kg_graph RPC is unavailable.
+
+        Two-query approach with Python-side dedup by node slug.
+        Prefers the node version with the most tags (richest content).
+        """
         nodes_resp = (
             self._client.table("kg_nodes")
             .select("id, name, source_type, summary, tags, url, node_date")
@@ -588,38 +610,54 @@ class KGRepository:
         )
         links_resp = (
             self._client.table("kg_links")
-            .select("source_node_id, target_node_id, relation")
+            .select("source_node_id, target_node_id, relation, weight, link_type, description")
             .execute()
         )
 
-        # Deduplicate nodes by id (same node_id may exist for multiple users)
-        seen_ids: set[str] = set()
-        graph_nodes: list[KGGraphNode] = []
+        # Dedup nodes by slug — keep the version with the most tags
+        best_nodes: dict[str, dict] = {}
         for row in nodes_resp.data:
-            if row["id"] not in seen_ids:
-                seen_ids.add(row["id"])
-                graph_nodes.append(KGGraphNode(
-                    id=row["id"],
-                    name=row["name"],
-                    group=_normalize_source_type(row["source_type"]),
-                    summary=row.get("summary", ""),
-                    tags=row.get("tags", []),
-                    url=row["url"],
-                    date=row.get("node_date") or "",
-                ))
+            nid = row["id"]
+            existing = best_nodes.get(nid)
+            if existing is None or len(row.get("tags", [])) > len(existing.get("tags", [])):
+                best_nodes[nid] = row
 
-        # Deduplicate links by (source, target, relation)
-        seen_links: set[tuple[str, str, str]] = set()
-        graph_links: list[KGGraphLink] = []
+        node_ids = set(best_nodes.keys())
+        graph_nodes = [
+            KGGraphNode(
+                id=row["id"],
+                name=row["name"],
+                group=_normalize_source_type(row["source_type"]),
+                summary=row.get("summary", ""),
+                tags=row.get("tags", []),
+                url=row["url"],
+                date=row.get("node_date") or "",
+            )
+            for row in best_nodes.values()
+        ]
+
+        # Dedup links by (source, target, relation), keep highest weight
+        seen_links: dict[tuple[str, str, str], dict] = {}
         for row in links_resp.data:
-            key = (row["source_node_id"], row["target_node_id"], row["relation"])
-            if key not in seen_links:
-                seen_links.add(key)
-                graph_links.append(KGGraphLink(
-                    source=row["source_node_id"],
-                    target=row["target_node_id"],
-                    relation=row["relation"],
-                ))
+            src, tgt = row["source_node_id"], row["target_node_id"]
+            if src not in node_ids or tgt not in node_ids:
+                continue
+            key = (src, tgt, row["relation"])
+            existing = seen_links.get(key)
+            if existing is None or (row.get("weight") or 0) > (existing.get("weight") or 0):
+                seen_links[key] = row
+
+        graph_links = [
+            KGGraphLink(
+                source=row["source_node_id"],
+                target=row["target_node_id"],
+                relation=row["relation"],
+                weight=row.get("weight"),
+                link_type=row.get("link_type", "tag"),
+                description=row.get("description"),
+            )
+            for row in seen_links.values()
+        ]
 
         return KGGraph(nodes=graph_nodes, links=graph_links)
 

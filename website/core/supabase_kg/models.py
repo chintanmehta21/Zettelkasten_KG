@@ -107,6 +107,8 @@ class KGGraphNode(BaseModel):
     tags: list[str] = Field(default_factory=list)
     url: str
     date: str = ""      # ISO date string
+    owner: str | None = None          # display_name of the node creator (global view)
+    contributors: int | None = None   # how many users captured this (global view)
 
 
 class KGGraphLink(BaseModel):
@@ -123,3 +125,4 @@ class KGGraph(BaseModel):
     """Full graph payload matching the frontend's expected structure."""
     nodes: list[KGGraphNode] = Field(default_factory=list)
     links: list[KGGraphLink] = Field(default_factory=list)
+    total_nodes: int | None = None  # total count for pagination awareness

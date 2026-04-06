@@ -250,50 +250,59 @@ _graph_cache_global_ts: float = 0
 async def graph_data(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
     view: str | None = None,
+    limit: int = 5000,
+    offset: int = 0,
 ):
     """Return the knowledge graph.
 
     - Default (no view param, or unauthenticated): global graph
     - ?view=my: authenticated user's personal graph
     - ?view=global: explicit global graph (all users combined)
+    - ?limit=N&offset=M: pagination (default 5000 nodes, offset 0)
     """
     global _graph_cache, _graph_cache_ts, _graph_cache_global, _graph_cache_global_ts
 
+    limit = max(1, min(limit, 10000))
+    offset = max(0, offset)
     now = time.time()
     is_personal = view == "my" and user is not None
 
     if is_personal:
-        # Per-user graph — no global cache, always fresh per user
+        # Per-user graph — always fresh, no global cache
         sb = _get_supabase(user_id_override=user["sub"])
         if sb:
             repo, user_id = sb
             try:
                 from uuid import UUID
-                graph = repo.get_graph(UUID(user_id))
+                graph = repo.get_graph(UUID(user_id), limit=limit, offset=offset)
                 return _enrich_graph_with_analytics(graph.model_dump())
             except Exception as exc:
                 logger.warning("Supabase user graph fetch failed, falling back: %s", exc)
         return _enrich_graph_with_analytics(get_graph())
 
     # Global graph (default for all users including anonymous)
-    if _graph_cache_global is not None and (now - _graph_cache_global_ts) < _GRAPH_CACHE_TTL:
+    # Only use cache for default pagination (first page, standard limit)
+    use_cache = offset == 0 and limit >= 5000
+    if use_cache and _graph_cache_global is not None and (now - _graph_cache_global_ts) < _GRAPH_CACHE_TTL:
         return _graph_cache_global
 
     sb = _get_supabase()
     if sb:
         repo, _ = sb
         try:
-            graph = repo.get_global_graph()
+            graph = repo.get_graph(user_id=None, limit=limit, offset=offset)
             result = _enrich_graph_with_analytics(graph.model_dump())
-            _graph_cache_global = result
-            _graph_cache_global_ts = now
+            if use_cache:
+                _graph_cache_global = result
+                _graph_cache_global_ts = now
             return result
         except Exception as exc:
             logger.warning("Supabase global graph fetch failed, falling back: %s", exc)
 
     result = _enrich_graph_with_analytics(get_graph())
-    _graph_cache_global = result
-    _graph_cache_global_ts = now
+    if use_cache:
+        _graph_cache_global = result
+        _graph_cache_global_ts = now
     return result
 
 
