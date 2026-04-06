@@ -205,13 +205,17 @@ class NLGraphQuery:
             last_error: str | None = None
             raw_result: list[dict] = []
 
-            # Cheap ~1ms sanity check; returns NULL on success or error string.
+            # Cheap ~1ms sanity check; returns {"ok": true, "plan": ...} or
+            # {"ok": false, "error": "..."}.
+            explain_err = None
             try:
                 explain_resp = self._sb.rpc(
                     "explain_kg_query",
                     {"query_text": sql, "p_user_id": effective_user_id},
                 ).execute()
-                explain_err = explain_resp.data
+                explain_data = explain_resp.data
+                if isinstance(explain_data, dict) and not explain_data.get("ok"):
+                    explain_err = explain_data.get("error", "EXPLAIN validation failed")
             except Exception as explain_exc:
                 explain_err = str(explain_exc)
 
