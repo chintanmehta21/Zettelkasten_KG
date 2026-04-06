@@ -575,58 +575,59 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                         except Exception as exc:
                             logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)
 
-                    # Entity extraction (M1) — run inline so errors surface in response
+                    # Entity extraction (M1) — async, non-blocking
                     try:
                         import asyncio
                         from website.features.kg_features.entity_extractor import EntityExtractor
 
-                        logger.info("Entity extraction started for %s", sb_node_id)
-                        existing_types = _get_cached_existing_types(repo, user_id)
-                        extractor = EntityExtractor()
-                        brief = result.get("brief_summary") or result["summary"][:500]
-                        result["_entity_debug"] = {
-                            "input_len": len(brief),
-                            "input_preview": brief[:200],
-                            "title": result["title"],
-                            "existing_types": existing_types,
-                        }
-                        extraction = await asyncio.wait_for(
-                            extractor.extract(
-                                summary=brief,
-                                title=result["title"],
-                                existing_types=existing_types,
-                            ),
-                            timeout=90.0,
+                        async def _extract_entities():
+                            try:
+                                logger.info("Entity extraction started for %s", sb_node_id)
+                                existing_types = _get_cached_existing_types(repo, user_id)
+                                extractor = EntityExtractor()
+                                brief = result.get("brief_summary") or result["summary"][:500]
+                                extraction = await asyncio.wait_for(
+                                    extractor.extract(
+                                        summary=brief,
+                                        title=result["title"],
+                                        existing_types=existing_types,
+                                    ),
+                                    timeout=90.0,
+                                )
+                                if extraction.entities:
+                                    entities_data = [e.model_dump() for e in extraction.entities]
+                                    # Read current metadata to avoid overwriting concurrent changes
+                                    current = (
+                                        repo._client.table("kg_nodes")
+                                        .select("metadata")
+                                        .eq("user_id", str(user_id))
+                                        .eq("id", sb_node_id)
+                                        .execute()
+                                    )
+                                    current_meta = {}
+                                    if current.data:
+                                        current_meta = current.data[0].get("metadata") or {}
+                                    merged = {**current_meta, "entities": entities_data}
+                                    repo._client.table("kg_nodes").update(
+                                        {"metadata": merged}
+                                    ).eq("user_id", str(user_id)).eq("id", sb_node_id).execute()
+                                    logger.info("Extracted %d entities for %s", len(extraction.entities), sb_node_id)
+                                else:
+                                    logger.info("Entity extraction found 0 entities for %s", sb_node_id)
+                            except asyncio.TimeoutError:
+                                logger.warning("Entity extraction timed out for %s", sb_node_id)
+                            except Exception as ext_err:
+                                logger.warning("Entity extraction failed for %s: %s", sb_node_id, ext_err)
+
+                        # Keep a reference to prevent GC of the background task
+                        task = asyncio.create_task(
+                            _extract_entities(),
+                            name=f"entity-extract-{sb_node_id}",
                         )
-                        result["_entity_debug"]["raw_entities"] = len(extraction.entities)
-                        result["_entity_debug"]["raw_relationships"] = len(extraction.relationships)
-                        if extraction.entities:
-                            entities_data = [e.model_dump() for e in extraction.entities]
-                            current = (
-                                repo._client.table("kg_nodes")
-                                .select("metadata")
-                                .eq("user_id", str(user_id))
-                                .eq("id", sb_node_id)
-                                .execute()
-                            )
-                            current_meta = {}
-                            if current.data:
-                                current_meta = current.data[0].get("metadata") or {}
-                            merged = {**current_meta, "entities": entities_data}
-                            repo._client.table("kg_nodes").update(
-                                {"metadata": merged}
-                            ).eq("user_id", str(user_id)).eq("id", sb_node_id).execute()
-                            result["entities_extracted"] = len(extraction.entities)
-                            logger.info("Extracted %d entities for %s", len(extraction.entities), sb_node_id)
-                        else:
-                            result["entities_extracted"] = 0
-                            logger.info("Entity extraction found 0 entities for %s", sb_node_id)
-                    except asyncio.TimeoutError:
-                        result["entity_error"] = "timed out after 45s"
-                        logger.warning("Entity extraction timed out for %s", sb_node_id)
+                        # Suppress "Task exception was never retrieved" — errors are logged inside _extract_entities
+                        task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
                     except Exception as m1_err:
-                        result["entity_error"] = str(m1_err)
-                        logger.warning("Entity extraction failed for %s: %s", sb_node_id, m1_err)
+                        logger.warning("Entity extraction setup failed: %s", m1_err)
 
                     _graph_cache_global = None  # invalidate global cache
                     _graph_cache_global_ts = 0
