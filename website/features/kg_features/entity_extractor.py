@@ -321,10 +321,10 @@ class EntityExtractor:
 
         except asyncio.TimeoutError:
             logger.warning("Entity extraction timed out for '%s'", title)
-            return ExtractionResult()
+            raise  # Propagate so caller can surface the error
         except Exception as exc:
-            logger.error("Entity extraction failed for '%s': %s", title, exc)
-            return ExtractionResult()
+            logger.error("Entity extraction failed for '%s': %s", title, exc, exc_info=True)
+            raise  # Propagate so caller can surface the error
 
     def _postprocess(self, result: ExtractionResult) -> ExtractionResult:
         """Normalise IDs, relationship types, validate, and deduplicate."""

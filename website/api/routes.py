@@ -584,6 +584,12 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                         existing_types = _get_cached_existing_types(repo, user_id)
                         extractor = EntityExtractor()
                         brief = result.get("brief_summary") or result["summary"][:500]
+                        result["_entity_debug"] = {
+                            "input_len": len(brief),
+                            "input_preview": brief[:200],
+                            "title": result["title"],
+                            "existing_types": existing_types,
+                        }
                         extraction = await asyncio.wait_for(
                             extractor.extract(
                                 summary=brief,
@@ -592,6 +598,8 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                             ),
                             timeout=45.0,
                         )
+                        result["_entity_debug"]["raw_entities"] = len(extraction.entities)
+                        result["_entity_debug"]["raw_relationships"] = len(extraction.relationships)
                         if extraction.entities:
                             entities_data = [e.model_dump() for e in extraction.entities]
                             current = (
