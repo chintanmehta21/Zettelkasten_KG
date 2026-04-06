@@ -582,27 +582,50 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
 
                         async def _extract_entities():
                             try:
-                                # Fetch entity types already used in this user's KG
-                                # (schema-drift prevention, cached 60s).
+                                logger.info("Entity extraction started for %s", sb_node_id)
                                 existing_types = _get_cached_existing_types(repo, user_id)
                                 extractor = EntityExtractor()
                                 brief = result.get("brief_summary") or result["summary"][:500]
-                                extraction = await extractor.extract(
-                                    summary=brief,
-                                    title=result["title"],
-                                    existing_types=existing_types,
+                                extraction = await asyncio.wait_for(
+                                    extractor.extract(
+                                        summary=brief,
+                                        title=result["title"],
+                                        existing_types=existing_types,
+                                    ),
+                                    timeout=45.0,
                                 )
                                 if extraction.entities:
-                                    # Store entities in node metadata
                                     entities_data = [e.model_dump() for e in extraction.entities]
+                                    # Read current metadata to avoid overwriting concurrent changes
+                                    current = (
+                                        repo._client.table("kg_nodes")
+                                        .select("metadata")
+                                        .eq("user_id", str(user_id))
+                                        .eq("id", sb_node_id)
+                                        .execute()
+                                    )
+                                    current_meta = {}
+                                    if current.data:
+                                        current_meta = current.data[0].get("metadata") or {}
+                                    merged = {**current_meta, "entities": entities_data}
                                     repo._client.table("kg_nodes").update(
-                                        {"metadata": {**node_create.metadata, "entities": entities_data}}
+                                        {"metadata": merged}
                                     ).eq("user_id", str(user_id)).eq("id", sb_node_id).execute()
                                     logger.info("Extracted %d entities for %s", len(extraction.entities), sb_node_id)
+                                else:
+                                    logger.info("Entity extraction found 0 entities for %s", sb_node_id)
+                            except asyncio.TimeoutError:
+                                logger.warning("Entity extraction timed out for %s", sb_node_id)
                             except Exception as ext_err:
-                                logger.warning("Entity extraction failed: %s", ext_err)
+                                logger.warning("Entity extraction failed for %s: %s", sb_node_id, ext_err)
 
-                        asyncio.create_task(_extract_entities())
+                        # Keep a reference to prevent GC of the background task
+                        task = asyncio.create_task(
+                            _extract_entities(),
+                            name=f"entity-extract-{sb_node_id}",
+                        )
+                        # Suppress "Task exception was never retrieved" — errors are logged inside _extract_entities
+                        task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
                     except Exception as m1_err:
                         logger.warning("Entity extraction setup failed: %s", m1_err)
 

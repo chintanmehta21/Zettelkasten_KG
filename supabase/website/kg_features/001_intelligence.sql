@@ -32,20 +32,39 @@ COMMENT ON COLUMN kg_links.link_type   IS 'Edge type: tag (shared tag), semantic
 COMMENT ON COLUMN kg_links.description IS 'Human-readable description of the relationship';
 
 
--- ── 3. Full-text search column + index ─────────────────────────────────────
+-- ── 3. Full-text search column + trigger ──────────────────────────────────
+-- NOTE: GENERATED ALWAYS AS cannot be used here because array_to_string()
+-- is not IMMUTABLE in PostgreSQL.  A trigger keeps the tsvector in sync
+-- on every INSERT or UPDATE instead.
 
 ALTER TABLE kg_nodes
-    ADD COLUMN IF NOT EXISTS fts tsvector
-        GENERATED ALWAYS AS (
-            setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
-            setweight(to_tsvector('english', coalesce(summary, '')), 'B') ||
-            setweight(to_tsvector('english', coalesce(array_to_string(tags, ' '), '')), 'C')
-        ) STORED;
+    ADD COLUMN IF NOT EXISTS fts tsvector;
 
 CREATE INDEX IF NOT EXISTS idx_kg_nodes_fts
     ON kg_nodes USING GIN (fts);
 
-COMMENT ON COLUMN kg_nodes.fts IS 'Auto-generated tsvector for full-text search (name=A, summary=B, tags=C)';
+COMMENT ON COLUMN kg_nodes.fts IS 'Trigger-maintained tsvector for full-text search (name=A, summary=B, tags=C)';
+
+-- Trigger function: recompute fts on INSERT or UPDATE of name/summary/tags
+CREATE OR REPLACE FUNCTION kg_nodes_fts_update()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.fts :=
+        setweight(to_tsvector('english', coalesce(NEW.name, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(NEW.summary, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(array_to_string(NEW.tags, ' '), '')), 'C');
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_kg_nodes_fts ON kg_nodes;
+CREATE TRIGGER trg_kg_nodes_fts
+    BEFORE INSERT OR UPDATE OF name, summary, tags
+    ON kg_nodes
+    FOR EACH ROW
+    EXECUTE FUNCTION kg_nodes_fts_update();
 
 
 -- ── 4. Updated kg_graph_view with enriched link fields ─────────────────────

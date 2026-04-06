@@ -723,28 +723,29 @@ class TestAddLink:
 
 
 class TestGetGraph:
-    def test_get_graph_via_view(self) -> None:
-        """get_graph uses kg_graph_view for single-query fetch."""
+    def test_get_graph_via_rpc(self) -> None:
+        """get_graph uses get_kg_graph RPC for single-query fetch."""
         client, query = _mock_supabase_client()
 
-        # kg_graph_view returns a single row with graph_data JSONB
-        view_data = {
-            "graph_data": {
-                "nodes": [
-                    {"id": "yt-video", "name": "Video Title", "group": "youtube",
-                     "summary": "A summary", "tags": ["ml"],
-                     "url": "https://youtube.com/watch?v=abc", "date": "2026-03-29"},
-                    {"id": "gh-repo", "name": "Repo Name", "group": "github",
-                     "summary": "", "tags": ["ml", "python"],
-                     "url": "https://github.com/test/repo", "date": ""},
-                ],
-                "links": [
-                    {"source": "yt-video", "target": "gh-repo", "relation": "ml"},
-                ],
-            }
+        # get_kg_graph RPC returns {nodes: [...], links: [...], total_nodes: N}
+        rpc_data = {
+            "nodes": [
+                {"id": "yt-video", "name": "Video Title", "group": "youtube",
+                 "summary": "A summary", "tags": ["ml"],
+                 "url": "https://youtube.com/watch?v=abc", "date": "2026-03-29"},
+                {"id": "gh-repo", "name": "Repo Name", "group": "github",
+                 "summary": "", "tags": ["ml", "python"],
+                 "url": "https://github.com/test/repo", "date": ""},
+            ],
+            "links": [
+                {"source": "yt-video", "target": "gh-repo", "relation": "ml"},
+            ],
+            "total_nodes": 2,
         }
 
-        query.execute.return_value = _make_execute_response(data=[view_data])
+        rpc_query = MagicMock()
+        rpc_query.execute.return_value = _make_execute_response(data=rpc_data)
+        client.rpc.return_value = rpc_query
 
         repo = _make_repo(client)
         graph = repo.get_graph(USER_ID)
@@ -754,9 +755,10 @@ class TestGetGraph:
         assert len(graph.links) == 1
         assert graph.nodes[0].id == "yt-video"
         assert graph.links[0].source == "yt-video"
+        assert graph.total_nodes == 2
 
     def test_get_graph_fallback(self) -> None:
-        """Falls back to two-query fetch if view query fails."""
+        """Falls back to two-query fetch if RPC is unavailable."""
         client, query = _mock_supabase_client()
 
         node_rows = [
@@ -771,9 +773,12 @@ class TestGetGraph:
             {"source_node_id": "yt-video", "target_node_id": "gh-repo", "relation": "ml"},
         ]
 
-        # First call (view) raises, then fallback calls return nodes + links
+        # RPC call raises, then fallback table calls return nodes + links
+        rpc_query = MagicMock()
+        rpc_query.execute.side_effect = Exception("function get_kg_graph does not exist")
+        client.rpc.return_value = rpc_query
+
         query.execute.side_effect = [
-            Exception("relation kg_graph_view does not exist"),
             _make_execute_response(data=node_rows),
             _make_execute_response(data=link_rows),
         ]
