@@ -466,11 +466,15 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                 sb_node_id = f"{prefix}-{slug}"
 
                 if not repo.node_exists(UUID(user_id), result["source_url"]):
-                    # Generate embedding BEFORE insert so it goes in one round trip (M2)
+                    # Generate embedding from title + full summary for richer
+                    # semantic matching (M2).  Embedding is computed BEFORE
+                    # insert so it goes in one DB round trip.
                     emb: list[float] | None = None
                     try:
-                        brief = result.get("brief_summary") or result["summary"][:500]
-                        embedding = generate_embedding(brief)
+                        title_text = result.get("title", "")
+                        summary_text = result.get("summary") or result.get("brief_summary") or ""
+                        embed_input = f"{title_text}\n\n{summary_text}".strip()[:2000]
+                        embedding = generate_embedding(embed_input)
                         emb = embedding if embedding else None
                     except Exception as emb_err:
                         logger.warning("Embedding generation failed: %s", emb_err)
@@ -501,20 +505,32 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                                 user_id=user_id,
                                 embedding=emb,
                                 threshold=0.75,
-                                limit=5,  # cap at top 5 to control link density
+                                limit=5,
+                            )
+                            logger.info(
+                                "Auto-link: %s found %d similar nodes",
+                                sb_node_id, len(similar),
                             )
                             for hit in similar:
                                 hit_id = hit.get("node_id") or hit.get("id")
                                 hit_sim = float(hit.get("similarity") or 0.0)
+                                logger.info(
+                                    "  candidate %s sim=%.3f (self=%s)",
+                                    hit_id, hit_sim, hit_id == node_create.id,
+                                )
                                 if hit_id and hit_id != node_create.id and hit_sim >= 0.75:
-                                    repo.add_semantic_link(
+                                    linked = repo.add_semantic_link(
                                         user_id=UUID(user_id),
                                         source_id=node_create.id,
                                         target_id=hit_id,
                                         similarity=hit_sim,
                                     )
+                                    logger.info(
+                                        "  -> linked %s to %s (ok=%s)",
+                                        node_create.id, hit_id, linked,
+                                    )
                         except Exception as exc:
-                            logger.warning("Semantic auto-linking skipped: %s", exc)
+                            logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)
 
                     # Entity extraction (M1) — async, non-blocking
                     try:
