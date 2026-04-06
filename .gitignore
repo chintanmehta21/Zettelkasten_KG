@@ -13,6 +13,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+api_env
 *.pem
 *.key
 *.p12
@@ -43,6 +44,9 @@ tmp/
 # Project outputs
 data/
 kg_output/
+
+# Credentials
+docs/login_details.txt
 
 # Local tooling artifacts (do not publish)
 .claude/

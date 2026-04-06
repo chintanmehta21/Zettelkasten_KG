@@ -86,8 +86,8 @@ class Settings(BaseSettings):
     webhook_secret: str = ""
 
     # ── AI model ──────────────────────────────────────────────────────────────
-    # Primary model — best quality.  On 429 rate-limit, the summarizer
-    # automatically falls back: 2.5-flash → 2.0-flash → 2.5-flash-lite.
+    # Primary model — best quality.  On 429 rate-limit, the key pool
+    # automatically falls back: 2.5-flash → 2.5-flash-lite across all keys.
     model_name: str = "gemini-2.5-flash"
 
     # ── Logging ───────────────────────────────────────────────────────────────

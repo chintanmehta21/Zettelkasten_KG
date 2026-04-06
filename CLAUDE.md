@@ -87,9 +87,9 @@ Key modules in `telegram_bot/pipeline/`:
 - `github_writer.py` — pushes notes to GitHub repo via Contents API (cloud mode, base64-encoded PUT)
 - `duplicate.py` — JSON-file-based seen-URL deduplication store
 
-#### Model Fallback Chain
+#### API Key Pool & Model Fallback
 
-`summarizer.py` uses a three-model cascade: `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.5-flash-lite`. On a 429 rate-limit error, it switches to the next model with a 60-second per-model cooldown. If ALL models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True` instead of failing. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API (avoids IP-based blocking on cloud hosts like Render).
+A centralized `GeminiKeyPool` (`website/features/api_key_switching/`) manages up to 10 API keys with key-first traversal: `key1/gemini-2.5-flash` → `key2/gemini-2.5-flash` → ... → `key1/gemini-2.5-flash-lite` → `key2/gemini-2.5-flash-lite`. On a 429 rate-limit, it tries the next key (same model) before downgrading to the next model tier. Content-aware routing sends short/simple content to `flash-lite` first to preserve `flash` quota for complex content. Keys are loaded from an `api_env` file (one key per line) at project root or `/etc/secrets/api_env` (Render Secret File), with fallback to `GEMINI_API_KEY` for backward compatibility. If ALL keys/models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True`. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API.
 
 ### Source Extractors (plugin pattern)
 
