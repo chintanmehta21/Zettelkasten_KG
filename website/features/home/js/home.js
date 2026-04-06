@@ -275,6 +275,93 @@
     return div.innerHTML;
   }
 
+  function extractSummaryParts(rawSummary) {
+    var rawText = normalizeSummaryText(rawSummary || '');
+    var parsed = tryParseSummaryObject(rawText);
+
+    if (parsed) {
+      var briefFromParsed = normalizeSummaryText(
+        parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
+      );
+      var detailedFromParsed = normalizeSummaryText(
+        parsed.detailed_summary || parsed.detailedSummary || parsed.summary || ''
+      );
+
+      var resolvedBrief = briefFromParsed || detailedFromParsed;
+      var resolvedDetailed = detailedFromParsed || briefFromParsed;
+      if (resolvedBrief || resolvedDetailed) {
+        return {
+          brief: resolvedBrief || 'No summary available for this zettel.',
+          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.'
+        };
+      }
+    }
+
+    var fallback = rawText || 'No summary available for this zettel.';
+    return { brief: fallback, detailed: fallback };
+  }
+
+  function tryParseSummaryObject(rawText) {
+    var cleaned = normalizeSummaryText(rawText || '');
+    if (!cleaned) return null;
+
+    cleaned = cleaned
+      .replace(/^```(?:json)?/i, '')
+      .replace(/```$/i, '')
+      .replace(/^json\s*/i, '')
+      .trim();
+
+    var candidates = [cleaned];
+    var start = cleaned.indexOf('{');
+    var end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      candidates.push(cleaned.slice(start, end + 1));
+    }
+
+    for (var i = 0; i < candidates.length; i++) {
+      var candidate = candidates[i].trim();
+      if (!candidate) continue;
+      try {
+        var parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === 'object') return parsed;
+        if (typeof parsed === 'string') {
+          var nested = JSON.parse(parsed);
+          if (nested && typeof nested === 'object') return nested;
+        }
+      } catch (err) {
+        void err;
+      }
+    }
+
+    var regexBrief = extractSummaryFieldByRegex(cleaned, 'brief_summary');
+    var regexDetailed = extractSummaryFieldByRegex(cleaned, 'detailed_summary');
+    if (regexBrief || regexDetailed) {
+      return {
+        brief_summary: regexBrief,
+        detailed_summary: regexDetailed
+      };
+    }
+
+    return null;
+  }
+
+  function extractSummaryFieldByRegex(text, fieldName) {
+    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|})', 'i');
+    var match = text.match(pattern);
+    if (!match || !match[1]) return '';
+    return normalizeSummaryText(match[1]);
+  }
+
+  function normalizeSummaryText(value) {
+    return String(value || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .trim();
+  }
+
   // ── Add Zettel ────────────────────────────────────────────────────
 
   // ── Glass Shatter Animation ─────────────────────────────────────
@@ -565,7 +652,8 @@
       (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
       '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';
 
-    text.textContent = node.summary || node.description || 'No summary available for this zettel.';
+    var summaryParts = extractSummaryParts(node.summary || node.description || '');
+    text.textContent = summaryParts.detailed || summaryParts.brief || 'No summary available for this zettel.';
 
     tags.innerHTML = '';
     var nodeTags = node.tags || [];

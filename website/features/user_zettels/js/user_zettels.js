@@ -205,6 +205,16 @@
 
   function normalizeNode(node) {
     var source = normalizeSource(node.group || node.source_type || 'web');
+    var summaryParts = extractSummaryParts(node.summary || '');
+    if (node.description) {
+      var descriptionParts = extractSummaryParts(node.description || '');
+      if (!summaryParts.brief || summaryParts.brief === summaryParts.detailed) {
+        summaryParts.brief = descriptionParts.brief || summaryParts.brief;
+      }
+      if (!summaryParts.detailed || summaryParts.detailed === summaryParts.brief) {
+        summaryParts.detailed = descriptionParts.detailed || summaryParts.detailed;
+      }
+    }
     var cleanTags = (Array.isArray(node.tags) ? node.tags : [])
       .map(normalizeTag)
       .filter(Boolean);
@@ -212,14 +222,16 @@
     return {
       id: node.id || createLocalNodeId(node.name || node.title || 'zettel'),
       title: (node.name || node.title || 'Untitled').trim(),
-      summary: ((node.summary || node.description || 'No summary available for this zettel.') + '').trim(),
+      summary: summaryParts.brief,
+      briefSummary: summaryParts.brief,
+      detailedSummary: summaryParts.detailed,
       tags: uniqueStrings(cleanTags),
       normalizedTags: uniqueStrings(cleanTags.map(function (tag) { return tag.toLowerCase(); })),
       url: (node.url || '').trim(),
       date: (node.date || '').trim(),
       source: source,
       sourceLabel: sourceLabel(source),
-      summaryLength: ((node.summary || node.description || '') + '').trim().length
+      summaryLength: summaryParts.detailed.length || summaryParts.brief.length
     };
   }
 
@@ -406,7 +418,8 @@
       if (!query) return true;
       var haystack = [
         node.title,
-        node.summary,
+        node.briefSummary,
+        node.detailedSummary,
         node.source,
         node.sourceLabel,
         (node.tags || []).join(' ')
@@ -459,7 +472,7 @@
 
     card.innerHTML =
       '<h2 class="zettels-card-title">' + escapeHtml(node.title) + '</h2>' +
-      '<p class="zettels-card-summary">' + escapeHtml(truncate(node.summary, 240)) + '</p>' +
+      '<p class="zettels-card-summary">' + escapeHtml(truncate(node.briefSummary, 240)) + '</p>' +
       '<div class="zettels-card-meta">' +
         dateBadge +
         '<span class="home-card-source ' + node.source + '">' + escapeHtml(node.sourceLabel) + '</span>' +
@@ -469,9 +482,7 @@
             '<span class="tooltip">Summary</span>' +
           '</button>' +
           '<button class="zettels-delete-btn" type="button" aria-label="Delete zettel">' +
-            '<svg class="icon-trash" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-              '<path d="M5 7H19M9 7V5.8C9 5.35 9.35 5 9.8 5H14.2C14.65 5 15 5.35 15 5.8V7M9.4 11V17M14.6 11V17M7.8 7L8.3 18.3C8.34 19.16 9.05 19.83 9.91 19.83H14.09C14.95 19.83 15.66 19.16 15.7 18.3L16.2 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>' +
-            '</svg>' +
+            '<img class="icon-trash icon-trash-img" src="/artifacts/icon-trash-icons8.png" alt="" aria-hidden="true" />' +
             '<svg class="icon-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
               '<path d="M5 12.5L9.2 16.7L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
             '</svg>' +
@@ -713,7 +724,8 @@
       var newNode = normalizeNode({
         id: result.node_id || buildNodeId(result.title || 'untitled', result.source_type || 'web'),
         name: result.title || 'Untitled',
-        summary: result.brief_summary || result.summary || '',
+        summary: result.summary || result.brief_summary || '',
+        description: result.brief_summary || '',
         tags: Array.isArray(result.tags) ? result.tags : [],
         url: result.source_url || url,
         group: result.source_type || 'web',
@@ -822,7 +834,8 @@
     if (!query) return true;
     var haystack = [
       node.title,
-      node.summary,
+      node.briefSummary,
+      node.detailedSummary,
       node.source,
       node.sourceLabel,
       (node.tags || []).join(' ')
@@ -975,7 +988,7 @@
     summarySource.textContent = node.sourceLabel;
     summaryDate.textContent = node.date ? formatDate(node.date) : 'No capture date';
     summaryTitle.textContent = node.title;
-    summaryText.textContent = node.summary || 'No summary available for this zettel.';
+    summaryText.textContent = node.detailedSummary || node.briefSummary || 'No summary available for this zettel.';
 
     summaryTags.innerHTML = '';
     (node.tags || []).forEach(function (tag) {
@@ -1163,6 +1176,93 @@
 
   function createLocalNodeId(seed) {
     return 'local-' + slugify(seed || 'zettel', 20) + '-' + String(Date.now()).slice(-6);
+  }
+
+  function extractSummaryParts(rawSummary) {
+    var rawText = normalizeSummaryText(rawSummary || '');
+    var parsed = tryParseSummaryObject(rawText);
+
+    if (parsed) {
+      var briefFromParsed = normalizeSummaryText(
+        parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
+      );
+      var detailedFromParsed = normalizeSummaryText(
+        parsed.detailed_summary || parsed.detailedSummary || parsed.summary || ''
+      );
+
+      var resolvedBrief = briefFromParsed || detailedFromParsed;
+      var resolvedDetailed = detailedFromParsed || briefFromParsed;
+      if (resolvedBrief || resolvedDetailed) {
+        return {
+          brief: resolvedBrief || 'No summary available for this zettel.',
+          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.'
+        };
+      }
+    }
+
+    var fallback = rawText || 'No summary available for this zettel.';
+    return { brief: fallback, detailed: fallback };
+  }
+
+  function tryParseSummaryObject(rawText) {
+    var cleaned = normalizeSummaryText(rawText || '');
+    if (!cleaned) return null;
+
+    cleaned = cleaned
+      .replace(/^```(?:json)?/i, '')
+      .replace(/```$/i, '')
+      .replace(/^json\s*/i, '')
+      .trim();
+
+    var candidates = [cleaned];
+    var start = cleaned.indexOf('{');
+    var end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      candidates.push(cleaned.slice(start, end + 1));
+    }
+
+    for (var i = 0; i < candidates.length; i++) {
+      var candidate = candidates[i].trim();
+      if (!candidate) continue;
+      try {
+        var parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === 'object') return parsed;
+        if (typeof parsed === 'string') {
+          var nested = JSON.parse(parsed);
+          if (nested && typeof nested === 'object') return nested;
+        }
+      } catch (err) {
+        void err;
+      }
+    }
+
+    var regexBrief = extractSummaryFieldByRegex(cleaned, 'brief_summary');
+    var regexDetailed = extractSummaryFieldByRegex(cleaned, 'detailed_summary');
+    if (regexBrief || regexDetailed) {
+      return {
+        brief_summary: regexBrief,
+        detailed_summary: regexDetailed
+      };
+    }
+
+    return null;
+  }
+
+  function extractSummaryFieldByRegex(text, fieldName) {
+    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|})', 'i');
+    var match = text.match(pattern);
+    if (!match || !match[1]) return '';
+    return normalizeSummaryText(match[1]);
+  }
+
+  function normalizeSummaryText(value) {
+    return String(value || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .trim();
   }
 
   function truncate(value, limit) {

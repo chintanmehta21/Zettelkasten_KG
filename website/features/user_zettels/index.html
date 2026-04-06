@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=20260406a">
-    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260406a">
+    <link rel="stylesheet" href="/css/style.css?v=20260406b">
+    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260406b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -28,7 +28,7 @@
                     <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
                     <span class="logo-text">Zettelkasten</span>
                 </div>
-                <p class="tagline">Everything you have captured in one place</p>
+                <p class="tagline">The second brain you were promised!</p>
             </div>
 
             <div class="zettels-header-end">
@@ -90,7 +90,9 @@
                 </div>
 
                 <div class="zettels-add-wrap" id="add-zettel-wrap">
-                    <button class="zettels-add-circle" id="add-zettel-btn" aria-label="Add a zettel" title="Add Zettel">+</button>
+                    <button class="zettels-add-circle" id="add-zettel-btn" aria-label="Add a zettel" title="Add Zettel">
+                        <span aria-hidden="true">+</span>
+                    </button>
                     <div class="home-add-dropdown" id="add-zettel-dropdown">
                         <form id="add-zettel-form" class="home-add-form">
                             <div class="home-add-row">
@@ -144,11 +146,11 @@
                     <div class="zettels-filter-menu" id="filters-menu" role="menu">
                         <button class="zettels-filter-parent" id="filter-parent-source" data-submenu="source" type="button" role="menuitem">
                             <span>Source</span>
-                            <span class="zettels-submenu-arrow">›</span>
+                            <span class="zettels-submenu-arrow">&rsaquo;</span>
                         </button>
                         <button class="zettels-filter-parent" id="filter-parent-tags" data-submenu="tags" type="button" role="menuitem">
                             <span>Tags</span>
-                            <span class="zettels-submenu-arrow">›</span>
+                            <span class="zettels-submenu-arrow">&rsaquo;</span>
                         </button>
                         <button class="zettels-filter-clear" id="filters-clear" type="button" role="menuitem">Clear Filters</button>
 
@@ -209,7 +211,7 @@
         <span class="zettels-undo-time" id="undo-time">5s</span>
     </div>
 
-    <script src="/home/zettels/js/user_zettels.js?v=20260406a"></script>
+    <script src="/home/zettels/js/user_zettels.js?v=20260406b"></script>
 </body>
 </html>
 

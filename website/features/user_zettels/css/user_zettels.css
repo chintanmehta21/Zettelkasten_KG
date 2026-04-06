@@ -238,14 +238,14 @@ body {
 }
 
 .zettels-add-circle {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
     border: 1px solid hsla(172, 66%, 50%, 0.35);
-    background: radial-gradient(circle at 28% 28%, hsla(172, 66%, 60%, 0.28), hsla(172, 55%, 18%, 0.9));
+    background: linear-gradient(155deg, hsla(172, 66%, 56%, 0.26), hsla(172, 55%, 20%, 0.9));
     color: var(--accent);
-    font-size: 1.65rem;
-    font-weight: 500;
+    font-size: 1.52rem;
+    font-weight: 600;
     line-height: 1;
     display: inline-flex;
     align-items: center;
@@ -256,8 +256,12 @@ body {
 }
 
 .zettels-add-circle:hover {
-    transform: translateY(-1px) scale(1.02);
+    transform: translateY(-1px) scale(1.015);
     box-shadow: 10px 10px 18px hsla(0, 0%, 0%, 0.35), -8px -8px 15px hsla(172, 20%, 16%, 0.35), 0 0 22px hsla(172, 66%, 50%, 0.16);
+}
+
+.zettels-add-circle span {
+    transform: translateY(-1px);
 }
 
 .zettels-add-circle:focus-visible {
@@ -323,6 +327,11 @@ body {
     min-height: 16px;
     display: inline-flex;
     align-items: center;
+}
+
+.zettels-filter-wrap > .zettels-select-label,
+.zettels-select-wrap > .zettels-select-label {
+    padding-left: 3px;
 }
 
 .zettels-select-label-spacer {
@@ -742,20 +751,26 @@ body {
 }
 
 .zettels-delete-btn {
-    border: 1px solid hsla(356, 64%, 60%, 0.3);
-    background: hsla(356, 64%, 60%, 0.08);
-    color: hsl(356, 74%, 72%);
+    border: 1px solid hsla(355, 36%, 62%, 0.33);
+    background: hsla(355, 30%, 52%, 0.1);
+    color: hsl(355, 34%, 70%);
     position: relative;
 }
 
-.zettels-delete-btn svg {
+.zettels-delete-btn .icon-trash-img,
+.zettels-delete-btn .icon-check {
     width: 14px;
     height: 14px;
 }
 
+.zettels-delete-btn .icon-trash-img {
+    pointer-events: none;
+    filter: invert(68%) sepia(8%) saturate(910%) hue-rotate(308deg) brightness(92%) contrast(89%);
+}
+
 .zettels-delete-btn:hover {
-    background: hsla(356, 64%, 60%, 0.15);
-    border-color: hsla(356, 74%, 72%, 0.45);
+    background: hsla(355, 30%, 52%, 0.16);
+    border-color: hsla(355, 38%, 72%, 0.45);
     transform: scale(1.08);
 }
 
@@ -770,6 +785,10 @@ body {
 }
 
 .zettels-delete-btn.confirm .icon-trash {
+    display: none;
+}
+
+.zettels-delete-btn.confirm .icon-trash-img {
     display: none;
 }
 
