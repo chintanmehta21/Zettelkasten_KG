@@ -50,18 +50,18 @@ body {
     height: 44px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    background: var(--bg-card);
+    background: linear-gradient(160deg, hsl(220, 22%, 10%), hsl(222, 24%, 7%));
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 7px 7px 16px hsla(0, 0%, 0%, 0.34), -6px -6px 14px hsla(220, 24%, 11%, 0.48), inset 0 0 0 1px hsla(0, 0%, 100%, 0.02);
     transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .zettels-back-btn:hover {
     color: var(--text-primary);
     border-color: var(--border-light);
-    background: var(--bg-elevated);
     transform: translateX(-2px);
 }
 
@@ -135,7 +135,7 @@ body {
     border: 1px solid var(--border-light);
     border-radius: var(--radius);
     padding: 0.4rem;
-    z-index: 150;
+    z-index: 160;
     box-shadow: var(--shadow-lg);
 }
 
@@ -217,45 +217,50 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.1rem;
+    margin-bottom: 1.08rem;
 }
 
 .zettels-title {
-    font-size: 1.96rem;
+    font-size: 1.92rem;
     line-height: 1.1;
     letter-spacing: -0.03em;
     text-wrap: balance;
 }
 
 .zettels-subtitle {
-    margin-top: 0.36rem;
+    margin-top: 0.35rem;
     color: var(--text-secondary);
-    max-width: 50ch;
+    max-width: 52ch;
 }
 
-.zettels-add-btn {
-    min-height: 44px;
-    padding: 0.65rem 1rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid hsla(172, 66%, 50%, 0.25);
-    background: var(--accent-glow);
+.zettels-add-wrap {
+    position: relative;
+}
+
+.zettels-add-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid hsla(172, 66%, 50%, 0.35);
+    background: radial-gradient(circle at 28% 28%, hsla(172, 66%, 60%, 0.28), hsla(172, 55%, 18%, 0.9));
     color: var(--accent);
-    font-weight: 600;
-    font-size: 0.84rem;
+    font-size: 1.65rem;
+    font-weight: 500;
+    line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+    box-shadow: 8px 8px 18px hsla(0, 0%, 0%, 0.35), -7px -7px 14px hsla(172, 20%, 16%, 0.35), inset 0 1px 4px hsla(172, 85%, 70%, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.zettels-add-btn:hover {
-    background: hsla(172, 66%, 50%, 0.18);
-    border-color: var(--accent-muted);
-    transform: translateY(-1px);
+.zettels-add-circle:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 10px 10px 18px hsla(0, 0%, 0%, 0.35), -8px -8px 15px hsla(172, 20%, 16%, 0.35), 0 0 22px hsla(172, 66%, 50%, 0.16);
 }
 
-.zettels-add-btn:focus-visible {
+.zettels-add-circle:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -263,15 +268,16 @@ body {
 .zettels-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.78rem;
-    margin-bottom: 0.92rem;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
 }
 
 .zettels-stat-card {
-    background: var(--bg-card);
+    background: linear-gradient(150deg, hsl(221, 24%, 10%), hsl(222, 22%, 8%));
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.9rem 1rem;
+    padding: 0.88rem 1rem;
+    box-shadow: inset 1px 1px 0 hsla(210, 30%, 90%, 0.03), inset -1px -1px 0 hsla(0, 0%, 0%, 0.28), 4px 4px 16px hsla(0, 0%, 0%, 0.2);
 }
 
 .zettels-stat-label {
@@ -285,21 +291,43 @@ body {
 
 .zettels-stat-value {
     font-family: var(--font-mono);
-    font-size: 1.35rem;
+    font-size: 1.3rem;
     font-weight: 600;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
 
 .zettels-stat-date {
-    font-size: 1rem;
+    font-size: 0.96rem;
 }
 
 .zettels-toolbar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 220px 170px;
+    grid-template-columns: minmax(0, 1fr) 220px 226px;
     gap: 0.72rem;
     margin-bottom: 0.88rem;
+}
+
+.zettels-search-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+}
+
+.zettels-select-label {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    min-height: 16px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.zettels-select-label-spacer {
+    opacity: 0;
+    user-select: none;
 }
 
 .zettels-search-wrap {
@@ -323,16 +351,18 @@ body {
 }
 
 .zettels-search-input,
-.zettels-select {
+.zettels-select,
+.zettels-filter-trigger {
     width: 100%;
     min-height: 44px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    background: var(--bg-secondary);
+    background: linear-gradient(165deg, hsl(224, 26%, 10%), hsl(222, 24%, 7%));
     color: var(--text-primary);
     padding: 0.65rem 0.8rem;
     font-size: 0.84rem;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    box-shadow: inset 1px 1px 0 hsla(210, 30%, 92%, 0.02), inset -1px -1px 0 hsla(0, 0%, 0%, 0.28);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .zettels-search-input {
@@ -344,25 +374,151 @@ body {
 }
 
 .zettels-search-input:focus-visible,
-.zettels-select:focus-visible {
+.zettels-select:focus-visible,
+.zettels-filter-trigger:focus-visible {
     outline: none;
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-    background: var(--bg-elevated);
+    box-shadow: 0 0 0 3px var(--accent-glow), inset 1px 1px 0 hsla(210, 30%, 92%, 0.02), inset -1px -1px 0 hsla(0, 0%, 0%, 0.28);
 }
 
+.zettels-filter-wrap,
 .zettels-select-wrap {
     display: flex;
     flex-direction: column;
     gap: 0.28rem;
+    position: relative;
 }
 
-.zettels-select-label {
+.zettels-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-body);
+    cursor: pointer;
+    text-align: left;
+}
+
+.zettels-select-chevron,
+.zettels-select-chevron svg {
+    width: 16px;
+    height: 16px;
     color: var(--text-muted);
-    font-size: 0.68rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.zettels-filter-wrap.open .zettels-select-chevron svg {
+    transform: rotate(180deg);
+}
+
+.zettels-filter-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    background: linear-gradient(160deg, hsl(223, 24%, 9%), hsl(221, 22%, 7%));
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem;
+    z-index: 220;
+    box-shadow: var(--shadow-lg);
+}
+
+.zettels-filter-wrap.open .zettels-filter-menu {
+    display: block;
+    animation: dropdownIn 0.16s ease;
+}
+
+.zettels-filter-parent,
+.zettels-filter-clear,
+.zettels-filter-sub-option,
+.zettels-tag-option {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 0.52rem 0.62rem;
+    font-family: var(--font-body);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.zettels-filter-parent:hover,
+.zettels-filter-clear:hover,
+.zettels-filter-sub-option:hover,
+.zettels-tag-option:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.zettels-filter-parent.active {
+    background: hsla(172, 60%, 32%, 0.16);
+    color: var(--accent);
+}
+
+.zettels-filter-clear {
+    margin-top: 0.2rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.6rem;
+    color: var(--text-muted);
+}
+
+.zettels-submenu-arrow {
+    color: var(--text-muted);
+}
+
+.zettels-filter-submenu {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: calc(100% + 6px);
+    min-width: 220px;
+    max-height: 280px;
+    overflow: auto;
+    background: linear-gradient(160deg, hsl(223, 24%, 9%), hsl(221, 22%, 7%));
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 0.35rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.zettels-filter-submenu.open {
+    display: block;
+    animation: dropdownIn 0.16s ease;
+}
+
+.zettels-filter-sub-option.selected,
+.zettels-tag-option.selected {
+    color: var(--accent);
+    background: hsla(172, 66%, 50%, 0.12);
+    border: 1px solid hsla(172, 66%, 50%, 0.22);
+}
+
+.zettels-tag-option {
+    justify-content: flex-start;
+}
+
+.zettels-tag-check {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    margin-right: 0.35rem;
+    flex-shrink: 0;
+}
+
+.zettels-tag-option.selected .zettels-tag-check {
+    border-color: var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 0 1px hsla(172, 66%, 50%, 0.2);
 }
 
 .zettels-list {
@@ -372,18 +528,20 @@ body {
 }
 
 .zettels-card {
-    background: var(--bg-secondary);
+    position: relative;
+    background: linear-gradient(150deg, hsl(223, 27%, 9%), hsl(222, 24%, 7%));
     border: 1px solid hsla(172, 66%, 50%, 0.2);
     border-radius: var(--radius-sm);
     padding: 0.86rem 0.96rem;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    text-decoration: none;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, max-height 0.35s ease, opacity 0.35s ease, margin 0.35s ease, padding 0.35s ease;
     color: inherit;
     display: flex;
     flex-direction: column;
-    gap: 0.44rem;
+    gap: 0.42rem;
     min-width: 0;
+    overflow: hidden;
+    box-shadow: 8px 8px 16px hsla(0, 0%, 0%, 0.26), -6px -6px 12px hsla(225, 18%, 12%, 0.28), inset 0 0 0 1px hsla(210, 20%, 90%, 0.02);
     animation: zettelCardIn 0.24s ease both;
 }
 
@@ -399,14 +557,58 @@ body {
 }
 
 .zettels-card:hover {
-    border-color: hsla(172, 66%, 50%, 0.4);
+    border-color: hsla(172, 66%, 50%, 0.42);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-md), 0 0 0 1px hsla(172, 66%, 50%, 0.1);
 }
 
 .zettels-card:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+}
+
+.zettels-card.is-new {
+    animation: zettelPopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zettelPopIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.zettels-card.is-removing {
+    opacity: 0;
+    transform: translateX(-44px) scale(0.98);
+}
+
+.zettels-card.is-collapsed {
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-width: 0 !important;
+    margin: 0 !important;
+    pointer-events: none;
+}
+
+.zettels-card.is-restoring {
+    animation: zettelRestore 0.36s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes zettelRestore {
+    0% {
+        opacity: 0;
+        transform: translateX(-34px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .zettels-card-title {
@@ -423,7 +625,7 @@ body {
 .zettels-card-summary {
     color: var(--text-secondary);
     font-size: 0.82rem;
-    line-height: 1.55;
+    line-height: 1.52;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -467,31 +669,46 @@ body {
 .home-card-source.web { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
 .home-card-source.medium { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.08); }
 
-.home-card-summary-btn {
-    width: 24px;
-    height: 24px;
+.zettels-card-actions {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.44rem;
+    position: relative;
+}
+
+.home-card-summary-btn,
+.zettels-delete-btn {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    border: 1px solid hsla(210, 50%, 55%, 0.4);
-    background: hsla(210, 50%, 55%, 0.1);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    position: relative;
     flex-shrink: 0;
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.home-card-summary-btn {
+    border: 1px solid hsla(210, 50%, 55%, 0.4);
+    background: hsla(210, 50%, 55%, 0.1);
+    position: relative;
 }
 
 .home-card-summary-btn:hover {
     background: hsla(210, 50%, 55%, 0.2);
     border-color: hsl(210, 55%, 60%);
     box-shadow: 0 0 10px hsla(210, 50%, 55%, 0.3);
-    transform: scale(1.12);
+    transform: scale(1.08);
 }
 
-.home-card-summary-btn:focus-visible {
+.home-card-summary-btn:focus-visible,
+.zettels-delete-btn:focus-visible,
+.home-add-submit:focus-visible,
+.home-add-input:focus-visible,
+.zettels-undo-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -517,11 +734,83 @@ body {
     white-space: nowrap;
     border: 1px solid var(--border);
     pointer-events: none;
-    z-index: 10;
+    z-index: 12;
 }
 
 .home-card-summary-btn:hover .tooltip {
     display: block;
+}
+
+.zettels-delete-btn {
+    border: 1px solid hsla(356, 64%, 60%, 0.3);
+    background: hsla(356, 64%, 60%, 0.08);
+    color: hsl(356, 74%, 72%);
+    position: relative;
+}
+
+.zettels-delete-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.zettels-delete-btn:hover {
+    background: hsla(356, 64%, 60%, 0.15);
+    border-color: hsla(356, 74%, 72%, 0.45);
+    transform: scale(1.08);
+}
+
+.zettels-delete-btn .icon-check {
+    display: none;
+}
+
+.zettels-delete-btn.confirm {
+    color: hsl(162, 54%, 66%);
+    background: hsla(162, 54%, 42%, 0.16);
+    border-color: hsla(162, 54%, 66%, 0.45);
+}
+
+.zettels-delete-btn.confirm .icon-trash {
+    display: none;
+}
+
+.zettels-delete-btn.confirm .icon-check {
+    display: block;
+}
+
+.zettels-delete-cloud {
+    position: absolute;
+    right: -4px;
+    bottom: calc(100% + 8px);
+    background: linear-gradient(170deg, hsl(223, 24%, 13%), hsl(221, 20%, 10%));
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 0.24rem 0.52rem;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.35);
+}
+
+.zettels-delete-cloud::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 100%;
+    width: 8px;
+    height: 8px;
+    background: hsl(222, 22%, 11%);
+    border-right: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    transform: rotate(45deg) translateY(-6px);
+}
+
+.zettels-card.delete-confirm .zettels-delete-cloud {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .zettels-empty {
@@ -540,6 +829,127 @@ body {
 
 .zettels-empty p {
     color: var(--text-secondary);
+}
+
+.home-add-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: -12px;
+    min-width: 420px;
+    background: var(--bg-card);
+    border: 1px solid hsla(172, 50%, 30%, 0.32);
+    border-radius: var(--radius);
+    padding: 1rem;
+    z-index: 500;
+    box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.4), 0 0 0 1px hsla(172, 50%, 30%, 0.1);
+    transform-origin: top right;
+}
+
+.home-add-dropdown.open {
+    display: block;
+    animation: addDropdownIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes addDropdownIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(-8px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.home-add-row {
+    display: flex;
+    gap: 0.52rem;
+    align-items: center;
+}
+
+.home-add-input {
+    flex: 1;
+    min-height: 46px;
+    padding: 0.56rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+}
+
+.home-add-input::placeholder {
+    color: var(--text-muted);
+}
+
+.home-add-submit {
+    min-height: 46px;
+    padding: 0.56rem 1rem;
+    background: var(--accent);
+    color: var(--text-inverted);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+}
+
+.home-add-submit:hover {
+    background: var(--accent-hover);
+}
+
+.home-add-submit:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+.home-add-error {
+    color: var(--error);
+    font-size: 0.75rem;
+    margin-top: 0.52rem;
+    min-height: 0;
+}
+
+.zettels-card-skeleton {
+    pointer-events: none;
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.75; }
+}
+
+.skeleton-line {
+    border-radius: 4px;
+    background: hsla(172, 30%, 40%, 0.15);
+}
+
+.skeleton-title {
+    width: 58%;
+    height: 14px;
+    margin-bottom: 0.45rem;
+}
+
+.skeleton-body {
+    width: 85%;
+    height: 12px;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-date {
+    width: 72px;
+    height: 12px;
+}
+
+.skeleton-source {
+    width: 56px;
+    height: 12px;
 }
 
 .zettels-summary-overlay {
@@ -565,7 +975,7 @@ body {
     overflow-y: auto;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
-    background: var(--bg-card);
+    background: linear-gradient(150deg, hsl(223, 24%, 10%), hsl(221, 20%, 8%));
     padding: 1.3rem 1.2rem 1.1rem;
     box-shadow: var(--shadow-lg);
     animation: summaryIn 0.22s ease;
@@ -675,26 +1085,93 @@ body {
     font-size: 0.62rem;
 }
 
+.zettels-undo-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1450;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    background: linear-gradient(155deg, hsl(223, 24%, 11%), hsl(221, 20%, 8%));
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    padding: 0.42rem 0.58rem 0.42rem 0.8rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.zettels-undo-text {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.zettels-undo-btn {
+    border: 1px solid hsla(172, 66%, 50%, 0.35);
+    background: var(--accent-glow);
+    color: var(--accent);
+    min-height: 32px;
+    padding: 0.1rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.zettels-undo-btn:hover {
+    background: hsla(172, 66%, 50%, 0.18);
+}
+
+.zettels-undo-time {
+    min-width: 28px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
 .hidden {
     display: none !important;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 880px) {
     .zettels-toolbar {
         grid-template-columns: 1fr;
     }
 
+    .zettels-filter-submenu {
+        position: static;
+        margin-top: 0.25rem;
+        min-width: 0;
+        box-shadow: none;
+    }
+
+    .home-add-dropdown {
+        min-width: min(420px, calc(100vw - 2rem));
+        right: 0;
+    }
+}
+
+@media (max-width: 760px) {
     .zettels-hero {
-        flex-direction: column;
         align-items: flex-start;
     }
 
     .zettels-title {
-        font-size: 1.68rem;
+        font-size: 1.62rem;
     }
 
     .zettels-stats {
         grid-template-columns: 1fr;
+    }
+
+    .home-add-row {
+        flex-direction: column;
+    }
+
+    .home-add-input,
+    .home-add-submit {
+        width: 100%;
     }
 
     .home-dropdown {

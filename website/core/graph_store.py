@@ -156,3 +156,24 @@ def add_node(
 def get_graph() -> dict:
     """Return the current graph data."""
     return _load()
+
+
+def delete_node(node_id: str) -> bool:
+    """Delete a node and all links attached to it from the file-backed graph."""
+    graph = _load()
+
+    with _lock:
+        node_count_before = len(graph["nodes"])
+        graph["nodes"] = [n for n in graph["nodes"] if n.get("id") != node_id]
+        if len(graph["nodes"]) == node_count_before:
+            return False
+
+        graph["links"] = [
+            lk
+            for lk in graph["links"]
+            if lk.get("source") != node_id and lk.get("target") != node_id
+        ]
+        _save()
+
+    logger.info("Deleted node '%s' from file graph store", node_id)
+    return True

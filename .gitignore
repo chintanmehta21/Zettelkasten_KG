@@ -55,3 +55,4 @@ docs/login_details.txt
 .playwright-mcp/
 .agents/
 .mcp.local.json
+supabase/.temp/

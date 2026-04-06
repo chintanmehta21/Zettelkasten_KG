@@ -13,7 +13,7 @@ from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
 from website.core.pipeline import summarize_url
-from website.core.graph_store import add_node, get_graph
+from website.core.graph_store import add_node, get_graph, delete_node as delete_graph_node
 from website.core.supabase_kg import is_supabase_configured, KGRepository, KGNodeCreate, KGGraph
 from website.features.kg_features.embeddings import find_similar_nodes, generate_embedding
 
@@ -328,6 +328,40 @@ async def rebuild_links(user: Annotated[dict | None, Depends(get_optional_user)]
     except Exception as exc:
         logger.error("Rebuild links failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Failed to rebuild links: {exc}")
+
+
+@router.delete("/zettels/{node_id}")
+async def delete_zettel(
+    node_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Delete a zettel from the authenticated user's graph."""
+    global _graph_cache, _graph_cache_ts, _graph_cache_global, _graph_cache_global_ts
+
+    deleted = False
+    sb = _get_supabase(user_id_override=user["sub"])
+    if sb:
+        repo, user_id = sb
+        try:
+            from uuid import UUID
+
+            deleted = repo.delete_node(UUID(user_id), node_id)
+        except Exception as exc:
+            logger.warning("Supabase node delete failed, falling back to file store: %s", exc)
+
+    # Fallback for non-supabase mode
+    if not deleted:
+        deleted = delete_graph_node(node_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Zettel not found")
+
+    _graph_cache = None
+    _graph_cache_ts = 0
+    _graph_cache_global = None
+    _graph_cache_global_ts = 0
+
+    return {"status": "ok", "node_id": node_id}
 
 
 class GraphQueryRequest(BaseModel):

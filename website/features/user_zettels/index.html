@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=20260403m">
-    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260403m">
+    <link rel="stylesheet" href="/css/style.css?v=20260406a">
+    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260406a">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -86,11 +86,21 @@
             <section class="zettels-hero">
                 <div class="zettels-hero-copy">
                     <h1 class="zettels-title">My Zettels</h1>
-                    <p class="zettels-subtitle">Search, filter, and revisit every idea you have captured.</p>
+                    <p class="zettels-subtitle">Search, filter, sort, and maintain your full personal knowledge stream.</p>
                 </div>
-                <a class="zettels-add-btn" href="/home" aria-label="Go back to home and add a zettel">
-                    Add New Zettel
-                </a>
+
+                <div class="zettels-add-wrap" id="add-zettel-wrap">
+                    <button class="zettels-add-circle" id="add-zettel-btn" aria-label="Add a zettel" title="Add Zettel">+</button>
+                    <div class="home-add-dropdown" id="add-zettel-dropdown">
+                        <form id="add-zettel-form" class="home-add-form">
+                            <div class="home-add-row">
+                                <input type="url" id="add-url-input" class="home-add-input" placeholder="https://..." required />
+                                <button type="submit" class="home-add-submit" id="add-submit-btn">Add</button>
+                            </div>
+                            <p class="home-add-error" id="add-error"></p>
+                        </form>
+                    </div>
+                </div>
             </section>
 
             <section class="zettels-stats" aria-label="Zettel statistics">
@@ -109,22 +119,43 @@
             </section>
 
             <section class="zettels-toolbar" aria-label="Search and filter zettels">
-                <label class="zettels-search-wrap" for="zettels-search">
-                    <span class="zettels-search-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
-                            <path d="M20 20L16.8 16.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-                        </svg>
-                    </span>
-                    <input id="zettels-search" class="zettels-search-input" name="search" type="search" placeholder="Search title, summary, tags…" autocomplete="off" />
-                </label>
+                <div class="zettels-search-column">
+                    <span class="zettels-select-label zettels-select-label-spacer" aria-hidden="true">&nbsp;</span>
+                    <label class="zettels-search-wrap" for="zettels-search">
+                        <span class="zettels-search-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+                                <path d="M20 20L16.8 16.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                            </svg>
+                        </span>
+                        <input id="zettels-search" class="zettels-search-input" name="search" type="search" placeholder="Search title, summary, tags..." autocomplete="off" />
+                    </label>
+                </div>
 
-                <label class="zettels-select-wrap" for="source-filter">
-                    <span class="zettels-select-label">Source</span>
-                    <select id="source-filter" class="zettels-select" name="source">
-                        <option value="all">All Sources</option>
-                    </select>
-                </label>
+                <div class="zettels-filter-wrap" id="filters-wrap">
+                    <span class="zettels-select-label">Filters</span>
+                    <button class="zettels-filter-trigger" id="filters-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                        <span id="filters-btn-text">All Filters</span>
+                        <span class="zettels-select-chevron" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        </span>
+                    </button>
+
+                    <div class="zettels-filter-menu" id="filters-menu" role="menu">
+                        <button class="zettels-filter-parent" id="filter-parent-source" data-submenu="source" type="button" role="menuitem">
+                            <span>Source</span>
+                            <span class="zettels-submenu-arrow">›</span>
+                        </button>
+                        <button class="zettels-filter-parent" id="filter-parent-tags" data-submenu="tags" type="button" role="menuitem">
+                            <span>Tags</span>
+                            <span class="zettels-submenu-arrow">›</span>
+                        </button>
+                        <button class="zettels-filter-clear" id="filters-clear" type="button" role="menuitem">Clear Filters</button>
+
+                        <div class="zettels-filter-submenu" id="submenu-source" role="menu"></div>
+                        <div class="zettels-filter-submenu" id="submenu-tags" role="menu"></div>
+                    </div>
+                </div>
 
                 <label class="zettels-select-wrap" for="sort-filter">
                     <span class="zettels-select-label">Sort</span>
@@ -132,6 +163,8 @@
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
                         <option value="title">Title (A-Z)</option>
+                        <option value="summary_long">Summary Length (Long to Short)</option>
+                        <option value="summary_short">Summary Length (Short to Long)</option>
                     </select>
                 </label>
             </section>
@@ -140,7 +173,7 @@
                 <div class="zettels-list" id="zettels-list"></div>
                 <div class="zettels-empty hidden" id="zettels-empty">
                     <h2>No matching zettels</h2>
-                    <p>Try adjusting your search or source filter.</p>
+                    <p>Try adjusting search, filters, or sort.</p>
                 </div>
             </section>
         </main>
@@ -148,15 +181,6 @@
         <footer class="footer">
             <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" title="View on GitHub">
                 <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-            </a>
-            <a href="/about" class="footer-icon" title="About">
-                <img src="/artifacts/footer_icons/about.svg" alt="About" width="20" height="20" />
-            </a>
-            <a href="/pricing" class="footer-icon" title="Pricing">
-                <img src="/artifacts/footer_icons/pricing.svg" alt="Pricing" width="20" height="20" />
-            </a>
-            <a href="https://www.buymeacoffee.com/chintanmehta21" target="_blank" rel="noopener" class="footer-icon" title="BuyMeACoffee">
-                <img src="/artifacts/footer_icons/support.svg" alt="BuyMeACoffee" width="20" height="20" />
             </a>
         </footer>
     </div>
@@ -179,6 +203,13 @@
         </section>
     </div>
 
-    <script src="/home/zettels/js/user_zettels.js?v=20260403m"></script>
+    <div class="zettels-undo-toast hidden" id="undo-toast" role="status" aria-live="polite">
+        <span class="zettels-undo-text" id="undo-text">Zettel deleted.</span>
+        <button class="zettels-undo-btn" id="undo-btn" type="button">Undo</button>
+        <span class="zettels-undo-time" id="undo-time">5s</span>
+    </div>
+
+    <script src="/home/zettels/js/user_zettels.js?v=20260406a"></script>
 </body>
 </html>
+
