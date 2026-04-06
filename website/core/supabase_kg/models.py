@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── User ─────────────────────────────────────────────────────────────────────
@@ -47,6 +47,15 @@ class KGNode(BaseModel):
     embedding: list[float] | None = Field(default=None, description="Semantic embedding vector (768-dim)")
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    @field_validator("embedding", mode="before")
+    @classmethod
+    def _parse_pgvector_string(cls, v: Any) -> list[float] | None:
+        """Supabase returns pgvector columns as strings like '[0.1,0.2,...]'."""
+        if isinstance(v, str):
+            import json
+            return json.loads(v)
+        return v
 
 
 class KGNodeCreate(BaseModel):
