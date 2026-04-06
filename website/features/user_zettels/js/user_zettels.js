@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   'use strict';
 
   var _supabaseClient = null;
@@ -7,6 +7,7 @@
   var _allNodes = [];
   var _activeSource = 'all';
   var _activeTags = new Set();
+  var _activeSort = 'newest';
 
   var _deleteConfirmId = null;
   var _deleteConfirmTimer = null;
@@ -24,7 +25,6 @@
   var statLatest;
 
   var searchInput;
-  var sortFilter;
   var listEl;
   var emptyEl;
 
@@ -37,6 +37,10 @@
   var submenuSource;
   var submenuTags;
   var filtersClear;
+  var sortWrap;
+  var sortBtn;
+  var sortBtnText;
+  var sortMenu;
 
   var addWrap;
   var addBtn;
@@ -73,7 +77,6 @@
     statLatest = document.getElementById('stat-latest');
 
     searchInput = document.getElementById('zettels-search');
-    sortFilter = document.getElementById('sort-filter');
     listEl = document.getElementById('zettels-list');
     emptyEl = document.getElementById('zettels-empty');
 
@@ -86,6 +89,10 @@
     submenuSource = document.getElementById('submenu-source');
     submenuTags = document.getElementById('submenu-tags');
     filtersClear = document.getElementById('filters-clear');
+    sortWrap = document.getElementById('sort-wrap');
+    sortBtn = document.getElementById('sort-btn');
+    sortBtnText = document.getElementById('sort-btn-text');
+    sortMenu = document.getElementById('sort-menu');
 
     addWrap = document.getElementById('add-zettel-wrap');
     addBtn = document.getElementById('add-zettel-btn');
@@ -265,6 +272,7 @@
     renderSourceFilterMenu();
     renderTagFilterMenu();
     updateFiltersButtonText();
+    syncSortMenuOptions();
   }
 
   function renderSourceFilterMenu() {
@@ -383,6 +391,23 @@
     filtersBtnText.textContent = parts.length ? parts.join(' | ') : 'All Filters';
   }
 
+  function updateSortButtonText() {
+    if (!sortBtnText || !sortMenu) return;
+    var option = sortMenu.querySelector('.sort-option[data-sort="' + _activeSort + '"]');
+    sortBtnText.textContent = option ? option.textContent : 'Newest First';
+  }
+
+  function syncSortMenuOptions() {
+    if (!sortMenu) return;
+    var options = sortMenu.querySelectorAll('.sort-option');
+    options.forEach(function (opt) {
+      var selected = opt.getAttribute('data-sort') === _activeSort;
+      opt.classList.toggle('selected', selected);
+      opt.setAttribute('aria-checked', selected ? 'true' : 'false');
+    });
+    updateSortButtonText();
+  }
+
   function updateStats(nodes) {
     var total = nodes.length;
     var sources = {};
@@ -402,7 +427,7 @@
     var opts = options || {};
     var restoreId = opts.restoreId || '';
     var query = ((searchInput && searchInput.value) || '').trim().toLowerCase();
-    var sortMode = (sortFilter && sortFilter.value) || 'newest';
+    var sortMode = _activeSort || 'newest';
 
     var filtered = _allNodes.filter(function (node) {
       if (_activeSource !== 'all' && node.source !== _activeSource) return false;
@@ -819,7 +844,7 @@
 
   function shouldRenderNewNodeAtTop(node) {
     var query = ((searchInput && searchInput.value) || '').trim().toLowerCase();
-    var sortMode = (sortFilter && sortFilter.value) || 'newest';
+    var sortMode = _activeSort || 'newest';
     if (sortMode !== 'newest') return false;
     if (_activeSource !== 'all' && node.source !== _activeSource) return false;
 
@@ -1010,6 +1035,7 @@
 
   function openFiltersMenu() {
     if (!filtersWrap || !filtersBtn) return;
+    closeSortMenu();
     filtersWrap.classList.add('open');
     filtersBtn.setAttribute('aria-expanded', 'true');
     openSubmenu('source');
@@ -1026,6 +1052,25 @@
     if (!filtersWrap) return;
     if (filtersWrap.classList.contains('open')) closeFiltersMenu();
     else openFiltersMenu();
+  }
+
+  function openSortMenu() {
+    if (!sortWrap || !sortBtn) return;
+    closeFiltersMenu();
+    sortWrap.classList.add('open');
+    sortBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSortMenu() {
+    if (!sortWrap || !sortBtn) return;
+    sortWrap.classList.remove('open');
+    sortBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleSortMenu() {
+    if (!sortWrap) return;
+    if (sortWrap.classList.contains('open')) closeSortMenu();
+    else openSortMenu();
   }
 
   function openSubmenu(name) {
@@ -1064,6 +1109,13 @@
       });
     }
 
+    if (sortBtn) {
+      sortBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleSortMenu();
+      });
+    }
+
     if (filterParentSource) {
       filterParentSource.addEventListener('mouseenter', function () { openSubmenu('source'); });
       filterParentSource.addEventListener('focus', function () { openSubmenu('source'); });
@@ -1092,6 +1144,24 @@
       });
     }
 
+    if (sortMenu) {
+      sortMenu.addEventListener('click', function (e) {
+        var option = e.target.closest('.sort-option');
+        if (!option) return;
+        e.preventDefault();
+        var nextSort = option.getAttribute('data-sort') || 'newest';
+        if (_activeSort === nextSort) {
+          closeSortMenu();
+          return;
+        }
+        _activeSort = nextSort;
+        syncSortMenuOptions();
+        clearDeleteConfirmState();
+        applyFilters();
+        closeSortMenu();
+      });
+    }
+
     if (addBtn) {
       addBtn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -1111,12 +1181,6 @@
     }
 
     if (searchInput) searchInput.addEventListener('input', applyFilters);
-    if (sortFilter) {
-      sortFilter.addEventListener('change', function () {
-        clearDeleteConfirmState();
-        applyFilters();
-      });
-    }
 
     if (menuSignout) {
       menuSignout.addEventListener('click', async function () {
@@ -1139,6 +1203,9 @@
       if (filtersWrap && !filtersWrap.contains(e.target)) {
         closeFiltersMenu();
       }
+      if (sortWrap && !sortWrap.contains(e.target)) {
+        closeSortMenu();
+      }
       if (addDropdown && addWrap && !addWrap.contains(e.target)) {
         addDropdown.classList.remove('open');
       }
@@ -1150,6 +1217,7 @@
       clearDeleteConfirmState();
       if (avatarDropdown) avatarDropdown.classList.remove('open');
       closeFiltersMenu();
+      closeSortMenu();
       if (addDropdown) addDropdown.classList.remove('open');
     });
   }
@@ -1304,3 +1372,4 @@
     init();
   }
 })();
+

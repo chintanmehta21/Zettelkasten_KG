@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=20260406b">
-    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260406b">
+    <link rel="stylesheet" href="/css/style.css?v=20260406c">
+    <link rel="stylesheet" href="/home/zettels/css/user_zettels.css?v=20260406c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -159,16 +159,22 @@
                     </div>
                 </div>
 
-                <label class="zettels-select-wrap" for="sort-filter">
+                <div class="zettels-filter-wrap zettels-sort-wrap" id="sort-wrap">
                     <span class="zettels-select-label">Sort</span>
-                    <select id="sort-filter" class="zettels-select" name="sort">
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="title">Title (A-Z)</option>
-                        <option value="summary_long">Summary Length (Long to Short)</option>
-                        <option value="summary_short">Summary Length (Short to Long)</option>
-                    </select>
-                </label>
+                    <button class="zettels-filter-trigger" id="sort-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                        <span id="sort-btn-text">Newest First</span>
+                        <span class="zettels-select-chevron" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        </span>
+                    </button>
+                    <div class="zettels-filter-menu zettels-sort-menu" id="sort-menu" role="menu">
+                        <button class="zettels-filter-sub-option sort-option selected" type="button" data-sort="newest" role="menuitemradio" aria-checked="true">Newest First</button>
+                        <button class="zettels-filter-sub-option sort-option" type="button" data-sort="oldest" role="menuitemradio" aria-checked="false">Oldest First</button>
+                        <button class="zettels-filter-sub-option sort-option" type="button" data-sort="title" role="menuitemradio" aria-checked="false">Title (A-Z)</button>
+                        <button class="zettels-filter-sub-option sort-option" type="button" data-sort="summary_long" role="menuitemradio" aria-checked="false">Summary Length (Long to Short)</button>
+                        <button class="zettels-filter-sub-option sort-option" type="button" data-sort="summary_short" role="menuitemradio" aria-checked="false">Summary Length (Short to Long)</button>
+                    </div>
+                </div>
             </section>
 
             <section class="zettels-list-section" aria-live="polite">
@@ -211,7 +217,7 @@
         <span class="zettels-undo-time" id="undo-time">5s</span>
     </div>
 
-    <script src="/home/zettels/js/user_zettels.js?v=20260406b"></script>
+    <script src="/home/zettels/js/user_zettels.js?v=20260406c"></script>
 </body>
 </html>
 

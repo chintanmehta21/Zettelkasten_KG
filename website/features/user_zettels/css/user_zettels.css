@@ -238,30 +238,64 @@ body {
 }
 
 .zettels-add-circle {
-    width: 46px;
-    height: 46px;
-    border-radius: 14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 0;
     border: 1px solid hsla(172, 66%, 50%, 0.35);
-    background: linear-gradient(155deg, hsla(172, 66%, 56%, 0.26), hsla(172, 55%, 20%, 0.9));
+    background:
+        radial-gradient(circle at 28% 22%, hsla(172, 78%, 72%, 0.24), transparent 52%),
+        linear-gradient(165deg, hsla(172, 62%, 58%, 0.26), hsla(172, 54%, 19%, 0.92));
     color: var(--accent);
-    font-size: 1.52rem;
+    font-size: 1.46rem;
     font-weight: 600;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 8px 8px 18px hsla(0, 0%, 0%, 0.35), -7px -7px 14px hsla(172, 20%, 16%, 0.35), inset 0 1px 4px hsla(172, 85%, 70%, 0.2);
+    box-shadow:
+        8px 8px 18px hsla(0, 0%, 0%, 0.35),
+        -7px -7px 14px hsla(172, 20%, 16%, 0.35),
+        inset 0 1px 3px hsla(172, 86%, 74%, 0.24),
+        inset 0 -2px 5px hsla(0, 0%, 0%, 0.26);
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    clip-path: polygon(22% 0, 78% 0, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0 78%, 0 22%);
+}
+
+.zettels-add-circle::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    pointer-events: none;
+    clip-path: inherit;
+    background: linear-gradient(155deg, hsla(172, 100%, 85%, 0.14), transparent 54%);
+}
+
+.zettels-add-circle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    clip-path: inherit;
+    box-shadow: inset 0 0 0 1px hsla(172, 72%, 72%, 0.22);
 }
 
 .zettels-add-circle:hover {
-    transform: translateY(-1px) scale(1.015);
-    box-shadow: 10px 10px 18px hsla(0, 0%, 0%, 0.35), -8px -8px 15px hsla(172, 20%, 16%, 0.35), 0 0 22px hsla(172, 66%, 50%, 0.16);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow:
+        10px 10px 18px hsla(0, 0%, 0%, 0.35),
+        -8px -8px 15px hsla(172, 20%, 16%, 0.35),
+        0 0 22px hsla(172, 66%, 50%, 0.16),
+        inset 0 1px 3px hsla(172, 90%, 74%, 0.28),
+        inset 0 -2px 5px hsla(0, 0%, 0%, 0.24);
 }
 
 .zettels-add-circle span {
     transform: translateY(-1px);
+    position: relative;
+    z-index: 1;
 }
 
 .zettels-add-circle:focus-visible {
@@ -405,6 +439,11 @@ body {
     font-family: var(--font-body);
     cursor: pointer;
     text-align: left;
+    box-shadow:
+        7px 7px 14px hsla(0, 0%, 0%, 0.18),
+        -5px -5px 12px hsla(224, 18%, 12%, 0.34),
+        inset 1px 1px 0 hsla(210, 30%, 92%, 0.03),
+        inset -1px -1px 0 hsla(0, 0%, 0%, 0.26);
 }
 
 .zettels-select-chevron,
@@ -431,11 +470,21 @@ body {
     padding: 0.35rem;
     z-index: 220;
     box-shadow: var(--shadow-lg);
+    box-shadow:
+        0 16px 36px hsla(0, 0%, 0%, 0.38),
+        inset 1px 1px 0 hsla(210, 30%, 92%, 0.03),
+        inset -1px -1px 0 hsla(0, 0%, 0%, 0.28);
 }
 
 .zettels-filter-wrap.open .zettels-filter-menu {
     display: block;
     animation: dropdownIn 0.16s ease;
+}
+
+.zettels-sort-wrap .zettels-sort-menu {
+    left: 0;
+    right: 0;
+    min-width: 100%;
 }
 
 .zettels-filter-parent,
