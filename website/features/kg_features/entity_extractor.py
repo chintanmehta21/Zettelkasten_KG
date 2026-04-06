@@ -233,7 +233,7 @@ class EntityExtractor:
                     starting_model=model,
                     label="Entity analysis",
                 ),
-                timeout=10.0,
+                timeout=30.0,
             )
             analysis_text = analysis_response.text
 
@@ -259,7 +259,7 @@ class EntityExtractor:
                     starting_model=model,
                     label="Entity structured",
                 ),
-                timeout=10.0,
+                timeout=30.0,
             )
             structured_text = structured_response.text
 
@@ -292,7 +292,7 @@ class EntityExtractor:
                         starting_model=model,
                         label="Entity gleaning",
                     ),
-                    timeout=10.0,
+                    timeout=30.0,
                 )
                 glean_text = glean_response.text
 

@@ -596,7 +596,7 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
                                 title=result["title"],
                                 existing_types=existing_types,
                             ),
-                            timeout=45.0,
+                            timeout=90.0,
                         )
                         result["_entity_debug"]["raw_entities"] = len(extraction.entities)
                         result["_entity_debug"]["raw_relationships"] = len(extraction.relationships)
