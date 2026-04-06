@@ -1,18 +1,9 @@
 """Gemini AI summarization and multi-dimensional tagging.
 
-Uses the google-genai SDK (NOT the deprecated google-generativeai) to
-send extracted content to Gemini and receive structured summaries with
-intelligent tags across 6 axes.
+Delegates to the centralized GeminiKeyPool for key rotation and model
+fallback.  The pool handles all 429 rate-limit retries and key switching.
 
-Model fallback hierarchy (best → most available):
-  gemini-2.5-flash → gemini-2.0-flash → gemini-2.5-flash-lite
-
-If the primary model hits a rate limit (429), the next model in the
-chain is tried automatically.  This maximises summary quality while
-ensuring the pipeline never fails just because one model's free-tier
-quota is exhausted.
-
-Graceful degradation (R022): if ALL models fail, returns raw content
+Graceful degradation (R022): if ALL models/keys fail, returns raw content
 with status=raw so it can still be saved to Obsidian for manual review.
 """
 
@@ -23,31 +14,13 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from google import genai
 from google.genai import types
-from google.genai.errors import ClientError
-
-# How long (seconds) a model stays on cooldown after a 429 response.
-_RATE_LIMIT_COOLDOWN_SECS = 60
 
 from telegram_bot.models.capture import ExtractedContent, SourceType
+from website.features.api_key_switching import get_key_pool
+from website.features.api_key_switching.routing import select_starting_model
 
 logger = logging.getLogger(__name__)
-
-# Best-first model fallback chain.  Each entry is tried in order;
-# on a 429 rate-limit the next model is attempted.
-_MODEL_FALLBACK_CHAIN = [
-    "gemini-2.5-flash",       # best quality, 20 RPD free tier
-    "gemini-2.0-flash",       # strong quality, 1500 RPD free tier
-    "gemini-2.5-flash-lite",  # good quality, generous free tier
-]
-
-
-def _is_rate_limited(exc: Exception) -> bool:
-    """Return True if *exc* is a Gemini 429 rate-limit error."""
-    if isinstance(exc, ClientError) and getattr(exc, "code", None) == 429:
-        return True
-    return "429" in str(exc) and "RESOURCE_EXHAUSTED" in str(exc)
 
 # ── Prompt template ──────────────────────────────────────────────────────────
 
@@ -104,50 +77,19 @@ class SummarizationResult:
 class GeminiSummarizer:
     """Summarize and tag content using Google Gemini.
 
-    Tries models in a best-first fallback chain.  If the configured
-    model (or the first model in the chain) hits a 429 rate limit, the
-    next model is tried automatically.
+    Delegates to the centralized GeminiKeyPool for key rotation,
+    model fallback, and rate-limit handling.
 
     Args:
-        api_key: Gemini API key.
+        api_key: Deprecated — keys are managed by GeminiKeyPool.
         model_name: Primary model to try first.
     """
 
-    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash") -> None:
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY is required for summarization")
-        self._client = genai.Client(api_key=api_key)
-        self._aio_models = self._client.aio.models
+    def __init__(self, api_key: str = "", model_name: str = "gemini-2.5-flash") -> None:
+        if api_key:
+            logger.debug("api_key parameter is deprecated — keys are managed by GeminiKeyPool")
+        self._pool = get_key_pool()
         self._model = model_name
-        # model → monotonic timestamp when cooldown expires
-        self._cooldowns: dict[str, float] = {}
-
-    def _build_model_chain(self) -> list[str]:
-        """Return the fallback chain, skipping models on cooldown.
-
-        The configured model is tried first, followed by the remaining
-        models in ``_MODEL_FALLBACK_CHAIN``.  Any model whose cooldown
-        has not yet expired is omitted.  If *all* models are on cooldown,
-        the full chain is returned anyway (better to retry than to fail
-        without trying).
-        """
-        now = time.monotonic()
-        # Purge expired cooldowns
-        self._cooldowns = {
-            m: exp for m, exp in self._cooldowns.items() if exp > now
-        }
-
-        full_chain = [self._model]
-        for m in _MODEL_FALLBACK_CHAIN:
-            if m not in full_chain:
-                full_chain.append(m)
-
-        filtered = [m for m in full_chain if m not in self._cooldowns]
-        if not filtered:
-            # All models on cooldown — try them all anyway
-            logger.warning("All models on cooldown — retrying full chain")
-            return full_chain
-        return filtered
 
     # ── Low-level generate with fallback ────────────────────────────────
 
@@ -155,44 +97,27 @@ class GeminiSummarizer:
         self,
         contents,
         *,
+        starting_model: str | None = None,
+        config: dict | None = None,
         label: str = "",
     ):
-        """Call ``generate_content`` with automatic model fallback on 429.
+        """Call generate_content via the key pool with automatic fallback.
 
-        Returns ``(response, model_used)`` on success, raises the last
-        exception if every model in the chain fails.
+        Returns (response, model_used) on success, raises on total failure.
         """
-        chain = self._build_model_chain()
-        last_exc: Exception | None = None
-
-        for model in chain:
-            try:
-                response = await self._aio_models.generate_content(
-                    model=model,
-                    contents=contents,
-                    config={
-                        "system_instruction": _SYSTEM_PROMPT,
-                        "temperature": 0.3,
-                        "max_output_tokens": 4096,
-                    },
-                )
-                return response, model
-            except Exception as exc:
-                last_exc = exc
-                if _is_rate_limited(exc):
-                    self._cooldowns[model] = (
-                        time.monotonic() + _RATE_LIMIT_COOLDOWN_SECS
-                    )
-                    logger.warning(
-                        "%s rate-limited on %s — cooldown %ds, trying next model",
-                        label or "Gemini", model, _RATE_LIMIT_COOLDOWN_SECS,
-                    )
-                    continue
-                # Non-rate-limit error → don't try other models
-                raise
-
-        # All models exhausted
-        raise last_exc  # type: ignore[misc]
+        if config is None:
+            config = {
+                "system_instruction": _SYSTEM_PROMPT,
+                "temperature": 0.3,
+                "max_output_tokens": 4096,
+            }
+        response, model_used, _key_idx = await self._pool.generate_content(
+            contents,
+            config=config,
+            starting_model=starting_model or self._model,
+            label=label,
+        )
+        return response, model_used
 
     # ── YouTube video understanding ─────────────────────────────────────
 
@@ -229,7 +154,9 @@ class GeminiSummarizer:
         start = time.monotonic()
         try:
             response, model_used = await self._generate_with_fallback(
-                contents, label="Video understanding",
+                contents,
+                starting_model="gemini-2.5-flash",
+                label="Video understanding",
             )
 
             latency_ms = int((time.monotonic() - start) * 1000)
@@ -290,8 +217,14 @@ class GeminiSummarizer:
 
         start = time.monotonic()
         try:
+            starting_model = select_starting_model(
+                content_length=len(content.body),
+                source_type=content.source_type.value,
+            )
             response, model_used = await self._generate_with_fallback(
-                prompt, label="Summarization",
+                prompt,
+                starting_model=starting_model,
+                label="Summarization",
             )
 
             latency_ms = int((time.monotonic() - start) * 1000)

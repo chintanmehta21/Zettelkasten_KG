@@ -5,9 +5,9 @@ Covers:
   R022 — Graceful degradation (API exceptions, safety block, timeout, malformed JSON)
   R009 — Multi-dimensional tagging (all axes, source axis, empty tags, multi-domain,
            hierarchical format)
-  Construction — empty API key, raw fallback truncation
+  Construction — pool init failure, raw fallback truncation
 
-All tests mock `telegram_bot.pipeline.summarizer.genai.Client` so zero
+All tests mock `telegram_bot.pipeline.summarizer.get_key_pool` so zero
 real API calls are made. asyncio_mode=auto is already set in pytest.ini, so
 no @pytest.mark.asyncio decorators are needed.
 """
@@ -26,7 +26,7 @@ from telegram_bot.pipeline.summarizer import (
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-_PATCH_TARGET = "telegram_bot.pipeline.summarizer.genai.Client"
+_PATCH_TARGET = "telegram_bot.pipeline.summarizer.get_key_pool"
 
 
 def make_content(
@@ -44,27 +44,18 @@ def make_content(
     )
 
 
-def make_mock_client(response_text: str, token_count: int = 500):
-    """Return a (MockClient class, configured mock instance) pair.
-
-    Patches genai.Client so that:
-      - MockClient() returns mock_instance
-      - mock_instance.aio.models.generate_content is an AsyncMock
-        returning a response with .text = response_text and
-        .usage_metadata.total_token_count = token_count
-    """
+def make_mock_pool(response_text: str, token_count: int = 500):
+    """Return a mock key pool configured to return a specific response."""
     mock_response = MagicMock()
     mock_response.text = response_text
     mock_response.usage_metadata = MagicMock()
     mock_response.usage_metadata.total_token_count = token_count
 
-    mock_aio = MagicMock()
-    mock_aio.models.generate_content = AsyncMock(return_value=mock_response)
-
-    mock_instance = MagicMock()
-    mock_instance.aio = mock_aio
-
-    return mock_instance, mock_response
+    mock_pool = MagicMock()
+    mock_pool.generate_content = AsyncMock(
+        return_value=(mock_response, "gemini-2.5-flash", 0)
+    )
+    return mock_pool, mock_response
 
 
 def _valid_json_text(
@@ -99,11 +90,11 @@ async def test_summarize_happy_path():
         },
     )
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text, token_count=123)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text, token_count=123)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert isinstance(result, SummarizationResult)
@@ -121,11 +112,11 @@ async def test_summarize_preserves_token_count():
     content = make_content()
     json_text = _valid_json_text()
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text, token_count=999)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text, token_count=999)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.tokens_used == 999
@@ -137,11 +128,11 @@ async def test_summarize_markdown_fence_stripped():
     inner = _valid_json_text(summary="Fenced summary")
     fenced_text = f"```json\n{inner}\n```"
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=fenced_text)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=fenced_text)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.summary == "Fenced summary"
@@ -155,16 +146,16 @@ async def test_summarize_body_truncated_to_15000_chars():
     content = make_content(body=long_body)
     json_text = _valid_json_text()
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         await summarizer.summarize(content)
 
-    # Retrieve the 'contents' kwarg passed to generate_content
-    call_kwargs = mock_instance.aio.models.generate_content.call_args
-    prompt_str: str = call_kwargs.kwargs.get("contents") or call_kwargs.args[1]
+    # Retrieve the 'contents' positional arg passed to pool.generate_content
+    call_args = mock_pool.generate_content.call_args
+    prompt_str: str = call_args.args[0] if call_args.args else call_args.kwargs.get("contents", "")
 
     # body[:15000] is 15 000 'Z's; body[15001:] is NOT in the prompt
     z_count = prompt_str.count("Z")
@@ -178,20 +169,18 @@ async def test_summarize_body_truncated_to_15000_chars():
 
 
 async def test_summarize_api_exception_triggers_raw_fallback():
-    """AsyncMock side_effect=Exception → is_raw_fallback=True, summary = body[:5000]."""
+    """Pool raises Exception → is_raw_fallback=True, summary = body[:5000]."""
     body = "Article body " * 100
     content = make_content(body=body)
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_aio = MagicMock()
-        mock_aio.models.generate_content = AsyncMock(
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool = MagicMock()
+        mock_pool.generate_content = AsyncMock(
             side_effect=Exception("API error")
         )
-        mock_instance = MagicMock()
-        mock_instance.aio = mock_aio
-        MockClient.return_value = mock_instance
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.is_raw_fallback is True
@@ -203,38 +192,36 @@ async def test_summarize_safety_block_triggers_raw_fallback():
     """response.text = None (safety block) → is_raw_fallback=True."""
     content = make_content(body="Sensitive content body.")
 
-    with patch(_PATCH_TARGET) as MockClient:
+    with patch(_PATCH_TARGET) as mock_get_pool:
         mock_response = MagicMock()
         mock_response.text = None  # SDK returns None when blocked
         mock_response.usage_metadata = MagicMock()
         mock_response.usage_metadata.total_token_count = 0
 
-        mock_aio = MagicMock()
-        mock_aio.models.generate_content = AsyncMock(return_value=mock_response)
-        mock_instance = MagicMock()
-        mock_instance.aio = mock_aio
-        MockClient.return_value = mock_instance
+        mock_pool = MagicMock()
+        mock_pool.generate_content = AsyncMock(
+            return_value=(mock_response, "gemini-2.5-flash", 0)
+        )
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.is_raw_fallback is True
 
 
 async def test_summarize_timeout_triggers_raw_fallback():
-    """side_effect=TimeoutError → is_raw_fallback=True."""
+    """Pool raises TimeoutError → is_raw_fallback=True."""
     content = make_content()
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_aio = MagicMock()
-        mock_aio.models.generate_content = AsyncMock(
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool = MagicMock()
+        mock_pool.generate_content = AsyncMock(
             side_effect=TimeoutError("Request timed out")
         )
-        mock_instance = MagicMock()
-        mock_instance.aio = mock_aio
-        MockClient.return_value = mock_instance
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.is_raw_fallback is True
@@ -246,11 +233,11 @@ async def test_summarize_malformed_json_triggers_partial_fallback():
     content = make_content()
     bad_text = "This is not JSON at all."
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=bad_text)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=bad_text)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     # Malformed-JSON fallback: raw text is used as summary, tags={},
@@ -355,27 +342,27 @@ def test_build_tag_list_string_difficulty_not_split():
 # ── Construction ─────────────────────────────────────────────────────────────
 
 
-def test_empty_api_key_raises():
-    """GeminiSummarizer(api_key='') raises ValueError immediately."""
-    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
-        GeminiSummarizer(api_key="")
+def test_pool_init_failure_propagates():
+    """When get_key_pool() raises ValueError, GeminiSummarizer propagates it."""
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_get_pool.side_effect = ValueError("No keys")
+        with pytest.raises(ValueError, match="No keys"):
+            GeminiSummarizer()
 
 
 async def test_raw_fallback_summary_truncated_to_5000():
-    """When API fails, result.summary == content.body[:5000] exactly."""
+    """When pool fails, result.summary == content.body[:5000] exactly."""
     long_body = "X" * 10_000
     content = make_content(body=long_body)
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_aio = MagicMock()
-        mock_aio.models.generate_content = AsyncMock(
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool = MagicMock()
+        mock_pool.generate_content = AsyncMock(
             side_effect=Exception("simulated failure")
         )
-        mock_instance = MagicMock()
-        mock_instance.aio = mock_aio
-        MockClient.return_value = mock_instance
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.summary == long_body[:5000]
@@ -409,11 +396,11 @@ async def test_summarize_returns_both_brief_and_detailed():
         "one_line_summary": "A key takeaway.",
     })
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text, token_count=200)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text, token_count=200)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.brief_summary == "• Point one\n• Point two"
@@ -431,11 +418,11 @@ async def test_summarize_legacy_single_summary_still_works():
         "one_line_summary": "Legacy takeaway.",
     })
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text, token_count=100)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text, token_count=100)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.summary == "Legacy single summary."
@@ -444,19 +431,17 @@ async def test_summarize_legacy_single_summary_still_works():
 
 
 async def test_raw_fallback_has_empty_brief_summary():
-    """When API fails (R022), brief_summary should be empty string."""
+    """When pool fails (R022), brief_summary should be empty string."""
     content = make_content(body="Some body text.")
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_aio = MagicMock()
-        mock_aio.models.generate_content = AsyncMock(
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool = MagicMock()
+        mock_pool.generate_content = AsyncMock(
             side_effect=Exception("API error")
         )
-        mock_instance = MagicMock()
-        mock_instance.aio = mock_aio
-        MockClient.return_value = mock_instance
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.is_raw_fallback is True
@@ -473,11 +458,11 @@ async def test_empty_detailed_summary_not_replaced_by_raw():
         "one_line_summary": "Takeaway.",
     })
 
-    with patch(_PATCH_TARGET) as MockClient:
-        mock_instance, _ = make_mock_client(response_text=json_text, token_count=100)
-        MockClient.return_value = mock_instance
+    with patch(_PATCH_TARGET) as mock_get_pool:
+        mock_pool, _ = make_mock_pool(response_text=json_text, token_count=100)
+        mock_get_pool.return_value = mock_pool
 
-        summarizer = GeminiSummarizer(api_key="fake-key")
+        summarizer = GeminiSummarizer()
         result = await summarizer.summarize(content)
 
     assert result.summary == ""
