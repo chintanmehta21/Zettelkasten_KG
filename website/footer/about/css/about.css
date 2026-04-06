@@ -388,12 +388,6 @@
   fill: currentColor;
 }
 
-.about-footer .footer-icon img {
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-
 .footer-icon:hover {
   color: #ffffff;
 }

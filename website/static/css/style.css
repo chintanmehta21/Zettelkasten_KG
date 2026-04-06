@@ -861,18 +861,11 @@ a:hover {
     color: var(--text-secondary);
 }
 
-.footer-icon img {
+.footer-icon svg {
     display: block;
     width: 20px;
     height: 20px;
-    opacity: 0.86;
-    filter: invert(89%) sepia(8%) saturate(269%) hue-rotate(180deg) brightness(92%) contrast(92%);
-    transition: opacity var(--transition), filter var(--transition);
-}
-
-.footer-icon:hover img {
-    opacity: 1;
-    filter: invert(98%) sepia(2%) saturate(412%) hue-rotate(183deg) brightness(108%) contrast(97%);
+    fill: currentColor;
 }
 
 /* ── Utilities ────────────────────────────────────────────────────── */
