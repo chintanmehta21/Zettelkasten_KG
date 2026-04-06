@@ -281,3 +281,95 @@ def test_embed_safe_returns_none_on_failure():
         pool._clients[i].models.embed_content = MagicMock(side_effect=_make_429_error())
     result = pool.embed_content_safe("test text")
     assert result is None
+
+
+# ── Module init / singleton tests ───────────────────────────────────────────
+
+
+def test_init_key_pool_from_file(tmp_path, monkeypatch):
+    """init_key_pool reads keys from api_env file."""
+    import website.features.api_key_switching as mod
+    mod._pool = None  # reset singleton
+
+    env_file = tmp_path / "api_env"
+    env_file.write_text("key-from-file-a\nkey-from-file-b\n")
+    monkeypatch.setattr(mod, "_API_ENV_PATHS", [str(env_file)])
+
+    pool = mod.init_key_pool()
+    assert pool._keys == ["key-from-file-a", "key-from-file-b"]
+    mod._pool = None  # cleanup
+
+
+def test_init_key_pool_fallback_to_settings(monkeypatch):
+    """Falls back to settings.gemini_api_key when no api_env file exists."""
+    import website.features.api_key_switching as mod
+    mod._pool = None
+
+    monkeypatch.setattr(mod, "_API_ENV_PATHS", ["/nonexistent/api_env"])
+
+    mock_settings = MagicMock()
+    mock_settings.gemini_api_key = "single-key-from-settings"
+    monkeypatch.setattr(
+        "website.features.api_key_switching.get_settings",
+        lambda: mock_settings,
+    )
+
+    pool = mod.init_key_pool()
+    assert pool._keys == ["single-key-from-settings"]
+    mod._pool = None
+
+
+def test_init_key_pool_no_keys_raises(monkeypatch):
+    """Raises ValueError when no keys found from any source."""
+    import website.features.api_key_switching as mod
+    mod._pool = None
+
+    monkeypatch.setattr(mod, "_API_ENV_PATHS", ["/nonexistent/api_env"])
+
+    mock_settings = MagicMock()
+    mock_settings.gemini_api_key = ""
+    monkeypatch.setattr(
+        "website.features.api_key_switching.get_settings",
+        lambda: mock_settings,
+    )
+
+    with pytest.raises(ValueError, match="No Gemini API keys"):
+        mod.init_key_pool()
+    mod._pool = None
+
+
+def test_get_key_pool_auto_init(monkeypatch):
+    """get_key_pool auto-initializes on first call."""
+    import website.features.api_key_switching as mod
+    mod._pool = None
+
+    mock_settings = MagicMock()
+    mock_settings.gemini_api_key = "auto-init-key"
+    monkeypatch.setattr(mod, "_API_ENV_PATHS", ["/nonexistent/api_env"])
+    monkeypatch.setattr(
+        "website.features.api_key_switching.get_settings",
+        lambda: mock_settings,
+    )
+
+    pool = mod.get_key_pool()
+    assert pool._keys == ["auto-init-key"]
+    mod._pool = None
+
+
+def test_get_key_pool_returns_same_instance(monkeypatch):
+    """get_key_pool returns the same singleton on repeated calls."""
+    import website.features.api_key_switching as mod
+    mod._pool = None
+
+    mock_settings = MagicMock()
+    mock_settings.gemini_api_key = "singleton-key"
+    monkeypatch.setattr(mod, "_API_ENV_PATHS", ["/nonexistent/api_env"])
+    monkeypatch.setattr(
+        "website.features.api_key_switching.get_settings",
+        lambda: mock_settings,
+    )
+
+    pool1 = mod.get_key_pool()
+    pool2 = mod.get_key_pool()
+    assert pool1 is pool2
+    mod._pool = None
