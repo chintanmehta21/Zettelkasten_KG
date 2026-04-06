@@ -50,7 +50,6 @@ async def summarize_url(url: str) -> dict:
 
     # Phase 5: summarize via Gemini
     summarizer = GeminiSummarizer(
-        api_key=settings.gemini_api_key,
         model_name=settings.model_name,
     )
     result = await summarizer.summarize(extracted)

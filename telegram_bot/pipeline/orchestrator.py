@@ -122,7 +122,6 @@ async def process_url(
         # ── Phase 7: summarize via Gemini ─────────────────────────────────
         logger.info("Phase summarize — sending to Gemini")
         summarizer = GeminiSummarizer(
-            api_key=settings.gemini_api_key,
             model_name=settings.model_name,
         )
         result = await summarizer.summarize(extracted)
