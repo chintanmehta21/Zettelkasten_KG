@@ -25,9 +25,12 @@ logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # website/features/api_key_switching → project root
 
+_FEATURE_DIR = Path(__file__).parent  # website/features/api_key_switching/
+
 _API_ENV_PATHS = [
-    str(_PROJECT_ROOT / "api_env"),
-    "/etc/secrets/api_env",
+    str(_FEATURE_DIR / "api_env"),     # editable file in the feature dir
+    str(_PROJECT_ROOT / "api_env"),     # project root (alternative)
+    "/etc/secrets/api_env",            # Render Secret File
 ]
 
 _pool: GeminiKeyPool | None = None
