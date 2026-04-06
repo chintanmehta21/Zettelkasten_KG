@@ -12,8 +12,7 @@
   margin-bottom: 1.5rem;
 }
 
-.pricing-back,
-.pricing-about-link {
+.pricing-back {
   color: var(--text-secondary);
   font-size: 0.8rem;
   border: 1px solid var(--border);
@@ -22,8 +21,7 @@
   transition: border-color var(--transition), color var(--transition), background var(--transition);
 }
 
-.pricing-back:hover,
-.pricing-about-link:hover {
+.pricing-back:hover {
   border-color: var(--border-light);
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -75,6 +73,8 @@
 
 .pricing-switcher {
   margin-bottom: 0.8rem;
+  display: flex;
+  justify-content: center;
 }
 
 .pricing-tabs {
@@ -83,6 +83,7 @@
   background: var(--bg-card);
   border-radius: 999px;
   padding: 0.26rem;
+  margin-inline: auto;
 }
 
 .pricing-tab {
@@ -220,14 +221,14 @@
   display: block;
   width: 20px;
   height: 20px;
-  opacity: 0.78;
-  filter: grayscale(1) brightness(1.15);
+  opacity: 0.86;
+  filter: invert(89%) sepia(8%) saturate(269%) hue-rotate(180deg) brightness(92%) contrast(92%);
   transition: opacity var(--transition), filter var(--transition);
 }
 
 .footer-icon:hover img {
   opacity: 1;
-  filter: grayscale(0.1) brightness(1.22);
+  filter: invert(98%) sepia(2%) saturate(412%) hue-rotate(183deg) brightness(108%) contrast(97%);
 }
 
 @media (max-width: 940px) {
@@ -235,4 +236,3 @@
     grid-template-columns: 1fr;
   }
 }
-

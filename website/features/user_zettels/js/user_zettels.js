@@ -507,7 +507,7 @@
             '<span class="tooltip">Summary</span>' +
           '</button>' +
           '<button class="zettels-delete-btn" type="button" aria-label="Delete zettel">' +
-            '<img class="icon-trash icon-trash-img" src="/artifacts/icon-trash-icons8.png" alt="" aria-hidden="true" />' +
+            '<img class="icon-trash icon-trash-img" src="/artifacts/icon-trash-bootstrap.svg" alt="" aria-hidden="true" />' +
             '<svg class="icon-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
               '<path d="M5 12.5L9.2 16.7L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
             '</svg>' +

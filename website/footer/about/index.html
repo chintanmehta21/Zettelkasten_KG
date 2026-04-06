@@ -6,108 +6,247 @@
   <title>About - Zettelkasten</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=20260404f">
-  <link rel="stylesheet" href="/about/css/about.css?v=20260404f">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=20260406h">
+  <link rel="stylesheet" href="/about/css/about.css?v=20260406h">
 </head>
 <body>
   <div class="about-shell">
     <header class="about-header">
-      <a class="about-back" href="/home">Back</a>
-      <a class="about-brand" href="/">
-        <img src="/artifacts/logo-zettelkasten.svg" alt="" width="28" height="28">
+      <a class="about-back-btn" href="/home" aria-label="Back to Home">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14.5 6.5L9 12l5.5 5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </a>
+
+      <a class="about-brand" href="/" aria-label="Zettelkasten home">
+        <img src="/artifacts/logo-zettelkasten.svg" alt="" width="30" height="30">
         <span>Zettelkasten</span>
       </a>
-      <a class="about-pricing-link" href="/pricing">Pricing</a>
+
+      <div class="about-header-spacer" aria-hidden="true"></div>
     </header>
 
-    <main>
-      <section class="about-hero">
-        <p class="about-kicker">What Is It?</p>
-        <h1>Your second brain, with memory that compounds.</h1>
+    <main class="about-main">
+      <section class="about-hero about-section">
+        <p class="about-kicker">About</p>
+        <h1>Your second brain, organized so ideas do not slip away.</h1>
         <p class="about-hero-copy">
-          Zettelkasten turns scattered links into connected notes so ideas stop living in tabs and start living in a system.
+          Paste a link, let the system understand it, and turn the result into a note that stays connected to your graph.
+          The experience is built to feel fast, calm, and reliable even when the connection is not.
         </p>
+        <div class="about-pill-row" aria-label="Highlights">
+          <span class="about-pill">Instant capture</span>
+          <span class="about-pill">Smart source detection</span>
+          <span class="about-pill">Lightweight on slow networks</span>
+        </div>
       </section>
 
-      <section class="about-grid" aria-label="Core explanation">
-        <article class="about-panel">
-          <h2>What It Is</h2>
-          <p>
-            Paste a URL from YouTube, GitHub, Reddit, newsletters, or any web page. The system extracts signal, writes a structured summary,
-            tags it, and places it inside your connected knowledge graph.
-          </p>
-          <p>
-            Instead of isolated bookmarks, every capture becomes reusable context.
-          </p>
-        </article>
-        <article class="about-panel">
-          <h2>Features</h2>
-          <ol class="about-features">
-            <li><span>1</span><div><h3>AI Summaries</h3><p>Short plus detailed summaries for fast review and deeper recall.</p></div></li>
-            <li><span>2</span><div><h3>Source Detection</h3><p>Automatic handling for major content types with fallback web extraction.</p></div></li>
-            <li><span>3</span><div><h3>Knowledge Graph</h3><p>Nodes and relations generated from tags, built for exploration.</p></div></li>
-            <li><span>4</span><div><h3>User Vault</h3><p>Personal zettels, searchable and sortable in one place.</p></div></li>
-          </ol>
-        </article>
-      </section>
+      <section class="about-section about-story" aria-labelledby="about-story-title">
+        <div class="about-section-heading">
+          <p class="about-kicker">About</p>
+          <h2 id="about-story-title">Turn a link into a memory you can return to.</h2>
+        </div>
 
-      <section class="about-team" aria-label="Team">
-        <p class="about-kicker">Team</p>
-        <h2>Built by operators who capture ideas daily.</h2>
-        <div class="about-team-list">
-          <article>
-            <h3>Product</h3>
-            <p>Owns capture flow clarity, speed, and user feedback loops.</p>
+        <div class="about-story-grid">
+          <article class="about-story-card">
+            <p>
+              Zettelkasten captures YouTube videos, GitHub repos, Reddit threads, newsletters, and normal web pages.
+              It extracts the signal, writes a structured summary, and adds the note to a connected graph so the next capture has context.
+            </p>
+            <p>
+              Instead of another bookmark folder, you get a living vault. The note is searchable, the source is preserved, and the relationships are discoverable later.
+            </p>
           </article>
-          <article>
-            <h3>AI Systems</h3>
-            <p>Maintains extraction quality, summarization reliability, and model fallback behavior.</p>
-          </article>
-          <article>
-            <h3>Platform</h3>
-            <p>Runs delivery, reliability, and data integrity across web and bot interfaces.</p>
+
+          <article class="about-flow-card" aria-label="How it works">
+            <h3>How it works</h3>
+            <ol class="about-flow-list">
+              <li>
+                <span>01</span>
+                <div>
+                  <strong>Capture</strong>
+                  <p>Drop in a URL from the web, YouTube, GitHub, Reddit, or a newsletter.</p>
+                </div>
+              </li>
+              <li>
+                <span>02</span>
+                <div>
+                  <strong>Understand</strong>
+                  <p>The source is detected and summarized with useful tags and a clean note structure.</p>
+                </div>
+              </li>
+              <li>
+                <span>03</span>
+                <div>
+                  <strong>Connect</strong>
+                  <p>Related notes are linked automatically so each new idea grows your graph.</p>
+                </div>
+              </li>
+              <li>
+                <span>04</span>
+                <div>
+                  <strong>Revisit</strong>
+                  <p>Search, sort, and open your captures later without rebuilding the context.</p>
+                </div>
+              </li>
+            </ol>
           </article>
         </div>
       </section>
 
-      <section class="about-legal" aria-label="Legal documents">
-        <p class="about-kicker">Legal Documents</p>
-        <h2>Transparent by default.</h2>
-        <div class="about-legal-list">
-          <article>
-            <h3>Privacy Policy</h3>
-            <p>How account metadata, captured content, and logs are handled.</p>
+      <section class="about-section about-features" aria-labelledby="about-features-title">
+        <div class="about-section-heading">
+          <p class="about-kicker">Features</p>
+          <h2 id="about-features-title">A capture system that stays useful after the first read.</h2>
+        </div>
+
+        <div class="about-feature-grid">
+          <article class="about-feature-card">
+            <span class="about-feature-number">01</span>
+            <h3>One-Tap Capture</h3>
+            <p>Paste a link and let the app do the source work for you. No manual filing, no friction, no extra steps.</p>
           </article>
-          <article>
-            <h3>Terms of Service</h3>
-            <p>Usage terms, responsibilities, acceptable use, and service scope.</p>
+          <article class="about-feature-card">
+            <span class="about-feature-number">02</span>
+            <h3>Source-Aware Summaries</h3>
+            <p>Each source type gets handled differently so the summary feels specific, not generic.</p>
           </article>
-          <article>
-            <h3>Data & Security</h3>
-            <p>Authentication model, persistence controls, and retention boundaries.</p>
+          <article class="about-feature-card">
+            <span class="about-feature-number">03</span>
+            <h3>Graceful Fallbacks</h3>
+            <p>When the network or source blocks a path, the system falls back instead of failing loudly.</p>
           </article>
+          <article class="about-feature-card">
+            <span class="about-feature-number">04</span>
+            <h3>Connected Graph Memory</h3>
+            <p>Tags become links, links become context, and the graph helps you rediscover related ideas fast.</p>
+          </article>
+          <article class="about-feature-card">
+            <span class="about-feature-number">05</span>
+            <h3>Searchable Personal Vault</h3>
+            <p>Your zettels stay searchable and sortable so the vault stays practical even as it grows.</p>
+          </article>
+          <article class="about-feature-card">
+            <span class="about-feature-number">06</span>
+            <h3>Designed For Weak Connections</h3>
+            <p>The web UI stays light, the browser cache stays tiny, and the experience keeps moving on slower networks.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-section about-team" aria-labelledby="about-team-title">
+        <div class="about-section-heading">
+          <p class="about-kicker">Team</p>
+          <h2 id="about-team-title">Built by someone who wants every saved link to matter.</h2>
+        </div>
+
+        <div class="about-founder-card">
+          <img src="/artifacts/founders_photo.jpeg" alt="Chintan Mehta portrait" width="360" height="360" loading="lazy">
+          <h3>Chintan Mehta</h3>
+          <p>Founder</p>
+        </div>
+      </section>
+
+      <section class="about-section about-legal" aria-labelledby="about-legal-title">
+        <div class="about-section-heading">
+          <p class="about-kicker">Legal Documents</p>
+          <h2 id="about-legal-title">Plain-English documents, opened like a reader you want to spend time in.</h2>
+        </div>
+
+        <div class="about-legal-grid">
+          <button class="about-legal-card" type="button" data-doc="privacy" aria-label="Open Privacy Policy">
+            <span class="about-legal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"></path>
+              </svg>
+            </span>
+            <strong>Privacy Policy</strong>
+            <p>What is stored, what is not, and how the browser cache stays tiny.</p>
+            <span class="about-legal-link">Open reader</span>
+          </button>
+
+          <button class="about-legal-card" type="button" data-doc="terms" aria-label="Open Terms of Service">
+            <span class="about-legal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 3h10l4 4v14H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm9 1.75V8h3.25L15 4.75ZM8 11h8v1.5H8V11Zm0 4h8v1.5H8V15Zm0-8h4v1.5H8V7Z"></path>
+              </svg>
+            </span>
+            <strong>Terms of Service</strong>
+            <p>The promises, limits, and responsibilities in straightforward language.</p>
+            <span class="about-legal-link">Open reader</span>
+          </button>
+
+          <button class="about-legal-card" type="button" data-doc="security" aria-label="Open Data and Security">
+            <span class="about-legal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2 4 5.25V11c0 5.15 3.6 8.94 8 11 4.4-2.06 8-5.85 8-11V5.25L12 2Zm0 6.25a2.25 2.25 0 0 1 2.25 2.25v1h.75a1 1 0 0 1 1 1v4.5a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-4.5a1 1 0 0 1 1-1h.75v-1A2.25 2.25 0 0 1 12 8.25Zm0 1.5A.75.75 0 0 0 11.25 10v1h1.5v-1A.75.75 0 0 0 12 9.75Z"></path>
+              </svg>
+            </span>
+            <strong>Data &amp; Security</strong>
+            <p>How access, retention, and account data are handled end to end.</p>
+            <span class="about-legal-link">Open reader</span>
+          </button>
         </div>
       </section>
     </main>
 
-    <footer class="footer">
-      <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" title="View on GitHub">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    <footer class="footer about-footer" aria-label="Footer links">
+      <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" aria-label="GitHub" title="View on GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
       </a>
-      <a href="/about" class="footer-icon" title="About">
-        <img src="/artifacts/footer_icons/about.svg" alt="About" width="20" height="20">
+      <a href="#about-story-title" class="footer-icon" aria-label="Jump to About section" title="About">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"></path></svg>
       </a>
-      <a href="/pricing" class="footer-icon" title="Pricing">
-        <img src="/artifacts/footer_icons/pricing.svg" alt="Pricing" width="20" height="20">
+      <a href="/pricing" class="footer-icon" aria-label="Open Pricing page" title="Pricing">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"></path></svg>
       </a>
-      <a href="https://www.buymeacoffee.com/chintanmehta21" target="_blank" rel="noopener" class="footer-icon" title="BuyMeACoffee">
-        <img src="/artifacts/footer_icons/support.svg" alt="BuyMeACoffee" width="20" height="20">
+      <a href="https://www.buymeacoffee.com/chintanmehta21" target="_blank" rel="noopener" class="footer-icon" aria-label="Buy me a coffee" title="BuyMeACoffee">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h12v5a5 5 0 0 1-5 5H9a3 3 0 0 1-3-3V5Zm12 2h2a2 2 0 0 1 0 4h-2V7Zm-9-4h2v2H9V3Zm4 0h2v2h-2V3Zm-6 15h10v2H7v-2Z"></path></svg>
       </a>
     </footer>
   </div>
 
-  <script src="/about/js/about.js?v=20260404f"></script>
+  <dialog class="about-doc-dialog" id="about-document-dialog" aria-labelledby="about-document-title" aria-describedby="about-document-intro">
+    <div class="about-doc-panel" role="document">
+      <button class="about-doc-close" type="button" aria-label="Close document reader">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+
+      <div class="about-doc-cover">
+        <div class="about-doc-cover-copy">
+          <p class="about-doc-kicker" id="about-document-eyebrow">Document</p>
+          <h2 id="about-document-title">Privacy Policy</h2>
+          <p id="about-document-intro">What is stored, what is not, and how the browser cache stays tiny.</p>
+        </div>
+        <div class="about-doc-meta about-doc-meta-grid" id="about-document-meta"></div>
+      </div>
+
+      <div class="about-doc-layout">
+        <aside class="about-doc-rail">
+          <div class="about-doc-rail-card">
+            <p class="about-doc-rail-label">At a glance</p>
+            <div class="about-doc-rail-list" id="about-document-highlights"></div>
+          </div>
+        </aside>
+
+        <article class="about-doc-article">
+          <div class="about-doc-sections" id="about-document-sections"></div>
+        </article>
+      </div>
+
+      <div class="about-doc-footer">
+        <p class="about-doc-rail-note about-doc-footer-copy" id="about-document-note"></p>
+        <div class="about-doc-footer-actions"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/about/js/about.js?v=20260406h"></script>
 </body>
 </html>
 
