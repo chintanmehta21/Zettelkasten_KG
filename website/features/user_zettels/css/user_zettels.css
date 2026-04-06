@@ -487,6 +487,10 @@ body {
     min-width: 100%;
 }
 
+.zettels-sort-wrap .sort-option {
+    white-space: nowrap;
+}
+
 .zettels-filter-parent,
 .zettels-filter-clear,
 .zettels-filter-sub-option,
@@ -642,7 +646,10 @@ body {
 
 .zettels-card.is-removing {
     opacity: 0;
-    transform: translateX(-44px) scale(0.98);
+    transform: translateX(calc(-100vw - 80px)) scale(0.98);
+    transition:
+        transform 0.72s cubic-bezier(0.22, 0.61, 0.36, 1),
+        opacity 0.72s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .zettels-card.is-collapsed {
@@ -655,13 +662,13 @@ body {
 }
 
 .zettels-card.is-restoring {
-    animation: zettelRestore 0.36s cubic-bezier(0.2, 0.7, 0.2, 1);
+    animation: zettelRestore 0.72s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @keyframes zettelRestore {
     0% {
         opacity: 0;
-        transform: translateX(-34px);
+        transform: translateX(calc(-100vw - 80px)) scale(0.98);
     }
     100% {
         opacity: 1;
@@ -799,6 +806,27 @@ body {
     display: block;
 }
 
+.zettels-delete-btn .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    pointer-events: none;
+    z-index: 12;
+}
+
+.zettels-delete-btn:hover .tooltip {
+    display: block;
+}
+
 .zettels-delete-btn {
     border: 1px solid hsla(355, 36%, 62%, 0.33);
     background: hsla(355, 30%, 52%, 0.1);
@@ -843,6 +871,10 @@ body {
 
 .zettels-delete-btn.confirm .icon-check {
     display: block;
+}
+
+.zettels-delete-btn.confirm .tooltip {
+    display: none !important;
 }
 
 .zettels-delete-cloud {

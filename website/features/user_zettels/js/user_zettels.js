@@ -511,6 +511,7 @@
             '<svg class="icon-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
               '<path d="M5 12.5L9.2 16.7L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
             '</svg>' +
+            '<span class="tooltip">Delete</span>' +
           '</button>' +
           '<span class="zettels-delete-cloud">Are you sure?</span>' +
         '</div>' +
@@ -592,11 +593,11 @@
     cardEl.classList.add('is-removing');
     window.setTimeout(function () {
       cardEl.classList.add('is-collapsed');
-    }, 170);
+    }, 680);
 
     window.setTimeout(function () {
       applyFilters();
-    }, 360);
+    }, 820);
 
     _pendingDelete = {
       node: node,
