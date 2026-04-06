@@ -61,33 +61,46 @@
   let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
+  let authToken = null;
 
-  // ---- View toggle (shown only when logged in) ----
-  const viewToggle = document.getElementById('view-toggle');
-
-  // Check auth status
-  fetch('/api/me', { credentials: 'include' })
-    .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
-    .then(() => {
-      isLoggedIn = true;
-      viewToggle.classList.remove('hidden');
-    })
-    .catch(() => { isLoggedIn = false; });
-
-  // Also check for Supabase auth token in localStorage
-  (function checkSupabaseAuth() {
+  // ---- Auth helpers ----
+  function getStoredAuthToken() {
     try {
       const keys = Object.keys(localStorage);
       const sbKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
       if (sbKey) {
         const data = JSON.parse(localStorage.getItem(sbKey));
-        if (data && data.access_token) {
-          isLoggedIn = true;
-          viewToggle.classList.remove('hidden');
-        }
+        if (data && data.access_token) return data.access_token;
       }
     } catch (e) { /* ignore */ }
-  })();
+    return null;
+  }
+
+  function authHeaders() {
+    const token = getStoredAuthToken();
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
+  }
+
+  // ---- View toggle (shown only when logged in) ----
+  const viewToggle = document.getElementById('view-toggle');
+
+  // Check auth status via API
+  authToken = getStoredAuthToken();
+  if (authToken) {
+    fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
+      .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
+      .then(() => {
+        isLoggedIn = true;
+        viewToggle.classList.remove('hidden');
+      })
+      .catch(() => { isLoggedIn = false; authToken = null; });
+  }
+
+  // Also check for Supabase auth token in localStorage (toggle visibility)
+  if (authToken) {
+    isLoggedIn = true;
+    viewToggle.classList.remove('hidden');
+  }
 
   viewToggle.addEventListener('click', (e) => {
     const btn = e.target.closest('.kg-view-btn');
@@ -214,7 +227,7 @@
   // ---- Load data ----
   function loadGraphData() {
     const viewParam = currentView === 'my' ? '?view=my' : '';
-    fetch('/api/graph' + viewParam)
+    fetch('/api/graph' + viewParam, { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
