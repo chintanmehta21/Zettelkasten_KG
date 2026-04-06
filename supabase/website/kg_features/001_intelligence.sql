@@ -112,7 +112,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = 'public'
 SET statement_timeout = '5s'
 AS $$
 BEGIN
@@ -189,10 +189,7 @@ AS $$
         FROM neighbors nb
         JOIN public.kg_links l
             ON l.user_id = p_user_id
-           AND (
-                (l.source_node_id = nb.node_id AND l.target_node_id = n2.id)
-             OR (l.target_node_id = nb.node_id AND l.source_node_id = n2.id)
-           )
+           AND (l.source_node_id = nb.node_id OR l.target_node_id = nb.node_id)
         JOIN public.kg_nodes n2
             ON n2.user_id = p_user_id
            AND n2.id = CASE
@@ -534,7 +531,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = 'public'
 SET statement_timeout = '5s'
 AS $$
 BEGIN
@@ -543,7 +540,7 @@ BEGIN
     -- Stream 1: Semantic search (via embedding cosine distance)
     semantic AS (
         SELECT
-            n.id                                        AS node_id,
+            n.id                                        AS nid,
             ROW_NUMBER() OVER (
                 ORDER BY n.embedding <=> query_embedding
             )                                           AS rank
@@ -558,7 +555,7 @@ BEGIN
     -- Stream 2: Full-text search (via tsvector)
     fulltext AS (
         SELECT
-            n.id                                        AS node_id,
+            n.id                                        AS nid,
             ROW_NUMBER() OVER (
                 ORDER BY ts_rank_cd(n.fts, websearch_to_tsquery('english', query_text)) DESC
             )                                           AS rank
@@ -579,7 +576,7 @@ BEGIN
             CASE
                 WHEN l.source_node_id = p_seed_node_id THEN l.target_node_id
                 ELSE l.source_node_id
-            END                                         AS node_id,
+            END                                         AS nid,
             ROW_NUMBER() OVER (ORDER BY l.created_at DESC) AS rank
         FROM public.kg_links l
         WHERE p_seed_node_id IS NOT NULL
@@ -590,14 +587,14 @@ BEGIN
 
         SELECT DISTINCT
             CASE
-                WHEN l.source_node_id = s.node_id THEN l.target_node_id
+                WHEN l.source_node_id = s.nid THEN l.target_node_id
                 ELSE l.source_node_id
-            END                                         AS node_id,
+            END                                         AS nid,
             s.rank                                      AS rank
         FROM semantic s
         JOIN public.kg_links l
             ON (p_user_id IS NULL OR l.user_id = p_user_id)
-           AND (l.source_node_id = s.node_id OR l.target_node_id = s.node_id)
+           AND (l.source_node_id = s.nid OR l.target_node_id = s.nid)
         WHERE p_seed_node_id IS NULL
           AND s.rank <= 5  -- expand only from top-5 semantic hits
     ),
@@ -605,16 +602,16 @@ BEGIN
     -- Reciprocal Rank Fusion
     rrf AS (
         SELECT
-            combined.node_id,
-            SUM(combined.score) AS rrf_score
+            combined.nid,
+            SUM(combined.score) AS total_score
         FROM (
-            SELECT node_id, semantic_weight  / (p_k + rank)::float AS score FROM semantic
+            SELECT nid, semantic_weight  / (p_k + rank)::float AS score FROM semantic
             UNION ALL
-            SELECT node_id, fulltext_weight  / (p_k + rank)::float AS score FROM fulltext
+            SELECT nid, fulltext_weight  / (p_k + rank)::float AS score FROM fulltext
             UNION ALL
-            SELECT node_id, graph_weight     / (p_k + rank)::float AS score FROM graph_neighbors
+            SELECT nid, graph_weight     / (p_k + rank)::float AS score FROM graph_neighbors
         ) combined
-        GROUP BY combined.node_id
+        GROUP BY combined.nid
     )
 
     SELECT
@@ -624,12 +621,12 @@ BEGIN
         n.summary       AS summary,
         n.tags          AS tags,
         n.url           AS url,
-        r.rrf_score     AS rrf_score
+        r.total_score   AS rrf_score
     FROM rrf r
     JOIN public.kg_nodes n
-        ON n.id = r.node_id
+        ON n.id = r.nid
        AND (p_user_id IS NULL OR n.user_id = p_user_id)
-    ORDER BY r.rrf_score DESC
+    ORDER BY r.total_score DESC
     LIMIT p_limit;
 END;
 $$;
