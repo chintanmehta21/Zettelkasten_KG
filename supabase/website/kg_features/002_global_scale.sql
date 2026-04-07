@@ -18,25 +18,15 @@ CREATE INDEX IF NOT EXISTS idx_kg_nodes_date_global
 CREATE INDEX IF NOT EXISTS idx_kg_nodes_source_type_global
     ON kg_nodes (source_type);
 
--- Global URL lookup (cross-user dedup detection)
-CREATE INDEX IF NOT EXISTS idx_kg_nodes_url_global
-    ON kg_nodes (url);
-
 -- Global link endpoints (for link dedup in global view)
 CREATE INDEX IF NOT EXISTS idx_kg_links_endpoints_global
     ON kg_links (source_node_id, target_node_id, relation);
-
--- Covering index for global node listing (avoids heap fetch for common fields)
-CREATE INDEX IF NOT EXISTS idx_kg_nodes_global_cover
-    ON kg_nodes (node_date DESC NULLS LAST)
-    INCLUDE (id, name, source_type, summary, tags, url);
 
 -- Active-user filter used in every global query
 CREATE INDEX IF NOT EXISTS idx_kg_users_active
     ON kg_users (id) WHERE is_active = true;
 
 COMMENT ON INDEX idx_kg_nodes_date_global IS 'Global graph: date-ordered node listing without user_id prefix';
-COMMENT ON INDEX idx_kg_nodes_url_global IS 'Cross-user URL dedup detection';
 COMMENT ON INDEX idx_kg_links_endpoints_global IS 'Global link dedup by (source, target, relation)';
 
 
@@ -50,16 +40,19 @@ COMMENT ON INDEX idx_kg_links_endpoints_global IS 'Global link dedup by (source,
 -- authenticated users see all rows on SELECT but are still restricted on
 -- INSERT/UPDATE/DELETE by the per-user policies.
 
+DROP POLICY IF EXISTS kg_nodes_global_read ON kg_nodes;
 CREATE POLICY kg_nodes_global_read ON kg_nodes
     FOR SELECT
     TO authenticated
     USING (true);
 
+DROP POLICY IF EXISTS kg_links_global_read ON kg_links;
 CREATE POLICY kg_links_global_read ON kg_links
     FOR SELECT
     TO authenticated
     USING (true);
 
+DROP POLICY IF EXISTS kg_users_global_read ON kg_users;
 CREATE POLICY kg_users_global_read ON kg_users
     FOR SELECT
     TO authenticated

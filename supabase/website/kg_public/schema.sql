@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS kg_nodes (
     user_id         UUID        NOT NULL REFERENCES kg_users(id) ON DELETE CASCADE,
     name            TEXT        NOT NULL,
     source_type     TEXT        NOT NULL CHECK (source_type IN (
-                        'youtube', 'reddit', 'github', 'substack', 'medium', 'web', 'generic'
+                        'youtube', 'reddit', 'github', 'twitter', 'substack', 'medium', 'web', 'generic'
                     )),
     summary         TEXT,
     tags            TEXT[]      NOT NULL DEFAULT '{}',
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS kg_nodes (
 
 COMMENT ON TABLE  kg_nodes IS 'Knowledge graph nodes — one per captured URL per user';
 COMMENT ON COLUMN kg_nodes.id IS 'Node slug, e.g. yt-attention, gh-transformers';
-COMMENT ON COLUMN kg_nodes.source_type IS 'Content source: youtube, reddit, github, substack, medium, web (legacy: generic)';
+COMMENT ON COLUMN kg_nodes.source_type IS 'Content source: youtube, reddit, github, twitter, substack, medium, web (legacy: generic)';
 COMMENT ON COLUMN kg_nodes.tags IS 'Normalized tags for linking and filtering';
 COMMENT ON COLUMN kg_nodes.metadata IS 'Extensible JSON for source-specific extras';
 
@@ -95,6 +95,10 @@ CREATE INDEX IF NOT EXISTS idx_kg_nodes_user_source
 CREATE INDEX IF NOT EXISTS idx_kg_nodes_user_date
     ON kg_nodes (user_id, node_date DESC);
 
+-- Created-at ordering fallback when node_date is null
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_user_created_at
+    ON kg_nodes (user_id, created_at DESC);
+
 -- URL lookup for dedup checks
 CREATE INDEX IF NOT EXISTS idx_kg_nodes_user_url
     ON kg_nodes (user_id, url);
@@ -118,10 +122,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_kg_users_updated_at ON kg_users;
 CREATE TRIGGER trg_kg_users_updated_at
     BEFORE UPDATE ON kg_users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trg_kg_nodes_updated_at ON kg_nodes;
 CREATE TRIGGER trg_kg_nodes_updated_at
     BEFORE UPDATE ON kg_nodes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -136,37 +142,103 @@ ALTER TABLE kg_nodes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE kg_links ENABLE ROW LEVEL SECURITY;
 
 -- kg_users: users can read/update their own record
+DROP POLICY IF EXISTS kg_users_select ON kg_users;
 CREATE POLICY kg_users_select ON kg_users
-    FOR SELECT USING (id = auth.uid());
+    FOR SELECT USING (render_user_id = (SELECT auth.uid())::text);
 
+DROP POLICY IF EXISTS kg_users_update ON kg_users;
 CREATE POLICY kg_users_update ON kg_users
-    FOR UPDATE USING (id = auth.uid());
+    FOR UPDATE USING (render_user_id = (SELECT auth.uid())::text);
 
 -- kg_nodes: full CRUD on own nodes
+DROP POLICY IF EXISTS kg_nodes_select ON kg_nodes;
 CREATE POLICY kg_nodes_select ON kg_nodes
-    FOR SELECT USING (user_id = auth.uid());
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_nodes.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_nodes_insert ON kg_nodes;
 CREATE POLICY kg_nodes_insert ON kg_nodes
-    FOR INSERT WITH CHECK (user_id = auth.uid());
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_nodes.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_nodes_update ON kg_nodes;
 CREATE POLICY kg_nodes_update ON kg_nodes
-    FOR UPDATE USING (user_id = auth.uid());
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_nodes.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_nodes_delete ON kg_nodes;
 CREATE POLICY kg_nodes_delete ON kg_nodes
-    FOR DELETE USING (user_id = auth.uid());
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_nodes.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
 -- kg_links: full CRUD on own links
+DROP POLICY IF EXISTS kg_links_select ON kg_links;
 CREATE POLICY kg_links_select ON kg_links
-    FOR SELECT USING (user_id = auth.uid());
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_links.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_links_insert ON kg_links;
 CREATE POLICY kg_links_insert ON kg_links
-    FOR INSERT WITH CHECK (user_id = auth.uid());
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_links.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_links_update ON kg_links;
 CREATE POLICY kg_links_update ON kg_links
-    FOR UPDATE USING (user_id = auth.uid());
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_links.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
+DROP POLICY IF EXISTS kg_links_delete ON kg_links;
 CREATE POLICY kg_links_delete ON kg_links
-    FOR DELETE USING (user_id = auth.uid());
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1
+            FROM kg_users u
+            WHERE u.id = kg_links.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
 
 
 -- ── Service-role policies ───────────────────────────────────────────────────
@@ -174,18 +246,30 @@ CREATE POLICY kg_links_delete ON kg_links
 -- These explicit policies allow the server to manage all data when using
 -- the anon key with a custom JWT claim.
 
+DROP POLICY IF EXISTS kg_users_service_all ON kg_users;
 CREATE POLICY kg_users_service_all ON kg_users
     FOR ALL USING (
         current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
-    );
-
-CREATE POLICY kg_nodes_service_all ON kg_nodes
-    FOR ALL USING (
+    )
+    WITH CHECK (
         current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
     );
 
+DROP POLICY IF EXISTS kg_nodes_service_all ON kg_nodes;
+CREATE POLICY kg_nodes_service_all ON kg_nodes
+    FOR ALL USING (
+        current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
+    )
+    WITH CHECK (
+        current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
+    );
+
+DROP POLICY IF EXISTS kg_links_service_all ON kg_links;
 CREATE POLICY kg_links_service_all ON kg_links
     FOR ALL USING (
+        current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
+    )
+    WITH CHECK (
         current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
     );
 

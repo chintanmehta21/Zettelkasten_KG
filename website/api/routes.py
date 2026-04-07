@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import re
 import time
 from collections import defaultdict
-from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -16,83 +13,14 @@ from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
 from website.core.pipeline import summarize_url
-from website.core.graph_store import add_node, get_graph, delete_node as delete_graph_node
-from website.core.supabase_kg import is_supabase_configured, KGRepository, KGNodeCreate, KGGraph
-from website.features.kg_features.embeddings import find_similar_nodes, generate_embedding
+from website.core.graph_store import get_graph, delete_node as delete_graph_node
+from website.core.supabase_kg import KGGraph
+from website.experimental_features.nexus.service.persist import (
+    get_supabase_scope as _get_supabase,
+    persist_summarized_result,
+)
 
 logger = logging.getLogger("website.api")
-
-# Lazy-init Supabase repository + user ID (only when Supabase is configured)
-_supabase_repo: KGRepository | None = None
-_supabase_user_id: str | None = None
-
-
-def _get_supabase(user_id_override: str | None = None) -> tuple[KGRepository, str] | None:
-    """Return (repo, user_id) if Supabase is configured, else None.
-
-    When ``user_id_override`` is the Supabase Auth UUID of an
-    authenticated user, we first look for an existing kg_users row
-    with that ID.  If none exists, we check whether the legacy
-    default user ("naruto") can be claimed — i.e. its render_user_id
-    is updated to the real Auth UUID so all existing zettels become
-    accessible under the authenticated identity.
-    """
-    global _supabase_repo, _supabase_user_id
-    if not is_supabase_configured():
-        return None
-    if _supabase_repo is None:
-        try:
-            _supabase_repo = KGRepository()
-        except Exception as exc:
-            logger.warning("Supabase init failed, falling back to file store: %s", exc)
-            return None
-    if user_id_override:
-        try:
-            # Fast path: user already exists with this Auth UUID
-            existing = _supabase_repo.get_user_by_render_id(user_id_override)
-            if existing:
-                # Check if this user was pre-created by the Supabase Auth
-                # trigger but has no data yet.  If the legacy "naruto" user
-                # has nodes, transfer them to this authenticated user.
-                stats = _supabase_repo.get_stats(existing.id)
-                if stats["node_count"] == 0:
-                    legacy = _supabase_repo.get_user_by_render_id("naruto")
-                    if legacy and legacy.id != existing.id:
-                        legacy_stats = _supabase_repo.get_stats(legacy.id)
-                        if legacy_stats["node_count"] > 0:
-                            _supabase_repo.transfer_data(legacy.id, existing.id)
-                            _supabase_user_id = None
-                            logger.info(
-                                "Transferred %d nodes from naruto to %s",
-                                legacy_stats["node_count"],
-                                user_id_override,
-                            )
-                return _supabase_repo, str(existing.id)
-
-            # Claim the legacy default user if it still has the
-            # placeholder render_user_id ("naruto")
-            legacy = _supabase_repo.get_user_by_render_id("naruto")
-            if legacy:
-                claimed = _supabase_repo.claim_user("naruto", user_id_override)
-                if claimed:
-                    # Invalidate cached default user_id
-                    _supabase_user_id = None
-                    return _supabase_repo, str(claimed.id)
-
-            # No legacy user to claim — create fresh
-            user = _supabase_repo.get_or_create_user(user_id_override, display_name="Web User")
-            return _supabase_repo, str(user.id)
-        except Exception as exc:
-            logger.warning("Supabase user lookup failed: %s", exc)
-            return None
-    if _supabase_user_id is None:
-        try:
-            user = _supabase_repo.get_or_create_user("naruto", display_name="Naruto")
-            _supabase_user_id = str(user.id)
-        except Exception as exc:
-            logger.warning("Supabase default user init failed: %s", exc)
-            return None
-    return _supabase_repo, _supabase_user_id
 
 router = APIRouter(prefix="/api")
 
@@ -105,114 +33,6 @@ _RATE_WINDOW = 60  # seconds
 _graph_cache: dict | None = None
 _graph_cache_ts: float = 0
 _GRAPH_CACHE_TTL = 30  # seconds
-
-# TTL cache for distinct entity types per user (schema-drift prevention)
-_EXISTING_TYPES_CACHE: dict[str, tuple[float, list[str]]] = {}
-_EXISTING_TYPES_TTL = 60.0
-
-
-def _normalize_summary_text(value: str | None) -> str:
-    return (
-        str(value or "")
-        .replace("\r\n", "\n")
-        .replace("\\n", "\n")
-        .replace("\\r", "\r")
-        .replace("\\t", "\t")
-        .replace('\\"', '"')
-        .strip()
-    )
-
-
-def _extract_summary_field_by_regex(text: str, field_name: str) -> str:
-    pattern = re.compile(rf'"{re.escape(field_name)}"\s*:\s*"((?:\\.|[^"\\])*)"', re.IGNORECASE | re.DOTALL)
-    match = pattern.search(text)
-    if not match:
-        return ""
-    return _normalize_summary_text(match.group(1))
-
-
-def _try_parse_summary_object(raw_text: str | None) -> dict | None:
-    cleaned = str(raw_text or "").strip()
-    if not cleaned:
-        return None
-
-    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^json\s*", "", cleaned, flags=re.IGNORECASE).strip()
-
-    candidates = [cleaned]
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end > start:
-        candidates.append(cleaned[start : end + 1])
-
-    for candidate in candidates:
-        candidate = candidate.strip()
-        if not candidate:
-            continue
-        try:
-            parsed = json.loads(candidate)
-            if isinstance(parsed, dict):
-                return parsed
-            if isinstance(parsed, str):
-                nested = json.loads(parsed)
-                if isinstance(nested, dict):
-                    return nested
-        except Exception:
-            continue
-
-    regex_brief = _extract_summary_field_by_regex(cleaned, "brief_summary")
-    regex_detailed = _extract_summary_field_by_regex(cleaned, "detailed_summary")
-    if regex_brief or regex_detailed:
-        return {
-            "brief_summary": regex_brief,
-            "detailed_summary": regex_detailed,
-        }
-
-    return None
-
-
-def _extract_summary_parts(raw_summary: str | None, fallback_brief: str | None = None) -> tuple[str, str]:
-    fallback_brief_text = _normalize_summary_text(fallback_brief)
-    parsed = _try_parse_summary_object(raw_summary)
-    if parsed:
-        brief = _normalize_summary_text(
-            parsed.get("brief_summary")
-            or parsed.get("briefSummary")
-            or parsed.get("one_line_summary")
-            or parsed.get("summary")
-        )
-        detailed = _normalize_summary_text(
-            parsed.get("detailed_summary")
-            or parsed.get("detailedSummary")
-            or parsed.get("summary")
-        )
-        if brief or detailed:
-            resolved_brief = brief or detailed or fallback_brief_text
-            resolved_detailed = detailed or brief or fallback_brief_text
-            return (
-                resolved_brief or "No summary available for this zettel.",
-                resolved_detailed or resolved_brief or "No summary available for this zettel.",
-            )
-
-    fallback = fallback_brief_text or _normalize_summary_text(raw_summary) or "No summary available for this zettel."
-    return fallback, fallback
-
-
-def _get_cached_existing_types(repo: KGRepository, user_id: str) -> list[str]:
-    """Return the user's distinct entity types with a 60s TTL cache."""
-    from uuid import UUID
-    now = time.monotonic()
-    cached = _EXISTING_TYPES_CACHE.get(user_id)
-    if cached and cached[0] > now:
-        return cached[1]
-    try:
-        types_list = repo.get_distinct_entity_types(UUID(user_id))
-    except Exception:
-        types_list = []
-    _EXISTING_TYPES_CACHE[user_id] = (now + _EXISTING_TYPES_TTL, types_list)
-    return types_list
-
 
 def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
     """Add PageRank, community, and centrality metrics to graph nodes."""
@@ -561,6 +381,8 @@ async def graph_search(
 
 @router.post("/summarize")
 async def summarize(body: SummarizeRequest, request: Request, user: Annotated[dict | None, Depends(get_optional_user)] = None):
+    global _graph_cache_global, _graph_cache_global_ts
+
     ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(ip):
         raise HTTPException(
@@ -572,170 +394,14 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
 
     try:
         result = await summarize_url(body.url)
-        captured_on = date.today()
-        brief_summary, detailed_summary = _extract_summary_parts(
-            result.get("summary", ""),
-            result.get("brief_summary", ""),
+        persistence = await persist_summarized_result(
+            result,
+            user_sub=user["sub"] if user else None,
         )
-        result["brief_summary"] = brief_summary
-        result["detailed_summary"] = detailed_summary
-        result["summary"] = detailed_summary
-        result["captured_at"] = captured_on.isoformat()
-
-        # Add to knowledge graph — file store (always) + Supabase (if configured)
-        try:
-            node_id = add_node(
-                title=result["title"],
-                source_type=result["source_type"],
-                source_url=result["source_url"],
-                summary=result.get("brief_summary") or result["summary"][:200],
-                tags=result.get("tags", []),
-            )
-            result["node_id"] = node_id
-        except Exception as kg_err:
-            logger.warning("Failed to add node to file KG: %s", kg_err)
-
-        # Dual-write to Supabase
-        sb = _get_supabase(user_id_override=user["sub"] if user else None)
-        if sb:
-            repo, user_id = sb
-            try:
-                from uuid import UUID
-                from website.core.graph_store import _SOURCE_PREFIX
-
-                prefix = _SOURCE_PREFIX.get(result["source_type"], "web")
-                slug = re.sub(r"[^a-z0-9]+", "-", result["title"].lower()).strip("-")[:24].rstrip("-")
-                sb_node_id = f"{prefix}-{slug}"
-
-                if not repo.node_exists(UUID(user_id), result["source_url"]):
-                    # Generate embedding from title + full summary for richer
-                    # semantic matching (M2).  Embedding is computed BEFORE
-                    # insert so it goes in one DB round trip.
-                    emb: list[float] | None = None
-                    try:
-                        title_text = result.get("title", "")
-                        summary_text = result.get("summary") or result.get("brief_summary") or ""
-                        embed_input = f"{title_text}\n\n{summary_text}".strip()[:2000]
-                        embedding = generate_embedding(embed_input)
-                        emb = embedding if embedding else None
-                    except Exception as emb_err:
-                        logger.warning("Embedding generation failed: %s", emb_err)
-                        emb = None
-
-                    node_metadata: dict = {}
-                    if emb:
-                        node_metadata["embedding_model"] = "gemini-embedding-001"
-
-                    node_create = KGNodeCreate(
-                        id=sb_node_id,
-                        name=result["title"],
-                        source_type=result["source_type"],
-                        tags=result.get("tags", []),
-                        url=result["source_url"],
-                        summary=result.get("brief_summary") or result["summary"][:200],
-                        node_date=captured_on,
-                        embedding=emb,
-                        metadata=node_metadata,
-                    )
-
-                    repo.add_node(UUID(user_id), node_create)
-
-                    # Auto-link to semantically similar existing nodes (M2 auto-linking).
-                    if emb:
-                        try:
-                            similar = find_similar_nodes(
-                                supabase_client=repo._client,
-                                user_id=user_id,
-                                embedding=emb,
-                                threshold=0.75,
-                                limit=5,
-                            )
-                            logger.info(
-                                "Auto-link: %s found %d similar nodes",
-                                sb_node_id, len(similar),
-                            )
-                            for hit in similar:
-                                hit_id = hit.get("node_id") or hit.get("id")
-                                hit_sim = float(hit.get("similarity") or 0.0)
-                                logger.info(
-                                    "  candidate %s sim=%.3f (self=%s)",
-                                    hit_id, hit_sim, hit_id == node_create.id,
-                                )
-                                if hit_id and hit_id != node_create.id and hit_sim >= 0.75:
-                                    linked = repo.add_semantic_link(
-                                        user_id=UUID(user_id),
-                                        source_id=node_create.id,
-                                        target_id=hit_id,
-                                        similarity=hit_sim,
-                                    )
-                                    logger.info(
-                                        "  -> linked %s to %s (ok=%s)",
-                                        node_create.id, hit_id, linked,
-                                    )
-                        except Exception as exc:
-                            logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)
-
-                    # Entity extraction (M1) — async, non-blocking
-                    try:
-                        import asyncio
-                        from website.features.kg_features.entity_extractor import EntityExtractor
-
-                        async def _extract_entities():
-                            try:
-                                logger.info("Entity extraction started for %s", sb_node_id)
-                                existing_types = _get_cached_existing_types(repo, user_id)
-                                extractor = EntityExtractor()
-                                brief = result.get("brief_summary") or result["summary"][:500]
-                                extraction = await asyncio.wait_for(
-                                    extractor.extract(
-                                        summary=brief,
-                                        title=result["title"],
-                                        existing_types=existing_types,
-                                    ),
-                                    timeout=40.0,
-                                )
-                                if extraction.entities:
-                                    entities_data = [e.model_dump() for e in extraction.entities]
-                                    # Read current metadata to avoid overwriting concurrent changes
-                                    current = (
-                                        repo._client.table("kg_nodes")
-                                        .select("metadata")
-                                        .eq("user_id", str(user_id))
-                                        .eq("id", sb_node_id)
-                                        .execute()
-                                    )
-                                    current_meta = {}
-                                    if current.data:
-                                        current_meta = current.data[0].get("metadata") or {}
-                                    merged = {**current_meta, "entities": entities_data}
-                                    repo._client.table("kg_nodes").update(
-                                        {"metadata": merged}
-                                    ).eq("user_id", str(user_id)).eq("id", sb_node_id).execute()
-                                    logger.info("Extracted %d entities for %s", len(extraction.entities), sb_node_id)
-                                else:
-                                    logger.info("Entity extraction found 0 entities for %s", sb_node_id)
-                            except asyncio.TimeoutError:
-                                logger.warning("Entity extraction timed out for %s", sb_node_id)
-                            except Exception as ext_err:
-                                logger.warning("Entity extraction failed for %s: %s", sb_node_id, ext_err)
-
-                        # Keep a reference to prevent GC of the background task
-                        task = asyncio.create_task(
-                            _extract_entities(),
-                            name=f"entity-extract-{sb_node_id}",
-                        )
-                        # Suppress "Task exception was never retrieved" — errors are logged inside _extract_entities
-                        task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-                    except Exception as m1_err:
-                        logger.warning("Entity extraction setup failed: %s", m1_err)
-
-                    _graph_cache_global = None  # invalidate global cache
-                    _graph_cache_global_ts = 0
-                    logger.info("Added node %s to Supabase", sb_node_id)
-            except Exception as sb_err:
-                logger.warning("Failed to add node to Supabase: %s", sb_err)
-
-        return result
+        if persistence.supabase_saved:
+            _graph_cache_global = None
+            _graph_cache_global_ts = 0
+        return persistence.result
     except Exception as exc:
         logger.error("Summarization failed for %s: %s", body.url, exc)
         raise HTTPException(

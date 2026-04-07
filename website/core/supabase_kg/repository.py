@@ -25,6 +25,7 @@ _SOURCE_PREFIXES: dict[str, str] = {
     "youtube": "yt",
     "reddit": "rd",
     "github": "gh",
+    "twitter": "tw",
     "substack": "ss",
     "newsletter": "ss",
     "medium": "md",

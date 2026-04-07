@@ -21,6 +21,7 @@ from website.features.api_key_switching import get_key_pool
 from website.features.api_key_switching.routing import select_starting_model
 
 logger = logging.getLogger(__name__)
+_DEFAULT_SUMMARIZATION_MODEL = "gemini-2.5-flash"
 
 # ── Prompt template ──────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ class GeminiSummarizer:
         model_name: Primary model to try first.
     """
 
-    def __init__(self, api_key: str = "", model_name: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str = "", model_name: str = _DEFAULT_SUMMARIZATION_MODEL) -> None:
         if api_key:
             logger.debug("api_key parameter is deprecated — keys are managed by GeminiKeyPool")
         self._pool = get_key_pool()
@@ -155,7 +156,11 @@ class GeminiSummarizer:
         try:
             response, model_used = await self._generate_with_fallback(
                 contents,
-                starting_model="gemini-2.5-flash",
+                starting_model=(
+                    self._model
+                    if self._model and self._model != _DEFAULT_SUMMARIZATION_MODEL
+                    else _DEFAULT_SUMMARIZATION_MODEL
+                ),
                 label="Video understanding",
             )
 
@@ -217,10 +222,13 @@ class GeminiSummarizer:
 
         start = time.monotonic()
         try:
-            starting_model = select_starting_model(
-                content_length=len(content.body),
-                source_type=content.source_type.value,
-            )
+            if self._model and self._model != _DEFAULT_SUMMARIZATION_MODEL:
+                starting_model = self._model
+            else:
+                starting_model = select_starting_model(
+                    content_length=len(content.body),
+                    source_type=content.source_type.value,
+                )
             response, model_used = await self._generate_with_fallback(
                 prompt,
                 starting_model=starting_model,

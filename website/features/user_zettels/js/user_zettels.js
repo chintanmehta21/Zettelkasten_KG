@@ -19,6 +19,7 @@
   var avatarImg;
   var avatarFallback;
   var menuSignout;
+  var menuNexus;
 
   var statTotal;
   var statSources;
@@ -71,6 +72,7 @@
     avatarImg = document.getElementById('avatar-img');
     avatarFallback = document.getElementById('avatar-fallback');
     menuSignout = document.getElementById('menu-signout');
+    menuNexus = document.getElementById('menu-nexus');
 
     statTotal = document.getElementById('stat-total');
     statSources = document.getElementById('stat-sources');
@@ -1190,6 +1192,12 @@
         } finally {
           window.location.href = '/';
         }
+      });
+    }
+
+    if (menuNexus) {
+      menuNexus.addEventListener('click', function () {
+        if (avatarDropdown) avatarDropdown.classList.remove('open');
       });
     }
 

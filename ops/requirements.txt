@@ -36,6 +36,9 @@ supabase>=2.0
 # JWT validation (Supabase Auth token verification)
 PyJWT>=2.8.0
 
+# Encrypted Nexus OAuth token storage (Fernet)
+cryptography>=43.0
+
 # Graph algorithms (PageRank, community detection, centrality)
 networkx>=3.2
 scipy>=1.12

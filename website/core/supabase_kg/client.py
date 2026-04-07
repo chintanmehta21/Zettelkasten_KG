@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import atexit
 import os
 import logging
 from functools import lru_cache
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from supabase.lib.client_options import SyncClientOptions
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +36,24 @@ def get_supabase_client() -> Client:
             "Add them to supabase/.env — see that file for instructions."
         )
 
+    timeout = _read_http_timeout()
+    verify = _read_http_verify()
+    proxy = (os.environ.get("SUPABASE_HTTP_PROXY") or "").strip() or None
+
+    httpx_kwargs: dict[str, object] = {
+        "timeout": timeout,
+        "verify": verify,
+    }
+    if proxy:
+        # httpx 0.27+ accepts a single proxy URL via ``proxy=``.
+        httpx_kwargs["proxy"] = proxy
+
+    shared_http_client = httpx.Client(**httpx_kwargs)
+    atexit.register(shared_http_client.close)
+    options = SyncClientOptions(httpx_client=shared_http_client)
+
     logger.info("Initializing Supabase client for %s", url)
-    return create_client(url, key)
+    return create_client(url, key, options=options)
 
 
 def get_supabase_env() -> dict[str, str]:
@@ -52,3 +71,21 @@ def is_supabase_configured() -> bool:
         os.environ.get("SUPABASE_URL")
         and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     )
+
+
+def _read_http_timeout() -> float:
+    raw = (os.environ.get("SUPABASE_HTTP_TIMEOUT") or "").strip()
+    if not raw:
+        return 20.0
+    try:
+        value = float(raw)
+    except ValueError:
+        return 20.0
+    return max(1.0, value)
+
+
+def _read_http_verify() -> bool:
+    raw = (os.environ.get("SUPABASE_HTTP_VERIFY") or "").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return True

@@ -25,6 +25,7 @@ _SOURCE_PREFIX = {
     "youtube": "yt",
     "reddit": "rd",
     "github": "gh",
+    "twitter": "tw",
     "substack": "ss",
     "newsletter": "ss",
     "medium": "md",
@@ -118,13 +119,13 @@ def add_node(
     # Remove source/ prefix tags too
     clean_tags = [
         t for t in clean_tags
-        if t not in ("youtube", "reddit", "github", "substack", "medium", "web", "generic", "newsletter")
+        if t not in ("youtube", "reddit", "github", "twitter", "substack", "medium", "web", "generic", "newsletter")
     ]
 
     node = {
         "id": node_id,
         "name": title,
-        "group": prefix if prefix in ("yt", "rd", "gh", "ss", "md", "web") else "web",
+        "group": prefix if prefix in ("yt", "rd", "gh", "tw", "ss", "md", "web") else "web",
         "summary": summary,
         "tags": clean_tags,
         "url": source_url,
@@ -132,7 +133,7 @@ def add_node(
     }
 
     # Map prefix back to group name used in colors
-    group_map = {"yt": "youtube", "rd": "reddit", "gh": "github", "ss": "substack", "md": "medium", "web": "web"}
+    group_map = {"yt": "youtube", "rd": "reddit", "gh": "github", "tw": "twitter", "ss": "substack", "md": "medium", "web": "web"}
     node["group"] = group_map.get(prefix, "web")
 
     with _lock:

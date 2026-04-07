@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus - Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260407a">
+    <link rel="stylesheet" href="/home/nexus/css/nexus.css?v=20260407a">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <a class="nexus-skip-link" href="#main-content">Skip to main content</a>
+    <div class="nexus-page">
+        <header class="nexus-header">
+            <a class="nexus-brand" href="/home" aria-label="Back to Home">
+                <img src="/artifacts/logo-zettelkasten.svg" alt="" width="32" height="32" class="nexus-brand-logo">
+                <span>
+                    <span class="nexus-brand-name">Nexus</span>
+                    <span class="nexus-brand-kicker">Experimental provider hub</span>
+                </span>
+            </a>
+            <div class="nexus-header-actions">
+                <span class="nexus-badge">Experimental</span>
+                <label class="nexus-remember-toggle" for="remember-connection-toggle" title="Turn off for test mode to forget provider credentials after each import.">
+                    <input id="remember-connection-toggle" type="checkbox" checked>
+                    <span>Remember connections</span>
+                </label>
+                <button class="nexus-button nexus-button-secondary" id="refresh-all-btn" type="button">Refresh</button>
+                <button class="nexus-button nexus-button-primary" id="import-all-btn" type="button">Import all</button>
+            </div>
+        </header>
+
+        <main class="nexus-main" id="main-content">
+            <section class="nexus-hero">
+                <div class="nexus-hero-copy">
+                    <p class="nexus-eyebrow">Home / Nexus</p>
+                    <h1 class="nexus-title">Connect source accounts and pull fresh captures into your vault.</h1>
+                    <p class="nexus-subtitle">Use the provider cards to connect accounts, trigger imports one source at a time, or run a full refresh when you want to catch up fast.</p>
+                </div>
+                <div class="nexus-hero-status">
+                    <div class="nexus-stat"><span class="nexus-stat-value" id="connected-count">0</span><span class="nexus-stat-label">Connected</span></div>
+                    <div class="nexus-stat"><span class="nexus-stat-value" id="provider-count">4</span><span class="nexus-stat-label">Providers</span></div>
+                    <div class="nexus-stat"><span class="nexus-stat-value" id="run-count">0</span><span class="nexus-stat-label">Recent runs</span></div>
+                </div>
+            </section>
+
+            <section class="nexus-panel">
+                <div class="nexus-panel-header">
+                    <div>
+                        <h2 class="nexus-section-title">Providers</h2>
+                        <p class="nexus-section-copy">Connect, disconnect, and import from each source directly from this page.</p>
+                    </div>
+                    <button class="nexus-button nexus-button-secondary" id="reload-providers-btn" type="button">Reload providers</button>
+                </div>
+                <div class="nexus-provider-grid" id="provider-grid" aria-live="polite"></div>
+            </section>
+
+            <section class="nexus-panel">
+                <div class="nexus-panel-header">
+                    <div>
+                        <h2 class="nexus-section-title">Recent runs</h2>
+                        <p class="nexus-section-copy">Track the latest import attempts, errors, and completed syncs.</p>
+                    </div>
+                    <button class="nexus-button nexus-button-secondary" id="reload-runs-btn" type="button">Reload runs</button>
+                </div>
+                <div class="nexus-runs" id="runs-list" aria-live="polite"></div>
+                <div class="nexus-empty-state hidden" id="runs-empty">
+                    <h3>No runs yet</h3>
+                    <p>Once you connect a provider and import content, the latest syncs will appear here.</p>
+                </div>
+            </section>
+        </main>
+
+        <div class="nexus-toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+    <script src="/home/nexus/js/nexus.js?v=20260407a"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@
   var addZettelBtn, addZettelDropdown, addZettelForm, addUrlInput;
   var addSourceType, addSubmitBtn, addError, addLoading;
   var avatarModal, avatarModalOverlay, avatarModalClose, avatarGrid;
-  var menuProfile, menuSignout;
+  var menuProfile, menuNexus, menuSignout;
 
   function resolveDOM() {
     avatarBtn = document.getElementById('avatar-btn');
@@ -45,6 +45,7 @@
     avatarModalClose = document.getElementById('avatar-modal-close');
     avatarGrid = document.getElementById('avatar-grid');
     menuProfile = document.getElementById('menu-profile');
+    menuNexus = document.getElementById('menu-nexus');
     menuSignout = document.getElementById('menu-signout');
   }
 
@@ -748,6 +749,12 @@
         e.preventDefault();
         avatarDropdown.classList.remove('open');
         openAvatarPicker(token);
+      });
+    }
+
+    if (menuNexus) {
+      menuNexus.addEventListener('click', function () {
+        if (avatarDropdown) avatarDropdown.classList.remove('open');
       });
     }
 
