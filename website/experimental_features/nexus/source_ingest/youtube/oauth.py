@@ -48,6 +48,7 @@ class YouTubeOAuthConfig:
 
 def get_oauth_config() -> YouTubeOAuthConfig:
     client_id = _require_env(CLIENT_ID_ENV)
+    _validate_client_id(client_id)
     redirect_uri = _require_env(REDIRECT_URI_ENV)
     client_secret = os.environ.get(CLIENT_SECRET_ENV) or None
     return YouTubeOAuthConfig(
@@ -214,6 +215,16 @@ def _is_placeholder(value: str) -> bool:
         "test-",
     )
     return any(token in probe for token in placeholder_tokens)
+
+
+def _validate_client_id(client_id: str) -> None:
+    candidate = client_id.strip()
+    if candidate.endswith(".apps.googleusercontent.com"):
+        return
+    raise RuntimeError(
+        f"Invalid {CLIENT_ID_ENV} value. Expected a Google OAuth Client ID ending "
+        "with '.apps.googleusercontent.com' (not an email, username, or project name)."
+    )
 
 
 def _generate_code_verifier() -> str:
