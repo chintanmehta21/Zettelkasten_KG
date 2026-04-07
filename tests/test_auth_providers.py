@@ -57,3 +57,8 @@ def test_provider_registry_in_auth_js():
     providers = _extract_registry_from_js(js)
     missing = EXPECTED_PROVIDERS - providers
     assert not missing, f"Missing providers in auth.js registry: {sorted(missing)}"
+
+
+def test_modal_google_button_still_present():
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    assert "id=\"oauth-google\"" in html

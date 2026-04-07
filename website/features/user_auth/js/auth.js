@@ -331,6 +331,7 @@
       modalProviders.forEach(function (btn) {
         btn.addEventListener('click', function () {
           var provider = btn.getAttribute('data-provider');
+          if (!isKnownProvider(provider)) return;
           signInWithProvider(provider);
         });
       });
