@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import atexit
 import os
-import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -15,9 +15,60 @@ from supabase.lib.client_options import SyncClientOptions
 
 logger = logging.getLogger(__name__)
 
-# Load supabase-specific .env from supabase/.env (project root relative)
-_SUPABASE_ENV = Path(__file__).resolve().parents[3] / "supabase" / ".env"
-load_dotenv(_SUPABASE_ENV, override=False)
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_SUPABASE_ENV = _PROJECT_ROOT / "supabase" / ".env"
+
+
+def _load_key_value_secret_file(path: Path) -> int:
+    """Load KEY=VALUE lines from a secret file into os.environ.
+
+    This parser intentionally ignores plain lines without ``=`` so it can
+    safely read files such as ``api_env`` that may contain non-env payloads
+    (for example one Gemini key per line).
+    """
+    if not path.exists():
+        return 0
+
+    loaded = 0
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key.startswith("export "):
+            key = key[len("export "):].strip()
+        if not key or key in os.environ:
+            continue
+
+        value = value.strip().strip("'").strip('"')
+        os.environ[key] = value
+        loaded += 1
+    return loaded
+
+
+def _bootstrap_env() -> None:
+    """Load env vars from local files and Render Secret Files.
+
+    Precedence remains: explicit environment variables > file values.
+    """
+    load_dotenv(_SUPABASE_ENV, override=False)
+    load_dotenv(_PROJECT_ROOT / ".env", override=False)
+
+    secret_candidates = (
+        Path("/etc/secrets/nexus_env"),
+        Path("/etc/secrets/api_env"),
+        _PROJECT_ROOT / "supabase" / "website" / "nexus" / "nexus_env",
+        _PROJECT_ROOT / "website" / "experimental_features" / "nexus" / "nexus_env.txt",
+    )
+    for secret_path in secret_candidates:
+        loaded = _load_key_value_secret_file(secret_path)
+        if loaded:
+            logger.info("Loaded %s env vars from %s", loaded, secret_path)
+
+
+_bootstrap_env()
 
 
 @lru_cache(maxsize=1)

@@ -134,6 +134,36 @@ class TestGetSupabaseClient:
         get_supabase_client.cache_clear()
 
 
+class TestSecretFileEnvLoader:
+    def test_load_key_value_secret_file_parses_env_pairs(self, tmp_path) -> None:
+        from website.core.supabase_kg import client as client_module
+
+        secret_file = tmp_path / "nexus_env"
+        secret_file.write_text(
+            "\n".join(
+                [
+                    "TEST_SECRET_ALPHA=from-file",
+                    "NO_EQUALS_LINE",
+                    "# comment",
+                    "export TEST_SECRET_BETA=beta-value",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        with patch.dict(os.environ, {"TEST_SECRET_ALPHA": "already-set"}, clear=False):
+            loaded = client_module._load_key_value_secret_file(secret_file)
+            assert loaded == 1
+            assert os.environ["TEST_SECRET_ALPHA"] == "already-set"
+            assert os.environ["TEST_SECRET_BETA"] == "beta-value"
+
+    def test_load_key_value_secret_file_missing_path(self, tmp_path) -> None:
+        from website.core.supabase_kg import client as client_module
+
+        loaded = client_module._load_key_value_secret_file(tmp_path / "does-not-exist.env")
+        assert loaded == 0
+
+
 class TestIsSupabaseConfigured:
     def test_is_supabase_configured_true(self) -> None:
         env = {
