@@ -56,4 +56,5 @@ docs/login_details.txt
 .agents/
 .mcp.local.json
 supabase/.temp/
+supabase/.env
 .worktrees/
