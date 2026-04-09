@@ -7,6 +7,7 @@ handles Telegram webhook forwarding so both services share a single port.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -39,6 +40,11 @@ _MOBILE_RE = re.compile(
 )
 
 
+def _nexus_enabled() -> bool:
+    raw_value = os.environ.get("NEXUS_ENABLED", "true").strip().lower()
+    return raw_value not in {"0", "false", "no", "off"}
+
+
 def _is_mobile(request: Request) -> bool:
     ua = request.headers.get("user-agent", "")
     return bool(_MOBILE_RE.search(ua))
@@ -68,10 +74,12 @@ def create_app(lifespan=None) -> FastAPI:
         kwargs["lifespan"] = lifespan
 
     app = FastAPI(**kwargs)
+    nexus_enabled = _nexus_enabled()
 
     # API routes
     app.include_router(api_router)
-    app.include_router(nexus_router)
+    if nexus_enabled:
+        app.include_router(nexus_router)
 
     # ── Mobile static assets (/m/) ──
     app.mount("/m/css", StaticFiles(directory=str(MOBILE_DIR / "css")), name="m-css")
@@ -98,8 +106,9 @@ def create_app(lifespan=None) -> FastAPI:
     # Home page static assets
     app.mount("/home/css", StaticFiles(directory=str(HOME_DIR / "css")), name="home-css")
     app.mount("/home/js", StaticFiles(directory=str(HOME_DIR / "js")), name="home-js")
-    _mount_static_if_exists(app, "/home/nexus/css", NEXUS_DIR / "css", "home-nexus-css")
-    _mount_static_if_exists(app, "/home/nexus/js", NEXUS_DIR / "js", "home-nexus-js")
+    if nexus_enabled:
+        _mount_static_if_exists(app, "/home/nexus/css", NEXUS_DIR / "css", "home-nexus-css")
+        _mount_static_if_exists(app, "/home/nexus/js", NEXUS_DIR / "js", "home-nexus-js")
     app.mount(
         "/home/zettels/css",
         StaticFiles(directory=str(USER_ZETTELS_DIR / "css")),
@@ -154,14 +163,15 @@ def create_app(lifespan=None) -> FastAPI:
             return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(HOME_DIR / "index.html"))
 
-    @app.get("/home/nexus")
-    async def home_nexus(request: Request):
-        if _is_mobile(request):
-            return RedirectResponse(url="/m/", status_code=302)
-        nexus_index = NEXUS_DIR / "index.html"
-        if not nexus_index.exists():
-            raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
-        return FileResponse(str(nexus_index))
+    if nexus_enabled:
+        @app.get("/home/nexus")
+        async def home_nexus(request: Request):
+            if _is_mobile(request):
+                return RedirectResponse(url="/m/", status_code=302)
+            nexus_index = NEXUS_DIR / "index.html"
+            if not nexus_index.exists():
+                raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
+            return FileResponse(str(nexus_index))
 
     @app.get("/home/zettels")
     async def user_zettels(request: Request):
