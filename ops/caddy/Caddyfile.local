@@ -1,0 +1,12 @@
+{
+    # Use Caddy's internal CA for local self-signed certs
+    local_certs
+    auto_https disable_redirects
+}
+
+# Local hostname — requires `127.0.0.1 zettelkasten.local` in /etc/hosts
+zettelkasten.local {
+    tls internal
+    encode zstd gzip
+    import /etc/caddy/upstream.snippet
+}
