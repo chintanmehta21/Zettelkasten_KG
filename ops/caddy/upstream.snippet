@@ -1,0 +1,3 @@
+# This file is rewritten by deploy.sh to point at blue (10000) or green (10001).
+# Caddy is reloaded gracefully when this changes — zero dropped connections.
+reverse_proxy zettelkasten-blue:10000

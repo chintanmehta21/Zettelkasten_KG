@@ -1,0 +1,65 @@
+{
+    # ACME account email (Let's Encrypt notifications only)
+    email chintanoninternet@gmail.com
+
+    # Listen on both IPv4 and IPv6
+    default_bind tcp4/0.0.0.0 tcp6/[::]
+}
+
+# --- www -> apex 301 redirect ------------------------------------------------
+www.zettelkasten.in {
+    redir https://zettelkasten.in{uri} permanent
+}
+
+# --- apex (canonical) --------------------------------------------------------
+zettelkasten.in {
+    encode zstd gzip
+
+    # Security headers (applied to every response)
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), camera=(), microphone=()"
+        # Remove the default Server: Caddy banner
+        -Server
+    }
+
+    # Long-lived cache for hashed static assets
+    @static {
+        path /css/* /js/*
+        path /m/css/* /m/js/*
+        path /kg/css/* /kg/js/*
+        path /home/css/* /home/js/*
+        path /home/zettels/css/* /home/zettels/js/*
+        path /home/nexus/css/* /home/nexus/js/*
+        path /about/css/* /about/js/*
+        path /pricing/css/* /pricing/js/*
+        path /auth/css/* /auth/js/*
+        path /artifacts/*
+        path /browser-cache/js/*
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # 30s cache for the public KG endpoint (matches in-process TTL)
+    @api_graph path /api/graph
+    header @api_graph Cache-Control "public, max-age=30"
+
+    # Skip access logging for the Telegram webhook.
+    @telegram path /telegram/webhook
+    log_skip @telegram
+
+    # Application reverse proxy — upstream is hot-swappable
+    import /etc/caddy/upstream.snippet
+
+    # Access log (JSON, separate file for logrotate)
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10MiB
+            roll_keep 5
+            roll_keep_for 168h
+        }
+        format json
+    }
+}
