@@ -16,6 +16,7 @@ Key loading priority (first non-empty source wins):
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from telegram_bot.config.settings import get_settings
@@ -39,16 +40,33 @@ _pool: GeminiKeyPool | None = None
 def init_key_pool() -> GeminiKeyPool:
     """Initialize the global key pool.
 
-    Raises ValueError if no keys found from any source.
+    Loader priority (first non-empty source wins):
+      1. api_env file at one of _API_ENV_PATHS (one key per line)
+      2. GEMINI_API_KEYS environment variable (comma-separated list)
+      3. settings.gemini_api_key (backward compat with single-key)
+
+    Raises ValueError if no source yields any keys.
     """
     global _pool  # noqa: PLW0603
 
-    # Source 1 & 2: api_env file
+    # Source 1: api_env file
     for path in _API_ENV_PATHS:
         keys = _load_keys_from_file(path)
         if keys:
             logger.info("Loaded %d Gemini API key(s) from %s", len(keys), path)
             _pool = GeminiKeyPool(keys)
+            return _pool
+
+    # Source 2: GEMINI_API_KEYS env var (comma-separated)
+    env_csv = os.environ.get("GEMINI_API_KEYS", "").strip()
+    if env_csv:
+        env_keys = [key.strip() for key in env_csv.split(",") if key.strip()]
+        if env_keys:
+            logger.info(
+                "Loaded %d Gemini API key(s) from GEMINI_API_KEYS env var",
+                len(env_keys),
+            )
+            _pool = GeminiKeyPool(env_keys)
             return _pool
 
     # Source 3: backward compat — single key from settings
@@ -61,7 +79,8 @@ def init_key_pool() -> GeminiKeyPool:
     raise ValueError(
         "No Gemini API keys found. Provide keys via:\n"
         "  1. api_env file (one key per line) at project root or /etc/secrets/api_env\n"
-        "  2. GEMINI_API_KEY environment variable"
+        "  2. GEMINI_API_KEYS environment variable (comma-separated)\n"
+        "  3. GEMINI_API_KEY environment variable (single key, legacy)"
     )
 
 
