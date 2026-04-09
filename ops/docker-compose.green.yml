@@ -1,0 +1,44 @@
+services:
+  zettelkasten-green:
+    image: ghcr.io/chintanmehta21/zettelkasten-kg-website:${IMAGE_TAG:-latest}
+    container_name: zettelkasten-green
+    hostname: zettelkasten-green
+    restart: unless-stopped
+    env_file:
+      - /opt/zettelkasten/compose/.env
+    environment:
+      WEBHOOK_PORT: "10000"
+      NEXUS_ENABLED: "true"
+    ports:
+      - "127.0.0.1:10001:10000"
+    networks:
+      - zettelnet
+    volumes:
+      - /opt/zettelkasten/data/kg_output:/app/kg_output
+      - /opt/zettelkasten/data/bot_data:/app/bot_data
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 512
+    stop_grace_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "--max-time", "2", "http://127.0.0.1:10000/api/health"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+networks:
+  zettelnet:
+    external: true
