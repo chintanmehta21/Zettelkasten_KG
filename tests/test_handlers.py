@@ -133,8 +133,10 @@ class TestHandleReddit:
 
 
 class TestHandleYt:
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_calls_process_url_with_youtube(self, mock_proc):
+    async def test_valid_url_calls_process_url_with_youtube(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         update = _make_update(text=f"/yt {url}")
         ctx = _make_context(args=[url])
@@ -154,8 +156,10 @@ class TestHandleYt:
 
 
 class TestHandleNewsletter:
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_calls_process_url_with_newsletter(self, mock_proc):
+    async def test_valid_url_calls_process_url_with_newsletter(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://example.substack.com/p/article"
         update = _make_update(text=f"/newsletter {url}")
         ctx = _make_context(args=[url])
@@ -166,8 +170,10 @@ class TestHandleNewsletter:
 
 
 class TestHandleGithub:
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_calls_process_url_with_github(self, mock_proc):
+    async def test_valid_url_calls_process_url_with_github(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://github.com/user/repo"
         update = _make_update(text=f"/github {url}")
         ctx = _make_context(args=[url])
@@ -197,8 +203,10 @@ class TestHandleForce:
         assert force_val is True
         assert call_kwargs.get("data_dir") == "./test-data"
 
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_source_type_is_none_for_auto_detect(self, mock_proc):
+    async def test_source_type_is_none_for_auto_detect(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://github.com/user/repo"
         update = _make_update(text=f"/force {url}")
         ctx = _make_context(args=[url])
@@ -243,8 +251,10 @@ class TestHandleBareUrl:
         assert call_args[2] == url
         assert call_kwargs.get("data_dir") == "./test-data"
 
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_valid_url_source_type_is_none(self, mock_proc):
+    async def test_valid_url_source_type_is_none(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://example.com/article"
         update = _make_update(text=url)
         ctx = _make_context()
@@ -269,8 +279,10 @@ class TestHandleBareUrl:
         mock_proc.assert_not_called()
         update.effective_message.reply_text.assert_not_called()
 
+    @patch("telegram_bot.bot.handlers.get_settings")
     @patch("telegram_bot.bot.handlers.process_url", new_callable=AsyncMock)
-    async def test_multiple_tokens_uses_first_url(self, mock_proc):
+    async def test_multiple_tokens_uses_first_url(self, mock_proc, mock_get_settings):
+        mock_get_settings.return_value.data_dir = "./test-data"
         url = "https://example.com/article"
         update = _make_update(text=f"{url} some extra text")
         ctx = _make_context()
