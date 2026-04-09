@@ -1,0 +1,48 @@
+# Development compose file — hot-reload, no Caddy, no blue-green.
+# Use: docker compose -f ops/docker-compose.dev.yml up --build
+#
+# Mounts source code as volumes so edits trigger uvicorn --reload.
+# Reads env vars from a local .env file at the repo root (gitignored).
+
+services:
+  zettelkasten-dev:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    image: zettelkasten-kg-website:dev
+    container_name: zettelkasten-dev
+    restart: "no"
+    env_file:
+      - ../.env
+    environment:
+      WEBHOOK_MODE: "true"
+      WEBHOOK_PORT: "10000"
+      WEBHOOK_URL: "http://localhost:10000"
+      NEXUS_ENABLED: "true"
+    ports:
+      - "10000:10000"
+    volumes:
+      - ../website:/app/website
+      - ../telegram_bot:/app/telegram_bot
+      - ../run.py:/app/run.py:ro
+      - dev-kg-output:/app/kg_output
+      - dev-bot-data:/app/bot_data
+    command:
+      - python
+      - -m
+      - uvicorn
+      - website.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "10000"
+      - --reload
+      - --reload-dir
+      - /app/website
+      - --reload-dir
+      - /app/telegram_bot
+
+volumes:
+  dev-kg-output:
+  dev-bot-data:

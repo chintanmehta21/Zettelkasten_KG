@@ -1,11 +1,62 @@
-__pycache__
-*.pyc
-.env
+# Version control
 .git
-.pytest_cache
-tests/
+.gitignore
+.gitattributes
+
+# Docs and dev metadata (not needed at runtime)
 docs/
-*.egg-info
-.mypy_cache
-data/
+*.md
+!README.md
+
+# CI / GitHub config (only needed for CI itself, not in image)
+.github/
+
+# Tests are not shipped in the production image
+tests/
+
+# Local Python venvs and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Worktrees and Claude Code metadata
+.worktrees/
+.claude/
+.code-build/
+
+# Local data dirs that should never ship in the image
 kg_output/
+bot_data/
+*.log
+logs/
+
+# Local environment files
+.env
+.env.*
+ops/api_env
+website/features/api_key_switching/api_env
+supabase/.env
+
+# Node tooling (if ever introduced)
+node_modules/

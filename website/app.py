@@ -6,8 +6,8 @@ handles Telegram webhook forwarding so both services share a single port.
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -32,17 +32,17 @@ FOOTER_DIR = Path(__file__).parent / "footer"
 ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
 NEXUS_DIR = Path(__file__).parent / "experimental_features" / "nexus"
-_NEXUS_DISABLED_VALUES = {"0", "false", "no", "off"}
-
-
-def _nexus_enabled() -> bool:
-    return os.getenv("NEXUS_ENABLED", "true").strip().lower() not in _NEXUS_DISABLED_VALUES
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
     r"Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile",
     re.IGNORECASE,
 )
+
+
+def _nexus_enabled() -> bool:
+    raw_value = os.environ.get("NEXUS_ENABLED", "true").strip().lower()
+    return raw_value not in {"0", "false", "no", "off"}
 
 
 def _is_mobile(request: Request) -> bool:
@@ -74,11 +74,10 @@ def create_app(lifespan=None) -> FastAPI:
         kwargs["lifespan"] = lifespan
 
     app = FastAPI(**kwargs)
+    nexus_enabled = _nexus_enabled()
 
     # API routes
     app.include_router(api_router)
-    nexus_enabled = _nexus_enabled()
-
     if nexus_enabled:
         app.include_router(nexus_router)
 

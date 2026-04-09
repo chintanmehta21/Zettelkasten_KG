@@ -1,20 +1,19 @@
 """Web-adapted pipeline wrapper.
 
 Reuses the existing extraction and summarization pipeline but returns
-structured data instead of sending Telegram messages.  Does NOT write
+structured data instead of sending Telegram messages. Does NOT write
 notes to disk or update the duplicate store — web requests are stateless.
+
+All heavy imports (Gemini SDK, trafilatura, extractors) are lazy-loaded
+inside summarize_url() so module-level import is cheap and FastAPI cold
+start stays fast.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
 
 from telegram_bot.config.settings import get_settings
-from telegram_bot.models.capture import SourceType
-from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
-from telegram_bot.sources import get_extractor
-from telegram_bot.sources.registry import detect_source_type
 from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
 
 logger = logging.getLogger("website.pipeline")
@@ -26,6 +25,10 @@ async def summarize_url(url: str) -> dict:
     Returns a dict with title, summary, brief_summary, tags, source_type,
     source_url, one_line_summary, and metadata about the processing.
     """
+    from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
+    from telegram_bot.sources import get_extractor
+    from telegram_bot.sources.registry import detect_source_type
+
     settings = get_settings()
 
     # Phase 1: resolve redirects

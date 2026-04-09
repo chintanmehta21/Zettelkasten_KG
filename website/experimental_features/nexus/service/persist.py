@@ -14,7 +14,6 @@ from uuid import UUID
 
 from website.core.graph_store import _SOURCE_PREFIX, add_node
 from website.core.supabase_kg import KGNodeCreate, KGRepository, is_supabase_configured
-from website.features.kg_features.embeddings import find_similar_nodes, generate_embedding
 
 logger = logging.getLogger("website.experimental_features.nexus.persist")
 
@@ -330,6 +329,11 @@ async def persist_summarized_result(
 
     repo, kg_user_id = sb
     try:
+        from website.features.kg_features.embeddings import (
+            find_similar_nodes,
+            generate_embedding,
+        )
+
         user_uuid = UUID(kg_user_id)
         supabase_node_id = _build_supabase_node_id(
             str(payload.get("source_type", "")),
