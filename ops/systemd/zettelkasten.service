@@ -1,0 +1,36 @@
+[Unit]
+Description=Zettelkasten Caddy + active app stack
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/zettelkasten/compose
+EnvironmentFile=/opt/zettelkasten/compose/.env
+ExecStartPre=/bin/bash -c '\
+    ACTIVE=$(cat /opt/zettelkasten/ACTIVE_COLOR 2>/dev/null || echo blue); \
+    test "$ACTIVE" = blue || test "$ACTIVE" = green'
+ExecStart=/bin/bash -c '\
+    ACTIVE=$(cat /opt/zettelkasten/ACTIVE_COLOR); \
+    /usr/bin/docker compose \
+        -f /opt/zettelkasten/compose/docker-compose.caddy.yml \
+        -f /opt/zettelkasten/compose/docker-compose.${ACTIVE}.yml \
+        up -d'
+ExecStop=/bin/bash -c '\
+    ACTIVE=$(cat /opt/zettelkasten/ACTIVE_COLOR); \
+    /usr/bin/docker compose \
+        -f /opt/zettelkasten/compose/docker-compose.caddy.yml \
+        -f /opt/zettelkasten/compose/docker-compose.${ACTIVE}.yml \
+        down --timeout 20'
+TimeoutStartSec=180
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
