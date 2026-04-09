@@ -44,6 +44,29 @@ The user gave 15 explicit constraints. These are non-negotiable and each must be
 
 All 15 constraints are cross-referenced in Sections 4–12 below.
 
+### 2.1 Post-brainstorming decisions (locked in during spec review)
+
+Captured here so they override any earlier assumptions:
+
+1. **Domain:** `zettelkasten.in` purchased at **GoDaddy** (GoDaddy sells `.in`, Cloudflare Registrar does not). GoDaddy is registrar only.
+2. **DNS provider:** **Cloudflare Free** — domain's nameservers are delegated from GoDaddy to Cloudflare on day -1 so DNS queries hit Cloudflare's ~11 ms anycast network, not GoDaddy's slower servers. Cloudflare proxy (orange cloud) stays **OFF** for phase 1 because BLR1 + India users benefit more from direct paths than edge hops.
+3. **Source repo:** `chintanmehta21/Zettelkasten_KG` (private). Note CLAUDE.md has a stale URL; not blocking, will be fixed separately.
+4. **GHCR image:** private at `ghcr.io/chintanmehta21/zettelkasten-kg-website`, pulled on droplet via fine-grained `GHCR_READ_PAT` with `read:packages` scope, 365-day expiry, annual rotation.
+5. **Secrets delivery:** all runtime secrets live in GitHub Actions Environment secrets under the `production` environment, with a protection rule requiring manual approval before every deploy. Droplet `.env` is (re)written by the deploy workflow on every deploy.
+6. **`GEMINI_API_KEYS`:** canonical store is the GitHub `production` Environment secret; comma-separated list of up to 10 keys. Windows-local `api_env` file remains for local development only.
+7. **`SUPABASE_SERVICE_ROLE_KEY`:** **never** touches the droplet. Only `SUPABASE_ANON_KEY` is deployed. Service-role operations (migration script, etc.) run from Windows-local with `supabase/.env`.
+8. **CI test gate:** `pytest` (default, mocked, no network) runs on every `pull_request` open/synchronize and every `push` to `master`. Deploy job is gated on it. `pytest --live` runs only via `workflow_dispatch` (manual) and a weekly Sunday-03:00-IST `schedule` cron, so Gemini quota isn't burned on every keystroke.
+9. **Let's Encrypt ACME account email:** `chintanoninternet@gmail.com`.
+10. **Apex canonical, www 301:** `https://zettelkasten.in` is canonical, `https://www.zettelkasten.in` redirects.
+11. **IPv6:** enabled. Droplet gets a free `/64`; Caddy listens on both IPv4 and IPv6; DNS has both A and AAAA records.
+12. **Nexus:** `NEXUS_ENABLED=true` in production from day 1.
+13. **Telegram webhook path refactor:** migrate from `/<bot_token>` to fixed `/telegram/webhook` + `X-Telegram-Bot-Api-Secret-Token` header validation, so the bot token never appears in Caddy access logs.
+14. **Dev compose files (both):**
+    - `ops/docker-compose.dev.yml` — dev mode, single container, volume-mounts `website/` + `telegram_bot/` for hot-reload.
+    - `ops/docker-compose.prod-local.yml` — strict prod parity, pulls the real image from GHCR, runs full Caddy + blue + green stack on localhost for pre-deploy rehearsal.
+15. **BetterStack account:** user-managed. Plan creates monitors via dashboard only; no IaC for BetterStack in phase 1.
+
+
 ---
 
 ## 3. Explicit Decisions
@@ -78,13 +101,38 @@ Why Premium AMD wins for this workload:
 
 Use the DO Docker 1-Click Droplet image (Ubuntu 22.04 LTS + Docker CE 28.1.1 + Docker Compose plugin 2.36.0 + BuildX 0.23.0 pre-installed). No self-rolled base. Marketplace link: `https://cloud.digitalocean.com/droplets/new?image=docker-20-04`.
 
-### 3.3 Registry: GHCR (GitHub Container Registry)
+### 3.3 Registry: GHCR (GitHub Container Registry) — private image
 
-All images are built by GitHub Actions on `master` push and pushed to `ghcr.io/chintanmehta21/zettelkasten-website:<sha>` plus a `ghcr.io/chintanmehta21/zettelkasten-website:latest` tag. The Droplet authenticates once using a long-lived read-only `GHCR_PAT` stored in root-only `/root/.docker/config.json`.
+The source repository `chintanmehta21/Zettelkasten_KG` is **private**, so the GHCR image is also **private**.
+
+All images are built by GitHub Actions on `master` push and pushed to `ghcr.io/chintanmehta21/zettelkasten-kg-website:<sha>` plus a `ghcr.io/chintanmehta21/zettelkasten-kg-website:latest` tag. Push from GitHub Actions uses the workflow-scoped `GITHUB_TOKEN` with `packages: write` — no extra secret needed.
+
+Pull on the Droplet requires a long-lived **fine-grained GitHub Personal Access Token** named `GHCR_READ_PAT`:
+
+- Scope: `read:packages` only
+- Target: the single package `chintanmehta21/zettelkasten-kg-website`
+- Expiry: 365 days, annual rotation
+- Stored as a GitHub Actions **Environment secret** under the `production` environment (not as a repository secret)
+- Pushed to the Droplet via the deploy workflow: `echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin`
+- Result: `/root/.docker/config.json` mode `0600`, readable only by root; no plaintext PAT on disk
+
+Annual rotation runbook lives in §12.
 
 ### 3.4 Reverse proxy: Caddy with blue-green upstreams
 
-A single Caddy 2 container terminates TLS via Let's Encrypt (automatic renewal), serves the public origin (`zettel.chintanmehta.dev` or equivalent), and reverse-proxies to **exactly one of** two application containers:
+A single Caddy 2 container terminates TLS via Let's Encrypt (automatic renewal, ACME account email `chintanoninternet@gmail.com`).
+
+Public origin: **`https://zettelkasten.in`** (apex canonical). `https://www.zettelkasten.in` issues a permanent 301 redirect to the apex. Caddy binds both IPv4 and IPv6 (`bind tcp4 tcp6`) and serves HTTP/2 + HTTP/3 (QUIC over UDP 443) by default.
+
+Caddy sends the following headers on all non-webhook responses:
+
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: geolocation=(), camera=(), microphone=()`
+
+It reverse-proxies to **exactly one of** two application containers:
 
 - `zettelkasten-blue` on host port `10000`
 - `zettelkasten-green` on host port `10001`
@@ -297,6 +345,40 @@ README.md
 
 ```text
 .github/workflows/keep-alive.yml       # Droplet never cold-starts from sleep.
+```
+
+### 6.4 New dev-parity compose files
+
+```text
+ops/docker-compose.dev.yml
+  # Dev mode. Single container, volume-mounts website/ + telegram_bot/
+  # for hot-reload via uvicorn --reload. No Caddy. Runs on localhost:10000.
+  # Use: docker compose -f ops/docker-compose.dev.yml up
+
+ops/docker-compose.prod-local.yml
+  # Strict prod parity. Pulls ghcr.io/chintanmehta21/zettelkasten-kg-website:latest
+  # (or builds locally with BuildKit cache), runs Caddy + blue + green stack
+  # on localhost. Lets you rehearse a full blue-green flip before deploying.
+  # Requires GHCR_READ_PAT locally OR builds the image from source.
+  # Use: docker compose -f ops/docker-compose.prod-local.yml up
+```
+
+### 6.5 Telegram webhook path refactor (Q15 option c)
+
+```text
+telegram_bot/main.py
+  # Change webhook path from f"/{settings.telegram_bot_token}" to a fixed
+  # path like "/telegram/webhook". Continue to validate the secret header
+  # X-Telegram-Bot-Api-Secret-Token (already supported via WEBHOOK_SECRET).
+  # This removes the bot token from Caddy access logs, making phase-2 log
+  # aggregation safe.
+
+telegram_bot/ (setWebhook call site)
+  # Update the setWebhook URL on startup to use the new path.
+
+docs / runbook
+  # Cutover includes a single manual setWebhook call with the new URL
+  # + WEBHOOK_SECRET header.
 ```
 
 ---
@@ -535,11 +617,18 @@ For Caddy:
 3. Bind mount `/opt/zettelkasten/caddy/Caddyfile`, `upstream.snippet`, `data/`, `config/`.
 4. Port `80:80` and `443:443`.
 
-### 9.4 BetterStack monitoring
+### 9.4 BetterStack monitoring (user-managed account)
 
-- One HTTPS monitor hitting `https://<public-host>/api/health` every 30s from at least 3 regions.
-- One heartbeat monitor the app pings every 60s from a background task (optional phase 1).
-- Alert channels: email + Telegram message to `ALLOWED_CHAT_ID`.
+The BetterStack account is owned and configured by the user via the BetterStack web dashboard. The plan does **not** include account creation, IaC, or API automation for BetterStack. The plan just lists the monitors the user should create after cutover.
+
+Recommended monitors (user creates these in dashboard):
+
+- One HTTPS monitor hitting `https://zettelkasten.in/api/health` every 30s from at least 3 regions (US East, EU, South Asia).
+- One HTTPS monitor hitting `https://zettelkasten.in/` every 60s from South Asia region (user-facing path).
+- Alert channels: email (`chintanoninternet@gmail.com`) + Telegram integration to `ALLOWED_CHAT_ID`.
+- Alerting thresholds: 2 consecutive failed probes, p95 response time > 2s over 5 min.
+
+The plan provides a one-paragraph "set up these 2 monitors in BetterStack" task, not a config file.
 
 ### 9.5 Uptime target math
 
@@ -560,41 +649,95 @@ Total budget headroom: ~34 min/month ≤ 43.8 min/month target. Matches 99.9%.
 
 The migration from Render to the Droplet must not drop a single website request. Telegram bot downtime should be ≤ 10 seconds, but if the website needs longer, website wins.
 
-### 10.1 Pre-cutover (day -1)
+### 10.1 Pre-cutover (day -3 to day -1)
 
-1. Drop DNS TTL on the website hostname (e.g., `zettel.chintanmehta.dev`) to **60s** at the DNS provider. Wait ≥ current TTL before touching anything else so the low TTL actually propagates.
-2. Provision Droplet, run `bootstrap.sh`, pull image, bring up blue, bring up Caddy.
-3. Use a temporary hostname (e.g., `zettel-new.chintanmehta.dev`) pointing at the Droplet IP, with a full production-valid cert, so Caddy has already completed its Let's Encrypt dance before cutover.
-4. Smoke-test every route on the temp hostname:
-   - `GET /` → 200, home HTML
-   - `GET /api/health` → 200
-   - `GET /api/graph` → 200, JSON
-   - `POST /api/summarize` with a throwaway URL → 200
-   - `GET /knowledge-graph` → 200
-   - `GET /home` (authed and unauthed)
-   - `GET /home/zettels` (authed)
-   - `GET /home/nexus` (authed, if `NEXUS_ENABLED=true`)
-   - `GET /about`, `GET /pricing`
-   - `GET /auth/callback`
-5. Confirm Supabase reads/writes work from the new host (check `/api/graph` returns the same node count as Render).
-6. Confirm Gemini key pool loads from `GEMINI_API_KEYS` env var.
+**Day -3: Domain + DNS bootstrap**
+
+1. Buy `zettelkasten.in` at **GoDaddy**.
+2. Create a free **Cloudflare** account. Click "Add a site" → `zettelkasten.in` → choose the Free plan. Cloudflare imports any existing records (there should be none on a fresh domain).
+3. Copy the 2 nameservers Cloudflare assigns (e.g., `amy.ns.cloudflare.com`, `rick.ns.cloudflare.com`).
+4. Log into GoDaddy → Domain settings → Nameservers → switch from "GoDaddy defaults" to the 2 Cloudflare nameservers.
+5. Wait for nameserver propagation (typically 1–4 hours, occasionally 24h). Verify with `dig NS zettelkasten.in +short` from multiple vantages — should return only the Cloudflare nameservers.
+6. In Cloudflare DNS, enable **DNSSEC** (one-click). Copy the DS record Cloudflare shows and paste it into GoDaddy's DS record field. Verify with `dig zettelkasten.in +dnssec`.
+7. In Cloudflare DNS, add a `CAA` record: `zettelkasten.in CAA 0 issue "letsencrypt.org"`. Locks cert issuance to Let's Encrypt.
+
+**Day -1: Droplet bootstrap**
+
+8. Provision DO Droplet `s-1vcpu-1gb` Premium AMD in BLR1 using the Docker 1-Click image. Enable free IPv6 at provision time.
+9. SSH in as root, run `ops/host/bootstrap.sh` (installs UFW, fail2ban, unattended-upgrades, creates `deploy` user, sets swap, sysctl tuning, writes logrotate config, installs systemd unit).
+10. UFW opens: 22/tcp (SSH), 80/tcp (HTTP redirect), 443/tcp (HTTPS), 443/udp (HTTP/3 QUIC).
+11. In Cloudflare DNS, add a **temporary staging hostname** `stage.zettelkasten.in` with:
+    - `A` record → Droplet IPv4
+    - `AAAA` record → Droplet IPv6
+    - Both with "DNS only" (grey cloud, not orange cloud).
+    - TTL: auto (Cloudflare manages this).
+12. Trigger the initial GitHub Actions deploy (via `workflow_dispatch`) targeting `stage.zettelkasten.in` as the Caddy hostname. Caddy completes its Let's Encrypt ACME flow for `stage.zettelkasten.in` and obtains a real cert. The whole stack comes up: blue + Caddy.
+13. Smoke-test every route on `https://stage.zettelkasten.in`:
+    - `GET /` → 200, home HTML
+    - `GET /api/health` → 200
+    - `GET /api/graph` → 200, JSON (node count matches Render)
+    - `POST /api/summarize` with a throwaway URL → 200
+    - `GET /knowledge-graph` → 200
+    - `GET /home` (authed and unauthed)
+    - `GET /home/zettels` (authed)
+    - `GET /home/nexus` (authed, since `NEXUS_ENABLED=true`)
+    - `GET /about`, `GET /pricing`
+    - `GET /auth/callback`
+    - Verify HTTP/3 is active: `curl --http3 -I https://stage.zettelkasten.in/`
+    - Verify IPv6: `curl -6 -I https://stage.zettelkasten.in/`
+    - Verify HSTS header present: `curl -I https://stage.zettelkasten.in/ | grep -i strict-transport-security`
+14. Confirm Supabase reads/writes work from the new host (`/api/graph` returns the same node count as Render; submit a test URL through `/api/summarize` and confirm the new node appears).
+15. Confirm the Gemini key pool loads from `GEMINI_API_KEYS` env var (check logs for `[KeyPool] loaded N keys from env var`).
+16. Test a blue-green flip locally on the droplet: push a trivial no-op change, watch the deploy workflow promote green, verify zero 5xx during the flip.
 
 ### 10.2 Cutover (day 0)
 
-1. **T-0:** Flip the DNS A (or CNAME) record for the real hostname from Render's IP to the Droplet IP. Because TTL is 60s, propagation completes in roughly 60s.
-2. **T-0:** Immediately call Telegram `setWebhook` with the new URL (`https://<real-host>/<bot-token>`). This swap is atomic on Telegram's side — the very next update goes to the Droplet. **This is the only bot downtime**, measured in milliseconds.
-3. **T+0 to T+60s:** Both Render and Droplet are still running; user traffic gradually shifts as resolvers refresh. Any request that still lands on Render works normally (Render is still alive during this window).
+1. **T-60 min:** Drop TTL on the eventual production records (apex + www) that will be added in step 4 below. Do this by adding the records *now* with TTL 60s pointing at the Droplet — but as **DNS records for a hostname nobody has yet**. Nothing hits them. This just pre-stages.
+
+   *Actually, simpler:* since the apex and www are brand new (nobody has cached them), skip the pre-flip TTL drop. The pre-flip TTL drop is only needed when cutting over an *existing* hostname that resolvers have cached. For a brand-new hostname, the first resolver query IS the flip.
+
+2. **T-10 min:** Final readiness check on `stage.zettelkasten.in` (§10.1 step 13 smoke tests).
+
+3. **T-0:** In Cloudflare DNS, add the **production records** for the real hostname:
+   - `zettelkasten.in` → `A` → Droplet IPv4, TTL 60s, DNS-only (grey cloud)
+   - `zettelkasten.in` → `AAAA` → Droplet IPv6, TTL 60s, DNS-only
+   - `www.zettelkasten.in` → `CNAME` → `zettelkasten.in`, TTL 60s, DNS-only
+4. **T-0 + 30 s:** Caddy on the droplet sees a request to `zettelkasten.in` for the first time (from BetterStack, our smoke test, or the first real user) and kicks off the Let's Encrypt ACME challenge for `zettelkasten.in` + `www.zettelkasten.in`. Completes in ~10 s.
+5. **T-0 + 1 min:** Site is live on `https://zettelkasten.in`. Render is still running in parallel but receives no traffic (no DNS points at it).
+6. **T-0 + 2 min:** Call Telegram `setWebhook` with the new URL:
+   ```
+   curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+     -d "url=https://zettelkasten.in/telegram/webhook" \
+     -d "secret_token=<WEBHOOK_SECRET>"
+   ```
+   This is **atomic** on Telegram's side — the very next Telegram update goes to the Droplet. This is the only bot downtime, measured in milliseconds.
+7. **T+5 min:** Tail Caddy access logs on the droplet to confirm real end-user traffic and BetterStack probe traffic. Tail Render logs to confirm traffic has drained to zero (Render will still handle anyone with stale cached IPs, but for a brand-new hostname this is nobody).
 4. **T+60s:** Most resolvers now point at the Droplet. Verify via `dig +short` from multiple vantage points.
 5. **T+5 min:** Tail Caddy access logs on the Droplet to confirm real end-user traffic. Tail Render logs to confirm traffic has drained to near-zero.
-6. **T+30 min:** Pause (but do not delete) the Render service. Keep it paused for 7 days as an emergency rollback target.
-7. **T+7 days:** Delete the Render service.
+8. **T+30 min:** Pause (but do not delete) the Render service. Keep it paused for 7 days as an emergency rollback target.
+9. **T+1 hour:** If everything looks green, raise the TTL on the production DNS records from 60s to **3600s** (1 hour). Longer TTLs mean client resolvers cache longer, which measurably reduces DNS lookup latency for repeat visitors. Cloudflare honors both during propagation. Delete the temporary `stage.zettelkasten.in` records once the main hostname is fully verified.
+10. **T+7 days:** Delete the Render service.
 
-### 10.3 Rollback path (if something breaks mid-cutover)
+### 10.3 Post-cutover hardening checklist
 
-1. **If Droplet is broken before DNS flip:** Abort — do not flip DNS, do not call `setWebhook`. No user impact.
-2. **If Droplet breaks after DNS flip, during propagation:** Flip DNS back to Render IP. Call `setWebhook` back to the old Render URL. Wait 60s. Both surfaces return to pre-cutover state.
-3. **If a single feature on the Droplet breaks after cutover:** Flip Caddy upstream back to a known-good image via `rollback.sh` (it re-points `upstream.snippet` to the last-good tag and reloads Caddy). No DNS change required.
-4. **If the Droplet itself dies (host-level):** DO console → reboot Droplet. systemd brings the stack back automatically. Budget: ≤ 2 min.
+- [ ] DNSSEC enabled in Cloudflare, DS record copied into GoDaddy (§10.1 day -3 step 6).
+- [ ] CAA record present in Cloudflare locking cert issuance to Let's Encrypt (§10.1 day -3 step 7).
+- [ ] HTTP/3 verified: `curl --http3 -I https://zettelkasten.in/` returns `HTTP/3 200`.
+- [ ] IPv6 verified: `curl -6 -I https://zettelkasten.in/` returns 200.
+- [ ] HSTS header present with `max-age=63072000; includeSubDomains; preload`.
+- [ ] Cert transparency monitor (Cloudflare dashboard or crt.sh) confirms only Let's Encrypt certs for the hostname.
+- [ ] BetterStack HTTPS monitor reports green.
+- [ ] DNS TTL raised back to 3600s.
+- [ ] Render service paused, not deleted.
+- [ ] `setWebhook` response from Telegram confirms `"url": "https://zettelkasten.in/telegram/webhook"`, `"has_custom_certificate": false`, `"pending_update_count": 0`.
+
+### 10.4 Rollback path (if something breaks mid-cutover)
+
+1. **If Droplet is broken before DNS records are added:** Abort — do not add the production DNS records, do not call `setWebhook`. No user impact. Render keeps serving on its own hostname.
+2. **If Droplet breaks after production DNS records are added but before propagation finishes:** Delete the production DNS records from Cloudflare. No cached resolvers exist for a brand-new hostname, so rollback is near-instant. Leave `setWebhook` pointing at Render if it's still healthy; otherwise call `setWebhook` back to the old Render URL.
+3. **If a single feature on the Droplet breaks after cutover:** Flip Caddy upstream back to the last-known-good image via `rollback.sh` (it re-points `upstream.snippet` to the last-good color/tag and reloads Caddy). No DNS change required. ≤ 30 seconds.
+4. **If the Droplet itself dies (host-level):** DO console → reboot Droplet. systemd brings the stack back automatically. ≤ 2 minutes.
+5. **If the Droplet IP changes (rebuild from snapshot, etc.):** Update the Cloudflare A/AAAA records via the Cloudflare dashboard or API. Because of delegated Cloudflare DNS, propagation is ~5 seconds. `setWebhook` URL stays the same (it's hostname-based).
 
 ### 10.4 Success criteria
 
@@ -630,42 +773,92 @@ The migration from Render to the Droplet must not drop a single website request.
 
 ## 12. CI/CD
 
-### 12.1 GitHub Actions workflow `deploy-droplet.yml`
+### 12.1 GitHub Actions workflow layout
 
-Triggers: `push` to `master`, `workflow_dispatch`.
+Two workflow files:
 
-Jobs:
-
-1. **`build-and-push`**
+1. **`.github/workflows/ci.yml`** — runs on every `pull_request` (opened, synchronize) and every `push` to `master`. Single job: **`test`**
    - `actions/checkout@v4`
-   - `docker/setup-buildx-action@v3`
-   - `docker/login-action@v3` → GHCR with `GITHUB_TOKEN` (has `write:packages`)
-   - `docker/build-push-action@v5`
-     - context: repo root
-     - file: `ops/Dockerfile`
-     - platforms: `linux/amd64`
-     - tags: `ghcr.io/chintanmehta21/zettelkasten-website:${{ github.sha }}`, `ghcr.io/chintanmehta21/zettelkasten-website:latest`
-     - cache-from: `type=gha`
-     - cache-to: `type=gha,mode=max`
-     - push: true
-     - provenance: false (keeps image smaller)
-2. **`deploy`** (`needs: build-and-push`)
-   - `appleboy/ssh-action@v1` to SSH into Droplet as `deploy` user.
-   - Runs: `/opt/zettelkasten/deploy/deploy.sh ${{ github.sha }}`
-   - On failure: automatically invokes `rollback.sh` via `if: failure()`.
+   - `actions/setup-python@v5` with Python 3.12
+   - `pip install -r ops/requirements.txt -r ops/requirements-dev.txt`
+   - `pytest -q` (mocked, no network, no `--live`)
+   - Deploy workflow `needs: test` via `workflow_run` or by duplicating the same `test` job as the first step of `deploy-droplet.yml`. The plan phase picks the cleaner of the two.
 
-### 12.2 Required GitHub secrets
+2. **`.github/workflows/deploy-droplet.yml`** — runs on `push` to `master` (after `ci.yml` passes) and `workflow_dispatch`.
+   - Environment: `production` (has protection rule requiring manual approval).
+   - Jobs:
+     - **`test`** (mirrors ci.yml for safety belt-and-suspenders)
+     - **`build-and-push`** (`needs: test`)
+       - `actions/checkout@v4`
+       - `docker/setup-buildx-action@v3`
+       - `docker/login-action@v3` → GHCR using `GITHUB_TOKEN` (has `packages: write`; this scope must be declared in the workflow `permissions:` block)
+       - `docker/build-push-action@v5`
+         - context: repo root
+         - file: `ops/Dockerfile`
+         - platforms: `linux/amd64`
+         - tags: `ghcr.io/chintanmehta21/zettelkasten-kg-website:${{ github.sha }}`, `ghcr.io/chintanmehta21/zettelkasten-kg-website:latest`
+         - cache-from: `type=gha`
+         - cache-to: `type=gha,mode=max`
+         - push: true
+         - provenance: false (keeps image smaller)
+     - **`deploy`** (`needs: build-and-push`, `environment: production`)
+       - `appleboy/ssh-action@v1` SSHes into Droplet as `deploy` user.
+       - Before running `deploy.sh`, the workflow runs a small inline script that:
+         - Writes the `.env` file on the Droplet from Environment secrets (overwriting any previous version).
+         - Runs `echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin` so the Droplet can pull the private image.
+       - Then runs: `/opt/zettelkasten/deploy/deploy.sh ${{ github.sha }}`
+       - On failure: automatically invokes `rollback.sh` via `if: failure()`.
 
-- `DROPLET_HOST` — public IP or hostname of Droplet
+3. **`.github/workflows/live-tests.yml`** — runs on:
+   - `workflow_dispatch` (manual button in Actions tab)
+   - `schedule: cron: '0 21 * * 6'` (Sunday 21:00 UTC = Sunday 02:30 IST Monday; readable as "weekly Sunday night")
+   - Single job: `pytest --live` with real API credentials from the `production` environment. Notifies via BetterStack / Telegram on failure.
+   - This is the only place Gemini quota is burned by CI.
+
+Workflow `concurrency` config on `deploy-droplet.yml`: `group: deploy-prod`, `cancel-in-progress: true` — a new push supersedes an in-flight deploy.
+
+### 12.2 Required GitHub Environment secrets (under `production` environment)
+
+Runtime secrets (written to Droplet `.env` on every deploy):
+
+- `TELEGRAM_BOT_TOKEN`
+- `ALLOWED_CHAT_ID`
+- `WEBHOOK_SECRET`
+- `GEMINI_API_KEYS` (comma-separated, up to 10)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (**no** service role key — see §3.6 and Q12)
+- `GITHUB_TOKEN_FOR_NOTES` (the token for pushing Obsidian notes; NOT to be confused with the workflow-scoped `GITHUB_TOKEN`)
+- `GITHUB_REPO_FOR_NOTES`
+- `NEXUS_GOOGLE_CLIENT_ID`, `NEXUS_GOOGLE_CLIENT_SECRET`
+- `NEXUS_GITHUB_CLIENT_ID`, `NEXUS_GITHUB_CLIENT_SECRET`
+- `NEXUS_REDDIT_CLIENT_ID`, `NEXUS_REDDIT_CLIENT_SECRET`
+- `NEXUS_TWITTER_CLIENT_ID`, `NEXUS_TWITTER_CLIENT_SECRET`
+- `NEXUS_TOKEN_ENCRYPTION_KEY` (Fernet key)
+
+Deploy plumbing:
+
+- `DROPLET_HOST` — public IPv4 of Droplet
 - `DROPLET_SSH_USER` — `deploy`
-- `DROPLET_SSH_KEY` — private key for `deploy` user
-- `DROPLET_SSH_PORT` — `22` (or custom)
-- `GHCR_PAT` — only if we ever need a non-`GITHUB_TOKEN` read path; normally unused
+- `DROPLET_SSH_KEY` — private ed25519 key for the `deploy` user
+- `DROPLET_SSH_PORT` — `22`
+- `GHCR_READ_PAT` — fine-grained PAT with `read:packages` scope, scoped to the single package `chintanmehta21/zettelkasten-kg-website`, 365-day expiry. Used by the Droplet to pull the private image. **Not** used by GitHub Actions itself for pushing (the workflow-scoped `GITHUB_TOKEN` handles that).
 
-### 12.3 Droplet-side `deploy.sh` responsibilities
+Protection rule on the `production` environment: **manual approval required** (you click "Review pending deployment" in GitHub Actions before each deploy runs).
+
+### 12.3 Annual PAT rotation runbook
+
+Once a year (reminder in BetterStack calendar or Google Calendar):
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → create new token, same config as the expiring one, 365-day expiry.
+2. Copy the new token.
+3. GitHub → Repo → Settings → Environments → `production` → edit `GHCR_READ_PAT` → paste new value.
+4. Trigger a `workflow_dispatch` deploy. The deploy script writes `/root/.docker/config.json` on the droplet with the new token.
+5. Verify the droplet can pull the latest image: `docker pull ghcr.io/chintanmehta21/zettelkasten-kg-website:latest`.
+6. Revoke the old PAT in GitHub → Developer settings → Personal access tokens.
+
+### 12.4 Droplet-side `deploy.sh` responsibilities
 
 1. Accept new image sha as arg.
-2. `docker login ghcr.io` using stored PAT (or rely on already-cached creds).
+2. Verify `/root/.docker/config.json` has valid GHCR credentials (the deploy workflow writes it fresh each run).
 3. Identify current live color.
 4. Pull new image for the idle color.
 5. Start idle color with new image.
@@ -677,7 +870,7 @@ Jobs:
 11. Log success line with sha + timestamp to `/opt/zettelkasten/logs/deploy.log`.
 12. On any failure, call `rollback.sh` and exit non-zero.
 
-### 12.4 `rollback.sh` responsibilities
+### 12.5 `rollback.sh` responsibilities
 
 1. Detect which color should be live (last known good from `/opt/zettelkasten/ACTIVE_COLOR`).
 2. Ensure live color is still up; if not, start it with the previous image.
@@ -690,19 +883,22 @@ Jobs:
 
 ## 13. Cost Summary
 
-| Item | Provider | Monthly |
-|---|---|---|
-| Droplet `s-1vcpu-1gb` Premium AMD, BLR1 | DigitalOcean | **$7.00** |
-| DNS | (existing provider, free) | $0 |
-| Firewall (DO cloud FW optional, UFW is on-host) | DigitalOcean | $0 |
-| Container registry | GHCR (free unlimited) | $0 |
-| TLS certificates | Let's Encrypt via Caddy | $0 |
-| External monitoring | BetterStack Free tier | $0 |
-| Database + auth + storage | Supabase Free tier | $0 |
-| Backups | None in phase 1 (per constraint #6) | $0 |
-| **Total** | | **$7.00/mo** |
+| Item | Provider | Monthly | Annual |
+|---|---|---|---|
+| Droplet `s-1vcpu-1gb` Premium AMD, BLR1 | DigitalOcean | **$7.00** | $84.00 |
+| Domain `zettelkasten.in` registration | GoDaddy | ~$0.20 | ~₹200 y1 / ~₹1,400 renewal ≈ $2.50 y1 / $17 renewal |
+| DNS (delegated from GoDaddy) | Cloudflare Free | $0 | $0 |
+| Firewall (UFW on-host) | — | $0 | $0 |
+| Container registry (private images) | GHCR | $0 | $0 |
+| TLS certificates | Let's Encrypt via Caddy | $0 | $0 |
+| External monitoring | BetterStack Free | $0 | $0 |
+| Database + auth + storage | Supabase Free | $0 | $0 |
+| Backups | None in phase 1 (per constraint #6) | $0 | $0 |
+| **Total** | | **~$7.20/mo** | **~$86/y1, ~$101/renewal** |
 
 Current Render cost baseline is comparable, but the Droplet buys **persistent disk**, **zero-downtime deploys**, **no cold starts**, and **full control of the stack**.
+
+Year 2+ cost watch: GoDaddy's `.in` renewal is ~₹1,400 (roughly $17/y). If that becomes objectionable, the domain can be **transferred** to Cloudflare Registrar later if/when Cloudflare adds `.in` to their supported TLD list, or to Namecheap for ~₹900/y. Transfer does not affect the running deployment because DNS is already delegated to Cloudflare — only the billing relationship moves.
 
 ---
 
@@ -718,8 +914,11 @@ Current Render cost baseline is comparable, but the Droplet buys **persistent di
 | In-memory rate limiter bypass during blue-green overlap | Low | A determined attacker could ~2x their rate-limited traffic for ~20s per deploy | Accepted phase-1 trade-off; Redis migration is phase-2 work |
 | Let's Encrypt rate limits hit during cert provisioning | Low | Caddy keeps using existing cert | Use `/config` volume to persist ACME state; deploy staging on temp hostname first per §10.1 |
 | GHCR outage blocks deploy | Low | Cannot deploy new code; existing site keeps running | Rollback script is local to Droplet and doesn't need GHCR |
-| DNS propagation lag leaves some users on Render post-cutover | Expected | None — Render is still up during window | Pre-lower TTL to 60s day -1, keep Render paused 7 days |
+| DNS propagation lag leaves some users on Render post-cutover | None (new hostname, no cache to invalidate) | None | Brand-new hostname means no resolver has cached anything; first resolution lands on Droplet |
+| GoDaddy → Cloudflare nameserver delegation misconfigured | Low | Domain unresolvable until fixed | Verify NS via `dig NS zettelkasten.in +short` before touching production records; day -3 buffer before cutover |
 | Droplet SSH key compromise | Low | Full host takeover | UFW, fail2ban, SSH key-only auth, no password, rotate on suspicion |
+| `GHCR_READ_PAT` expires unnoticed | Medium (annual) | Droplet cannot pull new images; existing container stays alive | Calendar reminder 30 days before expiry; §12.3 rotation runbook |
+| Cloudflare DNS outage | Very Low (Cloudflare has 100% SLA DNS) | Domain unresolvable | Out of scope phase 1; phase 2 can add secondary DNS (e.g., Route 53 as failover) |
 
 ---
 
@@ -738,14 +937,47 @@ Current Render cost baseline is comparable, but the Droplet buys **persistent di
 
 ---
 
-## 16. Open Questions (must be resolved before plan execution begins)
+## 16. Decisions Log (all resolved during brainstorming + spec review)
 
-1. **Public hostname.** What is the final production hostname? Is DNS currently at Cloudflare, Namecheap, or another provider? The TTL-drop step needs the concrete provider.
-2. **`deploy` SSH user bootstrap.** Who holds the private key for the first SSH login? Does the user want GitHub Actions to create the user via a one-shot cloud-init, or will they create it manually on first login?
-3. **BetterStack account.** Does the user already have a BetterStack account, or does the plan need to include account creation as a step?
-4. **Nexus in production?** Constraint #13 says website is primary. Is Nexus meant to be live on the new host from day 1, or should `NEXUS_ENABLED=false` be the initial value until it's ready for end users?
-5. **Telegram bot public token exposure.** The current webhook path includes the raw bot token (`/<bot_token>`). Caddy will log this path unless we strip it. Add a Caddy rewrite/log filter to hash it? Phase-1 nice-to-have or blocker?
-6. **Supabase env vars on the Droplet.** The existing `_bootstrap_env()` in `supabase_kg/client.py` reads from `/etc/secrets/api_env` and `/etc/secrets/nexus_env`. On the Droplet these become `/opt/zettelkasten/compose/.env` loaded by docker-compose. Do we still need the `/etc/secrets/` paths or can they be removed entirely? (Recommendation: keep the file-path code so local dev and Render remain buildable, just don't populate the path on Droplet.)
+All questions raised during brainstorming are resolved. Kept here as an audit trail so the implementation plan can reference the decision rationale if needed.
+
+| # | Question | Resolution |
+|---|---|---|
+| 1 | Final production hostname + DNS provider | `zettelkasten.in` purchased at GoDaddy; DNS delegated to Cloudflare Free (grey cloud / DNS only) |
+| 2 | `deploy` SSH user bootstrap | Manual SSH as root on first boot, run `ops/host/bootstrap.sh`, which creates `deploy` user, installs public key from GitHub secret, disables root SSH after. One-time manual step. |
+| 3 | BetterStack account | User-managed via dashboard. Plan does not include account creation or IaC for BetterStack. |
+| 4 | Nexus default state | `NEXUS_ENABLED=true` in production from day 1. Flag exists as emergency kill-switch only. |
+| 5 | Bot token in Caddy logs | Fix is Q15 option (c): change webhook path from `/<bot_token>` to fixed `/telegram/webhook` + `X-Telegram-Bot-Api-Secret-Token` header validation. Requires small code edit in `telegram_bot/main.py` + one `setWebhook` call at cutover. |
+| 6 | `/etc/secrets/` file paths | Keep the file-path loader code in `supabase_kg/client.py` and `api_key_switching/key_pool.py` for local-dev backward compatibility. Don't populate the paths on the Droplet. Env-var fallbacks do the real work in prod. |
+| 7 | Initial secrets delivery | GitHub Actions Environment secrets under `production` environment with manual approval protection rule. Deploy workflow writes `.env` on Droplet each deploy. |
+| 8 | `GEMINI_API_KEYS` canonical store | GitHub Environment secret (comma-separated list of up to 10 keys). Windows `api_env` file for local dev only. |
+| 9 | CI test gate | `pytest` (mocked) required on every `pull_request` and every `push` to `master`, gates deploy. `pytest --live` runs only on `workflow_dispatch` and weekly Sunday cron. |
+| 10 | Let's Encrypt ACME email | `chintanoninternet@gmail.com` |
+| 11 | `www` handling | Apex canonical: `https://zettelkasten.in` is real site, `https://www.zettelkasten.in` 301 redirects. |
+| 12 | `SUPABASE_SERVICE_ROLE_KEY` on Droplet | **Never.** Only `SUPABASE_ANON_KEY` on Droplet. Service-role operations (migration script) run from Windows-local only. |
+| 13 | IPv6 | Enabled. Droplet gets free `/64`, Caddy binds both IPv4+IPv6, Cloudflare DNS has A+AAAA records. |
+| 14 | Dev compose files | Both. `ops/docker-compose.dev.yml` for hot-reload dev, `ops/docker-compose.prod-local.yml` for strict prod parity. |
+| 15 | Bot token log mitigation | Option (c) — code refactor in `telegram_bot/main.py` to use fixed webhook path `/telegram/webhook` + header auth. |
+| 16 | `pytest --live` in CI | Option (a) — only on manual dispatch and weekly cron, not on every push. Quota-preserving. |
+| 17 | `docker-compose.dev.yml` mode | Option (c) — two files: dev mode and strict prod parity. |
+| 18 | Source repo visibility | Private (`chintanmehta21/Zettelkasten_KG`). GHCR image also private. Droplet authenticates via fine-grained `GHCR_READ_PAT` with `read:packages` scope, annual rotation. |
+| 19 | PR-level CI | Yes. `pytest` runs on `pull_request` events in addition to `push` to `master`. |
+
+### Remaining implementation-detail defaults (not questions, just documented)
+
+- **Droplet host directory:** `/opt/zettelkasten/`
+- **SSH password auth:** disabled after bootstrap
+- **Root SSH login:** disabled after bootstrap
+- **Caddy log format:** JSON
+- **Log rotation:** 10 MB × 3 files per container
+- **Unattended upgrades:** security channel only, no auto-reboot
+- **Swap file:** 1 GiB at `/swapfile`, `swappiness=10`
+- **Container `mem_limit`:** 768 MB (app), 128 MB (Caddy)
+- **Concurrency on deploys:** `cancel-in-progress: true`
+- **Image tag scheme:** `ghcr.io/chintanmehta21/zettelkasten-kg-website:<git-sha>` + `:latest`; Droplet pulls by SHA
+- **Render service retention post-cutover:** paused for 7 days, then deleted
+- **DNS TTL pre-cutover:** not needed (new hostname); post-cutover TTL raised from 60s to 3600s once stable
+- **Bootstrap execution:** manual one-shot SSH as root
 
 ---
 
@@ -753,21 +985,29 @@ Current Render cost baseline is comparable, but the Droplet buys **persistent di
 
 Before moving to `writing-plans`:
 
-- [ ] All 15 hard constraints in §2 are directly addressed in §3–§12.
-- [ ] Premium AMD $7 BLR1 tier choice explicitly justified (§3.1).
-- [ ] Docker 1-Click marketplace image used (§3.2).
-- [ ] GHCR chosen for registry (§3.3, §12).
-- [ ] No backups step explicitly called out (§13, §6 out of scope).
-- [ ] Single-node 99.9% uptime math shown (§9.5).
-- [ ] Zero-downtime deploy mechanism fully specified (§5.2, §12.3).
-- [ ] Container-level reliability specified (§9.3).
-- [ ] Host-level reliability specified (§9.1–§9.2).
-- [ ] Cutover via `setWebhook` + low-TTL DNS specified with rollback (§10).
-- [ ] Per-feature Docker optimization findings folded in (§7.4).
-- [ ] Website-primary / Telegram-secondary framing is consistent throughout (§1, §3.7, §10).
-- [ ] BetterStack (not UptimeRobot) specified (§9.4, §11.3).
-- [ ] Lazy-imports refactor targets named by file + line (§8.2).
-- [ ] Supabase Free tier preserved with no changes (§3.6).
+- [x] All 15 hard constraints in §2 are directly addressed in §3–§12.
+- [x] §2.1 locks the 19 follow-up decisions made during spec review.
+- [x] Premium AMD $7 BLR1 tier choice explicitly justified (§3.1).
+- [x] Docker 1-Click marketplace image used (§3.2).
+- [x] GHCR **private** image + `GHCR_READ_PAT` annual rotation spec'd (§3.3, §12.2, §12.3).
+- [x] Caddy apex canonical + www 301, IPv6, HTTP/3, HSTS, CAA, DNSSEC (§3.4, §10.1, §10.3).
+- [x] GoDaddy registrar + Cloudflare DNS delegation for performance parity with Cloudflare Registrar (§10.1 day -3).
+- [x] No backups in phase 1 (§13, §4 out of scope).
+- [x] Single-node 99.9% uptime math shown (§9.5).
+- [x] Zero-downtime deploy mechanism fully specified (§5.2, §12.4).
+- [x] Container-level reliability specified (§9.3).
+- [x] Host-level reliability specified (§9.1–§9.2).
+- [x] Zero-downtime cutover via DNS record add (new hostname) + atomic `setWebhook` on new `/telegram/webhook` path (§10.2).
+- [x] Per-feature Docker optimization findings folded in (§7.4).
+- [x] Website-primary / Telegram-secondary framing is consistent throughout (§1, §3.7, §10).
+- [x] BetterStack (user-managed) specified (§9.4, §11.3).
+- [x] Lazy-imports refactor targets named by file + line (§8.2).
+- [x] Supabase Free tier preserved with no changes (§3.6).
+- [x] `SUPABASE_SERVICE_ROLE_KEY` NEVER on Droplet (§12.2, §16 Q12).
+- [x] Telegram webhook path refactored to `/telegram/webhook` with header auth (§6.5, §16 Q15).
+- [x] Both dev compose files spec'd (§6.4, §16 Q17).
+- [x] CI pytest gate on PR + push, `--live` on manual/cron only (§12.1, §16 Q9 + Q16).
+- [x] All 19 decisions in §16 Decisions Log resolved; no open questions remaining.
 
 ---
 
