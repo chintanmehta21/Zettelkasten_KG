@@ -33,6 +33,15 @@ from telegram_bot.bot.handlers import (
 from telegram_bot.config.settings import get_settings
 
 logger = logging.getLogger("bot.main")
+_TELEGRAM_WEBHOOK_PATH = "/telegram/webhook"
+
+
+def _derive_webhook_url(base_url: str) -> str:
+    """Return the public Telegram webhook URL for the given base URL."""
+    import urllib.parse as _urlparse
+
+    parsed = _urlparse.urlparse(base_url)
+    return f"{parsed.scheme}://{parsed.netloc}{_TELEGRAM_WEBHOOK_PATH}"
 
 
 async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -126,11 +135,9 @@ def _run_webhook(settings) -> None:
             return
         try:
             # Derive the webhook URL: take the base URL (scheme + host) from
-            # settings.webhook_url and append /webhook.  This decouples the
+            # settings.webhook_url and append /telegram/webhook. This decouples the
             # env-var from the internal path so we never put a colon in the URL.
-            import urllib.parse as _urlparse
-            _parsed = _urlparse.urlparse(settings.webhook_url)
-            webhook_url = f"{_parsed.scheme}://{_parsed.netloc}/webhook"
+            webhook_url = _derive_webhook_url(settings.webhook_url)
             await ptb_app.bot.set_webhook(
                 url=webhook_url,
                 secret_token=settings.webhook_secret or None,
@@ -173,7 +180,7 @@ def _run_webhook(settings) -> None:
 
     # Insert webhook route at position 0 so it's matched before API
     # routes and static file mounts.
-    web_app.routes.insert(0, Route("/webhook", _telegram_webhook, methods=["POST"]))
+    web_app.routes.insert(0, Route(_TELEGRAM_WEBHOOK_PATH, _telegram_webhook, methods=["POST"]))
 
     logger.info(
         "Webhook mode — serving web UI + bot on 0.0.0.0:%d",
