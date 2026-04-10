@@ -28,10 +28,16 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: 'ops/requirements.txt'
+          cache-dependency-path: |
+            ops/requirements.txt
+            ops/requirements-dev.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ops/requirements.txt
+          pip install -r ops/requirements-dev.txt
       - name: Run KG intelligence tests
+        env:
+          TELEGRAM_BOT_TOKEN: "000:ci-stub"
+          ALLOWED_CHAT_ID: "1"
+          GEMINI_API_KEY: "ci-stub"
         run: python -m pytest tests/kg_intelligence/ -v --tb=short
