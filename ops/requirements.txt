@@ -45,3 +45,12 @@ scipy>=1.12
 
 # Vector normalization for MRL-truncated embeddings
 numpy>=1.26
+
+# Summarization engine v2
+feedparser>=6.0.11
+PyMuPDF>=1.24
+arxiv>=2.1.0
+newspaper4k>=0.9.3
+python-podcastindex>=1.0.0
+sse-starlette>=2.0
+pytest-httpx>=0.34

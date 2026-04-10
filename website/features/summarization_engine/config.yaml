@@ -1,0 +1,138 @@
+engine:
+  version: "2.0.0"
+  default_tier: "tiered"
+
+gemini:
+  reuse_existing_pool: true
+  model_chains:
+    pro:
+      - gemini-2.5-pro
+      - gemini-2.5-flash
+      - gemini-2.5-flash-lite
+    flash:
+      - gemini-2.5-flash
+      - gemini-2.5-flash-lite
+  phase_tiers:
+    cod_densify: "pro"
+    self_check: "pro"
+    patch: "pro"
+    structured_extract: "flash"
+  temperature: 0.3
+  max_output_tokens: 8192
+  response_mime_type: "application/json"
+  batch_api:
+    enabled: true
+    threshold: 50
+    poll_interval_sec: 60
+    max_turnaround_hours: 24
+
+chain_of_density:
+  enabled: true
+  iterations: 2
+  early_stop_if_few_new_entities: 2
+  pass1_word_target: 200
+
+self_check:
+  enabled: true
+  max_atomic_claims: 12
+  patch_threshold: 3
+  max_patch_rounds: 1
+
+structured_extract:
+  validation_retries: 1
+  mini_title_max_words: 5
+  brief_summary_max_words: 50
+  tags_min: 8
+  tags_max: 15
+
+sources:
+  github:
+    github_token_env: "GITHUB_TOKEN"
+    fetch_issues: true
+    max_issues: 20
+    fetch_commits: true
+    max_commits: 10
+    fetch_prs: false
+  newsletter:
+    extractors: ["trafilatura", "readability", "newspaper4k"]
+    paywall_fallbacks: ["wayback", "archive_ph"]
+    googlebot_ua: true
+    min_text_length: 500
+  reddit:
+    prefer_oauth: false
+    user_agent: "zettelkasten-engine/2.0 (by u/chintanmehta21)"
+    comment_depth: 3
+    max_comments: 50
+    top_comment_rank: "top"
+  youtube:
+    transcript_languages: ["en", "en-US", "en-GB"]
+    use_ytdlp_fallback: true
+    use_gemini_video_fallback: true
+    webshare_proxy_env: "WEBSHARE_PROXY_URL"
+  hackernews:
+    api: "algolia"
+    max_comments: 100
+    comment_min_points: 5
+    include_linked_article: true
+  linkedin:
+    googlebot_ua: true
+    parse_json_ld: true
+    use_wayback_fallback: true
+    login_wall_keywords:
+      - "authwall"
+      - "Join now to see"
+      - "Sign in to LinkedIn"
+  arxiv:
+    api_base: "http://export.arxiv.org/api/query"
+    prefer_html_version: true
+    pdf_parser: "pymupdf"
+    long_paper_threshold_pages: 30
+    rate_limit_delay_sec: 3.0
+  podcast:
+    podcast_index_key_env: "PODCAST_INDEX_KEY"
+    podcast_index_secret_env: "PODCAST_INDEX_SECRET"
+    use_itunes_lookup: true
+    show_notes_precedence:
+      - "content:encoded"
+      - "itunes:summary"
+      - "description"
+      - "itunes:subtitle"
+    audio_transcription: false
+  twitter:
+    use_oembed: true
+    use_nitter_fallback: true
+    nitter_instances:
+      - "https://xcancel.com"
+      - "https://nitter.poast.org"
+      - "https://nitter.privacyredirect.com"
+      - "https://lightbrd.com"
+      - "https://nitter.space"
+    nitter_health_check_timeout_sec: 5
+    nitter_rotation_on_failure: true
+
+batch:
+  max_concurrency: 3
+  max_input_size_mb: 10
+  supported_input_formats: ["csv", "json"]
+  progress_event_interval: 1
+
+writers:
+  supabase:
+    enabled: true
+  obsidian:
+    enabled: false
+    kg_directory_env: "KG_DIRECTORY"
+  github_repo:
+    enabled: false
+    token_env: "GITHUB_TOKEN"
+    repo_env: "GITHUB_REPO"
+    branch_env: "GITHUB_BRANCH"
+
+logging:
+  level: "INFO"
+  per_url_correlation_id: true
+  log_token_counts: true
+
+rate_limiting:
+  api_v2_summarize: "10/minute"
+  api_v2_batch: "2/minute"
