@@ -18,10 +18,9 @@ import traceback
 from telegram_bot.config.settings import get_settings
 from telegram_bot.models.capture import SourceType
 from telegram_bot.pipeline.duplicate import DuplicateStore
+from telegram_bot.pipeline.engine_bridge import summarize_for_telegram
 from telegram_bot.pipeline.github_writer import GitHubWriter
-from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
 from telegram_bot.pipeline.writer import ObsidianWriter
-from telegram_bot.sources import get_extractor
 from telegram_bot.sources.registry import detect_source_type
 from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
 
@@ -81,6 +80,7 @@ async def process_url(
         logger.debug("Normalized URL: %s", normalized)
 
         # ── Phase 3: detect source type ───────────────────────────────────
+        requested_source_type = source_type
         if source_type is None:
             logger.info("Phase detect_source — auto-detecting for: %s", normalized)
             source_type = detect_source_type(normalized)
@@ -106,25 +106,29 @@ async def process_url(
         await bot.send_message(chat_id, f"⚙️ Processing {source_label} link...")
 
         # ── Phase 6: extract ──────────────────────────────────────────────
-        logger.info("Phase extract — using %s extractor", source_type.value)
+        logger.info("Phase extract — delegated to summarization_engine")
+        logger.info("Phase summarize — using summarization_engine")
         try:
-            extractor = get_extractor(source_type, settings)
-            extracted = await extractor.extract(normalized)
-            logger.info("Extracted: '%s' (%d chars)", extracted.title, len(extracted.body))
+            capture = await summarize_for_telegram(
+                normalized,
+                source_type=requested_source_type,
+            )
+            extracted = capture.content
+            result = capture.result
+            tags = capture.tags
+            source_type = extracted.source_type
+            logger.info(
+                "Engine summarized: '%s' (%d chars)",
+                extracted.title,
+                len(result.summary),
+            )
         except Exception as exc:
-            logger.error("Extraction failed for %s: %s", normalized, exc)
+            logger.error("Engine processing failed for %s: %s", normalized, exc)
             await bot.send_message(
                 chat_id,
                 f"❌ Failed to extract content from {source_label} link. Please check the URL and try again.",
             )
             return
-
-        # ── Phase 7: summarize via Gemini ─────────────────────────────────
-        logger.info("Phase summarize — sending to Gemini")
-        summarizer = GeminiSummarizer(
-            model_name=settings.model_name,
-        )
-        result = await summarizer.summarize(extracted)
 
         if result.is_raw_fallback:
             logger.warning(
@@ -135,9 +139,8 @@ async def process_url(
                 "⚠️ AI summarization failed — saving raw content for manual review.",
             )
 
-        # ── Phase 8: build tags ───────────────────────────────────────────
-        logger.info("Phase tag — building multi-dimensional tags")
-        tags = build_tag_list(source_type, result.tags)
+        # ── Phase 8: normalize status tags ────────────────────────────────
+        logger.info("Phase tag — using summarization_engine tags")
         if result.is_raw_fallback:
             # Override status tag for raw fallback
             tags = [t for t in tags if not t.startswith("status/")]

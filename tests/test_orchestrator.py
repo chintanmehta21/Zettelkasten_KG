@@ -14,8 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 import pytest
 
 from telegram_bot.models.capture import ExtractedContent, SourceType
+from telegram_bot.pipeline.engine_bridge import EngineCaptureResult
 from telegram_bot.pipeline.orchestrator import process_url
-from telegram_bot.pipeline.summarizer import SummarizationResult
+from telegram_bot.pipeline.summarizer import SummarizationResult, build_tag_list
 
 
 # ── Factory helpers ──────────────────────────────────────────────────────────
@@ -77,12 +78,11 @@ def _reset_dedup_singleton():
 
 @pytest.fixture()
 def pipeline_mocks(tmp_path):
-    """Patch all 7 orchestrator dependencies at their import sites.
+    """Patch orchestrator dependencies at their import sites.
 
     Yields a SimpleNamespace with attributes:
-      settings, resolve_redirects, DuplicateStore, GeminiSummarizer,
-      ObsidianWriter, get_extractor, detect_source_type,
-      store_instance, summarizer_instance, writer_instance, extractor_instance
+      settings, resolve_redirects, DuplicateStore, summarize_for_telegram,
+      ObsidianWriter, detect_source_type, store_instance, writer_instance
     """
     settings = make_settings(tmp_path)
 
@@ -100,14 +100,11 @@ def pipeline_mocks(tmp_path):
             "telegram_bot.pipeline.orchestrator.DuplicateStore",
         ) as mock_ds_cls,
         patch(
-            "telegram_bot.pipeline.orchestrator.GeminiSummarizer",
-        ) as mock_gs_cls,
-        patch(
             "telegram_bot.pipeline.orchestrator.ObsidianWriter",
         ) as mock_ow_cls,
         patch(
-            "telegram_bot.pipeline.orchestrator.get_extractor",
-        ) as mock_get_extractor,
+            "telegram_bot.pipeline.orchestrator.summarize_for_telegram",
+        ) as mock_engine,
         patch(
             "telegram_bot.pipeline.orchestrator.detect_source_type",
             return_value=SourceType.WEB,
@@ -118,7 +115,7 @@ def pipeline_mocks(tmp_path):
         store_inst.is_duplicate.return_value = False
         store_inst.mark_seen = MagicMock()
 
-        summarizer_inst = mock_gs_cls.return_value
+        summarizer_inst = MagicMock()
         summarizer_inst.summarize = AsyncMock(return_value=make_result())
 
         writer_inst = mock_ow_cls.return_value
@@ -126,7 +123,17 @@ def pipeline_mocks(tmp_path):
 
         extractor_inst = MagicMock()
         extractor_inst.extract = AsyncMock(return_value=make_extracted())
-        mock_get_extractor.return_value = extractor_inst
+
+        async def _engine_side_effect(url, source_type):
+            effective_source_type = source_type or SourceType.WEB
+            extracted = await extractor_inst.extract(url)
+            if extracted.source_type != effective_source_type:
+                extracted = extracted.model_copy(update={"source_type": effective_source_type})
+            result = await summarizer_inst.summarize(extracted)
+            tags = build_tag_list(effective_source_type, result.tags)
+            return EngineCaptureResult(content=extracted, result=result, tags=tags)
+
+        mock_engine.side_effect = _engine_side_effect
 
         from types import SimpleNamespace
 
@@ -135,9 +142,8 @@ def pipeline_mocks(tmp_path):
             settings=settings,
             resolve_redirects=mock_resolve,
             DuplicateStore=mock_ds_cls,
-            GeminiSummarizer=mock_gs_cls,
+            summarize_for_telegram=mock_engine,
             ObsidianWriter=mock_ow_cls,
-            get_extractor=mock_get_extractor,
             detect_source_type=mock_detect,
             store=store_inst,
             summarizer=summarizer_inst,
@@ -164,11 +170,8 @@ async def test_happy_path_web_full_pipeline(pipeline_mocks):
     # Phase 4: dedup check
     pipeline_mocks.store.is_duplicate.assert_called_once()
 
-    # Phase 6: extract
-    pipeline_mocks.extractor.extract.assert_awaited_once()
-
-    # Phase 7: summarize
-    pipeline_mocks.summarizer.summarize.assert_awaited_once()
+    # Phase 6: summarize through the shared summarization_engine bridge
+    pipeline_mocks.summarize_for_telegram.assert_awaited_once()
 
     # Phase 9: write
     pipeline_mocks.writer.write_note.assert_called_once()
@@ -195,8 +198,11 @@ async def test_happy_path_reddit_with_explicit_source_type(pipeline_mocks):
     # detect_source_type must NOT have been called
     pipeline_mocks.detect_source_type.assert_not_called()
 
-    # get_extractor called with REDDIT
-    pipeline_mocks.get_extractor.assert_called_once_with(SourceType.REDDIT, pipeline_mocks.settings)
+    # Shared engine bridge receives the explicit source type
+    pipeline_mocks.summarize_for_telegram.assert_awaited_once_with(
+        "https://reddit.com/r/test/comments/abc/",
+        source_type=SourceType.REDDIT,
+    )
 
 
 @pytest.mark.asyncio
@@ -214,7 +220,7 @@ async def test_happy_path_auto_detect_source_type(pipeline_mocks):
 @pytest.mark.asyncio
 async def test_extraction_failure_sends_error_and_no_write(pipeline_mocks):
     """R016: extraction RuntimeError → send Telegram error, do NOT write note."""
-    pipeline_mocks.extractor.extract.side_effect = RuntimeError("page blocked")
+    pipeline_mocks.summarize_for_telegram.side_effect = RuntimeError("page blocked")
     bot = AsyncMock()
 
     await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
@@ -245,7 +251,7 @@ async def test_outer_exception_sends_error_message(pipeline_mocks):
 @pytest.mark.asyncio
 async def test_extraction_failure_does_not_mark_seen(pipeline_mocks):
     """R016: when extraction fails, the URL must NOT be marked as seen."""
-    pipeline_mocks.extractor.extract.side_effect = RuntimeError("timeout")
+    pipeline_mocks.summarize_for_telegram.side_effect = RuntimeError("timeout")
     bot = AsyncMock()
 
     await process_url(bot, chat_id=123, url="https://example.com", source_type=None)
@@ -309,7 +315,7 @@ async def test_duplicate_not_forced_sends_warning_and_returns(pipeline_mocks):
     all_texts = " ".join(c.args[1] for c in bot.send_message.call_args_list)
     assert "⚠️ Already captured" in all_texts, f"Expected dup warning in: {all_texts}"
 
-    pipeline_mocks.extractor.extract.assert_not_awaited()
+    pipeline_mocks.summarize_for_telegram.assert_not_awaited()
     pipeline_mocks.writer.write_note.assert_not_called()
 
 
@@ -323,8 +329,8 @@ async def test_duplicate_with_force_processes_normally(pipeline_mocks):
         bot, chat_id=123, url="https://example.com", source_type=None, force=True
     )
 
-    # Extractor AND writer should be called
-    pipeline_mocks.extractor.extract.assert_awaited_once()
+    # Shared engine bridge AND writer should be called
+    pipeline_mocks.summarize_for_telegram.assert_awaited_once()
     pipeline_mocks.writer.write_note.assert_called_once()
 
     # Done message sent
@@ -366,7 +372,7 @@ async def test_done_message_includes_title_and_tokens(pipeline_mocks):
 
 @pytest.mark.asyncio
 async def test_normalized_url_passed_to_extractor_and_dedup(pipeline_mocks):
-    """Tracking params are stripped before dedup check and extractor call."""
+    """Tracking params are stripped before dedup check and engine call."""
     raw_url = "https://example.com/article?utm_source=newsletter&utm_campaign=spring"
     expected_normalized = "https://example.com/article"
 
@@ -381,10 +387,10 @@ async def test_normalized_url_passed_to_extractor_and_dedup(pipeline_mocks):
     assert dedup_url_arg == expected_normalized, \
         f"Dedup called with un-normalized URL: {dedup_url_arg!r}"
 
-    # extractor called with normalized URL
-    extractor_url_arg = pipeline_mocks.extractor.extract.call_args.args[0]
-    assert extractor_url_arg == expected_normalized, \
-        f"Extractor called with un-normalized URL: {extractor_url_arg!r}"
+    # engine called with normalized URL
+    engine_url_arg = pipeline_mocks.summarize_for_telegram.await_args.args[0]
+    assert engine_url_arg == expected_normalized, \
+        f"Engine bridge called with un-normalized URL: {engine_url_arg!r}"
 
 
 # ── R020 phase-order logging test ────────────────────────────────────────────

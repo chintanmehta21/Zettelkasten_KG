@@ -1,78 +1,78 @@
-"""Web-adapted pipeline wrapper.
+"""Web-adapted summarization pipeline wrapper.
 
-Reuses the existing extraction and summarization pipeline but returns
-structured data instead of sending Telegram messages. Does NOT write
-notes to disk or update the duplicate store — web requests are stateless.
-
-All heavy imports (Gemini SDK, trafilatura, extractors) are lazy-loaded
-inside summarize_url() so module-level import is cheap and FastAPI cold
-start stays fast.
+The legacy ``/api/summarize`` endpoint keeps its existing response shape, but
+delegates ingestion and summarization to ``summarization_engine``.
 """
 
 from __future__ import annotations
 
 import logging
-
-from telegram_bot.config.settings import get_settings
-from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
+from typing import Any
+from uuid import UUID
 
 logger = logging.getLogger("website.pipeline")
 
+_WEBSITE_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+
 
 async def summarize_url(url: str) -> dict:
-    """Run the extraction + summarization pipeline for a URL.
+    """Run summarization_engine for a URL and return the legacy API shape."""
+    from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
+    from website.features.summarization_engine.core.orchestrator import (
+        summarize_url as summarize_engine_url,
+    )
 
-    Returns a dict with title, summary, brief_summary, tags, source_type,
-    source_url, one_line_summary, and metadata about the processing.
-    """
-    from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
-    from telegram_bot.sources import get_extractor
-    from telegram_bot.sources.registry import detect_source_type
-
-    settings = get_settings()
-
-    # Phase 1: resolve redirects
     logger.info("Web pipeline — resolving: %s", url)
     resolved = await resolve_redirects(url)
-
-    # Phase 2: normalize
     normalized = normalize_url(resolved)
 
-    # Phase 3: detect source type
-    source_type = detect_source_type(normalized)
-    logger.info("Web pipeline — detected source: %s", source_type.value)
+    logger.info("Web pipeline — delegating to summarization_engine: %s", normalized)
+    result = await summarize_engine_url(
+        normalized,
+        user_id=_WEBSITE_USER_ID,
+        gemini_client=_gemini_client(),
+    )
+    return _to_legacy_response(result)
 
-    # Phase 4: extract content
-    extractor = get_extractor(source_type, settings)
-    extracted = await extractor.extract(normalized)
-    logger.info(
-        "Web pipeline — extracted: '%s' (%d chars)",
-        extracted.title,
-        len(extracted.body),
+
+def _gemini_client() -> Any:
+    from website.features.summarization_engine.core.client_factory import (
+        build_tiered_gemini_client,
     )
 
-    # Phase 5: summarize via Gemini
-    summarizer = GeminiSummarizer(
-        model_name=settings.model_name,
+    return build_tiered_gemini_client()
+
+
+def _to_legacy_response(engine_result: Any) -> dict:
+    """Convert SummaryResult into the dict returned by the old web pipeline."""
+    metadata = engine_result.metadata.model_dump(mode="json", exclude_none=True)
+    summary = (
+        _render_detailed_summary(engine_result.detailed_summary)
+        or engine_result.brief_summary
     )
-    result = await summarizer.summarize(extracted)
-
-    # Phase 6: build tags
-    tags = build_tag_list(source_type, result.tags)
-    if result.is_raw_fallback:
-        tags = [t for t in tags if not t.startswith("status/")]
-        tags.append("status/Raw")
-
     return {
-        "title": extracted.title,
-        "summary": result.summary,
-        "brief_summary": result.brief_summary,
-        "tags": tags,
-        "source_type": source_type.value,
-        "source_url": normalized,
-        "one_line_summary": result.one_line_summary,
-        "is_raw_fallback": result.is_raw_fallback,
-        "tokens_used": result.tokens_used,
-        "latency_ms": result.latency_ms,
-        "metadata": extracted.metadata,
+        "title": engine_result.mini_title,
+        "summary": summary,
+        "brief_summary": engine_result.brief_summary,
+        "tags": list(engine_result.tags),
+        "source_type": engine_result.metadata.source_type.value,
+        "source_url": engine_result.metadata.url,
+        "one_line_summary": engine_result.brief_summary,
+        "is_raw_fallback": False,
+        "tokens_used": engine_result.metadata.total_tokens_used,
+        "latency_ms": engine_result.metadata.total_latency_ms,
+        "metadata": metadata,
     }
+
+
+def _render_detailed_summary(sections: list[Any]) -> str:
+    lines: list[str] = []
+    for section in sections:
+        if lines:
+            lines.append("")
+        lines.append(f"## {section.heading}")
+        lines.extend(f"- {bullet}" for bullet in section.bullets)
+        for heading, bullets in section.sub_sections.items():
+            lines.extend(["", f"### {heading}"])
+            lines.extend(f"- {bullet}" for bullet in bullets)
+    return "\n".join(lines).strip()

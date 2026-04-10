@@ -9,12 +9,16 @@ import pytest
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--live",
-        action="store_true",
-        default=False,
-        help="Run live tests that hit real APIs (require credentials)",
-    )
+    try:
+        parser.addoption(
+            "--live",
+            action="store_true",
+            default=False,
+            help="Run live tests that hit real APIs (require credentials)",
+        )
+    except ValueError as exc:
+        if "--live" not in str(exc):
+            raise
 
 
 def pytest_collection_modifyitems(config, items):
