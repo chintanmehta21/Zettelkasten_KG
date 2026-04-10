@@ -5,7 +5,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from telegram_bot.utils.url_utils import validate_url
+
 from website.features.summarization_engine.core.config import load_config
+from website.features.summarization_engine.core.errors import RoutingError
 from website.features.summarization_engine.core.models import SourceType, SummaryResult
 from website.features.summarization_engine.core.router import detect_source_type
 from website.features.summarization_engine.source_ingest import get_ingestor
@@ -25,6 +28,9 @@ async def summarize_url(
 
     The engine is a pure library here; callers compose persistence writers.
     """
+    if not validate_url(url):
+        raise RoutingError("Invalid or blocked URL", url=url)
+
     config = load_config()
     effective_source_type = source_type or detect_source_type(url)
     logger.info(

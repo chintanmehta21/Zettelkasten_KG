@@ -5,6 +5,7 @@ from uuid import UUID
 
 import pytest
 
+from website.features.summarization_engine.core.errors import RoutingError
 from website.features.summarization_engine.core.models import (
     DetailedSummarySection,
     IngestResult,
@@ -80,3 +81,15 @@ async def test_orchestrator_routes_and_calls_ingestor_then_summarizer():
     assert result.metadata.source_type == SourceType.GITHUB
     mock_ingestor.ingest.assert_awaited_once()
     mock_summarizer.summarize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rejects_private_ip_urls():
+    from website.features.summarization_engine.core.orchestrator import summarize_url
+
+    with pytest.raises(RoutingError):
+        await summarize_url(
+            "http://127.0.0.1:8000/private",
+            user_id=UUID("00000000-0000-0000-0000-000000000001"),
+            gemini_client=AsyncMock(),
+        )

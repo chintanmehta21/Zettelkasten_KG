@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from json import dumps
 from typing import Annotated
 from uuid import UUID
 
@@ -43,9 +44,7 @@ async def batch_v2(
     writers = [SupabaseWriter()] if request.write_to_supabase else []
     processor = BatchProcessor(user_id=user_id, gemini_client=_gemini_client(), writers=writers)
     payload = {"urls": [{"url": url} for url in request.urls]}
-    import json
-
-    return await processor.run(input_bytes=json.dumps(payload).encode(), filename="request.json")
+    return await processor.run(input_bytes=dumps(payload).encode(), filename="request.json")
 
 
 @router.post("/batch/upload")

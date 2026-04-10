@@ -22,10 +22,15 @@ class BatchProcessor:
     writers: list[BaseWriter] = field(default_factory=list)
 
     async def run(self, input_path: Path | None = None, *, input_bytes: bytes | None = None, filename: str = "") -> dict[str, Any]:
-        items = load_batch_input(input_path, input_bytes=input_bytes, filename=filename)
+        config = load_config().batch
+        items = load_batch_input(
+            input_path,
+            input_bytes=input_bytes,
+            filename=filename,
+            max_size_mb=config.max_input_size_mb,
+        )
         run = BatchRun(id=uuid4(), user_id=self.user_id, status=BatchRunStatus.RUNNING, total_urls=len(items), input_filename=filename or None)
-        semaphore = asyncio.Semaphore(load_config().batch.max_concurrency)
-        results = await asyncio.gather(*(self._process_item(item, semaphore) for item in items))
+        results = await self._process_with_bounded_workers(items, max_concurrency=config.max_concurrency)
         success_count = sum(1 for item in results if item["status"] == "succeeded")
         failed_count = sum(1 for item in results if item["status"] == "failed")
         run.status = BatchRunStatus.COMPLETED if failed_count == 0 else BatchRunStatus.PARTIAL_SUCCESS
@@ -34,14 +39,44 @@ class BatchProcessor:
         run.failed_count = failed_count
         return {"run": run.model_dump(mode="json"), "items": results}
 
-    async def _process_item(self, item: BatchInputItem, semaphore: asyncio.Semaphore) -> dict[str, Any]:
-        async with semaphore:
-            try:
-                result = await summarize_url(item.url, user_id=self.user_id, gemini_client=self.gemini_client)
-                writer_results = [await writer.write(result, user_id=self.user_id) for writer in self.writers]
-                return {"url": item.url, "status": "succeeded", "summary": result.model_dump(mode="json"), "writers": writer_results}
-            except Exception as exc:
-                return {"url": item.url, "status": "failed", "error": str(exc)}
+    async def _process_with_bounded_workers(
+        self,
+        items: list[BatchInputItem],
+        *,
+        max_concurrency: int,
+    ) -> list[dict[str, Any]]:
+        queue: asyncio.Queue[tuple[int, BatchInputItem] | None] = asyncio.Queue()
+        for index, item in enumerate(items):
+            queue.put_nowait((index, item))
+
+        results: list[dict[str, Any] | None] = [None] * len(items)
+        worker_count = min(max(1, max_concurrency), max(1, len(items)))
+
+        async def worker() -> None:
+            while True:
+                queued = await queue.get()
+                try:
+                    if queued is None:
+                        return
+                    index, item = queued
+                    results[index] = await self._process_item(item)
+                finally:
+                    queue.task_done()
+
+        workers = [asyncio.create_task(worker()) for _ in range(worker_count)]
+        for _ in workers:
+            queue.put_nowait(None)
+        await queue.join()
+        await asyncio.gather(*workers)
+        return [item for item in results if item is not None]
+
+    async def _process_item(self, item: BatchInputItem) -> dict[str, Any]:
+        try:
+            result = await summarize_url(item.url, user_id=self.user_id, gemini_client=self.gemini_client)
+            writer_results = [await writer.write(result, user_id=self.user_id) for writer in self.writers]
+            return {"url": item.url, "status": "succeeded", "summary": result.model_dump(mode="json"), "writers": writer_results}
+        except Exception as exc:
+            return {"url": item.url, "status": "failed", "error": str(exc)}
 
 
 async def progress_stream(result: dict[str, Any]):

@@ -25,14 +25,28 @@ class GithubRepoWriter(BaseWriter):
 
         path = f"notes/{_slug(result.mini_title)}.md"
         url = f"https://api.github.com/repos/{repo}/contents/{path}"
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        sha = await _existing_file_sha(url, branch, headers)
         payload = {
             "message": f"Add note: {result.mini_title}",
             "content": base64.b64encode(render_markdown(result).encode()).decode(),
             "branch": branch,
         }
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        if sha:
+            payload["sha"] = sha
         async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
             response = await client.put(url, json=payload)
         if response.status_code >= 400:
             raise WriterError(f"GitHub write failed: {response.status_code}", writer="github_repo")
-        return {"path": path, "status": "created"}
+        return {"path": path, "status": "updated" if sha else "created"}
+
+
+async def _existing_file_sha(url: str, branch: str, headers: dict[str, str]) -> str | None:
+    async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+        response = await client.get(url, params={"ref": branch})
+    if response.status_code == 404:
+        return None
+    if response.status_code >= 400:
+        raise WriterError(f"GitHub lookup failed: {response.status_code}", writer="github_repo")
+    payload = response.json()
+    return payload.get("sha")
