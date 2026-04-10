@@ -22,7 +22,10 @@ def register_summarizer(cls: type["BaseSummarizer"]) -> None:
 
 def get_summarizer(source_type: SourceType | str) -> type["BaseSummarizer"]:
     """Return the summarizer class for a source type."""
-    normalized = SourceType(source_type) if isinstance(source_type, str) else source_type
+    try:
+        normalized = SourceType(source_type) if isinstance(source_type, str) else source_type
+    except ValueError as exc:
+        raise RoutingError(f"No summarizer registered for source_type={source_type!r}", url="") from exc
     if normalized not in _REGISTRY:
         raise RoutingError(f"No summarizer registered for source_type={source_type!r}", url="")
     return _REGISTRY[normalized]

@@ -128,7 +128,7 @@ class GeminiKeyPool:
         self._purge_expired()
         n = len(self._keys)
 
-        if starting_model and starting_model in _GENERATIVE_MODEL_CHAIN:
+        if starting_model:
             models = [starting_model] + [
                 m for m in _GENERATIVE_MODEL_CHAIN if m != starting_model
             ]

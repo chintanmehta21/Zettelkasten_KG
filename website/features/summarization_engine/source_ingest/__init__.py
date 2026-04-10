@@ -22,7 +22,10 @@ def register_ingestor(cls: type["BaseIngestor"]) -> None:
 
 def get_ingestor(source_type: SourceType | str) -> type["BaseIngestor"]:
     """Return the ingestor class for a source type."""
-    normalized = SourceType(source_type) if isinstance(source_type, str) else source_type
+    try:
+        normalized = SourceType(source_type) if isinstance(source_type, str) else source_type
+    except ValueError as exc:
+        raise RoutingError(f"No ingestor registered for source_type={source_type!r}", url="") from exc
     if normalized not in _REGISTRY:
         raise RoutingError(f"No ingestor registered for source_type={source_type!r}", url="")
     return _REGISTRY[normalized]

@@ -44,6 +44,9 @@ class KGNode(BaseModel):
     url: str
     node_date: date | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    summary_v2: dict[str, Any] | None = None
+    extraction_confidence: str | None = None
+    engine_version: str | None = None
     embedding: list[float] | None = Field(default=None, description="Semantic embedding vector (768-dim)")
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -68,6 +71,9 @@ class KGNodeCreate(BaseModel):
     url: str
     node_date: date | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    summary_v2: dict[str, Any] | None = None
+    extraction_confidence: str | None = None
+    engine_version: str | None = None
     embedding: list[float] | None = Field(default=None, description="Semantic embedding vector (768-dim)")
 
 

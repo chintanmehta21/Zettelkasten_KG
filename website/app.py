@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from website.api.nexus import router as nexus_router
 from website.api.routes import router as api_router
+from website.features.summarization_engine.api import router as engine_v2_router
 
 logger = logging.getLogger("website.app")
 
@@ -32,6 +33,7 @@ FOOTER_DIR = Path(__file__).parent / "footer"
 ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
 NEXUS_DIR = Path(__file__).parent / "experimental_features" / "nexus"
+SUMMARIZATION_ENGINE_DIR = Path(__file__).parent / "features" / "summarization_engine"
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -78,6 +80,7 @@ def create_app(lifespan=None) -> FastAPI:
 
     # API routes
     app.include_router(api_router)
+    app.include_router(engine_v2_router)
     if nexus_enabled:
         app.include_router(nexus_router)
 
@@ -130,6 +133,16 @@ def create_app(lifespan=None) -> FastAPI:
 
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
+    app.mount(
+        "/summarization-engine/css",
+        StaticFiles(directory=str(SUMMARIZATION_ENGINE_DIR / "ui" / "css")),
+        name="summarization-engine-css",
+    )
+    app.mount(
+        "/summarization-engine/js",
+        StaticFiles(directory=str(SUMMARIZATION_ENGINE_DIR / "ui" / "js")),
+        name="summarization-engine-js",
+    )
 
     # ── Mobile routes ──
     @app.get("/m/")
@@ -178,6 +191,10 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(USER_ZETTELS_DIR / "index.html"))
+
+    @app.get("/summarization-engine")
+    async def summarization_engine_dashboard(request: Request):
+        return FileResponse(str(SUMMARIZATION_ENGINE_DIR / "ui" / "index.html"))
 
     @app.get("/about")
     async def about(request: Request):

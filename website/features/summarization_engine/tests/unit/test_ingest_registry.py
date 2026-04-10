@@ -35,7 +35,7 @@ def test_register_and_get():
 def test_get_unknown_raises():
     from website.features.summarization_engine.core.errors import RoutingError
 
-    with pytest.raises((RoutingError, ValueError)):
+    with pytest.raises(RoutingError):
         get_ingestor("nonexistent-source")
 
 
