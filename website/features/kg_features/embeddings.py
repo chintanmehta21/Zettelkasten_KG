@@ -21,6 +21,17 @@ logger = logging.getLogger(__name__)
 _EMBEDDING_DIMS = 768
 
 
+def _normalize_embedding(raw: list[float]) -> list[float]:
+    """Return an L2-normalized embedding vector as a plain Python list."""
+    if len(raw) != _EMBEDDING_DIMS:
+        logger.warning("Embedding returned %d dims, expected %d", len(raw), _EMBEDDING_DIMS)
+    vec = np.array(raw, dtype=np.float64)
+    norm = np.linalg.norm(vec)
+    if norm > 0:
+        vec = vec / norm
+    return vec.tolist()
+
+
 # ── Single embedding ────────────────────────────────────────────────────────
 
 def generate_embedding(
@@ -45,14 +56,7 @@ def generate_embedding(
         if response is None:
             return []
 
-        raw = response.embeddings[0].values
-        if len(raw) != _EMBEDDING_DIMS:
-            logger.warning("Embedding returned %d dims, expected %d", len(raw), _EMBEDDING_DIMS)
-        vec = np.array(raw, dtype=np.float64)
-        norm = np.linalg.norm(vec)
-        if norm > 0:
-            vec = vec / norm
-        return vec.tolist()
+        return _normalize_embedding(response.embeddings[0].values)
 
     except Exception as exc:
         logger.error("Embedding generation failed: %s", exc)
@@ -84,14 +88,7 @@ def generate_embeddings_batch(
 
         results: list[list[float]] = []
         for emb in response.embeddings:
-            raw = emb.values
-            if len(raw) != _EMBEDDING_DIMS:
-                logger.warning("Embedding returned %d dims, expected %d", len(raw), _EMBEDDING_DIMS)
-            vec = np.array(raw, dtype=np.float64)
-            norm = np.linalg.norm(vec)
-            if norm > 0:
-                vec = vec / norm
-            results.append(vec.tolist())
+            results.append(_normalize_embedding(emb.values))
         return results
 
     except Exception as exc:

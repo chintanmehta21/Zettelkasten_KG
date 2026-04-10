@@ -62,6 +62,11 @@
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
   let authToken = null;
+  const longDateFormatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
   // ---- Auth helpers ----
   function getStoredAuthToken() {
@@ -102,17 +107,19 @@
     viewToggle.classList.remove('hidden');
   }
 
-  viewToggle.addEventListener('click', (e) => {
-    const btn = e.target.closest('.kg-view-btn');
-    if (!btn) return;
-    const newView = btn.dataset.view;
-    if (newView === currentView) return;
+  if (viewToggle) {
+    viewToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.kg-view-btn');
+      if (!btn) return;
+      const newView = btn.dataset.view;
+      if (newView === currentView) return;
 
-    currentView = newView;
-    viewToggle.querySelectorAll('.kg-view-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadGraphData();
-  });
+      currentView = newView;
+      viewToggle.querySelectorAll('.kg-view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadGraphData();
+    });
+  }
 
   // ---- Smart label shortening ----
   const SEP = ' \u2014 '; // " — "
@@ -580,10 +587,10 @@
     badge.className = 'kg-panel-badge ' + nodeGroup;
     title.textContent = node.name;
     date.textContent = formatDate(node.date);
-    summary.textContent = node.summary;
+    summary.textContent = node.summary || '';
     link.href = node.url;
 
-    tags.innerHTML = node.tags.map(
+    tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(
       t => `<span class="kg-tag">${escapeHtml(t)}</span>`
     ).join('');
 
@@ -625,50 +632,58 @@
 
   function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return Number.isNaN(d.getTime()) ? String(dateStr || '') : longDateFormatter.format(d);
   }
 
   // ---- Search ----
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    highlightNodes.clear();
-    selectedNode = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      highlightNodes.clear();
+      selectedNode = null;
 
-    if (query.length > 0) {
-      graphData.nodes.forEach(node => {
-        const match = node.name.toLowerCase().includes(query) ||
-                      node.tags.some(t => t.toLowerCase().includes(query)) ||
-                      node.summary.toLowerCase().includes(query);
-        if (match) highlightNodes.add(node.id);
-      });
-    }
+      if (query.length > 0) {
+        graphData.nodes.forEach(node => {
+          const nodeTags = Array.isArray(node.tags) ? node.tags : [];
+          const nodeSummary = String(node.summary || '');
+          const match = node.name.toLowerCase().includes(query) ||
+                        nodeTags.some(t => String(t).toLowerCase().includes(query)) ||
+                        nodeSummary.toLowerCase().includes(query);
+          if (match) highlightNodes.add(node.id);
+        });
+      }
 
-    _refreshAllNodeVisuals();
-  });
+      _refreshAllNodeVisuals();
+    });
+  }
 
   // ---- Filter ----
-  filterBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    filterDropdown.classList.toggle('hidden');
-    filterBtn.classList.toggle('active');
-  });
+  if (filterBtn && filterDropdown) {
+    filterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      filterDropdown.classList.toggle('hidden');
+      filterBtn.classList.toggle('active');
+    });
+  }
 
   document.addEventListener('click', (e) => {
-    if (!filterDropdown.contains(e.target) && e.target !== filterBtn) {
+    if (filterDropdown && filterBtn && !filterDropdown.contains(e.target) && e.target !== filterBtn) {
       filterDropdown.classList.add('hidden');
       filterBtn.classList.remove('active');
     }
   });
 
-  filterDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      activeFilters.clear();
-      filterDropdown.querySelectorAll('input:checked').forEach(
-        checked => activeFilters.add(checked.value)
-      );
-      applyFilters();
+  if (filterDropdown) {
+    filterDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        activeFilters.clear();
+        filterDropdown.querySelectorAll('input:checked').forEach(
+          checked => activeFilters.add(checked.value)
+        );
+        applyFilters();
+      });
     });
-  });
+  }
 
   function applyFilters() {
     const filteredNodes = fullData.nodes.filter(n => activeFilters.has(n.group));
@@ -699,13 +714,15 @@
   }
 
   // ---- Close panel button ----
-  panelClose.addEventListener('click', () => {
-    if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
-    closePanel();
-    selectedNode = null;
-    highlightNodes.clear();
-    _refreshAllNodeVisuals();
-  });
+  if (panelClose) {
+    panelClose.addEventListener('click', () => {
+      if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
+      closePanel();
+      selectedNode = null;
+      highlightNodes.clear();
+      _refreshAllNodeVisuals();
+    });
+  }
 
   // ---- Keyboard: Escape ----
   document.addEventListener('keydown', (e) => {
@@ -715,7 +732,7 @@
       selectedNode = null;
       highlightNodes.clear();
       hoverNode = null;
-      searchInput.value = '';
+      if (searchInput) searchInput.value = '';
       _refreshAllNodeVisuals();
     }
   });

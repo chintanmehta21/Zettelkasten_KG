@@ -12,6 +12,7 @@
   var _supabaseClient = null;
   var _currentSession = null;
   var _currentAvatarId = null;
+  var _bodyLockCount = 0;
 
   // ── DOM refs ──────────────────────────────────────────────────────
 
@@ -47,6 +48,15 @@
     menuProfile = document.getElementById('menu-profile');
     menuNexus = document.getElementById('menu-nexus');
     menuSignout = document.getElementById('menu-signout');
+  }
+
+  function setBodyScrollLocked(locked) {
+    if (locked) {
+      _bodyLockCount += 1;
+    } else {
+      _bodyLockCount = Math.max(0, _bodyLockCount - 1);
+    }
+    document.body.style.overflow = _bodyLockCount > 0 ? 'hidden' : '';
   }
 
   // ── Init ──────────────────────────────────────────────────────────
@@ -250,7 +260,7 @@
         '<div class="home-card-meta">' +
           (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
           '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
-          '<button class="home-card-summary-btn" data-node-idx="' + i + '" title="Summary">' +
+          '<button class="home-card-summary-btn" data-node-idx="' + i + '" type="button" title="Summary" aria-label="View summary">' +
             '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
             '<span class="tooltip">Summary</span>' +
           '</button>' +
@@ -604,7 +614,7 @@
         '<div class="home-card-meta">' +
           '<span class="home-card-date">' + escapeHtml(newNode.date) + '</span>' +
           '<span class="home-card-source ' + sourceType + '">' + escapeHtml(newNode.group) + '</span>' +
-          '<button class="home-card-summary-btn" title="Summary">' +
+          '<button class="home-card-summary-btn" type="button" title="Summary" aria-label="View summary">' +
             '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
             '<span class="tooltip">Summary</span>' +
           '</button>' +
@@ -666,7 +676,7 @@
     });
 
     // Show loader animation first
-    document.body.style.overflow = 'hidden';
+    setBodyScrollLocked(true);
     if (loader) {
       loader.classList.add('active');
       setTimeout(function () {
@@ -681,7 +691,7 @@
   function closeSummaryPopup() {
     var overlay = document.getElementById('summary-overlay');
     if (overlay) overlay.classList.remove('open');
-    document.body.style.overflow = '';
+    setBodyScrollLocked(false);
   }
 
   // ── Avatar Picker Modal ──────────────────────────────────────────
@@ -713,13 +723,13 @@
     }
 
     avatarModal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    setBodyScrollLocked(true);
   }
 
   function closeAvatarPicker() {
     if (!avatarModal) return;
     avatarModal.classList.remove('open');
-    document.body.style.overflow = '';
+    setBodyScrollLocked(false);
   }
 
   // ── Events ────────────────────────────────────────────────────────
@@ -730,15 +740,18 @@
       avatarBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         avatarDropdown.classList.toggle('open');
+        avatarBtn.setAttribute('aria-expanded', avatarDropdown.classList.contains('open') ? 'true' : 'false');
       });
     }
 
     // Close dropdown on outside click
     document.addEventListener('click', function (e) {
-      if (avatarDropdown && !avatarWrap.contains(e.target)) {
+      if (avatarDropdown && avatarWrap && !avatarWrap.contains(e.target)) {
         avatarDropdown.classList.remove('open');
+        if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
       }
-      if (addZettelDropdown && !document.getElementById('add-zettel-wrap').contains(e.target)) {
+      var addWrap = document.getElementById('add-zettel-wrap');
+      if (addZettelDropdown && addWrap && !addWrap.contains(e.target)) {
         addZettelDropdown.classList.remove('open');
       }
     });

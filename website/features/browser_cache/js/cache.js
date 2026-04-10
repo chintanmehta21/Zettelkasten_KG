@@ -244,7 +244,7 @@
     readReturnPath();
   }
 
-  var api = {
+  var api = Object.freeze({
     getState: getState,
     patchState: patchState,
     setReturnPath: setReturnPath,
@@ -280,7 +280,7 @@
     getThemePlaceholder: function () {
       return '';
     },
-  };
+  });
 
   cleanup();
   window.browserCache = api;

@@ -46,7 +46,7 @@ def _is_rate_limited(exc: Exception) -> bool:
 def _load_keys_from_file(path: str) -> list[str]:
     """Read API keys from an api_env file.  One key per line, # comments ignored."""
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             keys = []
             for line in f:
                 line = line.strip()

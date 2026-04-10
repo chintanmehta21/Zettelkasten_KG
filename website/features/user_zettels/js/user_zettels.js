@@ -12,6 +12,7 @@
   var _deleteConfirmId = null;
   var _deleteConfirmTimer = null;
   var _pendingDelete = null;
+  var _bodyLockCount = 0;
 
   var avatarBtn;
   var avatarWrap;
@@ -117,6 +118,15 @@
     undoText = document.getElementById('undo-text');
     undoBtn = document.getElementById('undo-btn');
     undoTime = document.getElementById('undo-time');
+  }
+
+  function setBodyScrollLocked(locked) {
+    if (locked) {
+      _bodyLockCount += 1;
+    } else {
+      _bodyLockCount = Math.max(0, _bodyLockCount - 1);
+    }
+    document.body.style.overflow = _bodyLockCount > 0 ? 'hidden' : '';
   }
 
   async function initSupabase() {
@@ -1010,7 +1020,7 @@
   }
 
   function openSummary(node) {
-    if (!summaryOverlay) return;
+    if (!summaryOverlay || !summarySource || !summaryDate || !summaryTitle || !summaryText || !summaryTags) return;
 
     summarySource.className = 'zettels-source-badge ' + node.source;
     summarySource.textContent = node.sourceLabel;
@@ -1027,13 +1037,13 @@
     });
 
     summaryOverlay.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    setBodyScrollLocked(true);
   }
 
   function closeSummary() {
     if (!summaryOverlay) return;
     summaryOverlay.classList.add('hidden');
-    document.body.style.overflow = '';
+    setBodyScrollLocked(false);
   }
 
   function openFiltersMenu() {

@@ -28,11 +28,11 @@ _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # website/features/a
 
 _FEATURE_DIR = Path(__file__).parent  # website/features/api_key_switching/
 
-_API_ENV_PATHS = [
+_API_ENV_PATHS = (
     str(_FEATURE_DIR / "api_env"),     # editable file in the feature dir
     str(_PROJECT_ROOT / "api_env"),     # project root (alternative)
     "/etc/secrets/api_env",            # Render Secret File
-]
+)
 
 _pool: GeminiKeyPool | None = None
 
@@ -78,7 +78,7 @@ def init_key_pool() -> GeminiKeyPool:
 
     raise ValueError(
         "No Gemini API keys found. Provide keys via:\n"
-        "  1. api_env file (one key per line) at project root or /etc/secrets/api_env\n"
+        "  1. api_env file (one key per line) in website/features/api_key_switching, project root, or /etc/secrets/api_env\n"
         "  2. GEMINI_API_KEYS environment variable (comma-separated)\n"
         "  3. GEMINI_API_KEY environment variable (single key, legacy)"
     )
@@ -91,5 +91,5 @@ def get_key_pool() -> GeminiKeyPool:
     """
     global _pool  # noqa: PLW0603
     if _pool is None:
-        init_key_pool()
-    return _pool  # type: ignore[return-value]
+        _pool = init_key_pool()
+    return _pool

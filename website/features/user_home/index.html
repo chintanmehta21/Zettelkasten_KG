@@ -25,7 +25,7 @@
             <div class="header-auth">
                 <!-- Avatar + Dropdown (replaces login button) -->
                 <div class="home-avatar-wrap" id="avatar-wrap">
-                    <button class="home-avatar-btn" id="avatar-btn" title="Account menu">
+                    <button class="home-avatar-btn" id="avatar-btn" type="button" title="Account menu" aria-label="Open account menu" aria-haspopup="menu" aria-expanded="false">
                         <img class="home-avatar-img" id="avatar-img" src="" alt="User avatar" width="32" height="32" />
                         <span class="home-avatar-fallback" id="avatar-fallback"></span>
                     </button>
@@ -58,7 +58,7 @@
                             About
                         </a>
                         <div class="home-dropdown-divider"></div>
-                        <button class="home-dropdown-item home-dropdown-signout" id="menu-signout">
+                        <button class="home-dropdown-item home-dropdown-signout" id="menu-signout" type="button">
                             <span class="home-dropdown-icon">&#x23FB;</span>
                             Sign out
                         </button>
@@ -111,13 +111,13 @@
                             <div class="home-add-dropdown" id="add-zettel-dropdown">
                                 <form id="add-zettel-form" class="home-add-form">
                                     <div class="home-add-row">
-                                        <input type="url" id="add-url-input" class="home-add-input" placeholder="https://..." required />
+                                        <input type="url" id="add-url-input" class="home-add-input" placeholder="https://…" aria-label="URL to capture" required />
                                         <button type="submit" class="home-add-submit" id="add-submit-btn">Add</button>
                                     </div>
                                     <p class="home-add-error" id="add-error"></p>
                                     <div class="home-add-loading hidden" id="add-loading">
                                         <div class="home-add-spinner"></div>
-                                        <span>Processing...</span>
+                                        <span>Processing…</span>
                                     </div>
                                 </form>
                             </div>
@@ -179,8 +179,8 @@
         <!-- Summary Popup -->
         <div class="home-summary-overlay" id="summary-overlay">
             <div class="home-summary-backdrop" id="summary-backdrop"></div>
-            <div class="home-summary-popup">
-                <button class="home-summary-close" id="summary-close">&times;</button>
+            <div class="home-summary-popup" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+                <button class="home-summary-close" id="summary-close" type="button" aria-label="Close summary">&times;</button>
                 <h2 class="home-summary-title" id="summary-title"></h2>
                 <div class="home-summary-meta" id="summary-meta"></div>
                 <div class="home-summary-text" id="summary-text"></div>
@@ -191,9 +191,9 @@
         <!-- Avatar Picker Modal -->
         <div class="home-avatar-modal" id="avatar-modal">
             <div class="home-avatar-modal-overlay" id="avatar-modal-overlay"></div>
-            <div class="home-avatar-modal-content">
-                <button class="home-avatar-modal-close" id="avatar-modal-close">&times;</button>
-                <h2 class="home-avatar-modal-title">Choose your avatar</h2>
+            <div class="home-avatar-modal-content" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title">
+                <button class="home-avatar-modal-close" id="avatar-modal-close" type="button" aria-label="Close avatar picker">&times;</button>
+                <h2 class="home-avatar-modal-title" id="avatar-modal-title">Choose your avatar</h2>
                 <div class="home-avatar-grid" id="avatar-grid">
                     <!-- 30 avatar options injected by home.js -->
                 </div>

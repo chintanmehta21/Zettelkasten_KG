@@ -36,6 +36,12 @@
 
   var els = {};
 
+  function escapeHtml(value) {
+    var div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
   function resolveDom() {
     els.providerGrid = document.getElementById('provider-grid');
     els.runsList = document.getElementById('runs-list');
@@ -171,17 +177,17 @@
           '<div class="nexus-provider-brand">' +
             '<div class="nexus-provider-icon" style="color:' + provider.accent + '">' + (details.icon || '') + '</div>' +
             '<div>' +
-              '<h3 class="nexus-provider-name">' + provider.name + '</h3>' +
-              '<p class="nexus-provider-description">' + provider.description + '</p>' +
+              '<h3 class="nexus-provider-name">' + escapeHtml(provider.name) + '</h3>' +
+              '<p class="nexus-provider-description">' + escapeHtml(provider.description) + '</p>' +
             '</div>' +
           '</div>' +
           '<div class="nexus-status-pill ' + (provider.connected ? 'is-connected' : '') + '">' + (provider.connected ? 'Connected' : 'Disconnected') + '</div>' +
         '</div>' +
         '<div class="nexus-provider-meta">' +
-          '<div class="nexus-meta-item"><span class="nexus-meta-label">Connected account</span><span class="nexus-meta-value">' + provider.account + '</span></div>' +
+          '<div class="nexus-meta-item"><span class="nexus-meta-label">Connected account</span><span class="nexus-meta-value">' + escapeHtml(provider.account) + '</span></div>' +
           '<div class="nexus-meta-item"><span class="nexus-meta-label">Last import</span><span class="nexus-meta-value">' + (provider.lastImportedAt ? fmtTime(provider.lastImportedAt) : 'No imports yet') + '</span></div>' +
           '<div class="nexus-meta-item"><span class="nexus-meta-label">Import count</span><span class="nexus-meta-value">' + String(provider.totalImports || 0) + '</span></div>' +
-          '<div class="nexus-meta-item"><span class="nexus-meta-label">Sync state</span><span class="nexus-meta-value">' + (provider.lastResult || 'Ready') + '</span></div>' +
+          '<div class="nexus-meta-item"><span class="nexus-meta-label">Sync state</span><span class="nexus-meta-value">' + escapeHtml(provider.lastResult || 'Ready') + '</span></div>' +
         '</div>' +
         '<div class="nexus-provider-actions">' +
           '<button class="nexus-button nexus-button-primary js-provider-connect" type="button" data-provider="' + provider.key + '">' + connectLabel + '</button>' +
@@ -245,14 +251,14 @@
       return '' +
         '<article class="nexus-run-item">' +
           '<div>' +
-            '<h3 class="nexus-run-title">' + run.title + '</h3>' +
+            '<h3 class="nexus-run-title">' + escapeHtml(run.title) + '</h3>' +
             '<div class="nexus-run-meta">' +
-              '<span>' + providerLabel + '</span>' +
+              '<span>' + escapeHtml(providerLabel) + '</span>' +
               '<span>&middot;</span>' +
-              '<span>' + String(run.status || 'unknown') + '</span>' +
+              '<span>' + escapeHtml(String(run.status || 'unknown')) + '</span>' +
               (run.importedCount ? '<span>&middot;</span><span>' + String(run.importedCount) + ' imported</span>' : '') +
             '</div>' +
-            '<p class="nexus-run-message">' + message + '</p>' +
+            '<p class="nexus-run-message">' + escapeHtml(message) + '</p>' +
           '</div>' +
           '<div class="nexus-run-timestamp">' + fmtTime(run.finishedAt || run.startedAt) + '</div>' +
         '</article>';
