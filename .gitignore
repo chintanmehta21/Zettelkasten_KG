@@ -50,11 +50,16 @@ docs/login_details.txt
 
 # Local tooling artifacts (do not publish)
 .claude/
+.codex/
 .bg-shell/
 .code-build/
 .playwright-mcp/
 .agents/
+.mcp.json
 .mcp.local.json
 supabase/.temp/
 supabase/.env
 .worktrees/
+
+# Nexus OAuth secrets — never publish
+website/experimental_features/nexus/nexus_env.txt
