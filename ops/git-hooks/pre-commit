@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# pre-commit hook — auto-sync CLAUDE.md → AGENTS.md
+#
+# CLAUDE.md is the single source of truth for project rules. Claude Code
+# auto-loads CLAUDE.md; Codex CLI auto-loads AGENTS.md. To keep both LLMs
+# seeing the same rules without drift, this hook regenerates AGENTS.md from
+# CLAUDE.md whenever CLAUDE.md is staged, and auto-stages the result.
+#
+# Never edit AGENTS.md directly — changes will be overwritten on the next
+# commit that touches CLAUDE.md.
+
+set -eu
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+if git diff --cached --name-only | grep -qx 'CLAUDE.md'; then
+  {
+    printf '<!--\n'
+    printf '  AGENTS.md — AUTO-SYNCED from CLAUDE.md by ops/git-hooks/pre-commit.\n'
+    printf '  DO NOT EDIT DIRECTLY. Edit CLAUDE.md instead; this file will regenerate\n'
+    printf '  on the next commit that stages CLAUDE.md.\n'
+    printf '\n'
+    printf '  Why this mirror exists: Codex CLI auto-loads AGENTS.md (the OpenAI /\n'
+    printf '  Linux-Foundation cross-tool standard). Claude Code auto-loads CLAUDE.md.\n'
+    printf '  Single source of truth (CLAUDE.md) + auto-sync = both LLMs see identical\n'
+    printf '  project rules with zero drift.\n'
+    printf '%s\n\n' '-->'
+    cat CLAUDE.md
+  } > AGENTS.md
+  git add AGENTS.md
+fi
+
+exit 0
