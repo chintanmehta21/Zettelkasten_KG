@@ -17,6 +17,10 @@ from website.experimental_features.nexus.source_ingest.common.oauth_state import
     consume_oauth_state,
     issue_oauth_state,
 )
+from website.experimental_features.nexus.source_ingest.common.oauth_utils import (
+    raise_for_oauth_status,
+    require_env,
+)
 
 PROVIDER = NexusProvider.REDDIT
 SCOPES: tuple[str, ...] = ("identity", "history", "read")
@@ -48,9 +52,9 @@ class RedditOAuthConfig:
 
 def get_oauth_config() -> RedditOAuthConfig:
     return RedditOAuthConfig(
-        client_id=_require_env(CLIENT_ID_ENV),
+        client_id=require_env(CLIENT_ID_ENV),
         client_secret=os.environ.get(CLIENT_SECRET_ENV, ""),
-        redirect_uri=_require_env(REDIRECT_URI_ENV),
+        redirect_uri=require_env(REDIRECT_URI_ENV),
         user_agent=(os.environ.get(USER_AGENT_ENV) or DEFAULT_USER_AGENT).strip(),
     )
 
@@ -132,7 +136,12 @@ async def _request_token_set(
                 "User-Agent": config.user_agent,
             },
         )
-        _raise_for_status(response, "token exchange")
+        raise_for_oauth_status(
+            response,
+            provider_label="Reddit",
+            action="token exchange",
+            json_keys=("error",),
+        )
         data = response.json()
     finally:
         if own_client:
@@ -142,53 +151,6 @@ async def _request_token_set(
     if not token_set.access_token:
         raise RuntimeError("Reddit OAuth token exchange did not return an access token.")
     return token_set
-
-
-def _raise_for_status(response: httpx.Response, action: str) -> None:
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        detail = _response_detail(response)
-        raise RuntimeError(
-            f"Reddit OAuth {action} failed with status {response.status_code}: {detail}"
-        ) from exc
-
-
-def _response_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        return (response.text or "no response body").strip()[:500]
-    return str(payload.get("error") or payload)[:500]
-
-
-def _require_env(name: str) -> str:
-    value = (os.environ.get(name) or "").strip()
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    if _is_placeholder(value):
-        raise RuntimeError(
-            f"Environment variable {name} is using a placeholder value. "
-            "Set the real OAuth app credential."
-        )
-    return value
-
-
-def _is_placeholder(value: str) -> bool:
-    probe = value.strip().lower()
-    if not probe:
-        return True
-    placeholder_tokens = (
-        "nexus-smoke",
-        "example",
-        "replace",
-        "your-",
-        "your_",
-        "changeme",
-        "test-",
-    )
-    return any(token in probe for token in placeholder_tokens)
-
 
 __all__ = [
     "AUTHORIZATION_URL",

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import base64
-import hashlib
 import os
-import secrets
 from dataclasses import dataclass
 from typing import Any, Sequence
 from urllib.parse import urlencode
@@ -19,6 +16,12 @@ from website.experimental_features.nexus.source_ingest.common.models import (
 from website.experimental_features.nexus.source_ingest.common.oauth_state import (
     consume_oauth_state,
     issue_oauth_state,
+)
+from website.experimental_features.nexus.source_ingest.common.oauth_utils import (
+    build_code_challenge,
+    generate_code_verifier,
+    raise_for_oauth_status,
+    require_env,
 )
 
 PROVIDER = NexusProvider.YOUTUBE
@@ -47,9 +50,9 @@ class YouTubeOAuthConfig:
 
 
 def get_oauth_config() -> YouTubeOAuthConfig:
-    client_id = _require_env(CLIENT_ID_ENV)
+    client_id = require_env(CLIENT_ID_ENV)
     _validate_client_id(client_id)
-    redirect_uri = _require_env(REDIRECT_URI_ENV)
+    redirect_uri = require_env(REDIRECT_URI_ENV)
     client_secret = os.environ.get(CLIENT_SECRET_ENV) or None
     return YouTubeOAuthConfig(
         client_id=client_id,
@@ -66,7 +69,7 @@ def build_authorization_url(
     scopes: Sequence[str] | None = None,
 ) -> OAuthStartResponse:
     config = get_oauth_config()
-    code_verifier = _generate_code_verifier()
+    code_verifier = generate_code_verifier()
     state_token, state_record = issue_oauth_state(
         provider=PROVIDER,
         auth_user_sub=auth_user_sub,
@@ -82,7 +85,7 @@ def build_authorization_url(
         "state": state_token,
         "access_type": "offline",
         "include_granted_scopes": "true",
-        "code_challenge": _build_code_challenge(code_verifier),
+        "code_challenge": build_code_challenge(code_verifier),
         "code_challenge_method": "S256",
     }
     if _force_consent():
@@ -147,7 +150,12 @@ async def _request_token_set(
             data=payload,
             headers={"Accept": "application/json"},
         )
-        _raise_for_status(response, "token exchange")
+        raise_for_oauth_status(
+            response,
+            provider_label="YouTube",
+            action="token exchange",
+            json_keys=("error.message", "error.status", "error"),
+        )
         data = response.json()
     finally:
         if own_client:
@@ -158,64 +166,9 @@ async def _request_token_set(
         raise RuntimeError("YouTube OAuth token exchange did not return an access token.")
     return token_set
 
-
-def _raise_for_status(response: httpx.Response, action: str) -> None:
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        detail = _response_detail(response)
-        raise RuntimeError(
-            f"YouTube OAuth {action} failed with status {response.status_code}: {detail}"
-        ) from exc
-
-
-def _response_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        return (response.text or "no response body").strip()[:500]
-    error = payload.get("error")
-    if isinstance(error, dict):
-        message = error.get("message") or error.get("status")
-        if message:
-            return str(message)
-    if error:
-        return str(error)
-    return str(payload)[:500]
-
-
-def _require_env(name: str) -> str:
-    value = (os.environ.get(name) or "").strip()
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    if _is_placeholder(value):
-        raise RuntimeError(
-            f"Environment variable {name} is using a placeholder value. "
-            "Set the real OAuth app credential."
-        )
-    return value
-
-
 def _force_consent() -> bool:
     raw = (os.environ.get(FORCE_CONSENT_ENV) or "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
-
-
-def _is_placeholder(value: str) -> bool:
-    probe = value.strip().lower()
-    if not probe:
-        return True
-    placeholder_tokens = (
-        "nexus-smoke",
-        "example",
-        "replace",
-        "your-",
-        "your_",
-        "changeme",
-        "test-",
-    )
-    return any(token in probe for token in placeholder_tokens)
-
 
 def _validate_client_id(client_id: str) -> None:
     candidate = client_id.strip()
@@ -225,16 +178,6 @@ def _validate_client_id(client_id: str) -> None:
         f"Invalid {CLIENT_ID_ENV} value. Expected a Google OAuth Client ID ending "
         "with '.apps.googleusercontent.com' (not an email, username, or project name)."
     )
-
-
-def _generate_code_verifier() -> str:
-    return secrets.token_urlsafe(64)
-
-
-def _build_code_challenge(code_verifier: str) -> str:
-    digest = hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
-
 
 __all__ = [
     "AUTHORIZATION_URL",

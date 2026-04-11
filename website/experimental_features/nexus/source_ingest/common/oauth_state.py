@@ -41,7 +41,7 @@ def issue_oauth_state(
 
 def consume_oauth_state(provider: NexusProvider, state_token: str) -> OAuthStateRecord:
     client = get_supabase_client()
-    response = (
+    select_response = (
         client.table("nexus_oauth_states")
         .select("*")
         .eq("state_digest", _digest(state_token))
@@ -49,25 +49,28 @@ def consume_oauth_state(provider: NexusProvider, state_token: str) -> OAuthState
         .limit(1)
         .execute()
     )
-    if not response.data:
+    if not select_response.data:
         raise ValueError("Invalid OAuth state")
-
-    record = OAuthStateRecord(**response.data[0])
-    if record.consumed_at is not None:
-        raise ValueError("OAuth state has already been used")
-    if record.expires_at <= _utcnow():
-        raise ValueError("OAuth state has expired")
 
     consumed_at = _utcnow()
     updated = (
         client.table("nexus_oauth_states")
         .update({"consumed_at": consumed_at.isoformat()})
-        .eq("id", str(record.id))
+        .eq("state_digest", _digest(state_token))
+        .eq("provider", provider.value)
+        .is_("consumed_at", "null")
+        .gt("expires_at", consumed_at.isoformat())
         .execute()
     )
     if updated.data:
         return OAuthStateRecord(**updated.data[0])
-    return record.model_copy(update={"consumed_at": consumed_at})
+
+    record = OAuthStateRecord(**select_response.data[0])
+    if record.consumed_at is not None:
+        raise ValueError("OAuth state has already been used")
+    if record.expires_at <= consumed_at:
+        raise ValueError("OAuth state has expired")
+    raise ValueError("OAuth state could not be consumed safely")
 
 
 def _digest(state_token: str) -> str:

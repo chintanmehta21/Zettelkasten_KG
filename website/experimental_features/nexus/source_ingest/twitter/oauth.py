@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import base64
-import hashlib
 import os
-import secrets
 from dataclasses import dataclass
 from typing import Any, Sequence
 from urllib.parse import urlencode
@@ -19,6 +16,12 @@ from website.experimental_features.nexus.source_ingest.common.models import (
 from website.experimental_features.nexus.source_ingest.common.oauth_state import (
     consume_oauth_state,
     issue_oauth_state,
+)
+from website.experimental_features.nexus.source_ingest.common.oauth_utils import (
+    build_code_challenge,
+    generate_code_verifier,
+    raise_for_oauth_status,
+    require_env,
 )
 
 PROVIDER = NexusProvider.TWITTER
@@ -58,9 +61,9 @@ class TwitterOAuthConfig:
 
 def get_oauth_config() -> TwitterOAuthConfig:
     return TwitterOAuthConfig(
-        client_id=_require_env(CLIENT_ID_ENV),
+        client_id=require_env(CLIENT_ID_ENV),
         client_secret=(os.environ.get(CLIENT_SECRET_ENV) or "").strip() or None,
-        redirect_uri=_require_env(REDIRECT_URI_ENV),
+        redirect_uri=require_env(REDIRECT_URI_ENV),
     )
 
 
@@ -72,7 +75,7 @@ def build_authorization_url(
     scopes: Sequence[str] | None = None,
 ) -> OAuthStartResponse:
     config = get_oauth_config()
-    code_verifier = _generate_code_verifier()
+    code_verifier = generate_code_verifier()
     state_token, state_record = issue_oauth_state(
         provider=PROVIDER,
         auth_user_sub=auth_user_sub,
@@ -86,7 +89,7 @@ def build_authorization_url(
         "redirect_uri": config.redirect_uri,
         "scope": " ".join(scopes or SCOPES),
         "state": state_token,
-        "code_challenge": _build_code_challenge(code_verifier),
+        "code_challenge": build_code_challenge(code_verifier),
         "code_challenge_method": "S256",
     }
     return OAuthStartResponse(
@@ -144,7 +147,12 @@ async def _request_token_set(
             headers={"Accept": "application/json"},
             auth=_token_auth(config),
         )
-        _raise_for_status(response, "token exchange")
+        raise_for_oauth_status(
+            response,
+            provider_label="Twitter",
+            action="token exchange",
+            json_keys=("errors", "error_description", "detail"),
+        )
         data = response.json()
     finally:
         if own_client:
@@ -160,65 +168,6 @@ def _token_auth(config: TwitterOAuthConfig) -> httpx.BasicAuth | None:
     if not config.client_secret:
         return None
     return httpx.BasicAuth(config.client_id, config.client_secret)
-
-
-def _raise_for_status(response: httpx.Response, action: str) -> None:
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        detail = _response_detail(response)
-        raise RuntimeError(
-            f"Twitter OAuth {action} failed with status {response.status_code}: {detail}"
-        ) from exc
-
-
-def _response_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        return (response.text or "no response body").strip()[:500]
-    errors = payload.get("errors")
-    if errors:
-        return str(errors)[:500]
-    return str(payload.get("error_description") or payload.get("detail") or payload)[:500]
-
-
-def _require_env(name: str) -> str:
-    value = (os.environ.get(name) or "").strip()
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    if _is_placeholder(value):
-        raise RuntimeError(
-            f"Environment variable {name} is using a placeholder value. "
-            "Set the real OAuth app credential."
-        )
-    return value
-
-
-def _is_placeholder(value: str) -> bool:
-    probe = value.strip().lower()
-    if not probe:
-        return True
-    placeholder_tokens = (
-        "nexus-smoke",
-        "example",
-        "replace",
-        "your-",
-        "your_",
-        "changeme",
-        "test-",
-    )
-    return any(token in probe for token in placeholder_tokens)
-
-
-def _generate_code_verifier() -> str:
-    return secrets.token_urlsafe(64)
-
-
-def _build_code_challenge(code_verifier: str) -> str:
-    digest = hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
-
 
 __all__ = [
     "AUTHORIZATION_URL",

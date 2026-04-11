@@ -422,133 +422,43 @@ async def run_provider_import(
         provider,
         provider_account_id=provider_account_id,
     )
-    imported_count = 0
-    skipped_count = 0
-    failed_count = 0
-    results: list[dict[str, Any]] = []
-    run_metadata: dict[str, Any] = {}
     forget_after_import = _should_forget_credentials(account, request)
     credentials_forgotten = False
 
     try:
         artifacts, run_metadata = await _invoke_ingest_handler(provider, account, request)
-        total_artifacts = len(artifacts)
-
-        for artifact in artifacts:
-            artifact_result = {
-                "external_id": artifact.external_id,
-                "url": artifact.url,
-                "title": artifact.title,
-                "status": "pending",
-            }
-
-            if not artifact.external_id or not artifact.url:
-                failed_count += 1
-                artifact_result["status"] = "failed"
-                artifact_result["error"] = "Artifact is missing required external_id or url"
-                results.append(artifact_result)
-                _record_artifact(
-                    user_id=kg_user_id,
-                    provider=provider,
-                    provider_account_id=provider_account_id,
-                    artifact=artifact,
-                    ingest_run_id=str(run.id),
-                    status="failed",
-                    error_message=artifact_result["error"],
-                )
-                continue
-
-            if not request.force and _artifact_exists(kg_user_id, provider, artifact.external_id):
-                skipped_count += 1
-                artifact_result["status"] = "skipped"
-                artifact_result["reason"] = "Artifact already imported"
-                results.append(artifact_result)
-                _record_artifact(
-                    user_id=kg_user_id,
-                    provider=provider,
-                    provider_account_id=provider_account_id,
-                    artifact=artifact,
-                    ingest_run_id=str(run.id),
-                    status="skipped",
-                )
-                continue
-
-            try:
-                summary_result = await summarize_artifact_url(artifact.url)
-                persistence = await persist_summarized_result(
-                    summary_result,
-                    user_sub=auth_user_sub,
-                )
-                if persistence.supabase_duplicate and not request.force:
-                    skipped_count += 1
-                    artifact_result["status"] = "skipped"
-                    artifact_result["reason"] = "Artifact URL already exists in the knowledge graph"
-                else:
-                    imported_count += 1
-                    artifact_result["status"] = "imported"
-                    artifact_result["node_id"] = (
-                        persistence.supabase_node_id or persistence.file_node_id
-                    )
-
-                results.append(artifact_result)
-                _record_artifact(
-                    user_id=kg_user_id,
-                    provider=provider,
-                    provider_account_id=provider_account_id,
-                    artifact=artifact,
-                    ingest_run_id=str(run.id),
-                    status=artifact_result["status"],
-                    persistence=persistence,
-                )
-            except Exception as exc:
-                failed_count += 1
-                artifact_result["status"] = "failed"
-                artifact_result["error"] = str(exc)
-                results.append(artifact_result)
-                _record_artifact(
-                    user_id=kg_user_id,
-                    provider=provider,
-                    provider_account_id=provider_account_id,
-                    artifact=artifact,
-                    ingest_run_id=str(run.id),
-                    status="failed",
-                    error_message=str(exc),
-                )
-
-        if failed_count and (imported_count or skipped_count):
-            status = "partial_success"
-        elif failed_count:
-            status = "failed"
-        else:
-            status = "completed"
-
-        run = _update_run(
-            str(run.id),
-            status=status,
-            total_artifacts=total_artifacts,
-            imported_count=imported_count,
-            skipped_count=skipped_count,
-            failed_count=failed_count,
-            completed_at=_utcnow().isoformat(),
-            metadata=dict(run_metadata or {}),
+        processed = await _process_artifacts(
+            artifacts=artifacts,
+            request=request,
+            provider=provider,
+            provider_account_id=provider_account_id,
+            kg_user_id=kg_user_id,
+            auth_user_sub=auth_user_sub,
+            ingest_run_id=str(run.id),
+        )
+        run = _finalize_run(
+            run_id=str(run.id),
+            total_artifacts=len(artifacts),
+            imported_count=processed["imported_count"],
+            skipped_count=processed["skipped_count"],
+            failed_count=processed["failed_count"],
+            metadata=run_metadata,
         )
         _touch_account_imported_at(account)
-        if forget_after_import:
-            credentials_forgotten = disconnect_provider_account(kg_user_id, provider)
-            if not credentials_forgotten:
-                logger.warning(
-                    "Testing mode requested forget_connection for %s, but account delete returned false.",
-                    provider.value,
-                )
+        credentials_forgotten = _forget_credentials_if_requested(
+            kg_user_id=kg_user_id,
+            provider=provider,
+            forget_after_import=forget_after_import,
+        )
 
         return BulkImportResult(
             provider=provider,
             run=run,
-            total_artifacts=total_artifacts,
-            imported_count=imported_count,
-            skipped_count=skipped_count,
-            failed_count=failed_count,
-            results=results,
+            total_artifacts=len(artifacts),
+            imported_count=processed["imported_count"],
+            skipped_count=processed["skipped_count"],
+            failed_count=processed["failed_count"],
+            results=processed["results"],
             credentials_forgotten=credentials_forgotten,
         )
     except Exception as exc:
@@ -556,9 +466,9 @@ async def run_provider_import(
             str(run.id),
             status="failed",
             total_artifacts=0,
-            imported_count=imported_count,
-            skipped_count=skipped_count,
-            failed_count=max(failed_count, 1),
+            imported_count=0,
+            skipped_count=0,
+            failed_count=1,
             completed_at=_utcnow().isoformat(),
             error_message=str(exc),
         )
@@ -572,6 +482,204 @@ async def run_provider_import(
                     disconnect_exc,
                 )
         raise RuntimeError(f"{provider.value} import failed: {exc}") from exc
+
+
+async def _process_artifacts(
+    *,
+    artifacts: list[ProviderArtifact],
+    request: ImportRequest,
+    provider: NexusProvider,
+    provider_account_id: str | None,
+    kg_user_id: str,
+    auth_user_sub: str,
+    ingest_run_id: str,
+) -> dict[str, Any]:
+    imported_count = 0
+    skipped_count = 0
+    failed_count = 0
+    results: list[dict[str, Any]] = []
+
+    for artifact in artifacts:
+        artifact_result, status = await _process_single_artifact(
+            artifact=artifact,
+            request=request,
+            provider=provider,
+            provider_account_id=provider_account_id,
+            kg_user_id=kg_user_id,
+            auth_user_sub=auth_user_sub,
+            ingest_run_id=ingest_run_id,
+        )
+        results.append(artifact_result)
+        if status == "imported":
+            imported_count += 1
+        elif status == "skipped":
+            skipped_count += 1
+        else:
+            failed_count += 1
+
+    return {
+        "imported_count": imported_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "results": results,
+    }
+
+
+async def _process_single_artifact(
+    *,
+    artifact: ProviderArtifact,
+    request: ImportRequest,
+    provider: NexusProvider,
+    provider_account_id: str | None,
+    kg_user_id: str,
+    auth_user_sub: str,
+    ingest_run_id: str,
+) -> tuple[dict[str, Any], str]:
+    artifact_result = {
+        "external_id": artifact.external_id,
+        "url": artifact.url,
+        "title": artifact.title,
+        "status": "pending",
+    }
+
+    if not artifact.external_id or not artifact.url:
+        return _fail_artifact(
+            artifact=artifact,
+            artifact_result=artifact_result,
+            error_message="Artifact is missing required external_id or url",
+            provider=provider,
+            provider_account_id=provider_account_id,
+            kg_user_id=kg_user_id,
+            ingest_run_id=ingest_run_id,
+        )
+
+    if not request.force and _artifact_exists(kg_user_id, provider, artifact.external_id):
+        artifact_result["status"] = "skipped"
+        artifact_result["reason"] = "Artifact already imported"
+        _record_artifact(
+            user_id=kg_user_id,
+            provider=provider,
+            provider_account_id=provider_account_id,
+            artifact=artifact,
+            ingest_run_id=ingest_run_id,
+            status="skipped",
+        )
+        return artifact_result, "skipped"
+
+    try:
+        summary_result = await summarize_artifact_url(artifact.url)
+        persistence = await persist_summarized_result(
+            summary_result,
+            user_sub=auth_user_sub,
+        )
+        if persistence.supabase_duplicate and not request.force:
+            artifact_result["status"] = "skipped"
+            artifact_result["reason"] = "Artifact URL already exists in the knowledge graph"
+            status = "skipped"
+        else:
+            artifact_result["status"] = "imported"
+            artifact_result["node_id"] = persistence.supabase_node_id or persistence.file_node_id
+            status = "imported"
+        _record_artifact(
+            user_id=kg_user_id,
+            provider=provider,
+            provider_account_id=provider_account_id,
+            artifact=artifact,
+            ingest_run_id=ingest_run_id,
+            status=artifact_result["status"],
+            persistence=persistence,
+        )
+        return artifact_result, status
+    except Exception as exc:
+        return _fail_artifact(
+            artifact=artifact,
+            artifact_result=artifact_result,
+            error_message=str(exc),
+            provider=provider,
+            provider_account_id=provider_account_id,
+            kg_user_id=kg_user_id,
+            ingest_run_id=ingest_run_id,
+        )
+
+
+def _fail_artifact(
+    *,
+    artifact: ProviderArtifact,
+    artifact_result: dict[str, Any],
+    error_message: str,
+    provider: NexusProvider,
+    provider_account_id: str | None,
+    kg_user_id: str,
+    ingest_run_id: str,
+) -> tuple[dict[str, Any], str]:
+    artifact_result["status"] = "failed"
+    artifact_result["error"] = error_message
+    _record_artifact(
+        user_id=kg_user_id,
+        provider=provider,
+        provider_account_id=provider_account_id,
+        artifact=artifact,
+        ingest_run_id=ingest_run_id,
+        status="failed",
+        error_message=error_message,
+    )
+    return artifact_result, "failed"
+
+
+def _finalize_run(
+    *,
+    run_id: str,
+    total_artifacts: int,
+    imported_count: int,
+    skipped_count: int,
+    failed_count: int,
+    metadata: dict[str, Any] | None,
+) -> ImportRun:
+    status = _resolve_run_status(
+        imported_count=imported_count,
+        skipped_count=skipped_count,
+        failed_count=failed_count,
+    )
+    return _update_run(
+        run_id,
+        status=status,
+        total_artifacts=total_artifacts,
+        imported_count=imported_count,
+        skipped_count=skipped_count,
+        failed_count=failed_count,
+        completed_at=_utcnow().isoformat(),
+        metadata=dict(metadata or {}),
+    )
+
+
+def _resolve_run_status(
+    *,
+    imported_count: int,
+    skipped_count: int,
+    failed_count: int,
+) -> str:
+    if failed_count and (imported_count or skipped_count):
+        return "partial_success"
+    if failed_count:
+        return "failed"
+    return "completed"
+
+
+def _forget_credentials_if_requested(
+    *,
+    kg_user_id: str,
+    provider: NexusProvider,
+    forget_after_import: bool,
+) -> bool:
+    if not forget_after_import:
+        return False
+    forgotten = disconnect_provider_account(kg_user_id, provider)
+    if not forgotten:
+        logger.warning(
+            "Testing mode requested forget_connection for %s, but account delete returned false.",
+            provider.value,
+        )
+    return forgotten
 
 
 async def run_all_imports(

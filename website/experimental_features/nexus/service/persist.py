@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from website.core.graph_store import _SOURCE_PREFIX, add_node
+from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
 from website.core.supabase_kg import KGNodeCreate, KGRepository, is_supabase_configured
 
 logger = logging.getLogger("website.experimental_features.nexus.persist")
@@ -194,6 +194,14 @@ def _build_supabase_node_id(source_type: str, title: str) -> str:
     return f"{prefix}-{slug}"
 
 
+def _file_graph_contains_url(source_url: str) -> bool:
+    graph = get_graph()
+    normalized_url = str(source_url or "").strip()
+    if not normalized_url:
+        return False
+    return any(str(node.get("url") or "").strip() == normalized_url for node in graph.get("nodes", []))
+
+
 def _get_cached_existing_types(repo: KGRepository, user_id: str) -> list[str]:
     now = time.monotonic()
     cached = _EXISTING_TYPES_CACHE.get(user_id)
@@ -241,28 +249,12 @@ def _schedule_entity_extraction(
                 logger.info("Entity extraction found 0 entities for %s", node_id)
                 return
 
-            current = (
-                repo._client.table("kg_nodes")
-                .select("metadata")
-                .eq("user_id", str(user_id))
-                .eq("id", node_id)
-                .execute()
-            )
-            current_meta = {}
-            if current.data:
-                current_meta = current.data[0].get("metadata") or {}
-
+            current_meta = repo.get_node_metadata(user_id, node_id)
             merged = {
                 **current_meta,
                 "entities": [entity.model_dump() for entity in extraction.entities],
             }
-            (
-                repo._client.table("kg_nodes")
-                .update({"metadata": merged})
-                .eq("user_id", str(user_id))
-                .eq("id", node_id)
-                .execute()
-            )
+            repo.update_node_metadata(user_id, node_id, merged)
             logger.info("Extracted %d entities for %s", len(extraction.entities), node_id)
         except asyncio.TimeoutError:
             logger.warning("Entity extraction timed out for %s", node_id)
@@ -298,116 +290,33 @@ async def persist_summarized_result(
     payload["summary"] = detailed_summary
     payload["captured_at"] = captured_on.isoformat()
 
-    file_node_id: str | None = None
-    try:
-        file_node_id = add_node(
-            title=str(payload["title"]),
-            source_type=str(payload["source_type"]),
-            source_url=str(payload["source_url"]),
-            summary=payload.get("brief_summary") or payload["summary"][:200],
-            tags=list(payload.get("tags", [])),
-        )
-        payload["node_id"] = file_node_id
-    except Exception as exc:
-        logger.warning("Failed to add node to file KG: %s", exc)
-
     supabase_node_id: str | None = None
     supabase_saved = False
     supabase_duplicate = False
     kg_user_id: str | None = None
+    source_url = str(payload["source_url"])
+    file_duplicate = False
 
     sb = get_supabase_scope(user_sub)
-    if not sb:
-        return PersistenceOutcome(
-            result=payload,
-            file_node_id=file_node_id,
-            supabase_node_id=supabase_node_id,
-            supabase_saved=supabase_saved,
-            supabase_duplicate=supabase_duplicate,
-            kg_user_id=kg_user_id,
-        )
+    file_duplicate = _file_graph_contains_url(source_url)
 
-    repo, kg_user_id = sb
-    try:
-        from website.features.kg_features.embeddings import (
-            find_similar_nodes,
-            generate_embedding,
-        )
-
-        user_uuid = UUID(kg_user_id)
-        supabase_node_id = _build_supabase_node_id(
-            str(payload.get("source_type", "")),
-            str(payload.get("title", "")),
-        )
-
-        if repo.node_exists(user_uuid, str(payload["source_url"])):
-            supabase_duplicate = True
-            return PersistenceOutcome(
-                result=payload,
-                file_node_id=file_node_id,
-                supabase_node_id=supabase_node_id,
-                supabase_saved=supabase_saved,
-                supabase_duplicate=supabase_duplicate,
-                kg_user_id=kg_user_id,
-            )
-
-        embedding: list[float] | None = None
+    if sb:
+        repo, kg_user_id = sb
         try:
-            embed_input = f"{payload.get('title', '')}\n\n{payload.get('summary') or payload.get('brief_summary') or ''}"
-            embedding = generate_embedding(embed_input.strip()[:2000]) or None
+            supabase_node_id, supabase_saved, supabase_duplicate = _persist_supabase_node(
+                payload=payload,
+                repo=repo,
+                kg_user_id=kg_user_id,
+                captured_on=captured_on,
+                brief_summary=brief_summary,
+                detailed_summary=detailed_summary,
+            )
         except Exception as exc:
-            logger.warning("Embedding generation failed: %s", exc)
+            logger.warning("Failed to add node to Supabase: %s", exc)
 
-        node_metadata: dict[str, Any] = {}
-        if embedding:
-            node_metadata["embedding_model"] = "gemini-embedding-001"
-
-        node_create = KGNodeCreate(
-            id=supabase_node_id,
-            name=str(payload["title"]),
-            source_type=str(payload["source_type"]),
-            tags=list(payload.get("tags", [])),
-            url=str(payload["source_url"]),
-            summary=payload.get("brief_summary") or payload["summary"][:200],
-            node_date=captured_on,
-            embedding=embedding,
-            metadata=node_metadata,
-        )
-        repo.add_node(user_uuid, node_create)
-        supabase_saved = True
-
-        if embedding:
-            try:
-                similar = find_similar_nodes(
-                    supabase_client=repo._client,
-                    user_id=kg_user_id,
-                    embedding=embedding,
-                    threshold=0.75,
-                    limit=5,
-                )
-                for hit in similar:
-                    hit_id = hit.get("node_id") or hit.get("id")
-                    hit_similarity = float(hit.get("similarity") or 0.0)
-                    if hit_id and hit_id != node_create.id and hit_similarity >= 0.75:
-                        repo.add_semantic_link(
-                            user_id=user_uuid,
-                            source_id=node_create.id,
-                            target_id=hit_id,
-                            similarity=hit_similarity,
-                        )
-            except Exception as exc:
-                logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)
-
-        _schedule_entity_extraction(
-            repo=repo,
-            user_id=kg_user_id,
-            node_id=node_create.id,
-            title=str(payload["title"]),
-            detailed_summary=detailed_summary,
-            brief_summary=brief_summary,
-        )
-    except Exception as exc:
-        logger.warning("Failed to add node to Supabase: %s", exc)
+    file_node_id = _persist_file_node(payload, skip_duplicate=file_duplicate or supabase_duplicate)
+    if file_node_id:
+        payload["node_id"] = file_node_id
 
     return PersistenceOutcome(
         result=payload,
@@ -417,3 +326,133 @@ async def persist_summarized_result(
         supabase_duplicate=supabase_duplicate,
         kg_user_id=kg_user_id,
     )
+
+
+def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str | None:
+    if skip_duplicate:
+        return None
+    try:
+        return add_node(
+            title=str(payload["title"]),
+            source_type=str(payload["source_type"]),
+            source_url=str(payload["source_url"]),
+            summary=payload.get("brief_summary") or payload["summary"][:200],
+            tags=list(payload.get("tags", [])),
+        )
+    except Exception as exc:
+        logger.warning("Failed to add node to file KG: %s", exc)
+        return None
+
+
+def _persist_supabase_node(
+    *,
+    payload: dict[str, Any],
+    repo: KGRepository,
+    kg_user_id: str,
+    captured_on: date,
+    brief_summary: str,
+    detailed_summary: str,
+) -> tuple[str, bool, bool]:
+    from website.features.kg_features.embeddings import generate_embedding
+
+    user_uuid = UUID(kg_user_id)
+    node_id = _build_supabase_node_id(
+        str(payload.get("source_type", "")),
+        str(payload.get("title", "")),
+    )
+    if repo.node_exists(user_uuid, str(payload["source_url"])):
+        return node_id, False, True
+
+    embedding = _generate_node_embedding(payload)
+    node_create = _build_supabase_node_payload(
+        payload=payload,
+        node_id=node_id,
+        captured_on=captured_on,
+        embedding=embedding,
+    )
+    repo.add_node(user_uuid, node_create)
+
+    if embedding:
+        _create_semantic_links(
+            repo=repo,
+            kg_user_id=kg_user_id,
+            user_uuid=user_uuid,
+            node_id=node_create.id,
+            embedding=embedding,
+        )
+
+    _schedule_entity_extraction(
+        repo=repo,
+        user_id=kg_user_id,
+        node_id=node_create.id,
+        title=str(payload["title"]),
+        detailed_summary=detailed_summary,
+        brief_summary=brief_summary,
+    )
+    return node_id, True, False
+
+
+def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:
+    from website.features.kg_features.embeddings import generate_embedding
+
+    try:
+        embed_input = (
+            f"{payload.get('title', '')}\n\n"
+            f"{payload.get('summary') or payload.get('brief_summary') or ''}"
+        )
+        return generate_embedding(embed_input.strip()[:2000]) or None
+    except Exception as exc:
+        logger.warning("Embedding generation failed: %s", exc)
+        return None
+
+
+def _build_supabase_node_payload(
+    *,
+    payload: dict[str, Any],
+    node_id: str,
+    captured_on: date,
+    embedding: list[float] | None,
+) -> KGNodeCreate:
+    node_metadata: dict[str, Any] = {}
+    if embedding:
+        node_metadata["embedding_model"] = "gemini-embedding-001"
+    return KGNodeCreate(
+        id=node_id,
+        name=str(payload["title"]),
+        source_type=str(payload["source_type"]),
+        tags=list(payload.get("tags", [])),
+        url=str(payload["source_url"]),
+        summary=payload.get("brief_summary") or payload["summary"][:200],
+        node_date=captured_on,
+        embedding=embedding,
+        metadata=node_metadata,
+    )
+
+
+def _create_semantic_links(
+    *,
+    repo: KGRepository,
+    kg_user_id: str,
+    user_uuid: UUID,
+    node_id: str,
+    embedding: list[float],
+) -> None:
+    try:
+        similar = repo.match_similar_nodes(
+            kg_user_id,
+            embedding,
+            threshold=0.75,
+            limit=5,
+        )
+        for hit in similar:
+            hit_id = hit.get("node_id") or hit.get("id")
+            hit_similarity = float(hit.get("similarity") or 0.0)
+            if hit_id and hit_id != node_id and hit_similarity >= 0.75:
+                repo.add_semantic_link(
+                    user_id=user_uuid,
+                    source_id=node_id,
+                    target_id=hit_id,
+                    similarity=hit_similarity,
+                )
+    except Exception as exc:
+        logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)

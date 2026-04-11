@@ -97,14 +97,14 @@ class ProviderTokenStore:
         return accounts
 
     def delete_account(self, user_id: UUID, provider: NexusProvider) -> bool:
-        response = (
+        (
             self._client.table(_ACCOUNT_TABLE)
             .delete()
             .eq("user_id", str(user_id))
             .eq("provider", provider.value)
             .execute()
         )
-        return bool(response.data)
+        return self.get_account(user_id, provider) is None
 
     async def refresh_and_persist(
         self,

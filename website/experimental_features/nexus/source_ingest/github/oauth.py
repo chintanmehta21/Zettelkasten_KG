@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any, Sequence
 from urllib.parse import urlencode
@@ -16,6 +15,10 @@ from website.experimental_features.nexus.source_ingest.common.models import (
 from website.experimental_features.nexus.source_ingest.common.oauth_state import (
     consume_oauth_state,
     issue_oauth_state,
+)
+from website.experimental_features.nexus.source_ingest.common.oauth_utils import (
+    raise_for_oauth_status,
+    require_env,
 )
 
 PROVIDER = NexusProvider.GITHUB
@@ -44,9 +47,9 @@ class GitHubOAuthConfig:
 
 def get_oauth_config() -> GitHubOAuthConfig:
     return GitHubOAuthConfig(
-        client_id=_require_env(CLIENT_ID_ENV),
-        client_secret=_require_env(CLIENT_SECRET_ENV),
-        redirect_uri=_require_env(REDIRECT_URI_ENV),
+        client_id=require_env(CLIENT_ID_ENV),
+        client_secret=require_env(CLIENT_SECRET_ENV),
+        redirect_uri=require_env(REDIRECT_URI_ENV),
     )
 
 
@@ -126,7 +129,12 @@ async def _request_token_set(
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        _raise_for_status(response, "token exchange")
+        raise_for_oauth_status(
+            response,
+            provider_label="GitHub",
+            action="token exchange",
+            json_keys=("error_description", "error"),
+        )
         data = response.json()
     finally:
         if own_client:
@@ -136,53 +144,6 @@ async def _request_token_set(
     if not token_set.access_token:
         raise RuntimeError("GitHub OAuth token exchange did not return an access token.")
     return token_set
-
-
-def _raise_for_status(response: httpx.Response, action: str) -> None:
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        detail = _response_detail(response)
-        raise RuntimeError(
-            f"GitHub OAuth {action} failed with status {response.status_code}: {detail}"
-        ) from exc
-
-
-def _response_detail(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-    except ValueError:
-        return (response.text or "no response body").strip()[:500]
-    return str(payload.get("error_description") or payload.get("error") or payload)[:500]
-
-
-def _require_env(name: str) -> str:
-    value = (os.environ.get(name) or "").strip()
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    if _is_placeholder(value):
-        raise RuntimeError(
-            f"Environment variable {name} is using a placeholder value. "
-            "Set the real OAuth app credential."
-        )
-    return value
-
-
-def _is_placeholder(value: str) -> bool:
-    probe = value.strip().lower()
-    if not probe:
-        return True
-    placeholder_tokens = (
-        "nexus-smoke",
-        "example",
-        "replace",
-        "your-",
-        "your_",
-        "changeme",
-        "test-",
-    )
-    return any(token in probe for token in placeholder_tokens)
-
 
 __all__ = [
     "AUTHORIZATION_URL",
