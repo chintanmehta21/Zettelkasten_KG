@@ -7,7 +7,7 @@ from website.features.api_key_switching.routing import select_starting_model
 
 
 def test_long_content_uses_flash():
-    """Content >8000 chars always routes to gemini-2.5-flash."""
+    """Content at or above the 2000-char threshold routes to gemini-2.5-flash."""
     assert select_starting_model(content_length=9000) == "gemini-2.5-flash"
 
 
@@ -27,7 +27,7 @@ def test_github_always_uses_flash():
 
 
 def test_medium_content_uses_flash():
-    """Content between 2000-8000 chars routes to flash."""
+    """Content between 2000 and larger sizes still routes to flash."""
     assert select_starting_model(content_length=5000) == "gemini-2.5-flash"
 
 

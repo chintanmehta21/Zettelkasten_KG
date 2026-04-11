@@ -17,6 +17,7 @@ from website.features.kg_features import entity_extractor as ext_mod
 from website.features.kg_features.entity_extractor import (
     EntityExtractor,
     ExtractedEntity,
+    ExtractedRelationship,
     ExtractionConfig,
     ExtractionResult,
     _deduplicate_entities,
@@ -99,6 +100,47 @@ def test_deduplicate_entities_by_embedding():
     ]
     kept = _deduplicate_entities(ents_diff_type, embed_fn_diff, threshold=0.90)
     assert len(kept) == 2, "Different-type entities should not dedup"
+
+
+def test_deduplicate_entities_keeps_all_when_embedding_count_mismatches():
+    ents = [
+        ExtractedEntity(id="python", type="LANGUAGE"),
+        ExtractedEntity(id="javascript", type="LANGUAGE"),
+    ]
+
+    deduped = _deduplicate_entities(ents, lambda texts: [[1.0, 0.0, 0.0]], threshold=0.90)
+
+    assert deduped == ents
+
+
+def test_postprocess_builds_clean_copies_without_mutating_input_models():
+    extractor = EntityExtractor(ExtractionConfig(enable_entity_dedup=False))
+    original_entity = ExtractedEntity(id="Python Lang", type="language", description="raw")
+    original_relationship = ExtractedRelationship(
+        source="Python Lang",
+        target="Tensor Flow",
+        type="uses",
+        strength=7,
+        description="raw link",
+    )
+    result = ExtractionResult(
+        entities=[
+            original_entity,
+            ExtractedEntity(id="Tensor Flow", type="framework", description="tool"),
+        ],
+        relationships=[original_relationship],
+    )
+
+    cleaned = extractor._postprocess(result)
+
+    assert original_entity.id == "Python Lang"
+    assert original_entity.type == "language"
+    assert original_relationship.source == "Python Lang"
+    assert original_relationship.type == "uses"
+    assert cleaned.entities[0].id == "python_lang"
+    assert cleaned.entities[0].type == "LANGUAGE"
+    assert cleaned.relationships[0].source == "python_lang"
+    assert cleaned.relationships[0].type == "USES"
 
 
 # ── Test 3 ───────────────────────────────────────────────────────────────────

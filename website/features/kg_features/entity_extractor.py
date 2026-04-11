@@ -145,7 +145,10 @@ def _deduplicate_entities(
     texts = [e.id for e in entities]
     embeddings = embed_fn(texts)
 
-    if not embeddings or any(len(v) == 0 for v in embeddings):
+    if not embeddings or len(embeddings) != len(entities):
+        return entities
+
+    if any(len(v) == 0 for v in embeddings):
         return entities
 
     keep: list[ExtractedEntity] = []
@@ -294,10 +297,13 @@ class EntityExtractor:
 
         normalised_entities: list[ExtractedEntity] = []
         for e in result.entities:
-            e.id = _normalize_id(e.id)
-            e.type = e.type.upper()
-            if e.type in allowed_entity_set and e.id:
-                normalised_entities.append(e)
+            cleaned_entity = ExtractedEntity(
+                id=_normalize_id(e.id),
+                type=e.type.upper(),
+                description=e.description,
+            )
+            if cleaned_entity.type in allowed_entity_set and cleaned_entity.id:
+                normalised_entities.append(cleaned_entity)
 
         if self.config.enable_entity_dedup:
             normalised_entities = _deduplicate_entities(
@@ -310,16 +316,20 @@ class EntityExtractor:
 
         normalised_rels: list[ExtractedRelationship] = []
         for r in result.relationships:
-            r.source = _normalize_id(r.source)
-            r.target = _normalize_id(r.target)
-            r.type = _normalize_relationship_type(r.type)
+            cleaned_relationship = ExtractedRelationship(
+                source=_normalize_id(r.source),
+                target=_normalize_id(r.target),
+                type=_normalize_relationship_type(r.type),
+                strength=r.strength,
+                description=r.description,
+            )
             if (
-                r.type in allowed_rel_set
-                and r.source in valid_ids
-                and r.target in valid_ids
-                and r.source != r.target
+                cleaned_relationship.type in allowed_rel_set
+                and cleaned_relationship.source in valid_ids
+                and cleaned_relationship.target in valid_ids
+                and cleaned_relationship.source != cleaned_relationship.target
             ):
-                normalised_rels.append(r)
+                normalised_rels.append(cleaned_relationship)
 
         return ExtractionResult(
             entities=normalised_entities,

@@ -48,6 +48,23 @@ def test_safety_check_blocks_multiple_statements():
     assert exc_info.value.status_code == 400
 
 
+def test_safety_check_requires_public_user_scope_and_limit():
+    valid_sql = "SELECT name FROM public.kg_nodes WHERE user_id = 'user-123' LIMIT 50"
+    _safety_check(valid_sql, user_id="user-123")
+
+    with pytest.raises(NLQueryError, match="public"):
+        _safety_check("SELECT name FROM kg_nodes WHERE user_id = 'user-123' LIMIT 50", user_id="user-123")
+
+    with pytest.raises(NLQueryError, match="current user"):
+        _safety_check("SELECT name FROM public.kg_nodes LIMIT 50", user_id="user-123")
+
+    with pytest.raises(NLQueryError, match="50 rows"):
+        _safety_check(
+            "SELECT name FROM public.kg_nodes WHERE user_id = 'user-123' LIMIT 51",
+            user_id="user-123",
+        )
+
+
 # ── Test 3 ───────────────────────────────────────────────────────────────────
 
 def test_strip_sql_artifacts_removes_markdown_fences():
@@ -110,9 +127,9 @@ async def test_nl_query_happy_path(stub_settings, mock_supabase_client):
 async def test_nl_query_retry_on_db_error(stub_settings):
     """First RPC raises, retry succeeds → retries == 1."""
     sql_resp_1 = MagicMock()
-    sql_resp_1.text = "SELECT bad_column FROM public.kg_nodes LIMIT 50"
+    sql_resp_1.text = "SELECT bad_column FROM public.kg_nodes WHERE user_id='u' LIMIT 50"
     sql_resp_2 = MagicMock()
-    sql_resp_2.text = "SELECT name FROM public.kg_nodes LIMIT 50"
+    sql_resp_2.text = "SELECT name FROM public.kg_nodes WHERE user_id='u' LIMIT 50"
     answer_resp = MagicMock()
     answer_resp.text = "Here are your nodes."
 

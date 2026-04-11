@@ -37,6 +37,20 @@
     return el.innerHTML;
   }
 
+  function toSafeHttpUrl(rawUrl) {
+    const value = String(rawUrl || '').trim();
+    if (!value) return '';
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const protocol = parsed.protocol.toLowerCase();
+      if (protocol !== 'http:' && protocol !== 'https:') return '';
+      return parsed.href;
+    } catch (err) {
+      void err;
+      return '';
+    }
+  }
+
   // ---- DOM refs ----
   const container = document.getElementById('graph-container');
   const searchInput = document.getElementById('search-input');
@@ -96,15 +110,9 @@
       .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
       .then(() => {
         isLoggedIn = true;
-        viewToggle.classList.remove('hidden');
+        if (viewToggle) viewToggle.classList.remove('hidden');
       })
       .catch(() => { isLoggedIn = false; authToken = null; });
-  }
-
-  // Also check for Supabase auth token in localStorage (toggle visibility)
-  if (authToken) {
-    isLoggedIn = true;
-    viewToggle.classList.remove('hidden');
   }
 
   if (viewToggle) {
@@ -588,7 +596,12 @@
     title.textContent = node.name;
     date.textContent = formatDate(node.date);
     summary.textContent = node.summary || '';
-    link.href = node.url;
+    const safeLink = toSafeHttpUrl(node.url);
+    link.href = safeLink || '#';
+    link.setAttribute('aria-disabled', safeLink ? 'false' : 'true');
+    link.tabIndex = safeLink ? 0 : -1;
+    link.rel = safeLink ? 'noopener noreferrer' : '';
+    link.target = safeLink ? '_blank' : '';
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(
       t => `<span class="kg-tag">${escapeHtml(t)}</span>`

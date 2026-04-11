@@ -129,6 +129,20 @@
     document.body.style.overflow = _bodyLockCount > 0 ? 'hidden' : '';
   }
 
+  function toSafeHttpUrl(rawUrl) {
+    var value = String(rawUrl || '').trim();
+    if (!value) return '';
+    try {
+      var parsed = new URL(value, window.location.origin);
+      var protocol = parsed.protocol.toLowerCase();
+      if (protocol !== 'http:' && protocol !== 'https:') return '';
+      return parsed.href;
+    } catch (err) {
+      void err;
+      return '';
+    }
+  }
+
   async function initSupabase() {
     try {
       var resp = await fetch('/api/auth/config');
@@ -500,7 +514,8 @@
     card.style.animationDelay = String(idx * 0.03) + 's';
     card.tabIndex = 0;
     card.setAttribute('role', 'link');
-    card.setAttribute('aria-label', node.url ? 'Open ' + node.title : node.title);
+    var safeUrl = toSafeHttpUrl(node.url);
+    card.setAttribute('aria-label', safeUrl ? 'Open ' + node.title : node.title);
     card.dataset.nodeId = node.id;
 
     var dateBadge = node.date
@@ -546,16 +561,16 @@
         return;
       }
 
-      if (node.url) {
-        window.open(node.url, '_blank', 'noopener');
+      if (safeUrl) {
+        window.open(safeUrl, '_blank', 'noopener');
       }
     });
 
     card.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      if (!node.url) return;
+      if (!safeUrl) return;
       e.preventDefault();
-      window.open(node.url, '_blank', 'noopener');
+      window.open(safeUrl, '_blank', 'noopener');
     });
 
     return card;

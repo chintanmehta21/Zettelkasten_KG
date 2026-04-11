@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from website.features.kg_features.analytics import (
     GraphMetrics,
+    _compute_with_fallback,
     compute_graph_metrics,
 )
 
@@ -62,3 +63,13 @@ def test_compute_metrics_on_disconnected_graph(disconnected_graph):
     assert metrics.num_communities >= 2
     # All nodes must have a community assignment.
     assert set(metrics.communities.keys()) == {"a", "b", "c", "d"}
+
+
+def test_compute_with_fallback_returns_fallback_value():
+    result = _compute_with_fallback(
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+        lambda: {"safe": True},
+        label="demo metric",
+    )
+
+    assert result == {"safe": True}

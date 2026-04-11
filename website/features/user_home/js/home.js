@@ -19,7 +19,7 @@
   var avatarBtn, avatarImg, avatarFallback, avatarDropdown, avatarWrap;
   var cardGrid, emptyState, zettelCount, userDisplayName;
   var addZettelBtn, addZettelDropdown, addZettelForm, addUrlInput;
-  var addSourceType, addSubmitBtn, addError, addLoading;
+  var addSubmitBtn, addError, addLoading;
   var avatarModal, avatarModalOverlay, avatarModalClose, avatarGrid;
   var menuProfile, menuNexus, menuSignout;
 
@@ -37,7 +37,6 @@
     addZettelDropdown = document.getElementById('add-zettel-dropdown');
     addZettelForm = document.getElementById('add-zettel-form');
     addUrlInput = document.getElementById('add-url-input');
-    addSourceType = document.getElementById('add-source-type');
     addSubmitBtn = document.getElementById('add-submit-btn');
     addError = document.getElementById('add-error');
     addLoading = document.getElementById('add-loading');
@@ -57,6 +56,20 @@
       _bodyLockCount = Math.max(0, _bodyLockCount - 1);
     }
     document.body.style.overflow = _bodyLockCount > 0 ? 'hidden' : '';
+  }
+
+  function toSafeHttpUrl(rawUrl) {
+    var value = String(rawUrl || '').trim();
+    if (!value) return '';
+    try {
+      var parsed = new URL(value, window.location.origin);
+      var protocol = parsed.protocol.toLowerCase();
+      if (protocol !== 'http:' && protocol !== 'https:') return '';
+      return parsed.href;
+    } catch (err) {
+      void err;
+      return '';
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────────
@@ -248,9 +261,10 @@
     previewNodes.forEach(function (node, i) {
       var card = document.createElement('a');
       card.className = 'home-card';
-      card.href = node.url || '#';
-      card.target = '_blank';
-      card.rel = 'noopener';
+      var safeUrl = toSafeHttpUrl(node.url);
+      card.href = safeUrl || '#';
+      card.target = safeUrl ? '_blank' : '';
+      card.rel = safeUrl ? 'noopener noreferrer' : '';
       card.style.animationDelay = (i * 0.08) + 's';
 
       var sourceClass = (node.group || 'web').toLowerCase();
@@ -547,7 +561,7 @@
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ url: url, source_type: addSourceType ? addSourceType.value : '' })
+      body: JSON.stringify({ url: url })
     });
 
     // Create skeleton now — it'll be revealed seamlessly during shatter
@@ -605,9 +619,10 @@
 
       var realCard = document.createElement('a');
       realCard.className = 'home-card home-card-new';
-      realCard.href = newNode.url;
-      realCard.target = '_blank';
-      realCard.rel = 'noopener';
+      var safeNewUrl = toSafeHttpUrl(newNode.url);
+      realCard.href = safeNewUrl || '#';
+      realCard.target = safeNewUrl ? '_blank' : '';
+      realCard.rel = safeNewUrl ? 'noopener noreferrer' : '';
 
       realCard.innerHTML =
         '<h3 class="home-card-title">' + escapeHtml(newNode.name) + '</h3>' +

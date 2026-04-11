@@ -128,6 +128,8 @@ Generate a corrected SELECT query.  Return ONLY raw SQL.
 
 _SQL_FENCE_RE = re.compile(r"```(?:sql)?\s*\n?(.*?)\n?\s*```", re.DOTALL)
 _SELECT_ONLY_RE = re.compile(r"^\s*SELECT\b", re.IGNORECASE)
+_USER_ID_RE = re.compile(r"\buser_id\b\s*=\s*['\"]?([^'\"\s)]+)", re.IGNORECASE)
+_LIMIT_RE = re.compile(r"\bLIMIT\s+(\d+)\b", re.IGNORECASE)
 
 
 def _strip_sql_artifacts(text: str) -> str:
@@ -138,7 +140,7 @@ def _strip_sql_artifacts(text: str) -> str:
     return text.strip()
 
 
-def _safety_check(sql: str) -> None:
+def _safety_check(sql: str, *, user_id: str | None = None) -> None:
     """Raise :class:`NLQueryError` if the SQL is not a pure SELECT statement."""
     stripped = sql.strip().rstrip(";").strip()
     if not _SELECT_ONLY_RE.match(stripped):
@@ -146,6 +148,21 @@ def _safety_check(sql: str) -> None:
     # Reject multiple statements.
     if ";" in stripped:
         raise NLQueryError(400, "Multiple SQL statements are not allowed.")
+    if "public." not in stripped.lower():
+        raise NLQueryError(400, "Queries must target the public knowledge-graph tables.")
+
+    limit_match = _LIMIT_RE.search(stripped)
+    if not limit_match:
+        raise NLQueryError(400, "Queries must include LIMIT 50 or less.")
+    if int(limit_match.group(1)) > 50:
+        raise NLQueryError(400, "Queries cannot request more than 50 rows.")
+
+    if user_id:
+        user_match = _USER_ID_RE.search(stripped)
+        if not user_match:
+            raise NLQueryError(400, "Queries must filter by the current user.")
+        if user_match.group(1) != str(user_id):
+            raise NLQueryError(400, "Queries must stay scoped to the current user.")
 
 
 # ── Query engine ────────────────────────────────────────────────────────────
@@ -189,7 +206,7 @@ class NLGraphQuery:
             sql_raw = sql_response.text
 
             sql = _strip_sql_artifacts(sql_raw)
-            _safety_check(sql)
+            _safety_check(sql, user_id=effective_user_id)
 
             # ── 2. EXPLAIN pre-validation + execute ─────────────────────
             last_error: str | None = None
@@ -241,7 +258,7 @@ class NLGraphQuery:
                     timeout=10.0,
                 )
                 sql = _strip_sql_artifacts(sql_response2.text)
-                _safety_check(sql)
+                _safety_check(sql, user_id=effective_user_id)
 
                 # Execute directly (no second EXPLAIN — 1 retry total per spec).
                 response = self._sb.rpc(

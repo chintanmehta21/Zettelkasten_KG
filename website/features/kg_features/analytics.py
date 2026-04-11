@@ -44,6 +44,20 @@ def _build_networkx_graph(graph: KGGraph) -> nx.Graph:
     return G
 
 
+def _compute_with_fallback(
+    compute_fn,
+    fallback_value,
+    *,
+    label: str,
+):
+    """Run a metric computation and fall back safely on failure."""
+    try:
+        return compute_fn()
+    except Exception as exc:
+        logger.warning("%s failed: %s", label, exc)
+        return fallback_value() if callable(fallback_value) else fallback_value
+
+
 # ── Metric computation ──────────────────────────────────────────────────────
 
 def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
@@ -79,17 +93,21 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         )
 
     # ── PageRank ────────────────────────────────────────────────────────
-    try:
-        pagerank = nx.pagerank(G, alpha=0.85)
-    except Exception as exc:
-        logger.warning("PageRank computation failed: %s", exc)
-        pagerank = {n: 0.0 for n in G.nodes}
+    pagerank = _compute_with_fallback(
+        lambda: nx.pagerank(G, alpha=0.85),
+        lambda: {n: 0.0 for n in G.nodes},
+        label="PageRank computation",
+    )
 
     # ── Community detection (Louvain) ───────────────────────────────────
-    try:
-        community_sets = nx.community.louvain_communities(
+    community_sets = _compute_with_fallback(
+        lambda: nx.community.louvain_communities(
             G, resolution=1.0, seed=42,
-        )
+        ),
+        lambda: [set(G.nodes)],
+        label="Community detection",
+    )
+    try:
         communities: dict[str, int] = {}
         for idx, members in enumerate(community_sets):
             for node_id in members:
@@ -101,18 +119,18 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         num_communities = 1
 
     # ── Betweenness centrality ──────────────────────────────────────────
-    try:
-        betweenness = nx.betweenness_centrality(G, k=min(100, len(G)))
-    except Exception as exc:
-        logger.warning("Betweenness centrality failed: %s", exc)
-        betweenness = {n: 0.0 for n in G.nodes}
+    betweenness = _compute_with_fallback(
+        lambda: nx.betweenness_centrality(G, k=min(100, len(G))),
+        lambda: {n: 0.0 for n in G.nodes},
+        label="Betweenness centrality",
+    )
 
     # ── Closeness centrality ────────────────────────────────────────────
-    try:
-        closeness = nx.closeness_centrality(G, wf_improved=True)
-    except Exception as exc:
-        logger.warning("Closeness centrality failed: %s", exc)
-        closeness = {n: 0.0 for n in G.nodes}
+    closeness = _compute_with_fallback(
+        lambda: nx.closeness_centrality(G, wf_improved=True),
+        lambda: {n: 0.0 for n in G.nodes},
+        label="Closeness centrality",
+    )
 
     # ── Connected components ────────────────────────────────────────────
     num_components = nx.number_connected_components(G)

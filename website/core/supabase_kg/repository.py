@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
 
 from .client import get_supabase_client
@@ -52,6 +53,10 @@ def _normalize_source_type(raw: str) -> str:
     if value in {"", "web", "generic"}:
         return "web"
     return value
+
+
+def _coerce_uuid(user_id: UUID | str) -> UUID:
+    return user_id if isinstance(user_id, UUID) else UUID(str(user_id))
 
 
 class KGRepository:
@@ -408,6 +413,62 @@ class KGRepository:
             return sorted(types_seen)
         except Exception as exc:
             logger.debug("get_distinct_entity_types skipped: %s", exc)
+            return []
+
+    def get_node_metadata(self, user_id: UUID | str, node_id: str) -> dict[str, Any]:
+        """Return node metadata for one node, or an empty dict if missing."""
+        resp = (
+            self._client.table("kg_nodes")
+            .select("metadata")
+            .eq("user_id", str(_coerce_uuid(user_id)))
+            .eq("id", node_id)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            return {}
+        return resp.data[0].get("metadata") or {}
+
+    def update_node_metadata(
+        self,
+        user_id: UUID | str,
+        node_id: str,
+        metadata: dict[str, Any],
+    ) -> bool:
+        """Replace metadata for one node. Returns True on success."""
+        resp = (
+            self._client.table("kg_nodes")
+            .update({"metadata": metadata})
+            .eq("user_id", str(_coerce_uuid(user_id)))
+            .eq("id", node_id)
+            .execute()
+        )
+        return bool(resp.data)
+
+    def match_similar_nodes(
+        self,
+        user_id: UUID | str,
+        embedding: list[float],
+        *,
+        threshold: float = 0.75,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Match similar nodes via the ``match_kg_nodes`` RPC."""
+        if not embedding:
+            return []
+        try:
+            resp = self._client.rpc(
+                "match_kg_nodes",
+                {
+                    "query_embedding": embedding,
+                    "target_user_id": str(_coerce_uuid(user_id)),
+                    "match_threshold": threshold,
+                    "match_count": limit,
+                },
+            ).execute()
+            return resp.data or []
+        except Exception as exc:
+            logger.warning("match_kg_nodes RPC failed: %s", exc)
             return []
 
     # ── Graph (full) ─────────────────────────────────────────────────────
