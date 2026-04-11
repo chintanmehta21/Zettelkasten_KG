@@ -88,6 +88,59 @@ jobs:
     environment: production
     timeout-minutes: 15
     steps:
+      # Build the container .env body by iterating EVERY production
+      # environment secret via toJSON(secrets). This eliminates the old
+      # anti-pattern of 3 hardcoded key lists (new_envs.txt, sync script,
+      # and this workflow) drifting apart — adding a new secret is now a
+      # one-line edit in new_envs.txt + rerun of set_github_secrets.sh.
+      #
+      # BLOCKLIST: secrets consumed by the workflow itself (SSH, docker
+      #            login, or GH's built-in GITHUB_TOKEN) that must NOT
+      #            be written to the app's .env.
+      # RENAME_MAP: GH secret name -> container env var name. Needed
+      #            because GH reserves the GITHUB_ prefix, so production
+      #            uses GH_*_FOR_NOTES which must remap to GITHUB_TOKEN /
+      #            GITHUB_REPO at deploy time.
+      - name: Build container .env body from environment secrets
+        id: env
+        env:
+          SECRETS_JSON: ${{ toJSON(secrets) }}
+          TARGET_HOST: ${{ inputs.target_hostname || 'zettelkasten.in' }}
+        run: |
+          set -euo pipefail
+
+          BLOCKLIST='["DROPLET_HOST","DROPLET_SSH_USER","DROPLET_SSH_PORT","DROPLET_SSH_KEY","GHCR_READ_PAT","GITHUB_TOKEN"]'
+          RENAME_MAP='{"GH_TOKEN_FOR_NOTES":"GITHUB_TOKEN","GH_REPO_FOR_NOTES":"GITHUB_REPO"}'
+
+          SECRETS_BODY=$(printf '%s' "$SECRETS_JSON" | jq -r \
+            --argjson blocklist "$BLOCKLIST" \
+            --argjson rename "$RENAME_MAP" '
+            to_entries
+            | map(select(.key as $k | ($blocklist | index($k)) | not))
+            | map(.key = ($rename[.key] // .key))
+            | map(select(.value != null and .value != ""))
+            | sort_by(.key)
+            | map("\(.key)=\(.value)")
+            | .[]
+          ')
+
+          STATIC_BODY=$(printf '%s\n' \
+            "WEBHOOK_MODE=true" \
+            "WEBHOOK_PORT=10000" \
+            "WEBHOOK_URL=https://${TARGET_HOST}" \
+            "NEXUS_ENABLED=true")
+
+          FULL_ENV="${SECRETS_BODY}"$'\n'"${STATIC_BODY}"
+
+          {
+            echo "env_body<<ENV_BODY_EOF"
+            printf '%s\n' "$FULL_ENV"
+            echo "ENV_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          secret_count=$(printf '%s\n' "$SECRETS_BODY" | grep -c '=' || true)
+          echo "Built .env with ${secret_count} secret line(s) + 4 static line(s)"
+
       - name: Write .env on droplet and pull image
         uses: appleboy/ssh-action@v1
         with:
@@ -95,57 +148,18 @@ jobs:
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
-          envs: GHCR_READ_PAT,TELEGRAM_BOT_TOKEN,ALLOWED_CHAT_ID,WEBHOOK_SECRET,GEMINI_API_KEYS,SUPABASE_URL,SUPABASE_ANON_KEY,GH_TOKEN_FOR_NOTES,GH_REPO_FOR_NOTES,NEXUS_GOOGLE_CLIENT_ID,NEXUS_GOOGLE_CLIENT_SECRET,NEXUS_GITHUB_CLIENT_ID,NEXUS_GITHUB_CLIENT_SECRET,NEXUS_REDDIT_CLIENT_ID,NEXUS_REDDIT_CLIENT_SECRET,NEXUS_TWITTER_CLIENT_ID,NEXUS_TWITTER_CLIENT_SECRET,NEXUS_TOKEN_ENCRYPTION_KEY,SHA,TARGET_HOST
+          envs: ENV_BODY,GHCR_READ_PAT,SHA
           script: |
             set -euo pipefail
 
             echo "$GHCR_READ_PAT" | sudo docker login ghcr.io -u chintanmehta21 --password-stdin
 
-            sudo tee /opt/zettelkasten/compose/.env > /dev/null <<EOF
-            TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-            ALLOWED_CHAT_ID=${ALLOWED_CHAT_ID}
-            WEBHOOK_MODE=true
-            WEBHOOK_PORT=10000
-            WEBHOOK_URL=https://${TARGET_HOST}
-            WEBHOOK_SECRET=${WEBHOOK_SECRET}
-            GEMINI_API_KEYS=${GEMINI_API_KEYS}
-            SUPABASE_URL=${SUPABASE_URL}
-            SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-            GITHUB_TOKEN=${GH_TOKEN_FOR_NOTES}
-            GITHUB_REPO=${GH_REPO_FOR_NOTES}
-            NEXUS_ENABLED=true
-            NEXUS_GOOGLE_CLIENT_ID=${NEXUS_GOOGLE_CLIENT_ID}
-            NEXUS_GOOGLE_CLIENT_SECRET=${NEXUS_GOOGLE_CLIENT_SECRET}
-            NEXUS_GITHUB_CLIENT_ID=${NEXUS_GITHUB_CLIENT_ID}
-            NEXUS_GITHUB_CLIENT_SECRET=${NEXUS_GITHUB_CLIENT_SECRET}
-            NEXUS_REDDIT_CLIENT_ID=${NEXUS_REDDIT_CLIENT_ID}
-            NEXUS_REDDIT_CLIENT_SECRET=${NEXUS_REDDIT_CLIENT_SECRET}
-            NEXUS_TWITTER_CLIENT_ID=${NEXUS_TWITTER_CLIENT_ID}
-            NEXUS_TWITTER_CLIENT_SECRET=${NEXUS_TWITTER_CLIENT_SECRET}
-            NEXUS_TOKEN_ENCRYPTION_KEY=${NEXUS_TOKEN_ENCRYPTION_KEY}
-            EOF
+            printf '%s\n' "$ENV_BODY" | sudo tee /opt/zettelkasten/compose/.env > /dev/null
             sudo chmod 600 /opt/zettelkasten/compose/.env
             sudo chown deploy:deploy /opt/zettelkasten/compose/.env
 
             sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"
         env:
+          ENV_BODY: ${{ steps.env.outputs.env_body }}
           GHCR_READ_PAT: ${{ secrets.GHCR_READ_PAT }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          ALLOWED_CHAT_ID: ${{ secrets.ALLOWED_CHAT_ID }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GH_TOKEN_FOR_NOTES: ${{ secrets.GH_TOKEN_FOR_NOTES }}
-          GH_REPO_FOR_NOTES: ${{ secrets.GH_REPO_FOR_NOTES }}
-          NEXUS_GOOGLE_CLIENT_ID: ${{ secrets.NEXUS_GOOGLE_CLIENT_ID }}
-          NEXUS_GOOGLE_CLIENT_SECRET: ${{ secrets.NEXUS_GOOGLE_CLIENT_SECRET }}
-          NEXUS_GITHUB_CLIENT_ID: ${{ secrets.NEXUS_GITHUB_CLIENT_ID }}
-          NEXUS_GITHUB_CLIENT_SECRET: ${{ secrets.NEXUS_GITHUB_CLIENT_SECRET }}
-          NEXUS_REDDIT_CLIENT_ID: ${{ secrets.NEXUS_REDDIT_CLIENT_ID }}
-          NEXUS_REDDIT_CLIENT_SECRET: ${{ secrets.NEXUS_REDDIT_CLIENT_SECRET }}
-          NEXUS_TWITTER_CLIENT_ID: ${{ secrets.NEXUS_TWITTER_CLIENT_ID }}
-          NEXUS_TWITTER_CLIENT_SECRET: ${{ secrets.NEXUS_TWITTER_CLIENT_SECRET }}
-          NEXUS_TOKEN_ENCRYPTION_KEY: ${{ secrets.NEXUS_TOKEN_ENCRYPTION_KEY }}
           SHA: ${{ github.sha }}
-          TARGET_HOST: ${{ inputs.target_hostname || 'zettelkasten.in' }}

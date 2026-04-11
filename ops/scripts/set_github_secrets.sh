@@ -1,13 +1,31 @@
 #!/usr/bin/env bash
-# One-shot script to populate GitHub production environment secrets from
-# new_envs.txt. Does NOT echo any secret values.
+# Auto-discover secrets from new_envs.txt and sync to GitHub Environment.
+#
+# Source of truth:
+#   new_envs.txt — every KEY:VALUE line under a "=== SECRETS: * ===" section
+#   is synced. Lines under LOCAL/PUBLIC/DOCS sections are ignored.
+#
+# Rename directive:
+#   Prepend a "# gh-name: NEW_NAME" comment ABOVE a KEY:VALUE line to upload
+#   that key under a different name in GitHub. Used for keys that conflict
+#   with GH's reserved GITHUB_ prefix (e.g., GITHUB_TOKEN_FOR_NOTES must
+#   upload as GH_TOKEN_FOR_NOTES).
+#
+# Empty values:
+#   Lines with empty values (e.g. "FOO:") are skipped, NOT uploaded as
+#   empty strings. This lets you commit placeholders for keys you haven't
+#   filled in yet without overwriting existing GH secrets.
+#
+# Special case:
+#   DROPLET_SSH_KEY is uploaded from ~/.ssh/zettelkasten_deploy, NOT from
+#   new_envs.txt. The multi-line value in new_envs.txt is a local backup.
 #
 # Usage:  bash ops/scripts/set_github_secrets.sh
 #
 # Requirements:
 #   - gh CLI authenticated with `repo` scope
-#   - new_envs.txt in the repo root
-#   - $HOME/.ssh/zettelkasten_deploy (for DROPLET_SSH_KEY)
+#   - new_envs.txt in repo root
+#   - ~/.ssh/zettelkasten_deploy for DROPLET_SSH_KEY
 
 set -euo pipefail
 
@@ -15,7 +33,6 @@ REPO="chintanmehta21/Zettelkasten_KG"
 ENV_NAME="production"
 SRC_FILE="new_envs.txt"
 SSH_KEY_FILE="$HOME/.ssh/zettelkasten_deploy"
-REDDIT_PLACEHOLDER="skip-not-configured"
 
 if [ ! -f "$SRC_FILE" ]; then
   echo "ERROR: $SRC_FILE not found" >&2
@@ -27,65 +44,115 @@ if [ ! -f "$SSH_KEY_FILE" ]; then
   exit 1
 fi
 
-# Read a "KEY:value" single-line entry from new_envs.txt.
-# Strips only the first colon to preserve colon-containing values.
-read_field() {
-  local key="$1"
-  grep -m1 "^${key}:" "$SRC_FILE" | sed -E "s|^${key}:||"
-}
+DRY_RUN="${DRY_RUN:-0}"
 
-# Set a single-line secret. Empty values get replaced with placeholder.
 set_secret() {
   local name="$1"
   local value="$2"
-  if [ -z "$value" ]; then
-    value="$REDDIT_PLACEHOLDER"
+  if [ "$DRY_RUN" = "1" ]; then
+    local bytes
+    bytes=$(printf '%s' "$value" | wc -c | tr -d ' ')
+    echo "  [dry-run] would set $name (${bytes} bytes)"
+    return
   fi
   printf '%s' "$value" | gh secret set "$name" \
     --env "$ENV_NAME" --repo "$REPO" --body -
   echo "  set $name"
 }
 
-# Set a multi-line secret from a file path.
 set_secret_file() {
   local name="$1"
   local path="$2"
+  if [ "$DRY_RUN" = "1" ]; then
+    local bytes
+    bytes=$(wc -c < "$path" | tr -d ' ')
+    echo "  [dry-run] would set $name from $path (${bytes} bytes)"
+    return
+  fi
   gh secret set "$name" --env "$ENV_NAME" --repo "$REPO" < "$path"
   echo "  set $name (from file)"
 }
 
-echo "Populating $ENV_NAME environment secrets for $REPO..."
+echo "Populating $ENV_NAME secrets for $REPO from $SRC_FILE..."
 echo ""
 
-# ── Core app secrets ─────────────────────────────────────────────────
-set_secret TELEGRAM_BOT_TOKEN       "$(read_field TELEGRAM_BOT_TOKEN)"
-set_secret ALLOWED_CHAT_ID          "$(read_field ALLOWED_CHAT_ID)"
-set_secret WEBHOOK_SECRET           "$(read_field WEBHOOK_SECRET)"
-set_secret SUPABASE_URL             "$(read_field SUPABASE_URL)"
-set_secret SUPABASE_ANON_KEY        "$(read_field SUPABASE_ANON_KEY)"
-set_secret GEMINI_API_KEYS          "$(read_field GEMINI_API_KEYS)"
+category=""
+section=""
+pending_rename=""
+count_set=0
+count_skipped_empty=0
+count_renamed=0
 
-# ── GitHub notes pusher (renamed from GITHUB_*_FOR_NOTES to GH_*_FOR_NOTES) ─
-set_secret GH_TOKEN_FOR_NOTES       "$(read_field GITHUB_TOKEN_FOR_NOTES)"
-set_secret GH_REPO_FOR_NOTES        "$(read_field GITHUB_REPO_FOR_NOTES)"
+while IFS= read -r line || [ -n "$line" ]; do
+  # Strip trailing carriage returns (CRLF files)
+  line="${line%$'\r'}"
 
-# ── GHCR pull token ──────────────────────────────────────────────────
-set_secret GHCR_READ_PAT            "$(read_field GHCR_READ_PAT)"
+  # Section headers: === CATEGORY: NAME ===
+  if [[ "$line" =~ ^===[[:space:]]*([A-Z]+):[[:space:]]*(.+[^[:space:]])[[:space:]]*===$ ]]; then
+    category="${BASH_REMATCH[1]}"
+    section="${BASH_REMATCH[2]}"
+    pending_rename=""
+    if [ "$category" = "SECRETS" ]; then
+      echo "── [$section] ──────────────────────"
+    fi
+    continue
+  fi
 
-# ── Nexus OAuth providers ────────────────────────────────────────────
-set_secret NEXUS_GOOGLE_CLIENT_ID       "$(read_field NEXUS_GOOGLE_CLIENT_ID)"
-set_secret NEXUS_GOOGLE_CLIENT_SECRET   "$(read_field NEXUS_GOOGLE_CLIENT_SECRET)"
-set_secret NEXUS_GITHUB_CLIENT_ID       "$(read_field NEXUS_GITHUB_CLIENT_ID)"
-set_secret NEXUS_GITHUB_CLIENT_SECRET   "$(read_field NEXUS_GITHUB_CLIENT_SECRET)"
-set_secret NEXUS_REDDIT_CLIENT_ID       "$(read_field NEXUS_REDDIT_CLIENT_ID)"
-set_secret NEXUS_REDDIT_CLIENT_SECRET   "$(read_field NEXUS_REDDIT_CLIENT_SECRET)"
-set_secret NEXUS_TWITTER_CLIENT_ID      "$(read_field NEXUS_TWITTER_CLIENT_ID)"
-set_secret NEXUS_TWITTER_CLIENT_SECRET  "$(read_field NEXUS_TWITTER_CLIENT_SECRET)"
-set_secret NEXUS_TOKEN_ENCRYPTION_KEY   "$(read_field NEXUS_TOKEN_ENCRYPTION_KEY)"
+  # gh-name directive: # gh-name: NEW_NAME
+  if [[ "$line" =~ ^#[[:space:]]*gh-name:[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*$ ]]; then
+    pending_rename="${BASH_REMATCH[1]}"
+    continue
+  fi
 
-# ── Droplet SSH deploy key (multi-line, from ~/.ssh file) ────────────
+  # Comments and blank lines — blank lines break pending_rename adjacency
+  if [[ -z "$line" ]]; then
+    pending_rename=""
+    continue
+  fi
+  if [[ "$line" =~ ^# ]]; then
+    continue
+  fi
+
+  # Only process KEY:VALUE lines inside SECRETS sections
+  if [ "$category" != "SECRETS" ]; then
+    pending_rename=""
+    continue
+  fi
+
+  # Parse KEY:VALUE (first colon splits; value may contain further colons)
+  if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*):(.*)$ ]]; then
+    key="${BASH_REMATCH[1]}"
+    value="${BASH_REMATCH[2]}"
+
+    if [ -n "$pending_rename" ]; then
+      upload_name="$pending_rename"
+      count_renamed=$((count_renamed + 1))
+    else
+      upload_name="$key"
+    fi
+    pending_rename=""
+
+    if [ -z "$value" ]; then
+      echo "  skip $upload_name (empty)"
+      count_skipped_empty=$((count_skipped_empty + 1))
+      continue
+    fi
+
+    set_secret "$upload_name" "$value"
+    count_set=$((count_set + 1))
+  fi
+done < "$SRC_FILE"
+
+echo ""
+echo "── [DROPLET_SSH_KEY from file] ──────"
 set_secret_file DROPLET_SSH_KEY "$SSH_KEY_FILE"
+count_set=$((count_set + 1))
 
 echo ""
-echo "Done. Verifying..."
+echo "Done."
+echo "  $count_set secret(s) uploaded"
+echo "  $count_skipped_empty empty value(s) skipped"
+echo "  $count_renamed rename(s) applied via # gh-name directive"
+echo ""
+echo "Verifying..."
 gh secret list --env "$ENV_NAME" --repo "$REPO"
