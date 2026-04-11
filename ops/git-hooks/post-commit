@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# post-commit hook — claude-mem queue writer.
+#
+# Fires on every commit from every tool that uses `git commit` — Claude Code
+# CLI, Claude Code embedded in Claude Desktop, Codex CLI, Cursor, VS Code,
+# JetBrains, GitHub Desktop (when hooks enabled), plain Git Bash, cmd, or
+# PowerShell. Writes a structured entry to .claude-mem-queue/ that Claude Code
+# drains at its next session start and converts into proper observations via
+# its PostToolUse hook flow.
+#
+# This is the cross-LLM / cross-GUI "PostToolUse equivalent".
+#
+# Hook systems we could have used, and why this one is still canonical:
+#   - Codex CLI shell hooks: disabled on Windows, fire only on Bash tool use
+#     on Linux (per developers.openai.com/codex/hooks). Unusable on Windows.
+#   - Codex Desktop plugin hooks: supported via hooks.json + scripts/ inside
+#     a plugin with a .codex-plugin/plugin.json marker. Uses the same schema
+#     as Claude Code plugins and honors ${CLAUDE_PLUGIN_ROOT}. Event surface
+#     is narrower than Claude Code (at least Stop is supported, PostToolUse
+#     likely not). Useful for session-end capture but not per-tool capture.
+#   - Claude Code PostToolUse hooks: supported natively, already wired by the
+#     thedotmack/claude-mem plugin at ~/.claude/plugins/. Per-tool granularity.
+#   - Git hooks (this file): fire on every `git commit` from every tool that
+#     shells out to git.exe — Claude Code CLI, Claude Code Desktop (embedded
+#     in Claude Desktop), Codex Desktop (Appx-sandboxed), Cursor, VS Code,
+#     JetBrains, GitHub Desktop, plain Git Bash, cmd, PowerShell. The only
+#     layer shared by every tool. This is why git hooks are the write path
+#     for cross-tool capture even though they only fire at commit-time.
+#
+# Activation (run once per clone):
+#   git config core.hooksPath ops/git-hooks
+#
+# Detection chain for the "tool" tag (tried in order, first hit wins):
+#   1. $CLAUDE_MEM_AUTHOR_TOOL — explicit manual override
+#   2. Tool-set env vars inherited by git's child process:
+#        CLAUDECODE / CLAUDE_CODE_ENTRYPOINT  → claude-code (CLI or Desktop)
+#        CURSOR_TRACE_ID                      → cursor
+#        TERM_PROGRAM=vscode                  → vscode
+#        JETBRAINS_IDE, TERMINAL_EMULATOR     → jetbrains
+#        CODEX_HOME / OPENAI_CODEX            → codex-cli (if Codex sets them)
+#   3. PowerShell process-tree walk — single Get-CimInstance call walks up
+#      8 ancestors and matches known process names / command lines. Catches
+#      GUIs that don't set their own env vars.
+#   4. Fallback: "unknown" — still captured, Claude Code can re-tag manually.
+#
+# POSIX-compatible; no bashisms beyond basic test/printf.
+
+set -eu
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+QUEUE_DIR="$REPO_ROOT/.claude-mem-queue"
+mkdir -p "$QUEUE_DIR"
+
+SHA=$(git rev-parse --short HEAD)
+FULL_SHA=$(git rev-parse HEAD)
+TS=$(date -u +"%Y%m%dT%H%M%SZ")
+AUTHOR=$(git log -1 --pretty=%an)
+SUBJECT=$(git log -1 --pretty=%s)
+BODY=$(git log -1 --pretty=%b)
+FILES=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null || true)
+STAT=$(git diff-tree --no-commit-id --numstat -r HEAD 2>/dev/null || true)
+
+# Skip pure-merge commits — they don't represent new work.
+PARENT_COUNT=$(git cat-file -p HEAD | grep -c '^parent ' || true)
+if [ "$PARENT_COUNT" -gt 1 ]; then
+  exit 0
+fi
+
+# ---- Tool detection ---------------------------------------------------------
+
+TOOL="${CLAUDE_MEM_AUTHOR_TOOL:-}"
+DETECTION_METHOD=""
+
+# Layer 2: well-known tool env vars that propagate into git's environment.
+if [ -z "$TOOL" ]; then
+  if [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_CODE_SESSION:-}" ] || [ -n "${CLAUDE_CODE_ENTRYPOINT:-}" ]; then
+    TOOL="claude-code"
+    # Preserve the entrypoint (cli / claude-desktop / vscode-extension / etc).
+    if [ -n "${CLAUDE_CODE_ENTRYPOINT:-}" ]; then
+      TOOL="claude-code (${CLAUDE_CODE_ENTRYPOINT})"
+    fi
+    DETECTION_METHOD="env:CLAUDECODE"
+  elif [ "${CODEX_INTERNAL_ORIGINATOR_OVERRIDE:-}" = "Codex Desktop" ] || { [ -n "${CODEX_SHELL:-}" ] && [ -n "${CODEX_THREAD_ID:-}" ]; }; then
+    TOOL="codex-desktop"
+    DETECTION_METHOD="env:CODEX_DESKTOP"
+  elif [ -n "${CODEX_HOME:-}" ] || [ -n "${OPENAI_CODEX:-}" ] || [ -n "${CODEX_SESSION_ID:-}" ]; then
+    TOOL="codex-cli"
+    DETECTION_METHOD="env:CODEX_*"
+  elif [ -n "${CURSOR_TRACE_ID:-}" ]; then
+    TOOL="cursor"
+    DETECTION_METHOD="env:CURSOR_TRACE_ID"
+  elif [ "${TERM_PROGRAM:-}" = "vscode" ]; then
+    TOOL="vscode"
+    DETECTION_METHOD="env:TERM_PROGRAM"
+  elif [ -n "${JETBRAINS_IDE:-}" ] || [ -n "${TERMINAL_EMULATOR:-}" ]; then
+    TOOL="jetbrains"
+    DETECTION_METHOD="env:JETBRAINS_IDE"
+  fi
+fi
+
+# Layer 3: PowerShell single-shot process-tree walk. Runs only on Windows and
+# only if env detection failed. ~300-500ms cost — acceptable for commits.
+#
+# Three historical bugs this implementation avoids:
+#   1. `$pid` is a read-only automatic variable in PowerShell — assigning to
+#      it silently fails. We use `$cur` instead.
+#   2. `powershell.exe -Command "<script>" -- "$$"` does NOT populate $args
+#      the way you'd expect; arg pass-through to -Command is unreliable.
+#   3. Bash's `$$` under Git-for-Windows / MSYS2 is the MSYS shell PID, which
+#      is NOT a real Win32 PID. PowerShell's `Get-CimInstance Win32_Process`
+#      cannot see it, so the walk returns nothing and detection falls through.
+#      THE FIX: seed the walk from PowerShell's own `$PID` (always a real
+#      Win32 PID) and start the walk from its ParentProcessId. That parent
+#      is the bash.exe that the hook ran in, and the chain from there climbs
+#      through git.exe up to the tool that invoked the commit.
+if [ -z "$TOOL" ] && command -v powershell.exe >/dev/null 2>&1; then
+  TREE=$(powershell.exe -NoProfile -Command '
+$cur = (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").ParentProcessId
+for ($i = 0; $i -lt 14 -and $cur -gt 0; $i++) {
+  try {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$cur" -ErrorAction Stop
+  } catch { break }
+  if (-not $p) { break }
+  "$($p.Name)|$($p.CommandLine)"
+  $cur = $p.ParentProcessId
+}
+' 2>/dev/null | tr -d '\r' || true)
+  if [ -n "$TREE" ]; then
+    # First match in the ancestor chain wins. Order matters: we look for the
+    # most specific (Claude Code, Codex) before generic editors (Cursor, VS
+    # Code), because Claude Code is often a child of an editor.
+    if printf '%s\n' "$TREE" | grep -qiE 'claude-code|claude\.exe|\\.claude\\'; then
+      # Differentiate Claude Code CLI vs Claude Code embedded in Claude Desktop.
+      # Claude Desktop ships its Claude Code binary at
+      # %APPDATA%\Claude\claude-code\<ver>\claude.exe — detect that path.
+      if printf '%s\n' "$TREE" | grep -qiE 'AppData.Roaming.Claude.claude-code'; then
+        TOOL="claude-code (desktop)"
+        DETECTION_METHOD="proc:claude-desktop"
+      else
+        TOOL="claude-code (cli)"
+        DETECTION_METHOD="proc:claude-cli"
+      fi
+    elif printf '%s\n' "$TREE" | grep -qiE 'Codex\.exe|codex\.exe'; then
+      # Differentiate Codex Desktop (Appx-packaged, runs from WindowsApps) vs
+      # a hypothetical standalone Codex CLI on PATH. Codex Desktop's binaries
+      # live under C:\Program Files\WindowsApps\OpenAI.Codex_<ver>\.
+      if printf '%s\n' "$TREE" | grep -qiE 'WindowsApps.OpenAI\.Codex'; then
+        TOOL="codex-desktop"
+        DETECTION_METHOD="proc:codex-desktop"
+      else
+        TOOL="codex-cli"
+        DETECTION_METHOD="proc:codex-cli"
+      fi
+    elif printf '%s\n' "$TREE" | grep -qi 'cursor\.exe'; then
+      TOOL="cursor"
+      DETECTION_METHOD="proc:cursor"
+    elif printf '%s\n' "$TREE" | grep -qi 'code\.exe'; then
+      TOOL="vscode"
+      DETECTION_METHOD="proc:vscode"
+    elif printf '%s\n' "$TREE" | grep -qiE 'idea64|webstorm|pycharm|studio64'; then
+      TOOL="jetbrains"
+      DETECTION_METHOD="proc:jetbrains"
+    elif printf '%s\n' "$TREE" | grep -qi 'GitHubDesktop\.exe'; then
+      TOOL="github-desktop"
+      DETECTION_METHOD="proc:gh-desktop"
+    elif printf '%s\n' "$TREE" | grep -qi 'SourceTree\.exe'; then
+      TOOL="sourcetree"
+      DETECTION_METHOD="proc:sourcetree"
+    fi
+  fi
+fi
+
+# Layer 4: give up and record "unknown". The entry still lands in the queue,
+# and the full walked process tree is dumped into the body so the next session
+# can see exactly what the walk returned and refine detection.
+if [ -z "$TOOL" ]; then
+  TOOL="unknown"
+  if [ -n "${TREE:-}" ]; then
+    TREE_LINE_COUNT=$(printf '%s\n' "$TREE" | grep -c '|' || true)
+    DETECTION_METHOD="none (walked ${TREE_LINE_COUNT} procs, no pattern hit)"
+  else
+    DETECTION_METHOD="none (ps walk empty or failed)"
+  fi
+fi
+
+# ---- Write queue entry ------------------------------------------------------
+
+OUT="$QUEUE_DIR/${TS}_${SHA}.md"
+{
+  printf -- '---\n'
+  printf 'sha: %s\n' "$FULL_SHA"
+  printf 'short_sha: %s\n' "$SHA"
+  printf 'timestamp_utc: %s\n' "$TS"
+  printf 'author: %s\n' "$AUTHOR"
+  printf 'tool: %s\n' "$TOOL"
+  printf 'detection: %s\n' "$DETECTION_METHOD"
+  printf -- '---\n\n'
+  printf '# %s\n\n' "$SUBJECT"
+  if [ -n "$BODY" ]; then
+    printf '%s\n\n' "$BODY"
+  fi
+  printf '## Files changed\n\n'
+  printf '```\n%s\n```\n\n' "$STAT"
+  if [ "$TOOL" = "unknown" ]; then
+    printf '## Process-tree diagnostic (attribution fell through)\n\n'
+    printf '```\n%s\n```\n\n' "${TREE:-<ps walk returned nothing>}"
+  fi
+  printf '## Hint for claude-mem\n\n'
+  printf 'Claude Code: at session start, read any files under `.claude-mem-queue/`, '
+  printf 'generate observations (type inferred from commit prefix: feat→feature, '
+  printf 'fix→bugfix, refactor→refactor, docs/test→change, else discovery), '
+  printf 'then delete the queue file.\n'
+} > "$OUT"
+
+exit 0
