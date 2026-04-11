@@ -63,3 +63,6 @@ supabase/.env
 
 # Nexus OAuth secrets — never publish
 website/experimental_features/nexus/nexus_env.txt
+
+# Local plaintext secret sources (never publish)
+new_envs.txt
