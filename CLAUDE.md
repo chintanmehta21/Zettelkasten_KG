@@ -140,11 +140,96 @@ Security-conscious URL handling: `validate_url()` blocks private/reserved IPs (S
 
 `models/capture.py` defines the shared Pydantic models: `SourceType` (enum), `CaptureRequest`, `ExtractedContent`, `ProcessedNote`. All pipeline stages communicate through these.
 
+## Code Navigation (smart-explore is the default)
+
+For **any code file in this repo** (`*.py`, `*.ts`, `*.tsx`, `*.js`, `*.jsx`, `*.go`, `*.rs`, `*.java`, `*.cs`, etc.), always prefer the claude-mem `smart-explore` skill over `Read` / `Grep` / `Glob`:
+
+1. **Discover** with `smart_search(query=..., path="./telegram_bot")` — replaces the Glob → Grep → Read cycle.
+2. **Map a file** with `smart_outline(file_path=...)` — replaces reading a full file.
+3. **Zoom to one symbol** with `smart_unfold(file_path=..., symbol_name=...)` — replaces reading a range.
+
+**Fallback ladder** (use standard tools *only* when smart-explore can't handle the task):
+- File is <100 lines, a non-code file (JSON/YAML/TOML/Markdown/config), or `.env*` → use `Read`.
+- Need exact string / regex match (e.g., hunting `TODO`, a log string, a specific import path) → use `Grep`.
+- Need filesystem path patterns (e.g., all test files, all Dockerfiles) → use `Glob`.
+- Need cross-file narrative synthesis across 6+ files → dispatch the `Explore` agent.
+- `smart_search` returns zero hits *and* the target is known to exist → fall back to `Grep` with the same query, then `Read` the single matching file.
+
+Rule of thumb: **the question before every code-file read is "can I get a structural overview first?"** If yes, smart-explore.
+
+## Multi-phase Work (make-plan → do)
+
+Any task that spans **2+ phases, 3+ files, or requires verification gates** must be driven by the `make-plan` → `do` skill pair from claude-mem:
+
+1. **`make-plan`** — Phase 0 is always Documentation Discovery (no implementation until docs/APIs are confirmed). Each subsequent phase has: what to implement, documentation references, verification checklist, anti-pattern guards.
+2. **`do`** — executes the plan via subagents: one Implementation subagent per phase, then Verification, Anti-pattern, Code Quality, and Commit subagents. Never advance a phase until verification passes.
+
+Single-file tweaks, typo fixes, and isolated bug patches do **not** need this pipeline — go direct.
+
+## Secrets Handling (`<private>` tags)
+
+claude-mem's hook layer strips `<private>...</private>` tags **before** observations reach the worker/DB. Wrap every secret value or file excerpt in these tags whenever it appears in assistant output, plan text, tool arguments, or commit descriptions.
+
+**Always wrap content from:**
+- `new_envs.txt` (project root — untracked)
+- `.env` (project root)
+- `supabase/.env`
+- Any other `.env*` file in this repo except `ops/.env.example` (which is a template with no real values)
+- Any file under `~/.ssh/`, droplet SSH private keys, or key material pasted into the chat
+
+**Always wrap values of:**
+- `GEMINI_API_KEY`, `GEMINI_API_KEYS`
+- `TELEGRAM_BOT_TOKEN`, `WEBHOOK_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_URL` (project ref is sensitive)
+- `GITHUB_TOKEN`
+- `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`
+- Any droplet IP, hostname, or SSH key fingerprint
+
+**Example:** `GEMINI_API_KEY=<private>AIzaSy...redacted</private>`.
+
+**Never** echo full `.env` file contents into assistant output without wrapping. **Never** commit secrets — and if you read one into context, treat the memory record as contaminated and flag it.
+
+## Memory Tagging (claude-mem observation types)
+
+claude-mem captures every session under the `code` mode with 6 observation types: `bugfix`, `feature`, `refactor`, `change`, `discovery`, `decision`. Frame prompts and response openings so the observer tool tags them correctly — this makes future `search(obs_type=...)` queries sharp.
+
+**Deliberate framing (state the type in the first sentence when ambiguous):**
+- Bug fixes → "Fixing X which was broken because Y" → tagged `bugfix`
+- New capability → "Adding X feature that now supports Y" → tagged `feature`
+- Restructure with same behavior → "Refactoring X to separate Y from Z" → tagged `refactor`
+- Docs/config/misc → "Updating X config" → tagged `change`
+- Reading existing code to understand → "Discovering how X works" → tagged `discovery`
+- **Architectural/design choice with rationale** → always prefix with **"This is a decision because..."** → tagged `decision`
+
+**Non-negotiable: any of the following must be captured as a `decision` observation with explicit rationale**, even if the user frames it casually:
+- GeminiKeyPool traversal order (key-first vs model-first), new model tier additions, content-aware routing thresholds
+- Supabase vs file-store precedence, dual-write toggles, schema migrations
+- Blue/green cutover trigger, rollback criteria, Caddy upstream changes
+- Any new source extractor (plugin vs monkey-patch vs external service)
+- Any change to the `orchestrator.process_url` sequence
+- Auth/secret-handling model changes
+- Dependency additions/removals or Python-version bumps
+- Test strategy shifts (live vs stubbed, new marker, new fixture tier)
+
+**Going forward, apply this rule dynamically: whenever you pick between two or more viable approaches for anything not in the list above, announce "this is a decision because..." and record the rationale inline.** The observer will tag it correctly and the narrative will be retrievable via `search(obs_type="decision")` in future sessions.
+
+## Cross-LLM Memory (Claude Code ↔ Codex CLI)
+
+Both Claude Code and Codex CLI edit this repo. They share state via four layers:
+
+1. **Code state** — shared git checkout. No config needed.
+2. **Rules** — `CLAUDE.md` (this file) is canonical. `AGENTS.md` is a thin pointer for Codex that defers here. Keep them in sync: edit `CLAUDE.md`, then update the `AGENTS.md` pointer only if the pointer's own cross-LLM section changed.
+3. **Folder timelines** — claude-mem writes per-folder `CLAUDE.md` activity files automatically (flag: `CLAUDE_MEM_FOLDER_CLAUDEMD_ENABLED=true` in `~/.claude-mem/settings.json`). Codex reads these via its normal `Read` tool — no special integration required.
+4. **Historical memory (claude-mem DB)** — both LLMs point at the same SQLite DB at `~/.claude-mem/claude-mem.db` via the same `mcp-server.cjs` script. Claude Code writes via PostToolUse hooks (automatic). Codex reads via MCP (read-only — Codex has no session hooks to capture writes).
+
+**Consequence:** memory writes come from Claude Code only. If the user does substantial work in a Codex session, the recommended handoff is to ask Claude Code at the start of the next Claude session: *"Summarize what changed in the repo since commit &lt;sha&gt; and record the significant decisions as observations."* Claude will read git history and generate the observations via its normal hook flow.
+
 ## Git Commits
 
 - **No `Co-Authored-By` lines.** Never append `Co-Authored-By: Claude ...` or any co-author trailer to commit messages.
 - Keep commit messages short and precise — describe *what* changed, not who did it.
 - Follow conventional style: `feat:`, `fix:`, `refactor:`, `docs:`, `test:` prefixes.
+- When a commit implements a prior-session decision, append the observation ID in parentheses: e.g., `feat(engine): implement key-first rotation (#S155)`. This bidirectional-links git blame to the memory narrative.
 
 ## Testing
 
