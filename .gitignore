@@ -66,3 +66,6 @@ website/experimental_features/nexus/nexus_env.txt
 
 # Local plaintext secret sources (never publish)
 new_envs.txt
+
+# claude-mem cross-LLM observation queue (drained by Claude Code at session start)
+.claude-mem-queue/
