@@ -261,10 +261,11 @@ Codex Desktop supports a plugin hook system with the same schema as Claude Code 
 
 ## Git Commits
 
-- **No `Co-Authored-By` lines.** Never append `Co-Authored-By: Claude ...` or any co-author trailer to commit messages.
-- Keep commit messages short and precise — describe *what* changed, not who did it.
-- Follow conventional style: `feat:`, `fix:`, `refactor:`, `docs:`, `test:` prefixes.
-- When a commit implements a prior-session decision, append the observation ID in parentheses: e.g., `feat(engine): implement key-first rotation (#S155)`. This bidirectional-links git blame to the memory narrative.
+- **Max 10 words in the commit subject.** Just label the major change in the current iteration. No body paragraphs, no bullet lists, no explanations.
+- **No tool or author names.** Never mention `Claude`, `Codex`, `Copilot`, `ChatGPT`, or any AI tool / assistant / human author anywhere in the message.
+- **No `Co-Authored-By` trailers.** Never append `Co-Authored-By:` lines.
+- Follow conventional style: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:` prefixes. The prefix counts toward the 10-word budget.
+- When a commit implements a prior-session decision, append the observation ID in parentheses: e.g., `feat(engine): key-first rotation (#S155)`. The `(#S...)` token does not count toward the 10-word budget.
 
 ## Testing
 
