@@ -70,7 +70,14 @@
       var configResp = await fetch('/api/auth/config');
       var config = await configResp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return '';
-      var client = supabase.createClient(config.supabase_url, config.supabase_anon_key);
+      var client = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          storage: window.localStorage,
+          storageKey: 'zk-auth-token',
+        },
+      });
       var sessionResult = await client.auth.getSession();
       return sessionResult && sessionResult.data && sessionResult.data.session
         ? sessionResult.data.session.access_token

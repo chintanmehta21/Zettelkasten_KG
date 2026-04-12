@@ -148,7 +148,14 @@
       var resp = await fetch('/api/auth/config');
       var config = await resp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return null;
-      return supabase.createClient(config.supabase_url, config.supabase_anon_key);
+      return supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          storage: window.localStorage,
+          storageKey: 'zk-auth-token',
+        },
+      });
     } catch (err) {
       console.error('[user_zettels] Supabase init failed:', err);
       return null;

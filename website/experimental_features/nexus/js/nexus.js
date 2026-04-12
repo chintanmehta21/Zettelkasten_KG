@@ -270,7 +270,14 @@
   async function loadAuth() {
     var config = await requestJson('/api/auth/config', { token: '' });
     if (config && config.supabase_url && config.supabase_anon_key) {
-      state.supabaseClient = supabase.createClient(config.supabase_url, config.supabase_anon_key);
+      state.supabaseClient = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          storage: window.localStorage,
+          storageKey: 'zk-auth-token',
+        },
+      });
       var sessionResult = await state.supabaseClient.auth.getSession();
       state.token = sessionResult && sessionResult.data && sessionResult.data.session ? sessionResult.data.session.access_token : '';
     }
