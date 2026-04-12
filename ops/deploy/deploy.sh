@@ -85,7 +85,7 @@ chown deploy:deploy "$SNIPPET"
 chmod 644 "$SNIPPET"
 
 log "Reloading Caddy..."
-docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+LOG_PREFIX="" "$ROOT/deploy/reload_caddy.sh" | tee -a "$LOG"
 
 echo "$IDLE" > "$ACTIVE_FILE"
 

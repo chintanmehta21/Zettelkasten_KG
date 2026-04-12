@@ -37,16 +37,16 @@ docker compose \
 }
 
 log "Rewriting upstream snippet -> $ACTIVE..."
-TMP=$(mktemp)
-cat > "$TMP" <<EOF
+cat > "$SNIPPET" <<EOF
 # Updated by rollback.sh at $(date -u +%Y-%m-%dT%H:%M:%SZ)
 reverse_proxy zettelkasten-${ACTIVE}:10000
 EOF
-mv "$TMP" "$SNIPPET"
+chown deploy:deploy "$SNIPPET"
+chmod 644 "$SNIPPET"
 
 log "Reloading Caddy..."
-docker exec caddy caddy reload --config /etc/caddy/Caddyfile || {
-    log "WARNING: Caddy reload failed. Run: docker exec caddy caddy reload --config /etc/caddy/Caddyfile"
+LOG_PREFIX="[ROLLBACK] " "$ROOT/deploy/reload_caddy.sh" | tee -a "$LOG" || {
+    log "WARNING: Caddy reload failed. Run: $ROOT/deploy/reload_caddy.sh"
 }
 
 if docker ps --format '{{.Names}}' | grep -q "^zettelkasten-${OTHER}\$"; then
