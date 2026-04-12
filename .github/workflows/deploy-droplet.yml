@@ -152,6 +152,11 @@ jobs:
           script: |
             set -euo pipefail
 
+            # Debug: verify env vars are reaching SSH session.
+            echo "SHA length: ${#SHA}"
+            echo "GHCR_READ_PAT length: ${#GHCR_READ_PAT}"
+            echo "ENV_BODY line count: $(printf '%s\n' "$ENV_BODY" | wc -l)"
+
             # deploy is in the docker group — no sudo needed for docker CLI.
             echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin
 
