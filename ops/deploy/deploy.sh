@@ -16,6 +16,10 @@
 
 set -euo pipefail
 
+# Use the deploy user's Docker credentials even when this script is invoked
+# via `sudo` (HOME becomes /root otherwise, which has no GHCR auth).
+export DOCKER_CONFIG="${DOCKER_CONFIG:-/home/deploy/.docker}"
+
 SHA="${1:-}"
 if [[ -z "$SHA" ]]; then
     echo "usage: $0 <image_sha>" >&2

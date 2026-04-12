@@ -55,8 +55,12 @@ set_secret() {
     echo "  [dry-run] would set $name (${bytes} bytes)"
     return
   fi
+  # NOTE: we deliberately do NOT pass --body; gh treats a missing --body as
+  # "read secret value from stdin". Passing `--body -` sets the literal
+  # string "-" as the secret body instead of reading stdin — a silent data
+  # corruption bug that we had in prod until 2026-04-12.
   printf '%s' "$value" | gh secret set "$name" \
-    --env "$ENV_NAME" --repo "$REPO" --body -
+    --env "$ENV_NAME" --repo "$REPO"
   echo "  set $name"
 }
 
