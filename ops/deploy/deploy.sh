@@ -68,12 +68,16 @@ log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 "$ROOT/deploy/healthcheck.sh" "$IDLE_PORT"
 
 log "Flipping Caddy upstream to $IDLE..."
-TMP=$(mktemp)
-cat > "$TMP" <<EOF
+# IMPORTANT: must write in-place (truncate + rewrite) rather than via
+# `mv TMP SNIPPET`. Docker bind mounts of a single file track the inode
+# at mount time; atomic-replace via `mv` creates a new inode, leaving the
+# container stuck viewing the pre-deploy snippet. Rewriting keeps inode.
+cat > "$SNIPPET" <<EOF
 # Updated by deploy.sh at $(date -u +%Y-%m-%dT%H:%M:%SZ) — SHA=$SHA
 reverse_proxy zettelkasten-${IDLE}:10000
 EOF
-mv "$TMP" "$SNIPPET"
+chown deploy:deploy "$SNIPPET"
+chmod 644 "$SNIPPET"
 
 log "Reloading Caddy..."
 docker exec caddy caddy reload --config /etc/caddy/Caddyfile
