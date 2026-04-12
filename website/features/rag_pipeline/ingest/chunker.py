@@ -76,6 +76,16 @@ LONG_CHUNK_TOKENS = 512
 LONG_OVERLAP_TOKENS = 64
 
 
+class _UnavailableChunker:
+    """Sentinel chunker that defers constructor failures to runtime fallback flow."""
+
+    def __init__(self, error: Exception):
+        self._error = error
+
+    def chunk(self, _text: str) -> list[Any]:
+        raise self._error
+
+
 class Chunk(BaseModel):
     chunk_idx: int
     content: str
@@ -91,7 +101,8 @@ class ZettelChunker:
 
     def __init__(self, embedder_for_late_chunking: Any | None = None):
         self._embedder = embedder_for_late_chunking
-        self._semantic = SemanticChunker(
+        self._semantic = self._safe_chunker(
+            SemanticChunker,
             embedding_model="all-MiniLM-L6-v2",
             threshold=0.5,
             chunk_size=LONG_CHUNK_TOKENS,
@@ -104,10 +115,18 @@ class ZettelChunker:
         )
         self._late = None
         if embedder_for_late_chunking is not None:
-            self._late = LateChunker(
+            self._late = self._safe_chunker(
+                LateChunker,
                 embedding_model=embedder_for_late_chunking,
                 chunk_size=LONG_CHUNK_TOKENS,
             )
+
+    @staticmethod
+    def _safe_chunker(factory: Any, **kwargs: Any) -> Any:
+        try:
+            return factory(**kwargs)
+        except Exception as exc:  # pragma: no cover - exercised via fallback tests
+            return _UnavailableChunker(exc)
 
     def chunk(
         self,
