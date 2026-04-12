@@ -81,7 +81,20 @@ class TestSummarizeEndpoint:
 class TestRateLimit:
     def test_rate_limit_enforced(self, client: TestClient) -> None:
         """After 10 requests in quick succession, the 11th should be rate-limited."""
-        with patch("website.api.routes.summarize_url", new_callable=AsyncMock, return_value={"title": "t"}):
+        mock_result = {
+            "title": "t",
+            "summary": "s",
+            "brief_summary": "b",
+            "tags": ["source/web"],
+            "source_type": "web",
+            "source_url": "https://example.com",
+            "one_line_summary": "o",
+            "is_raw_fallback": False,
+            "tokens_used": 0,
+            "latency_ms": 0,
+            "metadata": {},
+        }
+        with patch("website.api.routes.summarize_url", new_callable=AsyncMock, return_value=mock_result):
             for _ in range(10):
                 resp = client.post("/api/summarize", json={"url": "https://example.com"})
                 assert resp.status_code == 200

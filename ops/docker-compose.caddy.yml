@@ -4,6 +4,10 @@ services:
     container_name: caddy
     hostname: caddy
     restart: unless-stopped
+    # Run as deploy:deploy (UID/GID 1000) so Caddy can write to
+    # /var/log/caddy, /data, /config without needing CAP_DAC_OVERRIDE
+    # (which is dropped by cap_drop: ALL below).
+    user: "1000:1000"
     networks:
       - zettelnet
     ports:

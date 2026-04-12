@@ -1,9 +1,6 @@
 {
     # ACME account email (Let's Encrypt notifications only)
     email chintanoninternet@gmail.com
-
-    # Listen on both IPv4 and IPv6
-    default_bind tcp4/0.0.0.0 tcp6/[::]
 }
 
 # --- www -> apex 301 redirect ------------------------------------------------
