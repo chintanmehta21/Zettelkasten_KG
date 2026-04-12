@@ -1,6 +1,7 @@
 """Single-URL orchestrator: route, ingest, summarize, return."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from typing import Any
 from uuid import UUID
@@ -9,12 +10,24 @@ from telegram_bot.utils.url_utils import validate_url
 
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.errors import RoutingError
-from website.features.summarization_engine.core.models import SourceType, SummaryResult
+from website.features.summarization_engine.core.models import (
+    IngestResult,
+    SourceType,
+    SummaryResult,
+)
 from website.features.summarization_engine.core.router import detect_source_type
 from website.features.summarization_engine.source_ingest import get_ingestor
 from website.features.summarization_engine.summarization import get_summarizer
 
 logger = logging.getLogger("summarization_engine.orchestrator")
+
+
+@dataclass(frozen=True)
+class OrchestratedSummary:
+    """Combined ingest + summary result for downstream persistence."""
+
+    ingest_result: IngestResult
+    summary_result: SummaryResult
 
 
 async def summarize_url(
@@ -24,6 +37,22 @@ async def summarize_url(
     gemini_client: Any,
     source_type: SourceType | None = None,
 ) -> SummaryResult:
+    """Run the ingest and summarize pipeline and return only the summary."""
+    return (await summarize_url_bundle(
+        url,
+        user_id=user_id,
+        gemini_client=gemini_client,
+        source_type=source_type,
+    )).summary_result
+
+
+async def summarize_url_bundle(
+    url: str,
+    *,
+    user_id: UUID,
+    gemini_client: Any,
+    source_type: SourceType | None = None,
+) -> OrchestratedSummary:
     """Run the ingest and summarize pipeline for a single URL.
 
     The engine is a pure library here; callers compose persistence writers.
@@ -47,4 +76,8 @@ async def summarize_url(
 
     summarizer_cls = get_summarizer(effective_source_type)
     summarizer = summarizer_cls(gemini_client, source_config)
-    return await summarizer.summarize(ingest_result)
+    summary_result = await summarizer.summarize(ingest_result)
+    return OrchestratedSummary(
+        ingest_result=ingest_result,
+        summary_result=summary_result,
+    )

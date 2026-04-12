@@ -1,0 +1,289 @@
+[
+  {
+    "user_input": "What does self-attention replace in the transformer story?",
+    "retrieved_contexts": [],
+    "response": "It replaces strict recurrence and lets tokens weigh one another directly in parallel.",
+    "reference": "Self-attention replaces recurrence as the primary mechanism for relating tokens in the Transformer.",
+    "ground_truth_support": [
+      "yt-ml-attention-primer",
+      "ax-ml-attention-paper"
+    ]
+  },
+  {
+    "user_input": "Why do transformer blocks use residual paths and normalization?",
+    "retrieved_contexts": [],
+    "response": "They stabilize training while attention and feed-forward layers refine the representation.",
+    "reference": "Residual connections and normalization keep transformer training stable while deeper layers add useful computation.",
+    "ground_truth_support": [
+      "yt-ml-transformer-block",
+      "ss-ml-transformer-math"
+    ]
+  },
+  {
+    "user_input": "How do embeddings help retrieval systems?",
+    "retrieved_contexts": [],
+    "response": "They place text in a vector space where semantically related passages stay near each other for similarity search.",
+    "reference": "Embeddings support retrieval by mapping semantically similar text to nearby points in vector space.",
+    "ground_truth_support": [
+      "yt-ml-embedding-intuition",
+      "ax-ml-contrastive-search"
+    ]
+  },
+  {
+    "user_input": "What is the main benefit of retrieval augmented generation?",
+    "retrieved_contexts": [],
+    "response": "It grounds answers in fetched evidence before generation, reducing unsupported claims.",
+    "reference": "RAG improves grounding by retrieving evidence before answer generation.",
+    "ground_truth_support": [
+      "yt-ml-rag-basics",
+      "ss-ml-retrieval-checklist"
+    ]
+  },
+  {
+    "user_input": "Why is faithfulness tracked separately from fluency?",
+    "retrieved_contexts": [],
+    "response": "Because smooth answers can still be unsupported by the retrieved evidence.",
+    "reference": "Faithfulness must be measured separately because fluent answers can still hallucinate.",
+    "ground_truth_support": [
+      "yt-ml-eval-basics",
+      "ss-ml-faithfulness-notes"
+    ]
+  },
+  {
+    "user_input": "What trade-off does HNSW introduce?",
+    "retrieved_contexts": [],
+    "response": "It improves recall and insert behavior at the cost of more memory and tuning complexity.",
+    "reference": "HNSW trades higher memory use for strong recall and practical incremental search.",
+    "ground_truth_support": [
+      "yt-ml-hnsw-walkthrough",
+      "yt-ml-pgvector-indexes"
+    ]
+  },
+  {
+    "user_input": "When is a reranker worth the latency?",
+    "retrieved_contexts": [],
+    "response": "When first-pass retrieval is close but noisy and a small top slice can be re-scored for precision.",
+    "reference": "A reranker helps when coarse retrieval needs a precision boost on a limited candidate set.",
+    "ground_truth_support": [
+      "yt-ml-reranker-demo",
+      "rd-ml-rag-mistakes"
+    ]
+  },
+  {
+    "user_input": "Why might a query rewriting stage matter?",
+    "retrieved_contexts": [],
+    "response": "Because vague or multi-part questions often need expansion, decomposition, or a hypothesis before search.",
+    "reference": "Query rewriting helps retrieve better evidence when the user question is vague or structurally hard to search.",
+    "ground_truth_support": [
+      "yt-ml-query-rewrite",
+      "ss-ml-multi-hop-search"
+    ]
+  },
+  {
+    "user_input": "What do the notes say about long context windows?",
+    "retrieved_contexts": [],
+    "response": "They help, but they do not replace selective retrieval because irrelevant text still adds cost and noise.",
+    "reference": "Long context is useful but does not replace focused retrieval.",
+    "ground_truth_support": [
+      "yt-ml-context-window",
+      "ss-ml-retrieval-checklist"
+    ]
+  },
+  {
+    "user_input": "When is semantic chunking preferable?",
+    "retrieved_contexts": [],
+    "response": "It is preferable on long materials with clear meaning boundaries, such as transcripts and essays.",
+    "reference": "Semantic chunking works best when the source has natural meaning boundaries.",
+    "ground_truth_support": [
+      "yt-ml-chunking-semantic",
+      "yt-ml-rag-basics"
+    ]
+  },
+  {
+    "user_input": "How is agent memory different from chat history?",
+    "retrieved_contexts": [],
+    "response": "Chat history is short-term context, while durable memory is an external store the agent can retrieve later.",
+    "reference": "Agent memory combines short-term context with durable external knowledge stores.",
+    "ground_truth_support": [
+      "yt-ml-agent-memory",
+      "yt-ml-context-window"
+    ]
+  },
+  {
+    "user_input": "What can sourdough crumb reveal?",
+    "retrieved_contexts": [],
+    "response": "It can reveal fermentation timing, hydration, and shaping quality.",
+    "reference": "A sourdough crumb acts as a diagnostic signal for fermentation, hydration, and shaping.",
+    "ground_truth_support": [
+      "yt-cook-sourdough-crumb"
+    ]
+  },
+  {
+    "user_input": "How should a cook avoid steaming a stir-fry?",
+    "retrieved_contexts": [],
+    "response": "Use high heat, keep batches small, and add sauce late.",
+    "reference": "Stir-fry ingredients stay crisp when heat is high, batches are small, and sauce comes late.",
+    "ground_truth_support": [
+      "yt-cook-stirfry-heat"
+    ]
+  },
+  {
+    "user_input": "Why does pasta water matter?",
+    "retrieved_contexts": [],
+    "response": "Its starch helps emulsify and thicken the sauce.",
+    "reference": "Starchy pasta water helps bind and thicken sauces.",
+    "ground_truth_support": [
+      "ss-cook-pasta-water",
+      "yt-cook-pan-sauce"
+    ]
+  },
+  {
+    "user_input": "What is the core logic of braising?",
+    "retrieved_contexts": [],
+    "response": "Low steady heat converts collagen without driving off too much moisture.",
+    "reference": "Braising depends on slow collagen conversion under gentle heat.",
+    "ground_truth_support": [
+      "ss-cook-braising-guide",
+      "yt-cook-stock-basics"
+    ]
+  },
+  {
+    "user_input": "Why did Roman roads last?",
+    "retrieved_contexts": [],
+    "response": "Layered construction, drainage, and maintenance kept them useful for imperial logistics.",
+    "reference": "Roman roads lasted through layered construction, drainage, and maintenance.",
+    "ground_truth_support": [
+      "yt-hist-roman-roads"
+    ]
+  },
+  {
+    "user_input": "How did the printing press change society?",
+    "retrieved_contexts": [],
+    "response": "It accelerated literacy, debate, and coordination, amplifying existing movements.",
+    "reference": "The printing press accelerated circulation of ideas and social coordination.",
+    "ground_truth_support": [
+      "yt-hist-printing-press",
+      "rd-hist-reformation-debate"
+    ]
+  },
+  {
+    "user_input": "What is the Silk Road misconception corrected here?",
+    "retrieved_contexts": [],
+    "response": "It was not one road but a network of routes.",
+    "reference": "The Silk Road is better understood as a network rather than a single path.",
+    "ground_truth_support": [
+      "yt-hist-silk-road"
+    ]
+  },
+  {
+    "user_input": "How do historians read archives critically?",
+    "retrieved_contexts": [],
+    "response": "They read silence, omission, and bureaucratic framing as evidence too.",
+    "reference": "Historians treat archives as shaped by power and read both presence and absence.",
+    "ground_truth_support": [
+      "ss-hist-archives",
+      "tw-hist-map-thread"
+    ]
+  },
+  {
+    "user_input": "What kept Byzantium alive in the thread?",
+    "retrieved_contexts": [],
+    "response": "Diplomatic flexibility, defensive depth, and fiscal resilience.",
+    "reference": "Byzantine survival came from adaptation, diplomacy, and resilience.",
+    "ground_truth_support": [
+      "rd-hist-byzantine-thread"
+    ]
+  },
+  {
+    "user_input": "What does duration measure for bonds?",
+    "retrieved_contexts": [],
+    "response": "It measures how strongly bond prices react to interest-rate changes.",
+    "reference": "Bond duration expresses price sensitivity to rate moves.",
+    "ground_truth_support": [
+      "yt-finance-bond-duration"
+    ]
+  },
+  {
+    "user_input": "Why do the notes favor index funds for many investors?",
+    "retrieved_contexts": [],
+    "response": "They offer diversification, low fees, and a repeatable long-horizon default.",
+    "reference": "Index funds combine diversification and low fees into a strong long-term baseline.",
+    "ground_truth_support": [
+      "yt-finance-index-funds"
+    ]
+  },
+  {
+    "user_input": "What does the cash-flow essay prioritize over narrative?",
+    "retrieved_contexts": [],
+    "response": "It prioritizes durable cash generation and reliable forecasting.",
+    "reference": "Sustainable cash flow matters more than market storytelling in valuation.",
+    "ground_truth_support": [
+      "ss-finance-cashflow"
+    ]
+  },
+  {
+    "user_input": "What is the risk lesson from the portfolio thread?",
+    "retrieved_contexts": [],
+    "response": "Position sizing often determines whether uncertainty stays manageable.",
+    "reference": "Oversized positions are a major source of investing risk.",
+    "ground_truth_support": [
+      "rd-finance-risk-thread"
+    ]
+  },
+  {
+    "user_input": "How does the microstructure note describe liquidity?",
+    "retrieved_contexts": [],
+    "response": "Liquidity is dynamic and depends on spreads, order flow, and inventory management.",
+    "reference": "Liquidity changes with market-making conditions and order flow.",
+    "ground_truth_support": [
+      "ax-finance-market-microstructure"
+    ]
+  },
+  {
+    "user_input": "How should someone reduce friction on overnight train travel?",
+    "retrieved_contexts": [],
+    "response": "Plan berth choice, station transitions, and sleep protection before departure.",
+    "reference": "Overnight train travel improves when sleeping conditions and station handoffs are planned.",
+    "ground_truth_support": [
+      "yt-travel-night-trains"
+    ]
+  },
+  {
+    "user_input": "What packing principle drives the carry-on note?",
+    "retrieved_contexts": [],
+    "response": "Each item must justify its weight and redundancy, which favors systems over one-offs.",
+    "reference": "Carry-on packing works when every item earns its space.",
+    "ground_truth_support": [
+      "yt-travel-carry-on"
+    ]
+  },
+  {
+    "user_input": "How should a traveler choose a walkable neighborhood?",
+    "retrieved_contexts": [],
+    "response": "Judge it by groceries, transit rhythm, and safety instead of landmark count alone.",
+    "reference": "Walkable neighborhoods should be chosen by everyday rhythm factors, not sightseeing density.",
+    "ground_truth_support": [
+      "ss-travel-walkable-cities"
+    ]
+  },
+  {
+    "user_input": "What determines the right airport buffer?",
+    "retrieved_contexts": [],
+    "response": "Transfer complexity, immigration friction, and the cost of missing the connection.",
+    "reference": "Airport buffer time depends on hub complexity and the consequences of failure.",
+    "ground_truth_support": [
+      "rd-travel-airport-thread"
+    ]
+  },
+  {
+    "user_input": "How do the retrieval notes combine initial search and reranking?",
+    "retrieved_contexts": [],
+    "response": "They retrieve broadly, then rerank a smaller candidate slice for precision and better citations.",
+    "reference": "A practical retrieval pipeline searches broadly first and reranks a limited candidate set second.",
+    "ground_truth_support": [
+      "yt-ml-reranker-demo",
+      "ss-ml-retrieval-checklist",
+      "yt-ml-rag-basics"
+    ]
+  }
+]

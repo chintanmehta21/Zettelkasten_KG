@@ -18,6 +18,7 @@ import traceback
 from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
+from telegram_bot.bot.ask_handler import handle_ask
 from telegram_bot.bot.guards import get_chat_filter
 from telegram_bot.bot.handlers import (
     handle_about,
@@ -68,6 +69,7 @@ async def _post_init(application: Application) -> None:
         BotCommand("about", "What this bot does"),
         BotCommand("help", "Show available commands"),
         BotCommand("status", "Bot health and statistics"),
+        BotCommand("ask", "Ask across saved zettels"),
         BotCommand("reddit", "Capture a Reddit post"),
         BotCommand("yt", "Capture a YouTube video"),
         BotCommand("newsletter", "Capture a newsletter or article"),
@@ -93,6 +95,7 @@ def _build_ptb_app(settings) -> Application:
     app.add_handler(CommandHandler("about",      handle_about,      filters=chat_filter))
     app.add_handler(CommandHandler("help",       handle_start,      filters=chat_filter))
     app.add_handler(CommandHandler("status",     handle_status,     filters=chat_filter))
+    app.add_handler(CommandHandler("ask",        handle_ask,        filters=chat_filter))
     app.add_handler(CommandHandler("reddit",     handle_reddit,     filters=chat_filter))
     app.add_handler(CommandHandler("yt",         handle_yt,         filters=chat_filter))
     app.add_handler(CommandHandler("newsletter", handle_newsletter, filters=chat_filter))

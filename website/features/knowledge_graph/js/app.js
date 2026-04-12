@@ -589,6 +589,8 @@
     const tags = document.getElementById('panel-tags');
     const connections = document.getElementById('panel-connections');
     const link = document.getElementById('panel-link');
+    const askLink = document.getElementById('panel-ask-link');
+    const kastenLink = document.getElementById('panel-kasten-link');
 
     const nodeGroup = normalizeGroup(node.group);
     badge.textContent = nodeGroup;
@@ -602,6 +604,8 @@
     link.tabIndex = safeLink ? 0 : -1;
     link.rel = safeLink ? 'noopener noreferrer' : '';
     link.target = safeLink ? '_blank' : '';
+    askLink.href = '/home/rag?focus_node=' + encodeURIComponent(node.id) + '&focus_title=' + encodeURIComponent(node.name || '');
+    kastenLink.href = '/home/kastens?focus_node=' + encodeURIComponent(node.id) + '&focus_title=' + encodeURIComponent(node.name || '');
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(
       t => `<span class="kg-tag">${escapeHtml(t)}</span>`

@@ -9,10 +9,12 @@ import pytest
 
 from website.features.summarization_engine.core.models import (
     DetailedSummarySection,
+    IngestResult,
     SourceType,
     SummaryMetadata,
     SummaryResult,
 )
+from website.features.summarization_engine.core.orchestrator import OrchestratedSummary
 
 
 def _summary_result() -> SummaryResult:
@@ -64,15 +66,26 @@ async def test_summarize_url_delegates_to_engine(monkeypatch):
 
     calls = {}
 
-    async def fake_summarize_url(url, *, user_id, gemini_client, source_type=None):
+    async def fake_summarize_url_bundle(url, *, user_id, gemini_client, source_type=None):
         calls["url"] = url
         calls["user_id"] = user_id
         calls["gemini_client"] = gemini_client
         calls["source_type"] = source_type
-        return _summary_result()
+        return OrchestratedSummary(
+            ingest_result=IngestResult(
+                source_type=SourceType.WEB,
+                url=url,
+                original_url=url,
+                raw_text="Original extracted body",
+                extraction_confidence="high",
+                confidence_reason="fixture",
+                fetched_at=datetime.now(timezone.utc),
+            ),
+            summary_result=_summary_result(),
+        )
 
     gemini_client = object()
-    monkeypatch.setattr(engine_orchestrator, "summarize_url", fake_summarize_url)
+    monkeypatch.setattr(engine_orchestrator, "summarize_url_bundle", fake_summarize_url_bundle)
     monkeypatch.setattr(pipeline, "_gemini_client", lambda: gemini_client)
 
     response = await pipeline.summarize_url("https://example.com/article")
@@ -84,3 +97,4 @@ async def test_summarize_url_delegates_to_engine(monkeypatch):
         "source_type": None,
     }
     assert response["title"] == "Website engine summary"
+    assert response["raw_text"] == "Original extracted body"

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Kastens - Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260412a">
+    <link rel="stylesheet" href="/home/kastens/css/user_kastens.css?v=20260412a">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container kastens-container">
+        <header class="header kastens-header">
+            <div class="zettels-header-start">
+                <a class="zettels-back-btn" href="/home" aria-label="Back to Home">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                </a>
+            </div>
+            <div class="branding">
+                <div class="logo">
+                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
+                    <span class="logo-text">Zettelkasten</span>
+                </div>
+                <p class="tagline">Curate focused knowledge workspaces from your saved zettels.</p>
+            </div>
+            <div class="kastens-header-actions">
+                <a class="kastens-nav-link" href="/home/rag">Open Chat</a>
+            </div>
+        </header>
+
+        <main class="main kastens-main" id="main-content">
+            <section class="kastens-hero">
+                <div>
+                    <p class="kastens-eyebrow">User Kastens</p>
+                    <h1 class="kastens-title">Build notebook-style sandboxes for each line of thought.</h1>
+                    <p class="kastens-subtitle">Add the exact zettels you want, then hand the collection to the chat page when you are ready to interrogate it.</p>
+                </div>
+                <div class="kastens-hero-actions">
+                    <button class="kastens-primary" id="create-kasten-btn" type="button">Create kasten</button>
+                    <a class="kastens-secondary" href="/home/rag">Jump to chat</a>
+                </div>
+            </section>
+
+            <section class="kastens-stats" aria-label="Kasten statistics">
+                <article class="kastens-stat-card">
+                    <p class="kastens-stat-label">Kastens</p>
+                    <p class="kastens-stat-value" id="kasten-count">0</p>
+                </article>
+                <article class="kastens-stat-card">
+                    <p class="kastens-stat-label">Curated members</p>
+                    <p class="kastens-stat-value" id="member-count">0</p>
+                </article>
+                <article class="kastens-stat-card">
+                    <p class="kastens-stat-label">Default mode</p>
+                    <p class="kastens-stat-value kastens-stat-small" id="default-quality">fast</p>
+                </article>
+            </section>
+
+            <section class="kastens-layout">
+                <div class="kastens-column kastens-column-list">
+                    <div class="kastens-panel-heading">
+                        <div>
+                            <h2>Your Kastens</h2>
+                            <p>Persistent collections that narrow the chat scope to the notes that matter.</p>
+                        </div>
+                    </div>
+                    <div class="kastens-card-list" id="kastens-list"></div>
+                    <div class="kastens-empty hidden" id="kastens-empty">
+                        <h3>No kastens yet</h3>
+                        <p>Create your first curated workspace to start asking better questions.</p>
+                    </div>
+                </div>
+
+                <div class="kastens-column kastens-column-detail">
+                    <section class="kastens-panel kastens-editor-panel">
+                        <div class="kastens-panel-heading">
+                            <div>
+                                <h2 id="detail-title">Create or select a kasten</h2>
+                                <p id="detail-subtitle">Set a name, describe the focus, then keep adding the zettels you want the chat to reason over.</p>
+                            </div>
+                            <button class="kastens-text-btn hidden" id="delete-kasten-btn" type="button">Delete</button>
+                        </div>
+
+                        <form class="kastens-form" id="kasten-form">
+                            <div class="kastens-form-grid">
+                                <label>
+                                    <span>Name</span>
+                                    <input type="text" id="kasten-name" maxlength="80" placeholder="Transformer notes" required>
+                                </label>
+                                <label>
+                                    <span>Default quality</span>
+                                    <select id="kasten-quality">
+                                        <option value="fast">Fast</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Icon label</span>
+                                    <input type="text" id="kasten-icon" maxlength="24" placeholder="stack">
+                                </label>
+                                <label>
+                                    <span>Accent color</span>
+                                    <input type="text" id="kasten-color" maxlength="24" placeholder="#14b8a6">
+                                </label>
+                            </div>
+                            <label>
+                                <span>Description</span>
+                                <textarea id="kasten-description" rows="3" maxlength="300" placeholder="A focused workspace for comparing transformer architecture notes."></textarea>
+                            </label>
+                            <div class="kastens-form-actions">
+                                <button class="kastens-primary" id="save-kasten-btn" type="submit">Save kasten</button>
+                                <button class="kastens-secondary ghost hidden" id="new-kasten-btn" type="button">New draft</button>
+                                <a class="kastens-secondary hidden" id="open-chat-btn" href="/home/rag">Open in chat</a>
+                            </div>
+                            <p class="kastens-feedback" id="kasten-feedback"></p>
+                        </form>
+                    </section>
+
+                    <section class="kastens-panel">
+                        <div class="kastens-panel-heading">
+                            <div>
+                                <h2>Curate members</h2>
+                                <p>Search your zettels, add them to the active kasten, and prune noise when the focus drifts.</p>
+                            </div>
+                        </div>
+                        <div class="kastens-search-row">
+                            <input class="kastens-search-input" id="node-search" type="search" placeholder="Search your zettels by title or summary..." autocomplete="off">
+                        </div>
+                        <div class="kastens-search-results" id="node-search-results"></div>
+                        <div class="kastens-member-list" id="member-list"></div>
+                    </section>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/home/kastens/js/user_kastens.js?v=20260412a"></script>
+</body>
+</html>
