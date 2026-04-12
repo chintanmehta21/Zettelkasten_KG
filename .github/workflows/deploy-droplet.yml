@@ -160,50 +160,35 @@ jobs:
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
-            wait_for_caddy() {
+            wait_for_caddy_exec() {
               local attempts="${1:-20}"
               local delay="${2:-2}"
               local status=""
 
               for _ in $(seq 1 "$attempts"); do
                 status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' caddy 2>/dev/null || true)"
-                if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                if { [ "$status" = "healthy" ] || [ "$status" = "running" ]; } && docker exec caddy caddy version >/dev/null 2>&1; then
                   return 0
                 fi
                 sleep "$delay"
               done
 
-              echo "Caddy did not become ready; last status: ${status:-missing}" >&2
+              echo "Caddy exec did not become ready; last status: ${status:-missing}" >&2
               docker logs --tail 100 caddy || true
               return 1
             }
 
-            ensure_caddy_ready() {
-              local status
-
-              status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' caddy 2>/dev/null || true)"
-              if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
-                return 0
-              fi
-
-              if docker ps -a --format '{{.Names}}' | grep -qx 'caddy'; then
-                docker restart caddy >/dev/null
-              fi
-
-              wait_for_caddy
-            }
-
             # The droplet's deploy entrypoint is fixed by sudoers policy, so
             # handle the observed caddy exec flake at the workflow layer with a
-            # bounded restart + retry rather than trying to replace the script.
+            # bounded preflight + retry rather than trying to replace the script.
             for attempt in 1 2; do
-              ensure_caddy_ready
+              wait_for_caddy_exec
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
               fi
 
               if [ "$attempt" -lt 2 ]; then
-                echo "Deploy attempt ${attempt} failed; restarting caddy and retrying once..."
+                echo "Deploy attempt ${attempt} failed; waiting for caddy exec and retrying once..."
               fi
             done
 
