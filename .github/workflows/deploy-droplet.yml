@@ -160,7 +160,28 @@ jobs:
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
-            sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"
+            restart_caddy() {
+              if docker ps --format '{{.Names}}' | grep -qx 'caddy'; then
+                docker restart caddy >/dev/null
+                sleep 5
+              fi
+            }
+
+            # The droplet's deploy entrypoint is fixed by sudoers policy, so
+            # handle the observed caddy exec flake at the workflow layer with a
+            # bounded restart + retry rather than trying to replace the script.
+            for attempt in 1 2; do
+              restart_caddy
+              if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
+                exit 0
+              fi
+
+              if [ "$attempt" -lt 2 ]; then
+                echo "Deploy attempt ${attempt} failed; restarting caddy and retrying once..."
+              fi
+            done
+
+            exit 1
         env:
           ENV_BODY: ${{ steps.env.outputs.env_body }}
           GHCR_READ_PAT: ${{ secrets.GHCR_READ_PAT }}
