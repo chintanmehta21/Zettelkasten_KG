@@ -144,7 +144,7 @@ jobs:
           secret_count=$(printf '%s\n' "$SECRETS_BODY" | grep -c '=' || true)
           echo "Built .env with ${secret_count} secret line(s) + 4 static line(s)"
 
-      - name: Capture deploy script payloads
+      - name: Capture deploy script payload
         id: scripts
         run: |
           set -euo pipefail
@@ -153,15 +153,6 @@ jobs:
             echo "deploy_sh<<DEPLOY_SH_EOF"
             cat ops/deploy/deploy.sh
             echo "DEPLOY_SH_EOF"
-            echo "rollback_sh<<ROLLBACK_SH_EOF"
-            cat ops/deploy/rollback.sh
-            echo "ROLLBACK_SH_EOF"
-            echo "healthcheck_sh<<HEALTHCHECK_SH_EOF"
-            cat ops/deploy/healthcheck.sh
-            echo "HEALTHCHECK_SH_EOF"
-            echo "reload_caddy_sh<<RELOAD_CADDY_SH_EOF"
-            cat ops/deploy/reload_caddy.sh
-            echo "RELOAD_CADDY_SH_EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Write .env on droplet and pull image
@@ -171,21 +162,19 @@ jobs:
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
-          envs: ENV_BODY,GHCR_READ_PAT,SHA,DEPLOY_SH,ROLLBACK_SH,HEALTHCHECK_SH,RELOAD_CADDY_SH
+          envs: ENV_BODY,GHCR_READ_PAT,SHA,DEPLOY_SH
           script: |
             set -euo pipefail
 
             # deploy is in the docker group - no sudo needed for docker CLI.
             echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin
 
-            # Keep the droplet's deploy scripts in sync with the repo revision
-            # that triggered this workflow, otherwise remote deploy behavior drifts.
+            # Keep the whitelisted deploy entrypoint in sync with the repo revision
+            # that triggered this workflow. The host sudoers policy only permits
+            # this path plus the app .env operations below.
             printf '%s\n' "$DEPLOY_SH" | sudo /usr/bin/tee /opt/zettelkasten/deploy/deploy.sh > /dev/null
-            printf '%s\n' "$ROLLBACK_SH" | sudo /usr/bin/tee /opt/zettelkasten/deploy/rollback.sh > /dev/null
-            printf '%s\n' "$HEALTHCHECK_SH" | sudo /usr/bin/tee /opt/zettelkasten/deploy/healthcheck.sh > /dev/null
-            printf '%s\n' "$RELOAD_CADDY_SH" | sudo /usr/bin/tee /opt/zettelkasten/deploy/reload_caddy.sh > /dev/null
-            sudo /usr/bin/chmod 755 /opt/zettelkasten/deploy/deploy.sh /opt/zettelkasten/deploy/rollback.sh /opt/zettelkasten/deploy/healthcheck.sh /opt/zettelkasten/deploy/reload_caddy.sh
-            sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/deploy/deploy.sh /opt/zettelkasten/deploy/rollback.sh /opt/zettelkasten/deploy/healthcheck.sh /opt/zettelkasten/deploy/reload_caddy.sh
+            sudo /usr/bin/chmod 755 /opt/zettelkasten/deploy/deploy.sh
+            sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/deploy/deploy.sh
 
             # tee/chmod/chown are whitelisted in /etc/sudoers.d/deploy-zettelkasten.
             printf '%s\n' "$ENV_BODY" | sudo /usr/bin/tee /opt/zettelkasten/compose/.env > /dev/null
@@ -198,6 +187,3 @@ jobs:
           GHCR_READ_PAT: ${{ secrets.GHCR_READ_PAT }}
           SHA: ${{ github.sha }}
           DEPLOY_SH: ${{ steps.scripts.outputs.deploy_sh }}
-          ROLLBACK_SH: ${{ steps.scripts.outputs.rollback_sh }}
-          HEALTHCHECK_SH: ${{ steps.scripts.outputs.healthcheck_sh }}
-          RELOAD_CADDY_SH: ${{ steps.scripts.outputs.reload_caddy_sh }}
