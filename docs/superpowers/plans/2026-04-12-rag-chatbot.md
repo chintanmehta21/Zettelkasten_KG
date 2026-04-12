@@ -1400,4 +1400,325 @@ If any grep returns a match, the phase is not complete.
 
 ---
 
+---
+
+## Appendix D — Gap-fix addendum (16 items from spec-vs-plan audit)
+
+A post-write audit (subagent QA, ~200-row cross-check) found 16 spec items with no explicit plan task. Each is assigned to a phase and given a task number below. **Execute these alongside their phase's tasks, not as a separate pass.**
+
+### Phase 2 additions
+
+**Task 2.0 — Update `ops/requirements.txt` with new runtime deps**
+
+Before any Phase 2 code can import, add to `ops/requirements.txt`:
+
+```
+chonkie>=1.0.0           # chunking (Semantic, Late, Recursive, Token)
+networkx>=3.2            # localized PageRank (may already be present)
+# anthropic>=0.30.0      # future Claude backend, commented out in v1
+```
+
+Run `pip install -r ops/requirements.txt` locally to verify no conflicts. **This task is prerequisite to every subsequent task.**
+
+**Commit:** `chore(rag): add chonkie + networkx deps`
+
+---
+
+**Task 2.0b — Create `website/core/rag/__init__.py` package marker**
+
+Create `website/core/rag/__init__.py` (empty, or with a version string). Without this, every `from website.core.rag import ...` fails. Also create `website/core/rag/ingest/__init__.py` and `website/core/rag/adapters/__init__.py`. Run before Task 2.2.
+
+**Commit:** `chore(rag): init package markers`
+
+---
+
+**Task 2.11 — Create `ops/scripts/backfill_chunks.py` skeleton**
+
+Spec §9 (parked features) says to create a skeleton backfill script. Write the argparse shell + a `TODO: iterate Obsidian markdown files, extract raw text, chunk, embed, upsert` body. No implementation. This documents the future path.
+
+```python
+# ops/scripts/backfill_chunks.py
+"""
+Backfill kg_node_chunks for existing Zettels from Obsidian markdown files.
+NOT part of the v1 pipeline — run manually when summary-only fallback
+causes retrieval misses on old content. See spec §9.
+"""
+import argparse
+# TODO: iterate KG_DIRECTORY markdown files, parse "Extracted Text" sections,
+#       run ZettelChunker + ChunkEmbedder + upsert_chunks for each.
+```
+
+**Commit:** `docs(rag): backfill_chunks.py skeleton`
+
+---
+
+### Phase 3 additions
+
+**Task 3.26 — Create `website/core/rag/backends/` package with `websearch.py` stub**
+
+Spec §8.1 and §9 explicitly call for this parked stub:
+
+```python
+# website/core/rag/backends/__init__.py
+# (empty)
+
+# website/core/rag/backends/websearch.py
+"""
+PARKED: Future web-search popup feature.
+Spec §9: "future ad-hoc info-needs feature, reserved namespace."
+"""
+class WebSearchBackend:
+    async def search(self, query: str) -> str:
+        raise NotImplementedError(
+            "WebSearchBackend is parked for v2. See spec §9."
+        )
+```
+
+No test needed (just an `__init__` + a stub).
+
+**Commit:** `feat(rag): parked websearch backend stub`
+
+---
+
+**Task 3.27 — Update deploy script with reranker health-check preflight**
+
+Spec §7.2 says: before Caddy upstream swap, run `docker compose run --rm reranker wget -qO- http://localhost:8080/health`. Add this line to `ops/deploy/deploy.sh` **after** the new containers are up but **before** the Caddy swap.
+
+**Test (manual):** run deploy on staging; confirm the health-check step prints "OK" or blocks the swap on failure.
+
+**Commit:** `feat(ops): reranker health preflight in deploy`
+
+---
+
+### Phase 5 additions
+
+**Task 5.0 — Create `website/features/rag_chatbot/__init__.py`**
+
+Python package marker. Empty file. Create it before Task 5.4 (SSE client) since the template mount expects the package to exist.
+
+**Commit:** fold into Task 5.5 (minimal chat page) — no separate commit needed.
+
+---
+
+### Phase 6 additions
+
+**Task 6.24 — Create `content/example_queries.json` for empty-state UX**
+
+Spec §5.5 lists this file. Write 10–15 sample queries the UI shows when the user opens `/chat` with no history (spec §5.8 "first-time empty state"). Examples:
+
+```json
+[
+  "What have I saved about attention mechanisms?",
+  "Compare the perspectives on transformers across my YouTube notes",
+  "Summarize everything I know about reinforcement learning",
+  "Which of my Zettels mention Andrej Karpathy?",
+  ...
+]
+```
+
+**Commit:** `feat(rag): example queries for empty-state UX`
+
+---
+
+**Phase 6 verification gate — add 2 edge-case notes:**
+
+- **Edge case #36 (multiple browser tabs):** manually open `/chat` in 2 tabs, send a message in tab 1, switch to tab 2, verify it shows the new turn after clicking into the session list or refreshing. No dedicated test needed — note this as a manual check in the Phase 6 gate.
+- **Edge case #44 (double-click duplicate session creation):** verify the client generates a UUID for the session and the server upserts on it. Note in Phase 6 gate.
+
+### Phase 7 additions
+
+**Task 7.0 — Update `ops/requirements.txt` + `ops/requirements-dev.txt` for eval deps**
+
+Add to `ops/requirements.txt`:
+```
+langfuse>=3.0.0          # observability SDK
+```
+
+Add to `ops/requirements-dev.txt`:
+```
+ragas>=0.4.3,<0.5        # CI synthetic eval (class-based API)
+respx>=0.22.0            # HTTP mocking
+langchain-google-genai    # RAGAS Gemini judge wrapper
+```
+
+**Commit:** `chore(rag): add langfuse + ragas + respx deps`
+
+---
+
+**Task 7.3b — Create `tests/eval/ragas/conftest.py`**
+
+Shared fixtures for both RAGAS test modules (Tasks 7.4 and 7.5):
+
+```python
+# tests/eval/ragas/conftest.py
+import json
+import pytest
+from pathlib import Path
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+@pytest.fixture(scope="session")
+def synthetic_corpus():
+    return json.loads((FIXTURES_DIR / "synthetic_corpus.json").read_text())
+
+@pytest.fixture(scope="session")
+def golden_qa():
+    return json.loads((FIXTURES_DIR / "golden_qa.json").read_text())
+
+@pytest.fixture(scope="session")
+def ragas_judge():
+    """Returns the LLM judge (Langchain-wrapped Gemini or LiteLLM)."""
+    # Use the path verified in Phase 0 Task 0.5
+    from ragas.llms import LangchainLLMWrapper
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    import os
+    return LangchainLLMWrapper(
+        ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            api_key=os.environ["GEMINI_API_KEY"],
+        ),
+    )
+```
+
+**Commit:** `test(rag): RAGAS conftest with fixtures + judge`
+
+---
+
+**Task 7.2b — Create `website/core/rag/observability/metrics.py`**
+
+Spec §8.1 lists this file. Create it with per-stage latency tracking helpers used by `@trace_stage`:
+
+```python
+# website/core/rag/observability/metrics.py
+import time
+from contextlib import asynccontextmanager
+from langfuse import get_client
+
+langfuse = get_client()
+
+@asynccontextmanager
+async def track_latency(stage_name: str):
+    """Context manager that records wall-clock latency to Langfuse metadata."""
+    t0 = time.monotonic()
+    yield
+    elapsed = int((time.monotonic() - t0) * 1000)
+    langfuse.update_current_span(metadata={f"{stage_name}_latency_ms": elapsed})
+```
+
+**Commit:** `feat(rag): latency tracking helper`
+
+---
+
+**Task 7.2c — Configure Langfuse client sanitization**
+
+Spec §6.7 says: "Langfuse `sanitize` function strips keys matching `{api_key, token, password, secret}`." Implement this as a custom callback or a pre-send filter on the Langfuse client:
+
+```python
+# In website/core/rag/observability/tracer.py, after get_client():
+import re
+
+_SENSITIVE_PATTERN = re.compile(r"(api_key|token|password|secret)", re.IGNORECASE)
+
+def _sanitize_payload(data: dict) -> dict:
+    """Redact sensitive keys from trace payloads before upload."""
+    if not isinstance(data, dict):
+        return data
+    return {
+        k: ("***REDACTED***" if _SENSITIVE_PATTERN.search(k) else
+            _sanitize_payload(v) if isinstance(v, dict) else v)
+        for k, v in data.items()
+    }
+```
+
+Wire this into the Langfuse SDK's configuration if it supports a `before_send` callback, or apply it manually to `input`/`output` before `update_current_span()`.
+
+**Commit:** `feat(rag): Langfuse payload sanitization`
+
+---
+
+### Phase 8 additions
+
+**Task 8.5 — Implement L3 5% production sampling**
+
+Spec §6.8 says: "5% sampling of chat turns → gemini-2.5-flash-lite runs a lightweight faithfulness check on every 20th turn." Implement as a post-generation decorator or a counter-based check inside the orchestrator's `_run_pipeline`:
+
+```python
+# In orchestrator, after step 12 (persist message):
+if turn_counter % 20 == 0:
+    asyncio.create_task(_sample_faithfulness(answer_text, context_xml, trace_id))
+```
+
+`_sample_faithfulness` calls flash-lite with a short NLI prompt (same as the critic, but cheaper/lighter), tags the result into Langfuse as `sampled_faithfulness` on the trace. Non-blocking, non-fatal.
+
+**Commit:** `feat(rag): L3 5% faithfulness sampling`
+
+---
+
+**Task 8.6 — Create quarterly blueprint re-read calendar entry**
+
+Spec §6.8 and §13 #10 describe this as an operational discipline item. Create a note:
+
+```
+# docs/superpowers/plans/blueprint-re-read-schedule.md
+Re-read docs/research/RAG_blueprint{1,2,3} every ~3 months.
+Next scheduled: 2026-07-12
+```
+
+OR set up a recurring GitHub issue via `.github/ISSUE_TEMPLATE/blueprint-reread.yml`.
+
+**Commit:** `docs(rag): quarterly blueprint re-read schedule`
+
+---
+
+**Task 8.7 — Document pre-computed Leiden community summaries migration path**
+
+Spec §9 parked feature says "migration placeholder documented." Add a short markdown section to the spec or a separate doc describing:
+- When to trigger: thematic-query ContextRecall < 0.55 for 2 consecutive weeks
+- What to do: new migration `006_communities.sql` with `kg_communities(id, user_id, label, summary, embedding)` + `kg_community_members(community_id, node_id)`. Periodic Leiden detection via NetworkX + LLM-generated community summaries.
+- Where it plugs in: `rag_hybrid_search` adds a 6th stream over community summary embeddings.
+
+No code. Just the documented recipe.
+
+**Commit:** `docs(rag): Leiden community summaries migration recipe`
+
+---
+
+**Task 3.25 addendum — Edge case #28 (answer exceeds max_output_tokens)**
+
+Add to the streaming-path test (Task 3.25):
+
+```python
+def test_answer_stream_handles_truncated_finish_reason():
+    # Mock LLM to return finish_reason="length"
+    # Assert: the final SSE 'done' event includes "truncated": true
+    # Assert: the persisted chat_message includes a metadata flag for truncation
+```
+
+---
+
+## Summary of the 16 gap fixes
+
+| # | Phase | Task | Spec § | What's added |
+|---|---|---|---|---|
+| 1 | 2 | 2.0 | §8.2 | `ops/requirements.txt` chonkie + networkx |
+| 2 | 2 | 2.0b | §8.1 | `__init__.py` package markers for `rag/`, `ingest/`, `adapters/` |
+| 3 | 2 | 2.11 | §9 | `ops/scripts/backfill_chunks.py` skeleton |
+| 4 | 3 | 3.26 | §8.1, §9 | `backends/websearch.py` stub + `__init__.py` |
+| 5 | 3 | 3.27 | §7.2 | Reranker health-check in deploy script |
+| 6 | 3 | 3.25+ | §12 #28 | Edge case: answer exceeds max_output_tokens |
+| 7 | 5 | 5.0 | §5.5 | `rag_chatbot/__init__.py` package marker |
+| 8 | 6 | 6.24 | §5.5 | `content/example_queries.json` |
+| 9 | 6 | gate | §12 #36, #44 | Manual edge-case checks added to verification gate |
+| 10 | 7 | 7.0 | §8.2, §8.3 | `ops/requirements.txt` langfuse + `ops/requirements-dev.txt` ragas/respx |
+| 11 | 7 | 7.3b | §6.2 | `tests/eval/ragas/conftest.py` |
+| 12 | 7 | 7.2b | §8.1 | `observability/metrics.py` latency helper |
+| 13 | 7 | 7.2c | §6.7 | Langfuse payload sanitization |
+| 14 | 8 | 8.5 | §6.8 | L3 5% faithfulness sampling |
+| 15 | 8 | 8.6 | §6.8, §13 #10 | Quarterly blueprint re-read schedule |
+| 16 | 8 | 8.7 | §9 | Leiden community summaries migration recipe |
+
+With these 16 additions, **every item from the spec is covered by at least one explicit plan task**.
+
+---
+
 **End of plan.** When ready, begin Phase 0.
