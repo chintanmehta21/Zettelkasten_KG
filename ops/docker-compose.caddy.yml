@@ -4,6 +4,9 @@ services:
     container_name: caddy
     hostname: caddy
     restart: unless-stopped
+    # tini as PID 1 — fixes docker-exec reliability in non-root
+    # containers with cap_drop: ALL + no-new-privileges.
+    init: true
     # Run as deploy:deploy (UID/GID 1000) so Caddy can write to
     # /var/log/caddy, /data, /config without needing CAP_DAC_OVERRIDE
     # (which is dropped by cap_drop: ALL below).

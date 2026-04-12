@@ -141,38 +141,30 @@ jobs:
           secret_count=$(printf '%s\n' "$SECRETS_BODY" | grep -c '=' || true)
           echo "Built .env with ${secret_count} secret line(s) + 4 static line(s)"
 
-      - name: Checkout deploy scripts
+      # Checkout ops/ so we can SCP deploy scripts + compose files to the
+      # droplet. This keeps the droplet's scripts in sync with the repo
+      # on every deploy — no manual provisioning needed.
+      - name: Checkout ops
         uses: actions/checkout@v4
         with:
-          sparse-checkout: ops/deploy
+          sparse-checkout: ops
           sparse-checkout-cone-mode: true
 
-      - name: Sync deploy scripts to droplet
+      # Upload deploy scripts + compose files to /tmp on the droplet.
+      # The deploy user has write access to /tmp; the next SSH step
+      # installs them to /opt/zettelkasten/ via whitelisted sudo commands.
+      - name: Upload infrastructure files
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
-          source: "ops/deploy/*.sh"
-          target: "/tmp/deploy-sync"
+          source: "ops/deploy/deploy.sh,ops/deploy/reload_caddy.sh,ops/deploy/healthcheck.sh,ops/deploy/rollback.sh,ops/docker-compose.caddy.yml,ops/docker-compose.blue.yml,ops/docker-compose.green.yml"
+          target: "/tmp/zk-sync"
           overwrite: true
 
-      - name: Install deploy scripts on droplet
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          script: |
-            set -euo pipefail
-            sudo cp /tmp/deploy-sync/ops/deploy/*.sh /opt/zettelkasten/deploy/
-            sudo chown root:root /opt/zettelkasten/deploy/*.sh
-            sudo chmod 755 /opt/zettelkasten/deploy/*.sh
-            rm -rf /tmp/deploy-sync
-
-      - name: Write .env on droplet and pull image
+      - name: Sync files, write .env, and deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
@@ -180,21 +172,48 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
           envs: ENV_BODY,GHCR_READ_PAT,SHA
+          command_timeout: 8m
           script: |
             set -euo pipefail
 
-            # deploy is in the docker group — no sudo needed for docker CLI.
+            # ── 1. Sync deploy scripts (tee + chmod are sudoers-whitelisted) ──
+            for f in deploy.sh reload_caddy.sh healthcheck.sh rollback.sh; do
+              src="/tmp/zk-sync/ops/deploy/$f"
+              dst="/opt/zettelkasten/deploy/$f"
+              if [ -f "$src" ]; then
+                sudo /usr/bin/tee "$dst" < "$src" > /dev/null
+                sudo /usr/bin/chmod 755 "$dst"
+              fi
+            done
+            echo "[sync] Deploy scripts updated"
+
+            # ── 2. Sync compose files ──
+            for f in docker-compose.caddy.yml docker-compose.blue.yml docker-compose.green.yml; do
+              src="/tmp/zk-sync/ops/$f"
+              dst="/opt/zettelkasten/compose/$f"
+              if [ -f "$src" ]; then
+                sudo /usr/bin/tee "$dst" < "$src" > /dev/null
+                sudo /usr/bin/chmod 644 "$dst"
+              fi
+            done
+            echo "[sync] Compose files updated"
+
+            rm -rf /tmp/zk-sync
+
+            # ── 3. Ensure Caddy container matches current compose ──
+            # Picks up init:true, image updates, config changes, etc.
+            # --no-deps avoids touching blue/green app containers.
+            docker compose -f /opt/zettelkasten/compose/docker-compose.caddy.yml up -d --no-deps 2>&1 || true
+            echo "[sync] Caddy container reconciled"
+
+            # ── 4. Docker login + write .env ──
             echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin
 
-            # tee/chmod/chown/deploy.sh are whitelisted in /etc/sudoers.d/deploy-zettelkasten.
             printf '%s\n' "$ENV_BODY" | sudo /usr/bin/tee /opt/zettelkasten/compose/.env > /dev/null
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
-            # The droplet's deploy entrypoint is fixed by sudoers policy, so
-            # keep the recovery logic minimal here: invoke the whitelisted root
-            # script directly, then retry once after its built-in rollback path
-            # if the first attempt fails.
+            # ── 5. Run deploy with one retry ──
             for attempt in 1 2; do
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
