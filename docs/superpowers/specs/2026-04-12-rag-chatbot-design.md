@@ -1220,26 +1220,43 @@ class ZettelChunker:
                semantic → recursive → token.
     Short-form: Atomic single chunk enriched with title, tags, author, mentions,
                 hashtags (BP3 §3.1).
+
+    NOTE (verified against Chonkie source, April 2026):
+    - `SemanticChunker` parameter is `min_sentences_per_chunk`, NOT `min_sentences`.
+    - `RecursiveChunker` does NOT accept `chunk_overlap` — overlap is configured
+      via the `rules: RecursiveRules` parameter. Only `TokenChunker` has
+      `chunk_overlap`.
+    - Chonkie `embedding_model` accepts `str | BaseEmbeddings` — it does NOT
+      accept a plain callable. Wiring Gemini requires a `GeminiChonkieEmbeddings`
+      adapter that subclasses `chonkie.embeddings.BaseEmbeddings` and delegates
+      to the existing `GeminiKeyPool.embed_content()`. See §3.8.
+    - `LateChunker` default `chunk_size=2048`; we explicitly override to 512.
     """
 
     def __init__(self, embedder_for_late_chunking=None):
         self._embedder = embedder_for_late_chunking
         self._semantic = SemanticChunker(
-            embedding_model="all-MiniLM-L6-v2",
+            embedding_model="all-MiniLM-L6-v2",   # local, for boundary detection only
             threshold=0.5,
             chunk_size=LONG_CHUNK_TOKENS,
-            min_sentences=2,
+            min_sentences_per_chunk=2,            # corrected param name
         )
+        # RecursiveChunker: overlap lives in RecursiveRules, not a constructor kwarg
         self._recursive = RecursiveChunker(
+            chunk_size=LONG_CHUNK_TOKENS,
+        )
+        # TokenChunker is the only chunker that accepts chunk_overlap
+        self._token = TokenChunker(
             chunk_size=LONG_CHUNK_TOKENS,
             chunk_overlap=LONG_OVERLAP_TOKENS,
         )
-        self._token = TokenChunker(chunk_size=LONG_CHUNK_TOKENS, chunk_overlap=LONG_OVERLAP_TOKENS)
         self._late = None
         if embedder_for_late_chunking is not None:
+            # embedder_for_late_chunking must be a GeminiChonkieEmbeddings
+            # instance (subclass of chonkie.embeddings.BaseEmbeddings) — see §3.8
             self._late = LateChunker(
                 embedding_model=embedder_for_late_chunking,
-                chunk_size=LONG_CHUNK_TOKENS,
+                chunk_size=LONG_CHUNK_TOKENS,   # explicit override of 2048 default
             )
 
     def chunk(self, *, source_type: SourceType, title: str, raw_text: str,
@@ -1295,30 +1312,49 @@ def _count_tokens(text: str) -> int:
 # website/core/rag/ingest/embedder.py
 import asyncio
 import hashlib
-from website.features.api_key_switching import get_gemini_key_pool
+from google.genai.types import EmbedContentConfig
+from website.features.api_key_switching.key_pool import GeminiKeyPool
 
 DIM = 768   # MRL-truncated gemini-embedding-001
 
 
 class ChunkEmbedder:
-    """Batched embedding via the existing GeminiKeyPool."""
+    """
+    Async, batched embedding via the existing GeminiKeyPool.
 
-    def __init__(self, batch_size: int = 32, max_parallel: int = 4):
-        self._pool = get_gemini_key_pool()
+    NOTE (verified from website/features/api_key_switching/key_pool.py):
+    The existing pool exposes only `embed_content(contents, *, config)` —
+    SYNCHRONOUS, single call, returns the raw genai response (no batch helper).
+    This class wraps it to provide:
+      - async interface (via asyncio.to_thread so the event loop stays unblocked)
+      - batching (chunks long input lists into groups of self._batch_size)
+      - parallelism cap (via semaphore)
+      - MRL truncation via EmbedContentConfig(output_dimensionality=DIM)
+      - task_type="RETRIEVAL_DOCUMENT" for ingest, "RETRIEVAL_QUERY" for queries
+    """
+
+    def __init__(self, pool: GeminiKeyPool, batch_size: int = 32, max_parallel: int = 4):
+        self._pool = pool
         self._batch_size = batch_size
         self._sem = asyncio.Semaphore(max_parallel)
 
-    async def embed(self, texts: list[str]) -> list[list[float]]:
+    async def embed(self, texts: list[str], *, task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
         batches = [texts[i:i + self._batch_size] for i in range(0, len(texts), self._batch_size)]
 
         async def _one(batch: list[str]) -> list[list[float]]:
             async with self._sem:
-                return await self._pool.embed_batch(
-                    model="gemini-embedding-001",
-                    inputs=batch,
+                # GeminiKeyPool.embed_content is sync; wrap in a worker thread
+                config = EmbedContentConfig(
                     output_dimensionality=DIM,
-                    task_type="RETRIEVAL_DOCUMENT",
+                    task_type=task_type,
                 )
+                resp = await asyncio.to_thread(
+                    self._pool.embed_content,
+                    contents=batch,
+                    config=config,
+                )
+                # resp.embeddings is a list of Embedding objects, each with .values
+                return [list(e.values) for e in resp.embeddings]
 
         results = await asyncio.gather(*[_one(b) for b in batches])
         return [vec for batch in results for vec in batch]
@@ -1329,7 +1365,7 @@ class ChunkEmbedder:
         cached = await QUERY_EMBEDDING_CACHE.get(key)
         if cached is not None:
             return cached
-        vec = (await self.embed([query]))[0]
+        vec = (await self.embed([query], task_type="RETRIEVAL_QUERY"))[0]
         await QUERY_EMBEDDING_CACHE.put(key, vec)
         return vec
 
@@ -1337,6 +1373,8 @@ class ChunkEmbedder:
     def content_hash(text: str) -> bytes:
         return hashlib.sha256(text.encode("utf-8")).digest()
 ```
+
+**DECISION: wrap the sync `GeminiKeyPool.embed_content` in `asyncio.to_thread` rather than forking the pool.** The existing pool is production-hardened (key rotation, cooldown, 429 detection) and its sync interface is intentional — it matches the `google-generativeai` SDK's sync embedder. Running it in a worker thread keeps the event loop unblocked while reusing all the existing rate-limit resilience.
 
 ```python
 # website/core/rag/ingest/upsert.py
@@ -1756,24 +1794,183 @@ class TEIReranker:
         return sorted(candidates, key=lambda c: c.final_score or 0.0, reverse=True)[:top_k]
 ```
 
-### 3.7 TEI Docker sidecar config
+### 3.7 Existing-code adapter layer
+
+Three thin adapters bridge the idealized interfaces in §3.2, §3.4, §4.3 to the actual `GeminiKeyPool` + Chonkie APIs. None of them change the existing `key_pool.py` code — they are new modules under `website/core/rag/adapters/`.
+
+**File tree**:
+
+```
+website/core/rag/adapters/
+├── __init__.py
+├── pool_factory.py           # module-level get_gemini_pool() singleton
+├── gemini_chonkie.py         # GeminiChonkieEmbeddings (BaseEmbeddings subclass)
+└── gemini_stream.py          # Key-rotation streaming generator for GeminiBackend
+```
+
+#### 3.7.1 `pool_factory.py` — singleton accessor
+
+The existing `key_pool.py` has no `get_gemini_key_pool()` helper; each caller instantiates the pool. The RAG layer needs a single shared pool so key cooldowns and rate-limit state are coherent across ingestion, retrieval, generation, critic, and rewriter calls.
+
+```python
+# website/core/rag/adapters/pool_factory.py
+from functools import lru_cache
+from website.features.api_key_switching.key_pool import GeminiKeyPool
+
+@lru_cache(maxsize=1)
+def get_gemini_pool() -> GeminiKeyPool:
+    """Process-wide singleton. Matches the lru_cache pattern used by get_settings()."""
+    return GeminiKeyPool()
+```
+
+All RAG modules accept the pool via constructor DI — `get_gemini_pool()` is called once in the orchestrator factory.
+
+#### 3.7.2 `gemini_chonkie.py` — Chonkie `BaseEmbeddings` subclass
+
+Chonkie's `SemanticChunker` and `LateChunker` accept `embedding_model: str | BaseEmbeddings`. To delegate to the existing pool, we subclass `chonkie.embeddings.BaseEmbeddings`:
+
+```python
+# website/core/rag/adapters/gemini_chonkie.py
+from typing import Sequence
+from chonkie.embeddings import BaseEmbeddings
+from google.genai.types import EmbedContentConfig
+from website.core.rag.adapters.pool_factory import get_gemini_pool
+
+_GEMINI_EMBED_DIM = 768
+
+
+class GeminiChonkieEmbeddings(BaseEmbeddings):
+    """
+    Wraps GeminiKeyPool.embed_content as a chonkie-compatible BaseEmbeddings.
+    Used only by LateChunker during ingestion — the chunker calls
+    embed(texts) repeatedly on overlapping token windows.
+    """
+    def __init__(self):
+        self._pool = get_gemini_pool()
+        # chonkie.BaseEmbeddings expects dimension + _model_name_or_path attrs
+        self._dimension = _GEMINI_EMBED_DIM
+        self._model_name_or_path = "gemini-embedding-001"
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        """Synchronous; chonkie's chunker calls this from a sync context."""
+        config = EmbedContentConfig(
+            output_dimensionality=_GEMINI_EMBED_DIM,
+            task_type="RETRIEVAL_DOCUMENT",
+        )
+        # key_pool.embed_content is sync — chonkie calls us sync — no asyncio needed
+        resp = self._pool.embed_content(contents=list(texts), config=config)
+        return [list(e.values) for e in resp.embeddings]
+
+    def embed_query(self, query: str) -> list[float]:
+        return self.embed([query])[0]
+```
+
+**Phase 0 verification note**: Chonkie's `BaseEmbeddings` abstract method names (`embed` / `embed_query` / `dimension`) should be confirmed from the actual `chonkie.embeddings.BaseEmbeddings` source before implementation. If Chonkie has shipped an official `chonkie[gemini]` extra since April 2026 that works with our pool, prefer that.
+
+#### 3.7.3 `gemini_stream.py` — streaming with key rotation
+
+`GeminiKeyPool.generate_content` is async but **not streaming**. The spec's `GeminiBackend.generate_stream()` needs a streaming path. We implement it by calling `google.genai.Client.aio.models.generate_content_stream(...)` directly and wrapping it in the same key-rotation + cooldown logic the pool uses internally:
+
+```python
+# website/core/rag/adapters/gemini_stream.py
+import time
+from typing import AsyncIterator
+from google.genai import Client
+from google.genai.errors import ClientError
+from google.genai.types import GenerateContentConfig
+from website.features.api_key_switching.key_pool import (
+    GeminiKeyPool, _is_rate_limited, _RATE_LIMIT_COOLDOWN_SECS,
+)
+
+
+async def generate_stream_with_rotation(
+    pool: GeminiKeyPool,
+    *,
+    model: str,
+    contents: str,
+    config: GenerateContentConfig,
+) -> AsyncIterator[dict]:
+    """
+    Yields events: {"type": "token", "text": "..."}
+                   {"type": "done",  "model": ..., "usage": ..., "finish_reason": ...}
+    Rotates keys on 429, respects cooldowns, and honors the pool's key list.
+
+    Pattern mirrors GeminiKeyPool.generate_content (key_pool.py:175-216) but
+    swaps `client.models.generate_content` for `client.aio.models.generate_content_stream`.
+    """
+    keys = pool._keys                    # private access — acceptable for adapter
+    n    = len(keys)
+    last_exc = None
+    for attempt in range(n):
+        key_index = pool._next_gen_key
+        pool._next_gen_key = (pool._next_gen_key + 1) % n
+        cooldown_key = (key_index, model)
+        if pool._cooldowns.get(cooldown_key, 0) > time.time():
+            continue
+        client = Client(api_key=keys[key_index])
+        try:
+            response = client.aio.models.generate_content_stream(
+                model=model, contents=contents, config=config,
+            )
+            usage, finish = None, None
+            async for chunk in response:
+                if chunk.text:
+                    yield {"type": "token", "text": chunk.text}
+                if chunk.usage_metadata:
+                    usage = chunk.usage_metadata
+                if chunk.candidates and chunk.candidates[0].finish_reason:
+                    finish = str(chunk.candidates[0].finish_reason)
+            yield {"type": "done", "model": model, "usage": usage, "finish_reason": finish}
+            return
+        except ClientError as exc:
+            last_exc = exc
+            if _is_rate_limited(exc):
+                pool._cooldowns[cooldown_key] = time.time() + _RATE_LIMIT_COOLDOWN_SECS
+                continue
+            raise
+    raise last_exc or RuntimeError(f"All keys exhausted for {model}")
+```
+
+`GeminiBackend._stream_one_tier` (§4.3) delegates to this function. The adapter's private-attribute access (`pool._keys`, `pool._next_gen_key`, `pool._cooldowns`) is acceptable here because:
+
+1. It's a thin adapter sitting in the same repository as `key_pool.py` — there is no API boundary to cross.
+2. The alternative (forking the pool to add streaming) would duplicate 200 lines of rate-limit logic.
+3. If the pool's internal state ever needs to change shape, one adapter file updates alongside it — caught by tests.
+
+**Anti-pattern guard**: do NOT add streaming directly to `key_pool.py` (that would couple a production-hardened module to a v1 feature and make rollback harder). Keep the adapter separate.
+
+---
+
+### 3.8 TEI Docker sidecar config
 
 Added to `ops/docker-compose.{blue,green}.yml`:
 
 ```yaml
   reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    # Current TEI CPU tag (verified April 2026 from HF docs). Use cpu-arm64-1.9
+    # on aarch64 hosts. DO NOT use cpu-1.5 (outdated).
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
     command:
+      # PRIMARY: BAAI/bge-reranker-v2-m3 (architecture-compatible with TEI's
+      # XLM-RoBERTa allowlist, but NOT in the explicit supported-models table).
+      # FALLBACK on load failure: BAAI/bge-reranker-large (explicitly supported).
+      # Phase 3 plan includes a verification smoke-test before committing to v2-m3.
       - --model-id=BAAI/bge-reranker-v2-m3
       - --revision=main
       - --max-batch-tokens=16384
       - --max-client-batch-size=64
       - --port=8080
+      - --auto-truncate           # handles overly-long chunk text globally
     volumes:
       - reranker-models:/data
     environment:
       - HUGGINGFACE_HUB_CACHE=/data
     healthcheck:
+      # TEI convention is /health; Phase 3 plan includes a smoke-test to confirm
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
       timeout: 3s
@@ -1790,6 +1987,16 @@ volumes:
 ```
 
 No GPU required. CPU variant handles ~30 candidates in 200–500ms. Model download happens once at first container start, persisted across blue/green swaps.
+
+**Verified TEI `/rerank` request body** (from HF quick_tour, April 2026):
+
+```bash
+curl 127.0.0.1:8080/rerank -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"...","texts":["..."], "raw_scores": false}'
+```
+
+The response shape (e.g., `[{"index": 0, "score": 0.87}, ...]`) is **not documented** in the HF quick_tour — Phase 3 includes a smoke-test assertion to lock in the exact JSON shape before wiring `TEIReranker.rerank()` to it.
 
 ---
 
@@ -1939,6 +2146,15 @@ class LLMRouter:
 
 ```python
 # website/core/rag/generation/gemini_backend.py
+import asyncio
+import time
+from google.genai.types import GenerateContentConfig
+from google.genai.errors import ClientError
+from website.features.api_key_switching.key_pool import GeminiKeyPool, _is_rate_limited
+
+# Tier chain matches existing pool's _GENERATIVE_MODEL_CHAIN but adds
+# the "high" tier (pro → flash). The existing pool's generate_content
+# accepts a `starting_model=` override which lets us force a tier.
 _TIER_CHAIN = {
     "fast": ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
     "high": ["gemini-2.5-pro",   "gemini-2.5-flash"],
@@ -1946,32 +2162,92 @@ _TIER_CHAIN = {
 
 
 class GeminiBackend:
-    def __init__(self):
-        self._pool = get_gemini_key_pool()
+    """
+    NOTE (verified from key_pool.py):
+    - GeminiKeyPool.generate_content is ASYNC but takes single call, not streaming.
+    - It returns a tuple: (response, model_used, key_index). Use these directly
+      — the pool does NOT expose last_used_model/last_token_counts attributes.
+    - The pool has no generate_content_stream method. We implement streaming
+      ourselves by calling google.genai's streaming API directly from within
+      the pool's key-rotation loop. See §3.8 for the key-rotation pattern.
+    - Rate limit detection uses _is_rate_limited(exc) helper from key_pool.py.
+    """
+
+    def __init__(self, pool: GeminiKeyPool):
+        self._pool = pool
 
     async def generate_stream(self, *, system_prompt, user_prompt, quality, stop_sequences=None):
+        """
+        Streams tokens by iterating through the tier chain. For each tier, we
+        call the google-genai streaming API directly (not via the pool's
+        generate_content) but reuse the pool's key-rotation state.
+
+        See §3.8 for the GeminiStreamAdapter that wraps this pattern.
+        """
+        config = GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.2,
+            top_p=0.95,
+            max_output_tokens=2048,
+            stop_sequences=stop_sequences or [],
+        )
         for model in _TIER_CHAIN[quality]:
             try:
-                async for token in self._pool.generate_content_stream(
-                    model=model,
-                    system_instruction=system_prompt,
-                    contents=user_prompt,
-                    generation_config={
-                        "temperature": 0.2,
-                        "top_p": 0.95,
-                        "max_output_tokens": 2048,
-                        "stop_sequences": stop_sequences or [],
-                    },
+                async for token, meta in self._stream_one_tier(
+                    model=model, contents=user_prompt, config=config,
                 ):
-                    yield token
+                    # meta is attached to the final token: {model, token_counts, finish_reason}
+                    yield token, meta
                 return
-            except RateLimitExhausted:
-                continue
+            except ClientError as exc:
+                if _is_rate_limited(exc):
+                    continue   # try next tier
+                raise
         raise LLMUnavailable("All Gemini tiers exhausted")
 
-    async def generate(self, **kwargs) -> GenerationResult:
-        # Non-streaming: accumulate + return with model/token/latency metadata
+    async def _stream_one_tier(self, *, model, contents, config):
+        """
+        Key-rotation loop around google.genai's streaming API.
+        Copies the pattern from GeminiKeyPool.generate_content (key_pool.py:175)
+        but calls generate_content_stream on the client instead.
+        """
+        # Implementation mirrors key_pool._next_gen_key rotation. See §3.8.
         ...
+
+    async def generate(self, *, system_prompt, user_prompt, quality, stop_sequences=None):
+        """Non-streaming: delegate to the existing pool.generate_content (async)."""
+        config = GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.2,
+            top_p=0.95,
+            max_output_tokens=2048,
+            stop_sequences=stop_sequences or [],
+        )
+        t0 = time.monotonic()
+        for model in _TIER_CHAIN[quality]:
+            try:
+                response, model_used, key_index = await self._pool.generate_content(
+                    contents=user_prompt,
+                    config=config,
+                    starting_model=model,
+                    label="rag_generate",
+                )
+                return GenerationResult(
+                    content=response.text,
+                    model=model_used,
+                    token_counts={
+                        "prompt":     response.usage_metadata.prompt_token_count,
+                        "completion": response.usage_metadata.candidates_token_count,
+                        "total":      response.usage_metadata.total_token_count,
+                    },
+                    latency_ms=int((time.monotonic() - t0) * 1000),
+                    finish_reason=str(response.candidates[0].finish_reason),
+                )
+            except ClientError as exc:
+                if _is_rate_limited(exc):
+                    continue
+                raise
+        raise LLMUnavailable("All Gemini tiers exhausted")
 ```
 
 ### 4.4 Claude backend (stubbed, flag-gated)
@@ -2131,6 +2407,19 @@ class ChatSessionStore:
 Top-level function called by FastAPI and Telegram surfaces. Streaming variant yields SSE-ready events; non-streaming variant returns a populated `AnswerTurn`.
 
 ```python
+# NOTE: Langfuse v3 API (verified April 2026 from langfuse.com/docs/sdk/python/sdk-v3)
+#   - Import: `from langfuse import observe, get_client` (NOT langfuse.decorators)
+#   - Singleton: `langfuse = get_client()`
+#   - Current trace ID: `langfuse.get_current_trace_id()` on the client instance
+#     (NOT a separate `langfuse_context` module — that API was v2)
+#   - Mid-span updates: `langfuse.update_current_generation(...)` with
+#     `usage_details`, `cost_details`, `metadata`, `input`, `output`, `model`
+#   - Nested @observe auto-nests via OpenTelemetry context propagation
+from langfuse import observe, get_client
+
+langfuse = get_client()
+
+
 class RAGOrchestrator:
     def __init__(
         self, *,
@@ -2159,7 +2448,7 @@ class RAGOrchestrator:
 
     async def _run_pipeline(self, *, query, user_id, stream):
         t0 = time.monotonic()
-        trace_id = langfuse_context.get_current_trace_id() or str(uuid4())
+        trace_id = langfuse.get_current_trace_id() or str(uuid4())
 
         # 0. Session lifecycle
         session_id = query.session_id
@@ -2740,19 +3029,89 @@ Every `get_settings()` call mocked (CLAUDE.md contract). Every Supabase call moc
 
 ### 6.3 L2 synthetic RAGAS in CI
 
+**Pinned version**: `ragas>=0.4.3,<0.5` (current stable, April 2026). The 0.2.x API has been deprecated — current RAGAS uses class-based metrics and a new column schema.
+
 Fixtures under `tests/eval/ragas/fixtures/`:
 - `synthetic_corpus.json` — ~50 fake Zettels (20 YouTube, 10 Reddit, 10 Substack, 5 GitHub, 5 Twitter) across 5 topics
-- `golden_qa.json` — ~30 Q/A pairs with `ground_truth_support` zettel IDs
+- `golden_qa.json` — ~30 Q/A records with columns **`user_input`, `retrieved_contexts`, `response`, `reference`** (the 0.4.x schema — NOT the old `question/contexts/answer/ground_truth`)
 
-**Thresholds** (v1 floors, not targets):
+**Canonical imports** (verified from `ragas.metrics.collections.__init__` in main branch):
 
-| Metric | Threshold |
+```python
+from ragas import EvaluationDataset, evaluate
+from ragas.llms import LangchainLLMWrapper
+from ragas.metrics.collections import (
+    Faithfulness,          # class, instantiate at call site: Faithfulness()
+    ContextPrecision,
+    ContextRecall,
+    AnswerRelevancy,
+    AnswerCorrectness,
+    FactualCorrectness,    # optional; close cousin of answer_correctness
+)
+```
+
+**Thresholds** (v1 floors, not targets — post-processed since RAGAS has no built-in gate):
+
+| Metric class | Threshold |
 |---|---|
-| `faithfulness` | ≥ 0.85 |
-| `context_precision` | ≥ 0.70 |
-| `context_recall` | ≥ 0.65 |
-| `answer_relevancy` | ≥ 0.80 |
-| `answer_correctness` | ≥ 0.60 |
+| `Faithfulness()` | ≥ 0.85 |
+| `ContextPrecision()` | ≥ 0.70 |
+| `ContextRecall()` | ≥ 0.65 |
+| `AnswerRelevancy()` | ≥ 0.80 |
+| `AnswerCorrectness()` | ≥ 0.60 |
+
+**Gemini judge wiring** (two options, documented preference):
+
+1. **Preferred — LiteLLM + Vertex AI** (explicitly documented in RAGAS `customize_models.md`):
+   ```python
+   import litellm
+   from ragas.llms import llm_factory
+   os.environ["VERTEXAI_PROJECT"]  = os.environ["GOOGLE_CLOUD_PROJECT"]
+   os.environ["VERTEXAI_LOCATION"] = "us-central1"
+   judge_llm = llm_factory(
+       "vertex_ai/gemini-2.5-flash",
+       provider="litellm",
+       client=litellm.completion,
+   )
+   ```
+   Adds `litellm` + Vertex AI auth as a CI dep. CI needs a service-account JSON for Vertex.
+
+2. **Fallback — `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))`** (community pattern, not in RAGAS docs but pattern-compatible with how OpenAI is wrapped):
+   ```python
+   from langchain_google_genai import ChatGoogleGenerativeAI
+   from ragas.llms import LangchainLLMWrapper
+   judge_llm = LangchainLLMWrapper(
+       ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.environ["GEMINI_API_KEY"]),
+   )
+   ```
+   Reuses the existing Gemini API key (same as the rest of the stack). Less CI dep surface. **Preferred for v1** — Phase 7 will verify it works before committing.
+
+**Running evaluate()**:
+
+```python
+dataset = [
+    {
+        "user_input":         q.question,
+        "retrieved_contexts": [c.content for c in q.retrieved],
+        "response":           q.answer,
+        "reference":          q.ground_truth,
+    }
+    for q in golden_qa_pairs
+]
+evaluation_dataset = EvaluationDataset.from_list(dataset)
+
+result = evaluate(
+    dataset=evaluation_dataset,
+    metrics=[Faithfulness(), ContextPrecision(), ContextRecall(),
+             AnswerRelevancy(), AnswerCorrectness()],
+    llm=judge_llm,
+)
+
+# CI gating: post-process (no built-in threshold gate in 0.4.x)
+assert result["faithfulness"]      >= 0.85, f"Faithfulness regressed: {result['faithfulness']}"
+assert result["context_precision"] >= 0.70, f"Context precision regressed: {result['context_precision']}"
+# ... and so on. Any failed assert → non-zero exit → PR blocked.
+```
 
 **Structural checks** (deterministic, not LLM-judged):
 
@@ -2810,8 +3169,21 @@ Langfuse has its own Postgres (separate from Supabase). UI bound to `127.0.0.1:3
 
 ```python
 # website/core/rag/observability/tracer.py
-from langfuse.decorators import observe, langfuse_context
+#
+# NOTE: Langfuse v3 (verified April 2026):
+#   - Import from `langfuse`, NOT `langfuse.decorators` (that was v2)
+#   - `@observe` accepts: name, as_type ("span"|"generation"|"tool"),
+#     capture_input, capture_output
+#   - Singleton: `langfuse = get_client()`, then use
+#     `langfuse.update_current_generation(...)` / `update_current_span(...)`
+#     for mid-span metadata updates
+#   - Nested @observe auto-nests via OpenTelemetry context propagation
+#
+from langfuse import observe, get_client
 from functools import wraps
+
+langfuse = get_client()
+
 
 def trace_stage(name: str, *, capture_input=True, capture_output=True):
     def decorator(fn):
@@ -2821,9 +3193,38 @@ def trace_stage(name: str, *, capture_input=True, capture_output=True):
             return await fn(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def record_generation_cost(model: str, prompt_tokens: int, completion_tokens: int):
+    """
+    Explicitly record Gemini cost per generation turn.
+    Gemini 2.5 family is NOT in Langfuse v3's default cost table — we must
+    either register prices on the Langfuse server OR pass cost_details per call.
+    This helper uses the per-call approach so the spec does not depend on
+    out-of-band server config.
+    """
+    prices = {
+        "gemini-2.5-flash":      (0.000075, 0.000300),   # $/1K tokens: (input, output)
+        "gemini-2.5-flash-lite": (0.000019, 0.000075),
+        "gemini-2.5-pro":        (0.001250, 0.005000),
+    }
+    p_in, p_out = prices.get(model, (0.0, 0.0))
+    langfuse.update_current_generation(
+        model=model,
+        usage_details={
+            "input_tokens":  prompt_tokens,
+            "output_tokens": completion_tokens,
+        },
+        cost_details={
+            "input":  prompt_tokens * p_in / 1000,
+            "output": completion_tokens * p_out / 1000,
+        },
+    )
 ```
 
 Every stage span records: input (sanitized), output (2KB truncated), duration, model + token counts, custom tags (`user_id`, `session_id`, `sandbox_id`, `quality_mode`, `query_class`).
+
+**Cost tracking for Gemini**: Langfuse v3's default cost table does not include Gemini 2.5 models. Every generation turn calls `record_generation_cost(...)` above to pass explicit `cost_details` via `langfuse.update_current_generation()`. Alternative considered and rejected: registering prices on the self-hosted Langfuse server's model-management UI — rejected because it requires an out-of-band admin step and makes cost config invisible to grep/version-control. The helper in Python keeps costs versioned with the code.
 
 ### 6.6 Dashboards + alerts
 
@@ -2838,6 +3239,12 @@ Every stage span records: input (sanitized), output (2KB truncated), duration, m
 | Queue depth (if >1 worker) | any chat waits > 1s to start |
 
 Alerts flow to the existing Telegram bot error channel.
+
+### 6.6a Cost tracking (explicit, not auto)
+
+Langfuse v3's built-in cost-calculation table does **not** include Gemini 2.5 flash/flash-lite/pro. Every LLM generation stage calls `tracer.record_generation_cost(model, prompt_tokens, completion_tokens)` (defined in §6.5) which passes explicit `cost_details` via `langfuse.update_current_generation()`. Prices are versioned in the Python helper, not in Langfuse server config.
+
+For the `gemini-embedding-001` model (ingestion path), cost is similarly recorded per batch.
 
 ### 6.7 Sensitive-data handling
 
@@ -3249,11 +3656,25 @@ None blocking v1. All architectural choices locked during brainstorming (8 Q's a
 
 Items to **re-verify during implementation**:
 
-1. **pgvector version on prod Supabase**: must be ≥ 0.8 for `hnsw.iterative_scan`. If < 0.8, either upgrade or accept degraded multi-tenant recall (then add a post-filter CTE as workaround).
-2. **Chonkie LateChunker with Gemini embeddings**: verify Chonkie supports Gemini as the embedder for its LateChunker primitive. If not, either (a) implement a thin LateChunker adapter calling `gemini-embedding-001` directly, or (b) fall back to SemanticChunker for long-form.
-3. **`gemini-generativeai` SDK streaming support for system_instruction**: verify `generate_content_stream` accepts a `system_instruction` parameter in the version already pinned in the repo. If not, concatenate into the user prompt.
-4. **Langfuse v3 cost model for Gemini 2.5 family**: verify flash / flash-lite / pro are in Langfuse's default price map. If not, register custom model costs via the Langfuse admin UI.
-5. **`quarterly blueprint re-read cadence`**: operational discipline item, not code. Captured in §6.1 L3 description.
+1. **pgvector version on prod Supabase**: must be ≥ 0.8 for `hnsw.iterative_scan`. If < 0.8, either upgrade or accept degraded multi-tenant recall (then add a post-filter CTE as workaround). Plan Phase 0 verifies via `SELECT extversion FROM pg_extension WHERE extname='vector'`.
+
+2. **TEI supports `BAAI/bge-reranker-v2-m3`**: the model is architecture-compatible (XLM-RoBERTa) with TEI's allowlist but is **not** in the explicit `supported_models` table. Plan Phase 3 runs a smoke-test: start the reranker container, `curl /rerank` with 2 texts, confirm a valid response. If the container fails to load the model, fall back to `BAAI/bge-reranker-large` (explicitly documented).
+
+3. **TEI `/rerank` response shape**: the HF quick_tour shows the request body but not the response shape. Plan Phase 3 locks it in via a test assertion against a live smoke call. The spec's assumed `[{"index": i, "score": f}, ...]` is plausible but unverified.
+
+4. **TEI `/health` endpoint**: the health-check recipe in the Docker compose uses `/health`. Plan Phase 3 confirms this is the right path (alternative: `/healthz`).
+
+5. **Chonkie `BaseEmbeddings` abstract contract**: `GeminiChonkieEmbeddings` (§3.7.2) assumes method names `embed`, `embed_query`, and a `dimension` property. Plan Phase 2 reads `chonkie/embeddings/base.py` in the installed package to confirm the exact required methods before implementing the adapter. If Chonkie ships `chonkie[gemini]` extra with an official `GeminiEmbeddings` class, prefer that over our adapter.
+
+6. **Langfuse v3 async-generator `@observe` support**: the orchestrator uses `@observe(name="rag.answer_stream")` on an `async def` that `yield`s. The Langfuse docs show `@observe` on plain `async def` but do not explicitly document async-generator support. Plan Phase 7 verifies with a tiny smoke test before committing the decorator pattern.
+
+7. **`GeminiKeyPool` private-attribute stability**: `gemini_stream.py` (§3.7.3) accesses `pool._keys`, `pool._next_gen_key`, `pool._cooldowns`. Plan Phase 3 adds a test that exercises these attributes so any future pool refactor surfaces the breakage.
+
+8. **Anthropic SDK model ID**: per April 2026 docs, `claude-3-5-sonnet-latest` may be a legacy alias. `ClaudeBackend` ships disabled in v1, so this only matters if the feature flag is flipped. Plan adds a note to verify the canonical Sonnet model ID via `/v1/models` before enabling the backend.
+
+9. **RAGAS Gemini judge wrapping**: §6.3 offers two paths — LiteLLM+Vertex (documented) and `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))` (community pattern). Plan Phase 7 verifies the Langchain path works before committing to it; falls back to LiteLLM+Vertex if it doesn't.
+
+10. **`quarterly blueprint re-read cadence`**: operational discipline item, not code. Captured in §6.1 L3 description.
 
 ---
 
