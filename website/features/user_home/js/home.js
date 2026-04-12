@@ -97,18 +97,31 @@
       console.error('[home] Supabase init failed:', e);
     }
 
-    // Auth guard — redirect if not logged in
+    // Auth guard — redirect if not logged in (with loop protection)
     var token = _currentSession ? _currentSession.access_token : null;
     if (!token) {
+      var lastRedirect = parseInt(sessionStorage.getItem('zk-home-redirect') || '0', 10);
+      if (Date.now() - lastRedirect < 5000) {
+        console.warn('[home] Redirect loop detected, staying on page');
+        return;
+      }
+      sessionStorage.setItem('zk-home-redirect', String(Date.now()));
       window.location.href = '/';
       return;
     }
+    sessionStorage.removeItem('zk-home-redirect');
 
-    // Load user profile
+    // Load user profile — stay on page even if fetch fails
     var profile = await fetchProfile(token);
     if (!profile) {
-      window.location.href = '/';
-      return;
+      var user = _currentSession.user || {};
+      var meta = user.user_metadata || {};
+      profile = {
+        name: meta.full_name || user.email || 'User',
+        email: user.email || '',
+        avatar_url: meta.avatar_url || meta.picture || ''
+      };
+      console.warn('[home] Profile fetch failed, using session data');
     }
 
     // Set display name

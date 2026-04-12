@@ -163,6 +163,13 @@
 
   async function maybeRedirectAuthenticated(session) {
     if (!session || !session.user || !isLandingPage()) return;
+    // Prevent redirect loop: if /home just sent us back, don't bounce again
+    var lastRedirect = parseInt(sessionStorage.getItem('zk-auth-redirect') || '0', 10);
+    if (Date.now() - lastRedirect < 5000) {
+      console.warn('[auth] Redirect loop detected, staying on landing page');
+      return;
+    }
+    sessionStorage.setItem('zk-auth-redirect', String(Date.now()));
     var state = getCacheState();
     if (!state.hasLoggedIn) {
       patchCacheState({
@@ -230,6 +237,8 @@
     if (eventName === 'SIGNED_IN') {
       if (loginModal) closeModal();
       if (isLandingPage()) {
+        sessionStorage.setItem('zk-auth-redirect', String(Date.now()));
+        sessionStorage.removeItem('zk-home-redirect');
         window.location.replace('/home');
       }
       return;
