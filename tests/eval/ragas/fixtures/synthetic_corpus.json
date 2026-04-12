@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "yt-ml-attention-primer",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Attention Primer for Builders",
+    "source_type": "youtube",
+    "summary": "Self-attention lets each token weigh other tokens directly, which replaces strict recurrence and improves long-range context handling in transformer models.",
+    "tags": [
+      "ml",
+      "attention",
+      "transformers",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-attention-primer",
+    "node_date": "2026-01-01",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-transformer-block",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Inside a Transformer Block",
+    "source_type": "youtube",
+    "summary": "A transformer block combines attention, feed-forward layers, residual paths, and normalization so models can refine representations without losing stability.",
+    "tags": [
+      "ml",
+      "transformer",
+      "architecture",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-transformer-block",
+    "node_date": "2026-01-02",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-embedding-intuition",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Embedding Space Intuition",
+    "source_type": "youtube",
+    "summary": "Embeddings place text in vector space so semantically related passages stay close, making cosine similarity practical for search and clustering.",
+    "tags": [
+      "ml",
+      "embeddings",
+      "retrieval",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-embedding-intuition",
+    "node_date": "2026-01-03",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-rag-basics",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "RAG for Product Teams",
+    "source_type": "youtube",
+    "summary": "Retrieval augmented generation improves grounding by fetching evidence before writing an answer, which reduces unsupported claims and enables citations.",
+    "tags": [
+      "ml",
+      "rag",
+      "retrieval",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-rag-basics",
+    "node_date": "2026-01-04",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-eval-basics",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Evaluating LLM Systems",
+    "source_type": "youtube",
+    "summary": "The note separates retrieval quality, answer faithfulness, latency, and live review loops because a single metric rarely exposes the whole failure surface.",
+    "tags": [
+      "ml",
+      "evaluation",
+      "ragas",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-eval-basics",
+    "node_date": "2026-01-05",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 132,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-hnsw-walkthrough",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "HNSW Graph Search Walkthrough",
+    "source_type": "youtube",
+    "summary": "HNSW uses layered proximity graphs to move quickly toward promising vector neighborhoods, trading additional memory for better recall and insert behavior.",
+    "tags": [
+      "ml",
+      "hnsw",
+      "vector-db",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-hnsw-walkthrough",
+    "node_date": "2026-01-06",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-pgvector-indexes",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "pgvector Index Tradeoffs",
+    "source_type": "youtube",
+    "summary": "The summary compares IVFFlat and HNSW for mixed write and read workloads, noting HNSW often wins on recall and update-friendliness while costing more RAM.",
+    "tags": [
+      "ml",
+      "pgvector",
+      "hnsw",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-pgvector-indexes",
+    "node_date": "2026-01-07",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 144,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-reranker-demo",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "When to Add a Reranker",
+    "source_type": "youtube",
+    "summary": "A reranker helps when first-pass retrieval is close but noisy, because cross-encoder scoring can promote semantically stronger passages near the top.",
+    "tags": [
+      "ml",
+      "reranker",
+      "bge",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-reranker-demo",
+    "node_date": "2026-01-08",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-query-rewrite",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Query Rewriting for Search",
+    "source_type": "youtube",
+    "summary": "Vague or multi-part questions often benefit from expansion, decomposition, or hypothetical answer generation before search to recover enough signal.",
+    "tags": [
+      "ml",
+      "query-rewriting",
+      "retrieval",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-query-rewrite",
+    "node_date": "2026-01-09",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-context-window",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Context Windows Are Not Memory",
+    "source_type": "youtube",
+    "summary": "Long context helps but does not replace selective retrieval, because too much irrelevant text raises cost and dilutes attention on useful evidence.",
+    "tags": [
+      "ml",
+      "context-window",
+      "generation",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-context-window",
+    "node_date": "2026-01-10",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 132,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-chunking-semantic",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Semantic Chunking in Practice",
+    "source_type": "youtube",
+    "summary": "Semantic chunking follows meaning boundaries rather than raw token windows, which often improves retrieval on transcripts and long-form notes.",
+    "tags": [
+      "ml",
+      "chunking",
+      "semantic",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-chunking-semantic",
+    "node_date": "2026-01-11",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-ml-agent-memory",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Memory Patterns for Agents",
+    "source_type": "youtube",
+    "summary": "Agent systems need short-term conversational context and durable external memory, because chat history alone is too fragile for long-lived knowledge work.",
+    "tags": [
+      "ml",
+      "agents",
+      "memory",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-ml-agent-memory",
+    "node_date": "2026-01-12",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "ss-ml-transformer-math",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Transformer Math Without Tears",
+    "source_type": "substack",
+    "summary": "This essay reduces the transformer to weighted lookup, non-linear refinement, and residual stabilization so the architecture feels mechanical instead of magical.",
+    "tags": [
+      "ml",
+      "transformers",
+      "math",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-ml-transformer-math",
+    "node_date": "2026-01-13",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ss-ml-retrieval-checklist",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "A Retrieval Checklist for Real Systems",
+    "source_type": "substack",
+    "summary": "A practical checklist recommends verifying embedding dimensions, hybrid baselines, failure modes, and citation rendering before tuning clever heuristics.",
+    "tags": [
+      "ml",
+      "retrieval",
+      "checklist",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-ml-retrieval-checklist",
+    "node_date": "2026-01-14",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 108,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ss-ml-faithfulness-notes",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Faithfulness Before Fluency",
+    "source_type": "substack",
+    "summary": "The author argues that polished prose is dangerous when evidence is weak, so groundedness checks must come before aesthetic answer preferences.",
+    "tags": [
+      "ml",
+      "faithfulness",
+      "evaluation",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-ml-faithfulness-notes",
+    "node_date": "2026-01-15",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ss-ml-multi-hop-search",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Multi-hop Search Needs Structure",
+    "source_type": "substack",
+    "summary": "Broad knowledge questions often span several notes, so the system should retrieve clusters and assemble them into a structured context pack.",
+    "tags": [
+      "ml",
+      "multi-hop",
+      "retrieval",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-ml-multi-hop-search",
+    "node_date": "2026-01-16",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ax-ml-attention-paper",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Attention Is All You Need",
+    "source_type": "arxiv",
+    "summary": "The paper introduces the Transformer architecture and shows that self-attention alone can replace recurrence while still modeling sequence structure effectively.",
+    "tags": [
+      "ml",
+      "paper",
+      "attention",
+      "transformers"
+    ],
+    "url": "https://example.com/arxiv/ax-ml-attention-paper",
+    "node_date": "2026-01-17",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "arxiv"
+    }
+  },
+  {
+    "id": "ax-ml-contrastive-search",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Dense Retrieval with Contrastive Training",
+    "source_type": "arxiv",
+    "summary": "Contrastive training reshapes embedding space so relevant query-document pairs align more tightly, especially when hard negatives are sampled well.",
+    "tags": [
+      "ml",
+      "paper",
+      "retrieval",
+      "contrastive"
+    ],
+    "url": "https://example.com/arxiv/ax-ml-contrastive-search",
+    "node_date": "2026-01-18",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "arxiv"
+    }
+  },
+  {
+    "id": "rd-ml-rag-mistakes",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "RAG Mistakes Thread",
+    "source_type": "reddit",
+    "summary": "A practitioner thread warns against over-chunking, skipping reranking, and trusting summary metrics without inspecting concrete failures.",
+    "tags": [
+      "ml",
+      "rag",
+      "mistakes",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-ml-rag-mistakes",
+    "node_date": "2026-01-19",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 96,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "rd-ml-pgvector-tips",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "pgvector Tuning Tips",
+    "source_type": "reddit",
+    "summary": "This note emphasizes measuring vector recall under real user filters because scoping and query plans can change behavior more than index theory suggests.",
+    "tags": [
+      "ml",
+      "pgvector",
+      "tuning",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-ml-pgvector-tips",
+    "node_date": "2026-01-20",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 138,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "yt-cook-sourdough-crumb",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Reading a Sourdough Crumb",
+    "source_type": "youtube",
+    "summary": "Crumb structure reveals fermentation timing, hydration, and shaping quality, so the loaf itself becomes a diagnostic tool for the baker.",
+    "tags": [
+      "cooking",
+      "bread",
+      "fermentation",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-sourdough-crumb",
+    "node_date": "2026-02-01",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-cook-stirfry-heat",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Stir-Fry Heat Management",
+    "source_type": "youtube",
+    "summary": "A good stir-fry depends on high heat, small batches, and late sauce additions so ingredients sear instead of steaming in pooled moisture.",
+    "tags": [
+      "cooking",
+      "stir-fry",
+      "heat",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-stirfry-heat",
+    "node_date": "2026-02-02",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 132,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-cook-pan-sauce",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Weeknight Pan Sauces",
+    "source_type": "youtube",
+    "summary": "Pan sauces come from fond, acid, stock, and butter, with reduction happening before the butter goes in so the texture stays glossy instead of greasy.",
+    "tags": [
+      "cooking",
+      "sauce",
+      "technique",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-pan-sauce",
+    "node_date": "2026-02-03",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 150,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-cook-rice-texture",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Rice Texture Control",
+    "source_type": "youtube",
+    "summary": "Rice texture depends on water ratio, heat control, and a final covered rest that lets moisture redistribute instead of rushing straight to the plate.",
+    "tags": [
+      "cooking",
+      "rice",
+      "technique",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-rice-texture",
+    "node_date": "2026-02-04",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 144,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-cook-knife-prep",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Knife Prep for Faster Weeknights",
+    "source_type": "youtube",
+    "summary": "Consistent cuts cook evenly and make timing easier, which means prep quality quietly improves both speed and final texture.",
+    "tags": [
+      "cooking",
+      "prep",
+      "knives",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-knife-prep",
+    "node_date": "2026-02-05",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-cook-stock-basics",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Building Better Stock",
+    "source_type": "youtube",
+    "summary": "White stock and roasted stock differ in flavor depth and clarity, while gentle heat and skimming help keep the liquid clean and useful.",
+    "tags": [
+      "cooking",
+      "stock",
+      "basics",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-cook-stock-basics",
+    "node_date": "2026-02-06",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 138,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "ss-cook-pasta-water",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Why Pasta Water Matters",
+    "source_type": "substack",
+    "summary": "Starchy pasta water helps bind fat and cheese into a unified sauce, and its thickening power falls quickly when the pot is over-diluted.",
+    "tags": [
+      "cooking",
+      "pasta",
+      "emulsion",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-cook-pasta-water",
+    "node_date": "2026-02-07",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 138,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ss-cook-braising-guide",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "The Gentle Logic of Braising",
+    "source_type": "substack",
+    "summary": "Braising succeeds when low steady heat converts collagen gradually without driving off too much moisture, making patience a texture tool.",
+    "tags": [
+      "cooking",
+      "braise",
+      "slow-cooking",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-cook-braising-guide",
+    "node_date": "2026-02-08",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "tw-cook-breakfast-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Breakfast Sandwich Workflow",
+    "source_type": "twitter",
+    "summary": "A compact workflow uses staggered pan timing, pre-toasted buns, and a quick sauce mix to make a repeatable breakfast sandwich with less chaos.",
+    "tags": [
+      "cooking",
+      "breakfast",
+      "workflow",
+      "twitter"
+    ],
+    "url": "https://example.com/twitter/tw-cook-breakfast-thread",
+    "node_date": "2026-02-09",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 138,
+      "source_family": "twitter"
+    }
+  },
+  {
+    "id": "tw-cook-salad-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Layered Salad Thread",
+    "source_type": "twitter",
+    "summary": "Good salads rely on contrast between bitter, crunchy, creamy, and warm elements, which turns leftovers into a composed meal instead of a bowl of scraps.",
+    "tags": [
+      "cooking",
+      "salad",
+      "composition",
+      "twitter"
+    ],
+    "url": "https://example.com/twitter/tw-cook-salad-thread",
+    "node_date": "2026-02-10",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 150,
+      "source_family": "twitter"
+    }
+  },
+  {
+    "id": "yt-hist-roman-roads",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Why Roman Roads Lasted",
+    "source_type": "youtube",
+    "summary": "Roman roads lasted because layered construction, drainage, and maintenance supported a logistics system that mattered to imperial power.",
+    "tags": [
+      "history",
+      "rome",
+      "infrastructure",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-hist-roman-roads",
+    "node_date": "2026-03-01",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 108,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-hist-printing-press",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Printing Press and Social Change",
+    "source_type": "youtube",
+    "summary": "The press accelerated literacy, debate, and coordination, amplifying movements that were already present rather than creating change from nothing.",
+    "tags": [
+      "history",
+      "printing",
+      "media",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-hist-printing-press",
+    "node_date": "2026-03-02",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-hist-silk-road",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "The Silk Road as Network",
+    "source_type": "youtube",
+    "summary": "The Silk Road worked as a shifting network of routes rather than a single road, carrying goods, beliefs, and disease across many linked regions.",
+    "tags": [
+      "history",
+      "trade",
+      "silk-road",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-hist-silk-road",
+    "node_date": "2026-03-03",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 144,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-hist-industrial-cities",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Industrial Cities and Time Discipline",
+    "source_type": "youtube",
+    "summary": "Factory life made clock time far more important to urban rhythm, work discipline, and family life than many agrarian systems had required.",
+    "tags": [
+      "history",
+      "industrial-revolution",
+      "labor",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-hist-industrial-cities",
+    "node_date": "2026-03-04",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 132,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "ss-hist-archives",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "How Historians Read Archives",
+    "source_type": "substack",
+    "summary": "Archives preserve power as much as truth, so historians treat silence, omission, and bureaucratic framing as evidence too.",
+    "tags": [
+      "history",
+      "archives",
+      "method",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-hist-archives",
+    "node_date": "2026-03-05",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 108,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "ss-hist-maritime-empire",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Ships, Wind, and Empire",
+    "source_type": "substack",
+    "summary": "Maritime empire depended on ship design, seasonal wind knowledge, and port finance, which made logistics more decisive than maps alone suggest.",
+    "tags": [
+      "history",
+      "maritime",
+      "empire",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-hist-maritime-empire",
+    "node_date": "2026-03-06",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "rd-hist-byzantine-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Byzantine Survival Notes",
+    "source_type": "reddit",
+    "summary": "Byzantium lasted through diplomatic flexibility, defensive depth, and fiscal resilience rather than through a single unbeatable advantage.",
+    "tags": [
+      "history",
+      "byzantium",
+      "strategy",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-hist-byzantine-thread",
+    "node_date": "2026-03-07",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 102,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "rd-hist-reformation-debate",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Reformation Debate Notes",
+    "source_type": "reddit",
+    "summary": "The Reformation spread through a mix of doctrine and political incentives, so ideas and institutions moved together rather than separately.",
+    "tags": [
+      "history",
+      "reformation",
+      "politics",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-hist-reformation-debate",
+    "node_date": "2026-03-08",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "tw-hist-map-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Reading Old Maps",
+    "source_type": "twitter",
+    "summary": "Maps reveal what states found measurable and worth controlling, so borders, omissions, and routes all speak to historical priorities.",
+    "tags": [
+      "history",
+      "maps",
+      "statecraft",
+      "twitter"
+    ],
+    "url": "https://example.com/twitter/tw-hist-map-thread",
+    "node_date": "2026-03-09",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "twitter"
+    }
+  },
+  {
+    "id": "ax-hist-climate-paper",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Climate Shocks and Historical Fragility",
+    "source_type": "arxiv",
+    "summary": "Climate shocks matter most when they collide with weak storage, brittle trade systems, and political stress, making them a force multiplier.",
+    "tags": [
+      "history",
+      "climate",
+      "fragility",
+      "paper"
+    ],
+    "url": "https://example.com/arxiv/ax-hist-climate-paper",
+    "node_date": "2026-03-10",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "arxiv"
+    }
+  },
+  {
+    "id": "yt-finance-bond-duration",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Bond Duration in Plain Language",
+    "source_type": "youtube",
+    "summary": "Duration measures how strongly a bond price reacts to rate changes, which is why long-duration bonds move more when rates shift.",
+    "tags": [
+      "finance",
+      "bonds",
+      "rates",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-finance-bond-duration",
+    "node_date": "2026-03-11",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 126,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-finance-index-funds",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Why Index Funds Work",
+    "source_type": "youtube",
+    "summary": "Index funds combine diversification, low fees, and a long horizon into a strong default, though investor behavior still determines outcomes.",
+    "tags": [
+      "finance",
+      "index-funds",
+      "investing",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-finance-index-funds",
+    "node_date": "2026-03-12",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "ss-finance-cashflow",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Cash Flow Beats Narrative",
+    "source_type": "substack",
+    "summary": "This note values durable cash generation over market storytelling and treats estimation confidence as part of the valuation problem.",
+    "tags": [
+      "finance",
+      "cash-flow",
+      "valuation",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-finance-cashflow",
+    "node_date": "2026-03-13",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "rd-finance-risk-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Risk Is Position Size",
+    "source_type": "reddit",
+    "summary": "The thread argues that oversized positions turn manageable uncertainty into portfolio-threatening damage faster than conviction can justify.",
+    "tags": [
+      "finance",
+      "risk",
+      "portfolio",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-finance-risk-thread",
+    "node_date": "2026-03-14",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 102,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "ax-finance-market-microstructure",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Microstructure and Price Discovery",
+    "source_type": "arxiv",
+    "summary": "Liquidity is dynamic because spreads, order flow, and dealer inventory interact continuously during price formation.",
+    "tags": [
+      "finance",
+      "market-microstructure",
+      "liquidity",
+      "paper"
+    ],
+    "url": "https://example.com/arxiv/ax-finance-market-microstructure",
+    "node_date": "2026-03-15",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 90,
+      "source_family": "arxiv"
+    }
+  },
+  {
+    "id": "yt-travel-night-trains",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Night Trains Without Chaos",
+    "source_type": "youtube",
+    "summary": "Overnight train travel feels smoother when berth choice, station transitions, and sleep protection are planned before departure.",
+    "tags": [
+      "travel",
+      "trains",
+      "planning",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-travel-night-trains",
+    "node_date": "2026-04-01",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 102,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "yt-travel-carry-on",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Carry-On Packing Logic",
+    "source_type": "youtube",
+    "summary": "Carry-on packing works best when each item must justify weight and redundancy, which favors systems over one-off outfit decisions.",
+    "tags": [
+      "travel",
+      "packing",
+      "carry-on",
+      "youtube"
+    ],
+    "url": "https://example.com/youtube/yt-travel-carry-on",
+    "node_date": "2026-04-02",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 114,
+      "source_family": "youtube"
+    }
+  },
+  {
+    "id": "ss-travel-walkable-cities",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Choosing Walkable Cities",
+    "source_type": "substack",
+    "summary": "Walkable travel neighborhoods are better chosen by transit rhythm, groceries, and safety than by landmark density alone.",
+    "tags": [
+      "travel",
+      "cities",
+      "walkability",
+      "substack"
+    ],
+    "url": "https://example.com/substack/ss-travel-walkable-cities",
+    "node_date": "2026-04-03",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 102,
+      "source_family": "substack"
+    }
+  },
+  {
+    "id": "rd-travel-airport-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Airport Buffer Strategy",
+    "source_type": "reddit",
+    "summary": "The right airport buffer depends on connection complexity, immigration friction, and the cost of missing the onward leg.",
+    "tags": [
+      "travel",
+      "airports",
+      "planning",
+      "reddit"
+    ],
+    "url": "https://example.com/reddit/rd-travel-airport-thread",
+    "node_date": "2026-04-04",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 108,
+      "source_family": "reddit"
+    }
+  },
+  {
+    "id": "tw-travel-cafe-thread",
+    "user_id": "00000000-0000-0000-0000-000000000123",
+    "name": "Finding Better Cafe Stops",
+    "source_type": "twitter",
+    "summary": "Useful cafe stops are chosen for light, seating turnover, and transit adjacency because pace matters as much as destination count.",
+    "tags": [
+      "travel",
+      "cafes",
+      "pace",
+      "twitter"
+    ],
+    "url": "https://example.com/twitter/tw-travel-cafe-thread",
+    "node_date": "2026-04-05",
+    "metadata": {
+      "fixture": true,
+      "token_estimate": 120,
+      "source_family": "twitter"
+    }
+  }
+]

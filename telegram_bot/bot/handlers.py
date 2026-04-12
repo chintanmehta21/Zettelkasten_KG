@@ -42,6 +42,7 @@ _WELCOME = (
     "• `/yt <url>` — YouTube video\n"
     "• `/newsletter <url>` — Newsletter article\n"
     "• `/github <url>` — GitHub repo/issue/PR\n"
+    "• `/ask <question>` — Ask across saved zettels\n"
     "• `/force <url>` — Re-capture even if already seen\n"
     "• `/status` — Bot health and stats\n\n"
     "Just paste a bare URL to auto-detect the source type."

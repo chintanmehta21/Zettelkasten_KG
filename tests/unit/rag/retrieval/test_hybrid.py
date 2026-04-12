@@ -1,0 +1,166 @@
+﻿from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+
+from website.features.rag_pipeline.errors import EmptyScopeError
+from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever
+from website.features.rag_pipeline.types import QueryClass, ScopeFilter, SourceType
+
+
+class _RPCResult:
+    def __init__(self, client, name, payload):
+        self._client = client
+        self._name = name
+        self._payload = payload
+
+    def execute(self):
+        self._client.calls.append((self._name, self._payload))
+        return SimpleNamespace(data=self._client.responses.get(self._name, []))
+
+
+class _Supabase:
+    def __init__(self, responses):
+        self.responses = responses
+        self.calls = []
+
+    def rpc(self, name, payload):
+        return _RPCResult(self, name, payload)
+
+
+class _Embedder:
+    def __init__(self):
+        self.queries = []
+
+    async def embed_query_with_cache(self, query):
+        self.queries.append(query)
+        return [float(len(query))]
+
+
+@pytest.mark.asyncio
+async def test_resolve_returns_none_when_no_sandbox_and_no_filter() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    result = await retriever._resolve_nodes(uuid4(), None, ScopeFilter())
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_calls_rpc_when_sandbox_set() -> None:
+    sandbox_id = uuid4()
+    supabase = _Supabase({"rag_resolve_effective_nodes": [{"node_id": "node-1"}]})
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+
+    result = await retriever._resolve_nodes(uuid4(), sandbox_id, ScopeFilter())
+
+    assert result == ["node-1"]
+    assert supabase.calls[0][0] == "rag_resolve_effective_nodes"
+
+
+@pytest.mark.asyncio
+async def test_resolve_returns_empty_list_when_sandbox_empty() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({"rag_resolve_effective_nodes": []}))
+    result = await retriever._resolve_nodes(uuid4(), uuid4(), ScopeFilter())
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_retrieve_fans_out_across_variants() -> None:
+    supabase = _Supabase({
+        "rag_hybrid_search": [
+            {
+                "kind": "chunk",
+                "node_id": "node-1",
+                "chunk_id": None,
+                "chunk_idx": 0,
+                "name": "One",
+                "source_type": "web",
+                "url": "https://example.com/1",
+                "content": "content",
+                "tags": [],
+                "metadata": {},
+                "rrf_score": 0.4,
+            }
+        ]
+    })
+    embedder = _Embedder()
+    retriever = HybridRetriever(embedder=embedder, supabase=supabase)
+
+    results = await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["first", "second"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.LOOKUP,
+    )
+
+    assert len(results) == 1
+    assert embedder.queries == ["first", "second"]
+    assert len([call for call in supabase.calls if call[0] == "rag_hybrid_search"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_dedup_keeps_max_rrf_score_and_consensus_boost() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    fused = retriever._dedup_and_fuse([
+        [{
+            "kind": "chunk", "node_id": "node-1", "chunk_id": None, "chunk_idx": 0,
+            "name": "One", "source_type": "web", "url": "u", "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.4,
+        }],
+        [{
+            "kind": "chunk", "node_id": "node-1", "chunk_id": None, "chunk_idx": 0,
+            "name": "One", "source_type": "web", "url": "u", "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.6,
+        }],
+    ])
+
+    assert fused[0].rrf_score == pytest.approx(0.65)
+
+
+@pytest.mark.asyncio
+async def test_retrieve_raises_empty_scope_error_when_resolver_returns_empty_list() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+
+    async def _empty(*args, **kwargs):
+        return []
+
+    retriever._resolve_nodes = _empty
+
+    with pytest.raises(EmptyScopeError):
+        await retriever.retrieve(
+            user_id=uuid4(),
+            query_variants=["query"],
+            sandbox_id=uuid4(),
+            scope_filter=ScopeFilter(),
+            query_class=QueryClass.LOOKUP,
+        )
+
+
+@pytest.mark.asyncio
+async def test_graph_depth_is_1_for_lookup() -> None:
+    supabase = _Supabase({"rag_hybrid_search": []})
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["query"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.LOOKUP,
+    )
+    assert supabase.calls[0][1]["p_graph_depth"] == 1
+
+
+@pytest.mark.asyncio
+async def test_graph_depth_is_2_for_thematic() -> None:
+    supabase = _Supabase({
+        "rag_resolve_effective_nodes": [{"node_id": "node-1"}],
+        "rag_hybrid_search": [],
+    })
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["query"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(source_types=[SourceType.WEB]),
+        query_class=QueryClass.THEMATIC,
+    )
+    assert supabase.calls[-1][1]["p_graph_depth"] == 2
+

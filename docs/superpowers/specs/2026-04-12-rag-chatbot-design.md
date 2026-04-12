@@ -1,10 +1,10 @@
-# RAG Chatbot — Design Spec
+﻿# RAG Chatbot â€” Design Spec
 
 **Date:** 2026-04-12
 **Status:** Draft for review
-**Location:** `website/core/rag/`, `website/api/{chat_routes,sandbox_routes}.py`, `website/features/rag_chatbot/`, `telegram_bot/bot/ask_handler.py`, `supabase/website/rag_chatbot/`
-**Supersedes:** nothing — net-new feature layered on top of the existing `kg_public` + `kg_features` schema
-**Blueprints consulted:** `docs/research/RAG_blueprint1.md`, `docs/research/RAG_blueprint2.pdf` (19 pages), `docs/research/RAG_blueprint3.pdf` (8 pages) — all three read end-to-end
+**Location:** `website/features/rag_pipeline/`, `website/api/{chat_routes,sandbox_routes}.py`, `website/features/user_rag/`, `website/features/user_kastens/`, `telegram_bot/bot/ask_handler.py`, `supabase/website/rag_chatbot/`
+**Supersedes:** nothing â€” net-new feature layered on top of the existing `kg_public` + `kg_features` schema
+**Blueprints consulted:** `docs/research/RAG_blueprint1.md`, `docs/research/RAG_blueprint2.pdf` (19 pages), `docs/research/RAG_blueprint3.pdf` (8 pages) â€” all three read end-to-end
 
 ---
 
@@ -12,7 +12,7 @@
 
 A production-grade RAG chatbot layered on top of the existing Zettelkasten Knowledge Graph. Users create **persistent NotebookLM-style sandboxes** containing curated Zettels, then have streaming multi-turn conversations scoped to that corpus. Retrieval is hybrid (dense + sparse + graph) with cross-encoder reranking and post-generation hallucination detection.
 
-**Primary surface**: a new `/chat` web UI in the existing FastAPI website with SSE streaming, sandbox CRUD, per-query scope narrowing, and deep integration with the existing 3D knowledge graph page.
+**Primary surface**: new `/home/rag` and `/home/kastens` web UIs in the existing FastAPI website with SSE streaming, sandbox CRUD, per-query scope narrowing, and handoff integration from the existing 3D knowledge graph page.
 
 **Secondary surface**: a minimal Telegram `/ask` command for single-turn ad-hoc questions.
 
@@ -20,31 +20,31 @@ A production-grade RAG chatbot layered on top of the existing Zettelkasten Knowl
 
 **What we don't build**: LlamaIndex / LangChain / LangGraph (direct async + SQL beats framework overhead); pre-computed Leiden community summaries (LazyGraphRAG over retrieved subgraphs instead); OpenAI or Claude as the default LLM (reuse the existing tiered `GeminiKeyPool`; Claude is a stubbed future backend).
 
-### 0.1 Core decisions (from brainstorming, see §11 for the full log)
+### 0.1 Core decisions (from brainstorming, see Â§11 for the full log)
 
 | # | Decision | Blueprint alignment |
 |---|---|---|
 | 1 | Gemini Embedding 001 @ 768-d via MRL truncation | BP3 exact rec; matches existing schema |
-| 2 | HNSW index (IVFFlat → HNSW migration), `m=16`, `ef_construction=64`, `ef_search=100`, pgvector 0.8+ iterative scan | all 3 converge |
+| 2 | HNSW index (IVFFlat â†’ HNSW migration), `m=16`, `ef_construction=64`, `ef_search=100`, pgvector 0.8+ iterative scan | all 3 converge |
 | 3 | `kg_node_chunks` table for fine-grained long-form content; new captures only (summary-only fallback for existing Zettels) | user Q1 + Q7 |
 | 4 | Chunking dispatched by source_type: **Late Chunking** (long-form), **Atomic** (short-form with entity enrichment), Semantic/Recursive fallback ladder | BP3 URG-RAG |
 | 5 | 5-stream hybrid retrieval via `rag_hybrid_search` RPC (dense summary + dense chunk + FTS summary + FTS chunk + graph expansion) with RRF fusion | BP1 + BP2 + BP3 |
-| 6 | Recursive SQL CTE for 1–2 hop graph expansion (depth depends on query class); LazyGraphRAG, no pre-computed communities | BP3; BP1/BP2 deviation documented in §11 |
+| 6 | Recursive SQL CTE for 1â€“2 hop graph expansion (depth depends on query class); LazyGraphRAG, no pre-computed communities | BP3; BP1/BP2 deviation documented in Â§11 |
 | 7 | BGE-Reranker-v2-M3 self-hosted via text-embeddings-inference Docker sidecar | user Q5 + BP1 + BP3 |
 | 8 | Query router (lookup / vague / multi_hop / thematic / step_back) + lazy transform (HyDE / MultiQuery / Decomposition / StepBack) via `gemini-2.5-flash-lite` | BP1 router + BP2 techniques |
-| 9 | Tiered `GeminiKeyPool` (flash → flash-lite → pro) with pluggable `ClaudeBackend` (stubbed, feature-flagged) | user Q4 |
-| 10 | Answer Critic via `gemini-2.5-flash-lite` NLI check with deterministic bad-citation detector; one multi-query retry | BP3 §5 |
-| 11 | Multi-turn query rewriting over last 5 turns | BP1 §2.9 |
+| 9 | Tiered `GeminiKeyPool` (flash â†’ flash-lite â†’ pro) with pluggable `ClaudeBackend` (stubbed, feature-flagged) | user Q4 |
+| 10 | Answer Critic via `gemini-2.5-flash-lite` NLI check with deterministic bad-citation detector; one multi-query retry | BP3 Â§5 |
+| 11 | Multi-turn query rewriting over last 5 turns | BP1 Â§2.9 |
 | 12 | Persistent `rag_sandboxes` (NotebookLM-style) with dynamic add/remove + nullable `chat_sessions.sandbox_id` (NULL = ad-hoc "all Zettels") | user refinement |
 | 13 | Langfuse self-hosted sidecar + synthetic RAGAS in GitHub Actions CI (blocking on regression) | user Q8 + BP1/BP2 convergence |
 | 14 | **No LlamaIndex / LangChain / LangGraph**. Other focused frameworks (Chonkie, Langfuse SDK, Anthropic SDK future, httpx, tenacity, NetworkX, RAGAS, TEI) ARE in | user explicit |
 | 15 | Web is primary (full-featured SSE + sessions + sandboxes). Telegram `/ask` is ad-hoc single-turn, no state | user Q6 |
-| 16 | Future web-search popup parked as `website/core/rag/backends/websearch.py` stub | user refinement |
-| 17 | 8-phase rollout: migrations → ingest → retrieval core → Telegram → ad-hoc web → sandboxes/full UI → observability → hardening | §10 |
+| 16 | Future web-search popup parked as `website/features/rag_pipeline/backends/websearch.py` stub | user refinement |
+| 17 | 8-phase rollout: migrations â†’ ingest â†’ retrieval core â†’ Telegram â†’ ad-hoc web â†’ sandboxes/full UI â†’ observability â†’ hardening | Â§10 |
 
 ### 0.2 Non-goals for v1
 
-- Backfilling `kg_node_chunks` from existing Obsidian markdown / GitHub notes (documented recipe in §12)
+- Backfilling `kg_node_chunks` from existing Obsidian markdown / GitHub notes (documented recipe in Â§12)
 - Pre-computed Leiden community summaries (LazyGraphRAG over retrieved subgraphs instead)
 - ColBERT late-interaction reranker (BP1 marks optional)
 - Claude 3.5 Sonnet as an active backend (stubbed code path, flag-gated, shipped disabled)
@@ -55,7 +55,7 @@ A production-grade RAG chatbot layered on top of the existing Zettelkasten Knowl
 - Cascade reranker (single-pass BGE-v2-M3 is sufficient for CPU budget)
 - Partitioning `chat_messages` (documented future scale lever)
 - Fine-tuned domain-specific reranker
-- Agentic routing over multiple backends (LangGraph territory — re-evaluate if needed)
+- Agentic routing over multiple backends (LangGraph territory â€” re-evaluate if needed)
 
 ### 0.3 Table of contents
 
@@ -70,7 +70,7 @@ A production-grade RAG chatbot layered on top of the existing Zettelkasten Knowl
 9. Parked / future features
 10. Rollout phases
 11. Decision log + blueprint deviations
-12. Appendix — edge cases matrix (46 items)
+12. Appendix â€” edge cases matrix (46 items)
 
 ---
 
@@ -83,12 +83,12 @@ The existing `supabase/website/kg_features/001_intelligence.sql` migration alrea
 Missing pieces added by v1:
 
 1. Fine-grained chunk table for long-form content (new captures only)
-2. HNSW index migration (IVFFlat → HNSW per all 3 blueprints)
+2. HNSW index migration (IVFFlat â†’ HNSW per all 3 blueprints)
 3. Cross-encoder reranker sidecar (BGE-Reranker-v2-M3 via TEI Docker)
 4. Query transformation router (HyDE / MultiQuery / Decomposition / StepBack)
 5. LLM orchestration + Answer Critic (NLI check + multi-query retry)
 6. Chat session + message persistence (multi-turn memory, web-only)
-7. SSE `/api/chat` endpoint + chat UI
+7. SSE `/api/rag/sessions/{id}/messages` endpoint + chat UI
 8. Sandbox CRUD (`rag_sandboxes` + `rag_sandbox_members`)
 9. Telegram `/ask` command (single-turn, no state)
 10. Langfuse tracing + RAGAS CI eval
@@ -96,77 +96,77 @@ Missing pieces added by v1:
 ### 1.2 High-level system diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                               CLIENTS                                        │
-│  ┌──────────────────────────────────┐      ┌─────────────────────────┐       │
-│  │  Web /sandboxes  +  /chat  (SSE) │      │  Telegram /ask          │       │
-│  │  - sandbox CRUD                  │      │  - single-turn          │       │
-│  │  - add/remove zettels UI         │      │  - no sandbox           │       │
-│  │  - multi-turn chat per sandbox   │      │  - scope = all zettels  │       │
-│  │  - narrow-at-query scope filter  │      │                         │       │
-│  └─────────────┬────────────────────┘      └──────────┬──────────────┘       │
-└────────────────┼────────────────────────────────────── ┼─────────────────────┘
-                 ▼                                        ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                         FastAPI (website/)                                   │
-│                                                                              │
-│  ┌─ website/api/sandbox_routes.py ┐   ┌─ website/api/chat_routes.py ┐        │
-│  │  POST   /api/rag/sandboxes     │   │  POST /api/chat/sessions    │        │
-│  │  GET    /api/rag/sandboxes     │   │  POST /api/chat/sessions/{}/│        │
-│  │  GET    /api/rag/sandboxes/{id}│   │       messages (SSE)        │        │
-│  │  PATCH  /api/rag/sandboxes/{id}│   │  GET  /api/chat/sessions    │        │
-│  │  DELETE /api/rag/sandboxes/{id}│   │  DELETE /api/chat/sessions  │        │
-│  │  POST   /members (bulk add)    │   └──────┬──────────────────────┘        │
-│  │  DELETE /members/{node_id}     │          │                               │
-│  └────────────┬───────────────────┘          │                               │
-│               │                              │                               │
-│               ▼                              ▼                               │
-│  ┌─────────────────────────────────────────────────────────────────┐         │
-│  │          website/core/rag/orchestrator.py  (SHARED CORE)        │         │
-│  │                                                                 │         │
-│  │  async def answer(query, sandbox_id|None, scope_filter,         │         │
-│  │                   session_id, stream):                          │         │
-│  │     1. load session history (last 5)                            │         │
-│  │     2. materialize effective_node_ids:                          │         │
-│  │           if sandbox_id: rag_resolve_effective_nodes             │         │
-│  │           else: ALL user's kg_nodes                             │         │
-│  │           then apply scope_filter (tag/source/nodeid list)      │         │
-│  │     3. if empty → raise EmptyScopeError                         │         │
-│  │     4. query_rewriter (multi-turn) → standalone query           │         │
-│  │     5. query_router.classify                                    │         │
-│  │     6. query_transformer (HyDE/MQ/Decomp/StepBack)              │         │
-│  │     7. retrieval.hybrid_search(qvars, effective_node_ids)       │         │
-│  │     8. localized PageRank (NetworkX on induced subgraph)        │         │
-│  │     9. reranker.score (BGE via TEI HTTP)                        │         │
-│  │    10. context_assembler.build (sandwich, XML, 6000 tok)        │         │
-│  │    11. llm.generate (Gemini tiered → Claude pluggable)          │         │
-│  │    12. answer_critic.verify (NLI, retry once if bad)            │         │
-│  │    13. persist chat_messages + citations                        │         │
-│  │    14. emit Langfuse trace                                      │         │
-│  └────────┬──────────┬─────────┬─────────┬────────┬──────┬─────────┘         │
-│           │          │         │         │        │      │                   │
-│           ▼          ▼         ▼         ▼        ▼      ▼                   │
-│      GeminiKey    Supabase  TEI Rerank Langfuse Gemini  (future:             │
-│      Pool         RPCs      sidecar    tracer   NLI      websearch           │
-│                                                          backend,            │
-│                                                          parked)             │
-└──────────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                               CLIENTS                                        â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”       â”‚
+â”‚  â”‚  Web /home/kastens + /home/rag (SSE) â”‚      â”‚  Telegram /ask          â”‚       â”‚
+â”‚  â”‚  - sandbox CRUD                  â”‚      â”‚  - single-turn          â”‚       â”‚
+â”‚  â”‚  - add/remove zettels UI         â”‚      â”‚  - no sandbox           â”‚       â”‚
+â”‚  â”‚  - multi-turn chat per sandbox   â”‚      â”‚  - scope = all zettels  â”‚       â”‚
+â”‚  â”‚  - narrow-at-query scope filter  â”‚      â”‚                         â”‚       â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜       â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                 â–¼                                        â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                         FastAPI (website/)                                   â”‚
+â”‚                                                                              â”‚
+â”‚  â”Œâ”€ website/api/sandbox_routes.py â”   â”Œâ”€ website/api/chat_routes.py â”        â”‚
+â”‚  â”‚  POST   /api/rag/sandboxes     â”‚   â”‚  POST /api/rag/sessions    â”‚        â”‚
+â”‚  â”‚  GET    /api/rag/sandboxes     â”‚   â”‚  POST /api/rag/sessions/{}/â”‚        â”‚
+â”‚  â”‚  GET    /api/rag/sandboxes/{id}â”‚   â”‚       messages (SSE)        â”‚        â”‚
+â”‚  â”‚  PATCH  /api/rag/sandboxes/{id}â”‚   â”‚  GET  /api/rag/sessions    â”‚        â”‚
+â”‚  â”‚  DELETE /api/rag/sandboxes/{id}â”‚   â”‚  DELETE /api/rag/sessions  â”‚        â”‚
+â”‚  â”‚  POST   /members (bulk add)    â”‚   â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚
+â”‚  â”‚  DELETE /members/{node_id}     â”‚          â”‚                               â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜          â”‚                               â”‚
+â”‚               â”‚                              â”‚                               â”‚
+â”‚               â–¼                              â–¼                               â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”         â”‚
+â”‚  â”‚          website/features/rag_pipeline/orchestrator.py  (SHARED CORE)        â”‚         â”‚
+â”‚  â”‚                                                                 â”‚         â”‚
+â”‚  â”‚  async def answer(query, sandbox_id|None, scope_filter,         â”‚         â”‚
+â”‚  â”‚                   session_id, stream):                          â”‚         â”‚
+â”‚  â”‚     1. load session history (last 5)                            â”‚         â”‚
+â”‚  â”‚     2. materialize effective_node_ids:                          â”‚         â”‚
+â”‚  â”‚           if sandbox_id: rag_resolve_effective_nodes             â”‚         â”‚
+â”‚  â”‚           else: ALL user's kg_nodes                             â”‚         â”‚
+â”‚  â”‚           then apply scope_filter (tag/source/nodeid list)      â”‚         â”‚
+â”‚  â”‚     3. if empty â†’ raise EmptyScopeError                         â”‚         â”‚
+â”‚  â”‚     4. query_rewriter (multi-turn) â†’ standalone query           â”‚         â”‚
+â”‚  â”‚     5. query_router.classify                                    â”‚         â”‚
+â”‚  â”‚     6. query_transformer (HyDE/MQ/Decomp/StepBack)              â”‚         â”‚
+â”‚  â”‚     7. retrieval.hybrid_search(qvars, effective_node_ids)       â”‚         â”‚
+â”‚  â”‚     8. localized PageRank (NetworkX on induced subgraph)        â”‚         â”‚
+â”‚  â”‚     9. reranker.score (BGE via TEI HTTP)                        â”‚         â”‚
+â”‚  â”‚    10. context_assembler.build (sandwich, XML, 6000 tok)        â”‚         â”‚
+â”‚  â”‚    11. llm.generate (Gemini tiered â†’ Claude pluggable)          â”‚         â”‚
+â”‚  â”‚    12. answer_critic.verify (NLI, retry once if bad)            â”‚         â”‚
+â”‚  â”‚    13. persist chat_messages + citations                        â”‚         â”‚
+â”‚  â”‚    14. emit Langfuse trace                                      â”‚         â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜         â”‚
+â”‚           â”‚          â”‚         â”‚         â”‚        â”‚      â”‚                   â”‚
+â”‚           â–¼          â–¼         â–¼         â–¼        â–¼      â–¼                   â”‚
+â”‚      GeminiKey    Supabase  TEI Rerank Langfuse Gemini  (future:             â”‚
+â”‚      Pool         RPCs      sidecar    tracer   NLI      websearch           â”‚
+â”‚                                                          backend,            â”‚
+â”‚                                                          parked)             â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### 1.3 End-to-end data flow (single query)
 
 ```
  1. User types query + picks scope (all / tags / source-types / selected nodes)
- 2. Frontend POST /api/chat/sessions/{id}/messages  { content, scope }
+ 2. Frontend POST /api/rag/sessions/{id}/messages  { content, scope }
  3. Server loads session.last_5_messages from Supabase
- 4. Query rewriter: raw query + last turns → standalone query (gemini-2.5-flash-lite)
+ 4. Query rewriter: raw query + last turns â†’ standalone query (gemini-2.5-flash-lite)
  5. Query router classifies: lookup | vague | multi_hop | thematic | step_back
  6. Query transformer (only if non-trivial):
-      lookup    → no transform
-      vague     → HyDE: generate hypothetical answer, embed that
-      multi_hop → decompose into 2-3 sub-queries
-      thematic  → multi-query: 3 reformulations
-      step_back → generate broader form of the query
+      lookup    â†’ no transform
+      vague     â†’ HyDE: generate hypothetical answer, embed that
+      multi_hop â†’ decompose into 2-3 sub-queries
+      thematic  â†’ multi-query: 3 reformulations
+      step_back â†’ generate broader form of the query
  7. Parallel retrieval via rag_hybrid_search RPC:
       A) Dense over kg_nodes.embedding        (filtered by effective_node_ids)
       B) Dense over kg_node_chunks.embedding  (filtered by effective_node_ids)
@@ -174,22 +174,22 @@ Missing pieces added by v1:
       D) FTS over kg_node_chunks.fts          (same filter)
       E) Graph expansion: seed = top-5 dense hits, bounded by p_graph_depth
  8. RRF fusion (k=60, weights sem=0.5 / fts=0.3 / graph=0.2)
-      → top 30 candidates (chunks + summaries intermixed, deduplicated)
- 9. Localized PageRank over induced subgraph (NetworkX, ≤30 nodes) → graph_score
+      â†’ top 30 candidates (chunks + summaries intermixed, deduplicated)
+ 9. Localized PageRank over induced subgraph (NetworkX, â‰¤30 nodes) â†’ graph_score
 10. Cross-encoder rerank: BGE-Reranker-v2-M3 (TEI HTTP)
       final_score = 0.60*rerank + 0.25*graph + 0.15*rrf
-      → top 8 context items (top 12 for quality=high)
+      â†’ top 8 context items (top 12 for quality=high)
 11. Context assembly: XML-wrapped with explicit [zettel_id] anchors,
     sandwich order (best first, 2nd-best last), 6000 tok budget
-12. LLM generation (GeminiKeyPool): flash → flash-lite → pro
+12. LLM generation (GeminiKeyPool): flash â†’ flash-lite â†’ pro
       System prompt: "Answer only from context, inline [id] citations,
                       say 'I don't find anything' if info absent"
       Stream tokens back via SSE (web) or accumulate (Telegram)
 13. Answer Critic (post-gen, gemini-2.5-flash-lite):
       NLI check: "Is every factual claim in ANSWER supported by CONTEXT?"
       Deterministic: are cited ids in the context?
-      If fail → multi-query expansion, retry ONCE
-      If still fail → annotate answer with ⚠️ "Low confidence"
+      If fail â†’ multi-query expansion, retry ONCE
+      If still fail â†’ annotate answer with âš ï¸ "Low confidence"
 14. Persist message + citations to chat_messages, emit Langfuse trace
 15. Return final answer + citation chips to frontend
 ```
@@ -198,7 +198,7 @@ Missing pieces added by v1:
 
 Sandboxes are named, persisted collections of Zettels. A sandbox owns many chat sessions; every conversation against `Sandbox("ML Research")` stays tied to that same Zettel set. Membership is **dynamic**: add/remove at any time via the UI, bulk filters ("add all tagged `transformers`"), or click-to-add from the 3D KG. Sandboxes survive across sessions, reloads, restarts. Deleting a sandbox cascades to its chat sessions and messages.
 
-A chat session may have `sandbox_id IS NULL` — that's the ad-hoc "all my Zettels" case used by the Telegram `/ask` command and one-off web queries.
+A chat session may have `sandbox_id IS NULL` â€” that's the ad-hoc "all my Zettels" case used by the Telegram `/ask` command and one-off web queries.
 
 At query time users can **further narrow** a sandbox via a composable `ScopeFilter` (tag + source-type + explicit node-id list) applied on top of sandbox membership.
 
@@ -229,18 +229,18 @@ All changes land under a new directory:
 
 ```
 supabase/website/rag_chatbot/
-├── 001_hnsw_migration.sql          # IVFFlat → HNSW on kg_nodes.embedding
-├── 002_chunks_table.sql            # kg_node_chunks + FTS trigger + RLS + HNSW
-├── 003_sandboxes.sql               # rag_sandboxes + rag_sandbox_members + RLS + view
-├── 004_chat_sessions.sql           # chat_sessions + chat_messages + RLS
-└── 005_rag_rpcs.sql                # rag_resolve_effective_nodes, rag_hybrid_search,
+â”œâ”€â”€ 001_hnsw_migration.sql          # IVFFlat â†’ HNSW on kg_nodes.embedding
+â”œâ”€â”€ 002_chunks_table.sql            # kg_node_chunks + FTS trigger + RLS + HNSW
+â”œâ”€â”€ 003_sandboxes.sql               # rag_sandboxes + rag_sandbox_members + RLS + view
+â”œâ”€â”€ 004_chat_sessions.sql           # chat_sessions + chat_messages + RLS
+â””â”€â”€ 005_rag_rpcs.sql                # rag_resolve_effective_nodes, rag_hybrid_search,
                                     #   rag_subgraph_for_pagerank, rag_bulk_add_to_sandbox,
                                     #   rag_replace_node_chunks
 ```
 
 Each migration is independently reversible with a commented rollback block.
 
-### 2.1 Migration 001 — HNSW index migration
+### 2.1 Migration 001 â€” HNSW index migration
 
 ```sql
 -- ============================================================================
@@ -276,14 +276,14 @@ COMMENT ON INDEX public.idx_kg_nodes_embedding_hnsw IS
 --   ALTER DATABASE postgres RESET hnsw.iterative_scan;
 ```
 
-### 2.2 Migration 002 — `kg_node_chunks` table
+### 2.2 Migration 002 â€” `kg_node_chunks` table
 
 ```sql
 -- ============================================================================
 -- 002_chunks_table.sql
 -- Fine-grained chunks for long-form content; atomic single chunks for short-form.
 -- Schema B: chunks for all new captures (user Q1). Existing Zettels stay summary-only
--- until a future backfill job (§12). Retrieval unions summary + chunk layers.
+-- until a future backfill job (Â§12). Retrieval unions summary + chunk layers.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS kg_node_chunks (
@@ -400,14 +400,14 @@ CREATE POLICY kg_node_chunks_service_all ON kg_node_chunks
 -- Rollback: DROP TABLE kg_node_chunks CASCADE;
 ```
 
-### 2.3 Migration 003 — `rag_sandboxes` + `rag_sandbox_members`
+### 2.3 Migration 003 â€” `rag_sandboxes` + `rag_sandbox_members`
 
 ```sql
 -- ============================================================================
 -- 003_sandboxes.sql
 -- Persistent NotebookLM-style curated Zettel collections.
--- No denormalized member_count (removed after scale review) — use rag_sandbox_stats view.
--- Composite FK (user_id, node_id) → kg_nodes CASCADE keeps membership consistent.
+-- No denormalized member_count (removed after scale review) â€” use rag_sandbox_stats view.
+-- Composite FK (user_id, node_id) â†’ kg_nodes CASCADE keeps membership consistent.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS rag_sandboxes (
@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS rag_sandbox_members (
 );
 
 COMMENT ON TABLE  rag_sandbox_members IS 'Zettel membership per sandbox; cascade on kg_nodes delete';
-COMMENT ON COLUMN rag_sandbox_members.added_via IS 'How the Zettel entered the sandbox — for UI grouping & bulk undo';
+COMMENT ON COLUMN rag_sandbox_members.added_via IS 'How the Zettel entered the sandbox â€” for UI grouping & bulk undo';
 
 CREATE INDEX IF NOT EXISTS idx_rag_sandbox_members_sandbox
     ON rag_sandbox_members (sandbox_id);
@@ -565,7 +565,7 @@ CREATE POLICY rag_sandbox_members_service_all ON rag_sandbox_members
 --           DROP VIEW rag_sandbox_stats;
 ```
 
-### 2.4 Migration 004 — `chat_sessions` + `chat_messages`
+### 2.4 Migration 004 â€” `chat_sessions` + `chat_messages`
 
 ```sql
 -- ============================================================================
@@ -670,21 +670,21 @@ ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 -- Rollback: DROP TABLE chat_messages, chat_sessions CASCADE;
 ```
 
-### 2.5 Migration 005 — RAG-specific RPCs
+### 2.5 Migration 005 â€” RAG-specific RPCs
 
 Five functions called by the Python orchestrator. SQL-side retrieval is a deliberate choice: single round-trip per stage, RLS + `SECURITY DEFINER` authoritative tenant isolation, set-based operations faster in-DB.
 
 ```sql
 -- ============================================================================
 -- 005_rag_rpcs.sql
--- 1. rag_resolve_effective_nodes  — compose sandbox + scope filter → node_id set
--- 2. rag_hybrid_search             — 5-stream RRF retrieval
--- 3. rag_subgraph_for_pagerank     — induced subgraph for NetworkX scoring
--- 4. rag_bulk_add_to_sandbox       — server-side bulk membership add
--- 5. rag_replace_node_chunks       — atomic delete for chunk re-ingest
+-- 1. rag_resolve_effective_nodes  â€” compose sandbox + scope filter â†’ node_id set
+-- 2. rag_hybrid_search             â€” 5-stream RRF retrieval
+-- 3. rag_subgraph_for_pagerank     â€” induced subgraph for NetworkX scoring
+-- 4. rag_bulk_add_to_sandbox       â€” server-side bulk membership add
+-- 5. rag_replace_node_chunks       â€” atomic delete for chunk re-ingest
 -- ============================================================================
 
--- ── 1. rag_resolve_effective_nodes ────────────────────────────────────────
+-- â”€â”€ 1. rag_resolve_effective_nodes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE OR REPLACE FUNCTION rag_resolve_effective_nodes(
     p_user_id      uuid,
     p_sandbox_id   uuid    DEFAULT NULL,
@@ -729,9 +729,9 @@ COMMENT ON FUNCTION rag_resolve_effective_nodes IS
     'Composes sandbox membership + scope filters into the effective node set for retrieval';
 
 
--- ── 2. rag_hybrid_search ──────────────────────────────────────────────────
+-- â”€â”€ 2. rag_hybrid_search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- p_effective_nodes: nullable. NULL = "all user's nodes" (fast path for ad-hoc
--- queries or large sandboxes) — avoids marshaling huge arrays.
+-- queries or large sandboxes) â€” avoids marshaling huge arrays.
 CREATE OR REPLACE FUNCTION rag_hybrid_search(
     p_user_id          uuid,
     p_query_text       text,
@@ -743,7 +743,7 @@ CREATE OR REPLACE FUNCTION rag_hybrid_search(
     p_graph_weight     float   DEFAULT 0.2,
     p_rrf_k            int     DEFAULT 60,
     p_graph_depth      int     DEFAULT 1,
-    p_recency_decay    float   DEFAULT 0.0    -- γ from BP3 formula; 0 = disabled in v1
+    p_recency_decay    float   DEFAULT 0.0    -- Î³ from BP3 formula; 0 = disabled in v1
 )
 RETURNS TABLE (
     kind           text,
@@ -770,7 +770,7 @@ BEGIN
 
     RETURN QUERY
     WITH
-    -- ── Stream 1a: Dense over summary embeddings (kg_nodes) ────────────────
+    -- â”€â”€ Stream 1a: Dense over summary embeddings (kg_nodes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     dense_summary AS (
         SELECT
             'summary'::text                                       AS kind,
@@ -786,7 +786,7 @@ BEGIN
         ORDER BY n.embedding <=> p_query_embedding
         LIMIT p_limit * 3
     ),
-    -- ── Stream 1b: Dense over chunk embeddings (kg_node_chunks) ────────────
+    -- â”€â”€ Stream 1b: Dense over chunk embeddings (kg_node_chunks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     dense_chunk AS (
         SELECT
             'chunk'::text                                         AS kind,
@@ -805,7 +805,7 @@ BEGIN
         ORDER BY c.embedding <=> p_query_embedding
         LIMIT p_limit * 3
     ),
-    -- ── Stream 2a: FTS over summaries ──────────────────────────────────────
+    -- â”€â”€ Stream 2a: FTS over summaries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     fts_summary AS (
         SELECT
             'summary'::text                                       AS kind,
@@ -822,7 +822,7 @@ BEGIN
         ORDER BY ts_rank_cd(n.fts, websearch_to_tsquery('english', p_query_text)) DESC
         LIMIT p_limit * 3
     ),
-    -- ── Stream 2b: FTS over chunks ─────────────────────────────────────────
+    -- â”€â”€ Stream 2b: FTS over chunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     fts_chunk AS (
         SELECT
             'chunk'::text                                         AS kind,
@@ -840,7 +840,7 @@ BEGIN
         ORDER BY ts_rank_cd(c.fts, websearch_to_tsquery('english', p_query_text)) DESC
         LIMIT p_limit * 3
     ),
-    -- ── Stream 3: Graph expansion from top-5 dense_summary seeds ───────────
+    -- â”€â”€ Stream 3: Graph expansion from top-5 dense_summary seeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     --    Recursive CTE bounded by p_graph_depth (1 for lookup, 2 for thematic).
     --    Must stay within effective node set.
     seeds AS (
@@ -877,7 +877,7 @@ BEGIN
         WHERE w.depth > 0
           AND (p_effective_nodes IS NULL OR n2.id = ANY(p_effective_nodes))
     ),
-    -- ── RRF fusion across all 5 streams ────────────────────────────────────
+    -- â”€â”€ RRF fusion across all 5 streams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     fused AS (
         SELECT kind, node_id, chunk_id, chunk_idx, name, source_type, url,
                content, tags, metadata,
@@ -925,7 +925,7 @@ COMMENT ON FUNCTION rag_hybrid_search IS
     '5-stream RRF: dense(summary) + dense(chunks) + fts(summary) + fts(chunks) + graph expansion. Returns top-N candidates.';
 
 
--- ── 3. rag_subgraph_for_pagerank ──────────────────────────────────────────
+-- â”€â”€ 3. rag_subgraph_for_pagerank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE OR REPLACE FUNCTION rag_subgraph_for_pagerank(
     p_user_id    uuid,
     p_node_ids   text[]
@@ -943,7 +943,7 @@ AS $$
 $$;
 
 
--- ── 4. rag_bulk_add_to_sandbox ────────────────────────────────────────────
+-- â”€â”€ 4. rag_bulk_add_to_sandbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE OR REPLACE FUNCTION rag_bulk_add_to_sandbox(
     p_user_id      uuid,
     p_sandbox_id   uuid,
@@ -990,7 +990,7 @@ END;
 $$;
 
 
--- ── 5. rag_replace_node_chunks ────────────────────────────────────────────
+-- â”€â”€ 5. rag_replace_node_chunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE OR REPLACE FUNCTION rag_replace_node_chunks(
     p_user_id uuid,
     p_node_id text
@@ -1017,15 +1017,15 @@ GRANT EXECUTE ON FUNCTION rag_bulk_add_to_sandbox     TO authenticated, service_
 GRANT EXECUTE ON FUNCTION rag_replace_node_chunks     TO authenticated, service_role;
 ```
 
-### 2.6 Ops ladder — scale tuning knobs
+### 2.6 Ops ladder â€” scale tuning knobs
 
 | Lever | v1 setting | Scale trigger | Action |
 |---|---|---|---|
-| HNSW `m` | 16 | >10M chunks | rebuild with `m=32` (2× index size) |
+| HNSW `m` | 16 | >10M chunks | rebuild with `m=32` (2Ã— index size) |
 | HNSW `ef_construction` | 64 | >10M chunks | rebuild with `ef_construction=200` |
 | `hnsw.ef_search` | 100 per-session | recall < 90% | bump to 200 |
-| `hnsw.iterative_scan` | `strict_order` per-session | — | keep |
-| `hnsw.max_scan_tuples` | 20000 per-session | — | safety cap for pathological tenant selection |
+| `hnsw.iterative_scan` | `strict_order` per-session | â€” | keep |
+| `hnsw.max_scan_tuples` | 20000 per-session | â€” | safety cap for pathological tenant selection |
 | PgBouncer pool | transaction mode | concurrent users >50 | bump `max_client_conn`; consider read replica |
 | `autovacuum_vacuum_scale_factor` | 0.2 (default) | `chat_messages` / `kg_node_chunks` bloat | drop to 0.05 on hot tables |
 | `statement_timeout` | 5s per retrieval RPC | tail latency p99 > 10s | tighten to 3s + surface user-friendly error |
@@ -1036,46 +1036,46 @@ GRANT EXECUTE ON FUNCTION rag_replace_node_chunks     TO authenticated, service_
 
 ### 2.7 Scale-hardening self-review outcomes
 
-Before writing the migrations above, a self-review walked through scale scenarios — **100 new users on day 10**, one power user with 5k Zettels + 20 sandboxes, bulk-add of 500+ Zettels in one call, 10× traffic spike, year-2 data growth — and found 14 issues. All 14 fixes are already baked into the migrations; this subsection documents them as a confirmation trail.
+Before writing the migrations above, a self-review walked through scale scenarios â€” **100 new users on day 10**, one power user with 5k Zettels + 20 sandboxes, bulk-add of 500+ Zettels in one call, 10Ã— traffic spike, year-2 data growth â€” and found 14 issues. All 14 fixes are already baked into the migrations; this subsection documents them as a confirmation trail.
 
-**🔴 Scale-critical (would break under load without the fix):**
+**ðŸ”´ Scale-critical (would break under load without the fix):**
 
 | # | Issue | Fix |
 |---|---|---|
 | 1 | `DROP INDEX + CREATE INDEX` without `CONCURRENTLY` locks `kg_nodes` for minutes on any non-empty prod DB, stalling ingestion | Migration 001 uses `DROP INDEX CONCURRENTLY` + `CREATE INDEX CONCURRENTLY`, with a note that each statement must run outside a transaction |
 | 2 | Multi-tenant HNSW + RLS empty-result bug: HNSW top-K gets filtered out by `user_id = X`, leaving `<k` results when most candidates belong to other users | pgvector 0.8+ `hnsw.iterative_scan='strict_order'` set both at `ALTER DATABASE` level and per-session inside every retrieval RPC |
-| 3 | Passing a 5k–50k element `p_effective_nodes` array for "all user's Zettels" is wasteful marshalling | `p_effective_nodes` is nullable; NULL = server-side "all user's nodes" fast path. Orchestrator passes NULL for Telegram `/ask` and ad-hoc web queries |
+| 3 | Passing a 5kâ€“50k element `p_effective_nodes` array for "all user's Zettels" is wasteful marshalling | `p_effective_nodes` is nullable; NULL = server-side "all user's nodes" fast path. Orchestrator passes NULL for Telegram `/ask` and ad-hoc web queries |
 
-**🟡 Bloat / hotspot fixes:**
+**ðŸŸ¡ Bloat / hotspot fixes:**
 
 | # | Issue | Fix |
 |---|---|---|
-| 4 | `rag_sandboxes.member_count` denormalized + `FOR EACH ROW` trigger fires 500× on a bulk sandbox add | Column dropped; `rag_sandbox_stats` view computes count on read (sandbox lists are read rarely; bulk adds touch thousands of rows) |
+| 4 | `rag_sandboxes.member_count` denormalized + `FOR EACH ROW` trigger fires 500Ã— on a bulk sandbox add | Column dropped; `rag_sandbox_stats` view computes count on read (sandbox lists are read rarely; bulk adds touch thousands of rows) |
 | 5 | `content_hash TEXT` at millions of rows wastes ~50% on this column | Stored as `BYTEA` (32 bytes vs ~64 chars for hex) |
-| 6 | Re-ingest of updated YouTube transcripts collides on `UNIQUE (user_id, node_id, chunk_idx)` and fails mid-batch | Delete-then-insert contract via `rag_replace_node_chunks` RPC — idempotent and retry-safe |
-| 7 | Original `aggregated` CTE used `LATERAL unnest + array_agg[1:20]` for dedup — O(N × avg_tags) per row, awkward to read | Simplified to `DISTINCT ON (kind, node_id, chunk_id)` with `SUM(score) OVER (PARTITION BY ...)` |
+| 6 | Re-ingest of updated YouTube transcripts collides on `UNIQUE (user_id, node_id, chunk_idx)` and fails mid-batch | Delete-then-insert contract via `rag_replace_node_chunks` RPC â€” idempotent and retry-safe |
+| 7 | Original `aggregated` CTE used `LATERAL unnest + array_agg[1:20]` for dedup â€” O(N Ã— avg_tags) per row, awkward to read | Simplified to `DISTINCT ON (kind, node_id, chunk_id)` with `SUM(score) OVER (PARTITION BY ...)` |
 
-**🟢 Smaller correctness + ops fixes:**
+**ðŸŸ¢ Smaller correctness + ops fixes:**
 
 | # | Issue | Fix |
 |---|---|---|
-| 8 | `chat_messages` trigger on `FOR EACH ROW` — is it a hotspot? | Kept as-is: chat messages insert one-at-a-time, not in bulk. No hotspot. |
+| 8 | `chat_messages` trigger on `FOR EACH ROW` â€” is it a hotspot? | Kept as-is: chat messages insert one-at-a-time, not in bulk. No hotspot. |
 | 9 | Missing composite index for "recent chats in this sandbox" | Added `idx_chat_sessions_sandbox_recent (sandbox_id, last_message_at DESC) WHERE sandbox_id IS NOT NULL` |
 | 10 | Tag filter: AND vs OR semantics | Added `p_tag_mode text` parameter: `'all'` uses `@>` (contains all), `'any'` uses `&&` (overlap) |
-| 11 | Bulk add round-trips IDs through Python | Added `rag_bulk_add_to_sandbox` RPC — filters + inserts server-side in one shot |
-| 12 | BP3 fusion formula includes a γ recency factor — missing | Added `p_recency_decay float DEFAULT 0.0` parameter to `rag_hybrid_search`; 0 = disabled in v1, enable post-eval |
-| 13 | `chat_messages` growth lever | Partition-by-month recipe documented in §2.6 ops ladder; `CHAT_MESSAGE_RETENTION_DAYS` env var hook noted in §9 parked features |
-| 14 | Embedding model upgrade path (Gemini-001 → Gemini-2 @ 3072-d) | Dual-column recipe (`embedding_v1`, `embedding_v2`) + MRL truncation for continuity documented in §2.6 and §9 |
+| 11 | Bulk add round-trips IDs through Python | Added `rag_bulk_add_to_sandbox` RPC â€” filters + inserts server-side in one shot |
+| 12 | BP3 fusion formula includes a Î³ recency factor â€” missing | Added `p_recency_decay float DEFAULT 0.0` parameter to `rag_hybrid_search`; 0 = disabled in v1, enable post-eval |
+| 13 | `chat_messages` growth lever | Partition-by-month recipe documented in Â§2.6 ops ladder; `CHAT_MESSAGE_RETENTION_DAYS` env var hook noted in Â§9 parked features |
+| 14 | Embedding model upgrade path (Gemini-001 â†’ Gemini-2 @ 3072-d) | Dual-column recipe (`embedding_v1`, `embedding_v2`) + MRL truncation for continuity documented in Â§2.6 and Â§9 |
 
 **Scale scenarios the hardened design survives:**
 
 | Scenario | How the fixes handle it |
 |---|---|
-| ✅ 100 new users on day 10 | Concurrent index ops (fix #1), no trigger hotspots (fix #4), server-side bulk add (fix #11) |
-| ✅ Bulk sandbox add of 500+ Zettels | `rag_bulk_add_to_sandbox` RPC; no trigger cascade; single round-trip |
-| ✅ Multi-tenant retrieval correctness | `iterative_scan` + `user_id = p_user_id` + RLS (fix #2) |
-| ✅ 10× traffic spike | Bounded `statement_timeout`, `max_scan_tuples` cap, async retrieval parallelism |
-| ✅ Year-2 growth (millions of chunks, 5M+ chat messages) | HNSW `m`/`ef_construction` tuning knobs, partition recipe, retention env var — all pre-documented, not needed until trigger |
+| âœ… 100 new users on day 10 | Concurrent index ops (fix #1), no trigger hotspots (fix #4), server-side bulk add (fix #11) |
+| âœ… Bulk sandbox add of 500+ Zettels | `rag_bulk_add_to_sandbox` RPC; no trigger cascade; single round-trip |
+| âœ… Multi-tenant retrieval correctness | `iterative_scan` + `user_id = p_user_id` + RLS (fix #2) |
+| âœ… 10Ã— traffic spike | Bounded `statement_timeout`, `max_scan_tuples` cap, async retrieval parallelism |
+| âœ… Year-2 growth (millions of chunks, 5M+ chat messages) | HNSW `m`/`ef_construction` tuning knobs, partition recipe, retention env var â€” all pre-documented, not needed until trigger |
 
 ---
 
@@ -1083,7 +1083,7 @@ Before writing the migrations above, a self-review walked through scale scenario
 
 Python-side pipeline sitting between the FastAPI/Telegram surfaces and the Supabase data layer.
 
-### 3.1 Shared types — `website/core/rag/types.py`
+### 3.1 Shared types â€” `website/features/rag_pipeline/types.py`
 
 ```python
 from __future__ import annotations
@@ -1118,11 +1118,11 @@ class ChunkType(str, Enum):
 
 
 class QueryClass(str, Enum):
-    LOOKUP    = "lookup"      # entity / date / specific fact — no transform
-    VAGUE     = "vague"       # under-specified → HyDE
-    MULTI_HOP = "multi_hop"   # relationship query → decomposition
-    THEMATIC  = "thematic"    # broad → multi-query expansion
-    STEP_BACK = "step_back"   # overly specific → generalize (BP1 §2.6)
+    LOOKUP    = "lookup"      # entity / date / specific fact â€” no transform
+    VAGUE     = "vague"       # under-specified â†’ HyDE
+    MULTI_HOP = "multi_hop"   # relationship query â†’ decomposition
+    THEMATIC  = "thematic"    # broad â†’ multi-query expansion
+    STEP_BACK = "step_back"   # overly specific â†’ generalize (BP1 Â§2.6)
 
 
 class ScopeFilter(BaseModel):
@@ -1183,18 +1183,18 @@ class ChatQuery(BaseModel):
     stream:       bool = True
 ```
 
-### 3.2 Ingestion — chunker, embedder, upsert
+### 3.2 Ingestion â€” chunker, embedder, upsert
 
 Triggered by the existing Telegram bot's `telegram_bot/pipeline/orchestrator.process_url` at the end of a successful capture, after `repo.add_node(...)` and before `duplicate.mark_seen(url)`.
 
-**Feature flag**: `settings.rag_chunks_enabled` (default False in Phase 1, flipped True after Phase 2 validation). Failure of the chunking step must NOT fail the capture — Zettels always land in `kg_nodes` with their summary embedding.
+**Feature flag**: `settings.rag_chunks_enabled` (default False in Phase 1, flipped True after Phase 2 validation). Failure of the chunking step must NOT fail the capture â€” Zettels always land in `kg_nodes` with their summary embedding.
 
 ```python
-# website/core/rag/ingest/chunker.py
+# website/features/rag_pipeline/ingest/chunker.py
 from __future__ import annotations
 from pydantic import BaseModel
 from chonkie import SemanticChunker, TokenChunker, LateChunker, RecursiveChunker
-from website.core.rag.types import ChunkType, SourceType
+from website.features.rag_pipeline.types import ChunkType, SourceType
 
 LONG_FORM_SOURCES  = {SourceType.YOUTUBE, SourceType.SUBSTACK, SourceType.MEDIUM, SourceType.WEB}
 SHORT_FORM_SOURCES = {SourceType.REDDIT, SourceType.TWITTER, SourceType.GITHUB, SourceType.GENERIC}
@@ -1217,19 +1217,19 @@ class ZettelChunker:
     """
     Dispatches by source_type.
     Long-form: Late chunking via Chonkie LateChunker (BP3), fallback ladder to
-               semantic → recursive → token.
+               semantic â†’ recursive â†’ token.
     Short-form: Atomic single chunk enriched with title, tags, author, mentions,
-                hashtags (BP3 §3.1).
+                hashtags (BP3 Â§3.1).
 
     NOTE (verified against Chonkie source, April 2026):
     - `SemanticChunker` parameter is `min_sentences_per_chunk`, NOT `min_sentences`.
-    - `RecursiveChunker` does NOT accept `chunk_overlap` — overlap is configured
+    - `RecursiveChunker` does NOT accept `chunk_overlap` â€” overlap is configured
       via the `rules: RecursiveRules` parameter. Only `TokenChunker` has
       `chunk_overlap`.
-    - Chonkie `embedding_model` accepts `str | BaseEmbeddings` — it does NOT
+    - Chonkie `embedding_model` accepts `str | BaseEmbeddings` â€” it does NOT
       accept a plain callable. Wiring Gemini requires a `GeminiChonkieEmbeddings`
       adapter that subclasses `chonkie.embeddings.BaseEmbeddings` and delegates
-      to the existing `GeminiKeyPool.embed_content()`. See §3.8.
+      to the existing `GeminiKeyPool.embed_content()`. See Â§3.8.
     - `LateChunker` default `chunk_size=2048`; we explicitly override to 512.
     """
 
@@ -1253,7 +1253,7 @@ class ZettelChunker:
         self._late = None
         if embedder_for_late_chunking is not None:
             # embedder_for_late_chunking must be a GeminiChonkieEmbeddings
-            # instance (subclass of chonkie.embeddings.BaseEmbeddings) — see §3.8
+            # instance (subclass of chonkie.embeddings.BaseEmbeddings) â€” see Â§3.8
             self._late = LateChunker(
                 embedding_model=embedder_for_late_chunking,
                 chunk_size=LONG_CHUNK_TOKENS,   # explicit override of 2048 default
@@ -1286,7 +1286,7 @@ class ZettelChunker:
         )
 
     def _build_atomic_prefix(self, title: str, tags: list[str], metadata: dict) -> str:
-        """BP3 §3.1: enrich atomic chunks with handles, hashtags, entity markers."""
+        """BP3 Â§3.1: enrich atomic chunks with handles, hashtags, entity markers."""
         parts = [f"[{title}]"]
         if tags:
             parts.append(" ".join(f"#{t}" for t in tags))
@@ -1309,7 +1309,7 @@ def _count_tokens(text: str) -> int:
 ```
 
 ```python
-# website/core/rag/ingest/embedder.py
+# website/features/rag_pipeline/ingest/embedder.py
 import asyncio
 import hashlib
 from google.genai.types import EmbedContentConfig
@@ -1323,7 +1323,7 @@ class ChunkEmbedder:
     Async, batched embedding via the existing GeminiKeyPool.
 
     NOTE (verified from website/features/api_key_switching/key_pool.py):
-    The existing pool exposes only `embed_content(contents, *, config)` —
+    The existing pool exposes only `embed_content(contents, *, config)` â€”
     SYNCHRONOUS, single call, returns the raw genai response (no batch helper).
     This class wraps it to provide:
       - async interface (via asyncio.to_thread so the event loop stays unblocked)
@@ -1360,7 +1360,7 @@ class ChunkEmbedder:
         return [vec for batch in results for vec in batch]
 
     async def embed_query_with_cache(self, query: str) -> list[float]:
-        from website.core.rag.retrieval.cache import QUERY_EMBEDDING_CACHE, _query_key
+        from website.features.rag_pipeline.retrieval.cache import QUERY_EMBEDDING_CACHE, _query_key
         key = _query_key(query)
         cached = await QUERY_EMBEDDING_CACHE.get(key)
         if cached is not None:
@@ -1374,14 +1374,14 @@ class ChunkEmbedder:
         return hashlib.sha256(text.encode("utf-8")).digest()
 ```
 
-**DECISION: wrap the sync `GeminiKeyPool.embed_content` in `asyncio.to_thread` rather than forking the pool.** The existing pool is production-hardened (key rotation, cooldown, 429 detection) and its sync interface is intentional — it matches the `google-generativeai` SDK's sync embedder. Running it in a worker thread keeps the event loop unblocked while reusing all the existing rate-limit resilience.
+**DECISION: wrap the sync `GeminiKeyPool.embed_content` in `asyncio.to_thread` rather than forking the pool.** The existing pool is production-hardened (key rotation, cooldown, 429 detection) and its sync interface is intentional â€” it matches the `google-generativeai` SDK's sync embedder. Running it in a worker thread keeps the event loop unblocked while reusing all the existing rate-limit resilience.
 
 ```python
-# website/core/rag/ingest/upsert.py
+# website/features/rag_pipeline/ingest/upsert.py
 from uuid import UUID
 from website.core.supabase_kg.client import get_supabase_client
-from website.core.rag.ingest.chunker import Chunk
-from website.core.rag.ingest.embedder import ChunkEmbedder
+from website.features.rag_pipeline.ingest.chunker import Chunk
+from website.features.rag_pipeline.ingest.embedder import ChunkEmbedder
 
 
 async def upsert_chunks(
@@ -1391,7 +1391,7 @@ async def upsert_chunks(
     Atomic replace-then-insert with content-hash skip:
       1. Fetch existing (chunk_idx, content_hash) for this node
       2. Compute new hashes; only embed chunks whose hash changed
-      3. If everything unchanged AND chunk count identical → no-op
+      3. If everything unchanged AND chunk count identical â†’ no-op
       4. Otherwise: rag_replace_node_chunks RPC + bulk INSERT with mix of new and
          preserved embeddings
     Returns number of chunks actually embedded.
@@ -1449,12 +1449,12 @@ async def upsert_chunks(
     return len(to_embed_idxs)
 ```
 
-### 3.3 Query pipeline — rewriter, router, transformer
+### 3.3 Query pipeline â€” rewriter, router, transformer
 
 ```python
-# website/core/rag/query/rewriter.py
+# website/features/rag_pipeline/query/rewriter.py
 class QueryRewriter:
-    """Multi-turn → standalone query. BP1 §2.9 pattern: last 5 turns."""
+    """Multi-turn â†’ standalone query. BP1 Â§2.9 pattern: last 5 turns."""
 
     def __init__(self):
         self._pool = get_gemini_key_pool()
@@ -1485,7 +1485,7 @@ Rewritten query:"""
 ```
 
 ```python
-# website/core/rag/query/router.py
+# website/features/rag_pipeline/query/router.py
 class QueryRouter:
     """
     Classifies queries into 5 classes. Single gemini-2.5-flash-lite call with
@@ -1512,7 +1512,7 @@ class QueryRouter:
 ```
 
 ```python
-# website/core/rag/query/transformer.py
+# website/features/rag_pipeline/query/transformer.py
 class QueryTransformer:
     async def transform(self, query: str, cls: QueryClass) -> list[str]:
         if cls is QueryClass.LOOKUP:
@@ -1528,7 +1528,7 @@ class QueryTransformer:
         return [query]
 
     async def _hyde(self, query: str) -> str:
-        """BP2 §2.6: generate a hypothetical relevant document to embed."""
+        """BP2 Â§2.6: generate a hypothetical relevant document to embed."""
         ...
 
     async def _decompose(self, query: str, n: int) -> list[str]:
@@ -1540,11 +1540,11 @@ class QueryTransformer:
         ...
 
     async def _step_back(self, query: str) -> str:
-        """BP1 §2.6: generalize an overly specific query."""
+        """BP1 Â§2.6: generalize an overly specific query."""
         ...
 ```
 
-### 3.4 Retrieval — hybrid + graph + cache
+### 3.4 Retrieval â€” hybrid + graph + cache
 
 Per-query class graph depth:
 
@@ -1559,7 +1559,7 @@ _DEPTH_BY_CLASS = {
 ```
 
 ```python
-# website/core/rag/retrieval/cache.py
+# website/features/rag_pipeline/retrieval/cache.py
 import asyncio, hashlib, time
 from collections import OrderedDict
 from typing import Any
@@ -1601,11 +1601,11 @@ RETRIEVAL_CACHE       = LRUCache(max_size=256, ttl_seconds=60.0)    # 1 min
 ```
 
 ```python
-# website/core/rag/retrieval/hybrid.py
+# website/features/rag_pipeline/retrieval/hybrid.py
 from uuid import UUID
 import asyncio
-from website.core.rag.errors import EmptyScopeError
-from website.core.rag.retrieval.cache import RETRIEVAL_CACHE, _query_key
+from website.features.rag_pipeline.errors import EmptyScopeError
+from website.features.rag_pipeline.retrieval.cache import RETRIEVAL_CACHE, _query_key
 
 
 class HybridRetriever:
@@ -1693,19 +1693,19 @@ class HybridRetriever:
         return sorted(by_key.values(), key=lambda c: c.rrf_score, reverse=True)
 ```
 
-### 3.5 Graph centrality — `graph_score.py`
+### 3.5 Graph centrality â€” `graph_score.py`
 
 ```python
-# website/core/rag/retrieval/graph_score.py
+# website/features/rag_pipeline/retrieval/graph_score.py
 import networkx as nx
 from uuid import UUID
 
 
 class LocalizedPageRankScorer:
     """
-    BP3 §4: Score = α·semantic + β·graph_centrality + γ·recency.
-    Computes β over the induced subgraph of the retrieval candidates.
-    Small graph (≤30 nodes), <10ms computation.
+    BP3 Â§4: Score = Î±Â·semantic + Î²Â·graph_centrality + Î³Â·recency.
+    Computes Î² over the induced subgraph of the retrieval candidates.
+    Small graph (â‰¤30 nodes), <10ms computation.
     """
 
     def __init__(self, damping: float = 0.85):
@@ -1741,10 +1741,10 @@ class LocalizedPageRankScorer:
             c.graph_score = pr.get(c.node_id, 0.0) / max_pr
 ```
 
-### 3.6 Reranker — BGE via TEI sidecar
+### 3.6 Reranker â€” BGE via TEI sidecar
 
 ```python
-# website/core/rag/rerank/tei_client.py
+# website/features/rag_pipeline/rerank/tei_client.py
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -1796,24 +1796,24 @@ class TEIReranker:
 
 ### 3.7 Existing-code adapter layer
 
-Three thin adapters bridge the idealized interfaces in §3.2, §3.4, §4.3 to the actual `GeminiKeyPool` + Chonkie APIs. None of them change the existing `key_pool.py` code — they are new modules under `website/core/rag/adapters/`.
+Three thin adapters bridge the idealized interfaces in Â§3.2, Â§3.4, Â§4.3 to the actual `GeminiKeyPool` + Chonkie APIs. None of them change the existing `key_pool.py` code â€” they are new modules under `website/features/rag_pipeline/adapters/`.
 
 **File tree**:
 
 ```
-website/core/rag/adapters/
-├── __init__.py
-├── pool_factory.py           # module-level get_gemini_pool() singleton
-├── gemini_chonkie.py         # GeminiChonkieEmbeddings (BaseEmbeddings subclass)
-└── gemini_stream.py          # Key-rotation streaming generator for GeminiBackend
+website/features/rag_pipeline/adapters/
+â”œâ”€â”€ __init__.py
+â”œâ”€â”€ pool_factory.py           # module-level get_gemini_pool() singleton
+â”œâ”€â”€ gemini_chonkie.py         # GeminiChonkieEmbeddings (BaseEmbeddings subclass)
+â””â”€â”€ gemini_stream.py          # Key-rotation streaming generator for GeminiBackend
 ```
 
-#### 3.7.1 `pool_factory.py` — singleton accessor
+#### 3.7.1 `pool_factory.py` â€” singleton accessor
 
 The existing `key_pool.py` has no `get_gemini_key_pool()` helper; each caller instantiates the pool. The RAG layer needs a single shared pool so key cooldowns and rate-limit state are coherent across ingestion, retrieval, generation, critic, and rewriter calls.
 
 ```python
-# website/core/rag/adapters/pool_factory.py
+# website/features/rag_pipeline/adapters/pool_factory.py
 from functools import lru_cache
 from website.features.api_key_switching.key_pool import GeminiKeyPool
 
@@ -1823,18 +1823,18 @@ def get_gemini_pool() -> GeminiKeyPool:
     return GeminiKeyPool()
 ```
 
-All RAG modules accept the pool via constructor DI — `get_gemini_pool()` is called once in the orchestrator factory.
+All RAG modules accept the pool via constructor DI â€” `get_gemini_pool()` is called once in the orchestrator factory.
 
-#### 3.7.2 `gemini_chonkie.py` — Chonkie `BaseEmbeddings` subclass
+#### 3.7.2 `gemini_chonkie.py` â€” Chonkie `BaseEmbeddings` subclass
 
 Chonkie's `SemanticChunker` and `LateChunker` accept `embedding_model: str | BaseEmbeddings`. To delegate to the existing pool, we subclass `chonkie.embeddings.BaseEmbeddings`:
 
 ```python
-# website/core/rag/adapters/gemini_chonkie.py
+# website/features/rag_pipeline/adapters/gemini_chonkie.py
 from typing import Sequence
 from chonkie.embeddings import BaseEmbeddings
 from google.genai.types import EmbedContentConfig
-from website.core.rag.adapters.pool_factory import get_gemini_pool
+from website.features.rag_pipeline.adapters.pool_factory import get_gemini_pool
 
 _GEMINI_EMBED_DIM = 768
 
@@ -1842,7 +1842,7 @@ _GEMINI_EMBED_DIM = 768
 class GeminiChonkieEmbeddings(BaseEmbeddings):
     """
     Wraps GeminiKeyPool.embed_content as a chonkie-compatible BaseEmbeddings.
-    Used only by LateChunker during ingestion — the chunker calls
+    Used only by LateChunker during ingestion â€” the chunker calls
     embed(texts) repeatedly on overlapping token windows.
     """
     def __init__(self):
@@ -1861,7 +1861,7 @@ class GeminiChonkieEmbeddings(BaseEmbeddings):
             output_dimensionality=_GEMINI_EMBED_DIM,
             task_type="RETRIEVAL_DOCUMENT",
         )
-        # key_pool.embed_content is sync — chonkie calls us sync — no asyncio needed
+        # key_pool.embed_content is sync â€” chonkie calls us sync â€” no asyncio needed
         resp = self._pool.embed_content(contents=list(texts), config=config)
         return [list(e.values) for e in resp.embeddings]
 
@@ -1871,12 +1871,12 @@ class GeminiChonkieEmbeddings(BaseEmbeddings):
 
 **Phase 0 verification note**: Chonkie's `BaseEmbeddings` abstract method names (`embed` / `embed_query` / `dimension`) should be confirmed from the actual `chonkie.embeddings.BaseEmbeddings` source before implementation. If Chonkie has shipped an official `chonkie[gemini]` extra since April 2026 that works with our pool, prefer that.
 
-#### 3.7.3 `gemini_stream.py` — streaming with key rotation
+#### 3.7.3 `gemini_stream.py` â€” streaming with key rotation
 
 `GeminiKeyPool.generate_content` is async but **not streaming**. The spec's `GeminiBackend.generate_stream()` needs a streaming path. We implement it by calling `google.genai.Client.aio.models.generate_content_stream(...)` directly and wrapping it in the same key-rotation + cooldown logic the pool uses internally:
 
 ```python
-# website/core/rag/adapters/gemini_stream.py
+# website/features/rag_pipeline/adapters/gemini_stream.py
 import time
 from typing import AsyncIterator
 from google.genai import Client
@@ -1902,7 +1902,7 @@ async def generate_stream_with_rotation(
     Pattern mirrors GeminiKeyPool.generate_content (key_pool.py:175-216) but
     swaps `client.models.generate_content` for `client.aio.models.generate_content_stream`.
     """
-    keys = pool._keys                    # private access — acceptable for adapter
+    keys = pool._keys                    # private access â€” acceptable for adapter
     n    = len(keys)
     last_exc = None
     for attempt in range(n):
@@ -1935,11 +1935,11 @@ async def generate_stream_with_rotation(
     raise last_exc or RuntimeError(f"All keys exhausted for {model}")
 ```
 
-`GeminiBackend._stream_one_tier` (§4.3) delegates to this function. The adapter's private-attribute access (`pool._keys`, `pool._next_gen_key`, `pool._cooldowns`) is acceptable here because:
+`GeminiBackend._stream_one_tier` (Â§4.3) delegates to this function. The adapter's private-attribute access (`pool._keys`, `pool._next_gen_key`, `pool._cooldowns`) is acceptable here because:
 
-1. It's a thin adapter sitting in the same repository as `key_pool.py` — there is no API boundary to cross.
+1. It's a thin adapter sitting in the same repository as `key_pool.py` â€” there is no API boundary to cross.
 2. The alternative (forking the pool to add streaming) would duplicate 200 lines of rate-limit logic.
-3. If the pool's internal state ever needs to change shape, one adapter file updates alongside it — caught by tests.
+3. If the pool's internal state ever needs to change shape, one adapter file updates alongside it â€” caught by tests.
 
 **Anti-pattern guard**: do NOT add streaming directly to `key_pool.py` (that would couple a production-hardened module to a v1 feature and make rollback harder). Keep the adapter separate.
 
@@ -1986,7 +1986,7 @@ volumes:
   reranker-models:
 ```
 
-No GPU required. CPU variant handles ~30 candidates in 200–500ms. Model download happens once at first container start, persisted across blue/green swaps.
+No GPU required. CPU variant handles ~30 candidates in 200â€“500ms. Model download happens once at first container start, persisted across blue/green swaps.
 
 **Verified TEI `/rerank` request body** (from HF quick_tour, April 2026):
 
@@ -1996,13 +1996,13 @@ curl 127.0.0.1:8080/rerank -X POST \
   -d '{"query":"...","texts":["..."], "raw_scores": false}'
 ```
 
-The response shape (e.g., `[{"index": 0, "score": 0.87}, ...]`) is **not documented** in the HF quick_tour — Phase 3 includes a smoke-test assertion to lock in the exact JSON shape before wiring `TEIReranker.rerank()` to it.
+The response shape (e.g., `[{"index": 0, "score": 0.87}, ...]`) is **not documented** in the HF quick_tour â€” Phase 3 includes a smoke-test assertion to lock in the exact JSON shape before wiring `TEIReranker.rerank()` to it.
 
 ---
 
 ## 4. Context assembly, generation, Answer Critic, multi-turn memory
 
-### 4.1 Context Assembly — `website/core/rag/context/assembler.py`
+### 4.1 Context Assembly â€” `website/features/rag_pipeline/context/assembler.py`
 
 ```python
 _BUDGET_BY_QUALITY = {"fast": 6000, "high": 12000}
@@ -2011,10 +2011,10 @@ _MIN_USEFUL_TOKENS = 40
 
 class ContextAssembler:
     """
-    - BP3 §4: XML-wrapped format with explicit [zettel_id] anchors
-    - BP1 §2.8: sandwich ordering (best first, 2nd-best last)
-    - BP1 §2.8: dynamic compression escape hatch in quality=high mode
-    - BP2 §Context: group chunks by parent Zettel to preserve provenance
+    - BP3 Â§4: XML-wrapped format with explicit [zettel_id] anchors
+    - BP1 Â§2.8: sandwich ordering (best first, 2nd-best last)
+    - BP1 Â§2.8: dynamic compression escape hatch in quality=high mode
+    - BP2 Â§Context: group chunks by parent Zettel to preserve provenance
     """
 
     def __init__(self, *, compressor=None):
@@ -2055,13 +2055,13 @@ Example rendered context:
   <zettel id="ss-transformer-math-primer" source="substack" url="https://..."
           title="A Math Primer on Transformers" tags="transformers,math">
     <passage chunk_id="c7d1...">
-      The scaled dot-product attention computes Q·K^T / sqrt(d_k)...
+      The scaled dot-product attention computes QÂ·K^T / sqrt(d_k)...
     </passage>
   </zettel>
 </context>
 ```
 
-### 4.2 System prompt — `website/core/rag/generation/prompts.py`
+### 4.2 System prompt â€” `website/features/rag_pipeline/generation/prompts.py`
 
 ```python
 SYSTEM_PROMPT = """\
@@ -2119,7 +2119,7 @@ Chain-of-thought only active for `quality="high"`.
 ### 4.3 LLM Router + Gemini backend
 
 ```python
-# website/core/rag/generation/llm_router.py
+# website/features/rag_pipeline/generation/llm_router.py
 class LLMRouter:
     def __init__(self, *, gemini: "GeminiBackend", claude: "ClaudeBackend | None" = None):
         self._gemini = gemini
@@ -2145,7 +2145,7 @@ class LLMRouter:
 ```
 
 ```python
-# website/core/rag/generation/gemini_backend.py
+# website/features/rag_pipeline/generation/gemini_backend.py
 import asyncio
 import time
 from google.genai.types import GenerateContentConfig
@@ -2153,7 +2153,7 @@ from google.genai.errors import ClientError
 from website.features.api_key_switching.key_pool import GeminiKeyPool, _is_rate_limited
 
 # Tier chain matches existing pool's _GENERATIVE_MODEL_CHAIN but adds
-# the "high" tier (pro → flash). The existing pool's generate_content
+# the "high" tier (pro â†’ flash). The existing pool's generate_content
 # accepts a `starting_model=` override which lets us force a tier.
 _TIER_CHAIN = {
     "fast": ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
@@ -2166,10 +2166,10 @@ class GeminiBackend:
     NOTE (verified from key_pool.py):
     - GeminiKeyPool.generate_content is ASYNC but takes single call, not streaming.
     - It returns a tuple: (response, model_used, key_index). Use these directly
-      — the pool does NOT expose last_used_model/last_token_counts attributes.
+      â€” the pool does NOT expose last_used_model/last_token_counts attributes.
     - The pool has no generate_content_stream method. We implement streaming
       ourselves by calling google.genai's streaming API directly from within
-      the pool's key-rotation loop. See §3.8 for the key-rotation pattern.
+      the pool's key-rotation loop. See Â§3.8 for the key-rotation pattern.
     - Rate limit detection uses _is_rate_limited(exc) helper from key_pool.py.
     """
 
@@ -2182,7 +2182,7 @@ class GeminiBackend:
         call the google-genai streaming API directly (not via the pool's
         generate_content) but reuse the pool's key-rotation state.
 
-        See §3.8 for the GeminiStreamAdapter that wraps this pattern.
+        See Â§3.8 for the GeminiStreamAdapter that wraps this pattern.
         """
         config = GenerateContentConfig(
             system_instruction=system_prompt,
@@ -2211,7 +2211,7 @@ class GeminiBackend:
         Copies the pattern from GeminiKeyPool.generate_content (key_pool.py:175)
         but calls generate_content_stream on the client instead.
         """
-        # Implementation mirrors key_pool._next_gen_key rotation. See §3.8.
+        # Implementation mirrors key_pool._next_gen_key rotation. See Â§3.8.
         ...
 
     async def generate(self, *, system_prompt, user_prompt, quality, stop_sequences=None):
@@ -2253,7 +2253,7 @@ class GeminiBackend:
 ### 4.4 Claude backend (stubbed, flag-gated)
 
 ```python
-# website/core/rag/generation/claude_backend.py
+# website/features/rag_pipeline/generation/claude_backend.py
 class ClaudeBackend:
     """Disabled in v1. Enabled when ANTHROPIC_API_KEY is set AND rag_claude_enabled=True."""
 
@@ -2280,7 +2280,7 @@ class ClaudeBackend:
                 yield text
 ```
 
-### 4.5 Answer Critic — `website/core/rag/critic/answer_critic.py`
+### 4.5 Answer Critic â€” `website/features/rag_pipeline/critic/answer_critic.py`
 
 ```python
 _CRITIC_MODEL = "gemini-2.5-flash-lite"
@@ -2369,9 +2369,9 @@ class AnswerCritic:
         return sorted(cited_ids - valid_ids)
 ```
 
-### 4.6 Multi-turn memory — `website/core/rag/memory/session_store.py`
+### 4.6 Multi-turn memory â€” `website/features/rag_pipeline/memory/session_store.py`
 
-Rewriter window: **last 5 turns** (BP1 §2.9).
+Rewriter window: **last 5 turns** (BP1 Â§2.9).
 
 ```python
 _REWRITER_WINDOW = 5
@@ -2397,12 +2397,12 @@ class ChatSessionStore:
     async def auto_title_session(self, session_id, user_id, first_query: str):
         title = first_query.strip().split("\n")[0][:60]
         if len(title) == 60:
-            title = title.rstrip() + "…"
+            title = title.rstrip() + "â€¦"
         self._supabase.table("chat_sessions").update({"title": title}) \
             .eq("id", str(session_id)).eq("user_id", str(user_id)).execute()
 ```
 
-### 4.7 Orchestrator — `website/core/rag/orchestrator.py`
+### 4.7 Orchestrator â€” `website/features/rag_pipeline/orchestrator.py`
 
 Top-level function called by FastAPI and Telegram surfaces. Streaming variant yields SSE-ready events; non-streaming variant returns a populated `AnswerTurn`.
 
@@ -2411,7 +2411,7 @@ Top-level function called by FastAPI and Telegram surfaces. Streaming variant yi
 #   - Import: `from langfuse import observe, get_client` (NOT langfuse.decorators)
 #   - Singleton: `langfuse = get_client()`
 #   - Current trace ID: `langfuse.get_current_trace_id()` on the client instance
-#     (NOT a separate `langfuse_context` module — that API was v2)
+#     (NOT a separate `langfuse_context` module â€” that API was v2)
 #   - Mid-span updates: `langfuse.update_current_generation(...)` with
 #     `usage_details`, `cost_details`, `metadata`, `input`, `output`, `model`
 #   - Nested @observe auto-nests via OpenTelemetry context propagation
@@ -2464,7 +2464,7 @@ class RAGOrchestrator:
         # 1. Load recent turns for rewriter
         history = await self._sessions.load_recent_turns(session_id, user_id)
 
-        # 2. Query rewriting (multi-turn → standalone)
+        # 2. Query rewriting (multi-turn â†’ standalone)
         standalone = await self._rewriter.rewrite(query.content, history)
 
         # 3. Query classification
@@ -2586,7 +2586,7 @@ class RAGOrchestrator:
             else:
                 verdict = "retried_still_bad"
                 answer_text = (
-                    "⚠️ Low confidence: context may not fully support this answer.\n\n"
+                    "âš ï¸ Low confidence: context may not fully support this answer.\n\n"
                     + answer_text
                 )
 
@@ -2622,7 +2622,7 @@ class RAGOrchestrator:
         else:
             return turn
 
-    # ── Citation + scratchpad helpers ──────────────────────────────────────
+    # â”€â”€ Citation + scratchpad helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _build_citations(self, used: list[RetrievalCandidate]) -> list[Citation]:
         """Deduplicate by node_id; keep highest rerank_score chunk per node."""
         seen: dict[str, Citation] = {}
@@ -2636,7 +2636,7 @@ class RAGOrchestrator:
 
 
 def _make_citation(c: RetrievalCandidate) -> Citation:
-    snippet = (c.content[:300] + "…") if len(c.content) > 300 else c.content
+    snippet = (c.content[:300] + "â€¦") if len(c.content) > 300 else c.content
     return Citation(
         id=c.node_id, node_id=c.node_id, title=c.name,
         source_type=c.source_type, url=c.url, snippet=snippet,
@@ -2651,7 +2651,7 @@ def _strip_scratchpad(answer: str) -> str:
     return re.sub(r"<scratchpad>.*?</scratchpad>\s*", "", answer, flags=re.DOTALL).strip()
 ```
 
-**Retry policy summary**: one retry on `unsupported`/`partial` verdict, with `QueryClass.THEMATIC` transformation (broader variants) and an expanded candidate pool (`limit=40`). If the retry succeeds → `retried_supported`; if it still fails → `retried_still_bad` and the answer is prepended with a ⚠ "Low confidence" banner. **Bounded to one retry** — no recursive escalation. Worst-case latency ~2× a normal turn.
+**Retry policy summary**: one retry on `unsupported`/`partial` verdict, with `QueryClass.THEMATIC` transformation (broader variants) and an expanded candidate pool (`limit=40`). If the retry succeeds â†’ `retried_supported`; if it still fails â†’ `retried_still_bad` and the answer is prepended with a âš  "Low confidence" banner. **Bounded to one retry** â€” no recursive escalation. Worst-case latency ~2Ã— a normal turn.
 
 ---
 
@@ -2659,7 +2659,7 @@ def _strip_scratchpad(answer: str) -> str:
 
 ### 5.1 Endpoint catalog
 
-**Sandbox management** — `website/api/sandbox_routes.py`:
+**Sandbox management** â€” `website/api/sandbox_routes.py`:
 
 ```
 POST   /api/rag/sandboxes                      Create sandbox
@@ -2673,18 +2673,17 @@ DELETE /api/rag/sandboxes/{id}/members/{node}  Remove one
 DELETE /api/rag/sandboxes/{id}/members         Bulk remove by filter
 ```
 
-**Chat management** — `website/api/chat_routes.py`:
+**Chat management** â€” `website/api/chat_routes.py`:
 
 ```
-POST   /api/chat/sessions                      Create session
-GET    /api/chat/sessions                      List sessions (filter by sandbox_id)
-GET    /api/chat/sessions/{id}                 Get metadata + recent messages
-GET    /api/chat/sessions/{id}/messages        Paginated history
-PATCH  /api/chat/sessions/{id}                 Rename / update quality
-DELETE /api/chat/sessions/{id}                 Delete
-POST   /api/chat/sessions/{id}/messages        Send user message → SSE stream
-POST   /api/chat/adhoc                         Stateless one-shot → SSE stream
-DELETE /api/chat/sessions/{id}/messages/{mid}  Edit-and-retry: delete from this point
+GET    /api/rag/example-queries                Suggested prompts for the chat UI
+POST   /api/rag/sessions                       Create session
+GET    /api/rag/sessions                       List sessions (filter by sandbox_id)
+GET    /api/rag/sessions/{id}                  Get session metadata
+GET    /api/rag/sessions/{id}/messages         Paginated history
+DELETE /api/rag/sessions/{id}                  Delete
+POST   /api/rag/sessions/{id}/messages         Send user message â†’ JSON or SSE stream
+POST   /api/rag/adhoc                          One-shot ask â†’ JSON or SSE stream
 ```
 
 ### 5.2 SSE event protocol
@@ -2774,47 +2773,35 @@ Reuses the in-memory pattern from `website/api/routes.py` (per-worker sliding wi
 | `sandbox_bulk_add` | 5 | 60s | per `user_id` | Each call can touch thousands of rows server-side via `rag_bulk_add_to_sandbox` |
 | `retrieve_embedding` | 100 | 60s | per `user_id` | Hits query-embedding LRU cache first; bounds the uncached path |
 
-Telegram `/ask` has a separate `AskRateLimiter` at `max_per_minute=3` per chat ID — tight because Telegram is ad-hoc by design.
+Telegram `/ask` has a separate `AskRateLimiter` at `max_per_minute=3` per chat ID â€” tight because Telegram is ad-hoc by design.
 
-### 5.5 Frontend layout — `website/features/rag_chatbot/`
+### 5.5 Frontend layout - `website/features/user_rag/` + `website/features/user_kastens/`
 
 ```
-website/features/rag_chatbot/
+website/features/user_rag/
 ├── __init__.py
-├── templates/
-│   ├── chat.html
-│   ├── sandboxes.html
-│   ├── sandbox_detail.html
-│   └── components/
-│       ├── sandbox_card.html
-│       ├── session_item.html
-│       ├── chat_message.html
-│       ├── citation_chip.html
-│       └── scope_picker.html
-├── static/
-│   ├── css/
-│   │   ├── chat.css
-│   │   ├── sandbox.css
-│   │   └── citation.css
-│   └── js/
-│       ├── chat_controller.js
-│       ├── sse_client.js
-│       ├── message_renderer.js
-│       ├── session_store.js
-│       ├── sandbox_manager.js
-│       ├── scope_picker.js
-│       ├── citation_panel.js
-│       └── kg_integration.js
+├── index.html
+├── css/
+│   └── user_rag.css
+├── js/
+│   └── user_rag.js
 └── content/
     └── example_queries.json
+
+website/features/user_kastens/
+├── __init__.py
+├── index.html
+├── css/
+│   └── user_kastens.css
+└── js/
+    └── user_kastens.js
 ```
 
-**Vanilla JS + Jinja + Tailwind**, no bundler, no build step. Matches existing website stack.
-
+**Vanilla JS + server-rendered HTML + shared site CSS**, no bundler, no build step. Matches the existing website stack and theme.
 ### 5.6 Design language
 
-- **Teal primary accent** (`#0d9488` / `#14b8a6`) — main site consistency
-- **Amber/gold** (`#D4A024`) for citation chips — matches existing KG page
+- **Teal primary accent** (`#0d9488` / `#14b8a6`) â€” main site consistency
+- **Amber/gold** (`#D4A024`) for citation chips â€” matches existing KG page
 - **Warm neutrals** for sandbox chips (user-selectable per sandbox; NO purple, lavender, or violet anywhere per user memory)
 - **Coral** (`#f97316`) for non-fatal warnings, **red** (`#dc2626`) for fatal
 - **Amber banner** prepended for `critic_verdict == retried_still_bad`
@@ -2822,32 +2809,32 @@ website/features/rag_chatbot/
 ### 5.7 New pages
 
 ```
-/chat                       Chat home: sandbox rail + session list + empty state
-/chat/{session_id}          Deep link to a specific conversation
-/sandboxes                  Sandbox management
-/sandboxes/{id}             Sandbox detail: member list + add/remove + "Open chat"
+/home/rag                   Chat home with sandbox picker, session list, and streaming transcript
+/home/rag?sandbox_id=...    Open the chat page already scoped to one kasten
+/home/rag?focus_node=...    Open the chat page with one KG node pinned into scope
+/home/kastens               Sandbox management and member curation
+/home/kastens?focus_node=... Open the kasten page with one KG node preloaded for curation
 ```
 
-Chat page layout: left rail (280px sandbox + session list), center chat, right rail (320px citation panel).
-
+Chat page layout: left rail (session list + examples), center transcript, right rail (scope controls + quality controls).
 ### 5.8 UX flows
 
-**First-time use**: empty state → "Start ad-hoc chat" OR "Create sandbox" CTAs.
+**First-time use**: empty state â†’ "Start ad-hoc chat" OR "Create sandbox" CTAs.
 
-**Create sandbox**: modal for name/description/icon/color → POST `/api/rag/sandboxes` → redirect to `/sandboxes/{id}`.
+**Create sandbox**: inline form for name/description/icon/color → POST `/api/rag/sandboxes` → open the selected kasten in `/home/kastens`.
 
 **Add Zettels** (three non-exclusive affordances):
 1. Search box autocomplete from `kg_nodes.name`
-2. Filter chips: by tag / by source type → bulk add via `rag_bulk_add_to_sandbox`
-3. From the 3D KG: shift-click nodes → "Add N to [sandbox]" toolbar
+2. Filter chips: by tag / by source type â†’ bulk add via `rag_bulk_add_to_sandbox`
+3. From the 3D KG: shift-click nodes â†’ "Add N to [sandbox]" toolbar
 
-**Narrow-at-query**: scope filter chips `[all ▾] [#tag ▾] [source ▾]` above the chat input; changes persist to `session.last_scope_filter`.
+**Narrow-at-query**: scope filter chips `[all â–¾] [#tag â–¾] [source â–¾]` above the chat input; changes persist to `session.last_scope_filter`.
 
-**Streaming render**: user message appended optimistically → status pill shows stage → citation chips appear on `citations` event → tokens stream into assistant bubble → on `citations_replace`/`answer_replace`, fade animate → on `done`, persist state.
+**Streaming render**: user message appended optimistically â†’ status pill shows stage â†’ citation chips appear on `citations` event â†’ tokens stream into assistant bubble â†’ on `citations_replace`/`answer_replace`, fade animate â†’ on `done`, persist state.
 
-**Citation interaction**: click chip → right rail scrolls to preview card (title, source, URL, snippet, YouTube timestamp deep link) → second click opens KG panel slide-over with node focused.
+**Citation interaction**: click chip â†’ inline citation chips highlight the supporting notes (title, source, URL, snippet, YouTube timestamp deep link) â†’ second click opens KG panel slide-over with node focused.
 
-**Edit-and-retry**: pencil icon on user messages → `DELETE /api/chat/sessions/{id}/messages/{mid}` → resend edited content.
+**KG handoff**: from the 3D KG side panel, "Ask About This Note" opens `/home/rag?focus_node=...`; "Add To A Kasten" opens `/home/kastens?focus_node=...`.
 
 ### 5.9 SSE client + message renderer (sketches)
 
@@ -2918,9 +2905,9 @@ export class SSEClient {
 
 ### 5.10 KG integration (touchpoints on existing `/knowledge-graph` page)
 
-1. **Right-click node → "Ask about this"**: opens `/chat?node=<id>` with an ad-hoc session pre-filled with `scope_filter.node_ids = [node]`
-2. **Multi-select toolbar → "Add N to sandbox…"**: floating bar appears when `kgSelection.size > 0`; opens sandbox picker modal
-3. **Reverse: "View in graph" from citation chip** → opens `/knowledge-graph?focus=<id>&embed=true` in a slide-over; KG page honors `embed=true` to hide nav chrome
+1. **Right-click node â†’ "Ask about this"**: opens `/home/rag?focus_node=<id>` with an ad-hoc session pre-filled with `scope_filter.node_ids = [node]`
+2. **Multi-select toolbar â†’ "Add N to sandboxâ€¦"**: floating bar appears when `kgSelection.size > 0`; opens sandbox picker modal
+3. **Reverse: "View in graph" from citation chip** â†’ opens `/knowledge-graph?focus=<id>&embed=true` in a slide-over; KG page honors `embed=true` to hide nav chrome
 
 ### 5.11 Telegram `/ask` command
 
@@ -2962,7 +2949,7 @@ async def ask_command(update, context):
         await update.message.reply_text("You have no Zettels yet. Start capturing some first.")
         return
     except LLMUnavailable:
-        await update.message.reply_text("⚠️ Can't reach the language model. Try again in a minute.")
+        await update.message.reply_text("âš ï¸ Can't reach the language model. Try again in a minute.")
         return
 
     body = _format_answer_for_telegram(turn)
@@ -2982,7 +2969,7 @@ def _format_answer_for_telegram(turn) -> str:
 
 **Bot rate limit**: `AskRateLimiter(max_per_minute=3)` per chat ID. Tight because Telegram is ad-hoc by design.
 
-**What Telegram does NOT do**: no sandbox selection, no multi-turn, no streaming, no quality toggle, no scope filter, no edit-and-retry. All of these are web-only per user Q6.
+**What Telegram does NOT do**: no sandbox selection, no multi-turn, no streaming, no quality toggle, and no scope filter. Edit-and-retry remains a follow-up web enhancement, not part of the Telegram surface.
 
 ---
 
@@ -2993,47 +2980,47 @@ def _format_answer_for_telegram(turn) -> str:
 | Layer | Frequency | Purpose | Blocking? |
 |---|---|---|---|
 | **L1: Unit tests** (pytest) | every commit | Component correctness | Yes |
-| **L2: Synthetic RAGAS** (GitHub Actions) | every PR touching `website/core/rag/**` or `supabase/website/rag_chatbot/**` | Retrieval + generation quality on a synthetic corpus | Yes, on regression |
+| **L2: Synthetic RAGAS** (GitHub Actions) | every PR touching `website/features/rag_pipeline/**` or `supabase/website/rag_chatbot/**` | Retrieval + generation quality on a synthetic corpus | Yes, on regression |
 | **L3: Production tracing** (Langfuse) | continuous | Real-user quality, latency, cost, failure modes | No, observational |
 
 ### 6.2 L1 unit test structure
 
 ```
 tests/
-├── unit/rag/
-│   ├── test_chunker.py               # each source_type path, fallback ladder
-│   ├── test_embedder.py              # batching, key rotation, MRL dim check
-│   ├── test_upsert.py                # content-hash skip, atomic replace
-│   ├── test_hybrid_retriever.py      # respx mocks Supabase RPC
-│   ├── test_graph_score.py           # NetworkX on toy graphs
-│   ├── test_tei_reranker.py          # respx mocks TEI + timeout fallback
-│   ├── test_context_assembler.py     # sandwich, budget, XML escaping
-│   ├── test_query_rewriter.py
-│   ├── test_query_router.py
-│   ├── test_query_transformer.py     # HyDE, MQ, Decomp, StepBack
-│   ├── test_answer_critic.py         # verdict parsing, bad-citation detector
-│   ├── test_session_store.py
-│   ├── test_orchestrator.py          # happy path, empty scope, retry, LLM down
-│   └── test_api_models.py
-├── integration/rag/
-│   ├── test_chat_routes_sse.py
-│   ├── test_sandbox_routes_crud.py
-│   └── test_telegram_ask.py
-└── eval/ragas/
-    ├── conftest.py
-    ├── test_retrieval_quality.py
-    └── test_answer_quality.py
+â”œâ”€â”€ unit/rag/
+â”‚   â”œâ”€â”€ test_chunker.py               # each source_type path, fallback ladder
+â”‚   â”œâ”€â”€ test_embedder.py              # batching, key rotation, MRL dim check
+â”‚   â”œâ”€â”€ test_upsert.py                # content-hash skip, atomic replace
+â”‚   â”œâ”€â”€ test_hybrid_retriever.py      # respx mocks Supabase RPC
+â”‚   â”œâ”€â”€ test_graph_score.py           # NetworkX on toy graphs
+â”‚   â”œâ”€â”€ test_tei_reranker.py          # respx mocks TEI + timeout fallback
+â”‚   â”œâ”€â”€ test_context_assembler.py     # sandwich, budget, XML escaping
+â”‚   â”œâ”€â”€ test_query_rewriter.py
+â”‚   â”œâ”€â”€ test_query_router.py
+â”‚   â”œâ”€â”€ test_query_transformer.py     # HyDE, MQ, Decomp, StepBack
+â”‚   â”œâ”€â”€ test_answer_critic.py         # verdict parsing, bad-citation detector
+â”‚   â”œâ”€â”€ test_session_store.py
+â”‚   â”œâ”€â”€ test_orchestrator.py          # happy path, empty scope, retry, LLM down
+â”‚   â””â”€â”€ test_api_models.py
+â”œâ”€â”€ integration/rag/
+â”‚   â”œâ”€â”€ test_chat_routes_sse.py
+â”‚   â”œâ”€â”€ test_sandbox_routes_crud.py
+â”‚   â””â”€â”€ test_telegram_ask.py
+â””â”€â”€ eval/ragas/
+    â”œâ”€â”€ conftest.py
+    â”œâ”€â”€ test_retrieval_quality.py
+    â””â”€â”€ test_answer_quality.py
 ```
 
 Every `get_settings()` call mocked (CLAUDE.md contract). Every Supabase call mocked via `respx`. Every `GeminiKeyPool` call uses a fake pool fixture.
 
 ### 6.3 L2 synthetic RAGAS in CI
 
-**Pinned version**: `ragas>=0.4.3,<0.5` (current stable, April 2026). The 0.2.x API has been deprecated — current RAGAS uses class-based metrics and a new column schema.
+**Pinned version**: `ragas>=0.4.3,<0.5` (current stable, April 2026). The 0.2.x API has been deprecated â€” current RAGAS uses class-based metrics and a new column schema.
 
 Fixtures under `tests/eval/ragas/fixtures/`:
-- `synthetic_corpus.json` — ~50 fake Zettels (20 YouTube, 10 Reddit, 10 Substack, 5 GitHub, 5 Twitter) across 5 topics
-- `golden_qa.json` — ~30 Q/A records with columns **`user_input`, `retrieved_contexts`, `response`, `reference`** (the 0.4.x schema — NOT the old `question/contexts/answer/ground_truth`)
+- `synthetic_corpus.json` â€” ~50 fake Zettels (20 YouTube, 10 Reddit, 10 Substack, 5 GitHub, 5 Twitter) across 5 topics
+- `golden_qa.json` â€” ~30 Q/A records with columns **`user_input`, `retrieved_contexts`, `response`, `reference`** (the 0.4.x schema â€” NOT the old `question/contexts/answer/ground_truth`)
 
 **Canonical imports** (verified from `ragas.metrics.collections.__init__` in main branch):
 
@@ -3050,19 +3037,19 @@ from ragas.metrics.collections import (
 )
 ```
 
-**Thresholds** (v1 floors, not targets — post-processed since RAGAS has no built-in gate):
+**Thresholds** (v1 floors, not targets â€” post-processed since RAGAS has no built-in gate):
 
 | Metric class | Threshold |
 |---|---|
-| `Faithfulness()` | ≥ 0.85 |
-| `ContextPrecision()` | ≥ 0.70 |
-| `ContextRecall()` | ≥ 0.65 |
-| `AnswerRelevancy()` | ≥ 0.80 |
-| `AnswerCorrectness()` | ≥ 0.60 |
+| `Faithfulness()` | â‰¥ 0.85 |
+| `ContextPrecision()` | â‰¥ 0.70 |
+| `ContextRecall()` | â‰¥ 0.65 |
+| `AnswerRelevancy()` | â‰¥ 0.80 |
+| `AnswerCorrectness()` | â‰¥ 0.60 |
 
 **Gemini judge wiring** (two options, documented preference):
 
-1. **Preferred — LiteLLM + Vertex AI** (explicitly documented in RAGAS `customize_models.md`):
+1. **Preferred â€” LiteLLM + Vertex AI** (explicitly documented in RAGAS `customize_models.md`):
    ```python
    import litellm
    from ragas.llms import llm_factory
@@ -3076,7 +3063,7 @@ from ragas.metrics.collections import (
    ```
    Adds `litellm` + Vertex AI auth as a CI dep. CI needs a service-account JSON for Vertex.
 
-2. **Fallback — `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))`** (community pattern, not in RAGAS docs but pattern-compatible with how OpenAI is wrapped):
+2. **Fallback â€” `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))`** (community pattern, not in RAGAS docs but pattern-compatible with how OpenAI is wrapped):
    ```python
    from langchain_google_genai import ChatGoogleGenerativeAI
    from ragas.llms import LangchainLLMWrapper
@@ -3084,7 +3071,7 @@ from ragas.metrics.collections import (
        ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.environ["GEMINI_API_KEY"]),
    )
    ```
-   Reuses the existing Gemini API key (same as the rest of the stack). Less CI dep surface. **Preferred for v1** — Phase 7 will verify it works before committing.
+   Reuses the existing Gemini API key (same as the rest of the stack). Less CI dep surface. **Preferred for v1** â€” Phase 7 will verify it works before committing.
 
 **Running evaluate()**:
 
@@ -3110,7 +3097,7 @@ result = evaluate(
 # CI gating: post-process (no built-in threshold gate in 0.4.x)
 assert result["faithfulness"]      >= 0.85, f"Faithfulness regressed: {result['faithfulness']}"
 assert result["context_precision"] >= 0.70, f"Context precision regressed: {result['context_precision']}"
-# ... and so on. Any failed assert → non-zero exit → PR blocked.
+# ... and so on. Any failed assert â†’ non-zero exit â†’ PR blocked.
 ```
 
 **Structural checks** (deterministic, not LLM-judged):
@@ -3118,7 +3105,7 @@ assert result["context_precision"] >= 0.70, f"Context precision regressed: {resu
 | Check | Criterion |
 |---|---|
 | No hallucinated citations | 0 cited IDs missing from context |
-| No empty-citation answers | Every non-"I don't know" answer has ≥ 1 citation |
+| No empty-citation answers | Every non-"I don't know" answer has â‰¥ 1 citation |
 | No prompt leakage | Answer doesn't echo `<context>` or system prompt text |
 | P95 latency per stage | Retrieval < 500ms, rerank < 400ms, generation < 5s, total < 8s |
 
@@ -3168,7 +3155,7 @@ Langfuse has its own Postgres (separate from Supabase). UI bound to `127.0.0.1:3
 ### 6.5 Instrumentation
 
 ```python
-# website/core/rag/observability/tracer.py
+# website/features/rag_pipeline/observability/tracer.py
 #
 # NOTE: Langfuse v3 (verified April 2026):
 #   - Import from `langfuse`, NOT `langfuse.decorators` (that was v2)
@@ -3198,7 +3185,7 @@ def trace_stage(name: str, *, capture_input=True, capture_output=True):
 def record_generation_cost(model: str, prompt_tokens: int, completion_tokens: int):
     """
     Explicitly record Gemini cost per generation turn.
-    Gemini 2.5 family is NOT in Langfuse v3's default cost table — we must
+    Gemini 2.5 family is NOT in Langfuse v3's default cost table â€” we must
     either register prices on the Langfuse server OR pass cost_details per call.
     This helper uses the per-call approach so the spec does not depend on
     out-of-band server config.
@@ -3224,7 +3211,7 @@ def record_generation_cost(model: str, prompt_tokens: int, completion_tokens: in
 
 Every stage span records: input (sanitized), output (2KB truncated), duration, model + token counts, custom tags (`user_id`, `session_id`, `sandbox_id`, `quality_mode`, `query_class`).
 
-**Cost tracking for Gemini**: Langfuse v3's default cost table does not include Gemini 2.5 models. Every generation turn calls `record_generation_cost(...)` above to pass explicit `cost_details` via `langfuse.update_current_generation()`. Alternative considered and rejected: registering prices on the self-hosted Langfuse server's model-management UI — rejected because it requires an out-of-band admin step and makes cost config invisible to grep/version-control. The helper in Python keeps costs versioned with the code.
+**Cost tracking for Gemini**: Langfuse v3's default cost table does not include Gemini 2.5 models. Every generation turn calls `record_generation_cost(...)` above to pass explicit `cost_details` via `langfuse.update_current_generation()`. Alternative considered and rejected: registering prices on the self-hosted Langfuse server's model-management UI â€” rejected because it requires an out-of-band admin step and makes cost config invisible to grep/version-control. The helper in Python keeps costs versioned with the code.
 
 ### 6.6 Dashboards + alerts
 
@@ -3242,7 +3229,7 @@ Alerts flow to the existing Telegram bot error channel.
 
 ### 6.6a Cost tracking (explicit, not auto)
 
-Langfuse v3's built-in cost-calculation table does **not** include Gemini 2.5 flash/flash-lite/pro. Every LLM generation stage calls `tracer.record_generation_cost(model, prompt_tokens, completion_tokens)` (defined in §6.5) which passes explicit `cost_details` via `langfuse.update_current_generation()`. Prices are versioned in the Python helper, not in Langfuse server config.
+Langfuse v3's built-in cost-calculation table does **not** include Gemini 2.5 flash/flash-lite/pro. Every LLM generation stage calls `tracer.record_generation_cost(model, prompt_tokens, completion_tokens)` (defined in Â§6.5) which passes explicit `cost_details` via `langfuse.update_current_generation()`. Prices are versioned in the Python helper, not in Langfuse server config.
 
 For the `gemini-embedding-001` model (ingestion path), cost is similarly recorded per batch.
 
@@ -3253,13 +3240,13 @@ For the `gemini-embedding-001` model (ingestion path), cost is similarly recorde
 - LLM answers stored
 - **Never stored**: API keys, auth tokens, Render user IDs beyond the internal UUID
 - Langfuse `sanitize` function strips keys matching `{api_key, token, password, secret}`
-- User queries are the primary debugging artifact — stored in Langfuse by design
+- User queries are the primary debugging artifact â€” stored in Langfuse by design
 
-### 6.8 L3 — production quality loop (continuous)
+### 6.8 L3 â€” production quality loop (continuous)
 
 L3 runs against real traffic, never blocks user requests, and drives the feedback loop back into L2 (golden dataset) and L1 (bug fixes). Four rituals:
 
-1. **5% sampling of chat turns** → `gemini-2.5-flash-lite` runs a lightweight faithfulness check on every 20th turn. Results tagged into Langfuse as `sampled_faithfulness` attribute. Turns with `sampled_faithfulness < 0.7` are flagged for review.
+1. **5% sampling of chat turns** â†’ `gemini-2.5-flash-lite` runs a lightweight faithfulness check on every 20th turn. Results tagged into Langfuse as `sampled_faithfulness` attribute. Turns with `sampled_faithfulness < 0.7` are flagged for review.
 
 2. **Weekly Langfuse dashboard review** (manual, ~30 min). Look at:
    - Worst-faithfulness traces (top 10 from the week)
@@ -3267,9 +3254,9 @@ L3 runs against real traffic, never blocks user requests, and drives the feedbac
    - Highest-cost traces (most expensive query shapes)
    - Critic-retry traces (anything with `retried_supported` or `retried_still_bad`)
 
-3. **Hallucination incidents feed the golden dataset**. When a trace reveals a hallucinated citation or a missed retrieval, capture the query + expected answer + supporting Zettel IDs into `tests/eval/ragas/fixtures/golden_qa.json` as a new test case. **No PII sync from prod to test fixtures** — only synthetic or manually anonymized content.
+3. **Hallucination incidents feed the golden dataset**. When a trace reveals a hallucinated citation or a missed retrieval, capture the query + expected answer + supporting Zettel IDs into `tests/eval/ragas/fixtures/golden_qa.json` as a new test case. **No PII sync from prod to test fixtures** â€” only synthetic or manually anonymized content.
 
-4. **Quarterly blueprint re-read** (operational discipline, not code): re-read BP1/BP2/BP3 every ~3 months to catch any new RAG techniques that have matured between releases. If a blueprint recommendation would improve a measured metric, file an issue and consider a follow-up migration. Captured as §13 open question #5.
+4. **Quarterly blueprint re-read** (operational discipline, not code): re-read BP1/BP2/BP3 every ~3 months to catch any new RAG techniques that have matured between releases. If a blueprint recommendation would improve a measured metric, file an issue and consider a follow-up migration. Captured as Â§13 open question #5.
 
 **L3 never fails a PR, never blocks a deploy.** Its outputs are either new golden test cases (that L2 then enforces), new issues for triage, or new dashboards to track.
 
@@ -3285,7 +3272,7 @@ L3 runs against real traffic, never blocks user requests, and drives the feedbac
 | SSE stream hangs after first token | Caddy buffering or Gemini stall | 1. Verify `X-Accel-Buffering: no` 2. Check Gemini pool status 3. Fail over to flash-lite |
 | TEI reranker 503 | OOM or model eviction | 1. `docker logs reranker` 2. `docker compose restart reranker` 3. Volume check |
 | Langfuse stops ingesting | Langfuse Postgres full / OOM | 1. Check `langfuse-pgdata` size 2. `VACUUM FULL langfuse` 3. Set `LANGFUSE_EVENT_RETENTION_DAYS=30` |
-| RAGAS CI keeps failing on `faithfulness` | Recent change regressed prompt/retrieval | 1. Check diff in `website/core/rag/` 2. Run locally 3. Revert or justify threshold change |
+| RAGAS CI keeps failing on `faithfulness` | Recent change regressed prompt/retrieval | 1. Check diff in `website/features/rag_pipeline/` 2. Run locally 3. Revert or justify threshold change |
 | `chat_messages` growing rapidly | Normal usage / no retention | 1. `SELECT COUNT(*) FROM chat_messages` 2. If > 5M enable retention cron 3. Consider partitioning |
 | User reports wrong answer | Hallucination not caught / retrieval miss | 1. Pull trace via `chat_messages.trace_id` 2. Inspect chunks/rerank/context 3. Add to golden dataset if miss |
 | Sandbox bulk-add rate limit hit | Mass import | 1. Temporarily raise limit (document) 2. Long-term: async batch import job |
@@ -3313,87 +3300,93 @@ L3 runs against real traffic, never blocks user requests, and drives the feedbac
 ### 8.1 Full directory tree
 
 ```
-website/core/rag/
-├── __init__.py
-├── orchestrator.py
-├── types.py
-├── errors.py                        # EmptyScopeError, RerankerUnavailable, etc.
-├── api_models.py                    # Pydantic request/response schemas
-├── ingest/
-│   ├── __init__.py
-│   ├── chunker.py
-│   ├── embedder.py
-│   └── upsert.py
-├── retrieval/
-│   ├── __init__.py
-│   ├── scope_resolver.py
-│   ├── hybrid.py
-│   ├── graph_score.py
-│   └── cache.py
-├── query/
-│   ├── __init__.py
-│   ├── rewriter.py
-│   ├── router.py
-│   └── transformer.py
-├── rerank/
-│   ├── __init__.py
-│   └── tei_client.py
-├── context/
-│   ├── __init__.py
-│   └── assembler.py
-├── generation/
-│   ├── __init__.py
-│   ├── llm_router.py
-│   ├── gemini_backend.py
-│   ├── claude_backend.py
-│   └── prompts.py
-├── critic/
-│   ├── __init__.py
-│   └── answer_critic.py
-├── memory/
-│   ├── __init__.py
-│   └── session_store.py
-├── observability/
-│   ├── __init__.py
-│   ├── tracer.py
-│   └── metrics.py
-└── backends/
-    ├── __init__.py
-    └── websearch.py                 # PARKED: future web-search popup; NotImplementedError
+website/features/rag_pipeline/
+â”œâ”€â”€ __init__.py
+â”œâ”€â”€ orchestrator.py
+â”œâ”€â”€ types.py
+â”œâ”€â”€ errors.py                        # EmptyScopeError, RerankerUnavailable, etc.
+â”œâ”€â”€ api_models.py                    # Pydantic request/response schemas
+â”œâ”€â”€ ingest/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ chunker.py
+â”‚   â”œâ”€â”€ embedder.py
+â”‚   â””â”€â”€ upsert.py
+â”œâ”€â”€ retrieval/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ scope_resolver.py
+â”‚   â”œâ”€â”€ hybrid.py
+â”‚   â”œâ”€â”€ graph_score.py
+â”‚   â””â”€â”€ cache.py
+â”œâ”€â”€ query/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ rewriter.py
+â”‚   â”œâ”€â”€ router.py
+â”‚   â””â”€â”€ transformer.py
+â”œâ”€â”€ rerank/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â””â”€â”€ tei_client.py
+â”œâ”€â”€ context/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â””â”€â”€ assembler.py
+â”œâ”€â”€ generation/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ llm_router.py
+â”‚   â”œâ”€â”€ gemini_backend.py
+â”‚   â”œâ”€â”€ claude_backend.py
+â”‚   â””â”€â”€ prompts.py
+â”œâ”€â”€ critic/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â””â”€â”€ answer_critic.py
+â”œâ”€â”€ memory/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â””â”€â”€ session_store.py
+â”œâ”€â”€ observability/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ tracer.py
+â”‚   â””â”€â”€ metrics.py
+â””â”€â”€ backends/
+    â”œâ”€â”€ __init__.py
+    â””â”€â”€ websearch.py                 # PARKED: future web-search popup; NotImplementedError
 
 website/api/
-├── chat_routes.py                   # NEW
-└── sandbox_routes.py                # NEW
+â”œâ”€â”€ chat_routes.py                   # NEW
+â””â”€â”€ sandbox_routes.py                # NEW
 
-website/features/rag_chatbot/
-├── __init__.py
-├── templates/*.html
-├── static/css/*.css
-├── static/js/*.js
-└── content/example_queries.json
+website/features/user_rag/
+â”œâ”€â”€ __init__.py
+â”œâ”€â”€ index.html
+â”œâ”€â”€ css/user_rag.css
+â”œâ”€â”€ js/user_rag.js
+â””â”€â”€ content/example_queries.json
+
+website/features/user_kastens/
+â”œâ”€â”€ __init__.py
+â”œâ”€â”€ index.html
+â”œâ”€â”€ css/user_kastens.css
+â””â”€â”€ js/user_kastens.js
 
 telegram_bot/bot/
-└── ask_handler.py                   # NEW
+â””â”€â”€ ask_handler.py                   # NEW
 
 supabase/website/rag_chatbot/
-├── 001_hnsw_migration.sql
-├── 002_chunks_table.sql
-├── 003_sandboxes.sql
-├── 004_chat_sessions.sql
-└── 005_rag_rpcs.sql
+â”œâ”€â”€ 001_hnsw_migration.sql
+â”œâ”€â”€ 002_chunks_table.sql
+â”œâ”€â”€ 003_sandboxes.sql
+â”œâ”€â”€ 004_chat_sessions.sql
+â””â”€â”€ 005_rag_rpcs.sql
 
 ops/
-├── docker-compose.blue.yml          # EDITED (reranker + langfuse + langfuse-postgres)
-├── docker-compose.green.yml         # EDITED
-└── requirements.txt                 # EDITED: chonkie, langfuse, ragas, networkx, anthropic
+â”œâ”€â”€ docker-compose.blue.yml          # EDITED (reranker + langfuse + langfuse-postgres)
+â”œâ”€â”€ docker-compose.green.yml         # EDITED
+â””â”€â”€ requirements.txt                 # EDITED: chonkie, langfuse, ragas, networkx, anthropic
 
 tests/
-├── unit/rag/                        # NEW
-├── integration/rag/                 # NEW
-└── eval/ragas/                      # NEW
+â”œâ”€â”€ unit/rag/                        # NEW
+â”œâ”€â”€ integration/rag/                 # NEW
+â””â”€â”€ eval/ragas/                      # NEW
 
 .github/workflows/
-└── rag-eval.yml                     # NEW
+â””â”€â”€ rag-eval.yml                     # NEW
 ```
 
 ### 8.2 New runtime dependencies (`ops/requirements.txt`)
@@ -3412,7 +3405,7 @@ ragas>=0.2.0             # CI synthetic eval
 respx>=0.22.0            # HTTP mocking (may already be present via pytest-httpx)
 ```
 
-No new runtime deps for RAGAS — it runs in CI only, not in production containers.
+No new runtime deps for RAGAS â€” it runs in CI only, not in production containers.
 
 ---
 
@@ -3422,13 +3415,13 @@ Hook points reserved; no code wired in v1.
 
 | Feature | Hook point | Activation trigger |
 |---|---|---|
-| **Web-search popup** | `website/core/rag/backends/websearch.py` raises `NotImplementedError`; `QueryClass.WEB_SEARCH` reserved (not added to enum in v1) | Future ad-hoc info-needs feature |
+| **Web-search popup** | `website/features/rag_pipeline/backends/websearch.py` raises `NotImplementedError`; `QueryClass.WEB_SEARCH` reserved (not added to enum in v1) | Future ad-hoc info-needs feature |
 | **Claude 3.5 Sonnet backend** | `claude_backend.py` built, `rag_claude_enabled=False` | Quality gap on complex queries |
 | **Pre-computed Leiden community summaries** | Migration placeholder documented | Thematic-query recall < 0.55 |
-| **Cascade reranker (small → large)** | `TEIReranker.rerank` signature supports multi-pass | P95 rerank > 500ms |
+| **Cascade reranker (small â†’ large)** | `TEIReranker.rerank` signature supports multi-pass | P95 rerank > 500ms |
 | **ColBERT late-interaction** | Not wired | 10M+ chunks, rerank plateau |
-| **Backfill existing Zettels → chunks** | `ops/scripts/backfill_chunks.py` skeleton documented | Summary-only fallback causes retrieval misses |
-| **`chat_messages` partitioning** | Retention + partition recipe in §2.6 | > 5M rows |
+| **Backfill existing Zettels â†’ chunks** | `ops/scripts/backfill_chunks.py` skeleton documented | Summary-only fallback causes retrieval misses |
+| **`chat_messages` partitioning** | Retention + partition recipe in Â§2.6 | > 5M rows |
 | **Gemini Embedding 2 @ 3072-d upgrade** | Dual-write recipe documented | Quality regression |
 | **TruLens per-query dashboard** | Not wired | Langfuse insufficient |
 | **Multi-modal retrieval (image/audio)** | `kg_nodes` would need `media_type` column | v2+ |
@@ -3441,34 +3434,34 @@ Hook points reserved; no code wired in v1.
 
 All 8 phases independently deployable and rollback-safe.
 
-### Phase 0 — Preflight
+### Phase 0 â€” Preflight
 - Clone this spec + write the implementation plan via `claude-mem:make-plan`
 - Dry-run all 5 SQL migrations on local Supabase Docker
-- Verify pgvector ≥ 0.8 on prod Supabase (for `hnsw.iterative_scan`)
+- Verify pgvector â‰¥ 0.8 on prod Supabase (for `hnsw.iterative_scan`)
 - Bootstrap `tests/eval/ragas/fixtures/*`
 
 **Rollback**: nothing to roll back.
 
-### Phase 1 — Data layer migrations
+### Phase 1 â€” Data layer migrations
 - Apply `001_hnsw_migration.sql` (CONCURRENTLY, no downtime)
-- Apply migrations 002–005
+- Apply migrations 002â€“005
 - Verify tables + RLS + RPCs callable
 
 **Acceptance**: `SELECT * FROM kg_node_chunks LIMIT 1` works; `SELECT rag_resolve_effective_nodes(...)` returns expected shape.
 
 **Rollback**: commented DROP blocks in each migration file.
 
-### Phase 2 — Ingest path (flag off by default)
-- Merge `website/core/rag/ingest/**`
+### Phase 2 â€” Ingest path (flag off by default)
+- Merge `website/features/rag_pipeline/ingest/**`
 - Add `rag_chunks_enabled` setting (default False)
-- Wire into `telegram_bot/pipeline/orchestrator.py` — non-blocking, error-tolerant
+- Wire into `telegram_bot/pipeline/orchestrator.py` â€” non-blocking, error-tolerant
 - Turn flag ON in staging only
 - Manually capture 10 Zettels across 4 source types, verify chunk rows
 
 **Rollback**: set `rag_chunks_enabled=False`. No data cleanup needed.
 
-### Phase 3 — Retrieval core + orchestrator (internal)
-- Merge `website/core/rag/{query,retrieval,rerank,context,generation,critic,memory,orchestrator}`
+### Phase 3 â€” Retrieval core + orchestrator (internal)
+- Merge `website/features/rag_pipeline/{query,retrieval,rerank,context,generation,critic,memory,orchestrator}`
 - Deploy TEI sidecar to staging
 - Pass L1 + L2 tests in CI
 - NO HTTP route or Telegram command yet
@@ -3477,7 +3470,7 @@ All 8 phases independently deployable and rollback-safe.
 
 **Rollback**: revert PR; no production surface touched.
 
-### Phase 4 — Telegram `/ask`
+### Phase 4 â€” Telegram `/ask`
 - Merge `telegram_bot/bot/ask_handler.py`
 - Wire CommandHandler
 - Deploy to prod
@@ -3485,24 +3478,24 @@ All 8 phases independently deployable and rollback-safe.
 
 **Rollback**: comment out handler registration.
 
-### Phase 5 — Web `/api/chat/adhoc` + minimal UI
+### Phase 5 â€” Web `/api/rag/adhoc` + minimal UI
 - Ship stateless ad-hoc endpoint
-- Ship minimal `/chat` page — NO sandbox rail yet, just an input + streaming output
+- Ship minimal `/home/rag` page â€” NO sandbox rail yet, just an input + streaming output
 - Internal testing from logged-in web UI
 
-**Rollback**: remove `/chat` route + `/api/chat/adhoc`.
+**Rollback**: remove `/home/rag` route + `/api/rag/adhoc`.
 
-### Phase 6 — Sandboxes + multi-turn + full frontend
-- Ship sandbox CRUD + `/sandboxes` page
-- Ship session management + multi-turn chat + persisted history + edit-and-retry
+### Phase 6 â€” Sandboxes + multi-turn + full frontend
+- Ship sandbox CRUD + `/home/kastens` page
+- Ship session management + multi-turn chat + persisted history
 - Ship KG integration (ask-about-node, add-to-sandbox)
 - Ship scope picker
 
-**Acceptance**: end-to-end create sandbox → add 20 Zettels → 5-turn conversation → cascade-delete sandbox.
+**Acceptance**: end-to-end create sandbox â†’ add 20 Zettels â†’ 5-turn conversation â†’ cascade-delete sandbox.
 
 **Rollback**: feature-flag via `rag_sandboxes_enabled`.
 
-### Phase 7 — Observability + eval in CI
+### Phase 7 â€” Observability + eval in CI
 - Ship Langfuse sidecar
 - Wire `@trace_stage` decorators
 - Configure alerts
@@ -3510,8 +3503,8 @@ All 8 phases independently deployable and rollback-safe.
 
 **Rollback**: disable `@trace_stage` via setting flag; sidecar stays up unused.
 
-### Phase 8 — Hardening
-- Monitor 1–2 weeks via Langfuse
+### Phase 8 â€” Hardening
+- Monitor 1â€“2 weeks via Langfuse
 - Address P0/P1 issues
 - Raise eval thresholds if floors exceeded for 5 consecutive days
 - Announce publicly
@@ -3540,16 +3533,16 @@ All 8 phases independently deployable and rollback-safe.
 |---|---|
 | pgvector HNSW with RLS | all 3 converge |
 | Hybrid retrieval: dense + FTS + RRF | all 3 converge |
-| Cross-encoder reranker (BGE v2 family) on top-20–100 | all 3 converge |
-| XML-wrapped citations with explicit IDs | BP3 §4 |
-| Sandwich context ordering | BP1 §2.8 |
+| Cross-encoder reranker (BGE v2 family) on top-20â€“100 | all 3 converge |
+| XML-wrapped citations with explicit IDs | BP3 Â§4 |
+| Sandwich context ordering | BP1 Â§2.8 |
 | "Answer only from context, cite, admit I don't know" prompt posture | all 3 converge |
-| Multi-turn query rewriting over last 5 turns | BP1 §2.9 |
-| Query router + lazy HyDE/MultiQuery/Decomposition | BP1 §2.6 + BP2 §Query |
-| LazyGraphRAG (on-the-fly graph reasoning, no pre-computed communities) | BP3 §Challenges |
-| Content-hash skip on re-ingest | BP1 §3.1 |
-| Atomic chunk entity enrichment (handles, hashtags, author) | BP3 §3.1 |
-| Late chunking for long-form video transcripts | BP3 §Chunking |
+| Multi-turn query rewriting over last 5 turns | BP1 Â§2.9 |
+| Query router + lazy HyDE/MultiQuery/Decomposition | BP1 Â§2.6 + BP2 Â§Query |
+| LazyGraphRAG (on-the-fly graph reasoning, no pre-computed communities) | BP3 Â§Challenges |
+| Content-hash skip on re-ingest | BP1 Â§3.1 |
+| Atomic chunk entity enrichment (handles, hashtags, author) | BP3 Â§3.1 |
+| Late chunking for long-form video transcripts | BP3 Â§Chunking |
 | Gemini Embedding 001 @ 768-d via MRL truncation | BP3 |
 | Langfuse + RAGAS for eval | BP1/BP2 convergence |
 | Self-hosted BGE-Reranker-v2-M3 via TEI | BP1/BP3 convergence |
@@ -3558,17 +3551,17 @@ All 8 phases independently deployable and rollback-safe.
 
 | Deviation | Vs blueprint | Rationale |
 |---|---|---|
-| **No LlamaIndex / LangChain / LangGraph** | BP1 prefers LlamaIndex, BP2 prefers LangChain + LlamaIndex, BP3 prefers LlamaIndex + LangGraph | Existing code is plain FastAPI + asyncpg + direct Supabase RPCs; adding any of these duplicates `hybrid_kg_search` logic, adds 150–300MB to Docker image, slows cold-start, fights existing async patterns. Every blueprint "feature" (HyDE, MQ, KG retrieval, RAG chains) is reachable via direct calls with cleaner tracing. Focused frameworks (Chonkie, Langfuse SDK, RAGAS) are IN — not a "zero frameworks" stance. |
-| **No pre-computed Leiden community summaries** | BP1 §2.7 + BP2 §KG-RAG | BP3's LazyGraphRAG over retrieved subgraphs is fresher (no staleness), no offline job on every sandbox edit, leverages existing `find_neighbors` + localized PageRank. Operational burden of global community recomputation is negative for a personal-KG system. **Revisit if thematic-query eval recall < 0.55.** |
-| **Single-pass BGE-Reranker-v2-M3, not cascade** | BP3 §Challenges suggests cascade (small → large) | CPU BGE-v2-M3 at 30 candidates is ~300ms — inside latency budget. Cascading adds small first-pass for negligible gain when both passes are self-hosted. **Swap to cascade if p95 rerank > 500ms.** |
+| **No LlamaIndex / LangChain / LangGraph** | BP1 prefers LlamaIndex, BP2 prefers LangChain + LlamaIndex, BP3 prefers LlamaIndex + LangGraph | Existing code is plain FastAPI + asyncpg + direct Supabase RPCs; adding any of these duplicates `hybrid_kg_search` logic, adds 150â€“300MB to Docker image, slows cold-start, fights existing async patterns. Every blueprint "feature" (HyDE, MQ, KG retrieval, RAG chains) is reachable via direct calls with cleaner tracing. Focused frameworks (Chonkie, Langfuse SDK, RAGAS) are IN â€” not a "zero frameworks" stance. |
+| **No pre-computed Leiden community summaries** | BP1 Â§2.7 + BP2 Â§KG-RAG | BP3's LazyGraphRAG over retrieved subgraphs is fresher (no staleness), no offline job on every sandbox edit, leverages existing `find_neighbors` + localized PageRank. Operational burden of global community recomputation is negative for a personal-KG system. **Revisit if thematic-query eval recall < 0.55.** |
+| **Single-pass BGE-Reranker-v2-M3, not cascade** | BP3 Â§Challenges suggests cascade (small â†’ large) | CPU BGE-v2-M3 at 30 candidates is ~300ms â€” inside latency budget. Cascading adds small first-pass for negligible gain when both passes are self-hosted. **Swap to cascade if p95 rerank > 500ms.** |
 | **Top-30 rerank pool for `fast`, top-50 for `high`** | BP2 suggests top-~100 | 100 on CPU blows budget to > 1s. 30/50 is sub-linear and fits the p95 target. |
-| **ColBERT late-interaction skipped** | BP1 §2.4 marks optional | Marginal gain for personal-KG workloads; massive storage cost (multi-vectors per token). Explicitly parked. |
-| **Top-5 graph expansion seed, not top-10** | BP1 §3.3 suggests top-10 | Smaller seed = tighter expansion = less noise. Tunable knob, easy to adjust post-eval. |
+| **ColBERT late-interaction skipped** | BP1 Â§2.4 marks optional | Marginal gain for personal-KG workloads; massive storage cost (multi-vectors per token). Explicitly parked. |
+| **Top-5 graph expansion seed, not top-10** | BP1 Â§3.3 suggests top-10 | Smaller seed = tighter expansion = less noise. Tunable knob, easy to adjust post-eval. |
 | **Gemini tiered default, Claude parked** | BP1 prefers GPT-4o/Claude 3.5, BP2 prefers GPT-4-class, BP3 prefers GPT-4o-mini + Claude 3.5 tiering | User Q4: "start with tiered GeminiKeyPool, add Claude later". Existing infra already mature. |
 | **Sandboxes (persistent) instead of per-session ephemeral scope** | Not in any blueprint explicitly | User refinement: NotebookLM-style persisted corpora with dynamic add/remove. |
 | **Nullable `sandbox_id` for ad-hoc queries** | Not in any blueprint explicitly | User refinement: preserves "ask my whole brain" flow on web + Telegram. |
 
-### 11.3 User-decisions log (Q1–Q8 from brainstorming)
+### 11.3 User-decisions log (Q1â€“Q8 from brainstorming)
 
 | Q | Choice |
 |---|---|
@@ -3586,35 +3579,35 @@ All 8 phases independently deployable and rollback-safe.
 1. **Persisted RAG sandboxes** (NotebookLM-style) with dynamic add/remove
 2. **Confirmed no LlamaIndex/LangChain/LangGraph** but YES to other focused frameworks
 3. **Future web-search popup** parked as `backends/websearch.py` placeholder
-4. **Database layer delegated** — scale-hardened per §2.6 ops ladder
+4. **Database layer delegated** â€” scale-hardened per Â§2.6 ops ladder
 
 ---
 
-## 12. Appendix — edge cases matrix
+## 12. Appendix â€” edge cases matrix
 
 46 edge cases, each with a concrete code path or SQL constraint:
 
 | # | Case | Where handled |
 |---|---|---|
 | **Data layer** | | |
-| 1 | Empty sandbox | `rag_resolve_effective_nodes` returns 0 rows → `EmptyScopeError` |
+| 1 | Empty sandbox | `rag_resolve_effective_nodes` returns 0 rows â†’ `EmptyScopeError` |
 | 2 | Empty scope (sandbox + filter produces zero) | same |
 | 3 | Zettel deleted while in a sandbox | composite FK `ON DELETE CASCADE` |
 | 4 | Concurrent add/remove during query | single-transaction CTE for effective-nodes resolution |
 | 5 | Cross-user data leakage | RLS on all tables, composite FKs forbid cross-user refs |
 | 6 | Graph cycles in link traversal | existing `find_neighbors` path cycle prevention + new `graph_walk` CTE |
 | 7 | Duplicate chunk re-ingest | `content_hash` + `rag_replace_node_chunks` contract |
-| 8 | Statement_timeout caps on pathological queries | 2–5s bounded per RPC |
+| 8 | Statement_timeout caps on pathological queries | 2â€“5s bounded per RPC |
 | 9 | HNSW + RLS filter empty-result bug | `hnsw.iterative_scan=strict_order` per-session |
-| 10 | Pathological large effective-node array | `p_effective_nodes IS NULL` → server-side "all" resolution |
+| 10 | Pathological large effective-node array | `p_effective_nodes IS NULL` â†’ server-side "all" resolution |
 | 11 | Re-ingest with different chunk count | delete-then-insert via `rag_replace_node_chunks` |
 | **Ingestion** | | |
 | 12 | Chunk ingest failure on new capture | caught, logged; Zettel still lands in `kg_nodes` with summary embedding |
-| 13 | Long-form content without a usable late-chunker | fallback ladder: late → semantic → recursive → token |
-| 14 | Content-hash unchanged → skip re-embedding | `upsert_chunks` short-circuit |
+| 13 | Long-form content without a usable late-chunker | fallback ladder: late â†’ semantic â†’ recursive â†’ token |
+| 14 | Content-hash unchanged â†’ skip re-embedding | `upsert_chunks` short-circuit |
 | 15 | Empty raw_text on a capture | chunker returns `[]`, no chunks inserted |
 | **Retrieval** | | |
-| 16 | Query embedding failure | `GeminiKeyPool` rotation → eventual user-friendly error |
+| 16 | Query embedding failure | `GeminiKeyPool` rotation â†’ eventual user-friendly error |
 | 17 | TEI reranker down | `rerank_score=None` fallback to RRF ordering, Langfuse warning span |
 | 18 | Retrieval returns 0 candidates | LLM gets empty `<context>`, prompt forces "I don't know" |
 | 19 | Variant retrieval inconsistent schemas | dedup key includes `kind` |
@@ -3625,27 +3618,27 @@ All 8 phases independently deployable and rollback-safe.
 | 23 | LLM rate-limit exhausted across all tiers | `LLMUnavailable`; SSE error event; partial message persisted |
 | 24 | Critic itself fails | non-fatal; default to `supported`; trace records the error |
 | 25 | Hallucinated citation (id not in context) | deterministic regex check overrides LLM judge |
-| 26 | Retry still produces bad answer | ⚠ warning banner + `retried_still_bad` verdict |
+| 26 | Retry still produces bad answer | âš  warning banner + `retried_still_bad` verdict |
 | 27 | Stream interrupted mid-generation (client drops) | `CancelledError`; `finally` persists partial |
 | 28 | Answer exceeds `max_output_tokens` | `finish_reason=length` captured; UI "(truncated)" |
 | 29 | Context over budget | `_fit_within_budget` truncates by rank; compression escape hatch in `quality=high` |
 | 30 | Multi-turn query needing context ("what about his later work?") | `QueryRewriter` with last 5 turns |
-| 31 | Session deleted mid-generation | FK violation caught → `session_gone` error |
-| 32 | Citations dedup from chunk → node level | `_build_citations` keeps highest rerank chunk per node |
-| 33 | User switches fast → high mid-conversation | per-query quality override, session remembers last |
+| 31 | Session deleted mid-generation | FK violation caught â†’ `session_gone` error |
+| 32 | Citations dedup from chunk â†’ node level | `_build_citations` keeps highest rerank chunk per node |
+| 33 | User switches fast â†’ high mid-conversation | per-query quality override, session remembers last |
 | **API / frontend** | | |
 | 34 | Client disconnects mid-SSE | `AbortController` + server `finally` writes partial |
 | 35 | SSE blocked by buffering proxy | `X-Accel-Buffering: no` + keepalive pings |
 | 36 | User in multiple browser tabs | independent SSE streams converge on refresh |
-| 37 | Logged-out user hits `/chat` | 401 → Render login → redirect back |
+| 37 | Logged-out user hits `/home/rag` | 401 â†’ Render login â†’ redirect back |
 | 38 | Sandbox deleted in another tab while chatting | `session_gone` error banner |
 | 39 | Telegram message > 4096 chars | truncation with "(open web chat)" tail |
 | 40 | Telegram Markdown V2 escape failure | `_escape_md_v2` preflight + plaintext fallback |
 | 41 | Telegram `/ask` with empty question | usage hint |
 | 42 | Chat rate limit exceeded | 429 with `Retry-After` + UI banner |
-| 43 | Sandbox bulk-add matches zero Zettels | `added_count=0` → toast |
+| 43 | Sandbox bulk-add matches zero Zettels | `added_count=0` â†’ toast |
 | 44 | Double-click duplicate session creation | client-UUID idempotency on POST |
-| 45 | User edits old message → fork | DELETE cascade from the edit point |
+| 45 | User edits old message â†’ fork | DELETE cascade from the edit point |
 | 46 | Sandbox rename race while chat is open | next message picks up new name on refresh |
 
 ---
@@ -3656,7 +3649,7 @@ None blocking v1. All architectural choices locked during brainstorming (8 Q's a
 
 Items to **re-verify during implementation**:
 
-1. **pgvector version on prod Supabase**: must be ≥ 0.8 for `hnsw.iterative_scan`. If < 0.8, either upgrade or accept degraded multi-tenant recall (then add a post-filter CTE as workaround). Plan Phase 0 verifies via `SELECT extversion FROM pg_extension WHERE extname='vector'`.
+1. **pgvector version on prod Supabase**: must be â‰¥ 0.8 for `hnsw.iterative_scan`. If < 0.8, either upgrade or accept degraded multi-tenant recall (then add a post-filter CTE as workaround). Plan Phase 0 verifies via `SELECT extversion FROM pg_extension WHERE extname='vector'`.
 
 2. **TEI supports `BAAI/bge-reranker-v2-m3`**: the model is architecture-compatible (XLM-RoBERTa) with TEI's allowlist but is **not** in the explicit `supported_models` table. Plan Phase 3 runs a smoke-test: start the reranker container, `curl /rerank` with 2 texts, confirm a valid response. If the container fails to load the model, fall back to `BAAI/bge-reranker-large` (explicitly documented).
 
@@ -3664,18 +3657,21 @@ Items to **re-verify during implementation**:
 
 4. **TEI `/health` endpoint**: the health-check recipe in the Docker compose uses `/health`. Plan Phase 3 confirms this is the right path (alternative: `/healthz`).
 
-5. **Chonkie `BaseEmbeddings` abstract contract**: `GeminiChonkieEmbeddings` (§3.7.2) assumes method names `embed`, `embed_query`, and a `dimension` property. Plan Phase 2 reads `chonkie/embeddings/base.py` in the installed package to confirm the exact required methods before implementing the adapter. If Chonkie ships `chonkie[gemini]` extra with an official `GeminiEmbeddings` class, prefer that over our adapter.
+5. **Chonkie `BaseEmbeddings` abstract contract**: `GeminiChonkieEmbeddings` (Â§3.7.2) assumes method names `embed`, `embed_query`, and a `dimension` property. Plan Phase 2 reads `chonkie/embeddings/base.py` in the installed package to confirm the exact required methods before implementing the adapter. If Chonkie ships `chonkie[gemini]` extra with an official `GeminiEmbeddings` class, prefer that over our adapter.
 
 6. **Langfuse v3 async-generator `@observe` support**: the orchestrator uses `@observe(name="rag.answer_stream")` on an `async def` that `yield`s. The Langfuse docs show `@observe` on plain `async def` but do not explicitly document async-generator support. Plan Phase 7 verifies with a tiny smoke test before committing the decorator pattern.
 
-7. **`GeminiKeyPool` private-attribute stability**: `gemini_stream.py` (§3.7.3) accesses `pool._keys`, `pool._next_gen_key`, `pool._cooldowns`. Plan Phase 3 adds a test that exercises these attributes so any future pool refactor surfaces the breakage.
+7. **`GeminiKeyPool` private-attribute stability**: `gemini_stream.py` (Â§3.7.3) accesses `pool._keys`, `pool._next_gen_key`, `pool._cooldowns`. Plan Phase 3 adds a test that exercises these attributes so any future pool refactor surfaces the breakage.
 
 8. **Anthropic SDK model ID**: per April 2026 docs, `claude-3-5-sonnet-latest` may be a legacy alias. `ClaudeBackend` ships disabled in v1, so this only matters if the feature flag is flipped. Plan adds a note to verify the canonical Sonnet model ID via `/v1/models` before enabling the backend.
 
-9. **RAGAS Gemini judge wrapping**: §6.3 offers two paths — LiteLLM+Vertex (documented) and `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))` (community pattern). Plan Phase 7 verifies the Langchain path works before committing to it; falls back to LiteLLM+Vertex if it doesn't.
+9. **RAGAS Gemini judge wrapping**: Â§6.3 offers two paths â€” LiteLLM+Vertex (documented) and `LangchainLLMWrapper(ChatGoogleGenerativeAI(...))` (community pattern). Plan Phase 7 verifies the Langchain path works before committing to it; falls back to LiteLLM+Vertex if it doesn't.
 
-10. **`quarterly blueprint re-read cadence`**: operational discipline item, not code. Captured in §6.1 L3 description.
+10. **`quarterly blueprint re-read cadence`**: operational discipline item, not code. Captured in Â§6.1 L3 description.
 
 ---
 
 **End of spec.**
+
+
+

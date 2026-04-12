@@ -67,6 +67,11 @@ IMAGE_TAG="$SHA" docker compose \
 log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 "$ROOT/deploy/healthcheck.sh" "$IDLE_PORT"
 
+log "Running reranker preflight inside $IDLE stack..."
+IMAGE_TAG="$SHA" docker compose \
+    -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
+    exec -T reranker wget -qO- http://localhost:8080/health >/dev/null
+
 log "Flipping Caddy upstream to $IDLE..."
 # IMPORTANT: must write in-place (truncate + rewrite) rather than via
 # `mv TMP SNIPPET`. Docker bind mounts of a single file track the inode

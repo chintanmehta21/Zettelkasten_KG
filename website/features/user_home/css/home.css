@@ -1062,6 +1062,29 @@
     z-index: 1;
 }
 
+.home-rag-launch {
+    margin-top: 1rem;
+    display: grid;
+    gap: 1rem;
+    border-radius: 32px;
+    background:
+        radial-gradient(circle at top right, hsla(172, 66%, 50%, 0.12), transparent 36%),
+        linear-gradient(180deg, hsla(222, 22%, 10%, 0.98), hsla(221, 18%, 8%, 1));
+}
+
+.home-rag-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.45rem;
+}
+
+.home-rag-open-btn {
+    text-decoration: none;
+}
+
 .home-avatar-modal-close {
     position: absolute;
     top: 0.75rem;

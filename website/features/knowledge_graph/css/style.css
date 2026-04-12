@@ -537,10 +537,32 @@ body {
   border: 1px solid hsla(172, 66%, 50%, 0.15);
 }
 
+.kg-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.kg-panel-actions .kg-panel-link {
+  margin-top: 0;
+}
+
+.kg-panel-link.secondary {
+  background: var(--kg-bg-surface);
+  color: var(--kg-text);
+  border-color: var(--kg-border);
+}
+
 .kg-panel-link:hover {
   background: hsla(172, 66%, 50%, 0.2);
   border-color: hsla(172, 66%, 50%, 0.3);
   transform: translateY(-1px);
+}
+
+.kg-panel-link.secondary:hover {
+  background: var(--kg-bg-hover);
+  border-color: hsla(172, 66%, 50%, 0.2);
 }
 
 /* ---- Legend ---- */

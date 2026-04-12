@@ -15,8 +15,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 
+from website.api.chat_routes import router as chat_router
 from website.api.nexus import router as nexus_router
 from website.api.routes import router as api_router
+from website.api.sandbox_routes import router as sandbox_router
 from website.features.summarization_engine.api import router as engine_v2_router
 
 logger = logging.getLogger("website.app")
@@ -29,6 +31,8 @@ ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 HOME_DIR = Path(__file__).parent / "features" / "user_home"
 USER_ZETTELS_DIR = Path(__file__).parent / "features" / "user_zettels"
 BROWSER_CACHE_DIR = Path(__file__).parent / "features" / "browser_cache"
+USER_KASTENS_DIR = Path(__file__).parent / "features" / "user_kastens"
+USER_RAG_DIR = Path(__file__).parent / "features" / "user_rag"
 FOOTER_DIR = Path(__file__).parent / "footer"
 ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
@@ -81,6 +85,8 @@ def create_app(lifespan=None) -> FastAPI:
     # API routes
     app.include_router(api_router)
     app.include_router(engine_v2_router)
+    app.include_router(chat_router)
+    app.include_router(sandbox_router)
     if nexus_enabled:
         app.include_router(nexus_router)
 
@@ -121,6 +127,32 @@ def create_app(lifespan=None) -> FastAPI:
         "/home/zettels/js",
         StaticFiles(directory=str(USER_ZETTELS_DIR / "js")),
         name="home-zettels-js",
+    )
+    app.mount(
+        "/home/kastens/css",
+        StaticFiles(directory=str(USER_KASTENS_DIR / "css")),
+        name="home-kastens-css",
+    )
+    app.mount(
+        "/home/kastens/js",
+        StaticFiles(directory=str(USER_KASTENS_DIR / "js")),
+        name="home-kastens-js",
+    )
+    app.mount(
+        "/home/rag/css",
+        StaticFiles(directory=str(USER_RAG_DIR / "css")),
+        name="home-rag-css",
+    )
+    app.mount(
+        "/home/rag/js",
+        StaticFiles(directory=str(USER_RAG_DIR / "js")),
+        name="home-rag-js",
+    )
+    _mount_static_if_exists(
+        app,
+        "/home/rag/content",
+        USER_RAG_DIR / "content",
+        "home-rag-content",
     )
     app.mount("/about/css", StaticFiles(directory=str(ABOUT_DIR / "css")), name="about-css")
     app.mount("/about/js", StaticFiles(directory=str(ABOUT_DIR / "js")), name="about-js")
@@ -191,6 +223,18 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
         return FileResponse(str(USER_ZETTELS_DIR / "index.html"))
+
+    @app.get("/home/kastens")
+    async def user_kastens(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(USER_KASTENS_DIR / "index.html"))
+
+    @app.get("/home/rag")
+    async def user_rag(request: Request):
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return FileResponse(str(USER_RAG_DIR / "index.html"))
 
     @app.get("/summarization-engine")
     async def summarization_engine_dashboard(request: Request):

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User RAG - Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260412a">
+    <link rel="stylesheet" href="/home/rag/css/user_rag.css?v=20260412a">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container rag-container">
+        <header class="header rag-header">
+            <div class="zettels-header-start">
+                <a class="zettels-back-btn" href="/home/kastens" aria-label="Back to User Kastens">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                </a>
+            </div>
+            <div class="branding">
+                <div class="logo">
+                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
+                    <span class="logo-text">Zettelkasten</span>
+                </div>
+                <p class="tagline">Interrogate your saved knowledge with grounded, citation-rich answers.</p>
+            </div>
+            <div class="rag-header-actions">
+                <a class="kastens-secondary" href="/home/kastens">Manage kastens</a>
+            </div>
+        </header>
+
+        <main class="main rag-main" id="main-content">
+            <section class="rag-shell">
+                <aside class="rag-sidebar">
+                    <div class="rag-sidebar-section">
+                        <div class="rag-sidebar-head">
+                            <h2>Context</h2>
+                            <button class="kastens-mini-btn" id="new-session-btn" type="button">New chat</button>
+                        </div>
+                        <label class="rag-label" for="sandbox-select">Kasten</label>
+                        <select id="sandbox-select" class="rag-select">
+                            <option value="">All zettels</option>
+                        </select>
+                        <label class="rag-label" for="quality-select">Quality</label>
+                        <select id="quality-select" class="rag-select">
+                            <option value="fast">Fast</option>
+                            <option value="high">High</option>
+                        </select>
+                        <label class="rag-label" for="tags-input">Tag scope (comma-separated)</label>
+                        <input id="tags-input" class="rag-input" type="text" placeholder="transformers, retrieval">
+                        <label class="rag-label">Source scope</label>
+                        <div class="rag-source-grid" id="source-grid"></div>
+                    </div>
+
+                    <div class="rag-sidebar-section">
+                        <div class="rag-sidebar-head">
+                            <h2>Recent sessions</h2>
+                        </div>
+                        <div class="rag-session-list" id="session-list"></div>
+                    </div>
+
+                    <div class="rag-sidebar-section">
+                        <div class="rag-sidebar-head">
+                            <h2>Example queries</h2>
+                        </div>
+                        <div class="rag-chip-list" id="example-list"></div>
+                    </div>
+                </aside>
+
+                <section class="rag-chat-panel">
+                    <div class="rag-chat-head">
+                        <div>
+                            <p class="rag-eyebrow">User RAG</p>
+                            <h1 id="chat-title">Ask the graph something precise.</h1>
+                        </div>
+                        <p class="rag-chat-hint">Streaming answers appear live and cite the zettels they leaned on.</p>
+                    </div>
+                    <div class="rag-transcript" id="transcript"></div>
+                    <div class="rag-empty-state" id="empty-state">
+                        <h2>Start with a kasten or ask across everything.</h2>
+                        <p>Pick a saved workspace on the left or stay broad and search your full note corpus.</p>
+                    </div>
+                    <form class="rag-composer" id="composer-form">
+                        <label class="rag-label" for="composer-input">Question</label>
+                        <textarea id="composer-input" rows="4" placeholder="What patterns keep repeating across my saved notes on retrieval?" required></textarea>
+                        <div class="rag-composer-actions">
+                            <p class="rag-status" id="rag-status">Ready.</p>
+                            <button class="kastens-primary" id="send-btn" type="submit">Ask the graph</button>
+                        </div>
+                    </form>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <script src="/home/rag/js/user_rag.js?v=20260412a"></script>
+</body>
+</html>

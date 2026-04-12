@@ -1,4 +1,4 @@
-"""Shared persistence helpers for web and Nexus summarization flows."""
+﻿"""Shared persistence helpers for web and Nexus summarization flows."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
+from telegram_bot.config.settings import get_settings
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
 from website.core.supabase_kg import KGNodeCreate, KGRepository, is_supabase_configured
 
@@ -303,7 +304,7 @@ async def persist_summarized_result(
     if sb:
         repo, kg_user_id = sb
         try:
-            supabase_node_id, supabase_saved, supabase_duplicate = _persist_supabase_node(
+            supabase_node_id, supabase_saved, supabase_duplicate = await _persist_supabase_node(
                 payload=payload,
                 repo=repo,
                 kg_user_id=kg_user_id,
@@ -317,6 +318,8 @@ async def persist_summarized_result(
     file_node_id = _persist_file_node(payload, skip_duplicate=file_duplicate or supabase_duplicate)
     if file_node_id:
         payload["node_id"] = file_node_id
+    payload.pop("raw_text", None)
+    payload.pop("raw_metadata", None)
 
     return PersistenceOutcome(
         result=payload,
@@ -344,7 +347,7 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
         return None
 
 
-def _persist_supabase_node(
+async def _persist_supabase_node(
     *,
     payload: dict[str, Any],
     repo: KGRepository,
@@ -353,8 +356,6 @@ def _persist_supabase_node(
     brief_summary: str,
     detailed_summary: str,
 ) -> tuple[str, bool, bool]:
-    from website.features.kg_features.embeddings import generate_embedding
-
     user_uuid = UUID(kg_user_id)
     node_id = _build_supabase_node_id(
         str(payload.get("source_type", "")),
@@ -370,6 +371,7 @@ def _persist_supabase_node(
         captured_on=captured_on,
         embedding=embedding,
     )
+    node_id = node_create.id
     repo.add_node(user_uuid, node_create)
 
     if embedding:
@@ -381,6 +383,12 @@ def _persist_supabase_node(
             embedding=embedding,
         )
 
+    await _maybe_ingest_rag_chunks(
+        payload=payload,
+        user_uuid=user_uuid,
+        node_id=node_create.id,
+    )
+
     _schedule_entity_extraction(
         repo=repo,
         user_id=kg_user_id,
@@ -390,6 +398,61 @@ def _persist_supabase_node(
         brief_summary=brief_summary,
     )
     return node_id, True, False
+
+
+async def _maybe_ingest_rag_chunks(
+    *,
+    payload: dict[str, Any],
+    user_uuid: UUID,
+    node_id: str,
+) -> int:
+    try:
+        if not get_settings().rag_chunks_enabled:
+            return 0
+    except Exception:
+        return 0
+
+    raw_text = str(payload.get("raw_text") or payload.get("summary") or "").strip()
+    if not raw_text:
+        return 0
+
+    from website.features.rag_pipeline.adapters.gemini_chonkie import GeminiChonkieEmbeddings
+    from website.features.rag_pipeline.adapters.pool_factory import get_embedding_pool
+    from website.features.rag_pipeline.ingest.chunker import ZettelChunker
+    from website.features.rag_pipeline.ingest.embedder import ChunkEmbedder
+    from website.features.rag_pipeline.ingest.upsert import upsert_chunks
+    from website.features.rag_pipeline.types import SourceType as RagSourceType
+
+    source_type_value = str(payload.get("source_type") or "web").strip().lower()
+    try:
+        source_type = RagSourceType(source_type_value)
+    except ValueError:
+        source_type = RagSourceType.WEB
+
+    chunker = ZettelChunker(embedder_for_late_chunking=GeminiChonkieEmbeddings())
+    chunks = chunker.chunk(
+        source_type=source_type,
+        title=str(payload.get("title") or ""),
+        raw_text=raw_text,
+        tags=list(payload.get("tags") or []),
+        extra_metadata=dict(payload.get("raw_metadata") or {}),
+    )
+    if not chunks:
+        return 0
+
+    embedder = ChunkEmbedder(pool=get_embedding_pool())
+    try:
+        embedded_count = await upsert_chunks(
+            user_id=user_uuid,
+            node_id=node_id,
+            chunks=chunks,
+            embedder=embedder,
+        )
+        logger.info("Ingested %d RAG chunks for node %s", embedded_count, node_id)
+        return embedded_count
+    except Exception as exc:
+        logger.warning("RAG chunk ingest failed for %s: %s", node_id, exc)
+        return 0
 
 
 def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:
@@ -456,3 +519,4 @@ def _create_semantic_links(
                 )
     except Exception as exc:
         logger.warning("Semantic auto-linking failed: %s", exc, exc_info=True)
+

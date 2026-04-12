@@ -89,6 +89,7 @@ class Settings(BaseSettings):
     # Primary model — best quality.  On 429 rate-limit, the key pool
     # automatically falls back: 2.5-flash → 2.5-flash-lite across all keys.
     model_name: str = "gemini-2.5-flash"
+    rag_chunks_enabled: bool = False
 
     # ── Logging ───────────────────────────────────────────────────────────────
     log_level: str = "INFO"

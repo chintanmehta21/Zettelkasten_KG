@@ -1,0 +1,330 @@
+﻿"""Chat routes for the user-level RAG experience."""
+
+from __future__ import annotations
+
+import json
+import logging
+from collections.abc import AsyncIterator
+from typing import Annotated, Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field, field_validator
+
+from website.api.auth import get_current_user
+from website.features.rag_pipeline.service import get_rag_runtime, load_example_queries
+from website.features.rag_pipeline.types import ChatQuery, ScopeFilter, SourceType
+
+logger = logging.getLogger("website.api.chat_routes")
+
+router = APIRouter(prefix="/api/rag", tags=["rag-chat"])
+
+
+class SessionCreateRequest(BaseModel):
+    sandbox_id: UUID | None = None
+    title: str = "New conversation"
+    quality: str = "fast"
+    scope_filter: ScopeFilter = Field(default_factory=ScopeFilter)
+
+    @field_validator("quality")
+    @classmethod
+    def validate_quality(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"fast", "high"}:
+            raise ValueError("quality must be fast or high")
+        return normalized
+
+
+class ChatMessageRequest(BaseModel):
+    content: str
+    quality: str = "fast"
+    scope_filter: ScopeFilter = Field(default_factory=ScopeFilter)
+    stream: bool = True
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("content is required")
+        if len(cleaned) > 5000:
+            raise ValueError("content is too long")
+        return cleaned
+
+    @field_validator("quality")
+    @classmethod
+    def validate_quality(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"fast", "high"}:
+            raise ValueError("quality must be fast or high")
+        return normalized
+
+
+class AdhocChatRequest(ChatMessageRequest):
+    sandbox_id: UUID | None = None
+    title: str = "Quick ask"
+
+
+def _runtime_for_user(user: dict):
+    try:
+        return get_rag_runtime(user["sub"])
+    except Exception as exc:
+        logger.warning("RAG runtime unavailable for %s: %s", user.get("sub"), exc)
+        raise HTTPException(status_code=503, detail="RAG runtime is not available")
+
+
+def _serialize_session(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "user_id": row["user_id"],
+        "sandbox_id": row.get("sandbox_id"),
+        "title": row.get("title", "New conversation"),
+        "quality_mode": row.get("quality_mode", "fast"),
+        "message_count": row.get("message_count", 0),
+        "last_message_at": row.get("last_message_at"),
+        "last_scope_filter": row.get("last_scope_filter") or {},
+        "created_at": row.get("created_at"),
+        "updated_at": row.get("updated_at"),
+    }
+
+
+def _serialize_message(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "session_id": row["session_id"],
+        "role": row["role"],
+        "content": row["content"],
+        "citations": row.get("citations") or [],
+        "retrieved_node_ids": row.get("retrieved_node_ids") or [],
+        "retrieved_chunk_ids": row.get("retrieved_chunk_ids") or [],
+        "llm_model": row.get("llm_model") or "",
+        "token_counts": row.get("token_counts") or {},
+        "latency_ms": row.get("latency_ms") or 0,
+        "trace_id": row.get("trace_id") or "",
+        "critic_verdict": row.get("critic_verdict"),
+        "critic_notes": row.get("critic_notes"),
+        "query_class": row.get("query_class"),
+        "created_at": row.get("created_at"),
+    }
+
+
+def _sse_encode(event: dict[str, Any]) -> str:
+    event_name = str(event.get("type") or "message")
+    payload = json.dumps(event, ensure_ascii=True)
+    return f"event: {event_name}\ndata: {payload}\n\n"
+
+
+async def _post_answer_side_effects(runtime, kg_user_id: UUID, session: dict, prompt: str, scope_filter: dict) -> None:
+    if session.get("title") == "New conversation":
+        await runtime.sessions.auto_title_session(UUID(session["id"]), kg_user_id, prompt)
+    await runtime.sessions.update_session(
+        UUID(session["id"]),
+        kg_user_id,
+        last_scope_filter=scope_filter,
+        quality_mode=session.get("quality_mode", "fast"),
+    )
+    if session.get("sandbox_id"):
+        await runtime.sandboxes.touch_sandbox(UUID(session["sandbox_id"]), kg_user_id)
+
+
+async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessageRequest):
+    await runtime.sessions.update_session(
+        UUID(session["id"]),
+        kg_user_id,
+        last_scope_filter=body.scope_filter.model_dump(),
+        quality_mode=body.quality,
+    )
+    query = ChatQuery(
+        session_id=UUID(session["id"]),
+        sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
+        content=body.content,
+        scope_filter=body.scope_filter,
+        quality=body.quality,
+        stream=body.stream,
+    )
+    turn = await runtime.orchestrator.answer(query=query, user_id=kg_user_id)
+    await _post_answer_side_effects(
+        runtime,
+        kg_user_id,
+        session,
+        body.content,
+        body.scope_filter.model_dump(),
+    )
+    return {
+        "session_id": session["id"],
+        "turn": turn.model_dump(),
+    }
+
+
+async def _stream_answer(
+    runtime,
+    kg_user_id: UUID,
+    session: dict,
+    body: ChatMessageRequest,
+) -> AsyncIterator[str]:
+    await runtime.sessions.update_session(
+        UUID(session["id"]),
+        kg_user_id,
+        last_scope_filter=body.scope_filter.model_dump(),
+        quality_mode=body.quality,
+    )
+    query = ChatQuery(
+        session_id=UUID(session["id"]),
+        sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
+        content=body.content,
+        scope_filter=body.scope_filter,
+        quality=body.quality,
+        stream=True,
+    )
+    try:
+        async for event in runtime.orchestrator.answer_stream(query=query, user_id=kg_user_id):
+            if event.get("type") == "done":
+                await _post_answer_side_effects(
+                    runtime,
+                    kg_user_id,
+                    session,
+                    body.content,
+                    body.scope_filter.model_dump(),
+                )
+            yield _sse_encode(event)
+    except Exception as exc:
+        logger.exception("Streaming answer failed for session %s", session["id"])
+        yield _sse_encode(
+            {
+                "type": "error",
+                "code": "chat_failed",
+                "message": str(exc),
+            }
+        )
+
+
+@router.get("/example-queries")
+async def example_queries(user: Annotated[dict, Depends(get_current_user)]):
+    del user
+    return {"queries": load_example_queries()}
+
+
+@router.get("/sessions")
+async def list_sessions(
+    user: Annotated[dict, Depends(get_current_user)],
+    sandbox_id: UUID | None = None,
+    limit: int = 50,
+):
+    runtime = _runtime_for_user(user)
+    rows = await runtime.sessions.list_sessions(runtime.kg_user_id, sandbox_id=sandbox_id, limit=limit)
+    return {"sessions": [_serialize_session(row) for row in rows]}
+
+
+@router.post("/sessions")
+async def create_session(
+    body: SessionCreateRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    runtime = _runtime_for_user(user)
+    session_id = await runtime.sessions.create_session(
+        user_id=runtime.kg_user_id,
+        sandbox_id=body.sandbox_id,
+        title=body.title,
+        initial_scope_filter=body.scope_filter.model_dump(),
+        quality_mode=body.quality,
+    )
+    row = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
+    return {"session": _serialize_session(row)}
+
+
+@router.get("/sessions/{session_id}")
+async def get_session(
+    session_id: UUID,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    runtime = _runtime_for_user(user)
+    row = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"session": _serialize_session(row)}
+
+
+@router.get("/sessions/{session_id}/messages")
+async def list_messages(
+    session_id: UUID,
+    user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 100,
+):
+    runtime = _runtime_for_user(user)
+    session = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    rows = await runtime.sessions.list_messages(session_id, runtime.kg_user_id, limit=limit)
+    return {"messages": [_serialize_message(row) for row in rows]}
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: UUID,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    runtime = _runtime_for_user(user)
+    deleted = await runtime.sessions.delete_session(session_id, runtime.kg_user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "ok", "session_id": str(session_id)}
+
+
+@router.post("/sessions/{session_id}/messages")
+async def create_message(
+    session_id: UUID,
+    body: ChatMessageRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    runtime = _runtime_for_user(user)
+    session = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if body.stream:
+        return StreamingResponse(
+            _stream_answer(runtime, runtime.kg_user_id, session, body),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    return await _run_answer(runtime, runtime.kg_user_id, session, body)
+
+
+@router.post("/adhoc")
+async def adhoc_message(
+    body: AdhocChatRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    runtime = _runtime_for_user(user)
+    session_id = await runtime.sessions.create_session(
+        user_id=runtime.kg_user_id,
+        sandbox_id=body.sandbox_id,
+        title=body.title,
+        initial_scope_filter=body.scope_filter.model_dump(),
+        quality_mode=body.quality,
+    )
+    session = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
+    if session is None:
+        raise HTTPException(status_code=500, detail="Session could not be created")
+
+    if body.stream:
+        return StreamingResponse(
+            _stream_answer(runtime, runtime.kg_user_id, session, body),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
+    payload["session"] = _serialize_session(session)
+    return payload
+
