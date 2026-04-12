@@ -160,18 +160,44 @@ jobs:
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
-            restart_caddy() {
-              if docker ps --format '{{.Names}}' | grep -qx 'caddy'; then
-                docker restart caddy >/dev/null
-                sleep 5
+            wait_for_caddy() {
+              local attempts="${1:-20}"
+              local delay="${2:-2}"
+              local status=""
+
+              for _ in $(seq 1 "$attempts"); do
+                status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' caddy 2>/dev/null || true)"
+                if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                  return 0
+                fi
+                sleep "$delay"
+              done
+
+              echo "Caddy did not become ready; last status: ${status:-missing}" >&2
+              docker logs --tail 100 caddy || true
+              return 1
+            }
+
+            ensure_caddy_ready() {
+              local status
+
+              status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' caddy 2>/dev/null || true)"
+              if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                return 0
               fi
+
+              if docker ps -a --format '{{.Names}}' | grep -qx 'caddy'; then
+                docker restart caddy >/dev/null
+              fi
+
+              wait_for_caddy
             }
 
             # The droplet's deploy entrypoint is fixed by sudoers policy, so
             # handle the observed caddy exec flake at the workflow layer with a
             # bounded restart + retry rather than trying to replace the script.
             for attempt in 1 2; do
-              restart_caddy
+              ensure_caddy_ready
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
               fi
