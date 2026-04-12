@@ -141,30 +141,7 @@ jobs:
           secret_count=$(printf '%s\n' "$SECRETS_BODY" | grep -c '=' || true)
           echo "Built .env with ${secret_count} secret line(s) + 4 static line(s)"
 
-      # Checkout ops/ so we can SCP deploy scripts + compose files to the
-      # droplet. This keeps the droplet's scripts in sync with the repo
-      # on every deploy — no manual provisioning needed.
-      - name: Checkout ops
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: ops
-          sparse-checkout-cone-mode: true
-
-      # Upload deploy scripts + compose files to /tmp on the droplet.
-      # The deploy user has write access to /tmp; the next SSH step
-      # installs them to /opt/zettelkasten/ via whitelisted sudo commands.
-      - name: Upload infrastructure files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          source: "ops/deploy/deploy.sh,ops/deploy/reload_caddy.sh,ops/deploy/healthcheck.sh,ops/deploy/rollback.sh,ops/docker-compose.caddy.yml,ops/docker-compose.blue.yml,ops/docker-compose.green.yml"
-          target: "/tmp/zk-sync"
-          overwrite: true
-
-      - name: Sync files, write .env, and deploy
+      - name: Write .env, reconcile Caddy, and deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
@@ -176,44 +153,71 @@ jobs:
           script: |
             set -euo pipefail
 
-            # ── 1. Sync deploy scripts (tee + chmod are sudoers-whitelisted) ──
-            for f in deploy.sh reload_caddy.sh healthcheck.sh rollback.sh; do
-              src="/tmp/zk-sync/ops/deploy/$f"
-              dst="/opt/zettelkasten/deploy/$f"
-              if [ -f "$src" ]; then
-                sudo /usr/bin/tee "$dst" < "$src" > /dev/null
-                sudo /usr/bin/chmod 755 "$dst"
-              fi
-            done
-            echo "[sync] Deploy scripts updated"
-
-            # ── 2. Sync compose files ──
-            for f in docker-compose.caddy.yml docker-compose.blue.yml docker-compose.green.yml; do
-              src="/tmp/zk-sync/ops/$f"
-              dst="/opt/zettelkasten/compose/$f"
-              if [ -f "$src" ]; then
-                sudo /usr/bin/tee "$dst" < "$src" > /dev/null
-                sudo /usr/bin/chmod 644 "$dst"
-              fi
-            done
-            echo "[sync] Compose files updated"
-
-            rm -rf /tmp/zk-sync
-
-            # ── 3. Ensure Caddy container matches current compose ──
-            # Picks up init:true, image updates, config changes, etc.
-            # --no-deps avoids touching blue/green app containers.
-            docker compose -f /opt/zettelkasten/compose/docker-compose.caddy.yml up -d --no-deps 2>&1 || true
-            echo "[sync] Caddy container reconciled"
-
-            # ── 4. Docker login + write .env ──
+            # ── 1. Docker login ──
             echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin
 
+            # ── 2. Write .env (tee/chmod/chown whitelisted in sudoers) ──
             printf '%s\n' "$ENV_BODY" | sudo /usr/bin/tee /opt/zettelkasten/compose/.env > /dev/null
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
-            # ── 5. Run deploy with one retry ──
+            # ── 3. Ensure Caddy has --init (tini as PID 1) ──
+            # Fixes "OCI runtime exec failed: procReady not received" in
+            # non-root containers with cap_drop:ALL + no-new-privileges.
+            # Idempotent: skips recreation if already enabled.
+            # deploy user is in the docker group — no sudo needed.
+            CADDY_INIT=$(docker inspect caddy --format '{{if .HostConfig.Init}}{{.HostConfig.Init}}{{else}}false{{end}}' 2>/dev/null || echo "missing")
+
+            if [ "$CADDY_INIT" != "true" ]; then
+              echo "[caddy] Recreating with --init (was: $CADDY_INIT)..."
+              docker stop caddy 2>/dev/null || true
+              docker rm caddy 2>/dev/null || true
+
+              docker run -d \
+                --name caddy \
+                --hostname caddy \
+                --init \
+                --restart unless-stopped \
+                --user 1000:1000 \
+                --network zettelnet \
+                -p 80:80 \
+                -p 443:443 \
+                -p 443:443/udp \
+                -v /opt/zettelkasten/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+                -v /opt/zettelkasten/caddy/upstream.snippet:/etc/caddy/upstream.snippet:ro \
+                -v /opt/zettelkasten/caddy/data:/data \
+                -v /opt/zettelkasten/caddy/config:/config \
+                -v /opt/zettelkasten/logs/caddy:/var/log/caddy \
+                --memory 128m \
+                --pids-limit 256 \
+                --stop-timeout 10 \
+                --cap-drop ALL \
+                --cap-add NET_BIND_SERVICE \
+                --security-opt no-new-privileges:true \
+                --log-driver json-file \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                --health-cmd "wget --quiet --spider --no-check-certificate https://localhost/" \
+                --health-interval 30s \
+                --health-timeout 5s \
+                --health-start-period 15s \
+                --health-retries 3 \
+                caddy:2
+
+              # Wait for Caddy to become healthy before proceeding
+              for i in $(seq 1 30); do
+                STATUS=$(docker inspect caddy --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}' 2>/dev/null || echo "starting")
+                if [ "$STATUS" = "healthy" ] || [ "$STATUS" = "running" ]; then
+                  echo "[caddy] Healthy after ${i}s"
+                  break
+                fi
+                sleep 2
+              done
+            else
+              echo "[caddy] Already has --init, skipping"
+            fi
+
+            # ── 4. Run deploy with one retry ──
             for attempt in 1 2; do
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
