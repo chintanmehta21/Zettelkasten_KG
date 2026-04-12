@@ -64,7 +64,12 @@ def record_generation_cost(*, model: str, token_counts: dict | None = None) -> N
         }
     )
     if hasattr(client, "update_current_generation"):
-        client.update_current_generation(**payload)
+        try:
+            client.update_current_generation(**payload)
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            client.update_current_generation(model=payload["model"])
         return
     if hasattr(client, "update_current_span"):
         client.update_current_span(metadata=payload)
