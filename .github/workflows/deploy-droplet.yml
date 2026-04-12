@@ -152,11 +152,13 @@ jobs:
           script: |
             set -euo pipefail
 
-            echo "$GHCR_READ_PAT" | sudo docker login ghcr.io -u chintanmehta21 --password-stdin
+            # deploy is in the docker group — no sudo needed for docker CLI.
+            echo "$GHCR_READ_PAT" | docker login ghcr.io -u chintanmehta21 --password-stdin
 
-            printf '%s\n' "$ENV_BODY" | sudo tee /opt/zettelkasten/compose/.env > /dev/null
-            sudo chmod 600 /opt/zettelkasten/compose/.env
-            sudo chown deploy:deploy /opt/zettelkasten/compose/.env
+            # tee/chmod/chown/deploy.sh are whitelisted in /etc/sudoers.d/deploy-zettelkasten.
+            printf '%s\n' "$ENV_BODY" | sudo /usr/bin/tee /opt/zettelkasten/compose/.env > /dev/null
+            sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
+            sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
             sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"
         env:
