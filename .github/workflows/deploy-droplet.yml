@@ -141,6 +141,37 @@ jobs:
           secret_count=$(printf '%s\n' "$SECRETS_BODY" | grep -c '=' || true)
           echo "Built .env with ${secret_count} secret line(s) + 4 static line(s)"
 
+      - name: Checkout deploy scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: ops/deploy
+          sparse-checkout-cone-mode: true
+
+      - name: Sync deploy scripts to droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          source: "ops/deploy/*.sh"
+          target: "/tmp/deploy-sync"
+          overwrite: true
+
+      - name: Install deploy scripts on droplet
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          script: |
+            set -euo pipefail
+            sudo cp /tmp/deploy-sync/ops/deploy/*.sh /opt/zettelkasten/deploy/
+            sudo chown root:root /opt/zettelkasten/deploy/*.sh
+            sudo chmod 755 /opt/zettelkasten/deploy/*.sh
+            rm -rf /tmp/deploy-sync
+
       - name: Write .env on droplet and pull image
         uses: appleboy/ssh-action@v1
         with:
