@@ -14,8 +14,10 @@ reset per-minute.
 from __future__ import annotations
 
 import logging
+import os
 import time
 
+import httpx
 from google import genai
 from google.genai.errors import ClientError
 
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ────────────────────────────────────────────────────────────────
 
 _MAX_KEYS = 10
+_MAX_RETRIES = 3  # Cap transient-error retries (across the attempt chain)
 _RATE_LIMIT_COOLDOWN_SECS = 10  # Short cooldown; Gemini resets per-minute
 
 _GENERATIVE_MODEL_CHAIN = [
@@ -41,6 +44,32 @@ def _is_rate_limited(exc: Exception) -> bool:
     if isinstance(exc, ClientError) and getattr(exc, "code", None) == 429:
         return True
     return "429" in str(exc) and "RESOURCE_EXHAUSTED" in str(exc)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Return True if *exc* is a transient error worth retrying on next key.
+
+    Covers 429 rate-limits and 504 DEADLINE_EXCEEDED timeouts.
+    """
+    if _is_rate_limited(exc):
+        return True
+    if isinstance(exc, ClientError) and getattr(exc, "code", None) == 504:
+        return True
+    exc_str = str(exc)
+    if "DEADLINE_EXCEEDED" in exc_str or "504" in exc_str:
+        return True
+    return False
+
+
+def _send_slack_alert(message: str) -> None:
+    """Fire-and-forget Slack webhook alert.  Silent no-op if not configured."""
+    webhook_url = os.environ.get("SLACK_WEBHOOK_URL", "")
+    if not webhook_url:
+        return
+    try:
+        httpx.post(webhook_url, json={"text": message}, timeout=5.0)
+    except Exception:
+        logger.debug("Slack alert failed (non-critical)", exc_info=True)
 
 
 def _load_keys_from_file(path: str) -> list[str]:
@@ -84,7 +113,7 @@ class GeminiKeyPool:
         if key_index not in self._clients:
             self._clients[key_index] = genai.Client(
                 api_key=self._keys[key_index],
-                http_options={"timeout": 25_000},  # 25s in ms
+                http_options={"timeout": 60_000},  # 60s in ms
             )
         return self._clients[key_index]
 
@@ -182,11 +211,15 @@ class GeminiKeyPool:
     ):
         """Generate content with automatic key/model fallback.
 
+        Retries up to ``_MAX_RETRIES`` times on transient errors (429 rate-
+        limit, 504 DEADLINE_EXCEEDED).  On exhaustion, fires a Slack alert
+        and raises the last exception.
+
         Returns (response, model_used, key_index) on success.
-        Raises the last exception if ALL (key, model) combinations fail.
         """
         chain = self._build_attempt_chain(starting_model=starting_model)
         last_exc: Exception | None = None
+        retries = 0
 
         for key_index, model in chain:
             try:
@@ -201,18 +234,42 @@ class GeminiKeyPool:
                 return response, model, key_index
             except Exception as exc:
                 last_exc = exc
-                if _is_rate_limited(exc):
+                if _is_retryable(exc):
+                    retries += 1
                     self._mark_cooldown(key_index, model)
+                    reason = "rate-limited" if _is_rate_limited(exc) else "timeout"
                     logger.warning(
-                        "%s rate-limited on key[%d]/%s — cooldown %ds, trying next",
+                        "%s %s on key[%d]/%s — retry %d/%d, cooldown %ds",
                         label or "Gemini",
+                        reason,
                         key_index,
                         model,
+                        retries,
+                        _MAX_RETRIES,
                         _RATE_LIMIT_COOLDOWN_SECS,
                     )
+                    if retries >= _MAX_RETRIES:
+                        logger.error(
+                            "%s exhausted %d retries — giving up",
+                            label or "Gemini",
+                            _MAX_RETRIES,
+                        )
+                        _send_slack_alert(
+                            f":warning: *Gemini API failure* — `{label or 'generate_content'}` "
+                            f"exhausted {_MAX_RETRIES} retries. "
+                            f"Last error: `{reason}` on key[{key_index}]/{model}. "
+                            f"Exception: `{exc}`"
+                        )
+                        raise
                     continue
                 raise
 
+        # Entire chain exhausted without hitting _MAX_RETRIES (e.g. all on cooldown)
+        _send_slack_alert(
+            f":warning: *Gemini API failure* — `{label or 'generate_content'}` "
+            f"all key/model slots exhausted after {retries} retries. "
+            f"Last error: `{last_exc}`"
+        )
         raise last_exc  # type: ignore[misc]
 
     # ── Embedding API ────────────────────────────────────────────────
