@@ -43,8 +43,14 @@ class StructuredExtractor:
     ) -> SummaryResult:
         prompt = (
             f"{source_context(ingest.source_type)}\n\n"
-            "Return JSON for a Zettelkasten note with mini_title, brief_summary, "
-            "tags (8-15), and detailed_summary sections.\n\n"
+            "Return a JSON object with these exact keys:\n"
+            '- "mini_title": short title (max 8 words)\n'
+            '- "brief_summary": 1-2 sentence summary\n'
+            '- "tags": array of 8-15 lowercase hyphenated tags\n'
+            '- "detailed_summary": array of section objects, each with '
+            '"heading" (string), "bullets" (array of strings), '
+            'and "sub_sections" (object mapping heading strings to arrays of bullet strings)\n\n'
+            "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
             f"SUMMARY:\n{summary_text}"
         )
         result = await self._client.generate(
