@@ -208,7 +208,7 @@ class KGRepository:
         # Remove source-type name tags (they duplicate the source_type column)
         clean_tags = [t for t in clean_tags if t not in _SOURCE_TYPE_NAMES]
 
-        payload = node.model_dump(exclude_none=True)
+        payload = node.model_dump(mode="json", exclude_none=True)
         payload["user_id"] = str(user_id)
         payload["tags"] = clean_tags
         payload["source_type"] = _normalize_source_type(payload["source_type"])
