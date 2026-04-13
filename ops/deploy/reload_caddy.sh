@@ -51,11 +51,14 @@ reload_with_exec() {
 }
 
 main() {
-    if reload_with_exec; then
-        return 0
-    fi
-
-    log "${LOG_PREFIX:-}" "Falling back to docker restart caddy..."
+    # Single-file Docker bind mounts track the inode at mount time.
+    # deploy.sh rewrites upstream.snippet via `cat >`, which may create a
+    # new inode despite the intent to truncate-and-rewrite.  When that
+    # happens, the container still sees the OLD content, so `caddy reload`
+    # (which re-reads the file from inside the container) loads stale
+    # config.  A full container restart re-mounts the file and always
+    # picks up the current host content.
+    log "${LOG_PREFIX:-}" "Restarting caddy container (bind-mount refresh)..."
     docker restart caddy >/dev/null
     wait_for_caddy
 }
