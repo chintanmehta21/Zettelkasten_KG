@@ -234,7 +234,8 @@ jobs:
               echo "[caddy] Already has --init, skipping"
             fi
 
-            # ── 4. Fix CRLF in deploy scripts (one-time droplet remediation) ──
+            # ── 4. Ensure deploy scripts are executable and LF-terminated ──
+            chmod +x /opt/zettelkasten/deploy/*.sh
             sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 
             # ── 5. Run deploy with one retry ──
