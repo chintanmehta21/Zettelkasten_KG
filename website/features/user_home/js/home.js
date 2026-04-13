@@ -159,7 +159,7 @@
 
   async function setupAvatar(profile, token) {
     var avatarUrl = profile.avatar_url;
-    var cacheKey = 'zk-avatar-url';
+    var cacheKey = 'zk-avatar-url-' + (profile.id || 'anon');
 
     // If server has a valid avatar, use it and cache locally
     if (avatarUrl && avatarUrl.includes('/artifacts/avatars/')) {

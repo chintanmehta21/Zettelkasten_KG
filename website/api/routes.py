@@ -82,7 +82,7 @@ class AvatarUpdateRequest(BaseModel):
     @classmethod
     def validate_avatar_id(cls, v: int) -> int:
         if not (0 <= v <= 59):
-            raise ValueError("avatar_id must be between 0 and 29")
+            raise ValueError("avatar_id must be between 0 and 59")
         return v
 
 
@@ -146,6 +146,13 @@ async def update_avatar(
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
     repo, _ = sb
+    # Ensure user exists in kg_users before updating avatar
+    metadata = user.get("user_metadata", {})
+    repo.get_or_create_user(
+        render_user_id=user["sub"],
+        display_name=metadata.get("full_name"),
+        email=user.get("email"),
+    )
     updated = repo.update_user_avatar(user["sub"], avatar_url)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
