@@ -265,7 +265,6 @@ class EntityExtractor:
                             conversation_contents,
                             config=types.GenerateContentConfig(
                                 response_mime_type="application/json",
-                                response_schema=ExtractionResult,
                             ),
                             starting_model=model,
                             label="Entity gleaning",
