@@ -27,7 +27,12 @@
     font-family: var(--font-body);
     font-size: 0.88rem;
     font-weight: 600;
-    transition: all var(--transition);
+    transition:
+        color var(--transition),
+        background-color var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition),
+        transform var(--transition);
 }
 
 .kastens-nav-link,
@@ -216,6 +221,16 @@
 .kastens-card.active {
     border-color: hsla(172, 66%, 50%, 0.28);
     box-shadow: 0 12px 30px hsla(172, 66%, 50%, 0.08);
+}
+
+.kastens-card:focus-visible,
+.kastens-mini-btn:focus-visible,
+.kastens-nav-link:focus-visible,
+.kastens-secondary:focus-visible,
+.kastens-primary:focus-visible,
+.kastens-text-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .kastens-card.active {

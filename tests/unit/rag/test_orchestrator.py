@@ -1,4 +1,5 @@
-﻿from uuid import uuid4
+import asyncio
+from uuid import uuid4
 
 import pytest
 
@@ -70,6 +71,23 @@ class _LLM:
             raise self.error
         for token in self.stream_tokens:
             yield token, {"model": "gemini-2.5-flash", "token_counts": {"total": 12}, "finish_reason": "STOP"}
+
+
+class _BlockingStreamLLM:
+    def __init__(self):
+        self.first_token_emitted = asyncio.Event()
+        self.allow_completion = asyncio.Event()
+
+    async def generate(self, *, query, system_prompt, user_prompt):
+        del query, system_prompt, user_prompt
+        return type("Result", (), {"content": "unused", "model": "gemini-2.5-flash", "token_counts": {"total": 12}, "finish_reason": "STOP"})()
+
+    async def generate_stream(self, *, query, system_prompt, user_prompt):
+        del query, system_prompt, user_prompt
+        self.first_token_emitted.set()
+        yield "Hello", {"model": "gemini-2.5-flash", "token_counts": {"total": 5}, "finish_reason": ""}
+        await self.allow_completion.wait()
+        yield " world", {"model": "gemini-2.5-flash", "token_counts": {"total": 12}, "finish_reason": "STOP"}
 
 
 class _Critic:
@@ -242,3 +260,35 @@ async def test_answer_stream_emits_error_on_empty_scope() -> None:
 
     assert events[-1]["type"] == "error"
 
+
+@pytest.mark.asyncio
+async def test_answer_stream_yields_first_token_before_generation_completes() -> None:
+    llm = _BlockingStreamLLM()
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[_candidate()]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_Assembler(),
+        llm=llm,
+        critic=_Critic(["supported"]),
+        sessions=_Sessions(),
+    )
+
+    stream = orchestrator.answer_stream(query=ChatQuery(content="What is this about?"), user_id=uuid4())
+
+    assert (await anext(stream))["type"] == "status"
+    assert (await anext(stream))["type"] == "citations"
+
+    next_token_task = asyncio.create_task(anext(stream))
+    await asyncio.wait_for(llm.first_token_emitted.wait(), timeout=1.0)
+    await asyncio.sleep(0)
+
+    assert next_token_task.done(), "First token should be yielded before the model finishes streaming"
+    assert (await next_token_task) == {"type": "token", "content": "Hello"}
+
+    llm.allow_completion.set()
+    remaining = [event async for event in stream]
+    assert [event["type"] for event in remaining] == ["token", "done"]

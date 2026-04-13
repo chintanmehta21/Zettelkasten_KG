@@ -312,3 +312,17 @@ def test_chat_routes_nonstream_and_stream(monkeypatch):
     assert '"type": "token"' in body
     assert '"type": "done"' in body
 
+
+def test_user_rag_and_kastens_pages_smoke():
+    client = TestClient(create_app())
+
+    rag_response = client.get("/home/rag")
+    assert rag_response.status_code == 200
+    assert 'id="rag-status"' in rag_response.text
+    assert 'aria-live="polite"' in rag_response.text
+
+    kastens_response = client.get("/home/kastens")
+    assert kastens_response.status_code == 200
+    assert 'id="kasten-feedback"' in kastens_response.text
+    assert 'aria-live="polite"' in kastens_response.text
+

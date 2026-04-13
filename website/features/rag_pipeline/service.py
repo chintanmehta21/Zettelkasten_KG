@@ -88,5 +88,11 @@ def get_rag_runtime(user_sub: str | None) -> RAGRuntime:
 def load_example_queries() -> list[str]:
     if not _EXAMPLE_QUERIES.exists():
         return []
-    return json.loads(_EXAMPLE_QUERIES.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(_EXAMPLE_QUERIES.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(payload, list):
+        return []
+    return [item.strip() for item in payload if isinstance(item, str) and item.strip()]
 

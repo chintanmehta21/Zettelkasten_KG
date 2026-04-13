@@ -556,7 +556,7 @@
 
     var spacer = document.createElement('div');
     spacer.className = 'home-card-spacer';
-    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 1.2s cubic-bezier(0.25, 0.1, 0.25, 1);border:none;background:none;padding:0;margin:0;';
+    spacer.style.cssText = 'height:0;overflow:hidden;transition:height 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);border:none;background:none;padding:0;margin:0;';
 
     if (cardGrid) {
       cardGrid.insertBefore(spacer, cardGrid.firstChild);
@@ -569,8 +569,8 @@
       });
     }
 
-    // Start shatter early while cards are still sliding down
-    await new Promise(function (r) { setTimeout(r, 500); });
+    // Start shatter after cards begin sliding down
+    await new Promise(function (r) { setTimeout(r, 300); });
 
     var targetRect = spacer.getBoundingClientRect();
 

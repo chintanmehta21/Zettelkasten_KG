@@ -1,8 +1,9 @@
-﻿"""Top-level RAG orchestration."""
+"""Top-level RAG orchestration."""
 
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -116,16 +117,22 @@ class RAGOrchestrator:
             "citations": [citation.model_dump() for citation in self._build_citations(context.used_candidates)],
         }
 
-        generation = await self._generate_streaming(query=query, context_xml=context.context_xml)
-        for token in generation["events"]:
-            yield token
+        generation = None
+        async for event in self._generate_streaming(query=query, context_xml=context.context_xml):
+            if event["type"] == "token":
+                yield event
+                continue
+            generation = event["answer"]
+
+        if generation is None:
+            generation = _GeneratedAnswer(content="", model="", token_counts={}, finish_reason="")
 
         result = await self._finalize_answer(
             query=query,
             user_id=user_id,
             prepared=prepared,
             context=context,
-            generation=generation["answer"],
+            generation=generation,
         )
 
         if result.replaced_text is not None:
@@ -237,14 +244,13 @@ class RAGOrchestrator:
         return result
 
     @trace_stage("generate_streaming")
-    async def _generate_streaming(self, *, query, context_xml: str) -> dict:
+    async def _generate_streaming(self, *, query, context_xml: str) -> AsyncIterator[dict]:
         user_prompt = USER_TEMPLATE.format(
             context_xml=context_xml,
             user_query=query.content,
         )
         parts = []
         final_meta = {"model": "", "token_counts": {}, "finish_reason": ""}
-        events = []
         async with track_latency("generate_streaming"):
             async for token, meta in self._llm.generate_stream(
                 query=query,
@@ -253,22 +259,19 @@ class RAGOrchestrator:
             ):
                 parts.append(token)
                 final_meta = meta or final_meta
-                events.append({"type": "token", "content": token})
+                yield {"type": "token", "content": token}
 
-        result = {
-            "events": events,
-            "answer": _GeneratedAnswer(
-                content="".join(parts),
-                model=final_meta.get("model", ""),
-                token_counts=final_meta.get("token_counts", {}),
-                finish_reason=final_meta.get("finish_reason", ""),
-            ),
-        }
-        record_generation_cost(
-            model=result["answer"].model,
-            token_counts=result["answer"].token_counts,
+        answer = _GeneratedAnswer(
+            content="".join(parts),
+            model=final_meta.get("model", ""),
+            token_counts=final_meta.get("token_counts", {}),
+            finish_reason=final_meta.get("finish_reason", ""),
         )
-        return result
+        record_generation_cost(
+            model=answer.model,
+            token_counts=answer.token_counts,
+        )
+        yield {"type": "complete", "answer": answer}
 
     @trace_stage("finalize_answer")
     async def _finalize_answer(
@@ -382,4 +385,3 @@ class RAGOrchestrator:
             )
             for candidate in ranked_candidates
         ]
-

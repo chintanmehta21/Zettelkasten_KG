@@ -43,32 +43,32 @@
                             <button class="kastens-mini-btn" id="new-session-btn" type="button">New chat</button>
                         </div>
                         <label class="rag-label" for="sandbox-select">Kasten</label>
-                        <select id="sandbox-select" class="rag-select">
+                        <select id="sandbox-select" class="rag-select" name="sandbox_scope">
                             <option value="">All zettels</option>
                         </select>
                         <label class="rag-label" for="quality-select">Quality</label>
-                        <select id="quality-select" class="rag-select">
+                        <select id="quality-select" class="rag-select" name="quality_mode">
                             <option value="fast">Fast</option>
                             <option value="high">High</option>
                         </select>
                         <label class="rag-label" for="tags-input">Tag scope (comma-separated)</label>
-                        <input id="tags-input" class="rag-input" type="text" placeholder="transformers, retrieval">
+                        <input id="tags-input" class="rag-input" type="text" name="tags_scope" autocomplete="off" spellcheck="false" placeholder="transformers, retrieval...">
                         <label class="rag-label">Source scope</label>
-                        <div class="rag-source-grid" id="source-grid"></div>
+                        <div class="rag-source-grid" id="source-grid" role="group" aria-label="Source scope"></div>
                     </div>
 
                     <div class="rag-sidebar-section">
                         <div class="rag-sidebar-head">
                             <h2>Recent sessions</h2>
                         </div>
-                        <div class="rag-session-list" id="session-list"></div>
+                        <div class="rag-session-list" id="session-list" aria-live="polite"></div>
                     </div>
 
                     <div class="rag-sidebar-section">
                         <div class="rag-sidebar-head">
                             <h2>Example queries</h2>
                         </div>
-                        <div class="rag-chip-list" id="example-list"></div>
+                        <div class="rag-chip-list" id="example-list" aria-label="Example queries"></div>
                     </div>
                 </aside>
 
@@ -80,16 +80,16 @@
                         </div>
                         <p class="rag-chat-hint">Streaming answers appear live and cite the zettels they leaned on.</p>
                     </div>
-                    <div class="rag-transcript" id="transcript"></div>
+                    <div class="rag-transcript" id="transcript" aria-live="polite" aria-label="Conversation transcript"></div>
                     <div class="rag-empty-state" id="empty-state">
                         <h2>Start with a kasten or ask across everything.</h2>
                         <p>Pick a saved workspace on the left or stay broad and search your full note corpus.</p>
                     </div>
                     <form class="rag-composer" id="composer-form">
                         <label class="rag-label" for="composer-input">Question</label>
-                        <textarea id="composer-input" rows="4" placeholder="What patterns keep repeating across my saved notes on retrieval?" required></textarea>
+                        <textarea id="composer-input" name="question" rows="4" autocomplete="off" spellcheck="false" placeholder="What patterns keep repeating across my saved notes on retrieval?..." required></textarea>
                         <div class="rag-composer-actions">
-                            <p class="rag-status" id="rag-status">Ready.</p>
+                            <p class="rag-status" id="rag-status" role="status" aria-live="polite">Ready.</p>
                             <button class="kastens-primary" id="send-btn" type="submit">Ask the graph</button>
                         </div>
                     </form>

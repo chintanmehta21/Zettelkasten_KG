@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -130,7 +130,7 @@ async def test_load_recent_turns_returns_oldest_first() -> None:
     store = ChatSessionStore(supabase=supabase)
     session_id = uuid4()
     user_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     supabase.messages.extend([
         {"session_id": str(session_id), "user_id": str(user_id), "role": "user", "content": "second", "created_at": (now + timedelta(seconds=2)).isoformat()},
         {"session_id": str(session_id), "user_id": str(user_id), "role": "assistant", "content": "first", "created_at": now.isoformat()},

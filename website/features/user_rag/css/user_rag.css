@@ -136,6 +136,13 @@
     background: var(--accent-glow);
 }
 
+.rag-source-chip:focus-visible,
+.rag-chip:focus-visible,
+.rag-session-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .rag-source-chip.active {
     color: var(--accent);
 }

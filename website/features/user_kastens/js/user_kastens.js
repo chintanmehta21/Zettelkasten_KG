@@ -8,6 +8,8 @@
     nodes: [],
     focusNodeId: '',
     focusNodeTitle: '',
+    latestSearchRequestId: 0,
+    latestSelectionRequestId: 0,
   };
 
   var els = {};
@@ -21,19 +23,23 @@
     var params = new URLSearchParams(window.location.search);
     state.focusNodeId = params.get('focus_node') || '';
     state.focusNodeTitle = params.get('focus_title') || '';
-    var token = await getAuthToken();
-    if (!token) {
-      window.location.href = '/';
-      return;
+    try {
+      var token = await getAuthToken();
+      if (!token) {
+        window.location.href = '/';
+        return;
+      }
+      state.token = token;
+      bindEvents();
+      await refreshSandboxes();
+      if (state.focusNodeTitle) {
+        els.searchInput.value = state.focusNodeTitle;
+        setFeedback('Focused note ready to add: ' + state.focusNodeTitle + '.', false);
+      }
+      await searchNodes(state.focusNodeTitle || '');
+    } catch (err) {
+      setFeedback(toErrorMessage(err, 'Unable to load your kastens right now.'), true);
     }
-    state.token = token;
-    bindEvents();
-    await refreshSandboxes();
-    if (state.focusNodeTitle) {
-      els.searchInput.value = state.focusNodeTitle;
-      setFeedback('Focused note ready to add: ' + state.focusNodeTitle + '.', false);
-    }
-    await searchNodes(state.focusNodeTitle || '');
   }
 
   function resolveDom() {
@@ -128,9 +134,12 @@
       var card = document.createElement('article');
       card.className = 'kastens-card' + (sandbox.id === state.selectedSandboxId ? ' active' : '');
       card.dataset.sandboxId = sandbox.id;
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-pressed', sandbox.id === state.selectedSandboxId ? 'true' : 'false');
       card.innerHTML = [
         '<div class="kastens-card-head">',
-        '  <span class="kastens-icon-pill" style="box-shadow: inset 0 0 0 1px ' + escapeHtml(sandbox.color || '#14b8a6') + '33;">' + escapeHtml((sandbox.icon || 'stack').slice(0, 12)) + '</span>',
+        '  <span class="kastens-icon-pill" style="box-shadow: inset 0 0 0 1px ' + sanitizeColorToken(sandbox.color) + '33;">' + escapeHtml((sandbox.icon || 'stack').slice(0, 12)) + '</span>',
         '  <span class="kastens-count-pill">' + escapeHtml(String(sandbox.member_count || 0)) + ' members</span>',
         '</div>',
         '<div>',
@@ -152,16 +161,32 @@
         }
         selectSandbox(sandbox.id);
       });
+      card.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectSandbox(sandbox.id);
+        }
+      });
       els.kastensList.appendChild(card);
     });
   }
 
   async function selectSandbox(sandboxId) {
+    var requestId = ++state.latestSelectionRequestId;
     state.selectedSandboxId = sandboxId;
     renderSandboxCards();
-    var payload = await api('/api/rag/sandboxes/' + encodeURIComponent(sandboxId));
-    populateForm(payload.sandbox);
-    renderMembers(payload.members || []);
+    try {
+      var payload = await api('/api/rag/sandboxes/' + encodeURIComponent(sandboxId));
+      if (requestId !== state.latestSelectionRequestId || sandboxId !== state.selectedSandboxId) {
+        return;
+      }
+      populateForm(payload.sandbox);
+      renderMembers(payload.members || []);
+    } catch (err) {
+      if (requestId === state.latestSelectionRequestId) {
+        setFeedback(toErrorMessage(err, 'Unable to load this kasten.'), true);
+      }
+    }
   }
 
   function populateForm(sandbox) {
@@ -170,7 +195,7 @@
     els.name.value = sandbox.name || '';
     els.description.value = sandbox.description || '';
     els.icon.value = sandbox.icon || 'stack';
-    els.color.value = sandbox.color || '#14b8a6';
+    els.color.value = sanitizeColorToken(sandbox.color);
     els.quality.value = sandbox.default_quality || 'fast';
     els.deleteBtn.classList.remove('hidden');
     els.newDraft.classList.remove('hidden');
@@ -208,13 +233,25 @@
   }
 
   async function searchNodes(query) {
+    var requestId = ++state.latestSearchRequestId;
     var url = '/api/rag/nodes?limit=12';
     if (query) {
       url += '&query=' + encodeURIComponent(query);
     }
-    var payload = await api(url);
-    state.nodes = payload.nodes || [];
-    renderSearchResults();
+    try {
+      var payload = await api(url);
+      if (requestId !== state.latestSearchRequestId) {
+        return;
+      }
+      state.nodes = payload.nodes || [];
+      renderSearchResults();
+    } catch (err) {
+      if (requestId === state.latestSearchRequestId) {
+        state.nodes = [];
+        renderSearchResults();
+        setFeedback(toErrorMessage(err, 'Unable to search your zettels right now.'), true);
+      }
+    }
   }
 
   function renderSearchResults() {
@@ -256,20 +293,28 @@
       setFeedback('Create or select a kasten first.', true);
       return;
     }
-    await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId) + '/members', {
-      method: 'POST',
-      body: JSON.stringify({ node_ids: [nodeId], added_via: 'manual' })
-    });
-    await selectSandbox(state.selectedSandboxId);
-    setFeedback('Node added to the kasten.', false);
+    try {
+      await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId) + '/members', {
+        method: 'POST',
+        body: JSON.stringify({ node_ids: [nodeId], added_via: 'manual' })
+      });
+      await selectSandbox(state.selectedSandboxId);
+      setFeedback('Node added to the kasten.', false);
+    } catch (err) {
+      setFeedback(toErrorMessage(err, 'Unable to add that zettel right now.'), true);
+    }
   }
 
   async function removeMember(nodeId) {
-    await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId) + '/members/' + encodeURIComponent(nodeId), {
-      method: 'DELETE'
-    });
-    await selectSandbox(state.selectedSandboxId);
-    setFeedback('Node removed from the kasten.', false);
+    try {
+      await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId) + '/members/' + encodeURIComponent(nodeId), {
+        method: 'DELETE'
+      });
+      await selectSandbox(state.selectedSandboxId);
+      setFeedback('Node removed from the kasten.', false);
+    } catch (err) {
+      setFeedback(toErrorMessage(err, 'Unable to remove that zettel right now.'), true);
+    }
   }
 
   async function onSaveSandbox(event) {
@@ -285,32 +330,41 @@
       setFeedback('Please name the kasten before saving.', true);
       return;
     }
+    body.color = sanitizeColorToken(body.color);
 
-    if (state.selectedSandboxId) {
-      await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId), {
-        method: 'PATCH',
+    try {
+      if (state.selectedSandboxId) {
+        await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId), {
+          method: 'PATCH',
+          body: JSON.stringify(body)
+        });
+        setFeedback('Kasten updated.', false);
+        await refreshSandboxes(state.selectedSandboxId);
+        return;
+      }
+
+      var payload = await api('/api/rag/sandboxes', {
+        method: 'POST',
         body: JSON.stringify(body)
       });
-      setFeedback('Kasten updated.', false);
-      await refreshSandboxes(state.selectedSandboxId);
-      return;
+      setFeedback('Kasten created.', false);
+      await refreshSandboxes(payload.sandbox.id);
+    } catch (err) {
+      setFeedback(toErrorMessage(err, 'Unable to save this kasten right now.'), true);
     }
-
-    var payload = await api('/api/rag/sandboxes', {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    setFeedback('Kasten created.', false);
-    await refreshSandboxes(payload.sandbox.id);
   }
 
   async function onDeleteSandbox() {
     if (!state.selectedSandboxId) return;
     if (!window.confirm('Delete this kasten and its session links?')) return;
-    await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId), { method: 'DELETE' });
-    state.selectedSandboxId = '';
-    setFeedback('Kasten deleted.', false);
-    await refreshSandboxes();
+    try {
+      await api('/api/rag/sandboxes/' + encodeURIComponent(state.selectedSandboxId), { method: 'DELETE' });
+      state.selectedSandboxId = '';
+      setFeedback('Kasten deleted.', false);
+      await refreshSandboxes();
+    } catch (err) {
+      setFeedback(toErrorMessage(err, 'Unable to delete this kasten right now.'), true);
+    }
   }
 
   function resetDraft() {
@@ -372,6 +426,18 @@
         fn.apply(null, args);
       }, wait);
     };
+  }
+
+  function sanitizeColorToken(value) {
+    var candidate = String(value || '').trim();
+    if (!candidate) return '#14b8a6';
+    if (/^#[0-9a-fA-F]{3,8}$/.test(candidate)) return candidate;
+    if (/^(rgb|rgba|hsl|hsla)\([\d\s.,%+-]+\)$/.test(candidate)) return candidate;
+    return '#14b8a6';
+  }
+
+  function toErrorMessage(err, fallback) {
+    return err && err.message ? err.message : fallback;
   }
 
   if (document.readyState === 'loading') {

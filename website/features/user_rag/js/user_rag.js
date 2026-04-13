@@ -11,7 +11,6 @@
     focusNodeId: '',
     focusNodeTitle: '',
     sources: [],
-    streamTarget: null,
     currentAssistantCitations: []
   };
   var els = {};
@@ -109,14 +108,17 @@
       chip.className = 'rag-source-chip';
       chip.textContent = source;
       chip.dataset.source = source;
+      chip.setAttribute('aria-pressed', 'false');
       chip.addEventListener('click', function () {
         var idx = state.sources.indexOf(source);
         if (idx >= 0) {
           state.sources.splice(idx, 1);
           chip.classList.remove('active');
+          chip.setAttribute('aria-pressed', 'false');
         } else {
           state.sources.push(source);
           chip.classList.add('active');
+          chip.setAttribute('aria-pressed', 'true');
         }
       });
       els.sourceGrid.appendChild(chip);
@@ -174,6 +176,7 @@
       var card = document.createElement('button');
       card.type = 'button';
       card.className = 'rag-session-card' + (session.id === state.sessionId ? ' active' : '');
+      card.setAttribute('aria-pressed', session.id === state.sessionId ? 'true' : 'false');
       card.innerHTML = [
         '<h3>' + escapeHtml(session.title || 'New conversation') + '</h3>',
         '<p>' + escapeHtml((session.quality_mode || 'fast').toUpperCase()) + ' mode</p>',
@@ -246,42 +249,47 @@
 
     setStatus('Creating grounded answer...');
     els.emptyState.classList.add('hidden');
-
-    if (!state.sessionId) {
-      await createSession();
-    }
+    setComposerBusy(true);
 
     var userNode = createMessageNode('user', content, [], {});
-    els.transcript.appendChild(userNode);
     var assistantNode = createMessageNode('assistant', '', [], {});
-    els.transcript.appendChild(assistantNode);
-    state.streamTarget = assistantNode;
-    state.currentAssistantCitations = [];
-    scrollTranscript();
-    els.input.value = '';
+    try {
+      if (!state.sessionId) {
+        await createSession();
+      }
 
-    var response = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + state.token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        content: content,
-        quality: els.qualitySelect.value,
-        scope_filter: buildScopeFilter(),
-        stream: true
-      })
-    });
+      els.transcript.appendChild(userNode);
+      els.transcript.appendChild(assistantNode);
+      state.currentAssistantCitations = [];
+      scrollTranscript();
+      els.input.value = '';
 
-    if (!response.ok || !response.body) {
-      var payload = await safeJson(response);
-      setStatus((payload && payload.detail) || 'The chat request failed.');
-      return;
+      var response = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + state.token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: content,
+          quality: els.qualitySelect.value,
+          scope_filter: buildScopeFilter(),
+          stream: true
+        })
+      });
+
+      if (!response.ok || !response.body) {
+        var payload = await safeJson(response);
+        throw new Error((payload && payload.detail) || 'The chat request failed.');
+      }
+
+      await consumeSSE(response.body.getReader(), assistantNode);
+      await refreshSessions();
+    } catch (err) {
+      rollbackPendingAssistant(assistantNode, userNode, err);
+    } finally {
+      setComposerBusy(false);
     }
-
-    await consumeSSE(response.body.getReader(), assistantNode);
-    await refreshSessions();
   }
 
   async function createSession() {
@@ -311,14 +319,15 @@
         handleSSEChunk(chunk, assistantNode);
       });
     }
+    if (buffer.trim()) {
+      handleSSEChunk(buffer, assistantNode);
+    }
   }
 
   function handleSSEChunk(chunk, assistantNode) {
     if (!chunk.trim()) return;
-    var lines = chunk.split('\n');
-    var dataLine = lines.filter(function (line) { return line.indexOf('data: ') === 0; }).join('');
-    if (!dataLine) return;
-    var payload = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+    var payload = parseSSEPayload(chunk);
+    if (!payload) return;
     var body = assistantNode.querySelector('.rag-message-body');
 
     if (payload.type === 'token') {
@@ -395,6 +404,58 @@
     renderSessions();
     setStatus('Ready.');
     els.input.focus();
+  }
+
+  function parseSSEPayload(chunk) {
+    var lines = chunk.split('\n');
+    var payloadLines = [];
+    lines.forEach(function (line) {
+      if (line.indexOf('data:') === 0) {
+        payloadLines.push(line.replace(/^data:\s?/, ''));
+      }
+    });
+    if (!payloadLines.length) return null;
+    try {
+      return JSON.parse(payloadLines.join('\n'));
+    } catch (err) {
+      console.warn('[user_rag] Ignoring malformed SSE payload', err);
+      return null;
+    }
+  }
+
+  function rollbackPendingAssistant(assistantNode, userNode, err) {
+    if (!assistantNode.isConnected && userNode.isConnected) {
+      userNode.remove();
+    }
+    if (!assistantNode.isConnected) {
+      setStatus(toErrorMessage(err, 'The chat request failed.'));
+      if (!els.transcript.children.length) {
+        els.emptyState.classList.remove('hidden');
+      }
+      return;
+    }
+    assistantNode.querySelector('.rag-message-body').textContent = toErrorMessage(err, 'The chat request failed.');
+    renderCitations(assistantNode, []);
+    setStatus(toErrorMessage(err, 'The chat request failed.'));
+  }
+
+  function setComposerBusy(isBusy) {
+    els.input.disabled = isBusy;
+    els.newSessionBtn.disabled = isBusy;
+    els.sandboxSelect.disabled = isBusy;
+    els.qualitySelect.disabled = isBusy;
+    els.tagsInput.disabled = isBusy;
+    q('send-btn').disabled = isBusy;
+    Array.prototype.forEach.call(
+      els.sourceGrid.querySelectorAll('.rag-source-chip'),
+      function (chip) {
+        chip.disabled = isBusy;
+      }
+    );
+  }
+
+  function toErrorMessage(err, fallback) {
+    return err && err.message ? err.message : fallback;
   }
 
   function setQueryParams() {

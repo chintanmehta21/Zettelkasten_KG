@@ -91,34 +91,34 @@
                             <div class="kastens-form-grid">
                                 <label>
                                     <span>Name</span>
-                                    <input type="text" id="kasten-name" maxlength="80" placeholder="Transformer notes" required>
+                                    <input type="text" id="kasten-name" name="kasten_name" maxlength="80" autocomplete="organization" spellcheck="false" placeholder="Transformer notes" required>
                                 </label>
                                 <label>
                                     <span>Default quality</span>
-                                    <select id="kasten-quality">
+                                    <select id="kasten-quality" name="default_quality">
                                         <option value="fast">Fast</option>
                                         <option value="high">High</option>
                                     </select>
                                 </label>
                                 <label>
                                     <span>Icon label</span>
-                                    <input type="text" id="kasten-icon" maxlength="24" placeholder="stack">
+                                    <input type="text" id="kasten-icon" name="icon_label" maxlength="24" autocomplete="off" spellcheck="false" placeholder="stack">
                                 </label>
                                 <label>
                                     <span>Accent color</span>
-                                    <input type="text" id="kasten-color" maxlength="24" placeholder="#14b8a6">
+                                    <input type="text" id="kasten-color" name="accent_color" maxlength="24" autocomplete="off" spellcheck="false" placeholder="#14b8a6">
                                 </label>
                             </div>
                             <label>
                                 <span>Description</span>
-                                <textarea id="kasten-description" rows="3" maxlength="300" placeholder="A focused workspace for comparing transformer architecture notes."></textarea>
+                                <textarea id="kasten-description" name="description" rows="3" maxlength="300" spellcheck="true" placeholder="A focused workspace for comparing transformer architecture notes."></textarea>
                             </label>
                             <div class="kastens-form-actions">
                                 <button class="kastens-primary" id="save-kasten-btn" type="submit">Save kasten</button>
                                 <button class="kastens-secondary ghost hidden" id="new-kasten-btn" type="button">New draft</button>
                                 <a class="kastens-secondary hidden" id="open-chat-btn" href="/home/rag">Open in chat</a>
                             </div>
-                            <p class="kastens-feedback" id="kasten-feedback"></p>
+                            <p class="kastens-feedback" id="kasten-feedback" role="status" aria-live="polite"></p>
                         </form>
                     </section>
 
@@ -130,10 +130,10 @@
                             </div>
                         </div>
                         <div class="kastens-search-row">
-                            <input class="kastens-search-input" id="node-search" type="search" placeholder="Search your zettels by title or summary..." autocomplete="off">
+                            <input class="kastens-search-input" id="node-search" name="node_search" type="search" placeholder="Search your zettels by title or summary..." autocomplete="off" spellcheck="false">
                         </div>
-                        <div class="kastens-search-results" id="node-search-results"></div>
-                        <div class="kastens-member-list" id="member-list"></div>
+                        <div class="kastens-search-results" id="node-search-results" aria-live="polite"></div>
+                        <div class="kastens-member-list" id="member-list" aria-live="polite"></div>
                     </section>
                 </div>
             </section>
