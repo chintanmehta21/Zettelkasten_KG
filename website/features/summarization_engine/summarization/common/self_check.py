@@ -3,17 +3,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from website.features.summarization_engine.core.config import EngineConfig
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.summarization.common.json_utils import parse_json_object
 from website.features.summarization_engine.summarization.common.prompts import SYSTEM_PROMPT
 
+_IMPORTANCE_MAP = {"low": 1, "medium": 2, "mid": 2, "high": 3, "very high": 4, "critical": 5}
+
 
 class MissingClaim(BaseModel):
     claim: str
     importance: int = Field(default=1, ge=1, le=5)
+
+    @field_validator("importance", mode="before")
+    @classmethod
+    def coerce_importance(cls, v):
+        if isinstance(v, int):
+            return max(1, min(v, 5))
+        if isinstance(v, str):
+            return _IMPORTANCE_MAP.get(v.strip().lower(), 3)
+        return 1
 
 
 @dataclass
