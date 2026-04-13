@@ -5,7 +5,10 @@ from uuid import UUID
 
 import pytest
 
-from website.features.summarization_engine.core.errors import RoutingError
+from website.features.summarization_engine.core.errors import (
+    ExtractionConfidenceError,
+    RoutingError,
+)
 from website.features.summarization_engine.core.models import (
     DetailedSummarySection,
     IngestResult,
@@ -23,7 +26,7 @@ async def test_orchestrator_routes_and_calls_ingestor_then_summarizer():
         source_type=SourceType.GITHUB,
         url="https://github.com/foo/bar",
         original_url="https://github.com/foo/bar",
-        raw_text="README content",
+        raw_text="README content with enough text to pass the fifty character minimum content gate for summarization",
         extraction_confidence="high",
         confidence_reason="readme ok",
         fetched_at=datetime.now(timezone.utc),
@@ -110,7 +113,7 @@ async def test_youtube_medium_confidence_passes_through_without_fallback():
         source_type=SourceType.YOUTUBE,
         url="https://www.youtube.com/watch?v=test123",
         original_url="https://www.youtube.com/watch?v=test123",
-        raw_text="Video Title\nChannel: TestChannel\nSome description",
+        raw_text="## Video\nVideo Title\nChannel: TestChannel\n## Description\nThis is a sufficiently long description about the video content that provides enough context for summarization.",
         sections={"Video": "Video Title\nChannel: TestChannel", "Transcript": ""},
         metadata={"video_id": "test123", "title": "Video Title"},
         extraction_confidence="medium",
@@ -163,3 +166,42 @@ async def test_youtube_medium_confidence_passes_through_without_fallback():
     assert ingest_arg.extraction_confidence == "medium"
     assert ingest_arg.metadata["title"] == "Video Title"
     assert result.mini_title == "Video Title"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rejects_thin_content():
+    """Orchestrator raises ExtractionConfidenceError when raw_text is near-empty.
+
+    This prevents the LLM from hallucinating a summary from insufficient input.
+    Section headers (## Video, ## Transcript, etc.) are stripped before the
+    50-char minimum check, so a result that is *only* headers still fails.
+    """
+    from website.features.summarization_engine.core.orchestrator import summarize_url
+
+    thin_ingest = IngestResult(
+        source_type=SourceType.YOUTUBE,
+        url="https://www.youtube.com/watch?v=thin123",
+        original_url="https://www.youtube.com/watch?v=thin123",
+        raw_text="## Video\nSome Title\n## Transcript\n",
+        extraction_confidence="low",
+        confidence_reason="no transcript available",
+        fetched_at=datetime.now(timezone.utc),
+    )
+
+    mock_ingestor = AsyncMock()
+    mock_ingestor.ingest.return_value = thin_ingest
+
+    with patch(
+        "website.features.summarization_engine.core.orchestrator.get_ingestor"
+    ) as get_ingestor, patch(
+        "website.features.summarization_engine.core.orchestrator.get_summarizer"
+    ) as get_summarizer:
+        get_ingestor.return_value = lambda: mock_ingestor
+        get_summarizer.return_value = lambda client, config: AsyncMock()
+
+        with pytest.raises(ExtractionConfidenceError):
+            await summarize_url(
+                "https://www.youtube.com/watch?v=thin123",
+                user_id=UUID("00000000-0000-0000-0000-000000000001"),
+                gemini_client=AsyncMock(),
+            )

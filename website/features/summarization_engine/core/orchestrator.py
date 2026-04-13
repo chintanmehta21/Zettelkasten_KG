@@ -9,7 +9,10 @@ from uuid import UUID
 from telegram_bot.utils.url_utils import validate_url
 
 from website.features.summarization_engine.core.config import load_config
-from website.features.summarization_engine.core.errors import RoutingError
+from website.features.summarization_engine.core.errors import (
+    ExtractionConfidenceError,
+    RoutingError,
+)
 from website.features.summarization_engine.core.models import (
     IngestResult,
     SourceType,
@@ -86,6 +89,21 @@ async def summarize_url_bundle(
         logger.warning(
             "orchestrator.low_confidence url=%s reason=%s raw_text_len=%d",
             url, ingest_result.confidence_reason, len(ingest_result.raw_text),
+        )
+
+    # Refuse to summarize near-empty content — the LLM will hallucinate.
+    # Strip section headers (## Video, ## Transcript, etc.) and whitespace
+    # to measure actual content length.
+    _MIN_CONTENT_CHARS = 50
+    stripped = ingest_result.raw_text
+    for marker in ("## Video", "## Transcript", "## Description", "Channel:"):
+        stripped = stripped.replace(marker, "")
+    if len(stripped.strip()) < _MIN_CONTENT_CHARS:
+        raise ExtractionConfidenceError(
+            f"Insufficient content extracted ({len(stripped.strip())} chars). "
+            f"Reason: {ingest_result.confidence_reason}",
+            source_type=effective_source_type.value,
+            reason=ingest_result.confidence_reason,
         )
 
     summarizer_cls = get_summarizer(effective_source_type)

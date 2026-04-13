@@ -13,6 +13,7 @@ from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
 from website.core.pipeline import summarize_url
+from website.features.summarization_engine.core.errors import ExtractionConfidenceError
 from website.core.graph_store import get_graph, delete_node as delete_graph_node
 from website.core.supabase_kg import KGGraph
 from website.experimental_features.nexus.service.persist import (
@@ -402,6 +403,16 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
             _graph_cache_global = None
             _graph_cache_global_ts = 0
         return persistence.result
+    except ExtractionConfidenceError as exc:
+        logger.warning("Extraction too thin for %s: %s", body.url, exc)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Could not extract enough content from this URL to produce "
+                "a reliable summary. This often happens with YouTube videos "
+                "when transcript access is restricted. Please try a different URL."
+            ),
+        )
     except Exception as exc:
         logger.error("Summarization failed for %s: %s", body.url, exc)
         raise HTTPException(
