@@ -93,3 +93,112 @@ async def test_orchestrator_rejects_private_ip_urls():
             user_id=UUID("00000000-0000-0000-0000-000000000001"),
             gemini_client=AsyncMock(),
         )
+
+
+# ── YouTube Gemini fallback tests ───────────────────────────────────────
+
+
+def _make_yt_ingest(confidence: str = "low", video_id: str = "abc123") -> IngestResult:
+    return IngestResult(
+        source_type=SourceType.YOUTUBE,
+        url=f"https://www.youtube.com/watch?v={video_id}",
+        original_url=f"https://www.youtube.com/watch?v={video_id}",
+        raw_text="",
+        sections={"Video": "", "Transcript": "", "Description": ""},
+        metadata={"video_id": video_id},
+        extraction_confidence=confidence,
+        confidence_reason="no transcript",
+        fetched_at=datetime.now(timezone.utc),
+    )
+
+
+@pytest.mark.asyncio
+async def test_youtube_fallback_uses_generate_multimodal():
+    """The fallback must call generate_multimodal, not .models.generate_content."""
+    from website.features.summarization_engine.core.orchestrator import (
+        _youtube_gemini_fallback,
+    )
+
+    mock_result = AsyncMock()
+    mock_result.text = (
+        "TITLE: The Strangest Drug Ever Studied\n"
+        "CHANNEL: SciShow\n"
+        "CONTENT:\nThis video explores the fascinating history..."
+        + " " * 100  # ensure > 100 chars
+    )
+    mock_result.model_used = "gemini-2.5-flash"
+
+    mock_client = AsyncMock()
+    mock_client.generate_multimodal = AsyncMock(return_value=mock_result)
+
+    ingest = _make_yt_ingest(confidence="low", video_id="hhjhU5MXZOo")
+    result = await _youtube_gemini_fallback(
+        ingest, mock_client, "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    )
+
+    # Must have called generate_multimodal, not .models.generate_content
+    mock_client.generate_multimodal.assert_awaited_once()
+    call_args = mock_client.generate_multimodal.call_args
+    contents = call_args.kwargs.get("contents") or call_args[0][0]
+    assert len(contents) == 2  # Part + prompt string
+
+    # Result should be upgraded
+    assert result.extraction_confidence == "high"
+    assert result.metadata["gemini_video_fallback"] is True
+    assert result.metadata["title"] == "The Strangest Drug Ever Studied"
+    assert result.metadata["channel"] == "SciShow"
+    assert "The Strangest Drug Ever Studied" in result.raw_text
+
+
+@pytest.mark.asyncio
+async def test_youtube_fallback_returns_original_on_short_response():
+    """If Gemini returns < 100 chars, keep the original ingest result."""
+    from website.features.summarization_engine.core.orchestrator import (
+        _youtube_gemini_fallback,
+    )
+
+    mock_result = AsyncMock()
+    mock_result.text = "Too short"
+    mock_result.model_used = "gemini-2.5-flash"
+
+    mock_client = AsyncMock()
+    mock_client.generate_multimodal = AsyncMock(return_value=mock_result)
+
+    ingest = _make_yt_ingest()
+    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
+
+    assert result is ingest  # unchanged
+    assert result.extraction_confidence == "low"
+
+
+@pytest.mark.asyncio
+async def test_youtube_fallback_returns_original_on_exception():
+    """If generate_multimodal raises, gracefully return the original."""
+    from website.features.summarization_engine.core.orchestrator import (
+        _youtube_gemini_fallback,
+    )
+
+    mock_client = AsyncMock()
+    mock_client.generate_multimodal = AsyncMock(
+        side_effect=RuntimeError("API quota exceeded"),
+    )
+
+    ingest = _make_yt_ingest()
+    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
+
+    assert result is ingest  # unchanged
+
+
+@pytest.mark.asyncio
+async def test_youtube_fallback_skips_if_no_multimodal_method():
+    """If gemini_client lacks generate_multimodal, skip gracefully."""
+    from website.features.summarization_engine.core.orchestrator import (
+        _youtube_gemini_fallback,
+    )
+
+    mock_client = object()  # no generate_multimodal attr
+
+    ingest = _make_yt_ingest()
+    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
+
+    assert result is ingest  # unchanged

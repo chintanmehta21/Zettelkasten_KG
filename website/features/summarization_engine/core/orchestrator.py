@@ -111,6 +111,10 @@ async def _youtube_gemini_fallback(
 
     Google's servers can access YouTube natively, bypassing the datacenter
     IP blocking that kills youtube-transcript-api on cloud hosts.
+
+    The ``gemini_client`` is a ``TieredGeminiClient`` — we call its
+    ``generate_multimodal`` method which routes through GeminiKeyPool
+    (key rotation, model fallback, retry logic).
     """
     from google.genai import types
 
@@ -118,40 +122,51 @@ async def _youtube_gemini_fallback(
     watch_url = f"https://www.youtube.com/watch?v={video_id}"
 
     prompt = (
-        "Analyze this YouTube video thoroughly. Provide:\n"
-        "1. The exact video title\n"
+        "You are watching a YouTube video. Analyze it thoroughly and provide:\n"
+        "1. The exact video title as shown on YouTube\n"
         "2. The channel name\n"
-        "3. A comprehensive transcript-like summary of the full video content "
-        "(cover all major points, arguments, and conclusions)\n\n"
-        "Format your response as:\n"
-        "TITLE: <title>\n"
-        "CHANNEL: <channel>\n"
-        "CONTENT:\n<detailed content summary>"
+        "3. A comprehensive transcript-like summary of ALL the video content "
+        "(cover every major point, argument, example, and conclusion)\n\n"
+        "Format your response EXACTLY as:\n"
+        "TITLE: <exact video title>\n"
+        "CHANNEL: <channel name>\n"
+        "CONTENT:\n<detailed content covering the entire video>"
     )
 
+    if not hasattr(gemini_client, "generate_multimodal"):
+        logger.warning(
+            "[yt-fallback] gemini_client lacks generate_multimodal — skipping for %s",
+            watch_url,
+        )
+        return ingest_result
+
     try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
+        result = await gemini_client.generate_multimodal(
             contents=[
-                types.Part.from_uri(file_uri=watch_url, mime_type="video/mp4"),
+                types.Part.from_uri(
+                    file_uri=watch_url, mime_type="video/mp4",
+                ),
                 prompt,
             ],
+            label="yt-video-fallback",
         )
-        raw_text = response.text or ""
+        raw_text = result.text
+
         if len(raw_text.strip()) < 100:
             logger.warning(
-                "[yt-fallback] Gemini video understanding returned insufficient content for %s",
-                watch_url,
+                "[yt-fallback] Gemini returned insufficient content for %s "
+                "(%d chars, model=%s)",
+                watch_url, len(raw_text.strip()), result.model_used,
             )
             return ingest_result
 
-        # Extract title from Gemini response
+        # Extract structured fields from Gemini response
         title_match = re.search(r"TITLE:\s*(.+)", raw_text)
         channel_match = re.search(r"CHANNEL:\s*(.+)", raw_text)
         gemini_title = title_match.group(1).strip() if title_match else ""
         gemini_channel = channel_match.group(1).strip() if channel_match else ""
 
-        # Update the ingest result with Gemini's content
+        # Update metadata
         updated_metadata = dict(ingest_result.metadata)
         if gemini_title:
             updated_metadata["title"] = gemini_title
@@ -159,6 +174,7 @@ async def _youtube_gemini_fallback(
             updated_metadata["channel"] = gemini_channel
         updated_metadata["gemini_video_fallback"] = True
 
+        # Rebuild sections with Gemini's content
         updated_sections = dict(ingest_result.sections) if ingest_result.sections else {}
         updated_sections["Transcript"] = raw_text
         if gemini_title:
@@ -168,8 +184,9 @@ async def _youtube_gemini_fallback(
         new_raw_text = join_sections(updated_sections)
 
         logger.info(
-            "[yt-fallback] Gemini video understanding succeeded for %s (%d chars)",
-            watch_url, len(new_raw_text),
+            "[yt-fallback] Gemini video understanding succeeded for %s "
+            "(%d chars, title=%r, model=%s)",
+            watch_url, len(new_raw_text), gemini_title, result.model_used,
         )
 
         return IngestResult(
