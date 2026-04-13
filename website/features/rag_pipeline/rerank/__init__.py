@@ -1,3 +1,3 @@
-from .tei_client import TEIReranker
+from .cascade import CascadeReranker
 
-__all__ = ["TEIReranker"]
+__all__ = ["CascadeReranker"]

@@ -21,7 +21,7 @@ from website.features.rag_pipeline.orchestrator import RAGOrchestrator
 from website.features.rag_pipeline.query.rewriter import QueryRewriter
 from website.features.rag_pipeline.query.router import QueryRouter
 from website.features.rag_pipeline.query.transformer import QueryTransformer
-from website.features.rag_pipeline.rerank.tei_client import TEIReranker
+from website.features.rag_pipeline.rerank.cascade import CascadeReranker
 from website.features.rag_pipeline.retrieval.graph_score import LocalizedPageRankScorer
 from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever
 from website.experimental_features.nexus.service.persist import get_supabase_scope
@@ -63,8 +63,9 @@ def _build_runtime(user_sub: str | None) -> RAGRuntime:
         transformer=QueryTransformer(),
         retriever=HybridRetriever(embedder=embedder, supabase=client),
         graph_scorer=LocalizedPageRankScorer(supabase=client),
-        reranker=TEIReranker(
-            base_url=os.environ.get("RAG_RERANKER_URL", "http://reranker:8080"),
+        reranker=CascadeReranker(
+            model_dir=os.environ.get("RAG_MODEL_DIR", "/app/models"),
+            stage1_k=int(os.environ.get("RAG_CASCADE_STAGE1_K", "15")),
         ),
         assembler=ContextAssembler(),
         llm=LLMRouter(gemini=GeminiBackend(), claude=ClaudeBackend()),
