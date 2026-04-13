@@ -619,8 +619,16 @@
       var resp = await apiPromise;
 
       if (!resp.ok) {
-        var err = await resp.json();
-        throw new Error(err.detail || 'Failed to process URL');
+        var errMsg = 'Failed to process URL (HTTP ' + resp.status + ')';
+        try {
+          var err = await resp.json();
+          errMsg = err.detail || errMsg;
+        } catch (_parseErr) {
+          var rawText = '';
+          try { rawText = await resp.text(); } catch (_) {}
+          if (rawText) errMsg = rawText.slice(0, 200);
+        }
+        throw new Error(errMsg);
       }
 
       var result = await resp.json();
