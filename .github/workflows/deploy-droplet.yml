@@ -217,7 +217,10 @@ jobs:
               echo "[caddy] Already has --init, skipping"
             fi
 
-            # ── 4. Run deploy with one retry ──
+            # ── 4. Fix CRLF in deploy scripts (one-time droplet remediation) ──
+            sudo sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
+
+            # ── 5. Run deploy with one retry ──
             for attempt in 1 2; do
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
