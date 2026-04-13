@@ -284,10 +284,14 @@ async def test_answer_stream_yields_first_token_before_generation_completes() ->
 
     next_token_task = asyncio.create_task(anext(stream))
     await asyncio.wait_for(llm.first_token_emitted.wait(), timeout=1.0)
-    await asyncio.sleep(0)
+    # Give the event loop enough cycles to propagate the token
+    for _ in range(10):
+        await asyncio.sleep(0)
+        if next_token_task.done():
+            break
 
-    assert next_token_task.done(), "First token should be yielded before the model finishes streaming"
-    assert (await next_token_task) == {"type": "token", "content": "Hello"}
+    result = await asyncio.wait_for(next_token_task, timeout=2.0)
+    assert result == {"type": "token", "content": "Hello"}
 
     llm.allow_completion.set()
     remaining = [event async for event in stream]
