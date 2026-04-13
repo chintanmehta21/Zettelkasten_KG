@@ -1,21 +1,51 @@
-"""Reddit ingestor using the public JSON endpoint by default."""
+"""Reddit ingestor with JSON endpoint + HTML fallback."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
-from website.features.summarization_engine.source_ingest.utils import compact_text, fetch_json, join_sections, utc_now
+from website.features.summarization_engine.source_ingest.utils import (
+    compact_text,
+    extract_html_text,
+    fetch_json,
+    fetch_text,
+    join_sections,
+    utc_now,
+)
+
+logger = logging.getLogger(__name__)
+
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 class RedditIngestor(BaseIngestor):
     source_type = SourceType.REDDIT
 
     async def ingest(self, url: str, *, config: dict[str, Any]) -> IngestResult:
+        # Try JSON endpoint first (fast, structured)
+        try:
+            return await self._ingest_json(url, config)
+        except Exception as exc:
+            logger.warning("Reddit JSON fetch failed (%s), falling back to HTML", exc)
+
+        # Fallback: scrape the HTML page
+        return await self._ingest_html(url, config)
+
+    async def _ingest_json(self, url: str, config: dict[str, Any]) -> IngestResult:
         json_url = url.rstrip("/") + ".json"
-        payload, final_url = await fetch_json(json_url, headers={"User-Agent": config.get("user_agent", "zettelkasten-engine/2.0")})
+        headers = {"User-Agent": _BROWSER_UA}
+        payload, final_url = await fetch_json(json_url, headers=headers)
         post = payload[0]["data"]["children"][0]["data"] if payload else {}
-        comments = _comment_texts(payload[1]["data"]["children"] if len(payload) > 1 else [], int(config.get("max_comments", 50)))
+        comments = _comment_texts(
+            payload[1]["data"]["children"] if len(payload) > 1 else [],
+            int(config.get("max_comments", 50)),
+        )
         sections = {
             "Post": f"{post.get('title') or ''}\n{post.get('selftext') or ''}\n{post.get('url') or ''}",
             "Comments": "\n".join(comments),
@@ -26,11 +56,46 @@ class RedditIngestor(BaseIngestor):
             original_url=url,
             raw_text=join_sections(sections),
             sections=sections,
-            metadata={"subreddit": post.get("subreddit"), "score": post.get("score"), "author": post.get("author")},
+            metadata={
+                "subreddit": post.get("subreddit"),
+                "score": post.get("score"),
+                "author": post.get("author"),
+                "title": post.get("title"),
+            },
             extraction_confidence="high" if post.get("title") else "low",
             confidence_reason="Reddit JSON endpoint fetched",
             fetched_at=utc_now(),
         )
+
+    async def _ingest_html(self, url: str, config: dict[str, Any]) -> IngestResult:
+        # Use old.reddit.com for simpler HTML structure
+        old_url = url.replace("www.reddit.com", "old.reddit.com").replace("//reddit.com", "//old.reddit.com")
+        headers = {"User-Agent": _BROWSER_UA}
+        html, final_url = await fetch_text(old_url, headers=headers)
+        text, metadata = extract_html_text(html)
+        title = metadata.get("title", "").replace(" : ", " — ").strip()
+        sections = {"Post": text}
+        return IngestResult(
+            source_type=self.source_type,
+            url=url,
+            original_url=url,
+            raw_text=join_sections(sections),
+            sections=sections,
+            metadata={
+                "title": title,
+                "subreddit": _extract_subreddit(url),
+                **{k: v for k, v in metadata.items() if k != "title"},
+            },
+            extraction_confidence="medium",
+            confidence_reason="Reddit HTML fallback (JSON blocked)",
+            fetched_at=utc_now(),
+        )
+
+
+def _extract_subreddit(url: str) -> str | None:
+    import re
+    match = re.search(r"/r/([^/]+)", url)
+    return match.group(1) if match else None
 
 
 def _comment_texts(children: list[dict[str, Any]], limit: int) -> list[str]:
