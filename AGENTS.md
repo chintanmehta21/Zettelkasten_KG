@@ -307,11 +307,20 @@ Codex Desktop supports a plugin hook system with the same schema as Claude Code 
 
 ## Git Commits
 
-- **Max 10 words in the commit subject.** Just label the major change in the current iteration. No body paragraphs, no bullet lists, no explanations.
+- **5–10 words max in the commit subject.** Accurately showcase the changes made. No body paragraphs, no bullet lists, no explanations.
 - **No tool or author names.** Never mention `Claude`, `Codex`, `Copilot`, `ChatGPT`, or any AI tool / assistant / human author anywhere in the message.
 - **No `Co-Authored-By` trailers.** Never append `Co-Authored-By:` lines.
-- Follow conventional style: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:` prefixes. The prefix counts toward the 10-word budget.
-- When a commit implements a prior-session decision, append the observation ID in parentheses: e.g., `feat(engine): key-first rotation (#S155)`. The `(#S...)` token does not count toward the 10-word budget.
+- **Prefix tags** (always use one; the prefix counts toward the word budget):
+  - `build:` — Releases only. **Never** use autonomously; only when the user explicitly asks. (e.g., `build: v0.0.1`)
+  - `feat:` — Major feature builds. (e.g., `feat: migrate reranker`)
+  - `fix:` — Minor fixes or loop deploys. (e.g., `fix: stabilize streaming token test for CI timing`)
+  - `chore:` — Ad-hoc tasks; use as "others" when nothing else fits. (e.g., `chore: aggressive Docker prune to reclaim 8.5GB`)
+  - `ci:` — Changes to CI/CD pipelines. (e.g., `ci: SHA-pin SCP action in deploy workflow`)
+  - `ops:` — Infrastructure and deployment operational tasks. (e.g., `ops: sync deploy scripts to droplet`)
+  - `refactor:` — Restructure with same behavior. (e.g., `refactor: extract key pool into module`)
+  - `docs:` — Documentation only. (e.g., `docs: update CLAUDE.md commit tags`)
+  - `test:` — Test additions or changes only. (e.g., `test: add KG node dedup coverage`)
+- When a commit implements a prior-session decision, append the observation ID in parentheses: e.g., `feat(engine): key-first rotation (#S155)`. The `(#S...)` token does not count toward the word budget.
 
 ## Testing
 
