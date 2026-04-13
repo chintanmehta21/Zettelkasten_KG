@@ -242,6 +242,11 @@ jobs:
             # ── 5. Run deploy with one retry ──
             for attempt in 1 2; do
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
+                # ── 6. Cleanup stale Docker images ──
+                echo "[cleanup] Pruning unused Docker images..."
+                docker image prune -af --filter "until=72h" 2>/dev/null || true
+                RECLAIMED=$(docker system df --format '{{.Reclaimable}}' 2>/dev/null | head -1 || true)
+                echo "[cleanup] Reclaimable space: ${RECLAIMED:-unknown}"
                 exit 0
               fi
 
