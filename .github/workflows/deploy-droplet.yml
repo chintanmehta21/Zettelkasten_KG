@@ -218,7 +218,7 @@ jobs:
             fi
 
             # ── 4. Fix CRLF in deploy scripts (one-time droplet remediation) ──
-            sudo sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
+            sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 
             # ── 5. Run deploy with one retry ──
             for attempt in 1 2; do
