@@ -69,4 +69,5 @@ async def test_generate_passes_response_schema_for_structured(fake_pool):
 
     _, kwargs = fake_pool.generate_content.call_args
     assert kwargs["config"]["response_mime_type"] == "application/json"
-    assert kwargs["config"]["response_schema"] == Out
+    # response_schema is NOT passed to Gemini (additionalProperties unsupported)
+    assert "response_schema" not in kwargs["config"]

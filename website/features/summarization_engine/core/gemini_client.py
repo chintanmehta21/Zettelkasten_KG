@@ -51,7 +51,10 @@ class TieredGeminiClient:
         }
         if response_schema is not None:
             call_config["response_mime_type"] = "application/json"
-            call_config["response_schema"] = response_schema
+            # Don't pass response_schema to Gemini — Pydantic v2 emits
+            # additionalProperties which Gemini rejects.  JSON mode +
+            # prompt-based structure + parse_json_object is reliable enough.
+
         if system_instruction:
             call_config["system_instruction"] = system_instruction
 
