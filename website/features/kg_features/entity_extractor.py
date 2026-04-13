@@ -18,7 +18,7 @@ from typing import Callable
 
 import numpy as np
 from google.genai import types
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from website.features.api_key_switching import get_key_pool
 
@@ -41,6 +41,18 @@ class ExtractedRelationship(BaseModel):
     type: str
     strength: int = Field(default=5, ge=1, le=10)
     description: str = ""
+
+    @field_validator("strength", mode="before")
+    @classmethod
+    def coerce_strength(cls, v):
+        if isinstance(v, int):
+            return max(1, min(v, 10))
+        if isinstance(v, str):
+            try:
+                return max(1, min(int(v), 10))
+            except ValueError:
+                return 5
+        return 5
 
 
 class ExtractionResult(BaseModel):
@@ -226,7 +238,6 @@ class EntityExtractor:
                     extract_prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=ExtractionResult,
                     ),
                     starting_model=model,
                     label="Entity extraction",
