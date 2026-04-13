@@ -49,14 +49,16 @@ def _is_rate_limited(exc: Exception) -> bool:
 def _is_retryable(exc: Exception) -> bool:
     """Return True if *exc* is a transient error worth retrying on next key.
 
-    Covers 429 rate-limits and 504 DEADLINE_EXCEEDED timeouts.
+    Covers 429 rate-limits, 503 UNAVAILABLE, and 504 DEADLINE_EXCEEDED.
     """
     if _is_rate_limited(exc):
         return True
-    if isinstance(exc, ClientError) and getattr(exc, "code", None) == 504:
+    if isinstance(exc, ClientError) and getattr(exc, "code", None) in (503, 504):
         return True
     exc_str = str(exc)
     if "DEADLINE_EXCEEDED" in exc_str or "504" in exc_str:
+        return True
+    if "UNAVAILABLE" in exc_str or "503" in exc_str:
         return True
     return False
 
@@ -237,7 +239,12 @@ class GeminiKeyPool:
                 if _is_retryable(exc):
                     retries += 1
                     self._mark_cooldown(key_index, model)
-                    reason = "rate-limited" if _is_rate_limited(exc) else "timeout"
+                    if _is_rate_limited(exc):
+                        reason = "rate-limited"
+                    elif "503" in str(exc) or "UNAVAILABLE" in str(exc):
+                        reason = "unavailable"
+                    else:
+                        reason = "timeout"
                     logger.warning(
                         "%s %s on key[%d]/%s — retry %d/%d, cooldown %ds",
                         label or "Gemini",

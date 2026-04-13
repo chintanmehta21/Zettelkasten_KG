@@ -233,6 +233,38 @@ async def test_generate_non_429_raises_immediately():
     pool._clients[1].aio.models.generate_content.assert_not_called()
 
 
+def _make_503_error(msg: str = "UNAVAILABLE") -> ClientError:
+    """Build a ClientError that looks like a Gemini 503."""
+    return ClientError(
+        code=503,
+        response_json={"error": {"message": msg, "status": "UNAVAILABLE"}},
+    )
+
+
+async def test_generate_rotates_keys_on_503():
+    """503 on key0/flash → tries key1/flash → succeeds."""
+    pool = _make_pool_with_mocks(2)
+    mock_response = MagicMock()
+    pool._clients[0].aio.models.generate_content = AsyncMock(side_effect=_make_503_error())
+    pool._clients[1].aio.models.generate_content = AsyncMock(return_value=mock_response)
+    response, model, key_idx = await pool.generate_content("test")
+    assert model == "gemini-2.5-flash"
+    assert key_idx == 1
+
+
+async def test_generate_503_falls_to_lite():
+    """503 on all keys for flash → falls through to flash-lite."""
+    pool = _make_pool_with_mocks(2)
+    mock_response = MagicMock()
+    pool._clients[0].aio.models.generate_content = AsyncMock(
+        side_effect=[_make_503_error(), mock_response]
+    )
+    pool._clients[1].aio.models.generate_content = AsyncMock(side_effect=_make_503_error())
+    response, model, key_idx = await pool.generate_content("test")
+    assert model == "gemini-2.5-flash-lite"
+    assert key_idx == 0
+
+
 async def test_generate_with_starting_model():
     """starting_model parameter changes the model order."""
     pool = _make_pool_with_mocks(1)
