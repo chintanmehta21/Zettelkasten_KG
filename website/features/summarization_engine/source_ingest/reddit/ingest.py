@@ -68,10 +68,37 @@ class RedditIngestor(BaseIngestor):
         )
 
     async def _ingest_html(self, url: str, config: dict[str, Any]) -> IngestResult:
-        # Use old.reddit.com for simpler HTML structure
-        old_url = url.replace("www.reddit.com", "old.reddit.com").replace("//reddit.com", "//old.reddit.com")
+        # Try multiple Reddit domains
+        domains_to_try = [
+            url,
+            url.replace("www.reddit.com", "old.reddit.com").replace("//reddit.com", "//old.reddit.com"),
+        ]
         headers = {"User-Agent": _BROWSER_UA}
-        html, final_url = await fetch_text(old_url, headers=headers)
+        html = ""
+        final_url = url
+        for attempt_url in domains_to_try:
+            try:
+                html, final_url = await fetch_text(attempt_url, headers=headers)
+                if html:
+                    break
+            except Exception as exc:
+                logger.warning("Reddit HTML fetch failed for %s: %s", attempt_url, exc)
+                continue
+
+        if not html:
+            # Last resort: try Google cache or return minimal result
+            return IngestResult(
+                source_type=self.source_type,
+                url=url,
+                original_url=url,
+                raw_text=f"Reddit post at {url}. Content could not be fetched (blocked by Reddit).",
+                sections={"Post": f"Reddit post URL: {url}"},
+                metadata={"title": "Reddit Post", "subreddit": _extract_subreddit(url)},
+                extraction_confidence="low",
+                confidence_reason="Reddit blocked all fetch attempts",
+                fetched_at=utc_now(),
+            )
+
         text, metadata = extract_html_text(html)
         title = metadata.get("title", "").replace(" : ", " — ").strip()
         sections = {"Post": text}
