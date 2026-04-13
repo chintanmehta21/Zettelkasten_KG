@@ -58,5 +58,10 @@ sse-starlette>=2.0
 pytest-httpx>=0.34
 python-multipart>=0.0.20
 
+# Cascade reranker (FlashRank + BGE-base ONNX)
+flashrank>=0.2
+onnxruntime>=1.17
+huggingface_hub>=0.20
+
 # Future backend option for high-quality generation
 # anthropic>=0.30.0

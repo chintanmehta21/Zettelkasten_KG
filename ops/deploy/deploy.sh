@@ -28,6 +28,13 @@ fi
 
 ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
+
+MODEL_DIR="$ROOT/data/models"
+if [[ ! -d "$MODEL_DIR" ]]; then
+    mkdir -p "$MODEL_DIR"
+    chown deploy:deploy "$MODEL_DIR"
+fi
+
 ACTIVE_FILE="$ROOT/ACTIVE_COLOR"
 SNIPPET="$ROOT/caddy/upstream.snippet"
 LOG="$ROOT/logs/deploy.log"

@@ -1,31 +1,4 @@
 services:
-  reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    container_name: zettelkasten-reranker-green
-    hostname: reranker
-    restart: unless-stopped
-    command:
-      - "--model-id"
-      - "BAAI/bge-reranker-v2-m3"
-      - "--port"
-      - "8080"
-    networks:
-      - zettelnet
-    mem_limit: 2048m
-    memswap_limit: 2048m
-    stop_grace_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "curl", "--silent", "--fail", "--max-time", "2", "http://127.0.0.1:8080/health"]
-      interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
-
   zettelkasten-green:
     image: ghcr.io/chintanmehta21/zettelkasten-kg-website:${IMAGE_TAG:-latest}
     container_name: zettelkasten-green
@@ -36,19 +9,17 @@ services:
     environment:
       WEBHOOK_PORT: "10000"
       NEXUS_ENABLED: "true"
-      RAG_RERANKER_URL: "http://reranker:8080"
+      RAG_MODEL_DIR: "/app/models"
     ports:
       - "127.0.0.1:10001:10000"
     networks:
       - zettelnet
-    depends_on:
-      reranker:
-        condition: service_healthy
     volumes:
       - /opt/zettelkasten/data/kg_output:/app/kg_output
       - /opt/zettelkasten/data/bot_data:/app/bot_data
-    mem_limit: 768m
-    memswap_limit: 768m
+      - /opt/zettelkasten/data/models:/app/models:rw
+    mem_limit: 1024m
+    memswap_limit: 1024m
     pids_limit: 512
     stop_grace_period: 20s
     read_only: true

@@ -13,6 +13,41 @@ Zettelkasten Capture Bot — a Telegram bot that captures URLs (Reddit, YouTube,
 
 Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with REST API at `/api/summarize` and an interactive 3D knowledge graph at `/knowledge-graph`.
 
+## Production Change Discipline
+
+This is a live production web application with active users across frontend, backend/API, and database layers. Every change has immediate real-world impact, and anything that cannot scale with user growth is unacceptable.
+
+**Before any change:**
+- Read and understand the full in-scope code path. Verify behavior from code, docs, tests, and existing patterns; do not assume.
+- Identify every touched component, dependency, integration point, and side effect before editing.
+- Reason through edge cases up front, including empty states, invalid inputs, concurrent requests, simultaneous writes, race conditions, auth failures, upstream/network timeouts, and data inconsistency risks.
+
+**When implementing:**
+- Ship complete, self-contained changes only. No TODOs, placeholders, stubs, or partial follow-ups.
+- Preserve backward compatibility unless the user explicitly approves a breaking change.
+- If a change has meaningful production risk, stop and ask for confirmation before proceeding. State the risk clearly and propose the safest path.
+- Do not treat ambiguous behavior as settled. Resolve ambiguity explicitly from code or docs, or surface the uncertainty.
+
+**Testing requirements:**
+- Add or update tests for happy paths, edge cases, boundary/invalid inputs, and relevant scale/concurrency scenarios.
+- For stateful or shared-resource paths, cover high concurrency, simultaneous writes, race conditions, and session collision risks where the code path can plausibly fail under load.
+- Run the relevant test suite and verify existing tests still pass. If anything fails, diagnose and fix the regression before considering the task complete.
+
+**Communication style:**
+- Be concise and technical. State what changed, why, impact, and any residual risk.
+- Use bullet points only for major tasks; keep smaller updates brief.
+- Ask for confirmation before risky changes.
+- State uncertainty explicitly. Never present assumptions as facts.
+- Cite relevant documentation, specifications, or library behavior when correctness depends on those details.
+- Flag the conditions under which the implementation could break.
+
+**Never:**
+- Leave the codebase in a broken, partial, or knowingly fragile state.
+- Skip tests because a change appears simple.
+- Ignore scalability, concurrency, or failure-mode analysis.
+- Proceed through ambiguity without acknowledging it.
+- Present assumptions as verified facts.
+
 ## Commands
 
 ```bash
