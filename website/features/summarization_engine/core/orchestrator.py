@@ -1,9 +1,11 @@
 """Single-URL orchestrator: route, ingest, summarize, return."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 import logging
 from typing import Any
+from urllib.parse import urlparse, parse_qs
 from uuid import UUID
 
 from telegram_bot.utils.url_utils import validate_url
@@ -80,6 +82,17 @@ async def summarize_url_bundle(
             url, ingest_result.confidence_reason, len(ingest_result.raw_text),
         )
 
+    # YouTube fallback: when transcript fails (datacenter IP blocked),
+    # use Gemini video understanding to extract content directly
+    if (
+        effective_source_type == SourceType.YOUTUBE
+        and ingest_result.extraction_confidence != "high"
+        and gemini_client is not None
+    ):
+        ingest_result = await _youtube_gemini_fallback(
+            ingest_result, gemini_client, url,
+        )
+
     summarizer_cls = get_summarizer(effective_source_type)
     summarizer = summarizer_cls(gemini_client, source_config)
     summary_result = await summarizer.summarize(ingest_result)
@@ -87,3 +100,93 @@ async def summarize_url_bundle(
         ingest_result=ingest_result,
         summary_result=summary_result,
     )
+
+
+async def _youtube_gemini_fallback(
+    ingest_result: IngestResult,
+    gemini_client: Any,
+    url: str,
+) -> IngestResult:
+    """Use Gemini video understanding when YouTube transcript extraction fails.
+
+    Google's servers can access YouTube natively, bypassing the datacenter
+    IP blocking that kills youtube-transcript-api on cloud hosts.
+    """
+    from google.genai import types
+
+    video_id = ingest_result.metadata.get("video_id", "")
+    watch_url = f"https://www.youtube.com/watch?v={video_id}"
+
+    prompt = (
+        "Analyze this YouTube video thoroughly. Provide:\n"
+        "1. The exact video title\n"
+        "2. The channel name\n"
+        "3. A comprehensive transcript-like summary of the full video content "
+        "(cover all major points, arguments, and conclusions)\n\n"
+        "Format your response as:\n"
+        "TITLE: <title>\n"
+        "CHANNEL: <channel>\n"
+        "CONTENT:\n<detailed content summary>"
+    )
+
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_uri(file_uri=watch_url, mime_type="video/mp4"),
+                prompt,
+            ],
+        )
+        raw_text = response.text or ""
+        if len(raw_text.strip()) < 100:
+            logger.warning(
+                "[yt-fallback] Gemini video understanding returned insufficient content for %s",
+                watch_url,
+            )
+            return ingest_result
+
+        # Extract title from Gemini response
+        title_match = re.search(r"TITLE:\s*(.+)", raw_text)
+        channel_match = re.search(r"CHANNEL:\s*(.+)", raw_text)
+        gemini_title = title_match.group(1).strip() if title_match else ""
+        gemini_channel = channel_match.group(1).strip() if channel_match else ""
+
+        # Update the ingest result with Gemini's content
+        updated_metadata = dict(ingest_result.metadata)
+        if gemini_title:
+            updated_metadata["title"] = gemini_title
+        if gemini_channel:
+            updated_metadata["channel"] = gemini_channel
+        updated_metadata["gemini_video_fallback"] = True
+
+        updated_sections = dict(ingest_result.sections) if ingest_result.sections else {}
+        updated_sections["Transcript"] = raw_text
+        if gemini_title:
+            updated_sections["Video"] = f"{gemini_title}\nChannel: {gemini_channel}"
+
+        from website.features.summarization_engine.source_ingest.utils import join_sections
+        new_raw_text = join_sections(updated_sections)
+
+        logger.info(
+            "[yt-fallback] Gemini video understanding succeeded for %s (%d chars)",
+            watch_url, len(new_raw_text),
+        )
+
+        return IngestResult(
+            source_type=ingest_result.source_type,
+            url=ingest_result.url,
+            original_url=ingest_result.original_url,
+            raw_text=new_raw_text,
+            sections=updated_sections,
+            metadata=updated_metadata,
+            extraction_confidence="high",
+            confidence_reason="gemini video understanding fallback",
+            fetched_at=ingest_result.fetched_at,
+        )
+
+    except Exception as exc:
+        logger.warning(
+            "[yt-fallback] Gemini video understanding failed for %s: %s",
+            watch_url, exc,
+        )
+        return ingest_result
