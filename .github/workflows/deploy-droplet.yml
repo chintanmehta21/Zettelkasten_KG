@@ -108,7 +108,7 @@ jobs:
           sparse-checkout-cone-mode: true
 
       - name: Sync deploy scripts to droplet
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
@@ -116,7 +116,7 @@ jobs:
           port: ${{ secrets.DROPLET_SSH_PORT }}
           source: "ops/deploy/*.sh"
           target: "/opt/zettelkasten/deploy/"
-          strip_components: 2
+          strip_components: 2  # ops/deploy/ -> /opt/zettelkasten/deploy/
 
       - name: Build container .env body from environment secrets
         id: env
@@ -235,6 +235,7 @@ jobs:
             fi
 
             # ── 4. Ensure deploy scripts are executable and LF-terminated ──
+            # SCP doesn't preserve +x; sed is a safety net for pre-existing files
             chmod +x /opt/zettelkasten/deploy/*.sh
             sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 

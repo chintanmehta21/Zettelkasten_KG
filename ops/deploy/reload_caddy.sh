@@ -55,6 +55,7 @@ main() {
     # deploy.sh writes upstream.snippet via `cat >` which preserves the
     # inode, so the bind-mounted file inside the container stays current.
     if reload_with_exec; then
+        log "${LOG_PREFIX:-}" "Caddy reloaded successfully via exec"
         return 0
     fi
 
