@@ -95,110 +95,71 @@ async def test_orchestrator_rejects_private_ip_urls():
         )
 
 
-# ── YouTube Gemini fallback tests ───────────────────────────────────────
+@pytest.mark.asyncio
+async def test_youtube_medium_confidence_passes_through_without_fallback():
+    """YouTube medium-confidence ingest results pass directly to the summarizer.
 
+    A previous Gemini video-understanding fallback was removed because
+    Part.from_uri with YouTube URLs hallucinated unrelated content via the
+    API-key SDK.  The yt-dlp metadata path (medium confidence) is correct
+    and should flow straight to summarization.
+    """
+    from website.features.summarization_engine.core.orchestrator import summarize_url
 
-def _make_yt_ingest(confidence: str = "low", video_id: str = "abc123") -> IngestResult:
-    return IngestResult(
+    fake_ingest = IngestResult(
         source_type=SourceType.YOUTUBE,
-        url=f"https://www.youtube.com/watch?v={video_id}",
-        original_url=f"https://www.youtube.com/watch?v={video_id}",
-        raw_text="",
-        sections={"Video": "", "Transcript": "", "Description": ""},
-        metadata={"video_id": video_id},
-        extraction_confidence=confidence,
-        confidence_reason="no transcript",
+        url="https://www.youtube.com/watch?v=test123",
+        original_url="https://www.youtube.com/watch?v=test123",
+        raw_text="Video Title\nChannel: TestChannel\nSome description",
+        sections={"Video": "Video Title\nChannel: TestChannel", "Transcript": ""},
+        metadata={"video_id": "test123", "title": "Video Title"},
+        extraction_confidence="medium",
+        confidence_reason="metadata fallback used (no transcript)",
         fetched_at=datetime.now(timezone.utc),
     )
-
-
-@pytest.mark.asyncio
-async def test_youtube_fallback_uses_generate_multimodal():
-    """The fallback must call generate_multimodal, not .models.generate_content."""
-    from website.features.summarization_engine.core.orchestrator import (
-        _youtube_gemini_fallback,
+    fake_meta = SummaryMetadata(
+        source_type=SourceType.YOUTUBE,
+        url="https://www.youtube.com/watch?v=test123",
+        extraction_confidence="medium",
+        confidence_reason="metadata fallback",
+        total_tokens_used=80,
+        gemini_pro_tokens=80,
+        gemini_flash_tokens=0,
+        total_latency_ms=1200,
+        cod_iterations_used=2,
+        self_check_missing_count=0,
+        patch_applied=False,
+    )
+    fake_summary = SummaryResult(
+        mini_title="Video Title",
+        brief_summary="A test video about something.",
+        tags=["youtube", "test", "video", "demo", "channel", "content", "media", "watch"],
+        detailed_summary=[DetailedSummarySection(heading="Overview", bullets=["Test"])],
+        metadata=fake_meta,
     )
 
-    mock_result = AsyncMock()
-    mock_result.text = (
-        "TITLE: The Strangest Drug Ever Studied\n"
-        "CHANNEL: SciShow\n"
-        "CONTENT:\nThis video explores the fascinating history..."
-        + " " * 100  # ensure > 100 chars
-    )
-    mock_result.model_used = "gemini-2.5-flash"
+    mock_ingestor = AsyncMock()
+    mock_ingestor.ingest.return_value = fake_ingest
+    mock_summarizer = AsyncMock()
+    mock_summarizer.summarize.return_value = fake_summary
 
-    mock_client = AsyncMock()
-    mock_client.generate_multimodal = AsyncMock(return_value=mock_result)
+    with patch(
+        "website.features.summarization_engine.core.orchestrator.get_ingestor"
+    ) as get_ingestor, patch(
+        "website.features.summarization_engine.core.orchestrator.get_summarizer"
+    ) as get_summarizer:
+        get_ingestor.return_value = lambda: mock_ingestor
+        get_summarizer.return_value = lambda client, config: mock_summarizer
 
-    ingest = _make_yt_ingest(confidence="low", video_id="hhjhU5MXZOo")
-    result = await _youtube_gemini_fallback(
-        ingest, mock_client, "https://www.youtube.com/watch?v=hhjhU5MXZOo",
-    )
+        result = await summarize_url(
+            "https://www.youtube.com/watch?v=test123",
+            user_id=UUID("00000000-0000-0000-0000-000000000001"),
+            gemini_client=AsyncMock(),
+        )
 
-    # Must have called generate_multimodal, not .models.generate_content
-    mock_client.generate_multimodal.assert_awaited_once()
-    call_args = mock_client.generate_multimodal.call_args
-    contents = call_args.kwargs.get("contents") or call_args[0][0]
-    assert len(contents) == 2  # Part + prompt string
-
-    # Result should be upgraded
-    assert result.extraction_confidence == "high"
-    assert result.metadata["gemini_video_fallback"] is True
-    assert result.metadata["title"] == "The Strangest Drug Ever Studied"
-    assert result.metadata["channel"] == "SciShow"
-    assert "The Strangest Drug Ever Studied" in result.raw_text
-
-
-@pytest.mark.asyncio
-async def test_youtube_fallback_returns_original_on_short_response():
-    """If Gemini returns < 100 chars, keep the original ingest result."""
-    from website.features.summarization_engine.core.orchestrator import (
-        _youtube_gemini_fallback,
-    )
-
-    mock_result = AsyncMock()
-    mock_result.text = "Too short"
-    mock_result.model_used = "gemini-2.5-flash"
-
-    mock_client = AsyncMock()
-    mock_client.generate_multimodal = AsyncMock(return_value=mock_result)
-
-    ingest = _make_yt_ingest()
-    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
-
-    assert result is ingest  # unchanged
-    assert result.extraction_confidence == "low"
-
-
-@pytest.mark.asyncio
-async def test_youtube_fallback_returns_original_on_exception():
-    """If generate_multimodal raises, gracefully return the original."""
-    from website.features.summarization_engine.core.orchestrator import (
-        _youtube_gemini_fallback,
-    )
-
-    mock_client = AsyncMock()
-    mock_client.generate_multimodal = AsyncMock(
-        side_effect=RuntimeError("API quota exceeded"),
-    )
-
-    ingest = _make_yt_ingest()
-    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
-
-    assert result is ingest  # unchanged
-
-
-@pytest.mark.asyncio
-async def test_youtube_fallback_skips_if_no_multimodal_method():
-    """If gemini_client lacks generate_multimodal, skip gracefully."""
-    from website.features.summarization_engine.core.orchestrator import (
-        _youtube_gemini_fallback,
-    )
-
-    mock_client = object()  # no generate_multimodal attr
-
-    ingest = _make_yt_ingest()
-    result = await _youtube_gemini_fallback(ingest, mock_client, "url")
-
-    assert result is ingest  # unchanged
+    # Summarizer receives the original medium-confidence ingest — no fallback
+    mock_summarizer.summarize.assert_awaited_once()
+    ingest_arg = mock_summarizer.summarize.call_args[0][0]
+    assert ingest_arg.extraction_confidence == "medium"
+    assert ingest_arg.metadata["title"] == "Video Title"
+    assert result.mini_title == "Video Title"
