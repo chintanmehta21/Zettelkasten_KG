@@ -205,6 +205,16 @@
 
   function setupAvatar(profile) {
     var avatarUrl = profile.avatar_url || '';
+    var cacheKey = 'zk-avatar-url';
+
+    // If server has a valid avatar, use it and cache locally
+    if (avatarUrl && avatarUrl.includes('/artifacts/avatars/')) {
+      try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
+    } else {
+      // Fall back to cached avatar from localStorage
+      try { avatarUrl = localStorage.getItem(cacheKey) || ''; } catch (_) {}
+    }
+
     if (avatarUrl && avatarImg) {
       avatarImg.src = avatarUrl;
       avatarImg.onerror = function () {

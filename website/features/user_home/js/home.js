@@ -159,30 +159,44 @@
 
   async function setupAvatar(profile, token) {
     var avatarUrl = profile.avatar_url;
+    var cacheKey = 'zk-avatar-url';
 
-    // If no avatar set, assign a random one
-    if (!avatarUrl || !avatarUrl.includes('/artifacts/avatars/')) {
-      var randomId = Math.floor(Math.random() * AVATAR_COUNT);
-      avatarUrl = '/artifacts/avatars/avatar_' + String(randomId).padStart(2, '0') + '.svg';
-      _currentAvatarId = randomId;
+    // If server has a valid avatar, use it and cache locally
+    if (avatarUrl && avatarUrl.includes('/artifacts/avatars/')) {
+      var match = avatarUrl.match(/avatar_(\d+)\.svg/);
+      _currentAvatarId = match ? parseInt(match[1], 10) : 0;
+      try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
+    } else {
+      // Server has no avatar — check localStorage first to avoid random flicker
+      var cached = null;
+      try { cached = localStorage.getItem(cacheKey); } catch (_) {}
 
-      // Persist to server
+      if (cached && cached.includes('/artifacts/avatars/')) {
+        avatarUrl = cached;
+        var m2 = cached.match(/avatar_(\d+)\.svg/);
+        _currentAvatarId = m2 ? parseInt(m2[1], 10) : 0;
+      } else {
+        // First-ever visit: assign a random avatar
+        var randomId = Math.floor(Math.random() * AVATAR_COUNT);
+        avatarUrl = '/artifacts/avatars/avatar_' + String(randomId).padStart(2, '0') + '.svg';
+        _currentAvatarId = randomId;
+        try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
+      }
+
+      // Persist to server (fire-and-forget, but log failures)
       try {
-        await fetch('/api/me/avatar', {
+        var resp = await fetch('/api/me/avatar', {
           method: 'PUT',
           headers: {
             'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ avatar_id: randomId })
+          body: JSON.stringify({ avatar_id: _currentAvatarId })
         });
+        if (!resp.ok) console.warn('[home] Avatar persist returned', resp.status);
       } catch (e) {
         console.warn('[home] Avatar persist failed:', e);
       }
-    } else {
-      // Extract avatar_id from URL
-      var match = avatarUrl.match(/avatar_(\d+)\.svg/);
-      _currentAvatarId = match ? parseInt(match[1], 10) : 0;
     }
 
     // Display avatar

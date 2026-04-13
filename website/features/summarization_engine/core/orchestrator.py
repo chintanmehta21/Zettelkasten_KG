@@ -74,6 +74,12 @@ async def summarize_url_bundle(
     source_config = config.sources.get(effective_source_type.value, {})
     ingest_result = await ingestor.ingest(url, config=source_config)
 
+    if ingest_result.extraction_confidence == "low":
+        logger.warning(
+            "orchestrator.low_confidence url=%s reason=%s raw_text_len=%d",
+            url, ingest_result.confidence_reason, len(ingest_result.raw_text),
+        )
+
     summarizer_cls = get_summarizer(effective_source_type)
     summarizer = summarizer_cls(gemini_client, source_config)
     summary_result = await summarizer.summarize(ingest_result)
