@@ -23,7 +23,11 @@ class MissingClaim(BaseModel):
         if isinstance(v, int):
             return max(1, min(v, 5))
         if isinstance(v, str):
-            return _IMPORTANCE_MAP.get(v.strip().lower(), 3)
+            s = v.strip().lower().split(".")[0].split(",")[0].strip()
+            try:
+                return max(1, min(int(s), 5))
+            except ValueError:
+                return _IMPORTANCE_MAP.get(s, 3)
         return 1
 
 
@@ -56,5 +60,10 @@ class InvertedFactScoreSelfCheck:
             payload = parse_json_object(result.text)
         except Exception:
             return SelfCheckResult(pro_tokens=tokens)
-        missing = [MissingClaim(**item) for item in payload.get("missing", [])[: self._config.self_check.max_atomic_claims]]
+        missing = []
+        for item in payload.get("missing", [])[: self._config.self_check.max_atomic_claims]:
+            try:
+                missing.append(MissingClaim(**item))
+            except Exception:
+                continue
         return SelfCheckResult(missing=missing, pro_tokens=tokens)
