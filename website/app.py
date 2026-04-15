@@ -13,7 +13,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from website.api.chat_routes import router as chat_router
 from website.api.nexus import router as nexus_router
@@ -38,6 +38,22 @@ ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
 NEXUS_DIR = Path(__file__).parent / "experimental_features" / "nexus"
 SUMMARIZATION_ENGINE_DIR = Path(__file__).parent / "features" / "summarization_engine"
+HEADER_DIR = Path(__file__).parent / "features" / "header"
+_HEADER_PLACEHOLDER = "<!--ZK_HEADER-->"
+
+
+def _render_with_header(path: Path) -> HTMLResponse:
+    """Read an HTML page and inject the shared site header at the placeholder.
+
+    The placeholder is the literal comment ``<!--ZK_HEADER-->``. Re-reads on every
+    request so live edits to header.html show up without restart. Falls back to
+    returning the raw page unchanged if the placeholder or header file is absent.
+    """
+    html = path.read_text(encoding="utf-8")
+    if _HEADER_PLACEHOLDER in html:
+        header_html = (HEADER_DIR / "header.html").read_text(encoding="utf-8")
+        html = html.replace(_HEADER_PLACEHOLDER, header_html)
+    return HTMLResponse(content=html)
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -163,6 +179,10 @@ def create_app(lifespan=None) -> FastAPI:
     )
     app.mount("/pricing/js", StaticFiles(directory=str(PRICING_DIR / "js")), name="pricing-js")
 
+    # Shared site header (single source of truth for inner-page header markup)
+    app.mount("/header/css", StaticFiles(directory=str(HEADER_DIR / "css")), name="header-css")
+    app.mount("/header/js", StaticFiles(directory=str(HEADER_DIR / "js")), name="header-js")
+
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
     app.mount(
@@ -216,13 +236,13 @@ def create_app(lifespan=None) -> FastAPI:
             nexus_index = NEXUS_DIR / "index.html"
             if not nexus_index.exists():
                 raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
-            return FileResponse(str(nexus_index))
+            return _render_with_header(nexus_index)
 
     @app.get("/home/zettels")
     async def user_zettels(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(USER_ZETTELS_DIR / "index.html"))
+        return _render_with_header(USER_ZETTELS_DIR / "index.html")
 
     @app.get("/home/kastens")
     async def user_kastens(request: Request):

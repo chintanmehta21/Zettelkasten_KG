@@ -1140,7 +1140,8 @@
   }
 
   function bindEvents() {
-    if (avatarBtn && avatarDropdown) {
+    if (avatarBtn && avatarDropdown && !avatarBtn.dataset.zkBound) {
+      avatarBtn.dataset.zkBound = '1';
       avatarBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         avatarDropdown.classList.toggle('open');

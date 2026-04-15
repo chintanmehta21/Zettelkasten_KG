@@ -8,30 +8,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260407a">
-    <link rel="stylesheet" href="/home/nexus/css/nexus.css?v=20260407a">
+    <link rel="stylesheet" href="/header/css/header.css?v=20260415a">
+    <link rel="stylesheet" href="/home/nexus/css/nexus.css?v=20260415a">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <a class="nexus-skip-link" href="#main-content">Skip to main content</a>
-    <div class="nexus-page">
-        <header class="nexus-header">
-            <a class="nexus-brand" href="/home" aria-label="Back to Home">
-                <img src="/artifacts/logo-zettelkasten.svg" alt="" width="32" height="32" class="nexus-brand-logo">
-                <span>
-                    <span class="nexus-brand-name">Nexus</span>
-                    <span class="nexus-brand-kicker">Experimental provider hub</span>
-                </span>
-            </a>
-            <div class="nexus-header-actions">
-                <span class="nexus-badge">Experimental</span>
-                <label class="nexus-remember-toggle" for="remember-connection-toggle" title="Turn off for test mode to forget provider credentials after each import.">
-                    <input id="remember-connection-toggle" type="checkbox" checked>
-                    <span>Remember connections</span>
-                </label>
-                <button class="nexus-button nexus-button-secondary" id="refresh-all-btn" type="button">Refresh</button>
-                <button class="nexus-button nexus-button-primary" id="import-all-btn" type="button">Import all</button>
-            </div>
-        </header>
+    <div class="nexus-page container zettels-container">
+<!--ZK_HEADER-->
+        <div class="nexus-header-actions" hidden>
+            <input id="remember-connection-toggle" type="checkbox" checked>
+            <button id="refresh-all-btn" type="button">Refresh</button>
+            <button id="import-all-btn" type="button">Import all</button>
+        </div>
 
         <main class="nexus-main" id="main-content">
             <section class="nexus-hero">
@@ -40,10 +29,10 @@
                     <h1 class="nexus-title">Connect source accounts and pull fresh captures into your vault.</h1>
                     <p class="nexus-subtitle">Use the provider cards to connect accounts, trigger imports one source at a time, or run a full refresh when you want to catch up fast.</p>
                 </div>
-                <div class="nexus-hero-status">
-                    <div class="nexus-stat"><span class="nexus-stat-value" id="connected-count">0</span><span class="nexus-stat-label">Connected</span></div>
-                    <div class="nexus-stat"><span class="nexus-stat-value" id="provider-count">4</span><span class="nexus-stat-label">Providers</span></div>
-                    <div class="nexus-stat"><span class="nexus-stat-value" id="run-count">0</span><span class="nexus-stat-label">Recent runs</span></div>
+                <div class="nexus-hero-status zettels-stats">
+                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Sources connected</p><p class="zettels-stat-value nexus-stat-value" id="connected-count">0</p></article>
+                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Zettels included</p><p class="zettels-stat-value nexus-stat-value" id="zettels-included-count">0</p></article>
+                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Last Import</p><p class="zettels-stat-value zettels-stat-date nexus-stat-value" id="last-import-at">-</p></article>
                 </div>
             </section>
 
@@ -76,6 +65,7 @@
 
         <div class="nexus-toast" id="toast" role="status" aria-live="polite"></div>
     </div>
-    <script src="/home/nexus/js/nexus.js?v=20260407a"></script>
+    <script src="/header/js/header.js?v=20260415a"></script>
+    <script src="/home/nexus/js/nexus.js?v=20260415a"></script>
 </body>
 </html>

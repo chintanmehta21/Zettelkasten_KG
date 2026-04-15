@@ -1,0 +1,50 @@
+/* Shared site header — single source of truth for Zettels, Nexus, and other inner pages. */
+
+.zk-header {
+    display: grid !important;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+}
+
+.zk-header-start { display: flex; justify-content: flex-start; }
+.zk-header-end { display: flex; justify-content: flex-end; position: relative; }
+
+.zk-back-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: linear-gradient(160deg, hsl(220, 22%, 10%), hsl(222, 24%, 7%));
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 7px 7px 16px hsla(0, 0%, 0%, 0.34), -6px -6px 14px hsla(220, 24%, 11%, 0.48), inset 0 0 0 1px hsla(0, 0%, 100%, 0.02);
+    transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.zk-back-btn:hover { color: var(--text-primary); border-color: var(--border-light); transform: translateX(-2px); }
+.zk-back-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.zk-back-btn svg { width: 20px; height: 20px; }
+
+.zk-branding { text-align: center; }
+.zk-logo { display: inline-flex; align-items: center; gap: 0.55rem; }
+.zk-logo-icon { display: block; }
+.zk-logo-text { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+.zk-tagline { margin: 0.2rem 0 0; color: var(--text-secondary); font-size: 0.92rem; }
+
+.zk-avatar-wrap { position: relative; }
+.zk-avatar-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.zk-avatar-btn:hover { border-color: var(--accent-muted); box-shadow: 0 0 0 3px var(--accent-glow); }
+.zk-avatar-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

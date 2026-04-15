@@ -1,0 +1,71 @@
+<header class="header zk-header" data-zk-header>
+    <div class="zk-header-start">
+        <button type="button" class="zk-back-btn" data-zk-back aria-label="Go back">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div class="branding zk-branding">
+        <div class="logo zk-logo">
+            <img src="/artifacts/company_logo.svg" alt="" class="logo-icon zk-logo-icon" width="34" height="34" />
+            <span class="logo-text zk-logo-text">Zettelkasten</span>
+        </div>
+        <p class="tagline zk-tagline">The second brain you were promised!</p>
+    </div>
+
+    <div class="zk-header-end">
+        <div class="home-avatar-wrap zk-avatar-wrap" id="avatar-wrap">
+            <button class="home-avatar-btn zk-avatar-btn" id="avatar-btn" title="Account menu" aria-label="Open account menu">
+                <img class="home-avatar-img" id="avatar-img" src="" alt="User avatar" width="32" height="32" />
+                <span class="home-avatar-fallback" id="avatar-fallback"></span>
+            </button>
+            <div class="home-dropdown zk-dropdown" id="avatar-dropdown" role="menu">
+                <a class="home-dropdown-item" href="/home" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 5L20 11.5V19A1 1 0 0 1 19 20H5A1 1 0 0 1 4 19V11.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </span>
+                    Dashboard
+                </a>
+                <a class="home-dropdown-item" href="/home/zettels" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M6 4H18A1 1 0 0 1 19 5V19A1 1 0 0 1 18 20H6A1 1 0 0 1 5 19V5A1 1 0 0 1 6 4Z" stroke="currentColor" stroke-width="1.8"></path><path d="M8.5 8.5H15.5M8.5 12H15.5M8.5 15.5H13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </span>
+                    My Zettels
+                </a>
+                <a class="home-dropdown-item" href="/home/kastens" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 7.5H19.5M4.5 12H19.5M4.5 16.5H12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </span>
+                    User Kastens
+                </a>
+                <a class="home-dropdown-item" href="/home/rag" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12H9L11 7L13 17L15 12H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </span>
+                    User RAG
+                </a>
+                <a class="home-dropdown-item" href="/home/nexus" id="menu-nexus" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6.25" r="2" stroke="currentColor" stroke-width="1.8"></circle><circle cx="6.5" cy="17" r="2" stroke="currentColor" stroke-width="1.8"></circle><circle cx="17.5" cy="17" r="2" stroke="currentColor" stroke-width="1.8"></circle><path d="M10.2 7.8 7.6 14.2M13.8 7.8 16.4 14.2M8.5 17h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </span>
+                    Nexus
+                </a>
+                <a class="home-dropdown-item" href="/knowledge-graph" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6.5" r="2" stroke="currentColor" stroke-width="1.8"></circle><circle cx="6.5" cy="16.5" r="2" stroke="currentColor" stroke-width="1.8"></circle><circle cx="17.5" cy="16.5" r="2" stroke="currentColor" stroke-width="1.8"></circle><path d="M10.4 7.8L7.8 14.1M13.6 7.8L16.2 14.1M8.5 16.5H15.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </span>
+                    Knowledge Graph
+                </a>
+                <div class="home-dropdown-divider"></div>
+                <button class="home-dropdown-item home-dropdown-signout" id="menu-signout" role="menuitem">
+                    <span class="home-dropdown-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M14 17L19 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M19 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M12 20H6A1 1 0 0 1 5 19V5A1 1 0 0 1 6 4H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </span>
+                    Sign out
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
