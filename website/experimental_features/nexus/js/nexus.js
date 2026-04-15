@@ -2,10 +2,10 @@
   'use strict';
 
   var DEFAULT_PROVIDERS = [
-    { key: 'youtube', name: 'YouTube', accent: '#ff7a7a' },
-    { key: 'github', name: 'GitHub', accent: '#7fb4c8' },
-    { key: 'reddit', name: 'Reddit', accent: '#e29c66' },
-    { key: 'twitter', name: 'Twitter / X', accent: '#90a4b8' }
+    { key: 'youtube', name: 'YouTube', accent: '#ff7a7a', siteUrl: 'https://www.youtube.com' },
+    { key: 'github', name: 'GitHub', accent: '#7fb4c8', siteUrl: 'https://github.com' },
+    { key: 'reddit', name: 'Reddit', accent: '#e29c66', siteUrl: 'https://www.reddit.com' },
+    { key: 'twitter', name: 'Twitter / X', accent: '#90a4b8', siteUrl: 'https://twitter.com' }
   ];
 
   var PROVIDER_DETAILS = {
@@ -193,6 +193,7 @@
           '<button class="nexus-button nexus-button-primary js-provider-connect" type="button" data-provider="' + provider.key + '">' + connectLabel + '</button>' +
           '<button class="nexus-button nexus-button-danger js-provider-disconnect" type="button" data-provider="' + provider.key + '" ' + disconnectDisabled + '>Disconnect</button>' +
           '<button class="nexus-button nexus-button-secondary js-provider-import" type="button" data-provider="' + provider.key + '" ' + importDisabled + '>Import</button>' +
+          '<button class="nexus-button nexus-button-secondary js-provider-visit" type="button" data-provider="' + provider.key + '">Visit</button>' +
         '</div>' +
       '</article>';
   }
@@ -229,6 +230,13 @@
     els.providerGrid.querySelectorAll('.js-provider-disconnect').forEach(function (button) {
       button.addEventListener('click', function () {
         disconnectProvider(this.getAttribute('data-provider'));
+      });
+    });
+    els.providerGrid.querySelectorAll('.js-provider-visit').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var key = this.getAttribute('data-provider');
+        var def = DEFAULT_PROVIDERS.find(function (p) { return p.key === key; });
+        if (def && def.siteUrl) window.open(def.siteUrl, '_blank', 'noopener');
       });
     });
 
