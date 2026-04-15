@@ -174,7 +174,7 @@
 
 .home-panels {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 1.25rem;
     margin-bottom: 1.5rem;
     animation: fadeIn 0.5s ease 0.1s both;
@@ -1145,6 +1145,12 @@
 }
 
 /* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+    .home-panels {
+        grid-template-columns: 1fr 1fr;
+    }
+}
 
 @media (max-width: 768px) {
     .home-panels {

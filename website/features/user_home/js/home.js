@@ -135,6 +135,7 @@
 
     // Load zettels
     await loadZettels(token);
+    loadKastens(token);
 
     // Bind events
     bindEvents(token);
@@ -242,6 +243,28 @@
   }
 
   // ── Zettels ───────────────────────────────────────────────────────
+
+  async function loadKastens(token) {
+    try {
+      var resp = await fetch('/api/rag/sandboxes', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) return;
+      var data = await resp.json();
+      var sandboxes = data.sandboxes || [];
+      var totalMembers = sandboxes.reduce(function (acc, s) {
+        return acc + (s.member_count || 0);
+      }, 0);
+      var elCount = document.getElementById('kastens-count');
+      var elTotal = document.getElementById('kastens-total');
+      var elMembers = document.getElementById('kastens-members');
+      if (elCount) elCount.textContent = sandboxes.length;
+      if (elTotal) elTotal.textContent = sandboxes.length;
+      if (elMembers) elMembers.textContent = totalMembers;
+    } catch (e) {
+      console.warn('[home] Kastens load failed:', e);
+    }
+  }
 
   async function loadZettels(token) {
     try {

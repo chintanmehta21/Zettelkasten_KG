@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260407a">
-    <link rel="stylesheet" href="/home/css/home.css?v=20260404d">
+    <link rel="stylesheet" href="/home/css/home.css?v=20260415b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -161,22 +161,40 @@
                         <span class="home-kg-btn-arrow">&rarr;</span>
                     </a>
                 </section>
-            </div>
 
-            <section class="home-panel home-rag-launch">
-                <div>
-                    <p class="home-rag-kicker">New Workflow</p>
-                    <h2 class="home-vault-title">Curate User Kastens, then interrogate them in User RAG.</h2>
-                    <p class="home-kg-panel-desc">Build focused notebook-style collections from your zettels, then open a streaming grounded chat surface scoped to that exact corpus.</p>
-                </div>
-                <div class="home-vault-actions">
-                    <a href="/home/kastens" class="home-view-all-btn">
-                        <span>Open Kastens</span>
-                        <span class="home-view-all-arrow">&rarr;</span>
-                    </a>
-                    <a href="/home/rag" class="home-add-btn home-rag-open-btn">Open User RAG</a>
-                </div>
-            </section>
+                <!-- User Kastens Panel -->
+                <section class="home-panel home-kastens-panel" id="home-kastens">
+                    <div class="home-kg-panel-header">
+                        <div class="home-vault-title-row home-vault-title-center">
+                            <span class="home-kg-icon" aria-hidden="true">&#x1F5C3;</span>
+                            <h2 class="home-vault-title">User Kastens</h2>
+                            <span class="home-vault-count" id="kastens-count">0</span>
+                        </div>
+                    </div>
+
+                    <div class="home-kg-panel-body">
+                        <p class="home-kg-panel-desc">Curated notebook-style collections from your zettels</p>
+                        <div class="home-kg-stats" id="kastens-stats">
+                            <div class="home-kg-stat">
+                                <span class="home-kg-stat-value" id="kastens-total">0</span>
+                                <span class="home-kg-stat-label">Kastens</span>
+                            </div>
+                            <div class="home-kg-stat">
+                                <span class="home-kg-stat-value" id="kastens-members">0</span>
+                                <span class="home-kg-stat-label">Zettels included</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="home-vault-actions">
+                        <a href="/home/kastens" class="home-view-all-btn">
+                            <span>View All</span>
+                            <span class="home-view-all-arrow">&rarr;</span>
+                        </a>
+                        <a href="/home/rag" class="home-add-btn home-rag-open-btn">Open User RAG</a>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <!-- Summary Loading Animation -->
@@ -240,7 +258,7 @@
         </footer>
     </div>
 
-    <script src="/home/js/home.js?v=20260413a"></script>
+    <script src="/home/js/home.js?v=20260415b"></script>
 </body>
 </html>
 
