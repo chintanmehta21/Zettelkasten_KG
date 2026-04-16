@@ -3,6 +3,16 @@
    Extends: style.css design tokens (loaded via <link>)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Container override ─────────────────────────────────────────────
+   Widen the home container so the three panels (Zettels / KG / Kastens)
+   each keep the original 2-panel card width (~340-360px) instead of
+   being squeezed into the default 760px container.
+   ================================================================== */
+
+.container {
+    max-width: 1180px;
+}
+
 /* ── Header overrides for home page ─────────────────────────────── */
 
 .header {
