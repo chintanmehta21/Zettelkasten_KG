@@ -9,31 +9,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260407a">
     <link rel="stylesheet" href="/header/css/header.css?v=20260416b">
-    <link rel="stylesheet" href="/home/nexus/css/nexus.css?v=20260415a">
+    <link rel="stylesheet" href="/home/nexus/css/nexus.css?v=20260416c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <a class="nexus-skip-link" href="#main-content">Skip to main content</a>
     <div class="nexus-page container zettels-container">
 <!--ZK_HEADER-->
-        <div class="nexus-header-actions" hidden>
-            <input id="remember-connection-toggle" type="checkbox" checked>
-            <button id="refresh-all-btn" type="button">Refresh</button>
-            <button id="import-all-btn" type="button">Import all</button>
-        </div>
 
         <main class="nexus-main" id="main-content">
-            <section class="nexus-hero">
-                <div class="nexus-hero-copy">
-                    <p class="nexus-eyebrow">Home / Nexus</p>
-                    <h1 class="nexus-title">Connect source accounts and pull fresh captures into your vault.</h1>
-                    <p class="nexus-subtitle">Use the provider cards to connect accounts, trigger imports one source at a time, or run a full refresh when you want to catch up fast.</p>
+            <section class="nexus-hero nexus-hero-compact">
+                <div class="nexus-hero-copy nexus-hero-copy-compact">
+                    <h1 class="nexus-title nexus-title-compact">Nexus</h1>
+                    <p class="nexus-subtitle nexus-subtitle-compact">Connect source accounts, trigger imports, and pull fresh captures into your vault.</p>
                 </div>
-                <div class="nexus-hero-status zettels-stats">
-                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Sources connected</p><p class="zettels-stat-value nexus-stat-value" id="connected-count">0</p></article>
-                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Zettels included</p><p class="zettels-stat-value nexus-stat-value" id="zettels-included-count">0</p></article>
-                    <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Last Import</p><p class="zettels-stat-value zettels-stat-date nexus-stat-value" id="last-import-at">-</p></article>
-                </div>
+                <button class="nexus-button nexus-button-primary nexus-hero-action" id="import-all-btn" type="button">Import all</button>
+            </section>
+
+            <section class="nexus-stats zettels-stats" aria-label="Nexus statistics">
+                <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Sources connected</p><p class="zettels-stat-value nexus-stat-value" id="connected-count">0</p></article>
+                <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Zettels included</p><p class="zettels-stat-value nexus-stat-value" id="zettels-included-count">0</p></article>
+                <article class="zettels-stat-card nexus-stat"><p class="zettels-stat-label nexus-stat-label">Last Import</p><p class="zettels-stat-value zettels-stat-date nexus-stat-value" id="last-import-at">-</p></article>
             </section>
 
             <section class="nexus-panel">

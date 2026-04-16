@@ -142,10 +142,38 @@ a { color: inherit; }
 }
 
 .nexus-main { display: flex; flex-direction: column; gap: 1rem; }
+[hidden] { display: none !important; }
 .nexus-hero {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(290px, 0.9fr);
     gap: 1rem;
+}
+.nexus-hero-compact {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem 0 0.5rem;
+}
+.nexus-hero-copy-compact { background: transparent; border: none; box-shadow: none; padding: 0; }
+.nexus-title-compact {
+    max-width: none;
+    font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+}
+.nexus-subtitle-compact { margin-top: 0.4rem; font-size: 0.95rem; }
+.nexus-hero-action {
+    align-self: center;
+    min-width: 140px;
+}
+.nexus-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
 }
 .nexus-hero-copy, .nexus-hero-status, .nexus-panel {
     background: linear-gradient(180deg, rgba(16, 24, 32, 0.92), rgba(12, 18, 25, 0.96));
