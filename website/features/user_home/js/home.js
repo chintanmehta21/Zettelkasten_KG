@@ -194,9 +194,62 @@
       if (elCount) elCount.textContent = sandboxes.length;
       if (elTotal) elTotal.textContent = sandboxes.length;
       if (elMembers) elMembers.textContent = totalMembers;
+
+      // Sort by last_used_at desc (fallback updated_at, then created_at)
+      sandboxes.sort(function (a, b) {
+        var ak = a.last_used_at || a.updated_at || a.created_at || '';
+        var bk = b.last_used_at || b.updated_at || b.created_at || '';
+        return bk.localeCompare(ak);
+      });
+      renderKastenCards(sandboxes.slice(0, 3), sandboxes.length);
     } catch (e) {
       console.warn('[home] Kastens load failed:', e);
+      renderKastenCards([], 0);
     }
+  }
+
+  function renderKastenCards(previewKastens, totalCount) {
+    var grid = document.getElementById('kasten-grid');
+    var emptyEl = document.getElementById('kasten-empty-state');
+    var preview = document.getElementById('kasten-preview');
+    if (!grid || !emptyEl || !preview) return;
+
+    var fade = preview.querySelector('.home-card-fade');
+
+    if (totalCount === 0) {
+      grid.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      if (fade) fade.style.display = 'none';
+      return;
+    }
+
+    emptyEl.classList.add('hidden');
+    grid.innerHTML = '';
+    if (fade) fade.style.display = previewKastens.length > 0 ? '' : 'none';
+
+    previewKastens.forEach(function (k, i) {
+      var card = document.createElement('a');
+      card.className = 'home-card home-kasten-card';
+      card.href = '/home/rag?sandbox=' + encodeURIComponent(k.id);
+      card.style.animationDelay = (i * 0.08) + 's';
+
+      var members = k.member_count || 0;
+      var quality = (k.default_quality || 'fast').toLowerCase();
+      var qualityLabel = quality === 'high' ? 'Strong' : 'Fast';
+      var desc = (k.description || '').trim();
+
+      card.innerHTML =
+        '<h3 class="home-card-title">' + escapeHtml(k.name || 'Untitled') + '</h3>' +
+        (desc
+          ? '<p class="home-kasten-desc">' + escapeHtml(desc) + '</p>'
+          : '') +
+        '<div class="home-card-meta">' +
+          '<span class="home-card-date">' + members + ' zettel' + (members === 1 ? '' : 's') + '</span>' +
+          '<span class="home-card-source">' + escapeHtml(qualityLabel) + '</span>' +
+        '</div>';
+
+      grid.appendChild(card);
+    });
   }
 
   async function loadZettels(token) {

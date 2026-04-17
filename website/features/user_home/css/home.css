@@ -1095,6 +1095,25 @@
     text-decoration: none;
 }
 
+/* Kasten cards in home panel preview */
+.home-kasten-card .home-kasten-desc {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.home-kasten-card .home-card-source {
+    color: var(--accent);
+    border-color: hsla(172, 66%, 50%, 0.3);
+    background: hsla(172, 66%, 50%, 0.08);
+}
+
 .home-avatar-modal-close {
     position: absolute;
     top: 0.75rem;
