@@ -213,10 +213,17 @@ async def create_sandbox(
             body.name,
             detail_str,
         )
+        lower = detail_str.lower()
         # Duplicate-name hits Postgres UNIQUE(user_id, name)
-        if "duplicate key" in detail_str.lower() or "unique" in detail_str.lower():
+        if "duplicate key" in lower or "unique" in lower:
             raise HTTPException(status_code=409, detail="A kasten with that name already exists") from exc
-        raise HTTPException(status_code=500, detail=f"Create sandbox failed: {detail_str[:400]}") from exc
+        # Missing migration — PostgREST schema cache indicates the table is unknown
+        if "pgrst205" in lower or "schema cache" in lower or "could not find the table" in lower:
+            raise HTTPException(
+                status_code=503,
+                detail="Kastens backend is not fully provisioned. Please try again shortly.",
+            ) from exc
+        raise HTTPException(status_code=500, detail="Create sandbox failed. Please try again.") from exc
 
     if row is None:
         logger.error("create_sandbox returned None row for user=%s name=%s", runtime.kg_user_id, body.name)
