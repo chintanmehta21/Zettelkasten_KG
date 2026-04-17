@@ -185,7 +185,10 @@
       return;
     }
 
-    setupAvatar(profile);
+    // Avatar lifecycle owned by shared ZKHeader (preload + retry + fallback)
+    if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+      await window.ZKHeader.boot(_token, { profile: profile });
+    }
     bindEvents();
     await loadZettels();
   }
@@ -201,38 +204,6 @@
       console.error('[user_zettels] Profile fetch failed:', err);
       return null;
     }
-  }
-
-  function setupAvatar(profile) {
-    var avatarUrl = profile.avatar_url || '';
-    var cacheKey = 'zk-avatar-url';
-
-    // If server has a valid avatar, use it and cache locally
-    if (avatarUrl && avatarUrl.includes('/artifacts/avatars/')) {
-      try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
-    } else {
-      // Fall back to cached avatar from localStorage
-      try { avatarUrl = localStorage.getItem(cacheKey) || ''; } catch (_) {}
-    }
-
-    if (avatarUrl && avatarImg) {
-      avatarImg.src = avatarUrl;
-      avatarImg.onerror = function () {
-        avatarImg.classList.add('hidden');
-        showAvatarFallback(profile);
-      };
-      return;
-    }
-
-    if (avatarImg) avatarImg.classList.add('hidden');
-    showAvatarFallback(profile);
-  }
-
-  function showAvatarFallback(profile) {
-    if (!avatarFallback) return;
-    var display = profile.name || profile.email || 'User';
-    avatarFallback.textContent = display.charAt(0).toUpperCase();
-    avatarFallback.classList.add('visible');
   }
 
   async function loadZettels() {

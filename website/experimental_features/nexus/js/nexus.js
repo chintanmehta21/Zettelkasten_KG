@@ -411,6 +411,22 @@
     bindEvents();
     try {
       await loadAuth();
+      // Boot shared header avatar (own its own preload + fallback lifecycle)
+      if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+        window.ZKHeader.boot(state.token).catch(function (e) {
+          console.warn('[nexus] ZKHeader.boot failed', e);
+        });
+      }
+      // Sign-out wired to the same Supabase client Nexus uses
+      if (window.ZKHeader && typeof window.ZKHeader.onSignOut === 'function') {
+        window.ZKHeader.onSignOut(async function () {
+          try {
+            if (state.supabaseClient) await state.supabaseClient.auth.signOut();
+          } finally {
+            window.location.href = '/';
+          }
+        });
+      }
       await Promise.allSettled([loadProviders(), loadRuns()]);
     } catch (err) {
       if (err && err.message !== 'Missing session') {

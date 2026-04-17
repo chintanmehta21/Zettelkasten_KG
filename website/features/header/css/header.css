@@ -69,27 +69,50 @@
     border-color: var(--accent-muted);
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
+/* Avatar display — inverted defaults for defense-in-depth:
+   - Fallback is ALWAYS visible unless .loaded is set on the img.
+   - Image is hidden by default; JS adds .loaded only after a successful preload.
+   - [hidden] attr also respected, so pre-JS state shows fallback, never broken alt. */
 .home-avatar-img {
+    display: none;
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
 }
-.home-avatar-img.hidden { display: none; }
-.home-avatar-fallback {
-    display: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent);
-    text-transform: uppercase;
+.home-avatar-img.loaded {
+    display: block;
 }
-.home-avatar-fallback.visible {
+/* Legacy `.hidden` still supported so old code paths don't break during rollout */
+.home-avatar-img.hidden { display: none !important; }
+
+.home-avatar-fallback {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     height: 100%;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    user-select: none;
 }
+.home-avatar-fallback svg {
+    width: 55%;
+    height: 55%;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+/* When the image has loaded successfully, hide the fallback.
+   Uses :has() with sibling selector for modern browsers; fallback to .hidden class for older. */
+.home-avatar-btn:has(.home-avatar-img.loaded) .home-avatar-fallback {
+    display: none;
+}
+.home-avatar-fallback.hidden { display: none !important; }
+/* Legacy `.visible` still supported */
+.home-avatar-fallback.visible { display: flex; }
 
 /* ── Avatar Dropdown Menu ─────────────────────────────────────────────────────────── */
 .home-dropdown,

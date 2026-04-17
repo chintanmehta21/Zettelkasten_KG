@@ -130,8 +130,15 @@
       userDisplayName.textContent = displayName.split(' ')[0];
     }
 
-    // Set avatar
-    await setupAvatar(profile, token);
+    // Set avatar — delegates to shared ZKHeader (preload + retry + fallback owned there)
+    if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+      await window.ZKHeader.boot(token, { profile: profile });
+      // Track current id for the picker grid's "selected" highlight
+      var _idMatch = profile && profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
+      if (_idMatch) _currentAvatarId = parseInt(_idMatch[1], 10);
+    } else {
+      console.error('[home] ZKHeader missing — avatar will use CSS fallback only');
+    }
 
     // Load zettels
     await loadZettels(token);
@@ -157,88 +164,14 @@
   }
 
   // ── Avatar ────────────────────────────────────────────────────────
-
-  async function setupAvatar(profile, token) {
-    var avatarUrl = profile.avatar_url;
-    var cacheKey = 'zk-avatar-url-' + (profile.id || 'anon');
-
-    // If server has a valid avatar, use it and cache locally
-    if (avatarUrl && avatarUrl.includes('/artifacts/avatars/')) {
-      var match = avatarUrl.match(/avatar_(\d+)\.svg/);
-      _currentAvatarId = match ? parseInt(match[1], 10) : 0;
-      try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
-    } else {
-      // Server has no avatar — check localStorage first to avoid random flicker
-      var cached = null;
-      try { cached = localStorage.getItem(cacheKey); } catch (_) {}
-
-      if (cached && cached.includes('/artifacts/avatars/')) {
-        avatarUrl = cached;
-        var m2 = cached.match(/avatar_(\d+)\.svg/);
-        _currentAvatarId = m2 ? parseInt(m2[1], 10) : 0;
-      } else {
-        // First-ever visit: assign a random avatar
-        var randomId = Math.floor(Math.random() * AVATAR_COUNT);
-        avatarUrl = '/artifacts/avatars/avatar_' + String(randomId).padStart(2, '0') + '.svg';
-        _currentAvatarId = randomId;
-        try { localStorage.setItem(cacheKey, avatarUrl); } catch (_) {}
-      }
-
-      // Persist to server (fire-and-forget, but log failures)
-      try {
-        var resp = await fetch('/api/me/avatar', {
-          method: 'PUT',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ avatar_id: _currentAvatarId })
-        });
-        if (!resp.ok) console.warn('[home] Avatar persist returned', resp.status);
-      } catch (e) {
-        console.warn('[home] Avatar persist failed:', e);
-      }
-    }
-
-    // Display avatar
-    if (avatarImg) {
-      avatarImg.src = avatarUrl;
-      avatarImg.onerror = function () {
-        avatarImg.classList.add('hidden');
-        if (avatarFallback) {
-          var initial = (profile.name || profile.email || 'U')[0].toUpperCase();
-          avatarFallback.textContent = initial;
-          avatarFallback.classList.add('visible');
-        }
-      };
-    }
-  }
+  // All avatar load/fallback/preload logic now lives in the shared ZKHeader module
+  // (website/features/header/js/header.js). These wrappers keep the local picker-grid
+  // callsite working without duplicating lifecycle code.
 
   async function updateAvatar(avatarId, token) {
-    var avatarUrl = '/artifacts/avatars/avatar_' + String(avatarId).padStart(2, '0') + '.svg';
     _currentAvatarId = avatarId;
-
-    // Update display
-    if (avatarImg) {
-      avatarImg.src = avatarUrl;
-      avatarImg.classList.remove('hidden');
-    }
-    if (avatarFallback) {
-      avatarFallback.classList.remove('visible');
-    }
-
-    // Persist
-    try {
-      await fetch('/api/me/avatar', {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'Bearer ' + token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ avatar_id: avatarId })
-      });
-    } catch (e) {
-      console.warn('[home] Avatar update failed:', e);
+    if (window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function') {
+      await window.ZKHeader.setAvatarById(avatarId, token, null);
     }
   }
 
