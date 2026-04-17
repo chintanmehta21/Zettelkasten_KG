@@ -888,6 +888,90 @@
         }
       }
     });
+
+    // Create Kasten modal
+    setupCreateKastenModal(token);
+  }
+
+  // ── Create Kasten Modal ───────────────────────────────────────────
+
+  function setupCreateKastenModal(token) {
+    var btn = document.getElementById('create-kasten-btn');
+    var overlay = document.getElementById('create-kasten-overlay');
+    var form = document.getElementById('create-kasten-form');
+    var nameInput = document.getElementById('kasten-name');
+    var descInput = document.getElementById('kasten-desc');
+    var errEl = document.getElementById('create-kasten-error');
+    var submit = document.getElementById('create-kasten-submit');
+    if (!btn || !overlay || !form) return;
+
+    function openModal() {
+      errEl.textContent = '';
+      form.reset();
+      overlay.classList.remove('hidden');
+      setBodyScrollLocked(true);
+      setTimeout(function () { nameInput && nameInput.focus(); }, 30);
+    }
+    function closeModal() {
+      overlay.classList.add('hidden');
+      setBodyScrollLocked(false);
+    }
+
+    btn.addEventListener('click', openModal);
+    overlay.addEventListener('click', function (e) {
+      if (e.target.hasAttribute('data-close-kasten')) closeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeModal();
+    });
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      errEl.textContent = '';
+      var name = (nameInput.value || '').trim();
+      if (!name) { errEl.textContent = 'Name is required'; return; }
+      if (name.length > 80) { errEl.textContent = 'Name must be 80 characters or fewer'; return; }
+      var quality = (form.querySelector('input[name="kasten-quality"]:checked') || {}).value || 'fast';
+      var desc = (descInput.value || '').trim();
+
+      submit.disabled = true;
+      submit.textContent = 'Creating…';
+      try {
+        var resp = await fetch('/api/rag/sandboxes', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: name,
+            description: desc || null,
+            default_quality: quality
+          })
+        });
+        if (!resp.ok) {
+          var detail = '';
+          try { var j = await resp.json(); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
+          if (resp.status === 409) {
+            errEl.textContent = 'A kasten with that name already exists';
+          } else if (resp.status === 401) {
+            errEl.textContent = 'Please sign in again';
+          } else {
+            errEl.textContent = detail || ('Create failed (' + resp.status + ')');
+          }
+          return;
+        }
+        closeModal();
+        // Refresh kasten list (stats + preview cards)
+        await loadKastens(token);
+      } catch (err) {
+        console.error('[home] Create kasten failed:', err);
+        errEl.textContent = 'Network error. Please try again.';
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Create';
+      }
+    });
   }
 
   // ── Start ─────────────────────────────────────────────────────────

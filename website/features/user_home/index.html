@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260407a">
-    <link rel="stylesheet" href="/header/css/header.css?v=20260417c">
-    <link rel="stylesheet" href="/home/css/home.css?v=20260417c">
+    <link rel="stylesheet" href="/header/css/header.css?v=20260417d">
+    <link rel="stylesheet" href="/home/css/home.css?v=20260417d">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -201,7 +201,7 @@
                             <span class="home-view-all-arrow">&rarr;</span>
                         </a>
                         <div class="home-add-zettel">
-                            <button type="button" class="home-add-btn home-create-kasten-btn" id="create-kasten-btn" onclick="window.location.href='/home/rag'">+ Create Kasten</button>
+                            <button type="button" class="home-add-btn home-create-kasten-btn" id="create-kasten-btn">+ Create Kasten</button>
                         </div>
                     </div>
                 </section>
@@ -252,6 +252,47 @@
             </div>
         </div>
 
+        <!-- Create Kasten Modal -->
+        <div class="create-kasten-overlay hidden" id="create-kasten-overlay" role="dialog" aria-modal="true" aria-labelledby="create-kasten-title">
+            <div class="create-kasten-backdrop" data-close-kasten></div>
+            <div class="create-kasten-dialog">
+                <button type="button" class="create-kasten-close" aria-label="Close" data-close-kasten>&times;</button>
+                <h2 class="create-kasten-title" id="create-kasten-title">Create Kasten</h2>
+                <p class="create-kasten-subtitle">Group zettels into a focused chat sandbox</p>
+                <form class="create-kasten-form" id="create-kasten-form" novalidate>
+                    <label class="create-kasten-label" for="kasten-name">Name</label>
+                    <input type="text" id="kasten-name" class="create-kasten-input" maxlength="80" required placeholder="e.g. Climate research" />
+
+                    <label class="create-kasten-label">Default quality</label>
+                    <div class="create-kasten-quality" role="radiogroup" aria-label="Default quality">
+                        <label class="create-kasten-quality-opt">
+                            <input type="radio" name="kasten-quality" value="fast" checked />
+                            <span class="create-kasten-quality-card">
+                                <span class="create-kasten-quality-name">Fast</span>
+                                <span class="create-kasten-quality-desc">Lower latency, lighter model</span>
+                            </span>
+                        </label>
+                        <label class="create-kasten-quality-opt">
+                            <input type="radio" name="kasten-quality" value="high" />
+                            <span class="create-kasten-quality-card">
+                                <span class="create-kasten-quality-name">Strong</span>
+                                <span class="create-kasten-quality-desc">Deeper reasoning, higher quality</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <label class="create-kasten-label" for="kasten-desc">Description <span class="create-kasten-optional">(optional)</span></label>
+                    <textarea id="kasten-desc" class="create-kasten-textarea" rows="3" maxlength="500" placeholder="What is this kasten about?"></textarea>
+
+                    <p class="create-kasten-error" id="create-kasten-error" aria-live="polite"></p>
+                    <div class="create-kasten-actions">
+                        <button type="button" class="create-kasten-cancel" data-close-kasten>Cancel</button>
+                        <button type="submit" class="create-kasten-submit" id="create-kasten-submit">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
             <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" title="View on GitHub" aria-label="View on GitHub">
@@ -270,8 +311,8 @@
     </div>
 
     <!-- Shared header script exposes window.ZKHeader — loaded before home.js so boot() is available -->
-    <script src="/header/js/header.js?v=20260417c"></script>
-    <script src="/home/js/home.js?v=20260417c"></script>
+    <script src="/header/js/header.js?v=20260417d"></script>
+    <script src="/home/js/home.js?v=20260417d"></script>
 </body>
 </html>
 
