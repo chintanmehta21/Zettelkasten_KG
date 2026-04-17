@@ -196,14 +196,32 @@ async def create_sandbox(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     runtime = _runtime_for_user(user)
-    row = await runtime.sandboxes.create_sandbox(
-        user_id=runtime.kg_user_id,
-        name=body.name,
-        description=body.description,
-        icon=body.icon,
-        color=body.color,
-        default_quality=body.default_quality,
-    )
+    try:
+        row = await runtime.sandboxes.create_sandbox(
+            user_id=runtime.kg_user_id,
+            name=body.name,
+            description=body.description,
+            icon=body.icon,
+            color=body.color,
+            default_quality=body.default_quality,
+        )
+    except Exception as exc:  # noqa: BLE001 — surface the real driver error to logs + client
+        detail_str = str(exc)
+        logger.exception(
+            "create_sandbox failed for user=%s name=%s: %s",
+            runtime.kg_user_id,
+            body.name,
+            detail_str,
+        )
+        # Duplicate-name hits Postgres UNIQUE(user_id, name)
+        if "duplicate key" in detail_str.lower() or "unique" in detail_str.lower():
+            raise HTTPException(status_code=409, detail="A kasten with that name already exists") from exc
+        raise HTTPException(status_code=500, detail=f"Create sandbox failed: {detail_str[:400]}") from exc
+
+    if row is None:
+        logger.error("create_sandbox returned None row for user=%s name=%s", runtime.kg_user_id, body.name)
+        raise HTTPException(status_code=500, detail="Create sandbox returned no row")
+
     return {"sandbox": _serialize_sandbox(row)}
 
 
