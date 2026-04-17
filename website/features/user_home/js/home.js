@@ -951,7 +951,10 @@
         });
         if (!resp.ok) {
           var detail = '';
-          try { var j = await resp.json(); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
+          var raw = '';
+          try { raw = await resp.text(); } catch(_) {}
+          try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
+          console.error('[create-kasten] failed', resp.status, raw);
           if (resp.status === 409) {
             errEl.textContent = 'A kasten with that name already exists';
           } else if (resp.status === 401) {
