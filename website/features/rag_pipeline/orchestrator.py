@@ -293,7 +293,6 @@ class RAGOrchestrator:
 
         replaced_text = None
         used_candidates = context.used_candidates
-        active_context_xml = context.context_xml
         active_generation = generation
 
         if verdict == "unsupported":
@@ -302,7 +301,6 @@ class RAGOrchestrator:
                 user_id=user_id,
                 prepared=prepared,
             )
-            active_context_xml = retry_context.context_xml
             used_candidates = retry_context.used_candidates
             active_generation = retry_generation
 

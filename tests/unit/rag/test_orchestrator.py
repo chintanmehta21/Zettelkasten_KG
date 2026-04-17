@@ -296,3 +296,75 @@ async def test_answer_stream_yields_first_token_before_generation_completes() ->
     llm.allow_completion.set()
     remaining = [event async for event in stream]
     assert [event["type"] for event in remaining] == ["token", "done"]
+
+
+@pytest.mark.asyncio
+async def test_answer_marks_retry_still_bad_and_prefixes_warning() -> None:
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[_candidate()]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_Assembler(),
+        llm=_LLM(content="Retry answer [node-1]"),
+        critic=_Critic(["unsupported", "partial"]),
+        sessions=_Sessions(),
+    )
+
+    turn = await orchestrator.answer(query=ChatQuery(content="What is this about?"), user_id=uuid4())
+
+    assert turn.critic_verdict == "retried_still_bad"
+    assert turn.content.startswith("Warning: low confidence.\n\nRetry answer")
+
+
+@pytest.mark.asyncio
+async def test_answer_stream_emits_replace_when_retry_changes_answer() -> None:
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[_candidate()]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_Assembler(),
+        llm=_LLM(stream_tokens=["Retry", " answer"], content="Retry answer [node-1]"),
+        critic=_Critic(["unsupported", "supported"]),
+        sessions=_Sessions(),
+    )
+
+    events = []
+    async for event in orchestrator.answer_stream(query=ChatQuery(content="What is this about?"), user_id=uuid4()):
+        events.append(event)
+
+    assert [event["type"] for event in events] == ["status", "citations", "token", "token", "replace", "done"]
+    assert events[-2] == {"type": "replace", "content": "Retry answer [node-1]"}
+
+
+def test_build_citations_keeps_highest_scoring_candidate_per_node() -> None:
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_Assembler(),
+        llm=_LLM(),
+        critic=_Critic(["supported"]),
+        sessions=_Sessions(),
+    )
+    low = _candidate("node-1")
+    low.rerank_score = 0.2
+    high = _candidate("node-1")
+    high.content = "better snippet"
+    high.rerank_score = 0.8
+    other = _candidate("node-2")
+    other.rerank_score = 0.5
+
+    citations = orchestrator._build_citations([low, other, high])
+
+    assert [citation.node_id for citation in citations] == ["node-1", "node-2"]
+    assert citations[0].snippet == "better snippet"
+    assert citations[0].rerank_score == pytest.approx(0.8)

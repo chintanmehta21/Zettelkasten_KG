@@ -1,6 +1,3 @@
-from .session_store import ChatSessionStore
-
-__all__ = ["ChatSessionStore"]
 """Persistence helpers for RAG chat state."""
 
 from .sandbox_store import SandboxStore

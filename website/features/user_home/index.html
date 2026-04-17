@@ -176,19 +176,24 @@
                         </div>
                     </div>
 
-                    <div class="home-kg-panel-body">
-                        <p class="home-kg-panel-desc">Curated notebook-style collections from your zettels</p>
-                        <div class="home-kg-stats" id="kastens-stats">
-                            <div class="home-kg-stat">
-                                <span class="home-kg-stat-value" id="kastens-total">0</span>
-                                <span class="home-kg-stat-label">Kastens</span>
-                            </div>
-                            <div class="home-kg-stat">
-                                <span class="home-kg-stat-value" id="kastens-members">0</span>
-                                <span class="home-kg-stat-label">Zettels included</span>
-                            </div>
+                    <!-- Latest 3 Kasten Cards (with fade-out) -->
+                    <div class="home-card-preview" id="kasten-preview">
+                        <div class="home-card-grid" id="kasten-grid">
+                            <!-- Latest 3 kasten cards injected by home.js -->
                         </div>
+                        <div class="home-card-fade"></div>
                     </div>
+
+                    <!-- Empty State -->
+                    <div class="home-empty" id="kasten-empty-state">
+                        <div class="home-empty-icon">&#x1F5C3;</div>
+                        <h3 class="home-empty-title">No kastens yet</h3>
+                        <p class="home-empty-text">Create your first kasten to group zettels for chat</p>
+                    </div>
+
+                    <!-- Hidden stats (still populated for count badge and View-All header) -->
+                    <span id="kastens-total" hidden>0</span>
+                    <span id="kastens-members" hidden>0</span>
 
                     <div class="home-vault-actions">
                         <a href="/home/kastens" class="home-view-all-btn">

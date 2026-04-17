@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from website.features.rag_pipeline.types import AnswerTurn, ChatTurn
 from website.core.supabase_kg.client import get_supabase_client
