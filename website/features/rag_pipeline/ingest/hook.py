@@ -72,6 +72,12 @@ async def ingest_node_chunks(
     )
     if not raw_text:
         raw_text = _synthesize_fallback_text(payload)
+        if raw_text:
+            logger.info(
+                "Synthesized fallback chunk text for node %s (len=%d)",
+                node_id,
+                len(raw_text),
+            )
     if not raw_text:
         return 0
 
