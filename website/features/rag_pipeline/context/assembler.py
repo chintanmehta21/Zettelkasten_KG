@@ -192,6 +192,7 @@ class ContextAssembler:
 
     def _render_xml(self, grouped: list[list[RetrievalCandidate]]) -> str:
         lines = ["<context>"]
+        primary = self._select_primary(grouped)
         for group in grouped:
             first = group[0]
             tags = ",".join(first.tags)
@@ -203,13 +204,42 @@ class ContextAssembler:
                 chunk_id = candidate.chunk_id or ""
                 timestamp = candidate.metadata.get("timestamp") if candidate.metadata else None
                 timestamp_attr = f' timestamp="{html.escape(str(timestamp))}"' if timestamp else ""
+                primary_attr = ' primary="true"' if candidate is primary else ""
                 lines.append(
-                    f'    <passage chunk_id="{html.escape(str(chunk_id))}"{timestamp_attr}>'
+                    f'    <passage chunk_id="{html.escape(str(chunk_id))}"{primary_attr}{timestamp_attr}>'
                     f'{html.escape(candidate.content)}</passage>'
                 )
             lines.append("  </zettel>")
         lines.append("</context>")
         return "\n".join(lines)
+
+    @staticmethod
+    def _select_primary(
+        grouped: list[list[RetrievalCandidate]],
+    ) -> RetrievalCandidate | None:
+        """Pick the single highest-scoring passage across the whole block.
+
+        Exposing one ``primary="true"`` marker gives the LLM a clean cue about
+        which passage is the strongest grounding source for citation —
+        cheaper to reason over than a full score attribute per passage and
+        less likely to leak raw RRF numbers that don't calibrate across
+        queries. Returns ``None`` when every candidate has no score at all.
+        """
+        best: RetrievalCandidate | None = None
+        best_score: float | None = None
+        for group in grouped:
+            for candidate in group:
+                score = (
+                    candidate.final_score
+                    if candidate.final_score is not None
+                    else candidate.rrf_score
+                )
+                if score is None:
+                    continue
+                if best_score is None or score > best_score:
+                    best_score = score
+                    best = candidate
+        return best
 
 
 def _trim_leading_overlap(prev: str, curr: str) -> str:

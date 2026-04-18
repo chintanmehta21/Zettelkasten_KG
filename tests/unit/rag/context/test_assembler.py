@@ -129,6 +129,77 @@ async def test_first_group_kept_whole_even_when_it_overflows_budget() -> None:
     assert len(used) == 2
 
 
+@pytest.mark.asyncio
+async def test_primary_marker_tags_single_highest_score_passage() -> None:
+    """Exactly one passage in the rendered block gets ``primary="true"`` — the
+    one with the highest final_score across all fitted groups. Gives the LLM a
+    clear pointer to the strongest grounding source without leaking raw
+    scores."""
+    assembler = ContextAssembler()
+    # Three passages across three zettels, distinct scores.
+    low = _candidate(
+        "node-low",
+        "Low",
+        "Low-relevance passage long enough to clear the stub filter cleanly.",
+        0.2,
+    )
+    mid = _candidate(
+        "node-mid",
+        "Mid",
+        "Mid-relevance passage long enough to clear the stub filter cleanly.",
+        0.5,
+    )
+    top = _candidate(
+        "node-top",
+        "Top",
+        "TOP_MARKER top-relevance passage long enough to clear the stub filter.",
+        0.95,
+    )
+
+    xml, _ = await assembler.build(
+        candidates=[low, mid, top], quality="fast", user_query="query",
+    )
+
+    assert xml.count('primary="true"') == 1
+    # The primary marker sits on the passage with TOP_MARKER content.
+    primary_start = xml.index('primary="true"')
+    top_start = xml.index("TOP_MARKER")
+    # Both lie within the same <passage> tag — primary="true" appears before
+    # the content opens, and the content appears before the closing tag.
+    assert primary_start < top_start
+    passage_close = xml.index("</passage>", top_start)
+    assert primary_start < passage_close
+
+
+@pytest.mark.asyncio
+async def test_primary_marker_absent_when_all_scores_missing() -> None:
+    """If every candidate has ``None`` for both final_score and rrf_score,
+    no passage gets the primary marker — the signal is unreliable so we
+    don't fake it."""
+    assembler = ContextAssembler()
+    candidate = RetrievalCandidate(
+        kind=ChunkKind.CHUNK,
+        node_id="node-nul",
+        chunk_id=uuid4(),
+        chunk_idx=0,
+        name="No Scores",
+        source_type=SourceType.WEB,
+        url="https://example.com/x",
+        content="Passage content long enough to clear the stub filter but with no score.",
+        tags=["ai"],
+        rrf_score=0.0,
+    )
+    # Force both scores to None.
+    candidate.rrf_score = None  # type: ignore[assignment]
+    candidate.final_score = None
+
+    xml, _ = await assembler.build(
+        candidates=[candidate], quality="fast", user_query="query",
+    )
+
+    assert 'primary="true"' not in xml
+
+
 def test_is_stub_passage_flags_placeholders_and_short_bodies() -> None:
     # Extraction failures masquerading as chunks
     assert _is_stub_passage("## Transcript\n\n(Transcript not available for this video)")
