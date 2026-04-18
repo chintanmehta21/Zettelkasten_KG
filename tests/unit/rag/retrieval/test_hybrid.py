@@ -248,6 +248,55 @@ def test_no_title_boost_when_variants_dont_match() -> None:
     assert fused[0].rrf_score == pytest.approx(0.30)
 
 
+def test_per_node_chunk_cap_keeps_top_three_chunks() -> None:
+    """A single verbose node (e.g. a long YouTube transcript) must not
+    monopolise top-K. Cap chunk-kind candidates at 3 per node_id."""
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    rows = [
+        {
+            "kind": "chunk", "node_id": "yt-verbose", "chunk_id": str(uuid4()), "chunk_idx": i,
+            "name": "Verbose", "source_type": "youtube", "url": "u",
+            "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.9 - i * 0.01,
+        }
+        for i in range(6)
+    ]
+    rows.append({
+        "kind": "chunk", "node_id": "yt-other", "chunk_id": str(uuid4()), "chunk_idx": 0,
+        "name": "Other", "source_type": "youtube", "url": "u",
+        "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.5,
+    })
+    fused = retriever._dedup_and_fuse([rows])
+
+    verbose_chunks = [c for c in fused if c.node_id == "yt-verbose"]
+    assert len(verbose_chunks) == 3
+    assert any(c.node_id == "yt-other" for c in fused)
+
+
+def test_per_node_cap_does_not_drop_summary_alongside_chunks() -> None:
+    """A node can still surface as both summary and chunk — caps only apply
+    within chunk kind."""
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    rows = [
+        {
+            "kind": "summary", "node_id": "yt-paper", "chunk_id": None, "chunk_idx": 0,
+            "name": "Paper", "source_type": "youtube", "url": "u",
+            "content": "s", "tags": [], "metadata": {}, "rrf_score": 0.7,
+        },
+    ] + [
+        {
+            "kind": "chunk", "node_id": "yt-paper", "chunk_id": str(uuid4()), "chunk_idx": i,
+            "name": "Paper", "source_type": "youtube", "url": "u",
+            "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.6 - i * 0.01,
+        }
+        for i in range(5)
+    ]
+    fused = retriever._dedup_and_fuse([rows])
+
+    kinds_for_paper = [c.kind.value for c in fused if c.node_id == "yt-paper"]
+    assert kinds_for_paper.count("summary") == 1
+    assert kinds_for_paper.count("chunk") == 3
+
+
 @pytest.mark.asyncio
 async def test_multi_hop_weights_boost_graph() -> None:
     supabase = _Supabase({"rag_hybrid_search": []})

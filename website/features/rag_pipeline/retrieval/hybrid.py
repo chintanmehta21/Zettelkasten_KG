@@ -31,6 +31,12 @@ _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
 
+# Cap the number of chunks we keep per node after fusion. A single verbose
+# node (e.g. a 40-minute YouTube transcript) can otherwise saturate the top-K
+# and starve the reranker of diverse candidates. Summaries are counted
+# separately from chunks so both kinds can coexist for the same node.
+_MAX_CHUNKS_PER_NODE = 3
+
 
 class HybridRetriever:
     def __init__(self, embedder: Any, supabase: Any | None = None):
@@ -137,7 +143,28 @@ class HybridRetriever:
             boost = _title_match_boost(candidate.name, normalized_variants)
             if boost > 0:
                 candidate.rrf_score += boost
-        return sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
+        ordered = sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
+        return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
+
+
+def _cap_per_node(
+    candidates: list[RetrievalCandidate],
+    max_chunks_per_node: int,
+) -> list[RetrievalCandidate]:
+    """Keep at most ``max_chunks_per_node`` chunk candidates per ``node_id`` so
+    a single verbose node cannot crowd out the top-K handed to the reranker.
+    Summary-kind candidates are unaffected — one summary + N chunks per node
+    still pass through."""
+    seen_chunk_count: dict[str, int] = {}
+    kept: list[RetrievalCandidate] = []
+    for candidate in candidates:
+        if candidate.kind is ChunkKind.CHUNK:
+            count = seen_chunk_count.get(candidate.node_id, 0)
+            if count >= max_chunks_per_node:
+                continue
+            seen_chunk_count[candidate.node_id] = count + 1
+        kept.append(candidate)
+    return kept
 
 
 def _normalize_for_match(text: str) -> str:
