@@ -319,6 +319,35 @@ def test_per_node_cap_does_not_drop_summary_alongside_chunks() -> None:
     assert kinds_for_paper.count("chunk") == 3
 
 
+def test_sibling_kind_consensus_boost() -> None:
+    """When both summary and chunk surface for the same node, each gets a
+    small cross-kind consensus bump — mirrors the multi-variant consensus."""
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    rows = [
+        {
+            "kind": "summary", "node_id": "yt-paper", "chunk_id": None, "chunk_idx": 0,
+            "name": "Paper", "source_type": "youtube", "url": "u",
+            "content": "s", "tags": [], "metadata": {}, "rrf_score": 0.30,
+        },
+        {
+            "kind": "chunk", "node_id": "yt-paper", "chunk_id": str(uuid4()), "chunk_idx": 0,
+            "name": "Paper", "source_type": "youtube", "url": "u",
+            "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.30,
+        },
+        {
+            "kind": "chunk", "node_id": "yt-solo", "chunk_id": str(uuid4()), "chunk_idx": 0,
+            "name": "Solo", "source_type": "youtube", "url": "u",
+            "content": "c", "tags": [], "metadata": {}, "rrf_score": 0.30,
+        },
+    ]
+    fused = retriever._dedup_and_fuse([rows])
+
+    paper = next(c for c in fused if c.node_id == "yt-paper")
+    solo = next(c for c in fused if c.node_id == "yt-solo")
+    assert paper.rrf_score == pytest.approx(0.33)
+    assert solo.rrf_score == pytest.approx(0.30)
+
+
 @pytest.mark.asyncio
 async def test_multi_hop_weights_boost_graph() -> None:
     supabase = _Supabase({"rag_hybrid_search": []})

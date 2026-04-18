@@ -137,6 +137,10 @@ class HybridRetriever:
             _normalize_for_match(v) for v in (query_variants or []) if v and v.strip()
         ]
 
+        kinds_by_node: dict[str, set[str]] = {}
+        for candidate in by_key.values():
+            kinds_by_node.setdefault(candidate.node_id, set()).add(candidate.kind.value)
+
         for key, candidate in by_key.items():
             candidate.rrf_score += 0.05 * (variant_hits[key] - 1)
             # Title/name-match boost — queries that mention a zettel name
@@ -145,6 +149,11 @@ class HybridRetriever:
             boost = _title_match_boost(candidate.name, normalized_variants)
             if boost > 0:
                 candidate.rrf_score += boost
+            # Sibling consensus — when both a summary and chunk(s) surface for
+            # the same node, that cross-kind agreement is a stronger relevance
+            # signal than a single stream. Small bump so it nudges, not skews.
+            if len(kinds_by_node.get(candidate.node_id, set())) > 1:
+                candidate.rrf_score += 0.03
         ordered = sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
         return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
 
