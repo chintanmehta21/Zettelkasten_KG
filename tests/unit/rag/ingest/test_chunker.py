@@ -214,6 +214,45 @@ def test_prefix_has_plain_text_echo_line_for_fts(monkeypatch) -> None:
     assert "Yannic Kilcher" in content
 
 
+def test_youtube_channel_metadata_is_used_as_author(monkeypatch) -> None:
+    """YouTube extractor stores the channel under the key 'channel'. The
+    prefix builder must pick it up so `@Channel` appears in chunk 0."""
+    chunker = ZettelChunker()
+    backing = [Chunk(chunk_idx=0, content="body", chunk_type=ChunkType.SEMANTIC, token_count=1)]
+    monkeypatch.setattr(chunker, "_semantic_chunk", lambda raw_text, metadata: list(backing))
+
+    chunks = chunker.chunk(
+        source_type=SourceType.YOUTUBE,
+        title="Attention Is All You Need",
+        raw_text="body",
+        tags=["ml"],
+        extra_metadata={"channel": "Yannic Kilcher"},
+    )
+
+    assert "@Yannic Kilcher" in chunks[0].content
+
+
+def test_prefix_filters_empty_tag_strings(monkeypatch) -> None:
+    """Empty or whitespace-only tags must be dropped so the prefix never
+    renders an orphan `#` token."""
+    chunker = ZettelChunker()
+    backing = [Chunk(chunk_idx=0, content="body", chunk_type=ChunkType.SEMANTIC, token_count=1)]
+    monkeypatch.setattr(chunker, "_semantic_chunk", lambda raw_text, metadata: list(backing))
+
+    chunks = chunker.chunk(
+        source_type=SourceType.WEB,
+        title="Article",
+        raw_text="body",
+        tags=["", "  ", "ml", ""],
+        extra_metadata={},
+    )
+
+    content = chunks[0].content
+    assert "#ml" in content
+    assert " # " not in content  # no stray "#" with empty tag
+    assert not content.endswith("#")
+
+
 def test_short_form_atomic_chunk_also_has_echo_line() -> None:
     """Short-form atomic chunks share the same prefix builder, so they get
     the same FTS echo enhancement."""

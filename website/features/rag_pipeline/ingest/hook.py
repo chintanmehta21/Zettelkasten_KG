@@ -34,6 +34,7 @@ def _synthesize_fallback_text(payload: dict[str, Any]) -> str:
     channel = str(
         raw_metadata.get("channel_name")
         or raw_metadata.get("channel")
+        or raw_metadata.get("uploader")
         or raw_metadata.get("author")
         or raw_metadata.get("subreddit")
         or ""

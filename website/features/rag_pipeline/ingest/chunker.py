@@ -206,11 +206,14 @@ class ZettelChunker:
         clean_title = (title or "").strip()
         if clean_title:
             parts.append(f"[{clean_title}]")
-        if tags:
-            parts.append(" ".join(f"#{tag}" for tag in tags))
+        clean_tags = [str(t).strip() for t in tags if str(t).strip()]
+        if clean_tags:
+            parts.append(" ".join(f"#{tag}" for tag in clean_tags))
         author = (
             metadata.get("author")
             or metadata.get("channel_name")
+            or metadata.get("channel")
+            or metadata.get("uploader")
             or metadata.get("subreddit")
         )
         if author:
@@ -227,8 +230,8 @@ class ZettelChunker:
         echo_bits: list[str] = []
         if clean_title:
             echo_bits.append(clean_title)
-        if tags:
-            echo_bits.append(" ".join(tags))
+        if clean_tags:
+            echo_bits.append(" ".join(clean_tags))
         if author:
             echo_bits.append(str(author))
         if echo_bits:
