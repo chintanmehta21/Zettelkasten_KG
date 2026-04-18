@@ -3,143 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Kastens - Zettelkasten</title>
+    <title>My Kastens - Zettelkasten</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=20260412a">
-    <link rel="stylesheet" href="/home/kastens/css/user_kastens.css?v=20260412a">
+    <link rel="stylesheet" href="/css/style.css?v=20260417a">
+    <link rel="stylesheet" href="/header/css/header.css?v=20260417a">
+    <link rel="stylesheet" href="/home/kastens/css/user_kastens.css?v=20260418a">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="container kastens-container">
-        <header class="header kastens-header">
-            <div class="zettels-header-start">
-                <a class="zettels-back-btn" href="/home" aria-label="Back to Home">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </svg>
-                </a>
-            </div>
-            <div class="branding">
-                <div class="logo">
-                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
-                    <span class="logo-text">Zettelkasten</span>
-                </div>
-                <p class="tagline">Curate focused knowledge workspaces from your saved zettels.</p>
-            </div>
-            <div class="kastens-header-actions">
-                <a class="kastens-nav-link" href="/home/rag">Open Chat</a>
-            </div>
-        </header>
+<!--ZK_HEADER-->
 
         <main class="main kastens-main" id="main-content">
             <section class="kastens-hero">
-                <div>
-                    <p class="kastens-eyebrow">User Kastens</p>
-                    <h1 class="kastens-title">Build notebook-style sandboxes for each line of thought.</h1>
-                    <p class="kastens-subtitle">Add the exact zettels you want, then hand the collection to the chat page when you are ready to interrogate it.</p>
+                <div class="kastens-hero-copy">
+                    <h1 class="kastens-title">My Kastens</h1>
+                    <p class="kastens-subtitle">Curated collections of zettels that you can chat with as focused sandboxes.</p>
                 </div>
-                <div class="kastens-hero-actions">
-                    <button class="kastens-primary" id="create-kasten-btn" type="button">Create kasten</button>
-                    <a class="kastens-secondary" href="/home/rag">Jump to chat</a>
-                </div>
+
+                <button class="kastens-add-circle" id="create-kasten-btn" type="button" aria-label="Create kasten" title="Create Kasten">
+                    <span aria-hidden="true">+</span>
+                </button>
             </section>
 
             <section class="kastens-stats" aria-label="Kasten statistics">
                 <article class="kastens-stat-card">
                     <p class="kastens-stat-label">Kastens</p>
-                    <p class="kastens-stat-value" id="kasten-count">0</p>
+                    <p class="kastens-stat-value" id="stat-kastens">0</p>
                 </article>
                 <article class="kastens-stat-card">
-                    <p class="kastens-stat-label">Curated members</p>
-                    <p class="kastens-stat-value" id="member-count">0</p>
+                    <p class="kastens-stat-label">Zettels Included</p>
+                    <p class="kastens-stat-value" id="stat-members">0</p>
                 </article>
                 <article class="kastens-stat-card">
-                    <p class="kastens-stat-label">Default mode</p>
-                    <p class="kastens-stat-value kastens-stat-small" id="default-quality">fast</p>
+                    <p class="kastens-stat-label">Latest Kasten</p>
+                    <p class="kastens-stat-value kastens-stat-small" id="stat-latest">—</p>
                 </article>
             </section>
 
-            <section class="kastens-layout">
-                <div class="kastens-column kastens-column-list">
-                    <div class="kastens-panel-heading">
-                        <div>
-                            <h2>Your Kastens</h2>
-                            <p>Persistent collections that narrow the chat scope to the notes that matter.</p>
-                        </div>
-                    </div>
-                    <div class="kastens-card-list" id="kastens-list"></div>
-                    <div class="kastens-empty hidden" id="kastens-empty">
-                        <h3>No kastens yet</h3>
-                        <p>Create your first curated workspace to start asking better questions.</p>
-                    </div>
-                </div>
-
-                <div class="kastens-column kastens-column-detail">
-                    <section class="kastens-panel kastens-editor-panel">
-                        <div class="kastens-panel-heading">
-                            <div>
-                                <h2 id="detail-title">Create or select a kasten</h2>
-                                <p id="detail-subtitle">Set a name, describe the focus, then keep adding the zettels you want the chat to reason over.</p>
-                            </div>
-                            <button class="kastens-text-btn hidden" id="delete-kasten-btn" type="button">Delete</button>
-                        </div>
-
-                        <form class="kastens-form" id="kasten-form">
-                            <div class="kastens-form-grid">
-                                <label>
-                                    <span>Name</span>
-                                    <input type="text" id="kasten-name" name="kasten_name" maxlength="80" autocomplete="organization" spellcheck="false" placeholder="Transformer notes" required>
-                                </label>
-                                <label>
-                                    <span>Default quality</span>
-                                    <select id="kasten-quality" name="default_quality">
-                                        <option value="fast">Fast</option>
-                                        <option value="high">High</option>
-                                    </select>
-                                </label>
-                                <label>
-                                    <span>Icon label</span>
-                                    <input type="text" id="kasten-icon" name="icon_label" maxlength="24" autocomplete="off" spellcheck="false" placeholder="stack">
-                                </label>
-                                <label>
-                                    <span>Accent color</span>
-                                    <input type="text" id="kasten-color" name="accent_color" maxlength="24" autocomplete="off" spellcheck="false" placeholder="#14b8a6">
-                                </label>
-                            </div>
-                            <label>
-                                <span>Description</span>
-                                <textarea id="kasten-description" name="description" rows="3" maxlength="300" spellcheck="true" placeholder="A focused workspace for comparing transformer architecture notes."></textarea>
-                            </label>
-                            <div class="kastens-form-actions">
-                                <button class="kastens-primary" id="save-kasten-btn" type="submit">Save kasten</button>
-                                <button class="kastens-secondary ghost hidden" id="new-kasten-btn" type="button">New draft</button>
-                                <a class="kastens-secondary hidden" id="open-chat-btn" href="/home/rag">Open in chat</a>
-                            </div>
-                            <p class="kastens-feedback" id="kasten-feedback" role="status" aria-live="polite"></p>
-                        </form>
-                    </section>
-
-                    <section class="kastens-panel">
-                        <div class="kastens-panel-heading">
-                            <div>
-                                <h2>Curate members</h2>
-                                <p>Search your zettels, add them to the active kasten, and prune noise when the focus drifts.</p>
-                            </div>
-                        </div>
-                        <div class="kastens-search-row">
-                            <input class="kastens-search-input" id="node-search" name="node_search" type="search" placeholder="Search your zettels by title or summary..." autocomplete="off" spellcheck="false">
-                        </div>
-                        <div class="kastens-search-results" id="node-search-results" aria-live="polite"></div>
-                        <div class="kastens-member-list" id="member-list" aria-live="polite"></div>
-                    </section>
+            <section class="kastens-grid-section" aria-live="polite">
+                <div class="kastens-grid" id="kastens-grid"></div>
+                <div class="kastens-empty hidden" id="kastens-empty">
+                    <h2>No kastens yet</h2>
+                    <p>Create your first curated workspace to start asking better questions.</p>
                 </div>
             </section>
         </main>
+
+        <footer class="footer">
+            <a href="https://github.com/chintanmehta21/zettelkasten-telegram-bot" target="_blank" rel="noopener" class="footer-icon" title="View on GitHub" aria-label="View on GitHub">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            </a>
+            <a href="/about" class="footer-icon" title="About" aria-label="About">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"></path></svg>
+            </a>
+            <a href="/pricing" class="footer-icon" title="Pricing" aria-label="Pricing">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"></path></svg>
+            </a>
+        </footer>
     </div>
 
-    <script src="/home/kastens/js/user_kastens.js?v=20260412a"></script>
+    <!-- Create Kasten Modal -->
+    <div class="create-kasten-overlay hidden" id="create-kasten-overlay" role="dialog" aria-modal="true" aria-labelledby="create-kasten-title">
+        <div class="create-kasten-backdrop" data-close-kasten></div>
+        <div class="create-kasten-dialog">
+            <button type="button" class="create-kasten-close" aria-label="Close" data-close-kasten>&times;</button>
+            <h2 class="create-kasten-title" id="create-kasten-title">Create Kasten</h2>
+            <p class="create-kasten-subtitle">Group zettels into a focused chat sandbox</p>
+            <form class="create-kasten-form" id="create-kasten-form" novalidate>
+                <label class="create-kasten-label" for="kasten-name">Name</label>
+                <input type="text" id="kasten-name" class="create-kasten-input" maxlength="80" required placeholder="e.g. Climate research" />
+
+                <label class="create-kasten-label">Default quality</label>
+                <div class="create-kasten-quality" role="radiogroup" aria-label="Default quality">
+                    <label class="create-kasten-quality-opt">
+                        <input type="radio" name="kasten-quality" value="fast" checked />
+                        <span class="create-kasten-quality-card">
+                            <span class="create-kasten-quality-name">Fast</span>
+                            <span class="create-kasten-quality-desc">Lower latency, lighter model</span>
+                        </span>
+                    </label>
+                    <label class="create-kasten-quality-opt">
+                        <input type="radio" name="kasten-quality" value="high" />
+                        <span class="create-kasten-quality-card">
+                            <span class="create-kasten-quality-name">Strong</span>
+                            <span class="create-kasten-quality-desc">Deeper reasoning, higher quality</span>
+                        </span>
+                    </label>
+                </div>
+
+                <label class="create-kasten-label">Zettels to include</label>
+                <div class="create-kasten-members" role="radiogroup" aria-label="Zettels to include">
+                    <label class="create-kasten-members-opt">
+                        <input type="radio" name="kasten-scope" value="all" checked />
+                        <span class="create-kasten-members-card">
+                            <span class="create-kasten-members-name">All</span>
+                            <span class="create-kasten-members-desc">Every zettel you own</span>
+                        </span>
+                    </label>
+                    <label class="create-kasten-members-opt">
+                        <input type="radio" name="kasten-scope" value="source" />
+                        <span class="create-kasten-members-card">
+                            <span class="create-kasten-members-name">By source</span>
+                            <span class="create-kasten-members-desc">Pick source types</span>
+                        </span>
+                    </label>
+                    <label class="create-kasten-members-opt">
+                        <input type="radio" name="kasten-scope" value="specific" />
+                        <span class="create-kasten-members-card">
+                            <span class="create-kasten-members-name">Specific</span>
+                            <span class="create-kasten-members-desc">Choose zettels</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="create-kasten-scope-panel hidden" id="kasten-scope-source-panel">
+                    <label class="create-kasten-label">Source types</label>
+                    <div class="create-kasten-source-grid" id="kasten-source-grid">
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="youtube" /> YouTube</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="github" /> GitHub</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="reddit" /> Reddit</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="substack" /> Substack</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="medium" /> Medium</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="twitter" /> Twitter</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="web" /> Web</label>
+                        <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="generic" /> Generic</label>
+                    </div>
+                </div>
+
+                <div class="create-kasten-scope-panel hidden" id="kasten-scope-specific-panel">
+                    <label class="create-kasten-label">Pick zettels</label>
+                    <div class="create-kasten-zettels">
+                        <input type="search" class="create-kasten-zettel-search" id="kasten-zettel-search" placeholder="Filter your zettels..." autocomplete="off" />
+                        <div class="create-kasten-zettel-list" id="kasten-zettel-list"></div>
+                    </div>
+                </div>
+
+                <label class="create-kasten-label" for="kasten-desc">Description <span class="create-kasten-optional">(optional)</span></label>
+                <textarea id="kasten-desc" class="create-kasten-textarea" rows="3" maxlength="500" placeholder="What is this kasten about?"></textarea>
+
+                <p class="create-kasten-error" id="create-kasten-error" aria-live="polite"></p>
+                <div class="create-kasten-actions">
+                    <button type="button" class="create-kasten-cancel" data-close-kasten>Cancel</button>
+                    <button type="submit" class="create-kasten-submit" id="create-kasten-submit">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/header/js/header.js?v=20260417a"></script>
+    <script src="/home/kastens/js/user_kastens.js?v=20260418a"></script>
 </body>
 </html>

@@ -895,6 +895,11 @@
 
   // ── Create Kasten Modal ───────────────────────────────────────────
 
+  var _createKastenNodes = [];
+  var _createKastenNodesLoaded = false;
+  var _createKastenSelectedIds = new Set();
+  var ALL_KASTEN_SOURCES = ['youtube', 'github', 'reddit', 'substack', 'medium', 'twitter', 'web', 'generic'];
+
   function setupCreateKastenModal(token) {
     var btn = document.getElementById('create-kasten-btn');
     var overlay = document.getElementById('create-kasten-overlay');
@@ -903,11 +908,17 @@
     var descInput = document.getElementById('kasten-desc');
     var errEl = document.getElementById('create-kasten-error');
     var submit = document.getElementById('create-kasten-submit');
+    var sourcePanel = document.getElementById('kasten-scope-source-panel');
+    var specificPanel = document.getElementById('kasten-scope-specific-panel');
+    var zettelSearch = document.getElementById('kasten-zettel-search');
     if (!btn || !overlay || !form) return;
 
     function openModal() {
       errEl.textContent = '';
       form.reset();
+      _createKastenSelectedIds = new Set();
+      if (sourcePanel) sourcePanel.classList.add('hidden');
+      if (specificPanel) specificPanel.classList.add('hidden');
       overlay.classList.remove('hidden');
       setBodyScrollLocked(true);
       setTimeout(function () { nameInput && nameInput.focus(); }, 30);
@@ -925,6 +936,25 @@
       if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeModal();
     });
 
+    // Scope radio toggle
+    form.querySelectorAll('input[name="kasten-scope"]').forEach(function (r) {
+      r.addEventListener('change', async function () {
+        var v = r.value;
+        if (sourcePanel) sourcePanel.classList.toggle('hidden', v !== 'source');
+        if (specificPanel) specificPanel.classList.toggle('hidden', v !== 'specific');
+        if (v === 'specific' && !_createKastenNodesLoaded) {
+          await loadCreateKastenNodes(token);
+          renderCreateKastenZettelList('');
+        }
+      });
+    });
+
+    if (zettelSearch) {
+      zettelSearch.addEventListener('input', function () {
+        renderCreateKastenZettelList(zettelSearch.value || '');
+      });
+    }
+
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       errEl.textContent = '';
@@ -933,6 +963,18 @@
       if (name.length > 80) { errEl.textContent = 'Name must be 80 characters or fewer'; return; }
       var quality = (form.querySelector('input[name="kasten-quality"]:checked') || {}).value || 'fast';
       var desc = (descInput.value || '').trim();
+      var scope = (form.querySelector('input[name="kasten-scope"]:checked') || {}).value || 'all';
+
+      var pickedSources = [];
+      if (scope === 'source') {
+        form.querySelectorAll('input[name="kasten-source"]:checked').forEach(function (c) { pickedSources.push(c.value); });
+        if (!pickedSources.length) { errEl.textContent = 'Select at least one source type'; return; }
+      }
+      var pickedNodeIds = [];
+      if (scope === 'specific') {
+        pickedNodeIds = Array.from(_createKastenSelectedIds);
+        if (!pickedNodeIds.length) { errEl.textContent = 'Select at least one zettel'; return; }
+      }
 
       submit.disabled = true;
       submit.textContent = 'Creating…';
@@ -943,11 +985,7 @@
             'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            name: name,
-            description: desc || null,
-            default_quality: quality
-          })
+          body: JSON.stringify({ name: name, description: desc || null, default_quality: quality })
         });
         if (!resp.ok) {
           var detail = '';
@@ -955,17 +993,38 @@
           try { raw = await resp.text(); } catch(_) {}
           try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
           console.error('[create-kasten] failed', resp.status, raw);
-          if (resp.status === 409) {
-            errEl.textContent = 'A kasten with that name already exists';
-          } else if (resp.status === 401) {
-            errEl.textContent = 'Please sign in again';
-          } else {
-            errEl.textContent = detail || ('Create failed (' + resp.status + ')');
-          }
+          if (resp.status === 409) errEl.textContent = 'A kasten with that name already exists';
+          else if (resp.status === 401) errEl.textContent = 'Please sign in again';
+          else errEl.textContent = detail || ('Create failed (' + resp.status + ')');
           return;
         }
+        var created = await resp.json();
+        var sandboxId = created && created.sandbox && created.sandbox.id;
+
+        if (sandboxId) {
+          var memberBody = null;
+          if (scope === 'all') memberBody = { source_types: ALL_KASTEN_SOURCES, added_via: 'bulk_source' };
+          else if (scope === 'source') memberBody = { source_types: pickedSources, added_via: 'bulk_source' };
+          else if (scope === 'specific') memberBody = { node_ids: pickedNodeIds, added_via: 'manual' };
+          if (memberBody) {
+            try {
+              var addResp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(sandboxId) + '/members', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify(memberBody)
+              });
+              if (!addResp.ok) {
+                var addRaw = '';
+                try { addRaw = await addResp.text(); } catch(_) {}
+                console.warn('[create-kasten] add members failed', addResp.status, addRaw);
+              }
+            } catch (addErr) {
+              console.warn('[create-kasten] add members network error', addErr);
+            }
+          }
+        }
+
         closeModal();
-        // Refresh kasten list (stats + preview cards)
         await loadKastens(token);
       } catch (err) {
         console.error('[home] Create kasten failed:', err);
@@ -974,6 +1033,61 @@
         submit.disabled = false;
         submit.textContent = 'Create';
       }
+    });
+  }
+
+  async function loadCreateKastenNodes(token) {
+    try {
+      var resp = await fetch('/api/rag/nodes?limit=500', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        console.warn('[create-kasten] load nodes failed', resp.status);
+        _createKastenNodes = [];
+        _createKastenNodesLoaded = true;
+        return;
+      }
+      var data = await resp.json();
+      _createKastenNodes = data.nodes || [];
+      _createKastenNodesLoaded = true;
+    } catch (e) {
+      console.warn('[create-kasten] load nodes err', e);
+      _createKastenNodes = [];
+      _createKastenNodesLoaded = true;
+    }
+  }
+
+  function renderCreateKastenZettelList(query) {
+    var list = document.getElementById('kasten-zettel-list');
+    if (!list) return;
+    var q = (query || '').trim().toLowerCase();
+    var filtered = _createKastenNodes.filter(function (n) {
+      if (!q) return true;
+      var hay = ((n.name || '') + ' ' + (n.summary || '') + ' ' + (n.source_type || '')).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    }).slice(0, 200);
+
+    if (!filtered.length) {
+      list.innerHTML = '<div class="create-kasten-zettel-empty">No zettels match.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    filtered.forEach(function (n) {
+      var row = document.createElement('label');
+      row.className = 'create-kasten-zettel-item';
+      var checked = _createKastenSelectedIds.has(n.id) ? 'checked' : '';
+      row.innerHTML =
+        '<input type="checkbox" data-node-id="' + escapeHtml(n.id) + '" ' + checked + ' />' +
+        '<div class="create-kasten-zettel-body">' +
+          '<div class="create-kasten-zettel-title">' + escapeHtml(n.name || n.id) + '</div>' +
+          '<div class="create-kasten-zettel-meta">' + escapeHtml(n.source_type || 'web') + '</div>' +
+        '</div>';
+      var cb = row.querySelector('input');
+      cb.addEventListener('change', function () {
+        if (cb.checked) _createKastenSelectedIds.add(n.id);
+        else _createKastenSelectedIds.delete(n.id);
+      });
+      list.appendChild(row);
     });
   }
 

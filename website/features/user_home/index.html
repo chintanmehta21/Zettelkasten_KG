@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260407a">
     <link rel="stylesheet" href="/header/css/header.css?v=20260417e">
-    <link rel="stylesheet" href="/home/css/home.css?v=20260417e">
+    <link rel="stylesheet" href="/home/css/home.css?v=20260418a">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -281,6 +281,53 @@
                         </label>
                     </div>
 
+                    <label class="create-kasten-label">Zettels to include</label>
+                    <div class="create-kasten-members" role="radiogroup" aria-label="Zettels to include">
+                        <label class="create-kasten-members-opt">
+                            <input type="radio" name="kasten-scope" value="all" checked />
+                            <span class="create-kasten-members-card">
+                                <span class="create-kasten-members-name">All</span>
+                                <span class="create-kasten-members-desc">Every zettel you own</span>
+                            </span>
+                        </label>
+                        <label class="create-kasten-members-opt">
+                            <input type="radio" name="kasten-scope" value="source" />
+                            <span class="create-kasten-members-card">
+                                <span class="create-kasten-members-name">By source</span>
+                                <span class="create-kasten-members-desc">Pick source types</span>
+                            </span>
+                        </label>
+                        <label class="create-kasten-members-opt">
+                            <input type="radio" name="kasten-scope" value="specific" />
+                            <span class="create-kasten-members-card">
+                                <span class="create-kasten-members-name">Specific</span>
+                                <span class="create-kasten-members-desc">Choose zettels</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="create-kasten-scope-panel hidden" id="kasten-scope-source-panel">
+                        <label class="create-kasten-label">Source types</label>
+                        <div class="create-kasten-source-grid" id="kasten-source-grid">
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="youtube" /> YouTube</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="github" /> GitHub</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="reddit" /> Reddit</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="substack" /> Substack</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="medium" /> Medium</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="twitter" /> Twitter</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="web" /> Web</label>
+                            <label class="create-kasten-source-chip"><input type="checkbox" name="kasten-source" value="generic" /> Generic</label>
+                        </div>
+                    </div>
+
+                    <div class="create-kasten-scope-panel hidden" id="kasten-scope-specific-panel">
+                        <label class="create-kasten-label">Pick zettels</label>
+                        <div class="create-kasten-zettels">
+                            <input type="search" class="create-kasten-zettel-search" id="kasten-zettel-search" placeholder="Filter your zettels..." autocomplete="off" />
+                            <div class="create-kasten-zettel-list" id="kasten-zettel-list"></div>
+                        </div>
+                    </div>
+
                     <label class="create-kasten-label" for="kasten-desc">Description <span class="create-kasten-optional">(optional)</span></label>
                     <textarea id="kasten-desc" class="create-kasten-textarea" rows="3" maxlength="500" placeholder="What is this kasten about?"></textarea>
 
@@ -312,7 +359,7 @@
 
     <!-- Shared header script exposes window.ZKHeader — loaded before home.js so boot() is available -->
     <script src="/header/js/header.js?v=20260417e"></script>
-    <script src="/home/js/home.js?v=20260417e"></script>
+    <script src="/home/js/home.js?v=20260418a"></script>
 </body>
 </html>
 

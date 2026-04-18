@@ -1389,3 +1389,116 @@
         font-size: 1.4rem;
     }
 }
+
+/* =============================================================
+   Create Kasten — member scope picker (appended 2026-04-18)
+   ============================================================= */
+.create-kasten-dialog { max-height: calc(100vh - 2rem); overflow-y: auto; width: min(560px, 100%); }
+
+.create-kasten-members {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+.create-kasten-members-opt { cursor: pointer; position: relative; }
+.create-kasten-members-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.create-kasten-members-card {
+    display: block;
+    padding: 0.6rem 0.7rem;
+    background: var(--bg-primary);
+    border: 1.5px solid hsla(172, 66%, 50%, 0.2);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    text-align: left;
+}
+.create-kasten-members-opt input:checked + .create-kasten-members-card {
+    border-color: var(--accent);
+    background: hsla(172, 66%, 50%, 0.08);
+    box-shadow: 0 0 0 2px hsla(172, 66%, 50%, 0.12);
+}
+.create-kasten-members-name { display: block; font-weight: 600; color: var(--text-primary); font-size: 0.8rem; }
+.create-kasten-members-desc { display: block; font-size: 0.64rem; color: var(--text-secondary); margin-top: 0.15rem; line-height: 1.3; }
+
+.create-kasten-scope-panel { margin-top: 0.35rem; }
+.create-kasten-scope-panel.hidden { display: none !important; }
+
+.create-kasten-source-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+}
+.create-kasten-source-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    background: var(--bg-primary);
+    border: 1px solid hsla(172, 66%, 50%, 0.2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    transition: all 0.15s;
+}
+.create-kasten-source-chip input { margin: 0; accent-color: var(--accent); }
+.create-kasten-source-chip:has(input:checked) {
+    border-color: var(--accent);
+    background: hsla(172, 66%, 50%, 0.08);
+}
+
+.create-kasten-zettels {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid hsla(172, 66%, 50%, 0.18);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+}
+.create-kasten-zettel-search {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: none;
+    border-bottom: 1px solid hsla(172, 66%, 50%, 0.18);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    outline: none;
+}
+.create-kasten-zettel-list { display: flex; flex-direction: column; padding: 0.25rem; }
+.create-kasten-zettel-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.create-kasten-zettel-item:hover { background: hsla(172, 66%, 50%, 0.06); }
+.create-kasten-zettel-item input { margin-top: 0.2rem; accent-color: var(--accent); }
+.create-kasten-zettel-body { flex: 1 1 auto; min-width: 0; }
+.create-kasten-zettel-title {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.create-kasten-zettel-meta {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: 0.12rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.create-kasten-zettel-empty {
+    padding: 1rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: center;
+}

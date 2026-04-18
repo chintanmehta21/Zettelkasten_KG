@@ -248,7 +248,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def user_kastens(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(USER_KASTENS_DIR / "index.html"))
+        return _render_with_header(USER_KASTENS_DIR / "index.html")
 
     @app.get("/home/rag")
     async def user_rag(request: Request):
