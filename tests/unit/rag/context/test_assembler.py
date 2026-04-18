@@ -217,6 +217,132 @@ async def test_stub_chunk_in_group_removed_but_real_siblings_kept() -> None:
 
 
 @pytest.mark.asyncio
+async def test_adjacent_chunks_have_overlap_trimmed() -> None:
+    """Two consecutive chunks (chunk_idx N and N+1) with a duplicated head/tail
+    — the classic late-chunker sliding-window artifact — should have the
+    duplicated prefix stripped from the second chunk so we don't pay budget
+    for the same prose twice."""
+    assembler = ContextAssembler()
+    shared = "The transformer architecture replaces recurrence with self-attention and scales to very long sequences."
+    prev_content = "Introductory paragraph. " + shared
+    curr_content = shared + " Subsequent elaboration that is unique to the second chunk."
+    prev = _candidate("node-1", "N", prev_content, 0.9, chunk_idx=0)
+    curr = _candidate("node-1", "N", curr_content, 0.9, chunk_idx=1)
+
+    xml, used = await assembler.build(
+        candidates=[prev, curr], quality="fast", user_query="query",
+    )
+
+    assert shared in xml
+    # The shared passage should appear only once after trimming.
+    assert xml.count(shared) == 1
+    assert "Subsequent elaboration" in xml
+    assert len(used) == 2
+
+
+@pytest.mark.asyncio
+async def test_non_adjacent_chunks_not_trimmed() -> None:
+    """When chunk_idx has a gap (e.g. 0 -> 5), the chunker dropped the chunks
+    in between, so any literal head/tail match is coincidence rather than the
+    late-chunker's overlap. Leave both chunks intact."""
+    assembler = ContextAssembler()
+    shared = "Shared prose long enough to exceed the overlap threshold so it would otherwise be trimmed away."
+    prev_content = "Lead-in material. " + shared
+    curr_content = shared + " Trailing material unique to this chunk."
+    prev = _candidate("node-gap", "G", prev_content, 0.9, chunk_idx=0)
+    curr = _candidate("node-gap", "G", curr_content, 0.9, chunk_idx=5)
+
+    xml, used = await assembler.build(
+        candidates=[prev, curr], quality="fast", user_query="query",
+    )
+
+    # Shared prose should appear twice — once per untouched chunk.
+    assert xml.count(shared) == 2
+    assert len(used) == 2
+
+
+@pytest.mark.asyncio
+async def test_summary_never_trimmed() -> None:
+    """Summaries are standalone synthetic passages — they share no
+    sliding-window overlap with chunks and must be rendered verbatim even if
+    they happen to share a literal prefix with a neighbouring chunk."""
+    assembler = ContextAssembler()
+    overlap = "Identical leading sentence shared between the summary and the first chunk for some reason."
+    summary = _candidate(
+        "node-sum",
+        "S",
+        overlap + " Summary-specific analysis follows.",
+        0.9,
+        chunk_idx=0,
+        kind=ChunkKind.SUMMARY,
+    )
+    chunk = _candidate(
+        "node-sum",
+        "S",
+        overlap + " Body paragraph of the chunk.",
+        0.9,
+        chunk_idx=1,
+        kind=ChunkKind.CHUNK,
+    )
+
+    xml, used = await assembler.build(
+        candidates=[summary, chunk], quality="fast", user_query="query",
+    )
+
+    # Summary is untouched, so the overlap appears in both its passage and the
+    # chunk — total count should be 2.
+    assert xml.count(overlap) == 2
+    assert len(used) == 2
+
+
+@pytest.mark.asyncio
+async def test_short_overlap_below_threshold_not_trimmed() -> None:
+    """An overlap shorter than the minimum-overlap threshold (~40 chars) is
+    too likely to be coincidental (shared stop-words, a repeated title) — the
+    trimmer should leave it alone rather than risk a lossy cut."""
+    assembler = ContextAssembler()
+    prev_content = "First chunk full content with distinct tail phrase. Short tail."
+    curr_content = "Short tail but the rest of this chunk is entirely different and unique content."
+    prev = _candidate("node-short", "Sh", prev_content, 0.9, chunk_idx=0)
+    curr = _candidate("node-short", "Sh", curr_content, 0.9, chunk_idx=1)
+
+    xml, used = await assembler.build(
+        candidates=[prev, curr], quality="fast", user_query="query",
+    )
+
+    # Curr content should appear intact — no trim applied.
+    assert "Short tail but the rest" in xml
+    assert len(used) == 2
+
+
+@pytest.mark.asyncio
+async def test_chunk_trimmed_below_stub_threshold_is_dropped() -> None:
+    """If the overlap trim leaves a chunk shorter than the stub threshold,
+    the chunk carries no grounding signal anymore and should be dropped from
+    the rendered context."""
+    assembler = ContextAssembler()
+    # curr_content is almost entirely the overlap — trimming leaves a tiny
+    # remainder that falls below _MIN_USEFUL_CHARS.
+    shared = (
+        "Long shared prefix that completely dominates the second chunk and "
+        "leaves only a scrap behind once the overlap is stripped away cleanly."
+    )
+    prev_content = "Prev chunk lead-in. " + shared
+    curr_content = shared + " tiny"
+    prev = _candidate("node-strip", "St", prev_content, 0.9, chunk_idx=0)
+    curr = _candidate("node-strip", "St", curr_content, 0.9, chunk_idx=1)
+
+    xml, used = await assembler.build(
+        candidates=[prev, curr], quality="fast", user_query="query",
+    )
+
+    # Prev survives; curr gets trimmed to a stub and dropped.
+    assert 'id="node-strip"' in xml
+    assert len(used) == 1
+    assert used[0].chunk_idx == 0
+
+
+@pytest.mark.asyncio
 async def test_skips_group_that_cannot_contribute_any_item() -> None:
     """A later group with no item that fits the remaining budget must not
     appear in the rendered XML at all (no empty <zettel> shells)."""
