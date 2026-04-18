@@ -199,6 +199,55 @@ async def test_thematic_weights_lean_on_semantic() -> None:
     assert payload["p_semantic_weight"] == pytest.approx(0.60)
 
 
+def test_exact_title_match_gets_large_boost() -> None:
+    """When a query variant equals the candidate's name verbatim the fused
+    score must be bumped enough to pull the node into the top results even
+    from a mediocre base rrf_score (e.g. stub bodies)."""
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    base_row = {
+        "kind": "chunk", "node_id": "yt-attention", "chunk_id": None, "chunk_idx": 0,
+        "name": "Attention Is All You Need", "source_type": "youtube", "url": "u",
+        "content": "stub", "tags": [], "metadata": {}, "rrf_score": 0.10,
+    }
+    fused = retriever._dedup_and_fuse(
+        [[base_row]],
+        query_variants=["attention is all you need"],
+    )
+
+    assert fused[0].rrf_score == pytest.approx(0.50)
+
+
+def test_partial_title_match_gets_graded_boost() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    base_row = {
+        "kind": "chunk", "node_id": "yt-attention", "chunk_id": None, "chunk_idx": 0,
+        "name": "Attention Is All You Need - Paper Explained", "source_type": "youtube",
+        "url": "u", "content": "stub", "tags": [], "metadata": {}, "rrf_score": 0.10,
+    }
+    fused = retriever._dedup_and_fuse(
+        [[base_row]],
+        query_variants=["attention is all you need"],
+    )
+
+    assert fused[0].rrf_score > 0.10
+    # Partial match is graded lower than exact-match's +0.40 but still non-trivial.
+    assert fused[0].rrf_score < 0.50
+
+
+def test_no_title_boost_when_variants_dont_match() -> None:
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    base_row = {
+        "kind": "chunk", "node_id": "gh-langchain", "chunk_id": None, "chunk_idx": 0,
+        "name": "LangChain README", "source_type": "github", "url": "u",
+        "content": "body", "tags": [], "metadata": {}, "rrf_score": 0.30,
+    }
+    fused = retriever._dedup_and_fuse(
+        [[base_row]],
+        query_variants=["transformer attention paper"],
+    )
+    assert fused[0].rrf_score == pytest.approx(0.30)
+
+
 @pytest.mark.asyncio
 async def test_multi_hop_weights_boost_graph() -> None:
     supabase = _Supabase({"rag_hybrid_search": []})

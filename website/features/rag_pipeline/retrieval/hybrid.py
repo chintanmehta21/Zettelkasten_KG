@@ -79,7 +79,7 @@ class HybridRetriever:
             _search(query_text, query_vec)
             for query_text, query_vec in zip(query_variants, embeddings)
         ])
-        return self._dedup_and_fuse(results)
+        return self._dedup_and_fuse(results, query_variants=query_variants)
 
     async def _resolve_nodes(
         self,
@@ -104,7 +104,12 @@ class HybridRetriever:
         ).execute()
         return [row["node_id"] for row in (response.data or [])]
 
-    def _dedup_and_fuse(self, multi_variant: list[list[dict]]) -> list[RetrievalCandidate]:
+    def _dedup_and_fuse(
+        self,
+        multi_variant: list[list[dict]],
+        *,
+        query_variants: list[str] | None = None,
+    ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
         for variant_results in multi_variant:
@@ -119,9 +124,51 @@ class HybridRetriever:
                     by_key[key].rrf_score = max(by_key[key].rrf_score, float(row.get("rrf_score") or 0.0))
             for key in seen_in_variant:
                 variant_hits[key] += 1
+
+        normalized_variants = [
+            _normalize_for_match(v) for v in (query_variants or []) if v and v.strip()
+        ]
+
         for key, candidate in by_key.items():
             candidate.rrf_score += 0.05 * (variant_hits[key] - 1)
+            # Title/name-match boost — queries that mention a zettel name
+            # verbatim should reliably surface that zettel even when dense /
+            # FTS signals are weak (e.g. stub bodies, rare embeddings).
+            boost = _title_match_boost(candidate.name, normalized_variants)
+            if boost > 0:
+                candidate.rrf_score += boost
         return sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
+
+
+def _normalize_for_match(text: str) -> str:
+    """Lowercase and collapse whitespace so title matching is punctuation-
+    insensitive without requiring exact casing from the user's query."""
+    import re
+    return re.sub(r"\s+", " ", str(text or "").strip().lower())
+
+
+def _title_match_boost(name: str, normalized_variants: list[str]) -> float:
+    """Return a boost if any query variant appears as a substring of the
+    candidate's name (or vice-versa for short names). Boost is graded so
+    full equality beats partial containment."""
+    if not name or not normalized_variants:
+        return 0.0
+    normalized_name = _normalize_for_match(name)
+    if not normalized_name:
+        return 0.0
+    best = 0.0
+    for variant in normalized_variants:
+        if not variant:
+            continue
+        if variant == normalized_name:
+            best = max(best, 0.40)
+        elif variant in normalized_name or normalized_name in variant:
+            # Partial containment — meaningful when user paraphrases a title.
+            ratio = min(len(variant), len(normalized_name)) / max(
+                len(variant), len(normalized_name)
+            )
+            best = max(best, 0.20 * ratio)
+    return best
 
 
 def _row_to_candidate(row: dict) -> RetrievalCandidate:
