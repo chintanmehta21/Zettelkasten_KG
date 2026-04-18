@@ -84,7 +84,7 @@ class CascadeReranker:
     ) -> list[_ScoredCandidate]:
         stage1 = self._get_stage1_ranker()
         passages = [
-            {"id": index, "text": candidate.content[:4000], "meta": {"index": index}}
+            {"id": index, "text": _passage_text(candidate), "meta": {"index": index}}
             for index, candidate in enumerate(candidates)
         ]
         request = RerankRequest(query=query, passages=passages)
@@ -197,7 +197,7 @@ class CascadeReranker:
         with self._stage2_lock:
             tokenizer.enable_truncation(max_length=self._max_length)
             tokenizer.enable_padding(length=self._max_length)
-            encodings = tokenizer.encode_batch([(query, candidate.content[:4000]) for candidate in candidates])
+            encodings = tokenizer.encode_batch([(query, _passage_text(candidate)) for candidate in candidates])
 
         input_ids = np.array([encoding.ids for encoding in encodings], dtype=np.int64)
         attention_mask = np.array([encoding.attention_mask for encoding in encodings], dtype=np.int64)
@@ -236,6 +236,21 @@ class CascadeReranker:
 
         flattened = logits.reshape(logits.shape[0], -1)
         return [float(value) for value in flattened[:, 0]]
+
+
+def _passage_text(candidate: RetrievalCandidate) -> str:
+    """Build the text passed to both rerank stages. Prepending the candidate's
+    name (unless the content already starts with it) gives the cross-encoder
+    strong title signal for non-first chunks and summary rows whose body may
+    not repeat the zettel title verbatim."""
+    content = (candidate.content or "")[:4000]
+    name = (candidate.name or "").strip()
+    if not name:
+        return content
+    head = content.lstrip()[:120].lower()
+    if name.lower() in head:
+        return content
+    return f"{name}\n\n{content}"
 
 
 def _mmr_select(

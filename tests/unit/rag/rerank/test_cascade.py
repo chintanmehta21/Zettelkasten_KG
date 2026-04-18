@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select
+from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select, _passage_text
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate, SourceType
 
 
@@ -130,6 +130,54 @@ async def test_stage2_failure_falls_back_to_stage1_scores_and_logs() -> None:
     assert ranked[0].rerank_score == pytest.approx(0.8)
     assert ranked[1].rerank_score == pytest.approx(0.4)
     reranker._degradation_logger.log_event.assert_called_once()
+
+
+def test_passage_text_prepends_name_when_absent_from_content() -> None:
+    candidate = RetrievalCandidate(
+        kind=ChunkKind.CHUNK,
+        node_id="n1",
+        chunk_id=uuid4(),
+        chunk_idx=2,
+        name="Attention Is All You Need",
+        source_type=SourceType.YOUTUBE,
+        url="u",
+        content="body text without the title here",
+        rrf_score=0.0,
+    )
+    text = _passage_text(candidate)
+    assert text.startswith("Attention Is All You Need")
+    assert "body text without the title here" in text
+
+
+def test_passage_text_does_not_duplicate_when_content_already_has_title() -> None:
+    candidate = RetrievalCandidate(
+        kind=ChunkKind.CHUNK,
+        node_id="n1",
+        chunk_id=uuid4(),
+        chunk_idx=0,
+        name="Attention Is All You Need",
+        source_type=SourceType.YOUTUBE,
+        url="u",
+        content="[Attention Is All You Need]\n#ml\n\nbody",
+        rrf_score=0.0,
+    )
+    text = _passage_text(candidate)
+    assert text.count("Attention Is All You Need") == 1
+
+
+def test_passage_text_handles_missing_name() -> None:
+    candidate = RetrievalCandidate(
+        kind=ChunkKind.CHUNK,
+        node_id="n1",
+        chunk_id=uuid4(),
+        chunk_idx=0,
+        name="",
+        source_type=SourceType.WEB,
+        url="u",
+        content="some body",
+        rrf_score=0.0,
+    )
+    assert _passage_text(candidate) == "some body"
 
 
 def test_mmr_prefers_distinct_nodes_when_scores_are_close() -> None:
