@@ -40,20 +40,29 @@ NEXUS_DIR = Path(__file__).parent / "experimental_features" / "nexus"
 SUMMARIZATION_ENGINE_DIR = Path(__file__).parent / "features" / "summarization_engine"
 HEADER_DIR = Path(__file__).parent / "features" / "header"
 _HEADER_PLACEHOLDER = "<!--ZK_HEADER-->"
+_FOOTER_PLACEHOLDER = "<!--ZK_FOOTER-->"
 
 
-def _render_with_header(path: Path) -> HTMLResponse:
-    """Read an HTML page and inject the shared site header at the placeholder.
+def _render_with_shell(path: Path) -> HTMLResponse:
+    """Read an HTML page and inject shared header and footer at their placeholders.
 
-    The placeholder is the literal comment ``<!--ZK_HEADER-->``. Re-reads on every
-    request so live edits to header.html show up without restart. Falls back to
-    returning the raw page unchanged if the placeholder or header file is absent.
+    Placeholders are the literal comments ``<!--ZK_HEADER-->`` and ``<!--ZK_FOOTER-->``.
+    Re-reads on every request so live edits to the shared fragments show up without
+    restart. Falls back to returning the raw page unchanged if a placeholder or
+    fragment file is absent.
     """
     html = path.read_text(encoding="utf-8")
     if _HEADER_PLACEHOLDER in html:
         header_html = (HEADER_DIR / "header.html").read_text(encoding="utf-8")
         html = html.replace(_HEADER_PLACEHOLDER, header_html)
+    if _FOOTER_PLACEHOLDER in html:
+        footer_html = (FOOTER_DIR / "footer.html").read_text(encoding="utf-8")
+        html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
     return HTMLResponse(content=html)
+
+
+# Backward-compat alias; keep callers working while incrementally migrating.
+_render_with_header = _render_with_shell
 
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
@@ -210,7 +219,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def index(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(STATIC_DIR / "index.html"))
+        return _render_with_shell(STATIC_DIR / "index.html")
 
     @app.get("/knowledge-graph")
     async def knowledge_graph(request: Request):
@@ -226,7 +235,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def home(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(HOME_DIR / "index.html"))
+        return _render_with_shell(HOME_DIR / "index.html")
 
     if nexus_enabled:
         @app.get("/home/nexus")
@@ -236,19 +245,19 @@ def create_app(lifespan=None) -> FastAPI:
             nexus_index = NEXUS_DIR / "index.html"
             if not nexus_index.exists():
                 raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
-            return _render_with_header(nexus_index)
+            return _render_with_shell(nexus_index)
 
     @app.get("/home/zettels")
     async def user_zettels(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_header(USER_ZETTELS_DIR / "index.html")
+        return _render_with_shell(USER_ZETTELS_DIR / "index.html")
 
     @app.get("/home/kastens")
     async def user_kastens(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_header(USER_KASTENS_DIR / "index.html")
+        return _render_with_shell(USER_KASTENS_DIR / "index.html")
 
     @app.get("/home/rag")
     async def user_rag(request: Request):
@@ -264,12 +273,12 @@ def create_app(lifespan=None) -> FastAPI:
     async def about(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(ABOUT_DIR / "index.html"))
+        return _render_with_shell(ABOUT_DIR / "index.html")
 
     @app.get("/pricing")
     async def pricing(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(PRICING_DIR / "index.html"))
+        return _render_with_shell(PRICING_DIR / "index.html")
 
     return app
