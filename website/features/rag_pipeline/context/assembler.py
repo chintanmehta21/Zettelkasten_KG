@@ -53,16 +53,42 @@ class ContextAssembler:
         budget: int,
         user_query: str,
     ) -> tuple[list[list[RetrievalCandidate]], list[RetrievalCandidate]]:
+        """Greedy budget packing with per-group partial inclusion.
+
+        The first group is always kept whole (minimum-coverage guarantee even
+        if it overflows). For every subsequent group, include as many of its
+        items as fit — items are already sorted summary-first / chunk_idx
+        ascending, so the highest-signal items land first. This preserves the
+        old "top group wins" ranking while letting a summary from a lower-
+        ranked group survive when a fat earlier group ate most of the budget.
+        """
         del user_query
         used_tokens = 0
-        fitted = []
-        used = []
+        fitted: list[list[RetrievalCandidate]] = []
+        used: list[RetrievalCandidate] = []
         for group in grouped:
-            group_tokens = sum(max(_MIN_USEFUL_TOKENS, len(item.content) // 4) for item in group)
-            if used_tokens + group_tokens <= budget or not fitted:
+            if not fitted:
                 fitted.append(group)
                 used.extend(group)
-                used_tokens += group_tokens
+                used_tokens += sum(
+                    max(_MIN_USEFUL_TOKENS, len(item.content) // 4) for item in group
+                )
+                continue
+            remaining = budget - used_tokens
+            if remaining <= 0:
+                break
+            subset: list[RetrievalCandidate] = []
+            subset_tokens = 0
+            for item in group:
+                item_tokens = max(_MIN_USEFUL_TOKENS, len(item.content) // 4)
+                if subset_tokens + item_tokens > remaining:
+                    break
+                subset.append(item)
+                subset_tokens += item_tokens
+            if subset:
+                fitted.append(subset)
+                used.extend(subset)
+                used_tokens += subset_tokens
         return fitted, used
 
     def _render_xml(self, grouped: list[list[RetrievalCandidate]]) -> str:
