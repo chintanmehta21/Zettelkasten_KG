@@ -23,6 +23,15 @@ class _ScoredCandidate:
     score: float
 
 
+# Per-node diversity penalty applied greedily after scoring. A candidate whose
+# node is already represented in the selected set pays this much against its
+# final_score before competing for the next slot. Keeps top_k from being
+# dominated by one chatty node while still letting clearly-stronger siblings
+# win — a sibling only loses out if a different node is within _MMR_LAMBDA of
+# its score.
+_MMR_LAMBDA = 0.10
+
+
 class CascadeReranker:
     """Rerank candidates with a fast shortlist stage and a deeper ONNX stage."""
 
@@ -112,7 +121,7 @@ class CascadeReranker:
             key=lambda candidate: candidate.final_score or 0.0,
             reverse=True,
         )
-        return ranked[:top_k]
+        return _mmr_select(ranked, top_k, _MMR_LAMBDA)
 
     def _fallback_to_rrf(
         self,
@@ -227,3 +236,33 @@ class CascadeReranker:
 
         flattened = logits.reshape(logits.shape[0], -1)
         return [float(value) for value in flattened[:, 0]]
+
+
+def _mmr_select(
+    ranked: list[RetrievalCandidate],
+    top_k: int,
+    node_penalty: float,
+) -> list[RetrievalCandidate]:
+    """Greedy MMR pick that penalises repeated node_ids. Stable when all
+    candidates come from distinct nodes: the penalty never fires and ordering
+    matches the input (score-desc) exactly."""
+    if top_k <= 0 or not ranked:
+        return ranked[:top_k]
+
+    selected: list[RetrievalCandidate] = []
+    remaining = list(ranked)
+    selected_nodes: set[str] = set()
+    while remaining and len(selected) < top_k:
+        best_index = 0
+        best_adjusted = float("-inf")
+        for index, candidate in enumerate(remaining):
+            base = candidate.final_score or 0.0
+            penalty = node_penalty if candidate.node_id in selected_nodes else 0.0
+            adjusted = base - penalty
+            if adjusted > best_adjusted:
+                best_adjusted = adjusted
+                best_index = index
+        picked = remaining.pop(best_index)
+        selected.append(picked)
+        selected_nodes.add(picked.node_id)
+    return selected

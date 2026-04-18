@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from website.features.rag_pipeline.rerank.cascade import CascadeReranker
+from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate, SourceType
 
 
@@ -130,6 +130,43 @@ async def test_stage2_failure_falls_back_to_stage1_scores_and_logs() -> None:
     assert ranked[0].rerank_score == pytest.approx(0.8)
     assert ranked[1].rerank_score == pytest.approx(0.4)
     reranker._degradation_logger.log_event.assert_called_once()
+
+
+def test_mmr_prefers_distinct_nodes_when_scores_are_close() -> None:
+    """Two chunks from node A both scoring 0.70 vs one chunk from node B at
+    0.65: MMR should pick A, then B (not A twice)."""
+    a1 = _candidate("node-a", 0.0)
+    a1.final_score = 0.70
+    a2 = _candidate("node-a", 0.0)
+    a2.final_score = 0.70
+    b = _candidate("node-b", 0.0)
+    b.final_score = 0.65
+
+    picked = _mmr_select([a1, a2, b], top_k=2, node_penalty=0.10)
+    assert [c.node_id for c in picked] == ["node-a", "node-b"]
+
+
+def test_mmr_keeps_duplicate_node_when_strongly_better() -> None:
+    """If a same-node sibling dominates by more than the penalty, it still
+    wins — diversity is a tiebreaker, not a hard cap."""
+    a1 = _candidate("node-a", 0.0)
+    a1.final_score = 0.90
+    a2 = _candidate("node-a", 0.0)
+    a2.final_score = 0.85
+    b = _candidate("node-b", 0.0)
+    b.final_score = 0.70
+
+    picked = _mmr_select([a1, a2, b], top_k=2, node_penalty=0.10)
+    assert [c.node_id for c in picked] == ["node-a", "node-a"]
+
+
+def test_mmr_is_stable_when_all_nodes_distinct() -> None:
+    a = _candidate("node-a", 0.0); a.final_score = 0.9
+    b = _candidate("node-b", 0.0); b.final_score = 0.8
+    c = _candidate("node-c", 0.0); c.final_score = 0.7
+
+    picked = _mmr_select([a, b, c], top_k=3, node_penalty=0.10)
+    assert [x.node_id for x in picked] == ["node-a", "node-b", "node-c"]
 
 
 @pytest.mark.asyncio
