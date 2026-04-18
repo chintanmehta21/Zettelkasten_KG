@@ -24,7 +24,12 @@ except Exception:  # pragma: no cover - optional dependency fallback
         return _DummyLangfuse()
 
 from website.features.rag_pipeline.errors import EmptyScopeError
-from website.features.rag_pipeline.generation.prompts import SYSTEM_PROMPT, USER_TEMPLATE
+from website.features.rag_pipeline.generation.prompts import (
+    NO_CONTEXT_MARKER,
+    REFUSAL_PHRASE,
+    SYSTEM_PROMPT,
+    USER_TEMPLATE,
+)
 from website.features.rag_pipeline.generation.sanitize import sanitize_answer, strip_invalid_citations
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
@@ -53,6 +58,16 @@ class _GeneratedAnswer:
     model: str
     token_counts: dict
     finish_reason: str
+
+
+def _empty_context_refusal() -> "_GeneratedAnswer":
+    """Canonical no-context response emitted by the generate short-circuit."""
+    return _GeneratedAnswer(
+        content=REFUSAL_PHRASE,
+        model="short_circuit",
+        token_counts={"prompt": 0, "completion": 0, "total": 0},
+        finish_reason="empty_context",
+    )
 
 
 @dataclass(slots=True)
@@ -226,6 +241,8 @@ class RAGOrchestrator:
 
     @trace_stage("generate_once")
     async def _generate_once(self, *, query, context_xml: str) -> _GeneratedAnswer:
+        if NO_CONTEXT_MARKER in context_xml:
+            return _empty_context_refusal()
         user_prompt = USER_TEMPLATE.format(
             context_xml=context_xml,
             user_query=query.content,
@@ -247,6 +264,11 @@ class RAGOrchestrator:
 
     @trace_stage("generate_streaming")
     async def _generate_streaming(self, *, query, context_xml: str) -> AsyncIterator[dict]:
+        if NO_CONTEXT_MARKER in context_xml:
+            answer = _empty_context_refusal()
+            yield {"type": "token", "content": answer.content}
+            yield {"type": "complete", "answer": answer}
+            return
         user_prompt = USER_TEMPLATE.format(
             context_xml=context_xml,
             user_query=query.content,

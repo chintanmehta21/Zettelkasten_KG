@@ -55,6 +55,16 @@ class _Assembler:
         return "<context><zettel id=\"node-1\"/></context>", candidates
 
 
+class _EmptyAssembler:
+    """Emits the canonical no-context marker so the short-circuit fires."""
+
+    async def build(self, *, candidates, quality, user_query):
+        return (
+            "<context>\n  <!-- no relevant Zettels found -->\n</context>",
+            [],
+        )
+
+
 class _LLM:
     def __init__(self, *, content="Grounded answer [node-1]", stream_tokens=None, error=None):
         self.content = content
@@ -71,6 +81,25 @@ class _LLM:
             raise self.error
         for token in self.stream_tokens:
             yield token, {"model": "gemini-2.5-flash", "token_counts": {"total": 12}, "finish_reason": "STOP"}
+
+
+class _CountingLLM(_LLM):
+    """``_LLM`` that records every call so tests can assert the short-circuit
+    path never reaches the model."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.generate_calls = 0
+        self.stream_calls = 0
+
+    async def generate(self, *, query, system_prompt, user_prompt):
+        self.generate_calls += 1
+        return await super().generate(query=query, system_prompt=system_prompt, user_prompt=user_prompt)
+
+    async def generate_stream(self, *, query, system_prompt, user_prompt):
+        self.stream_calls += 1
+        async for token, meta in super().generate_stream(query=query, system_prompt=system_prompt, user_prompt=user_prompt):
+            yield token, meta
 
 
 class _BlockingStreamLLM:
@@ -296,6 +325,76 @@ async def test_answer_stream_yields_first_token_before_generation_completes() ->
     llm.allow_completion.set()
     remaining = [event async for event in stream]
     assert [event["type"] for event in remaining] == ["token", "done"]
+
+
+@pytest.mark.asyncio
+async def test_empty_context_short_circuits_to_refusal_without_calling_llm() -> None:
+    """When retrieval yields zero candidates the assembler emits the canonical
+    no-context marker. The orchestrator must detect that marker and emit the
+    fixed refusal phrase without invoking the LLM at all — otherwise every
+    out-of-scope question burns prompt+completion tokens for nothing and risks
+    hallucinated answers against an empty context."""
+    from website.features.rag_pipeline.generation.prompts import REFUSAL_PHRASE
+
+    llm = _CountingLLM()
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_EmptyAssembler(),
+        llm=llm,
+        critic=_Critic(["supported"]),
+        sessions=_Sessions(),
+    )
+
+    turn = await orchestrator.answer(
+        query=ChatQuery(content="What does the corpus say about quantum foam?"),
+        user_id=uuid4(),
+    )
+
+    assert turn.content == REFUSAL_PHRASE
+    assert turn.citations == []
+    assert llm.generate_calls == 0
+    assert llm.stream_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_empty_context_short_circuits_stream_without_calling_llm() -> None:
+    """Streaming path must honor the same short-circuit so UI clients get the
+    refusal via the normal token stream (not an error) while the LLM stays
+    idle. Regressions here either hallucinate or break the streaming contract."""
+    from website.features.rag_pipeline.generation.prompts import REFUSAL_PHRASE
+
+    llm = _CountingLLM()
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_EmptyAssembler(),
+        llm=llm,
+        critic=_Critic(["supported"]),
+        sessions=_Sessions(),
+    )
+
+    events = [
+        event
+        async for event in orchestrator.answer_stream(
+            query=ChatQuery(content="What does the corpus say about quantum foam?"),
+            user_id=uuid4(),
+        )
+    ]
+
+    token_events = [event for event in events if event["type"] == "token"]
+    assert "".join(event["content"] for event in token_events) == REFUSAL_PHRASE
+    assert events[-1]["type"] == "done"
+    assert llm.generate_calls == 0
+    assert llm.stream_calls == 0
 
 
 @pytest.mark.asyncio
