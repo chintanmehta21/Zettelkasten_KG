@@ -1,0 +1,7 @@
+# mem-vault project mirror.
+# README.md lists the slug + vault location — safe to commit for team visibility.
+# recent.md regenerates every session — usually noisy in diffs, so ignore it.
+recent.md
+
+# Uncomment the line below to ignore this whole folder:
+# *

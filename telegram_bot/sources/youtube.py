@@ -252,6 +252,9 @@ class YouTubeExtractor(SourceExtractor):
                 metadata["channel"] = oembed.get("channel", "")
                 logger.info("oEmbed metadata: title='%s', channel='%s'", title, metadata["channel"])
 
+        if not title:
+            title = f"YouTube Video {video_id}"
+
         # ── Build body from transcript or fallback ───────────────────────
         if transcript_text:
             parts.append(f"## Transcript\n\n{transcript_text}")
@@ -264,10 +267,16 @@ class YouTubeExtractor(SourceExtractor):
             metadata["has_transcript"] = False
         else:
             metadata["has_transcript"] = False
-            parts.append("## Transcript\n\n(Transcript not available for this video)")
-
-        if not title:
-            title = f"YouTube Video {video_id}"
+            fallback_lines = [
+                f"Title: {title}",
+                f"Channel: {metadata.get('channel') or 'Unknown'}",
+                f"Video ID: {video_id}",
+            ]
+            parts.append(
+                "## Video\n\n"
+                + "\n".join(fallback_lines)
+                + "\n\n## Transcript\n\n(Transcript not available for this video)"
+            )
 
         body = "\n\n".join(parts) if parts else "(No content extracted)"
 

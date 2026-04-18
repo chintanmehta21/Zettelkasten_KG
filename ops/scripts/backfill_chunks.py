@@ -72,6 +72,10 @@ def _bootstrap_env() -> None:
 
 _bootstrap_env()
 
+from website.features.rag_pipeline.ingest.content_selection import (
+    choose_chunk_source_text,
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
@@ -352,33 +356,17 @@ async def _process_node(
     if refetch_source:
         extracted = await _refetch_content(node)
 
-    # Stub rejection: extractors sometimes return useless placeholders
-    # (e.g. "Transcript not available for this video" from the YouTube
-    # oEmbed fallback, paywall redirect bodies, etc). Prefer the stored
-    # summary when the refetched body is a known stub or shorter than it.
-    _STUB_MARKERS = (
-        "transcript not available",
-        "not available for this video",
-        "video unavailable",
-        "content unavailable",
-        "403 forbidden",
-        "access denied",
-        "paywall",
-    )
     refetched_body = extracted.body if extracted and extracted.body else ""
     summary_text = node.get("summary") or ""
-    refetched_lower = refetched_body.lower()
-    is_stub = (
-        len(refetched_body.strip()) < 200
-        or any(m in refetched_lower for m in _STUB_MARKERS)
+    raw_text = choose_chunk_source_text(
+        raw_text=refetched_body,
+        summary_text=summary_text,
+        min_raw_length=200,
     )
-    if is_stub and len(summary_text) > len(refetched_body):
-        refetched_body = ""  # discard stub; fall through to summary
 
-    refetched_flag = bool(refetched_body)
+    refetched_flag = bool(refetched_body.strip()) and raw_text == refetched_body.strip()
     result["refetched"] = refetched_flag
 
-    raw_text = refetched_body or summary_text or ""
     payload = {
         "title": (extracted.title if extracted and extracted.title else None)
                  or node.get("name") or node["id"],

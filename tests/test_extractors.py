@@ -402,6 +402,9 @@ async def test_youtube_no_transcript_no_description():
         extractor = YouTubeExtractor()
         result = await extractor.extract(_YOUTUBE_URL)
 
+    assert "## Video" in result.body
+    assert "Title: Never Gonna Give You Up" in result.body
+    assert "Channel: Rick Astley" in result.body
     assert "(Transcript not available" in result.body
     assert result.metadata["has_transcript"] is False
 

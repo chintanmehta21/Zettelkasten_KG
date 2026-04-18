@@ -12,6 +12,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from website.features.rag_pipeline.ingest.content_selection import (
+    choose_chunk_source_text,
+)
+
 logger = logging.getLogger("website.features.rag_pipeline.ingest.hook")
 
 
@@ -27,7 +31,10 @@ async def ingest_node_chunks(
     failure — never raises. The caller is responsible for the feature-flag
     check; this function runs unconditionally.
     """
-    raw_text = str(payload.get("raw_text") or payload.get("summary") or "").strip()
+    raw_text = choose_chunk_source_text(
+        raw_text=payload.get("raw_text"),
+        summary_text=payload.get("summary"),
+    )
     if not raw_text:
         return 0
 

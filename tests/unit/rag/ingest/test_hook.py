@@ -25,12 +25,14 @@ async def test_ingest_node_chunks_calls_upsert_with_produced_chunks(monkeypatch)
     from website.features.rag_pipeline.ingest import hook
 
     produced_chunks = [object(), object(), object()]
+    captured_chunk_kwargs: dict = {}
 
     class _Chunker:
         def __init__(self, *args, **kwargs):
             pass
 
         def chunk(self, **kwargs):
+            captured_chunk_kwargs.update(kwargs)
             return produced_chunks
 
     class _Embeddings:
@@ -87,6 +89,63 @@ async def test_ingest_node_chunks_calls_upsert_with_produced_chunks(monkeypatch)
     assert captured["user_id"] == user_uuid
     assert captured["node_id"] == "node-web-1"
     assert captured["chunks"] is produced_chunks
+    assert captured_chunk_kwargs["raw_text"] == "full article body"
+
+
+@pytest.mark.asyncio
+async def test_ingest_node_chunks_prefers_summary_over_stub_youtube_body(monkeypatch) -> None:
+    from website.features.rag_pipeline.ingest import hook
+
+    captured_chunk_kwargs: dict = {}
+
+    class _Chunker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def chunk(self, **kwargs):
+            captured_chunk_kwargs.update(kwargs)
+            return [object()]
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.adapters.gemini_chonkie.GeminiChonkieEmbeddings",
+        lambda *a, **kw: object(),
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.adapters.pool_factory.get_embedding_pool",
+        lambda: object(),
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.chunker.ZettelChunker",
+        _Chunker,
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.embedder.ChunkEmbedder",
+        lambda *a, **kw: object(),
+    )
+    
+    async def _fake_upsert(**kwargs):
+        return 1
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.upsert.upsert_chunks",
+        _fake_upsert,
+    )
+
+    count = await hook.ingest_node_chunks(
+        payload={
+            "raw_text": "## Transcript\n\n(Transcript not available for this video)",
+            "summary": "Transformer attention replaces recurrence with self-attention and scales better on long-range dependencies.",
+            "title": "Attention Is All You Need",
+            "source_type": "youtube",
+        },
+        user_uuid=uuid4(),
+        node_id="yt-attention",
+    )
+
+    assert count == 1
+    assert captured_chunk_kwargs["raw_text"] == (
+        "Transformer attention replaces recurrence with self-attention and scales better on long-range dependencies."
+    )
 
 
 @pytest.mark.asyncio
