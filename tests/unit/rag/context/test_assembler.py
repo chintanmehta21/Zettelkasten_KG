@@ -217,6 +217,69 @@ async def test_stub_chunk_in_group_removed_but_real_siblings_kept() -> None:
 
 
 @pytest.mark.asyncio
+async def test_score_ordered_packing_prefers_higher_score_within_group() -> None:
+    """When budget only fits one chunk from a non-first group, the chunk with
+    the higher final_score should win — even if a lower-score sibling sits
+    earlier in chunk_idx order. Prior behavior (chunk_idx-only packing)
+    wasted budget on low-signal early chunks."""
+    assembler = ContextAssembler()
+    top = _candidate("node-top", "T", "a" * 16000, 0.99, chunk_idx=0)
+    low_early = _candidate("node-low", "L", "b" * 6400, 0.3, chunk_idx=0)
+    low_late = _candidate("node-low", "L", "c" * 6400, 0.9, chunk_idx=1)
+
+    xml, used = await assembler.build(
+        candidates=[top, low_early, low_late], quality="fast", user_query="query",
+    )
+
+    assert 'id="node-low"' in xml
+    low_used = [c for c in used if c.node_id == "node-low"]
+    assert len(low_used) == 1
+    assert low_used[0].chunk_idx == 1
+
+
+@pytest.mark.asyncio
+async def test_render_order_stays_chunk_idx_after_score_packing() -> None:
+    """Score ordering drives which chunks survive the budget, but once fitted
+    the rendered passages must be emitted in chunk_idx ascending order so the
+    LLM reads the document's narrative flow, not a score-shuffled jumble."""
+    assembler = ContextAssembler()
+    top = _candidate("node-top", "T", "a" * 16000, 0.99)
+    body = "Substantive chunk content long enough to clear the stub filter cleanly."
+    ch0 = _candidate("node-low", "L", body + " idx_zero_marker", 0.4, chunk_idx=0)
+    ch1 = _candidate("node-low", "L", body + " idx_one_marker", 0.9, chunk_idx=1)
+    ch2 = _candidate("node-low", "L", body + " idx_two_marker", 0.5, chunk_idx=2)
+
+    xml, used = await assembler.build(
+        candidates=[top, ch0, ch1, ch2], quality="fast", user_query="query",
+    )
+
+    low_used = [c for c in used if c.node_id == "node-low"]
+    assert [c.chunk_idx for c in low_used] == [0, 1, 2]
+    assert xml.index("idx_zero_marker") < xml.index("idx_one_marker") < xml.index("idx_two_marker")
+
+
+@pytest.mark.asyncio
+async def test_oversize_chunk_does_not_starve_smaller_sibling() -> None:
+    """A huge chunk that overflows the remaining budget used to ``break`` the
+    packing loop, leaving a smaller sibling chunk unused even though it would
+    have fit. Continuing past the overflow lets the smaller chunk land."""
+    assembler = ContextAssembler()
+    top = _candidate("node-top", "T", "a" * 22000, 0.99)
+    huge = _candidate("node-low", "L", "b" * 16000, 0.8, chunk_idx=0)
+    tiny_body = "Small but substantive chunk that easily passes the stub threshold filter."
+    tiny = _candidate("node-low", "L", tiny_body, 0.4, chunk_idx=1)
+
+    xml, used = await assembler.build(
+        candidates=[top, huge, tiny], quality="fast", user_query="query",
+    )
+
+    assert 'id="node-low"' in xml
+    low_used = [c for c in used if c.node_id == "node-low"]
+    assert len(low_used) == 1
+    assert low_used[0].chunk_idx == 1
+
+
+@pytest.mark.asyncio
 async def test_adjacent_chunks_have_overlap_trimmed() -> None:
     """Two consecutive chunks (chunk_idx N and N+1) with a duplicated head/tail
     — the classic late-chunker sliding-window artifact — should have the

@@ -134,11 +134,15 @@ class ContextAssembler:
         """Greedy budget packing with per-group partial inclusion.
 
         The first group is always kept whole (minimum-coverage guarantee even
-        if it overflows). For every subsequent group, include as many of its
-        items as fit — items are already sorted summary-first / chunk_idx
-        ascending, so the highest-signal items land first. This preserves the
-        old "top group wins" ranking while letting a summary from a lower-
-        ranked group survive when a fat earlier group ate most of the budget.
+        if it overflows). For every subsequent group, the summary goes first
+        (synthetic high-signal digest), then chunks are considered in
+        descending final_score order so when budget is tight the
+        highest-relevance chunks land ahead of lower-ranked siblings. Items
+        that would overflow the remaining budget are skipped rather than
+        breaking the loop — a fat high-score chunk shouldn't starve a smaller
+        mid-score sibling of its slot. Once the subset is fixed, it's
+        re-ordered back to summary-first / chunk_idx ascending so the rendered
+        passage sequence preserves the document's narrative flow.
         """
         del user_query
         used_tokens = 0
@@ -155,17 +159,34 @@ class ContextAssembler:
             remaining = budget - used_tokens
             if remaining <= 0:
                 break
+            summaries = [it for it in group if it.kind is ChunkKind.SUMMARY]
+            chunks = [it for it in group if it.kind is not ChunkKind.SUMMARY]
+            packing_order: list[RetrievalCandidate] = [
+                *summaries,
+                *sorted(
+                    chunks,
+                    key=lambda it: it.final_score if it.final_score is not None else it.rrf_score,
+                    reverse=True,
+                ),
+            ]
             subset: list[RetrievalCandidate] = []
             subset_tokens = 0
-            for item in group:
+            for item in packing_order:
                 item_tokens = max(_MIN_USEFUL_TOKENS, len(item.content) // 4)
                 if subset_tokens + item_tokens > remaining:
-                    break
+                    continue
                 subset.append(item)
                 subset_tokens += item_tokens
             if subset:
-                fitted.append(subset)
-                used.extend(subset)
+                render_order = [it for it in subset if it.kind is ChunkKind.SUMMARY]
+                render_order.extend(
+                    sorted(
+                        (it for it in subset if it.kind is not ChunkKind.SUMMARY),
+                        key=lambda it: it.chunk_idx,
+                    )
+                )
+                fitted.append(render_order)
+                used.extend(render_order)
                 used_tokens += subset_tokens
         return fitted, used
 
