@@ -812,7 +812,8 @@
   // ── Events ────────────────────────────────────────────────────────
 
   function bindEvents(token) {
-    console.log('[home] bindEvents start', { hasBtn: !!avatarBtn, hasDrop: !!avatarDropdown, hasWrap: !!avatarWrap });
+    window.__homeBindEventsCount = (window.__homeBindEventsCount || 0) + 1;
+    console.log('[home] bindEvents start, count=' + window.__homeBindEventsCount, { hasBtn: !!avatarBtn, hasDrop: !!avatarDropdown, hasWrap: !!avatarWrap });
     window.__homeBindEventsRan = true;
     // Avatar dropdown toggle
     if (avatarBtn) {
