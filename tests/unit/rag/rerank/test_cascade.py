@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select, _passage_text, _sigmoid
+from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _content_quality_factor, _mmr_select, _passage_text, _sigmoid
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate, SourceType
 
 
@@ -111,7 +111,11 @@ async def test_stage2_scores_populate_rerank_score_and_final_score() -> None:
 
     assert ranked[0].node_id == "one"
     assert ranked[0].rerank_score == pytest.approx(0.9)
-    assert ranked[0].final_score == pytest.approx(0.60 * 0.9 + 0.25 * 0.4 + 0.15 * 0.2)
+    # Short "Content for one" triggers the content-quality damp on the rerank
+    # contribution; graph + rrf contributions are unaffected.
+    from website.features.rag_pipeline.rerank.cascade import _content_quality_factor
+    quality = _content_quality_factor(candidates[0].content)
+    assert ranked[0].final_score == pytest.approx(0.60 * 0.9 * quality + 0.25 * 0.4 + 0.15 * 0.2)
 
 
 @pytest.mark.asyncio
@@ -132,6 +136,33 @@ async def test_stage2_failure_falls_back_to_stage1_scores_and_logs() -> None:
     assert ranked[0].rerank_score == pytest.approx(0.8)
     assert ranked[1].rerank_score == pytest.approx(0.4)
     reranker._degradation_logger.log_event.assert_called_once()
+
+
+def test_content_quality_factor_damps_short_stubs_but_not_real_chunks() -> None:
+    empty = _content_quality_factor("")
+    stub = _content_quality_factor("hello")
+    medium = _content_quality_factor("x" * 100)
+    full = _content_quality_factor("x" * 200)
+    huge = _content_quality_factor("x" * 2000)
+
+    assert empty == pytest.approx(0.35)
+    assert stub < medium < full
+    assert full == pytest.approx(1.0)
+    assert huge == pytest.approx(1.0)
+
+
+def test_stub_candidate_does_not_beat_rich_chunk_on_equal_rerank_score() -> None:
+    """Two candidates with identical rerank_score and RRF should be ordered
+    so the content-rich one wins, thanks to the quality factor."""
+    reranker = CascadeReranker.__new__(CascadeReranker)
+    stub = _candidate("stub-node", rrf=0.1, graph=0.0)
+    stub.content = "stub"
+    rich = _candidate("rich-node", rrf=0.1, graph=0.0)
+    rich.content = "x" * 400
+
+    stub_final = reranker._fused_score(stub, 0.9)
+    rich_final = reranker._fused_score(rich, 0.9)
+    assert rich_final > stub_final
 
 
 def test_extract_scores_sigmoid_squashes_logits_into_unit_interval() -> None:

@@ -87,7 +87,9 @@ async def test_single_candidate_returns_single_ranked_result() -> None:
 
     assert len(ranked) == 1
     assert ranked[0].node_id == "solo"
-    assert ranked[0].final_score == pytest.approx(0.60 * 0.9 + 0.25 * 0.6 + 0.15 * 0.1)
+    from website.features.rag_pipeline.rerank.cascade import _content_quality_factor
+    quality = _content_quality_factor(candidate.content)
+    assert ranked[0].final_score == pytest.approx(0.60 * 0.9 * quality + 0.25 * 0.6 + 0.15 * 0.1)
 
 
 @pytest.mark.asyncio

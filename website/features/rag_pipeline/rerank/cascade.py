@@ -134,8 +134,9 @@ class CascadeReranker:
         return sorted(candidates, key=lambda candidate: candidate.rrf_score or 0.0, reverse=True)[:top_k]
 
     def _fused_score(self, candidate: RetrievalCandidate, rerank_score: float) -> float:
+        quality = _content_quality_factor(candidate.content or "")
         return (
-            0.60 * rerank_score
+            0.60 * rerank_score * quality
             + 0.25 * (candidate.graph_score or 0.0)
             + 0.15 * (candidate.rrf_score or 0.0)
         )
@@ -243,6 +244,18 @@ class CascadeReranker:
         # via sigmoid so all three components live in [0, 1].
         squashed = _sigmoid(raw)
         return [float(value) for value in squashed]
+
+
+def _content_quality_factor(content: str) -> float:
+    """Return a 0.35–1.0 factor that damps the rerank contribution for very
+    short (stub) candidates. A 200-char body saturates at 1.0; a 40-char stub
+    lands around 0.50. The floor of 0.35 keeps useful-but-terse nodes in the
+    mix (e.g. a one-line GitHub issue that actually answers the query)."""
+    length = len(content.strip())
+    if length <= 0:
+        return 0.35
+    saturated = min(1.0, length / 200.0)
+    return 0.35 + 0.65 * saturated
 
 
 def _sigmoid(values: np.ndarray) -> np.ndarray:
