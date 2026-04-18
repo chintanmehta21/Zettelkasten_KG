@@ -812,13 +812,18 @@
   // ── Events ────────────────────────────────────────────────────────
 
   function bindEvents(token) {
+    console.log('[home] bindEvents start', { hasBtn: !!avatarBtn, hasDrop: !!avatarDropdown, hasWrap: !!avatarWrap });
+    window.__homeBindEventsRan = true;
     // Avatar dropdown toggle
     if (avatarBtn) {
       avatarBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         avatarDropdown.classList.toggle('open');
         avatarBtn.setAttribute('aria-expanded', avatarDropdown.classList.contains('open') ? 'true' : 'false');
+        console.log('[home] avatar click', avatarDropdown.classList.contains('open'));
       });
+    } else {
+      console.warn('[home] bindEvents: avatarBtn missing');
     }
 
     // Close dropdown on outside click
