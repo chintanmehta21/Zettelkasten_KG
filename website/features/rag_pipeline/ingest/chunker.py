@@ -147,15 +147,42 @@ class ZettelChunker:
         if source_type in LONG_FORM_SOURCES:
             try:
                 if self._late is not None:
-                    return self._late_chunk(cleaned_text, extra_metadata)
-                return self._semantic_chunk(cleaned_text, extra_metadata)
+                    chunks = self._late_chunk(cleaned_text, extra_metadata)
+                else:
+                    chunks = self._semantic_chunk(cleaned_text, extra_metadata)
             except Exception:
                 try:
-                    return self._recursive_chunk(cleaned_text, extra_metadata)
+                    chunks = self._recursive_chunk(cleaned_text, extra_metadata)
                 except Exception:
-                    return self._token_chunk(cleaned_text, extra_metadata)
+                    chunks = self._token_chunk(cleaned_text, extra_metadata)
+            return self._prepend_title_prefix(chunks, title, tags, extra_metadata)
 
-        return self._recursive_chunk(cleaned_text, extra_metadata)
+        chunks = self._recursive_chunk(cleaned_text, extra_metadata)
+        return self._prepend_title_prefix(chunks, title, tags, extra_metadata)
+
+    def _prepend_title_prefix(
+        self,
+        chunks: list[Chunk],
+        title: str,
+        tags: list[str],
+        metadata: dict,
+    ) -> list[Chunk]:
+        """Inject title/tags/author into chunk 0 so retrieval can match the node
+        by its title even when the body text is a stub or low-signal."""
+        if not chunks:
+            return chunks
+        prefix = self._build_atomic_prefix(title or "", list(tags or []), metadata or {})
+        if not prefix.strip():
+            return chunks
+        first = chunks[0]
+        prefixed_content = f"{prefix}\n\n{first.content}".strip()
+        chunks[0] = first.model_copy(
+            update={
+                "content": prefixed_content,
+                "token_count": _count_tokens(prefixed_content),
+            }
+        )
+        return chunks
 
     def _atomic_chunk(
         self,
