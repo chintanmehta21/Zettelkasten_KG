@@ -101,3 +101,21 @@ def strip_invalid_citations(
         cleaned = _COLLAPSED_SPACES_RE.sub(" ", cleaned)
         cleaned = cleaned.strip()
     return cleaned, dropped
+
+
+def has_valid_citation(text: str, valid_ids: set[str]) -> bool:
+    """Return True iff ``text`` contains at least one ``[id="..."]`` whose id
+    is in ``valid_ids``.
+
+    Used by the orchestrator to detect the "every citation the model emitted
+    was hallucinated" failure mode. After :func:`strip_invalid_citations` has
+    scrubbed a text, if nothing valid remains the answer is a string of naked
+    claims with no source trail — indistinguishable from training-data
+    recollection and therefore unsafe to serve.
+    """
+    if not text or not valid_ids:
+        return False
+    for match in _CITATION_RE.finditer(text):
+        if match.group("zid") in valid_ids:
+            return True
+    return False

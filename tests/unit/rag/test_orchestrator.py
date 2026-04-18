@@ -66,7 +66,7 @@ class _EmptyAssembler:
 
 
 class _LLM:
-    def __init__(self, *, content="Grounded answer [node-1]", stream_tokens=None, error=None):
+    def __init__(self, *, content='Grounded answer [id="node-1"]', stream_tokens=None, error=None):
         self.content = content
         self.stream_tokens = stream_tokens or [content]
         self.error = error
@@ -187,6 +187,34 @@ async def test_answer_happy_path_returns_grounded_answer_with_citations() -> Non
 
 
 @pytest.mark.asyncio
+async def test_answer_refuses_when_every_citation_is_hallucinated() -> None:
+    """If the LLM cites only ids that were never in the context, ``strip_invalid_citations``
+    scrubs them all and we are left with naked claims. Serving those is
+    indistinguishable from training-data recall — so the orchestrator must
+    replace the answer with the fixed refusal phrase and drop the citations list
+    rather than pretend the claims were grounded."""
+    from website.features.rag_pipeline.generation.prompts import REFUSAL_PHRASE
+
+    orchestrator = RAGOrchestrator(
+        rewriter=_Rewriter(),
+        router=_Router(),
+        transformer=_Transformer(),
+        retriever=_Retriever(candidates=[_candidate()]),
+        graph_scorer=_Graph(),
+        reranker=_Reranker(),
+        assembler=_Assembler(),
+        llm=_LLM(content='Claim [id="fake-1"] more [id="alsofake"].'),
+        critic=_Critic(["supported"]),
+        sessions=_Sessions(),
+    )
+
+    turn = await orchestrator.answer(query=ChatQuery(content="What is this about?"), user_id=uuid4())
+
+    assert turn.content == REFUSAL_PHRASE
+    assert turn.citations == []
+
+
+@pytest.mark.asyncio
 async def test_empty_scope_raises_empty_scope_error() -> None:
     orchestrator = RAGOrchestrator(
         rewriter=_Rewriter(),
@@ -235,7 +263,7 @@ async def test_unsupported_verdict_triggers_multi_query_retry() -> None:
         graph_scorer=_Graph(),
         reranker=_Reranker(),
         assembler=_Assembler(),
-        llm=_LLM(content="Retry answer [node-1]"),
+        llm=_LLM(content='Retry answer [id="node-1"]'),
         critic=_Critic(["unsupported", "supported"]),
         sessions=_Sessions(),
     )
@@ -407,7 +435,7 @@ async def test_answer_marks_retry_still_bad_and_prefixes_warning() -> None:
         graph_scorer=_Graph(),
         reranker=_Reranker(),
         assembler=_Assembler(),
-        llm=_LLM(content="Retry answer [node-1]"),
+        llm=_LLM(content='Retry answer [id="node-1"]'),
         critic=_Critic(["unsupported", "partial"]),
         sessions=_Sessions(),
     )
@@ -428,7 +456,7 @@ async def test_answer_stream_emits_replace_when_retry_changes_answer() -> None:
         graph_scorer=_Graph(),
         reranker=_Reranker(),
         assembler=_Assembler(),
-        llm=_LLM(stream_tokens=["Retry", " answer"], content="Retry answer [node-1]"),
+        llm=_LLM(stream_tokens=["Retry", " answer"], content='Retry answer [id="node-1"]'),
         critic=_Critic(["unsupported", "supported"]),
         sessions=_Sessions(),
     )
@@ -438,7 +466,7 @@ async def test_answer_stream_emits_replace_when_retry_changes_answer() -> None:
         events.append(event)
 
     assert [event["type"] for event in events] == ["status", "citations", "token", "token", "replace", "done"]
-    assert events[-2] == {"type": "replace", "content": "Retry answer [node-1]"}
+    assert events[-2] == {"type": "replace", "content": 'Retry answer [id="node-1"]'}
 
 
 def test_build_citations_keeps_highest_scoring_candidate_per_node() -> None:

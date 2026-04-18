@@ -30,7 +30,11 @@ from website.features.rag_pipeline.generation.prompts import (
     SYSTEM_PROMPT,
     USER_TEMPLATE,
 )
-from website.features.rag_pipeline.generation.sanitize import sanitize_answer, strip_invalid_citations
+from website.features.rag_pipeline.generation.sanitize import (
+    has_valid_citation,
+    sanitize_answer,
+    strip_invalid_citations,
+)
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 
@@ -311,6 +315,16 @@ class RAGOrchestrator:
         answer_text = sanitize_answer(generation.content)
         valid_ids = {candidate.node_id for candidate in context.used_candidates}
         answer_text, _dropped_citations = strip_invalid_citations(answer_text, valid_ids)
+        if (
+            valid_ids
+            and answer_text != REFUSAL_PHRASE
+            and not has_valid_citation(answer_text, valid_ids)
+        ):
+            answer_text = REFUSAL_PHRASE
+            context = _RetrievedContext(
+                context_xml=context.context_xml,
+                used_candidates=[],
+            )
         verdict, details = await self._critic.verify(
             answer_text=answer_text,
             context_xml=context.context_xml,
