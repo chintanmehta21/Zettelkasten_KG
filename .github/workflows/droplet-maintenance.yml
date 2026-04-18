@@ -1,0 +1,79 @@
+name: Droplet maintenance (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      aggressive:
+        description: "Run aggressive cleanup (docker system prune -af --volumes, journal vacuum, apt clean)"
+        required: false
+        default: "true"
+
+concurrency:
+  group: droplet-maintenance
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  maintenance:
+    name: SSH maintenance
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - name: SSH cleanup + disk/RAM report
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          envs: AGGRESSIVE
+          command_timeout: 8m
+          script: |
+            set -euo pipefail
+            echo "=== BEFORE ==="
+            df -h / | tail -1
+            free -h | head -2
+            docker system df
+
+            echo ""
+            echo "=== RUNNING CONTAINERS ==="
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+
+            echo ""
+            echo "=== STOPPED CONTAINERS (will be removed) ==="
+            docker ps -a --filter "status=exited" --filter "status=dead" --format 'table {{.Names}}\t{{.Status}}' | head -30
+
+            echo ""
+            echo "=== PRUNING ==="
+            # Always-safe prune (keeps anything currently in use)
+            docker container prune -f || true
+            docker network prune -f || true
+            # Images not referenced by any container
+            docker image prune -af || true
+
+            if [ "${AGGRESSIVE:-true}" = "true" ]; then
+              # Volumes not referenced by any container (keeps dev-* volumes on dev compose)
+              docker volume prune -f || true
+              # Full system prune (uses 'until' filter to protect any image pulled in last hour)
+              docker system prune -af --filter "until=1h" || true
+            fi
+
+            # OS-level cleanup
+            sudo journalctl --vacuum-size=200M || true
+            sudo apt-get clean || true
+            sudo rm -rf /var/cache/apt/archives/*.deb /tmp/*.log 2>/dev/null || true
+
+            # Caddy rotated logs older than 14 days
+            sudo find /opt/zettelkasten/logs -type f -name '*.gz' -mtime +14 -delete 2>/dev/null || true
+            sudo find /opt/zettelkasten/logs -type f -name '*.log.*' -mtime +14 -delete 2>/dev/null || true
+
+            echo ""
+            echo "=== AFTER ==="
+            df -h / | tail -1
+            free -h | head -2
+            docker system df
+        env:
+          AGGRESSIVE: ${{ inputs.aggressive }}
