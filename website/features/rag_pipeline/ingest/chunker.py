@@ -202,7 +202,10 @@ class ZettelChunker:
         )
 
     def _build_atomic_prefix(self, title: str, tags: list[str], metadata: dict) -> str:
-        parts = [f"[{title}]"]
+        parts: list[str] = []
+        clean_title = (title or "").strip()
+        if clean_title:
+            parts.append(f"[{clean_title}]")
         if tags:
             parts.append(" ".join(f"#{tag}" for tag in tags))
         author = (
@@ -216,6 +219,20 @@ class ZettelChunker:
             parts.append(" ".join(f"@{mention}" for mention in metadata["mentions"][:10]))
         if metadata.get("hashtags"):
             parts.append(" ".join(f"#{tag}" for tag in metadata["hashtags"][:10]))
+
+        # Plain-text echo line for FTS: guarantees dictionary-tokenised terms
+        # even when `#tag` tokens are stripped by the analyser. Also repeats
+        # the title so short-body nodes (YouTube stubs, paywalled articles)
+        # retain strong lexical signal after chunking.
+        echo_bits: list[str] = []
+        if clean_title:
+            echo_bits.append(clean_title)
+        if tags:
+            echo_bits.append(" ".join(tags))
+        if author:
+            echo_bits.append(str(author))
+        if echo_bits:
+            parts.append("Topics: " + " — ".join(echo_bits))
         return "\n".join(parts)
 
     def _late_chunk(self, raw_text: str, metadata: dict) -> list[Chunk]:

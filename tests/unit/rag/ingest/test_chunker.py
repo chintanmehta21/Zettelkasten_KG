@@ -185,6 +185,51 @@ def test_long_form_prepends_title_and_tags_to_first_chunk_only(monkeypatch) -> N
     assert "[Attention" not in chunks[1].content
 
 
+def test_prefix_has_plain_text_echo_line_for_fts(monkeypatch) -> None:
+    """Tags and title are echoed as plain words in a 'Topics:' line so FTS
+    tokenisation matches ordinary dictionary search even when `#tag` tokens
+    are stripped by the tsvector analyser."""
+    chunker = ZettelChunker()
+    backing = [
+        Chunk(chunk_idx=0, content="body", chunk_type=ChunkType.SEMANTIC, token_count=1),
+    ]
+    monkeypatch.setattr(chunker, "_semantic_chunk", lambda raw_text, metadata: list(backing))
+
+    chunks = chunker.chunk(
+        source_type=SourceType.YOUTUBE,
+        title="Attention Is All You Need",
+        raw_text="body",
+        tags=["transformers", "nlp"],
+        extra_metadata={"channel_name": "Yannic Kilcher"},
+    )
+
+    content = chunks[0].content
+    # Structured header (existing behaviour).
+    assert "[Attention Is All You Need]" in content
+    assert "#transformers #nlp" in content
+    assert "@Yannic Kilcher" in content
+    # Plain-text echo line.
+    assert "Topics: Attention Is All You Need" in content
+    assert "transformers nlp" in content
+    assert "Yannic Kilcher" in content
+
+
+def test_short_form_atomic_chunk_also_has_echo_line() -> None:
+    """Short-form atomic chunks share the same prefix builder, so they get
+    the same FTS echo enhancement."""
+    chunker = ZettelChunker()
+
+    chunks = chunker.chunk(
+        source_type=SourceType.REDDIT,
+        title="Thoughts on transformers",
+        raw_text="body",
+        tags=["ml"],
+        extra_metadata={"subreddit": "MachineLearning"},
+    )
+
+    assert "Topics: Thoughts on transformers" in chunks[0].content
+
+
 def test_long_form_no_prefix_when_title_and_tags_are_empty(monkeypatch) -> None:
     """Avoid injecting an empty-prefix newline when no title/tags/author are
     available."""
