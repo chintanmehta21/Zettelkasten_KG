@@ -8,7 +8,9 @@ from uuid import uuid4
 
 import pytest
 
-from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select, _passage_text
+import numpy as np
+
+from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _mmr_select, _passage_text, _sigmoid
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate, SourceType
 
 
@@ -130,6 +132,25 @@ async def test_stage2_failure_falls_back_to_stage1_scores_and_logs() -> None:
     assert ranked[0].rerank_score == pytest.approx(0.8)
     assert ranked[1].rerank_score == pytest.approx(0.4)
     reranker._degradation_logger.log_event.assert_called_once()
+
+
+def test_extract_scores_sigmoid_squashes_logits_into_unit_interval() -> None:
+    reranker = CascadeReranker.__new__(CascadeReranker)
+    logits = np.array([-6.0, -1.0, 0.0, 1.0, 6.0], dtype=np.float32)
+    scores = reranker._extract_scores([logits])
+    assert all(0.0 <= s <= 1.0 for s in scores)
+    assert scores[2] == pytest.approx(0.5, abs=1e-6)
+    assert scores[4] > scores[3] > scores[2] > scores[1] > scores[0]
+
+
+def test_sigmoid_is_numerically_stable_for_extreme_values() -> None:
+    # Large negative logits shouldn't overflow or produce NaN.
+    values = np.array([-1000.0, 1000.0, 0.0])
+    out = _sigmoid(values)
+    assert out[0] == pytest.approx(0.0, abs=1e-12)
+    assert out[1] == pytest.approx(1.0, abs=1e-12)
+    assert out[2] == pytest.approx(0.5)
+    assert not np.isnan(out).any()
 
 
 def test_passage_text_prepends_name_when_absent_from_content() -> None:

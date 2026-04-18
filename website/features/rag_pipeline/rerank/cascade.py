@@ -228,14 +228,33 @@ class CascadeReranker:
 
         logits = np.asarray(outputs[0])
         if logits.ndim == 1:
-            return [float(value) for value in logits]
-        if logits.ndim == 2 and logits.shape[1] == 1:
-            return [float(value) for value in logits[:, 0]]
-        if logits.ndim == 2 and logits.shape[1] >= 2:
-            return [float(value) for value in logits[:, -1]]
+            raw = logits
+        elif logits.ndim == 2 and logits.shape[1] == 1:
+            raw = logits[:, 0]
+        elif logits.ndim == 2 and logits.shape[1] >= 2:
+            raw = logits[:, -1]
+        else:
+            raw = logits.reshape(logits.shape[0], -1)[:, 0]
 
-        flattened = logits.reshape(logits.shape[0], -1)
-        return [float(value) for value in flattened[:, 0]]
+        # BGE cross-encoder emits raw logits that can sit in the ~[-5, +5]
+        # range. Fused scoring multiplies rerank_score by 0.60 against RRF
+        # (0-1) and graph (0-1); un-normalised logits would dominate by an
+        # order of magnitude and make the fusion weights meaningless. Squash
+        # via sigmoid so all three components live in [0, 1].
+        squashed = _sigmoid(raw)
+        return [float(value) for value in squashed]
+
+
+def _sigmoid(values: np.ndarray) -> np.ndarray:
+    """Numerically stable sigmoid — avoids overflow for large negative logits
+    by splitting positives and negatives."""
+    arr = np.asarray(values, dtype=np.float64)
+    out = np.empty_like(arr)
+    positive = arr >= 0
+    out[positive] = 1.0 / (1.0 + np.exp(-arr[positive]))
+    exp_neg = np.exp(arr[~positive])
+    out[~positive] = exp_neg / (1.0 + exp_neg)
+    return out
 
 
 def _passage_text(candidate: RetrievalCandidate) -> str:
