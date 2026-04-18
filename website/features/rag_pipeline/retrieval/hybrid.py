@@ -18,6 +18,19 @@ _DEPTH_BY_CLASS = {
     QueryClass.STEP_BACK: 2,
 }
 
+# Query-class-aware fusion weights (semantic, fulltext, graph). LOOKUP queries
+# benefit from stronger lexical match on proper nouns and titles, MULTI_HOP
+# and STEP_BACK queries benefit from graph expansion, THEMATIC leans semantic.
+# Weights sum to ~1.0 per class to keep RRF score magnitudes comparable.
+_WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
+    QueryClass.LOOKUP: (0.35, 0.50, 0.15),
+    QueryClass.VAGUE: (0.55, 0.25, 0.20),
+    QueryClass.MULTI_HOP: (0.40, 0.25, 0.35),
+    QueryClass.THEMATIC: (0.60, 0.20, 0.20),
+    QueryClass.STEP_BACK: (0.50, 0.20, 0.30),
+}
+_DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
+
 
 class HybridRetriever:
     def __init__(self, embedder: Any, supabase: Any | None = None):
@@ -42,6 +55,7 @@ class HybridRetriever:
             self._embedder.embed_query_with_cache(query) for query in query_variants
         ])
         graph_depth = _DEPTH_BY_CLASS[query_class]
+        sem_w, fts_w, graph_w = _WEIGHTS_BY_CLASS.get(query_class, _DEFAULT_WEIGHTS)
 
         async def _search(query_text: str, query_vec: list[float]) -> list[dict]:
             response = self._supabase.rpc(
@@ -52,9 +66,9 @@ class HybridRetriever:
                     "p_query_embedding": query_vec,
                     "p_effective_nodes": effective_nodes,
                     "p_limit": limit,
-                    "p_semantic_weight": 0.5,
-                    "p_fulltext_weight": 0.3,
-                    "p_graph_weight": 0.2,
+                    "p_semantic_weight": sem_w,
+                    "p_fulltext_weight": fts_w,
+                    "p_graph_weight": graph_w,
                     "p_rrf_k": 60,
                     "p_graph_depth": graph_depth,
                 },

@@ -164,3 +164,53 @@ async def test_graph_depth_is_2_for_thematic() -> None:
     )
     assert supabase.calls[-1][1]["p_graph_depth"] == 2
 
+
+@pytest.mark.asyncio
+async def test_lookup_weights_lean_on_fulltext() -> None:
+    """Lookup queries hunt for proper nouns / titles — FTS should outweigh
+    semantic embedding to match exact lexical signals."""
+    supabase = _Supabase({"rag_hybrid_search": []})
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["query"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.LOOKUP,
+    )
+    payload = supabase.calls[0][1]
+    assert payload["p_fulltext_weight"] > payload["p_semantic_weight"]
+    assert payload["p_fulltext_weight"] == pytest.approx(0.50)
+
+
+@pytest.mark.asyncio
+async def test_thematic_weights_lean_on_semantic() -> None:
+    supabase = _Supabase({"rag_hybrid_search": []})
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["query"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.THEMATIC,
+    )
+    payload = supabase.calls[0][1]
+    assert payload["p_semantic_weight"] > payload["p_fulltext_weight"]
+    assert payload["p_semantic_weight"] == pytest.approx(0.60)
+
+
+@pytest.mark.asyncio
+async def test_multi_hop_weights_boost_graph() -> None:
+    supabase = _Supabase({"rag_hybrid_search": []})
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=supabase)
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["query"],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.MULTI_HOP,
+    )
+    payload = supabase.calls[0][1]
+    assert payload["p_graph_weight"] == pytest.approx(0.35)
+    assert payload["p_graph_weight"] > payload["p_fulltext_weight"]
+
