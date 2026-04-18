@@ -25,6 +25,7 @@ except Exception:  # pragma: no cover - optional dependency fallback
 
 from website.features.rag_pipeline.errors import EmptyScopeError
 from website.features.rag_pipeline.generation.prompts import SYSTEM_PROMPT, USER_TEMPLATE
+from website.features.rag_pipeline.generation.sanitize import sanitize_answer
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 
@@ -285,7 +286,7 @@ class RAGOrchestrator:
         generation: _GeneratedAnswer,
     ) -> _PipelineResult:
         t0 = time.monotonic()
-        answer_text = generation.content
+        answer_text = sanitize_answer(generation.content)
         verdict, details = await self._critic.verify(
             answer_text=answer_text,
             context_xml=context.context_xml,
@@ -308,12 +309,12 @@ class RAGOrchestrator:
             if retry_verdict == "supported":
                 verdict = "retried_supported"
                 details = retry_details
-                answer_text = retry_generation.content
+                answer_text = sanitize_answer(retry_generation.content)
                 replaced_text = answer_text
             else:
                 verdict = "retried_still_bad"
                 details = retry_details
-                answer_text = "Warning: low confidence.\n\n" + retry_generation.content
+                answer_text = "Warning: low confidence.\n\n" + sanitize_answer(retry_generation.content)
                 replaced_text = answer_text
 
         turn = AnswerTurn(

@@ -43,7 +43,7 @@ class _Graph:
 
 
 class _Reranker:
-    async def rerank(self, query, candidates, top_k=8):
+    async def rerank(self, query, candidates, top_k=8, query_class=None):
         for idx, candidate in enumerate(candidates):
             candidate.rerank_score = 0.9 - idx * 0.1
             candidate.final_score = candidate.rerank_score
