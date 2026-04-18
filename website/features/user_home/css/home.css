@@ -95,7 +95,7 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    min-width: 240px;
+    min-width: 205px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
