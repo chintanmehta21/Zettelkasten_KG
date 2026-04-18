@@ -3,12 +3,26 @@
 from __future__ import annotations
 
 import html
+import re
 from collections import OrderedDict
 
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate
 
 _BUDGET_BY_QUALITY = {"fast": 6000, "high": 12000}
 _MIN_USEFUL_TOKENS = 40
+_MIN_USEFUL_CHARS = 40
+
+# Placeholders that survive extraction failures and carry no signal. Matching
+# is case-insensitive and ignores surrounding markdown/punctuation so variants
+# like "## Transcript\n\n(Transcript not available)" are caught.
+_STUB_PLACEHOLDERS = (
+    "transcript not available",
+    "transcript unavailable",
+    "content unavailable",
+    "no content available",
+    "[deleted]",
+    "[removed]",
+)
 
 
 class ContextAssembler:
@@ -28,6 +42,9 @@ class ContextAssembler:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
 
         budget = _BUDGET_BY_QUALITY[quality]
+        candidates = [c for c in candidates if not _is_stub_passage(c.content)]
+        if not candidates:
+            return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
         grouped = self._group_by_node(candidates)
         grouped.sort(key=lambda group: max(item.final_score or item.rrf_score for item in group), reverse=True)
         sandwiched = self._sandwich_order(grouped)
@@ -112,3 +129,16 @@ class ContextAssembler:
         lines.append("</context>")
         return "\n".join(lines)
 
+
+def _is_stub_passage(content: str | None) -> bool:
+    """Return True for passages carrying no usable signal — either too short
+    to be worth a slot or matching a known extraction-failure placeholder.
+    Matching is case-insensitive with whitespace collapsed so markdown-wrapped
+    stubs (``## Transcript\\n\\n(Transcript not available)``) are caught."""
+    if not content:
+        return True
+    stripped = content.strip()
+    if len(stripped) < _MIN_USEFUL_CHARS:
+        return True
+    normalized = re.sub(r"\s+", " ", stripped.lower())
+    return any(placeholder in normalized for placeholder in _STUB_PLACEHOLDERS)
