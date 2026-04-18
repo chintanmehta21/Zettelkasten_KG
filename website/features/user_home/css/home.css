@@ -115,6 +115,7 @@
 }
 
 .home-dropdown-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.6rem;
@@ -123,31 +124,76 @@
     color: var(--text-secondary);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--transition);
     text-decoration: none;
     border: none;
     background: none;
     width: 100%;
     font-family: var(--font-body);
     text-align: left;
+    overflow: hidden;
+    isolation: isolate;
+    transition: color 0.25s ease;
 }
 
-.home-dropdown-item:hover {
-    background: var(--bg-elevated);
-    color: var(--text-primary);
+.home-dropdown-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    transform: translateX(-101%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    border-radius: inherit;
+}
+
+.home-dropdown-item:hover::before,
+.home-dropdown-item:focus-visible::before {
+    transform: translateX(0);
+}
+
+.home-dropdown-item:hover,
+.home-dropdown-item:focus-visible {
+    color: var(--accent);
 }
 
 .home-dropdown-icon {
     font-size: 0.9rem;
     width: 20px;
+    height: 20px;
     text-align: center;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.home-dropdown-icon svg {
+.home-dropdown-icon svg,
+.home-dropdown-icon img {
     width: 100%;
     height: 100%;
     display: block;
+}
+
+.home-dropdown-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.home-dropdown-labs {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+    opacity: 0.75;
+    flex-shrink: 0;
+    margin-left: auto;
+    transition: opacity 0.2s ease;
+}
+
+.home-dropdown-item:hover .home-dropdown-labs {
+    opacity: 1;
 }
 
 .home-dropdown-divider {
@@ -156,8 +202,13 @@
     margin: 0.25rem 0.5rem;
 }
 
-.home-dropdown-signout:hover {
-    color: var(--error);
+.home-dropdown-signout::before {
+    background: color-mix(in srgb, var(--error) 18%, transparent) !important;
+}
+
+.home-dropdown-signout:hover,
+.home-dropdown-signout:focus-visible {
+    color: var(--error) !important;
 }
 
 /* ── Welcome ────────────────────────────────────────────────────── */
