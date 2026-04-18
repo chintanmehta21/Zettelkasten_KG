@@ -19,6 +19,40 @@ from website.features.rag_pipeline.ingest.content_selection import (
 logger = logging.getLogger("website.features.rag_pipeline.ingest.hook")
 
 
+def _synthesize_fallback_text(payload: dict[str, Any]) -> str:
+    """Build a minimal searchable body from node metadata when both the raw
+    body and stored summary are missing or pure stubs. Without this, nodes
+    like YouTube videos with 'Transcript not available' end up with zero
+    chunks and are unreachable via ``kg_node_chunks`` search."""
+    parts: list[str] = []
+    title = str(payload.get("title") or "").strip()
+    url = str(payload.get("url") or "").strip()
+    tags = [str(t).strip() for t in (payload.get("tags") or []) if str(t).strip()]
+    raw_metadata = payload.get("raw_metadata") or {}
+
+    description = str(raw_metadata.get("description") or "").strip()
+    channel = str(
+        raw_metadata.get("channel_name")
+        or raw_metadata.get("channel")
+        or raw_metadata.get("author")
+        or raw_metadata.get("subreddit")
+        or ""
+    ).strip()
+
+    if title:
+        parts.append(title)
+    if channel:
+        parts.append(f"by {channel}")
+    if tags:
+        parts.append("Topics: " + " ".join(tags))
+    if description:
+        parts.append(description[:500])
+    if url:
+        parts.append(f"Source: {url}")
+
+    return "\n\n".join(parts).strip()
+
+
 async def ingest_node_chunks(
     *,
     payload: dict[str, Any],
@@ -35,6 +69,8 @@ async def ingest_node_chunks(
         raw_text=payload.get("raw_text"),
         summary_text=payload.get("summary"),
     )
+    if not raw_text:
+        raw_text = _synthesize_fallback_text(payload)
     if not raw_text:
         return 0
 

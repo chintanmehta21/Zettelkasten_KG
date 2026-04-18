@@ -8,16 +8,85 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_ingest_node_chunks_returns_zero_for_empty_raw_text() -> None:
+async def test_ingest_node_chunks_returns_zero_for_totally_empty_payload() -> None:
     from website.features.rag_pipeline.ingest.hook import ingest_node_chunks
 
     count = await ingest_node_chunks(
-        payload={"raw_text": "", "summary": "", "title": "Empty"},
+        payload={"raw_text": "", "summary": "", "title": "", "url": "", "tags": []},
         user_uuid=uuid4(),
         node_id="node-empty",
     )
 
     assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_ingest_node_chunks_synthesizes_fallback_from_title_when_bodies_empty(monkeypatch) -> None:
+    """When raw_text and summary are both empty but metadata is present, the
+    hook must still produce a searchable chunk. Without this fallback, nodes
+    with stub YouTube transcripts + failed summarisation are unreachable via
+    ``kg_node_chunks`` search."""
+    from website.features.rag_pipeline.ingest import hook
+
+    captured_chunk_kwargs: dict = {}
+
+    class _Chunker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def chunk(self, **kwargs):
+            captured_chunk_kwargs.update(kwargs)
+            return [object()]
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.adapters.gemini_chonkie.GeminiChonkieEmbeddings",
+        lambda *a, **kw: object(),
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.adapters.pool_factory.get_embedding_pool",
+        lambda: object(),
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.chunker.ZettelChunker",
+        _Chunker,
+    )
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.embedder.ChunkEmbedder",
+        lambda *a, **kw: object(),
+    )
+
+    async def _fake_upsert(**kwargs):
+        return 1
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.upsert.upsert_chunks",
+        _fake_upsert,
+    )
+
+    count = await hook.ingest_node_chunks(
+        payload={
+            "raw_text": "",
+            "summary": "",
+            "title": "Attention Is All You Need",
+            "url": "https://www.youtube.com/watch?v=iDulhoQ2pro",
+            "source_type": "youtube",
+            "tags": ["transformers", "ml"],
+            "raw_metadata": {
+                "channel_name": "Yannic Kilcher",
+                "description": "Paper discussion of the Transformer architecture.",
+            },
+        },
+        user_uuid=uuid4(),
+        node_id="yt-attention",
+    )
+
+    assert count == 1
+    fallback = captured_chunk_kwargs["raw_text"]
+    assert "Attention Is All You Need" in fallback
+    assert "Yannic Kilcher" in fallback
+    assert "transformers" in fallback
+    assert "Paper discussion of the Transformer architecture." in fallback
+    assert "youtube.com/watch" in fallback
 
 
 @pytest.mark.asyncio
