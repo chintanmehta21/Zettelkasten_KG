@@ -1,6 +1,9 @@
 """Tests for :mod:`website.features.rag_pipeline.generation.sanitize`."""
 
-from website.features.rag_pipeline.generation.sanitize import sanitize_answer
+from website.features.rag_pipeline.generation.sanitize import (
+    sanitize_answer,
+    strip_invalid_citations,
+)
 
 
 def test_clean_answer_passes_through_unchanged() -> None:
@@ -73,3 +76,62 @@ def test_empty_string_returns_empty() -> None:
 
 def test_whitespace_only_returns_empty() -> None:
     assert sanitize_answer("   \n\t  \n  ") == ""
+
+
+def test_strip_invalid_citations_keeps_all_when_every_id_valid() -> None:
+    text = 'Transformers scale better [id="zettel-a"] and parallelize [id="zettel-b"].'
+    cleaned, dropped = strip_invalid_citations(text, {"zettel-a", "zettel-b"})
+    assert cleaned == text
+    assert dropped == []
+
+
+def test_strip_invalid_citations_drops_hallucinated_id_and_reports_it() -> None:
+    text = 'Claim A [id="real"] and claim B [id="hallucinated"].'
+    cleaned, dropped = strip_invalid_citations(text, {"real"})
+    assert '[id="hallucinated"]' not in cleaned
+    assert '[id="real"]' in cleaned
+    assert dropped == ["hallucinated"]
+
+
+def test_strip_invalid_citations_tightens_space_before_punctuation() -> None:
+    """After removing a citation token the space before a period would leave
+    a gap. Verify the cleanup collapses the gap so the sentence reads
+    naturally."""
+    text = 'Transformers scale well [id="bogus"].'
+    cleaned, dropped = strip_invalid_citations(text, {"real"})
+    assert cleaned == "Transformers scale well."
+    assert dropped == ["bogus"]
+
+
+def test_strip_invalid_citations_reports_every_bad_occurrence() -> None:
+    """Duplicates and order matter for observability — callers should be
+    able to count hallucination frequency from the returned list without
+    re-parsing the original string."""
+    text = 'A [id="x"] B [id="y"] C [id="x"] D [id="real"].'
+    cleaned, dropped = strip_invalid_citations(text, {"real"})
+    assert dropped == ["x", "y", "x"]
+    assert '[id="real"]' in cleaned
+
+
+def test_strip_invalid_citations_accepts_single_quoted_ids() -> None:
+    """Some LLMs normalize double quotes to single quotes inside citation
+    tokens. Both forms should be recognized by the validator."""
+    text = "Claim [id='zettel-a'] stands."
+    cleaned, dropped = strip_invalid_citations(text, {"zettel-a"})
+    assert cleaned == text
+    assert dropped == []
+
+
+def test_strip_invalid_citations_noop_on_empty_input() -> None:
+    cleaned, dropped = strip_invalid_citations("", {"anything"})
+    assert cleaned == ""
+    assert dropped == []
+
+
+def test_strip_invalid_citations_empty_valid_set_drops_every_id() -> None:
+    """When the context produced no candidates there are no valid ids — any
+    citation the LLM emits is a hallucination and must be stripped."""
+    text = 'Made up [id="a"] stuff [id="b"].'
+    cleaned, dropped = strip_invalid_citations(text, set())
+    assert '[id="' not in cleaned
+    assert dropped == ["a", "b"]

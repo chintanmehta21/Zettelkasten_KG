@@ -25,7 +25,7 @@ except Exception:  # pragma: no cover - optional dependency fallback
 
 from website.features.rag_pipeline.errors import EmptyScopeError
 from website.features.rag_pipeline.generation.prompts import SYSTEM_PROMPT, USER_TEMPLATE
-from website.features.rag_pipeline.generation.sanitize import sanitize_answer
+from website.features.rag_pipeline.generation.sanitize import sanitize_answer, strip_invalid_citations
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 
@@ -287,6 +287,8 @@ class RAGOrchestrator:
     ) -> _PipelineResult:
         t0 = time.monotonic()
         answer_text = sanitize_answer(generation.content)
+        valid_ids = {candidate.node_id for candidate in context.used_candidates}
+        answer_text, _dropped_citations = strip_invalid_citations(answer_text, valid_ids)
         verdict, details = await self._critic.verify(
             answer_text=answer_text,
             context_xml=context.context_xml,
@@ -306,15 +308,22 @@ class RAGOrchestrator:
             used_candidates = retry_context.used_candidates
             active_generation = retry_generation
 
+            retry_valid_ids = {
+                candidate.node_id for candidate in retry_context.used_candidates
+            }
+            retry_answer = sanitize_answer(retry_generation.content)
+            retry_answer, _retry_dropped = strip_invalid_citations(
+                retry_answer, retry_valid_ids
+            )
             if retry_verdict == "supported":
                 verdict = "retried_supported"
                 details = retry_details
-                answer_text = sanitize_answer(retry_generation.content)
+                answer_text = retry_answer
                 replaced_text = answer_text
             else:
                 verdict = "retried_still_bad"
                 details = retry_details
-                answer_text = "Warning: low confidence.\n\n" + sanitize_answer(retry_generation.content)
+                answer_text = "Warning: low confidence.\n\n" + retry_answer
                 replaced_text = answer_text
 
         turn = AnswerTurn(
