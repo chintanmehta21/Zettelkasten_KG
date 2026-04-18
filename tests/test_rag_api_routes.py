@@ -323,6 +323,9 @@ def test_user_rag_and_kastens_pages_smoke():
 
     kastens_response = client.get("/home/kastens")
     assert kastens_response.status_code == 200
-    assert 'id="kasten-feedback"' in kastens_response.text
+    # /home/kastens was rebuilt as a View All page (shared header + stat row + card grid).
+    # Smoke-test anchors reflect the new layout.
+    assert 'id="kastens-grid"' in kastens_response.text
+    assert 'id="create-kasten-btn"' in kastens_response.text
     assert 'aria-live="polite"' in kastens_response.text
 
