@@ -140,12 +140,20 @@
       console.error('[home] ZKHeader missing — avatar will use CSS fallback only');
     }
 
-    // Load zettels
-    await loadZettels(token);
-    loadKastens(token);
-
-    // Bind events
+    // Bind events FIRST so UI stays interactive even if downstream loads fail
     bindEvents(token);
+
+    // Load zettels + kastens (non-fatal if they error)
+    try {
+      await loadZettels(token);
+    } catch (e) {
+      console.error('[home] loadZettels failed:', e);
+    }
+    try {
+      loadKastens(token);
+    } catch (e) {
+      console.error('[home] loadKastens failed:', e);
+    }
   }
 
   // ── Profile ───────────────────────────────────────────────────────
