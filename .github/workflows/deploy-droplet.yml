@@ -43,7 +43,6 @@ jobs:
 
   build-and-push:
     name: Build & push image
-    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -81,7 +80,7 @@ jobs:
 
   deploy:
     name: SSH deploy to droplet
-    needs: build-and-push
+    needs: [test, build-and-push]
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
