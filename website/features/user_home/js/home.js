@@ -130,18 +130,21 @@
       userDisplayName.textContent = displayName.split(' ')[0];
     }
 
-    // Set avatar — delegates to shared ZKHeader (preload + retry + fallback owned there)
-    if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
-      await window.ZKHeader.boot(token, { profile: profile });
-      // Track current id for the picker grid's "selected" highlight
-      var _idMatch = profile && profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
-      if (_idMatch) _currentAvatarId = parseInt(_idMatch[1], 10);
-    } else {
-      console.error('[home] ZKHeader missing — avatar will use CSS fallback only');
-    }
-
-    // Bind events FIRST so UI stays interactive even if downstream loads fail
+    // Bind events FIRST so UI stays interactive even if downstream calls fail
     bindEvents(token);
+
+    // Set avatar — delegates to shared ZKHeader (non-fatal if it throws)
+    try {
+      if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+        await window.ZKHeader.boot(token, { profile: profile });
+        var _idMatch = profile && profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
+        if (_idMatch) _currentAvatarId = parseInt(_idMatch[1], 10);
+      } else {
+        console.error('[home] ZKHeader missing — avatar will use CSS fallback only');
+      }
+    } catch (e) {
+      console.error('[home] ZKHeader.boot failed:', e);
+    }
 
     // Load zettels + kastens (non-fatal if they error)
     try {
