@@ -214,6 +214,7 @@ class RAGOrchestrator:
                 query.content,
                 candidates,
                 top_k=8 if query.quality == "fast" else 12,
+                query_class=query_class,
             )
             context_xml, used_candidates = await self._assembler.build(
                 candidates=ranked,

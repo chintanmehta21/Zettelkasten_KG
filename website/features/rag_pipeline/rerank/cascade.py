@@ -14,7 +14,20 @@ from tokenizers import Tokenizer
 
 from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger
 from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager
-from website.features.rag_pipeline.types import RetrievalCandidate
+from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
+
+
+# Query-class-aware (rerank, graph, rrf) fusion weights — different signals
+# matter for different query intents. Weights per class sum to 1.0 so score
+# magnitudes stay comparable across classes for downstream logic.
+_FUSION_WEIGHTS: dict[QueryClass, tuple[float, float, float]] = {
+    QueryClass.LOOKUP: (0.70, 0.15, 0.15),
+    QueryClass.VAGUE: (0.55, 0.25, 0.20),
+    QueryClass.THEMATIC: (0.55, 0.30, 0.15),
+    QueryClass.MULTI_HOP: (0.40, 0.45, 0.15),
+    QueryClass.STEP_BACK: (0.45, 0.40, 0.15),
+}
+_DEFAULT_FUSION_WEIGHTS: tuple[float, float, float] = (0.60, 0.25, 0.15)
 
 
 @dataclass(slots=True)
@@ -51,6 +64,7 @@ class CascadeReranker:
         query: str,
         candidates: list[RetrievalCandidate],
         top_k: int = 8,
+        query_class: QueryClass | None = None,
     ) -> list[RetrievalCandidate]:
         if not candidates:
             return []
@@ -69,13 +83,13 @@ class CascadeReranker:
             stage2_scores = await self._stage2_rank(query, shortlisted)
         except Exception as exc:
             self._log_degradation(query, shortlisted, "stage2", exc)
-            return self._apply_scores(stage1_ranked[: self._stage1_k], top_k)
+            return self._apply_scores(stage1_ranked[: self._stage1_k], top_k, query_class)
 
         scored_candidates = [
             _ScoredCandidate(candidate=candidate, score=float(score))
             for candidate, score in zip(shortlisted, stage2_scores, strict=False)
         ]
-        return self._apply_scores(scored_candidates, top_k)
+        return self._apply_scores(scored_candidates, top_k, query_class)
 
     async def _stage1_rank(
         self,
@@ -111,10 +125,11 @@ class CascadeReranker:
         self,
         scored_candidates: list[_ScoredCandidate],
         top_k: int,
+        query_class: QueryClass | None = None,
     ) -> list[RetrievalCandidate]:
         for item in scored_candidates:
             item.candidate.rerank_score = item.score
-            item.candidate.final_score = self._fused_score(item.candidate, item.score)
+            item.candidate.final_score = self._fused_score(item.candidate, item.score, query_class)
 
         ranked = sorted(
             [item.candidate for item in scored_candidates],
@@ -133,12 +148,18 @@ class CascadeReranker:
             candidate.final_score = candidate.rrf_score or 0.0
         return sorted(candidates, key=lambda candidate: candidate.rrf_score or 0.0, reverse=True)[:top_k]
 
-    def _fused_score(self, candidate: RetrievalCandidate, rerank_score: float) -> float:
+    def _fused_score(
+        self,
+        candidate: RetrievalCandidate,
+        rerank_score: float,
+        query_class: QueryClass | None = None,
+    ) -> float:
         quality = _content_quality_factor(candidate.content or "")
+        rerank_w, graph_w, rrf_w = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
         return (
-            0.60 * rerank_score * quality
-            + 0.25 * (candidate.graph_score or 0.0)
-            + 0.15 * (candidate.rrf_score or 0.0)
+            rerank_w * rerank_score * quality
+            + graph_w * (candidate.graph_score or 0.0)
+            + rrf_w * (candidate.rrf_score or 0.0)
         )
 
     def _build_degradation_context(self, candidates: list[RetrievalCandidate]) -> dict[str, list]:

@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 
 from website.features.rag_pipeline.rerank.cascade import CascadeReranker, _content_quality_factor, _mmr_select, _passage_text, _sigmoid
-from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate, SourceType
+from website.features.rag_pipeline.types import ChunkKind, QueryClass, RetrievalCandidate, SourceType
 
 
 def _candidate(node_id: str, rrf: float, graph: float = 0.0) -> RetrievalCandidate:
@@ -258,6 +258,49 @@ def test_mmr_keeps_duplicate_node_when_strongly_better() -> None:
 
     picked = _mmr_select([a1, a2, b], top_k=2, node_penalty=0.10)
     assert [c.node_id for c in picked] == ["node-a", "node-a"]
+
+
+def test_fused_score_lookup_class_weights_rerank_more_heavily() -> None:
+    """LOOKUP queries should weight the rerank signal (0.70) substantially
+    more than the default (0.60) — proper-noun lookups live or die on the
+    cross-encoder's match, not graph or RRF."""
+    reranker = CascadeReranker.__new__(CascadeReranker)
+    candidate = _candidate("n", rrf=0.2, graph=0.4)
+    candidate.content = "x" * 400  # quality factor saturated to 1.0
+
+    default = reranker._fused_score(candidate, 0.9)
+    lookup = reranker._fused_score(candidate, 0.9, QueryClass.LOOKUP)
+
+    assert lookup > default
+    assert lookup == pytest.approx(0.70 * 0.9 * 1.0 + 0.15 * 0.4 + 0.15 * 0.2)
+
+
+def test_fused_score_multi_hop_class_weights_graph_more_heavily() -> None:
+    """MULTI_HOP benefits from graph expansion — the graph weight (0.45)
+    should dominate over the default (0.25)."""
+    reranker = CascadeReranker.__new__(CascadeReranker)
+    candidate = _candidate("n", rrf=0.2, graph=0.6)
+    candidate.content = "x" * 400
+
+    default = reranker._fused_score(candidate, 0.5)
+    multi_hop = reranker._fused_score(candidate, 0.5, QueryClass.MULTI_HOP)
+
+    assert multi_hop == pytest.approx(0.40 * 0.5 * 1.0 + 0.45 * 0.6 + 0.15 * 0.2)
+    assert multi_hop > default
+
+
+@pytest.mark.asyncio
+async def test_rerank_threads_query_class_through_fused_score() -> None:
+    candidates = [_candidate("one", 0.2, graph=0.6)]
+    stage1_ranked = [SimpleNamespace(candidate=candidates[0], score=0.5)]
+    reranker = _make_reranker(stage1_result=stage1_ranked, stage2_result=[0.5])
+
+    ranked = await reranker.rerank("q", candidates, top_k=1, query_class=QueryClass.MULTI_HOP)
+
+    from website.features.rag_pipeline.rerank.cascade import _content_quality_factor
+    quality = _content_quality_factor(candidates[0].content)
+    expected = 0.40 * 0.5 * quality + 0.45 * 0.6 + 0.15 * 0.2
+    assert ranked[0].final_score == pytest.approx(expected)
 
 
 def test_mmr_is_stable_when_all_nodes_distinct() -> None:
