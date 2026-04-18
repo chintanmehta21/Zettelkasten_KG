@@ -248,6 +248,28 @@ def test_no_title_boost_when_variants_dont_match() -> None:
     assert fused[0].rrf_score == pytest.approx(0.30)
 
 
+@pytest.mark.asyncio
+async def test_duplicate_query_variants_only_fire_one_rpc_each() -> None:
+    """Query expanders sometimes emit the raw query alongside a paraphrase
+    that normalises to the same form. We must not fan out redundant RPCs or
+    inflate consensus boosts on the dupes."""
+    supabase = _Supabase({"rag_hybrid_search": []})
+    embedder = _Embedder()
+    retriever = HybridRetriever(embedder=embedder, supabase=supabase)
+
+    await retriever.retrieve(
+        user_id=uuid4(),
+        query_variants=["attention is all you need", "Attention Is All You Need", "attention is all you need  "],
+        sandbox_id=None,
+        scope_filter=ScopeFilter(),
+        query_class=QueryClass.LOOKUP,
+    )
+
+    search_calls = [call for call in supabase.calls if call[0] == "rag_hybrid_search"]
+    assert len(search_calls) == 1
+    assert embedder.queries == ["attention is all you need"]
+
+
 def test_per_node_chunk_cap_keeps_top_three_chunks() -> None:
     """A single verbose node (e.g. a long YouTube transcript) must not
     monopolise top-K. Cap chunk-kind candidates at 3 per node_id."""

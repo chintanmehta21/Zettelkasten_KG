@@ -57,6 +57,8 @@ class HybridRetriever:
         if effective_nodes is not None and len(effective_nodes) == 0:
             raise EmptyScopeError("Scope resolved to zero Zettels")
 
+        query_variants = _dedupe_variants(query_variants)
+
         embeddings = await asyncio.gather(*[
             self._embedder.embed_query_with_cache(query) for query in query_variants
         ])
@@ -164,6 +166,24 @@ def _cap_per_node(
                 continue
             seen_chunk_count[candidate.node_id] = count + 1
         kept.append(candidate)
+    return kept
+
+
+def _dedupe_variants(variants: list[str]) -> list[str]:
+    """Drop empty / duplicate query variants (case- and whitespace-insensitive)
+    while preserving the original order. The expander sometimes emits the raw
+    query alongside a paraphrase that collapses to the same normalized form,
+    which would otherwise double the RPC load and inflate consensus boosts."""
+    seen: set[str] = set()
+    kept: list[str] = []
+    for variant in variants or []:
+        if not variant or not str(variant).strip():
+            continue
+        normalized = _normalize_for_match(variant)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        kept.append(variant)
     return kept
 
 
