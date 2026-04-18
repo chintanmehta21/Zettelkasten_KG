@@ -20,7 +20,7 @@ gemini_api_key: ""
 
 # Model to use for summarisation (gemini-2.5-flash is fast and cheap).
 model_name: "gemini-2.5-flash"
-rag_chunks_enabled: false
+rag_chunks_enabled: true
 
 # ── Reddit ────────────────────────────────────────────────────────────────────
 # Leave empty; set REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET env vars.
