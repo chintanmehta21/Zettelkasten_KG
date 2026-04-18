@@ -242,12 +242,6 @@ jobs:
             # ── 5. Run deploy with one retry ──
             for attempt in 1 2; do
               if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
-                # ── 6. Cleanup stale Docker images ──
-                echo "[cleanup] Pruning unused Docker resources..."
-                docker system prune -af --filter "until=72h" 2>/dev/null || true
-                docker image prune -af 2>/dev/null || true
-                echo "[cleanup] Disk usage after prune:"
-                docker system df 2>/dev/null || true
                 exit 0
               fi
 

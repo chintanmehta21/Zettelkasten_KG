@@ -9,7 +9,7 @@
 #   - Waits for /api/health on the idle color
 #   - Rewrites /opt/zettelkasten/caddy/upstream.snippet to point at idle color
 #   - Reloads Caddy gracefully
-#   - Drains and stops the previously-active color
+#   - Hands off the previously-active color to background retirement
 #   - Updates /opt/zettelkasten/ACTIVE_COLOR
 #
 # On failure: invokes rollback.sh and exits non-zero.
@@ -28,6 +28,7 @@ fi
 
 ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
+DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-20}"
 
 MODEL_DIR="$ROOT/data/models"
 if [[ ! -d "$MODEL_DIR" ]]; then
@@ -89,14 +90,13 @@ chmod 644 "$SNIPPET"
 log "Reloading Caddy..."
 "$ROOT/deploy/reload_caddy.sh"
 
+ACTIVE_CONTAINER_NAME="zettelkasten-${ACTIVE}"
+ACTIVE_CONTAINER_ID="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME" 2>/dev/null || true)"
+
 echo "$IDLE" > "$ACTIVE_FILE"
 
-log "Draining $ACTIVE for 20 seconds..."
-sleep 20
+log "Handing off $ACTIVE retirement to background drain (${DRAIN_SECONDS}s)..."
+nohup "$ROOT/deploy/retire_color.sh" "$ACTIVE" "$DRAIN_SECONDS" "$ACTIVE_CONTAINER_ID" >/dev/null 2>&1 &
+RETIRE_PID=$!
 
-log "Stopping $ACTIVE container..."
-docker compose \
-    -f "$ROOT/compose/docker-compose.${ACTIVE}.yml" \
-    down --timeout 20 || log "Warning: failed to stop $ACTIVE cleanly"
-
-log "DEPLOY SUCCEEDED. New active color: $IDLE, image: $IMAGE"
+log "DEPLOY SUCCEEDED. New active color: $IDLE, image: $IMAGE, retire_pid=$RETIRE_PID"
