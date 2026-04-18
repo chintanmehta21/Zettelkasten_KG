@@ -352,16 +352,33 @@ async def _process_node(
     if refetch_source:
         extracted = await _refetch_content(node)
 
-    refetched_flag = extracted is not None and bool(
-        extracted.body if extracted else None
+    # Stub rejection: extractors sometimes return useless placeholders
+    # (e.g. "Transcript not available for this video" from the YouTube
+    # oEmbed fallback, paywall redirect bodies, etc). Prefer the stored
+    # summary when the refetched body is a known stub or shorter than it.
+    _STUB_MARKERS = (
+        "transcript not available",
+        "not available for this video",
+        "video unavailable",
+        "content unavailable",
+        "403 forbidden",
+        "access denied",
+        "paywall",
     )
+    refetched_body = extracted.body if extracted and extracted.body else ""
+    summary_text = node.get("summary") or ""
+    refetched_lower = refetched_body.lower()
+    is_stub = (
+        len(refetched_body.strip()) < 200
+        or any(m in refetched_lower for m in _STUB_MARKERS)
+    )
+    if is_stub and len(summary_text) > len(refetched_body):
+        refetched_body = ""  # discard stub; fall through to summary
+
+    refetched_flag = bool(refetched_body)
     result["refetched"] = refetched_flag
 
-    raw_text = (
-        (extracted.body if extracted and extracted.body else None)
-        or node.get("summary")
-        or ""
-    )
+    raw_text = refetched_body or summary_text or ""
     payload = {
         "title": (extracted.title if extracted and extracted.title else None)
                  or node.get("name") or node["id"],
