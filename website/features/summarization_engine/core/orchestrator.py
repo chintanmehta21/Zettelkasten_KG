@@ -6,7 +6,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from telegram_bot.utils.url_utils import validate_url
+from website.core.url_utils import validate_url
 
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.errors import (

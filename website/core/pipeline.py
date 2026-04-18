@@ -10,6 +10,8 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from website.core.url_utils import normalize_url, resolve_redirects
+
 logger = logging.getLogger("website.pipeline")
 
 _WEBSITE_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -17,7 +19,6 @@ _WEBSITE_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 async def summarize_url(url: str) -> dict:
     """Run summarization_engine for a URL and return the legacy API shape."""
-    from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
     from website.features.summarization_engine.core.orchestrator import (
         summarize_url_bundle,
     )

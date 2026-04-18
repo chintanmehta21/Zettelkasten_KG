@@ -1,1 +1,1 @@
-"""Test suite for telegram_bot."""
+"""Test suite for the website."""

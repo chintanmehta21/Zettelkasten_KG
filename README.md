@@ -163,10 +163,10 @@ pytest
 pytest tests/ --ignore=tests/integration_tests
 
 # A specific test module
-pytest tests/test_extractors.py -v
+pytest tests/unit/website/test_settings.py -v
 
 # With coverage
-pytest --cov=telegram_bot --cov-report=term-missing
+pytest --cov=website --cov-report=term-missing
 
 # Live integration tests (requires real API creds in .env)
 pytest --live
@@ -176,29 +176,20 @@ pytest --live
 
 ## Adding a New Source
 
-The extractor system uses auto-discovery - any `SourceExtractor` subclass in `telegram_bot/sources/` is registered automatically.
+Source ingestion lives in `website/features/summarization_engine/source_ingest/`. The orchestrator (`summarize_url_bundle`) selects an ingestor from `router.py` based on the resolved URL.
 
-1. Add enum value to `SourceType` in `telegram_bot/models/capture.py`
-2. Create extractor module in `telegram_bot/sources/` (subclass `SourceExtractor`, implement `async extract()`)
-3. Add URL pattern to `telegram_bot/sources/registry.py`
-4. Add bot command handler in `telegram_bot/bot/handlers.py` and wire in `telegram_bot/main.py`
+1. Add a new ingestor module under `website/features/summarization_engine/source_ingest/` implementing the ingestor protocol (`ingest(url) -> SourceBundle`).
+2. Register the URL pattern in `website/features/summarization_engine/source_ingest/router.py`.
+3. Add targeted tests under `tests/unit/website/`.
 
 ---
 
 ## Project Structure
 
 ```
-|-- run.py                     # Entry point
+|-- run.py                     # Entry point (delegates to website.main)
 |-- pyproject.toml             # Project metadata + pytest config
-|-- telegram_bot/              # Core bot application
-|   |-- main.py                # App wiring: handlers, polling/webhook startup
-|   |-- bot/                   # Telegram command handlers + chat-ID guard
-|   |-- config/                # Pydantic settings (env + yaml)
-|   |-- models/                # Shared data models (SourceType, ExtractedContent, etc.)
-|   |-- pipeline/              # Orchestrator, Gemini summarizer, writers, dedup
-|   |-- sources/               # Auto-discovered source extractors
-|   `-- utils/                 # URL validation, SSRF protection
-|-- website/                   # FastAPI web frontend
+|-- website/                   # FastAPI web application
 |   |-- api/                   # REST API routes (/api/*)
 |   |-- core/                  # Web pipeline, graph store, Supabase KG integration
 |   |-- features/              # Knowledge graph, auth, home, zettels, etc.

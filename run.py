@@ -1,9 +1,9 @@
-"""Convenience entry point at the project root.
+"""Production entrypoint — delegates to the website runtime.
 
-Run the bot from the project root:
-    python run.py
+Usage: ``python run.py``
 """
-from telegram_bot.main import main
+
+from website.main import main
 
 if __name__ == "__main__":
     main()

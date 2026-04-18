@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the telegram_bot test suite."""
+"""Shared pytest fixtures for the website test suite."""
 
 import pytest
 

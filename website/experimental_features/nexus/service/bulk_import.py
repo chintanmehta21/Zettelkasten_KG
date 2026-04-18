@@ -10,11 +10,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from telegram_bot.config.settings import get_settings
-from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list
-from telegram_bot.sources import get_extractor
-from telegram_bot.sources.registry import detect_source_type
-from telegram_bot.utils.url_utils import normalize_url, resolve_redirects
+from website.core.pipeline import summarize_url
 from website.core.supabase_kg import get_supabase_client, is_supabase_configured
 from website.experimental_features.nexus.service.persist import (
     PersistenceOutcome,
@@ -219,38 +215,9 @@ def _normalize_artifacts(raw_result: Any, provider: NexusProvider) -> tuple[list
 
 
 async def summarize_artifact_url(url: str) -> dict[str, Any]:
-    """Summarize an artifact URL using the current web pipeline steps."""
+    """Summarize an artifact URL using the website-native summarization pipeline."""
 
-    settings = get_settings()
-
-    resolved = await resolve_redirects(url)
-    normalized = normalize_url(resolved)
-    source_type = detect_source_type(normalized)
-    extractor = get_extractor(source_type, settings)
-    extracted = await extractor.extract(normalized)
-
-    # Use flash-lite for high-volume bulk imports. GeminiSummarizer now
-    # honors explicit model overrides while keeping default routing elsewhere.
-    summarizer = GeminiSummarizer(model_name="gemini-2.5-flash-lite")
-    summarized = await summarizer.summarize(extracted)
-    tags = build_tag_list(source_type, summarized.tags)
-    if summarized.is_raw_fallback:
-        tags = [tag for tag in tags if not tag.startswith("status/")]
-        tags.append("status/Raw")
-
-    return {
-        "title": extracted.title,
-        "summary": summarized.summary,
-        "brief_summary": summarized.brief_summary,
-        "tags": tags,
-        "source_type": source_type.value,
-        "source_url": normalized,
-        "one_line_summary": summarized.one_line_summary,
-        "is_raw_fallback": summarized.is_raw_fallback,
-        "tokens_used": summarized.tokens_used,
-        "latency_ms": summarized.latency_ms,
-        "metadata": extracted.metadata,
-    }
+    return await summarize_url(url)
 
 
 def _create_run(

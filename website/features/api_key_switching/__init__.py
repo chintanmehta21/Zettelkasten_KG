@@ -19,7 +19,7 @@ import logging
 import os
 from pathlib import Path
 
-from telegram_bot.config.settings import get_settings
+from website.core.settings import get_settings
 from website.features.api_key_switching.key_pool import GeminiKeyPool, _load_keys_from_file
 
 logger = logging.getLogger(__name__)

@@ -12,8 +12,8 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from telegram_bot.config.settings import get_settings
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
+from website.core.settings import get_settings
 from website.core.supabase_kg import KGNodeCreate, KGRepository, is_supabase_configured
 
 logger = logging.getLogger("website.experimental_features.nexus.persist")

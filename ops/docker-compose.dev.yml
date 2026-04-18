@@ -24,7 +24,6 @@ services:
       - "10000:10000"
     volumes:
       - ../website:/app/website
-      - ../telegram_bot:/app/telegram_bot
       - ../run.py:/app/run.py:ro
       - dev-kg-output:/app/kg_output
       - dev-bot-data:/app/bot_data
@@ -42,8 +41,6 @@ services:
       - --reload
       - --reload-dir
       - /app/website
-      - --reload-dir
-      - /app/telegram_bot
 
 volumes:
   dev-kg-output:

@@ -1,1 +1,0 @@
-"""Telegram bot sub-package."""
