@@ -25,9 +25,15 @@ class StructuredSummaryPayload(BaseModel):
 
 
 class StructuredExtractor:
-    def __init__(self, client: TieredGeminiClient, config: EngineConfig):
+    def __init__(
+        self,
+        client: TieredGeminiClient,
+        config: EngineConfig,
+        payload_class: type[BaseModel] = StructuredSummaryPayload,
+    ):
         self._client = client
         self._config = config
+        self._payload_class = payload_class
 
     async def extract(
         self,
@@ -56,12 +62,12 @@ class StructuredExtractor:
         result = await self._client.generate(
             prompt,
             tier="flash",
-            response_schema=StructuredSummaryPayload,
+            response_schema=self._payload_class,
             system_instruction=SYSTEM_PROMPT,
         )
         flash_tokens += result.input_tokens + result.output_tokens
         try:
-            payload = StructuredSummaryPayload(**parse_json_object(result.text))
+            payload = self._payload_class(**parse_json_object(result.text))
         except Exception:
             payload = _fallback_payload(ingest, summary_text, self._config)
 
@@ -94,7 +100,7 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config: EngineCon
     brief = " ".join(words[:50]) or "No summary text was available."
     tags = [ingest.source_type.value, "zettelkasten", "summary", "capture", "research", "source", "notes", "ai"]
     return StructuredSummaryPayload(
-        mini_title=" ".join(str(title).split()[: config.structured_extract.mini_title_max_words]),
+        mini_title=str(title)[: config.structured_extract.mini_title_max_chars],
         brief_summary=brief,
         tags=tags,
         detailed_summary=[DetailedSummarySection(heading="Summary", bullets=[brief])],
