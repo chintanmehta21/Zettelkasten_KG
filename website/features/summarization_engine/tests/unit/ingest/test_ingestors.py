@@ -110,6 +110,10 @@ async def test_github_fetch_docs_appends_contributing_and_docs_readme(
             "content": base64.b64encode(docs_readme_body.encode()).decode(),
         }
     )
+    # 9-14. Remaining docs/ candidate slots (index, getting-started, overview;
+    # lowercase and uppercase variants) all absent.
+    for _ in range(6):
+        httpx_mock.add_response(status_code=404)
 
     result = await GitHubIngestor().ingest(
         "https://github.com/foo/repo",
