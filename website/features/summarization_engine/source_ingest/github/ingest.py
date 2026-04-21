@@ -18,6 +18,34 @@ from website.features.summarization_engine.source_ingest.utils import (
     utc_now,
 )
 
+# Top-level Markdown files we look for beyond the README. Names are matched
+# case-insensitively against the repo's top-level tree.
+_EXTRA_TOP_LEVEL_DOCS = (
+    "CONTRIBUTING.md",
+    "ARCHITECTURE.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "GOVERNANCE.md",
+    "CODE_OF_CONDUCT.md",
+)
+
+# Filenames to pick up inside a top-level docs/ directory. First match wins
+# for each "slot" so a repo with docs/README.md AND docs/index.md only yields
+# one of them.
+_DOCS_DIR_CANDIDATES = (
+    ("docs/README.md", "docs/readme.md"),
+    ("docs/index.md", "docs/INDEX.md"),
+    ("docs/getting-started.md", "docs/GETTING_STARTED.md"),
+    ("docs/overview.md", "docs/OVERVIEW.md"),
+)
+
+# Hard cap on the number of additional doc files fetched per repo (beyond the
+# README) to avoid blowing the GitHub API rate limit.
+_MAX_EXTRA_DOCS = 4
+# Per-file character cap for any single doc file appended to the raw text.
+_DOC_FILE_CHAR_CAP = 4000
+
 
 class GitHubIngestor(BaseIngestor):
     source_type = SourceType.GITHUB
@@ -55,6 +83,24 @@ class GitHubIngestor(BaseIngestor):
                     params={"per_page": int(config.get("max_commits", 10))},
                 )
 
+            extra_docs: list[tuple[str, str]] = []
+            if config.get("fetch_docs", True):
+                default_branch = repo_data.get("default_branch") or "main"
+                extra_docs = await _fetch_extra_docs(
+                    client,
+                    owner,
+                    repo,
+                    default_branch,
+                    max_files=int(config.get("max_docs", _MAX_EXTRA_DOCS)),
+                    char_cap=int(config.get("doc_char_cap", _DOC_FILE_CHAR_CAP)),
+                )
+
+        docs_section = ""
+        if extra_docs:
+            docs_section = "\n\n".join(
+                f"### {name}\n{body}" for name, body in extra_docs
+            )
+
         sections = {
             "Repository": (
                 f"{repo_data.get('full_name', f'{owner}/{repo}')}\n"
@@ -63,11 +109,24 @@ class GitHubIngestor(BaseIngestor):
                 f"Topics: {', '.join(repo_data.get('topics') or [])}"
             ),
             "README": readme,
+            "Docs": docs_section,
             "Languages": ", ".join(f"{k}: {v}" for k, v in languages.items()) if isinstance(languages, dict) else "",
             "Issues": "\n".join(_issue_line(issue) for issue in issues[: int(config.get("max_issues", 20))]),
             "Commits": "\n".join(_commit_line(commit) for commit in commits[: int(config.get("max_commits", 10))]),
         }
         raw_text = join_sections(sections)
+
+        has_content = bool(readme) or bool(extra_docs)
+        confidence: str = "high" if has_content else "medium"
+        if readme and extra_docs:
+            reason = f"repo metadata, README, and {len(extra_docs)} extra doc(s) fetched"
+        elif readme:
+            reason = "repo metadata and README fetched"
+        elif extra_docs:
+            reason = f"repo metadata and {len(extra_docs)} extra doc(s) fetched (no README)"
+        else:
+            reason = "repo metadata fetched without README"
+
         return IngestResult(
             source_type=self.source_type,
             url=f"https://github.com/{owner}/{repo}",
@@ -84,9 +143,10 @@ class GitHubIngestor(BaseIngestor):
                 "topics": repo_data.get("topics") or [],
                 "license": (repo_data.get("license") or {}).get("spdx_id"),
                 "updated_at": repo_data.get("updated_at"),
+                "extra_doc_files": [name for name, _ in extra_docs],
             },
-            extraction_confidence="high" if readme else "medium",
-            confidence_reason="repo metadata and README fetched" if readme else "repo metadata fetched without README",
+            extraction_confidence=confidence,  # type: ignore[arg-type]
+            confidence_reason=reason,
             fetched_at=utc_now(),
         )
 
@@ -118,6 +178,119 @@ async def _optional_readme(client: httpx.AsyncClient, owner: str, repo: str) -> 
         return base64.b64decode(encoded).decode("utf-8", errors="replace")
     except Exception:
         return ""
+
+
+async def _fetch_extra_docs(
+    client: httpx.AsyncClient,
+    owner: str,
+    repo: str,
+    default_branch: str,
+    *,
+    max_files: int,
+    char_cap: int,
+) -> list[tuple[str, str]]:
+    """Fetch up to ``max_files`` additional Markdown docs from the repo.
+
+    Preference order:
+      1. Top-level governance/architecture docs (CONTRIBUTING, ARCHITECTURE,
+         ROADMAP, CHANGELOG, SECURITY, GOVERNANCE, CODE_OF_CONDUCT).
+      2. Curated docs/ entries (README, index, getting-started, overview).
+
+    Filesystem access is through the Contents API; we bail silently if the
+    repo has no Markdown, the rate limit kicks in, or the repo is archived.
+    """
+    if max_files <= 0:
+        return []
+
+    tree_listing = await _optional_json(
+        client,
+        f"https://api.github.com/repos/{owner}/{repo}/contents",
+        [],
+    )
+    if not isinstance(tree_listing, list):
+        return []
+
+    top_level_names = {
+        entry.get("name", ""): entry.get("name", "")
+        for entry in tree_listing
+        if isinstance(entry, dict)
+    }
+    lower_to_actual = {name.lower(): name for name in top_level_names if name}
+
+    picked: list[tuple[str, str]] = []
+
+    # Pass 1 — governance/architecture docs at the repo root.
+    for candidate in _EXTRA_TOP_LEVEL_DOCS:
+        if len(picked) >= max_files:
+            break
+        actual = lower_to_actual.get(candidate.lower())
+        if not actual:
+            continue
+        body = await _fetch_file_contents(client, owner, repo, actual, default_branch)
+        if not body:
+            continue
+        picked.append((actual, _truncate(body, char_cap)))
+
+    # Early return: skip docs/ scan if we already hit the cap.
+    if len(picked) >= max_files:
+        return picked
+
+    # Pass 2 — walk docs/ if present.
+    has_docs_dir = any(
+        entry.get("name") == "docs" and entry.get("type") == "dir"
+        for entry in tree_listing
+        if isinstance(entry, dict)
+    )
+    if not has_docs_dir:
+        return picked
+
+    for group in _DOCS_DIR_CANDIDATES:
+        if len(picked) >= max_files:
+            break
+        for path in group:
+            body = await _fetch_file_contents(
+                client, owner, repo, path, default_branch
+            )
+            if body:
+                picked.append((path, _truncate(body, char_cap)))
+                break  # one per "slot"
+
+    return picked
+
+
+async def _fetch_file_contents(
+    client: httpx.AsyncClient,
+    owner: str,
+    repo: str,
+    path: str,
+    ref: str,
+) -> str:
+    """Fetch one file from the Contents API, decoding base64.
+
+    Returns empty string on any non-200 response, missing content field, or
+    decode failure — the caller treats empty as "skip".
+    """
+    data = await _optional_json(
+        client,
+        f"https://api.github.com/repos/{owner}/{repo}/contents/{path}",
+        {},
+        params={"ref": ref},
+    )
+    if not isinstance(data, dict):
+        return ""
+    encoded = data.get("content")
+    if not encoded or data.get("encoding") != "base64":
+        return ""
+    try:
+        return base64.b64decode(encoded).decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _truncate(text: str, char_cap: int) -> str:
+    if len(text) <= char_cap:
+        return text.strip()
+    return text[: char_cap - 1].rstrip() + "…"
 
 
 def _issue_line(issue: dict[str, Any]) -> str:

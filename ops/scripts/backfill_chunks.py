@@ -81,40 +81,62 @@ logger = logging.getLogger("backfill_chunks")
 
 
 # ---------------------------------------------------------------------------
-# Source-type mapping: kg_nodes.source_type strings → SourceType enum
-# kg_nodes can store values the SourceType enum doesn't have (e.g. "substack",
-# "medium") — map them explicitly; unknowns fall back to WEB.
+# Source-type mapping: kg_nodes.source_type strings → website SourceType enum.
+#
+# We re-extract via ``website.features.summarization_engine.source_ingest``
+# (the richer website-native pipeline). kg_nodes can store strings the engine
+# enum does not (e.g. "substack", "medium"); they all map to NEWSLETTER since
+# NewsletterIngestor handles Substack/Medium/Beehiiv/dev.to/Stratechery etc.
+# Unknown values fall back to WEB.
+#
+# When the stored source_type is useless/missing, we prefer the router's
+# URL-based detection so the richest extractor is selected automatically.
 # ---------------------------------------------------------------------------
 
-def _map_source_type(raw: str):
-    """Return the SourceType enum member for a kg_nodes source_type string.
 
-    Returns None if the telegram_bot package is not importable (non-prod env).
+def _map_source_type(raw: str, url: str):
+    """Return the website ``SourceType`` for a kg_nodes source_type string.
+
+    ``url`` is used as a secondary signal — if the stored source_type is
+    missing, unknown, or plainly wrong, the router picks the right extractor
+    from the URL's host.
     """
-    from telegram_bot.models.capture import SourceType  # noqa: PLC0415
+    from website.features.summarization_engine.core.models import SourceType  # noqa: PLC0415
+    from website.features.summarization_engine.core.router import detect_source_type  # noqa: PLC0415
 
     aliases: dict[str, SourceType] = {
         "youtube": SourceType.YOUTUBE,
         "github": SourceType.GITHUB,
         "reddit": SourceType.REDDIT,
         "newsletter": SourceType.NEWSLETTER,
-        "substack": SourceType.NEWSLETTER,  # Substack uses the newsletter extractor
-        "medium": SourceType.WEB,           # No dedicated extractor; generic fetch
+        "substack": SourceType.NEWSLETTER,
+        "medium": SourceType.NEWSLETTER,
+        "hackernews": SourceType.HACKERNEWS,
+        "linkedin": SourceType.LINKEDIN,
+        "arxiv": SourceType.ARXIV,
+        "podcast": SourceType.PODCAST,
+        "twitter": SourceType.TWITTER,
         "web": SourceType.WEB,
         "generic": SourceType.WEB,
     }
     normalized = (raw or "").strip().lower()
-    return aliases.get(normalized, SourceType.WEB)
+    if normalized in aliases:
+        return aliases[normalized]
+    # No explicit alias — let the URL-based router decide.
+    try:
+        return detect_source_type(url)
+    except Exception:  # noqa: BLE001
+        return SourceType.WEB
 
 
-async def _refetch_content(node: dict[str, Any]) -> "ExtractedContent | None":
-    """Re-extract raw content from the node's source URL using the extractor plugin.
+async def _refetch_content(node: dict[str, Any]):
+    """Re-extract raw content via the website source-ingest pipeline.
 
-    Returns an ExtractedContent on success, None on any failure (caller falls
-    back to node["summary"]).
+    Returns an object with ``.body``, ``.title``, ``.metadata`` on success, or
+    ``None`` on any failure (caller falls back to node["summary"]).
     """
     url = (node.get("url") or "").strip()
-    source_type_raw = (node.get("source_type") or "web").strip().lower()
+    source_type_raw = (node.get("source_type") or "").strip().lower()
 
     if not url:
         logger.warning(
@@ -123,12 +145,11 @@ async def _refetch_content(node: dict[str, Any]) -> "ExtractedContent | None":
         return None
 
     try:
-        from telegram_bot.sources import get_extractor  # noqa: PLC0415
-        from telegram_bot.config.settings import get_settings  # noqa: PLC0415
-        from telegram_bot.models.capture import ExtractedContent  # noqa: PLC0415 # type: ignore[assignment]
-    except ImportError as exc:
+        from website.features.summarization_engine.core.config import load_config  # noqa: PLC0415
+        from website.features.summarization_engine.source_ingest import get_ingestor  # noqa: PLC0415
+    except ImportError as exc:  # noqa: BLE001
         logger.warning(
-            "refetch skip: telegram_bot package not importable (%s) — "
+            "refetch skip: website summarization engine not importable (%s) — "
             "falling back to summary for node %s",
             exc,
             node["id"],
@@ -136,7 +157,7 @@ async def _refetch_content(node: dict[str, Any]) -> "ExtractedContent | None":
         return None
 
     try:
-        source_type = _map_source_type(source_type_raw)
+        source_type = _map_source_type(source_type_raw, url)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "refetch skip: cannot map source_type %r for node %s: %s",
@@ -146,43 +167,26 @@ async def _refetch_content(node: dict[str, Any]) -> "ExtractedContent | None":
         )
         return None
 
-    # Guard Reddit: warn and skip early if credentials are absent so we don't
-    # waste a network call that will fail with an auth error.
-    if source_type_raw == "reddit":
+    # Guard Reddit: warn and skip early if OAuth credentials are absent so we
+    # can fall back to HTML scraping without hitting the OAuth branch. The
+    # website Reddit ingestor falls back to HTML automatically, but we still
+    # log the missing-creds condition so operators can fix it.
+    if str(source_type.value) == "reddit":
         reddit_id = os.environ.get("REDDIT_CLIENT_ID", "").strip()
         reddit_secret = os.environ.get("REDDIT_CLIENT_SECRET", "").strip()
         if not reddit_id or not reddit_secret:
-            logger.warning(
-                "refetch skip: REDDIT_CLIENT_ID/SECRET not set — "
-                "falling back to summary for node %s (%s)",
-                node["id"],
+            logger.info(
+                "REDDIT_CLIENT_ID/SECRET not set — using JSON+HTML fallback "
+                "for %s (OAuth unavailable)",
                 url,
             )
-            return None
 
     try:
-        settings = get_settings()
-    except SystemExit:
-        logger.warning(
-            "refetch skip: get_settings() failed (missing required env vars) — "
-            "falling back to summary for node %s",
-            node["id"],
-        )
-        return None
+        ingestor_cls = get_ingestor(source_type)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "refetch skip: get_settings() raised %s — falling back to summary for node %s",
-            exc,
-            node["id"],
-        )
-        return None
-
-    try:
-        extractor = get_extractor(source_type, settings)
-    except (KeyError, Exception) as exc:  # noqa: BLE001
-        logger.warning(
-            "refetch skip: no extractor for %s (%s): %s — falling back to summary for node %s",
-            source_type_raw,
+            "refetch skip: no ingestor for %s (%s): %s — falling back to summary for node %s",
+            source_type.value,
             url,
             exc,
             node["id"],
@@ -190,15 +194,50 @@ async def _refetch_content(node: dict[str, Any]) -> "ExtractedContent | None":
         return None
 
     try:
-        content = await extractor.extract(url)
-        char_count = len(content.body) if content and content.body else 0
-        logger.info(
-            "refetch: %s %s → %d chars", source_type_raw, url, char_count
-        )
-        return content
+        config = load_config()
+        source_config = config.sources.get(source_type.value, {})
     except Exception as exc:  # noqa: BLE001
-        logger.warning("refetch failed: %s %s: %s", source_type_raw, url, exc)
+        logger.warning(
+            "refetch warning: load_config failed (%s); using empty config", exc
+        )
+        source_config = {}
+
+    try:
+        ingestor = ingestor_cls()
+        result = await ingestor.ingest(url, config=source_config)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "refetch failed: %s %s: %s", source_type.value, url, exc
+        )
         return None
+
+    body = (result.raw_text or "").strip()
+    char_count = len(body)
+    title = (result.metadata or {}).get("title") or ""
+    logger.info(
+        "refetch: %s %s → %d chars (conf=%s, %s)",
+        source_type.value,
+        url,
+        char_count,
+        result.extraction_confidence,
+        result.confidence_reason,
+    )
+    return _RefetchedContent(body=body, title=title, metadata=dict(result.metadata or {}))
+
+
+class _RefetchedContent:
+    """Lightweight container so the rest of the script stays the same.
+
+    Mirrors the shape the previous telegram_bot.ExtractedContent provided
+    without importing it.
+    """
+
+    __slots__ = ("body", "title", "metadata")
+
+    def __init__(self, *, body: str, title: str, metadata: dict[str, Any]):
+        self.body = body
+        self.title = title
+        self.metadata = metadata
 
 
 # ---------------------------------------------------------------------------
@@ -540,10 +579,11 @@ def build_parser() -> argparse.ArgumentParser:
         dest="refetch_source",
         help=(
             "Re-extract raw content from each node's source URL using the "
-            "telegram_bot extractor plugins before chunking. Falls back to the "
-            "stored summary when the URL is missing, the extractor fails, or "
-            "credentials (e.g. REDDIT_CLIENT_ID/SECRET) are absent. "
-            "Requires telegram_bot to be importable (production container)."
+            "website source-ingest pipeline (paywall-aware newsletter, docs-"
+            "enriched GitHub, transcript-enabled YouTube, etc.) before "
+            "chunking. Falls back to the stored summary when the URL is "
+            "missing or every extraction path fails. Requires the website "
+            "summarization engine to be importable."
         ),
     )
     return parser
