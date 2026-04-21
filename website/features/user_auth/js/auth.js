@@ -19,6 +19,7 @@
   var loginBtn, loginArrow, providerGrid, userMenu, userAvatar, userName;
   var loginModal, modalOverlay, modalClose, loginForm, loginEmail, loginPassword;
   var loginError, oauthGoogle, modalProviders;
+  var AUTH_PROVIDERS = ['google', 'github', 'apple', 'twitter', 'facebook', 'twitch'];
 
   function resolveDOM() {
     loginBtn = document.getElementById('login-btn');
@@ -40,6 +41,10 @@
 
   function isLandingPage() {
     return window.location.pathname === '/';
+  }
+
+  function isKnownProvider(value) {
+    return AUTH_PROVIDERS.indexOf(value) !== -1;
   }
 
   function getCacheState() {
@@ -309,6 +314,7 @@
     gridItems.forEach(function (item) {
       item.addEventListener('click', function () {
         var provider = item.getAttribute('data-provider');
+        if (!isKnownProvider(provider)) return;
         providerGrid.classList.remove('open');
         signInWithProvider(provider);
       });
@@ -334,6 +340,7 @@
       modalProviders.forEach(function (btn) {
         btn.addEventListener('click', function () {
           var provider = btn.getAttribute('data-provider');
+          if (!isKnownProvider(provider)) return;
           signInWithProvider(provider);
         });
       });
