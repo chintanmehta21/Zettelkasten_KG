@@ -47,5 +47,20 @@ class DefaultSummarizer(BaseSummarizer):
             patch_applied=patch_applied,
         )
 
-
-register_summarizer(DefaultSummarizer)
+# Register one DefaultSummarizer subclass per polish-phase source so
+# auto-discovery finds a summarizer for every SourceType not covered by a
+# dedicated source-specific implementation.
+for _st in (
+    SourceType.HACKERNEWS,
+    SourceType.LINKEDIN,
+    SourceType.ARXIV,
+    SourceType.PODCAST,
+    SourceType.TWITTER,
+    SourceType.WEB,
+):
+    _cls = type(
+        f"{_st.value.title()}DefaultSummarizer",
+        (DefaultSummarizer,),
+        {"source_type": _st, "__module__": __name__},
+    )
+    register_summarizer(_cls)
