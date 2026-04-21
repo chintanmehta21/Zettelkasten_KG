@@ -1,0 +1,11 @@
+# Publications whose Newsletter labels must include the publication name per Spec §6.1 C2 hybrid.
+# Codex may extend this list during Newsletter iteration loops; plain YAML edit, no code change needed.
+branded_sources:
+  - stratechery
+  - platformer
+  - lennysnewsletter
+  - notboring
+  - thedispatch
+  - benedict evans
+  - one useful thing
+  - astral codex ten
