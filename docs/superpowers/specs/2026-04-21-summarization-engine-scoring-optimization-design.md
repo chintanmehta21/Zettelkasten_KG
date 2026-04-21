@@ -98,8 +98,18 @@ Single Gemini-Pro request with `response_mime_type=application/json`, `temperatu
     "detailed_summary": {"score_of_45": 0-45, "covered_units": [...], "missed_units": [...]},
     "tags":             {"score_of_15": 0-15, "generic_tags": [...], "specificity_issues": [...]},
     "label":            {"score_of_15": 0-15, "issues": [...]},
-    "caps_applied":     {"hallucination_cap": null|60, "omission_cap": null|75, "generic_cap": null|90}
+    "caps_applied":     {"hallucination_cap": null|60, "omission_cap": null|75, "generic_cap": null|90},
+    "anti_patterns_triggered": [{"id": "production_ready_claim_no_evidence", "source_region": "...", "auto_cap": 60}]
   },
+  "maps_to_metric_summary": {
+    "g_eval_composite":   0.0-100.0,  // weighted aggregate of criteria whose maps_to_metric includes "g_eval.*"
+    "finesure_composite": 0.0-100.0,
+    "qafact_composite":   0.0-100.0,
+    "summac_composite":   0.0-100.0
+  },
+  "editorialization_flags": [
+    {"sentence": "...", "flag_type": "added_stance" | "added_judgment" | "added_framing", "explanation": "..."}
+  ],
   "evaluator_metadata": {
     "prompt_version": "evaluator.v1",
     "rubric_version": "rubric_<source>.v1",
@@ -111,6 +121,12 @@ Single Gemini-Pro request with `response_mime_type=application/json`, `temperatu
   }
 }
 ```
+
+**New fields introduced (criteria2.md integration):**
+
+- `anti_patterns_triggered` — every rubric YAML lists source-specific anti-patterns (GitHub: "claiming production-ready without evidence"; YouTube: "clickbait phrasing in label"; Reddit: "asserting unverified comment claims as truth"; Newsletter: "misrepresenting stance optimistic/skeptical"). When the consolidated call detects one, it's listed here and `caps_applied.hallucination_cap` is set to 60 automatically.
+- `maps_to_metric_summary` — every rubric criterion carries a `maps_to_metric: list[str]` field (see §5 YAML structure). The consolidated call aggregates criterion scores along four axes (G-Eval / FineSurE / QAFactEval / SummaC) so future sessions can claim "rubric composite 87 implies FineSurE faithfulness ≥ 0.94" without running the academic metrics separately.
+- `editorialization_flags` — per §I6, the evaluator prompt now includes a universal "does the summary introduce stance, judgment, or framing absent from the source?" check. Flagged sentences are listed with a taxonomy tag. Triggering any flag contributes to the `finesure.faithfulness` score penalty; accumulating ≥ 3 flags triggers the hallucination cap (60).
 
 ### 3.3 Atomic-fact extraction (cached)
 
@@ -170,19 +186,48 @@ def apply_caps(score: float, caps: dict) -> float:
 
 Cap dominance rule: **a single invented fact caps the composite at 60, regardless of how polished everything else is**. Directly implements the research-doc cap rules.
 
-### 3.7 Manual review step (`manual_review.py`)
+### 3.7 Manual review step (cross-model independence — Codex, not Gemini)
 
-Every iteration, a **separate** Gemini-Pro call runs in a distinct prompt lineage with the role *"independent rubric reviewer, blind to any prior evaluator's scoring"*. It receives:
-- The source rubric YAML for this source
-- The summary JSON
-- The atomic facts list
-- The source raw text
+**Design principle: two independent model families score each iteration** — Gemini (consolidated evaluator in §3.2) vs OpenAI (Codex's underlying model, currently `gpt-5.3-codex`). This gives genuine model-family independence rather than same-model-different-prompt pseudo-independence. Codex is already running the iteration loop; using its model as the manual reviewer adds zero extra API surface or cost.
 
-Does NOT receive: the consolidated `eval.json`.
+**Handoff protocol — file-based, no cross-model API calls:**
 
-Output: prose markdown, criterion-by-criterion assessment, with a self-estimated composite score at the end. Written to `docs/summary_eval/<source>/iter-<N>/manual_review.md`. The CLI then computes `divergence_score = |eval.json.composite - manual_review.estimated_composite|` and flags divergence > 10 pts at the top of `manual_review.md`.
+1. After the consolidated Gemini evaluator completes (step 6 of the per-iteration runbook in §8.2), the CLI writes `docs/summary_eval/<source>/iter-<N>/manual_review_prompt.md` containing:
+   - The source rubric YAML for this source
+   - The summary JSON (but NOT `eval.json` — reviewer stays blind to Gemini's scoring)
+   - The atomic facts list
+   - The source raw text
+   - Explicit instructions: "Score each criterion independently. Produce a self-estimated composite score. Save as `manual_review.md` in this directory. Do NOT look at `eval.json`."
+2. CLI exits with `status=awaiting_manual_review` and prints the prompt path. **No Gemini call is made for manual review.**
+3. Codex (the agent driving the program) reads `manual_review_prompt.md` and produces `docs/summary_eval/<source>/iter-<N>/manual_review.md` using its own model. Codex treats this as a required step in every tuning iteration's runbook. Codex **must not** consult `eval.json` while writing the review — enforced by hash check (see below).
+4. Codex re-invokes `eval_loop.py --source <s> --iter N` (same command, any number of times). The CLI auto-detects state: if `summary.json` + `eval.json` + `manual_review.md` exist but `diff.md` doesn't, it runs the "finalize" phase (steps 7-11).
+5. Finalize phase reads `manual_review.md`, extracts the self-estimated composite, computes `divergence_score = |eval.json.composite - manual_review.estimated_composite|`, flags divergence > 10 pts at the top of `manual_review.md` AND in `next_actions.md`.
 
-This fulfills the "compare once yourself too" requirement — we get two LLM-graded passes per iteration, in independent lineages, so we catch cases where a single prompt has a scoring bias.
+**Blind-review enforcement.** At the top of `manual_review_prompt.md`, the CLI writes a SHA256 of the CURRENT `eval.json`. When Codex submits `manual_review.md`, it must include a stamp `eval_json_hash_at_review: "NOT_CONSULTED"`. Any other value (or an actual hash match) indicates Codex consulted `eval.json`, invalidating the blind-review protocol. CLI fails finalize with `status=blind_review_violation` in that case. This is honor-system enforced (Codex could lie), but the guard is visible and documented.
+
+**Output format (`manual_review.md`):**
+- Criterion-by-criterion prose assessment (5–15 sentences per criterion, source-grounded)
+- Per-criterion estimated score (matches rubric YAML's `max_points`)
+- Summary composite score (0–100)
+- Short free-form "most impactful improvement" note
+- Final line: `estimated_composite: NN.N` (parseable by the CLI)
+
+**Divergence handling:**
+- 0 ≤ divergence ≤ 5: `manual_review.md` stamped `AGREEMENT`
+- 5 < divergence ≤ 10: stamped `MINOR_DISAGREEMENT`
+- divergence > 10: stamped `MAJOR_DISAGREEMENT`, both scores logged separately in `next_actions.md`, and the LOWER of the two becomes the reference score the next iteration tries to beat (pessimistic). After two consecutive MAJOR_DISAGREEMENT loops, `status=evaluator_codex_disagreement` and Codex must write a one-line explanation in `docs/summary_eval/<source>/iter-<N>/disagreement_analysis.md` (not an automatic halt, just an attention anchor).
+
+**Why this fulfills the cross-model isolation requirement:**
+- Gemini Pro evaluates the summary via the consolidated call + RAGAS (same model family).
+- Codex (OpenAI `gpt-5.3-codex`) independently evaluates via `manual_review.md`.
+- Gemini cannot influence Codex's review (file-based handoff, blind to `eval.json`).
+- Codex cannot influence Gemini's scoring (Gemini call already complete before handoff).
+- Two model families, two independent scoring passes, divergence as the bias-detection signal.
+
+**Cost impact:**
+- Removes ~50 Gemini Pro calls across the program (manual-review phase no longer uses Gemini).
+- Zero added cost (Codex is the driver regardless).
+- Net savings ~50 Pro calls; billing cost projection in §9.6 updated accordingly.
 
 ### 3.8 Stop / pass criterion (per source)
 
@@ -261,11 +306,12 @@ All outputs live permanently under `docs/summary_eval/`. No purges between itera
 docs/summary_eval/
 ├── README.md                                  # Auto-regenerated leaderboard + index
 ├── _config/
-│   ├── rubric_youtube.yaml                    # 100-pt rubric as structured YAML (criterion id, max pts, examples)
+│   ├── rubric_youtube.yaml                    # 100-pt rubric: criteria + maps_to_metric + anti_patterns (see below)
 │   ├── rubric_reddit.yaml
 │   ├── rubric_github.yaml
 │   ├── rubric_newsletter.yaml
 │   └── rubric_universal.yaml                  # Applied to hackernews/linkedin/arxiv/podcast/twitter/web
+│   └── branded_newsletter_sources.yaml        # List of recurring/branded newsletters triggering publication+thesis label
 ├── _cache/                                    # Content-hashed; never purged
 │   ├── ingests/<url_sha256>.json
 │   ├── atomic_facts/<url_sha256>.json
@@ -286,11 +332,12 @@ docs/summary_eval/
 │   ├── iter-01/
 │   │   ├── input.json                         # URL + all hashes + config snapshot + cost ledger
 │   │   ├── summary.json                       # Raw /api/v2/summarize response
-│   │   ├── eval.json                          # Consolidated evaluator output
-│   │   ├── diff.md                            # Scores + code diff vs iter-00
-│   │   ├── manual_review.md                   # Independent Codex rubric pass
-│   │   ├── next_actions.md                    # Ranked edit proposals
-│   │   └── run.log                            # Full stdout from the CLI run
+│   │   ├── eval.json                          # Consolidated Gemini evaluator output
+│   │   ├── manual_review_prompt.md            # CLI-written handoff to Codex (incl. eval.json hash)
+│   │   ├── manual_review.md                   # Codex-written independent rubric pass (OpenAI model; blind to eval.json)
+│   │   ├── diff.md                            # Scores + code diff vs iter-(N-1)
+│   │   ├── next_actions.md                    # Ranked edit proposals (incl. divergence analysis)
+│   │   └── run.log                            # Full stdout from the CLI run (both phases)
 │   ├── iter-02/ ... iter-05/                  # Tuning loops
 │   ├── iter-06/
 │   │   ├── held_out/<url_sha256>/
@@ -309,6 +356,69 @@ docs/summary_eval/
 │   └── cross_source_lessons.md                # Synthesis across all 10 sources at program end
 └── .halt                                       # Optional; presence halts the CLI on next invocation
 ```
+
+### 5.1 Rubric YAML structure (post-criteria2 integration)
+
+Every `_config/rubric_<source>.yaml` follows this schema:
+
+```yaml
+version: "rubric_youtube.v1"
+source_type: "youtube"
+composite_max_points: 100
+components:
+  - id: "brief_summary"
+    max_points: 25
+    criteria:
+      - id: "brief.thesis_capture"
+        description: "Brief summary states the video's central thesis or promise in one sentence."
+        max_points: 5
+        maps_to_metric: ["g_eval.relevance", "finesure.completeness"]
+        examples_pass:
+          - "The video argues that transformer attention is computationally equivalent to kernel regression."
+        examples_fail:
+          - "The video covers several machine learning topics."  # too vague
+      - id: "brief.format_identified"
+        description: "Brief identifies the video format (tutorial/interview/lecture/etc.) explicitly."
+        max_points: 3
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "brief.speakers_captured"
+        description: "Brief mentions the host/speaker + any guests + key products/libraries discussed."
+        max_points: 4
+        maps_to_metric: ["finesure.completeness", "qafact"]
+      # ... etc., totaling max_points = 25 for this component
+  - id: "detailed_summary"
+    max_points: 45
+    criteria: [...]
+  - id: "tags"
+    max_points: 15
+    criteria: [...]
+  - id: "label"
+    max_points: 15
+    criteria: [...]
+
+anti_patterns:
+  - id: "clickbait_label_retention"
+    description: "Label retains YouTube clickbait phrasing (e.g., 'You won't believe...', 'This changes EVERYTHING')."
+    auto_cap: 90                                   # triggers generic_cap
+    detection_hint: "Look for exclamation marks, superlatives, curiosity-gap phrasing in label."
+  - id: "example_verbatim_reproduction"
+    description: "Brief or detailed summary reproduces an example/analogy verbatim instead of summarizing its purpose."
+    auto_cap: null                                 # penalty, not cap: subtracts 3 from finesure.conciseness
+    penalty_points: 3
+  - id: "editorialized_stance"
+    description: "Summary introduces stance/framing not present in source (e.g., calling neutral content 'bullish')."
+    auto_cap: 60                                   # triggers hallucination_cap
+    detection_hint: "Check for evaluative adjectives absent from source transcript."
+
+global_rules:
+  editorialization_penalty:
+    threshold_flags: 3                             # accumulating this many editorialization_flags triggers hallucination_cap
+    cap_on_trigger: 60
+```
+
+Per-source rubric YAML follows this structure. `rubric_universal.yaml` (for the 6 polish sources) uses a leaner version with generic criteria per component.
+
+`branded_newsletter_sources.yaml` lists publications that trigger C2's hybrid label format (publication+thesis). Starting list: `stratechery.com`, `platformer.news`, `lennysnewsletter.com`, `notboring.co`, `mattklein.com`, `thedispatch.com`, `rogerabout.substack.com`. Codex can extend the list during Newsletter-phase iterations; this is a plain YAML edit, no rubric-softening concern.
 
 ---
 
@@ -344,6 +454,10 @@ Per-source `schema.py` examples:
 ```python
 class GitHubStructuredPayload(StructuredSummaryPayload):
     mini_title: constr(regex=r"^[^/]+/[^/]+$")  # owner/repo format enforced
+    architecture_overview: constr(min_length=50, max_length=500)  # NEW (I3): prose, 1-3 sentences
+                                                                   # describing major directories/modules and how they interact
+    benchmarks_tests_examples: list[str] | None = None            # NEW (I3): what benchmarks/tests/examples demonstrate,
+                                                                   # populated when those dirs exist in the repo
     detailed_summary: list[GitHubDetailedSection]
 
 class GitHubDetailedSection(DetailedSummarySection):
@@ -371,6 +485,9 @@ class RedditDetailedPayload(BaseModel):
 ```python
 class YouTubeStructuredPayload(StructuredSummaryPayload):
     mini_title: constr(max_length=50)
+    speakers: list[str] = Field(..., min_length=1)                 # NEW (I4): host/channel + guests + key referenced people
+    guests: list[str] | None = None                                # NEW (I4): explicit guest list, None when single-host
+    entities_discussed: list[str] = Field(default_factory=list)    # NEW (I4): products, libraries, datasets, case studies
     detailed_summary: YouTubeDetailedPayload
 
 class YouTubeDetailedPayload(BaseModel):
@@ -384,14 +501,34 @@ class YouTubeDetailedPayload(BaseModel):
 **Newsletter** (`summarization/newsletter/schema.py`):
 ```python
 class NewsletterStructuredPayload(StructuredSummaryPayload):
-    mini_title: str  # "publication + thesis" free-form; validator enforces both tokens present
+    mini_title: str  # C2 hybrid: "publication + thesis" IF publication is in branded_newsletter_sources.yaml,
+                     # ELSE thesis-only. Validator checks against YAML list at build time.
     detailed_summary: NewsletterDetailedPayload
 
 class NewsletterDetailedPayload(BaseModel):
     publication_identity: str
     issue_thesis: str
     sections: list[NewsletterSection]
+    conclusions_or_recommendations: list[str] = Field(default_factory=list)  # NEW (I5): author's main conclusions
+                                                                              # or recommendations, DISTINCT from descriptive
+                                                                              # background; evaluator checks this is populated
+                                                                              # when the source offers actionable guidance
+    stance: Literal["optimistic", "skeptical", "cautionary", "neutral", "mixed"]  # NEW (I5): source's apparent stance;
+                                                                                    # rubric penalizes mismatch between detected
+                                                                                    # stance and summary tone (editorialization_flag)
     cta: str | None = None
+```
+
+**`mini_title` validator logic (C2 hybrid):**
+```python
+def _validate_newsletter_title(cls, value: str, info: ValidationInfo) -> str:
+    publication = info.data.get("publication_identity", "")
+    branded_sources = load_branded_newsletter_sources()  # reads branded_newsletter_sources.yaml
+    is_branded = any(bs in publication.lower() for bs in branded_sources)
+    if is_branded and not any(token in value for token in publication.split()):
+        raise ValueError(f"Branded source '{publication}' requires publication name in label")
+    # Non-branded: thesis-only is acceptable; no enforcement on publication inclusion.
+    return value
 ```
 
 **On-wire compatibility:** `SummaryResult.detailed_summary` remains `list[DetailedSummarySection]` at the API boundary. Per-source typed fields live inside `DetailedSummarySection.sub_sections` (already a `dict[str, list[str]]`). The structured-extract call uses the source-specific `StructuredSummaryPayload` for validation, then projects into the generic on-wire shape before returning. Supabase KG writer unchanged, no migration.
@@ -589,12 +726,17 @@ Current ingest captures README + issues + commits. Rubric-driven gaps:
 
 **Fix:** add 4 GitHub REST API calls per ingest: `/repos/{owner}/{repo}/pages`, `/actions/workflows`, `/releases`, `/languages`. Authenticated rate limit is 5000/hr; well within budget.
 
+**Additional (I3 integration):** add 1 more GitHub REST API call — `/repos/{owner}/{repo}/contents/` (root directory listing) — to detect presence of `benchmarks/`, `tests/`, `examples/`, `docs/`, `demo/` directories. Populates `IngestResult.metadata` with boolean flags `has_benchmarks`, `has_tests`, `has_examples`, `has_docs_dir`, `has_demo`. Used by the summarizer to fill the `GitHubStructuredPayload.benchmarks_tests_examples` field — if no such directory exists, the field is `None` and the rubric's "benchmarks/tests/examples" criterion scores 0 without penalizing the summary for omitting what wasn't there. If the directory exists but the summarizer can't describe what it contains, that's a completeness failure worth penalizing. Total GitHub API calls per ingest: 5 (was 4), still well under the 5000/hr limit.
+
 ### 7.4 Newsletter
 
 Current extractors drop subject + preheader + CTA structure. **Fixes:**
 - Site-specific selectors layered over trafilatura (Substack: `h1.post-title`, `h3.subtitle`, `.post-footer a[href]`; Beehiiv and Medium equivalents).
 - Preheader fallback: first 150 chars of body if no structured preheader.
 - CTA extraction: parse `<a>` with text matching `/subscribe|sign up|read|learn|join|try|start/i`, rank by position + heading level + button class.
+- **Conclusions/recommendations detection (I5 integration):** scan the final 30% of body text for imperative-mood sentences, sentences starting with "I recommend" / "You should" / "The key takeaway is", and bullet lists under headers like "Takeaways", "What to do", "Action items". Populates `IngestResult.metadata.conclusions_candidates` which the summarizer uses as input to `NewsletterDetailedPayload.conclusions_or_recommendations`.
+- **Stance detection (I5 integration):** a one-shot Gemini Flash call classifies the source's overall stance (`optimistic` / `skeptical` / `cautionary` / `neutral` / `mixed`) based on tone markers. Stored in `IngestResult.metadata.detected_stance`. Used by the evaluator's editorialization check: if the summary's implied stance differs from source's detected stance, that's an `editorialization_flag`.
+- **Branded-source list (C2 hybrid):** Phase 0.5 creates `docs/summary_eval/_config/branded_newsletter_sources.yaml` seeded with the starting list documented in §5.1. CLI exits with `status=awaiting_branded_list_review` on first newsletter Phase 0.5 run for Codex to extend/trim the list once based on which newsletter URLs the user added.
 
 ### 7.5 Polish-phase sources (HackerNews, LinkedIn, Arxiv, Podcast, Twitter, Web)
 
@@ -624,10 +766,14 @@ ops/scripts/eval_loop.py
   [--url URL]                     # Single-URL override
   [--no-cache]                    # Bypass all caches
   [--server URL]                  # Default http://127.0.0.1:10000
-  [--manage-server]               # Restart FastAPI before step 2 of runbook (default on)
+  [--manage-server]               # Restart FastAPI before Phase A (default on)
   [--auto]                        # Auto-trigger extension loops when loop 6 fails thresholds
   [--dry-run]                     # Parse inputs, print plan, exit without Gemini calls
-  [--manual-review-only]          # Re-run just manual_review.md for an existing iter-N
+  [--force-phase-a]               # Re-run Phase A even if summary.json + eval.json exist
+                                  # (use when re-summarizing after a code change without clearing the iter folder)
+  [--force-phase-b]               # Re-run Phase B (finalize) even if diff.md exists
+                                  # (use after editing manual_review.md retroactively)
+  [--emit-review-prompt-only]     # Run Phase A through step 6 only; skip determinism + engine (for Codex debugging)
   [--rebuild-index]               # Rebuild docs/summary_eval/README.md leaderboard
   [--list-urls]                   # Print parsed URL list for a source, exit
   [--report [--since DATE]]       # Cost ledger aggregate
@@ -635,22 +781,44 @@ ops/scripts/eval_loop.py
   [--stop-server]                 # Clean shutdown of managed FastAPI server
 ```
 
-### 8.2 Per-iteration runbook
+**Auto-resume state detection (default behavior):**
+- No `summary.json` → run Phase A from step 1.
+- `summary.json` + `eval.json` + NO `manual_review.md` → exit immediately with `status=awaiting_manual_review`, pointing to the existing `manual_review_prompt.md`.
+- `summary.json` + `eval.json` + `manual_review.md` + NO `diff.md` → run Phase B.
+- All files present including `diff.md` → iteration already finalized; refuse with `status=iteration_already_committed`, suggest `--iter <N+1>` or `--force-phase-b`.
 
-For `--phase iter --iter N`, the CLI runs in this exact order:
+### 8.2 Per-iteration runbook (two-phase, auto-resumed)
 
-1. **State check.** Read `docs/summary_eval/<source>/`, locate prior iteration, validate `iter-(N-1)` exists + committed. Refuse if prior loop's `eval.json` has `status=error`.
-1.5. **Server lifecycle.** If `--manage-server` (default), gracefully restart FastAPI: SIGTERM, 5s wait, SIGKILL if needed, respawn `python run.py` or equivalent, poll `GET /api/health` every 1s until 200 or 30s timeout. Skip if server already up AND no `website/**/*.py` or `config.yaml` changed since last iter (measurement-only loops 4, 6, 7).
+The CLI runs in TWO phases per iteration, with Codex's manual-review step in between. A single `eval_loop.py --source <s> --iter N` invocation runs Phase A, exits, then Codex writes `manual_review.md` using its own model, then Codex re-invokes the same command — the CLI auto-detects state and runs Phase B.
+
+**Phase A — Standard evaluation (Gemini)**
+
+1. **State check.** Read `docs/summary_eval/<source>/`, locate prior iteration, validate `iter-(N-1)` exists + committed. Refuse if prior loop's `eval.json` has `status=error`. If current `iter-<N>/` already has `summary.json` + `eval.json` + `manual_review.md` but no `diff.md`, SKIP to Phase B (auto-resume).
+1.5. **Server lifecycle.** If `--manage-server` (default), gracefully restart FastAPI: SIGTERM, 5s wait, SIGKILL if needed, respawn `python run.py`, poll `GET /api/health` every 1s until 200 or 30s timeout. Skip if server already up AND no `website/**/*.py` or `config.yaml` changed since last iter (measurement-only loops 4, 6, 7).
 2. **URL selection.** Per §4.1 allocation.
 3. **Determinism check.** Re-run evaluator on iter-(N-1)'s `summary.json`. If new composite differs from stored composite by > 2 pts, write `status=evaluator_drift` to `next_actions.md` and halt.
 4. **Engine invocation.** For each URL: `POST /api/v2/summarize {"url": ...}`. Store response as `summary.json`. Ingest cache hits skip Gemini ingest calls.
 5. **Evaluator invocation.** `evaluator.evaluate(summary, ingest, source_type)` → consolidated Pro call → `eval.json`. Conditional RAGAS faithfulness + AspectCritic per §3.4.
-6. **Manual review.** Separate Pro call (independent lineage, blind to eval.json) → `manual_review.md` + divergence flag.
-7. **Diff computation.** Score deltas vs iter-(N-1). Git diff of edited files. Writes `diff.md`.
-8. **Next-actions synthesis.** Flash call (not Pro): *"For every rubric criterion scoring below full credit, and every module in the engine that could plausibly affect that criterion, list one concrete edit. Rank the full list by expected impact × implementation cost. Do not cap the count."* Writes `next_actions.md`. Top-level `status=` field: `continue` | `converged` | `extension_required` | `blocker`.
-9. **Input snapshot.** Write `input.json` with all hashes, URLs, config/prompt versions, Gemini cost ledger.
-10. **Index rebuild.** Auto-update `docs/summary_eval/README.md` with new row.
-11. **Commit.** `git add docs/summary_eval/<source>/iter-<N>/ docs/summary_eval/README.md` and commit `test: <source> iter-<N> score <prev>→<cur>` per CLAUDE.md commit rules.
+6. **Manual-review prompt emission.** Write `manual_review_prompt.md` containing: rubric YAML for this source, `summary.json` content, atomic facts list, source raw text, the `eval.json` SHA256 hash (for blind-review enforcement), and clear instructions to Codex (see §3.7).
+7. **Exit with `status=awaiting_manual_review`.** Prints the prompt path to stdout. CLI terminates cleanly; no error.
+
+**Codex phase (between Phase A and Phase B)**
+
+Codex (driving the program) reads `iter-<N>/manual_review_prompt.md`, produces `iter-<N>/manual_review.md` using its own model (`gpt-5.3-codex` or successor). Codex must include the stamp `eval_json_hash_at_review: "NOT_CONSULTED"` and must NOT read `eval.json` during this step. This is a required step in every tuning iteration (loops 2, 3, 5, 8). For measurement-only loops (1, 4, 6, 7), Codex still produces `manual_review.md` — the review is valuable at every iteration, including the ones with no code edits, because it's cross-checking the evaluator's scores.
+
+Codex re-invokes the same CLI command: `eval_loop.py --source <s> --iter N`.
+
+**Phase B — Finalization (triggered by state check)**
+
+8. **Read manual review.** Parse `manual_review.md`. Verify the `eval_json_hash_at_review` stamp is `"NOT_CONSULTED"` (blind-review enforcement). If it's anything else, write `status=blind_review_violation` to `next_actions.md` and halt.
+9. **Divergence computation.** `divergence_score = |eval.json.composite - manual_review.estimated_composite|`. Stamp `AGREEMENT` / `MINOR_DISAGREEMENT` / `MAJOR_DISAGREEMENT` at top of `manual_review.md`. After two consecutive MAJOR_DISAGREEMENT loops, request `disagreement_analysis.md` from Codex (soft-gate, not a halt).
+10. **Diff computation.** Score deltas vs iter-(N-1). Git diff of edited files between iter-(N-1) and iter-N commits. Writes `diff.md`.
+11. **Next-actions synthesis.** Flash call (not Pro): *"For every rubric criterion scoring below full credit, and every module in the engine that could plausibly affect that criterion, list one concrete edit. Rank the full list by expected impact × implementation cost. Do not cap the count."* Writes `next_actions.md`. Top-level `status=` field: `continue` | `converged` | `extension_required` | `blocker`.
+12. **Input snapshot.** Write `input.json` with all hashes (incl. `manual_review.md` hash), URLs, config/prompt versions, Gemini cost ledger, divergence score.
+13. **Index rebuild.** Auto-update `docs/summary_eval/README.md` with new row (shows both Gemini composite and Codex-review composite side-by-side).
+14. **Commit.** `git add docs/summary_eval/<source>/iter-<N>/ docs/summary_eval/README.md` and commit `test: <source> iter-<N> score <prev>→<cur>` per CLAUDE.md commit rules.
+
+Any step failure → `status=error` in `next_actions.md` + non-zero exit.
 
 ### 8.3 Codex edit cycle (between tuning loops 2, 3, 5, 8)
 
@@ -670,6 +838,7 @@ For `--phase iter --iter N`, the CLI runs in this exact order:
    - `telegram_bot/**` — entire legacy pipeline off-limits during this program (see non-goals in Section 1).
    - `website/api/routes.py` — the `/api/summarize` and `/api/v2/summarize` route declarations stay stable. Only the summarization engine internals change.
    - `website/features/api_key_switching/` — changes allowed only for the key-role extension in Phase 0; after that, off-limits during iteration loops.
+   - `docs/summary_eval/<source>/iter-<N>/manual_review.md` — Codex's output only, written once per iteration during the between-phases Codex step. The CLI NEVER writes or overwrites this file (only reads it in Phase B). The CLI never submits `manual_review.md` content to Gemini. This is the cross-model isolation boundary (§3.7).
 4. **Rubric editing constraint.** `docs/summary_eval/_config/rubric_<source>.yaml` may be edited only to fix misspecifications, not to soften grading. Concretely, the following rubric edits are forbidden during iteration:
    - Raising a criterion's `weight` / `max_points` above the research-doc baseline.
    - Lowering the `hallucination_cap` (60), `omission_cap` (75), or `generic_cap` (90) thresholds.
@@ -762,10 +931,11 @@ Preserves existing free→billing auto-fallback behavior, now role-aware.
 | Structured extract (summarizer) | flash | → flash-lite | Pure JSON shaping |
 | Consolidated evaluator | pro | → flash (logged warning) | Multi-dim rubric scoring |
 | RAGAS faithfulness (conditional) | pro | → flash | Per-claim NLI |
-| RAGAS AspectCritic | pro | → flash | Independent rubric grading |
+| RAGAS AspectCritic | pro | → flash | Independent rubric grading (Gemini-family) |
 | Atomic-fact extraction (cached) | flash | → flash-lite | One-shot list |
-| Manual review | pro | → flash (logged warning) | Independent rubric reviewer |
+| Manual review | **Codex (OpenAI)** | n/a — not a Gemini call | Cross-model independence (§3.7); zero Gemini budget |
 | Next-actions synthesis | flash | → flash-lite | List generation |
+| Newsletter stance detection (Phase 0.5 only) | flash | → flash-lite | One-shot classifier |
 | Gemini File API audio transcription | flash | (no downgrade; Flash is the model) | Transcription accuracy |
 
 ### 9.3 Atomic-fact cache economics
@@ -796,18 +966,22 @@ Every `input.json` records:
 
 On 429 the pool cycles to next key per existing behavior. On 3rd 429 in a single generate call (all free keys exhausted, billing next), a `quota_exhausted_event` is logged with timestamp, model, phase, and a user-visible message. No pause — silently continues per Q3a.
 
-### 9.6 Total program budget
+### 9.6 Total program budget (updated post cross-model isolation)
+
+Manual reviews move to Codex (§3.7) — saves ~50 Gemini Pro calls across the program. Newsletter stance detection (§7.4) adds ~12 Flash calls (3 URLs × 4 Newsletter iters). Net: ~50 fewer Pro calls, ~12 more Flash calls.
 
 | Phase | Pro | Flash | Billing Pro (loop 7) | Est $ billing |
 |---|---|---|---|---|
 | Phase 0 | 2 | 2 | 0 | $0 |
-| Phase 0.5 × 4 majors | 80-100 | 40-60 | 0 | $0 |
+| Phase 0.5 × 4 majors (incl. newsletter stance) | 80-100 | 52-72 | 0 | $0 |
 | Iterations × 4 majors | ~110 | ~110 | 0 | $0 |
 | Loop 7 prod-parity × 4 | 0 | 0 | ~50 | ~$0.20–0.50 |
 | Polish × 6 (2-3 iters each) | ~45 | ~45 | 0 | $0 |
-| Manual reviews | ~50 | 0 | 0 | $0 |
-| **Free-tier total** | **~285–305** | **~200–260** | — | — |
+| ~~Manual reviews~~ (now Codex; zero Gemini cost) | 0 | 0 | 0 | $0 |
+| **Free-tier total** | **~235–255** | **~210–230** | — | — |
 | **Billing total** | — | — | **~50** | **≈ $0.50 worst case** |
+
+Cross-model isolation is a **net free-tier Pro-quota savings** of ~50 calls, pushing free-tier completion from 2-3 days to ~1.5-2 days.
 
 ---
 
@@ -857,6 +1031,9 @@ Failing criteria → extension loops 8-9. If those fail too, source marked `degr
 | YouTube `yt-dlp` itself blocked on DO IP (audio CDN too) | Very low | All 5 tiers independently-failing; worst case = metadata-only summary with capped confidence |
 | Piped/Invidious pools all down during a run | Low-medium | Two pools × 14 instances + health cache; even 50% dead rate leaves ~7 live. Fallback 4 (audio transcription) always works. |
 | Codex applies too many simultaneous edits in a single tuning iter, breaking unit tests | Medium | Required pytest green gate in §8.3 step 4 before CLI re-invocation |
+| Codex skips or rushes the manual-review step, violating cross-model isolation | Medium | Blind-review hash stamp (§3.7); divergence tracking across iterations exposes lazy reviews (always agreeing ≈ not independent); after 3 consecutive AGREEMENT stamps with score diff < 1 pt, CLI emits `status=possibly_cursory_review` for Codex to consciously re-engage |
+| Codex manual review unavailable due to Codex session restart mid-iteration | Low | File-based handoff means Codex can resume from the existing `manual_review_prompt.md` after any session restart; no in-memory state |
+| Cross-model disagreement (Gemini vs Codex) becomes systematic, suggesting one evaluator is broken | Low-Medium | `disagreement_analysis.md` soft-gate after 2 consecutive MAJOR_DISAGREEMENTs; pessimistic score rule (lower of the two wins) means disagreements never inflate the measured score |
 
 ---
 
@@ -875,10 +1052,12 @@ Recorded for future sessions; not blocking this program's completion:
 ## 13. Summary of commitments
 
 - **Engine refactor** lands in Phase 0: per-source classes, config-driven caps, three-layer cache, scaffolded evaluator + CLI.
-- **Per-source Phase 0.5** resolves ingest blockers — YouTube gets a 5-tier free-only transcript chain; Reddit/GitHub/Newsletter get smaller targeted fixes.
-- **Iteration cycle**: loops 1, 4, 6, 7 are measurement; loops 2, 3, 5 are tuning (Codex edits wide, churn protection the only scope guard); loops 8, 9 are auto-triggered extensions.
+- **Per-source Phase 0.5** resolves ingest blockers — YouTube gets a 5-tier free-only transcript chain; Reddit/GitHub/Newsletter get smaller targeted fixes (GitHub root-dir scan for benchmarks/tests/examples; Newsletter stance detection + branded-sources list).
+- **Iteration cycle**: loops 1, 4, 6, 7 are measurement; loops 2, 3, 5 are tuning (Codex edits wide, churn protection the only scope guard); loops 8, 9 are auto-triggered extensions. Every iteration has a two-phase CLI invocation with Codex's manual review in between (§3.7, §8.2).
+- **Cross-model isolation**: Gemini Pro does the standard evaluation; Codex (OpenAI model) does the manual review. File-based handoff, blind-review hash stamp, pessimistic score-of-two-models rule. Less bias, zero extra cost.
+- **Criteria2 integration**: every rubric criterion now maps to one or more academic metrics (G-Eval / FineSurE / QAFactEval / SummaC); `maps_to_metric_summary` in eval.json aggregates per-metric scores. Per-source `anti_patterns` concretize the hallucination cap. Editorialization checks block stance injection. GitHub/YouTube/Newsletter schemas enriched with criteria2-driven fields.
 - **Multi-URL coverage** baked into loop 5 (joint tune on URLs #1+#2+#3) and loop 6 (held-out validation).
-- **Artifact root**: `docs/summary_eval/` — permanent, content-hashed caches, 6-file iteration folders, per-source + cross-source scorecards.
-- **Budget**: ~285-305 Pro + ~200-260 Flash across free keys; ~$0.50 worst-case billing. Free auto-fallback to billing on quota exhaustion, visible in `--report` output.
+- **Artifact root**: `docs/summary_eval/` — permanent, content-hashed caches, per-iteration folders (now 7 files: summary, eval, manual_review, manual_review_prompt, diff, next_actions, input), per-source + cross-source scorecards.
+- **Budget**: ~235-255 Pro + ~210-230 Flash across free keys (reduced from earlier estimate via cross-model isolation); ~$0.50 worst-case billing. Free auto-fallback to billing on quota exhaustion, visible in `--report` output.
 - **Branch**: `eval/summary-engine-v2-scoring` (single long-lived). At program end, 5 cherry-pick PR branches against `master` (Phase 0 + YouTube → Reddit → GitHub → Newsletter → Polish). Sequential-merge, each PR gated on the prior's prod verification.
 - **Target**: 4 major sources `production-grade`, 6 polish sources ≥ 85 composite, all before merge.
