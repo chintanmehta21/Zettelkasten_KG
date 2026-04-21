@@ -40,10 +40,14 @@ self_check:
 
 structured_extract:
   validation_retries: 1
-  mini_title_max_words: 5
-  brief_summary_max_words: 50
-  tags_min: 8
-  tags_max: 15
+  mini_title_max_chars: 60
+  brief_summary_max_chars: 400
+  brief_summary_max_sentences: 7
+  brief_summary_min_sentences: 5
+  detailed_summary_max_bullets_per_section: 8
+  detailed_summary_min_bullets_per_section: 1
+  tags_min: 7
+  tags_max: 10
 
 sources:
   github:
@@ -69,8 +73,30 @@ sources:
     top_comment_rank: "top"
   youtube:
     transcript_languages: ["en", "en-US", "en-GB"]
+    ytdlp_player_clients: ["android_embedded", "ios", "tv_embedded", "mweb", "web"]
+    transcript_budget_ms: 90000
+    piped_instances:
+      - pipedapi.kavin.rocks
+      - pipedapi.adminforge.de
+      - pipedapi.r4fo.com
+      - pipedapi.syncpundit.io
+      - pipedapi.in.projectsegfau.lt
+      - pipedapi.us.projectsegfau.lt
+      - pipedapi.smnz.de
+      - pipedapi.drgns.space
+    invidious_instances:
+      - invidious.fdn.fr
+      - yewtu.be
+      - inv.tux.pizza
+      - iv.melmac.space
+      - invidious.privacydev.net
+      - vid.puffyan.us
+    instance_health_ttl_hours: 1
+    enable_gemini_audio_fallback: true
+    gemini_audio_max_duration_min: 60
+    gemini_audio_max_filesize_mb: 50
     use_ytdlp_fallback: true
-    use_gemini_video_fallback: true
+    use_gemini_video_fallback: false
     webshare_proxy_env: "WEBSHARE_PROXY_URL"
   hackernews:
     api: "algolia"
