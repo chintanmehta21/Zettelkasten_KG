@@ -1,4 +1,5 @@
-﻿from website.features.summarization_engine.summarization._wrappers import GitHubSummarizer
+"""GitHub source-specific summarization package."""
+
+from website.features.summarization_engine.summarization._wrappers import GitHubSummarizer
 
 __all__ = ["GitHubSummarizer"]
-
