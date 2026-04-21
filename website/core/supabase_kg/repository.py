@@ -96,6 +96,31 @@ class KGRepository:
 
         resp = self._client.table("kg_users").insert(payload).execute()
         logger.info("Created KG user for render_user_id=%s", render_user_id)
+
+        # Fire-and-forget Slack alert for #user-activity. Scheduled on the
+        # running loop so it never blocks the signup response; failures are
+        # swallowed inside the notifier so they can't escalate to a 500.
+        try:
+            import asyncio
+
+            from website.features.web_monitor.User_Activity import notify_new_signup
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(
+                notify_new_signup(
+                    user_id=str(resp.data[0].get("id", "")),
+                    email=email,
+                    display_name=display_name,
+                    render_user_id=render_user_id,
+                )
+            )
+        except RuntimeError:
+            # No running loop (e.g. called from a sync script / migration).
+            # Dropping the alert is acceptable — signup still succeeded.
+            logger.debug("notify_new_signup skipped: no running event loop")
+        except Exception:  # noqa: BLE001
+            logger.exception("notify_new_signup scheduling failed")
+
         return KGUser(**resp.data[0])
 
     def get_user(self, user_id: UUID) -> KGUser | None:

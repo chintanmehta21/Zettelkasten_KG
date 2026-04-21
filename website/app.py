@@ -303,6 +303,16 @@ def create_app(lifespan=None) -> FastAPI:
     async def pricing(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
+        # Fire-and-forget Slack alert (throttled per-IP inside the notifier).
+        # Never awaited — we don't want Slack latency on the pricing page.
+        try:
+            import asyncio
+
+            from website.features.web_monitor import notify_pricing_visit
+
+            asyncio.get_running_loop().create_task(notify_pricing_visit(request))
+        except Exception:  # noqa: BLE001 — alert must never break the page
+            logger.exception("notify_pricing_visit scheduling failed")
         return _render_with_shell(PRICING_DIR / "index.html")
 
     return app
