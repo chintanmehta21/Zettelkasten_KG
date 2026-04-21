@@ -1,22 +1,27 @@
-"""DO_Alerts — alert fan-out to 3 Slack channels.
+"""DO_Alerts — alert fan-out for DigitalOcean droplet monitoring.
 
-Channels:
-    UPTIME       — BetterStack probe: zettelkasten.in reachability
-                   (already wired by user; endpoint here is a no-op pass-through
-                    in case you ever want to route BetterStack through us too)
-    INFRA        — DigitalOcean droplet alerts: CPU > 80 %, Mem > 85 %, Disk > 80 %
-    APP_ERRORS   — Uncaught exceptions / 5xx from the FastAPI app
+One file, one Slack channel: `#do-alerts`. Self-contained (its own Slack
+posting helper, its own router) so it can be reasoned about without looking
+at siblings.
 
-Mount:
-    from website.features.web_monitor import router as web_monitor_router
-    app.include_router(web_monitor_router)
+Channel wiring:
+    The 3 DO alert policies (CPU > 80 %, Memory > 85 %, Disk > 80 %) post
+    **direct** to Slack via DO's native `notifications.slack` integration —
+    that path does not go through our app, so alerts still fire if
+    zettelkasten.in itself is the thing that's down. The webhook endpoint
+    below exists as a backup / manual path in case we ever want to route
+    DO → our app → Slack (e.g. for enrichment, cross-channel routing, or
+    if DO's Slack integration breaks).
 
-Env vars (missing URL → alert is logged to journalctl, not silently dropped):
-    SLACK_WEBHOOK_UPTIME         # BetterStack channel (optional passthrough)
-    SLACK_WEBHOOK_DO_ALERT       # DO alerts channel
-    SLACK_WEBHOOK_APP_ERRORS     # App errors channel
-    DO_ALERT_WEBHOOK_SECRET      # shared-secret matched against DO's alert_uuid
-                                 # (only needed for /digitalocean endpoint)
+Mount (already done in website/app.py):
+    from website.features.web_monitor.DO_Alerts import router as do_alerts_router
+    app.include_router(do_alerts_router)
+
+Env vars:
+    SLACK_WEBHOOK_DO_ALERT       # Slack incoming webhook URL for #do-alerts
+    DO_ALERT_WEBHOOK_SECRET      # shared secret DO must include as
+                                 # `alert_uuid` in payload; blank disables
+                                 # auth (fine for low-profile URLs)
 """
 
 from __future__ import annotations
@@ -25,37 +30,17 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger("website.web_monitor")
+logger = logging.getLogger("website.web_monitor.do_alerts")
 
-router = APIRouter(prefix="/webhooks/monitor", tags=["web_monitor"])
+router = APIRouter(prefix="/webhooks/monitor", tags=["web_monitor.do_alerts"])
 
-# ---------------------------------------------------------------------------
-# Channel registry
-# ---------------------------------------------------------------------------
-
-
-class Channel(str, Enum):
-    UPTIME = "uptime"
-    DO_ALERT = "do_alert"
-    APP_ERRORS = "app_errors"
-
-
-_ENV_BY_CHANNEL: dict[Channel, str] = {
-    Channel.UPTIME: "SLACK_WEBHOOK_UPTIME",
-    Channel.DO_ALERT: "SLACK_WEBHOOK_DO_ALERT",
-    Channel.APP_ERRORS: "SLACK_WEBHOOK_APP_ERRORS",
-}
-
-
-def _webhook_url(channel: Channel) -> str | None:
-    return os.getenv(_ENV_BY_CHANNEL[channel])
+SLACK_ENV_VAR = "SLACK_WEBHOOK_DO_ALERT"
 
 
 # ---------------------------------------------------------------------------
@@ -64,18 +49,19 @@ def _webhook_url(channel: Channel) -> str | None:
 
 
 @dataclass(slots=True)
-class SlackAlert:
-    channel: Channel
+class SlackMessage:
     title: str
     body: str
     severity: str = "warning"          # info | warning | critical
     fields: dict[str, str] | None = None
-    source: str = "web_monitor"
+    source: str = "digitalocean"
 
-    def to_blocks(self) -> dict[str, Any]:
-        color = {"info": "#2E86AB", "warning": "#D4A024", "critical": "#C83E4D"}.get(
-            self.severity, "#D4A024"
-        )
+    def to_payload(self) -> dict[str, Any]:
+        color = {
+            "info": "#2E86AB",
+            "warning": "#D4A024",
+            "critical": "#C83E4D",
+        }.get(self.severity, "#D4A024")
         fields = [
             {"type": "mrkdwn", "text": f"*{k}*\n{v}"}
             for k, v in (self.fields or {}).items()
@@ -90,50 +76,62 @@ class SlackAlert:
             {
                 "type": "context",
                 "elements": [
-                    {"type": "mrkdwn", "text": f"source: `{self.source}` · severity: `{self.severity}`"}
+                    {
+                        "type": "mrkdwn",
+                        "text": f"source: `{self.source}` · severity: `{self.severity}`",
+                    }
                 ],
             }
         )
         return {"attachments": [{"color": color, "blocks": blocks}]}
 
 
-async def post_to_slack(alert: SlackAlert) -> bool:
-    url = _webhook_url(alert.channel)
+async def post_to_do_alerts(msg: SlackMessage) -> bool:
+    """POST a Slack message to #do-alerts. Returns True on 2xx."""
+    url = os.getenv(SLACK_ENV_VAR)
     if not url:
         logger.warning(
-            "web_monitor: channel %s has no webhook URL; alert logged only: %s",
-            alert.channel.value,
-            alert.title,
+            "do_alerts: %s unset; alert logged only: %s", SLACK_ENV_VAR, msg.title
         )
-        logger.info("ALERT[%s] %s — %s", alert.channel.value, alert.title, alert.body)
+        logger.info("ALERT[do_alerts] %s — %s", msg.title, msg.body)
         return False
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(url, json=alert.to_blocks())
+            r = await client.post(url, json=msg.to_payload())
         if not (200 <= r.status_code < 300):
             logger.error(
-                "web_monitor: Slack post failed (%s) channel=%s body=%s",
-                r.status_code,
-                alert.channel.value,
-                r.text[:200],
+                "do_alerts: Slack post failed (%s): %s", r.status_code, r.text[:200]
             )
             return False
         return True
     except httpx.HTTPError as exc:
-        logger.exception("web_monitor: Slack post errored: %s", exc)
+        logger.exception("do_alerts: Slack post errored: %s", exc)
         return False
 
 
 # ---------------------------------------------------------------------------
-# DigitalOcean monitoring webhook → #infra
+# DigitalOcean monitoring webhook schema
 # ---------------------------------------------------------------------------
+# Representative DO payload (fields are all optional; schema is unversioned):
+# {
+#   "alert_id": "...",
+#   "alert_uuid": "<secret we verify against>",
+#   "alert_description": "CPU Utilization > 80%",
+#   "trigger_metric": "cpu",
+#   "trigger_status": "alert" | "resolved",
+#   "droplet_id": 565709868,
+#   "droplet_name": "Zettelkasten-Intel2GB",
+#   "value": 91.2,
+#   "region": "blr1",
+#   "timestamp": "2026-04-21T14:05:00Z"
+# }
 
 
 class DOAlertPayload(BaseModel):
     alert_uuid: str | None = Field(default=None)
     alert_description: str | None = Field(default=None)
     trigger_metric: str | None = Field(default=None)
-    trigger_status: str | None = Field(default=None)   # "alert" | "resolved"
+    trigger_status: str | None = Field(default=None)
     droplet_name: str | None = Field(default=None)
     droplet_id: int | None = Field(default=None)
     region: str | None = Field(default=None)
@@ -143,7 +141,7 @@ class DOAlertPayload(BaseModel):
     model_config = {"extra": "allow"}
 
 
-def _do_severity(metric: str | None, status_: str | None, value: float | None) -> str:
+def _severity(metric: str | None, status_: str | None, value: float | None) -> str:
     if status_ == "resolved":
         return "info"
     if value is None or metric is None:
@@ -153,14 +151,14 @@ def _do_severity(metric: str | None, status_: str | None, value: float | None) -
     return "warning"
 
 
+# ---------------------------------------------------------------------------
+# Webhook endpoint
+# ---------------------------------------------------------------------------
+
+
 @router.post("/digitalocean", status_code=status.HTTP_202_ACCEPTED)
 async def digitalocean_alert(request: Request) -> dict[str, str]:
-    """DO monitoring webhook → Slack #infra.
-
-    Security: DO does not HMAC-sign alert webhooks. Instead we require the
-    alert policy's ``uuid`` field to match ``DO_ALERT_WEBHOOK_SECRET``; any
-    other caller is rejected.
-    """
+    """DO monitoring webhook → Slack #do-alerts (backup path)."""
     raw = await request.body()
     try:
         data = json.loads(raw or b"{}")
@@ -171,112 +169,51 @@ async def digitalocean_alert(request: Request) -> dict[str, str]:
 
     expected = os.getenv("DO_ALERT_WEBHOOK_SECRET")
     if expected and payload.alert_uuid != expected:
-        logger.warning("web_monitor: DO webhook rejected — alert_uuid mismatch")
+        logger.warning("do_alerts: webhook rejected — alert_uuid mismatch")
         raise HTTPException(status_code=401, detail="bad alert_uuid")
 
     metric = (payload.trigger_metric or "unknown").lower()
     status_ = (payload.trigger_status or "alert").lower()
-    emoji = {"cpu": ":fire:", "memory": ":battery:", "mem": ":battery:", "disk": ":floppy_disk:"}.get(
-        metric, ":rotating_light:"
-    )
+    emoji = {
+        "cpu": ":fire:",
+        "memory": ":battery:",
+        "mem": ":battery:",
+        "disk": ":floppy_disk:",
+    }.get(metric, ":rotating_light:")
     if status_ == "resolved":
         emoji = ":white_check_mark:"
 
-    title = f"{emoji} DO alert — {payload.alert_description or metric} [{status_}]"
-    body = (
-        f"*Droplet:* `{payload.droplet_name or payload.droplet_id or 'unknown'}` "
-        f"({payload.region or 'n/a'})\n"
-        f"*Metric:* `{metric}`  *Value:* `{payload.value if payload.value is not None else 'n/a'}`"
-    )
-    fields = {
-        "timestamp": payload.timestamp or "—",
-        "droplet_id": str(payload.droplet_id or "—"),
-    }
-
-    alert = SlackAlert(
-        channel=Channel.DO_ALERT,
-        title=title,
-        body=body,
-        severity=_do_severity(metric, status_, payload.value),
-        fields=fields,
+    msg = SlackMessage(
+        title=f"{emoji} DO alert — {payload.alert_description or metric} [{status_}]",
+        body=(
+            f"*Droplet:* `{payload.droplet_name or payload.droplet_id or 'unknown'}` "
+            f"({payload.region or 'n/a'})\n"
+            f"*Metric:* `{metric}`  *Value:* "
+            f"`{payload.value if payload.value is not None else 'n/a'}`"
+        ),
+        severity=_severity(metric, status_, payload.value),
+        fields={
+            "timestamp": payload.timestamp or "—",
+            "droplet_id": str(payload.droplet_id or "—"),
+        },
         source="digitalocean",
     )
-    delivered = await post_to_slack(alert)
+    delivered = await post_to_do_alerts(msg)
     return {"status": "delivered" if delivered else "logged"}
 
 
-# ---------------------------------------------------------------------------
-# App errors — internal notifier (wired into FastAPI exception handler)
-# ---------------------------------------------------------------------------
-
-
-async def notify_app_error(
-    *,
-    route: str,
-    exc_type: str,
-    message: str,
-    request_id: str | None = None,
-) -> None:
-    """Post an uncaught exception / 5xx to #app-errors.
-
-    Wire once in website/app.py::
-
-        from website.features.web_monitor.DO_Alerts import notify_app_error
-        from starlette.responses import JSONResponse
-
-        @app.exception_handler(Exception)
-        async def _on_exc(request, exc):
-            await notify_app_error(
-                route=request.url.path,
-                exc_type=type(exc).__name__,
-                message=str(exc)[:400],
-            )
-            return JSONResponse({"error": "internal"}, status_code=500)
-    """
-    await post_to_slack(
-        SlackAlert(
-            channel=Channel.APP_ERRORS,
-            title=f":boom: {exc_type} on {route}",
-            body=f"```{message[:900]}```",
-            severity="critical",
-            fields={"request_id": request_id or "—"},
-            source="app",
-        )
-    )
-
-
-# ---------------------------------------------------------------------------
-# Uptime passthrough (optional — BetterStack already posts direct to Slack)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/uptime", status_code=status.HTTP_202_ACCEPTED)
-async def uptime_alert(payload: dict[str, Any]) -> dict[str, str]:
-    """Optional passthrough if you later want BetterStack to route through us."""
-    attrs = (payload.get("data") or {}).get("attributes") or payload
-    name = attrs.get("name") or attrs.get("monitor_friendly_name") or "unknown monitor"
-    url = attrs.get("url") or attrs.get("monitor_url") or ""
-    state = (attrs.get("status") or attrs.get("alert_type") or "down").lower()
-    alert = SlackAlert(
-        channel=Channel.UPTIME,
-        title=f":satellite: {name} — {state}",
-        body=f"<{url}|{url}>" if url else "(no url)",
-        severity="critical" if state in {"down", "alert"} else "info",
-        source="uptime",
-    )
-    delivered = await post_to_slack(alert)
-    return {"status": "delivered" if delivered else "logged"}
-
-
-@router.get("/healthz")
-async def healthz() -> dict[str, Any]:
-    return {"ok": True, "channels": {c.value: bool(_webhook_url(c)) for c in Channel}}
+@router.get("/digitalocean/healthz")
+async def do_alerts_healthz() -> dict[str, Any]:
+    """Liveness + whether the Slack webhook URL is wired."""
+    return {
+        "ok": True,
+        "channel": "do_alerts",
+        "webhook_configured": bool(os.getenv(SLACK_ENV_VAR)),
+    }
 
 
 __all__ = [
     "router",
-    "Channel",
-    "SlackAlert",
-    "post_to_slack",
-    "notify_app_error",
+    "SlackMessage",
+    "post_to_do_alerts",
 ]

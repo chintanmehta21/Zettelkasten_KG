@@ -23,7 +23,7 @@ from website.api.routes import router as api_router
 from website.api.sandbox_routes import router as sandbox_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.web_monitor import router as web_monitor_router
-from website.features.web_monitor.DO_Alerts import notify_app_error
+from website.features.web_monitor.App_Errors import notify_app_error
 
 logger = logging.getLogger("website.app")
 

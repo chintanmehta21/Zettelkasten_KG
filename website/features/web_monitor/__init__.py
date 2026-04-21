@@ -1,10 +1,21 @@
-"""web_monitor — operational alerting surface.
+"""web_monitor — one file per Slack channel.
 
-Fans alerts from infra (DigitalOcean), CI (GitHub Actions), the app itself,
-external uptime probes, SSL/DNS, and third-party quota ceilings into
-dedicated Slack channels so signal stays separated by on-call concern.
+Each file is self-contained (its own Slack posting helper, its own router).
+Add a new channel = add a new sibling file; no shared base to coordinate.
 """
 
-from website.features.web_monitor.DO_Alerts import router  # noqa: F401
+from fastapi import APIRouter
 
-__all__ = ["router"]
+from website.features.web_monitor.App_Errors import notify_app_error
+from website.features.web_monitor.App_Errors import router as _app_errors_router
+from website.features.web_monitor.DO_Alerts import router as _do_alerts_router
+
+# Aggregated router so app.py only has one include_router call.
+router = APIRouter()
+router.include_router(_do_alerts_router)
+router.include_router(_app_errors_router)
+
+__all__ = [
+    "router",
+    "notify_app_error",
+]
