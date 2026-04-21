@@ -47,10 +47,14 @@ class SelfCheckConfig(BaseModel):
 
 class StructuredExtractConfig(BaseModel):
     validation_retries: int = 1
-    mini_title_max_words: int = 5
-    brief_summary_max_words: int = 50
-    tags_min: int = 8
-    tags_max: int = 15
+    mini_title_max_chars: int = 60
+    brief_summary_max_chars: int = 400
+    brief_summary_max_sentences: int = 7
+    brief_summary_min_sentences: int = 5
+    detailed_summary_max_bullets_per_section: int = 8
+    detailed_summary_min_bullets_per_section: int = 1
+    tags_min: int = 7
+    tags_max: int = 10
 
 
 class BatchConfig(BaseModel):
