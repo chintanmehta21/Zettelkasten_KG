@@ -1,0 +1,120 @@
+"""Pydantic models for evaluator output and composite score calculation."""
+from __future__ import annotations
+
+from statistics import mean
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class GEvalScores(BaseModel):
+    coherence: float = Field(ge=0.0, le=5.0)
+    consistency: float = Field(ge=0.0, le=5.0)
+    fluency: float = Field(ge=0.0, le=5.0)
+    relevance: float = Field(ge=0.0, le=5.0)
+    reasoning: str = ""
+
+
+class FineSurEItem(BaseModel):
+    claim: str | None = None
+    fact: str | None = None
+    sentence: str | None = None
+    span: str | None = None
+    importance: int | None = None
+
+
+class FineSurEDimension(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    items: list[FineSurEItem] = Field(default_factory=list)
+
+
+class FineSurEScores(BaseModel):
+    faithfulness: FineSurEDimension
+    completeness: FineSurEDimension
+    conciseness: FineSurEDimension
+
+
+class SummaCLiteSentence(BaseModel):
+    sentence: str
+    reason: str = ""
+
+
+class SummaCLite(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    contradicted_sentences: list[SummaCLiteSentence] = Field(default_factory=list)
+    neutral_sentences: list[SummaCLiteSentence] = Field(default_factory=list)
+
+
+class RubricComponent(BaseModel):
+    id: str
+    score: float
+    max_points: int
+    criteria_fired: list[str] = Field(default_factory=list)
+    criteria_missed: list[str] = Field(default_factory=list)
+
+
+class AntiPatternTrigger(BaseModel):
+    id: str
+    source_region: str = ""
+    auto_cap: int | None = None
+
+
+class RubricBreakdown(BaseModel):
+    components: list[RubricComponent]
+    caps_applied: dict[str, int | None] = Field(
+        default_factory=lambda: {
+            "hallucination_cap": None,
+            "omission_cap": None,
+            "generic_cap": None,
+        }
+    )
+    anti_patterns_triggered: list[AntiPatternTrigger] = Field(default_factory=list)
+
+    @property
+    def total_of_100(self) -> float:
+        return sum(component.score for component in self.components)
+
+
+class EditorializationFlag(BaseModel):
+    sentence: str
+    flag_type: Literal["added_stance", "added_judgment", "added_framing"]
+    explanation: str = ""
+
+
+class EvalResult(BaseModel):
+    g_eval: GEvalScores
+    finesure: FineSurEScores
+    summac_lite: SummaCLite
+    rubric: RubricBreakdown
+    maps_to_metric_summary: dict[str, float]
+    editorialization_flags: list[EditorializationFlag] = Field(default_factory=list)
+    evaluator_metadata: dict
+
+
+def apply_caps(score: float, caps: dict[str, int | None]) -> float:
+    if caps.get("hallucination_cap") is not None:
+        return min(score, float(caps["hallucination_cap"]))
+    if caps.get("omission_cap") is not None:
+        return min(score, float(caps["omission_cap"]))
+    if caps.get("generic_cap") is not None:
+        return min(score, float(caps["generic_cap"]))
+    return score
+
+
+def composite_score(result: EvalResult) -> float:
+    base = (
+        0.60 * result.rubric.total_of_100
+        + 0.20 * result.finesure.faithfulness.score * 100
+        + 0.10 * result.finesure.completeness.score * 100
+        + 0.10
+        * mean(
+            [
+                result.g_eval.coherence,
+                result.g_eval.consistency,
+                result.g_eval.fluency,
+                result.g_eval.relevance,
+            ]
+        )
+        * 20
+    )
+    return round(apply_caps(base, result.rubric.caps_applied), 2)
