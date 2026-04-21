@@ -2,9 +2,6 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-import pytest
-from pydantic import ValidationError
-
 from website.features.summarization_engine.core.models import (
     BatchItem,
     BatchRunStatus,
@@ -90,28 +87,15 @@ def test_summary_result_validation():
     assert result.metadata.engine_version == "2.0.0"
 
 
-def test_summary_result_rejects_too_few_tags():
-    meta = SummaryMetadata(
-        source_type=SourceType.WEB,
-        url="x",
-        extraction_confidence="high",
-        confidence_reason="x",
-        total_tokens_used=0,
-        gemini_pro_tokens=0,
-        gemini_flash_tokens=0,
-        total_latency_ms=0,
-        cod_iterations_used=0,
-        self_check_missing_count=0,
-        patch_applied=False,
-    )
-    with pytest.raises(ValidationError):
-        SummaryResult(
-            mini_title="x",
-            brief_summary="x",
-            tags=["only", "three", "tags"],
-            detailed_summary=[DetailedSummarySection(heading="h", bullets=["b"])],
-            metadata=meta,
-        )
+def test_summary_result_via_factory_enforces_config_caps():
+    from website.features.summarization_engine.core.config import load_config, reset_config_cache
+    from website.features.summarization_engine.core.model_factory import build_summary_result_model
+
+    reset_config_cache()
+    Model = build_summary_result_model(load_config())
+    metadata = Model.model_fields["tags"].metadata
+    assert metadata[0].min_length == 7
+    assert metadata[1].max_length == 10
 
 
 def test_batch_run_status_enum():

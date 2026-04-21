@@ -70,11 +70,15 @@ class SummaryMetadata(BaseModel):
 
 
 class SummaryResult(BaseModel):
-    """Final Zettelkasten-ready summary returned by the engine."""
+    """Base SummaryResult - caps enforced by model_factory.build_summary_result_model(cfg).
 
-    mini_title: str = Field(..., max_length=60)
-    brief_summary: str = Field(..., max_length=400)
-    tags: list[str] = Field(..., min_length=8, max_length=15)
+    This class exists for type-hint compatibility only. Instances must be built
+    via the factory so Pydantic Field caps match config.yaml.
+    """
+
+    mini_title: str
+    brief_summary: str
+    tags: list[str]
     detailed_summary: list[DetailedSummarySection]
     metadata: SummaryMetadata
 
