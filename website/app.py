@@ -15,11 +15,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
+from fastapi.responses import JSONResponse
+
 from website.api.chat_routes import router as chat_router
 from website.api.nexus import router as nexus_router
 from website.api.routes import router as api_router
 from website.api.sandbox_routes import router as sandbox_router
 from website.features.summarization_engine.api import router as engine_v2_router
+from website.features.web_monitor import router as web_monitor_router
+from website.features.web_monitor.DO_Alerts import notify_app_error
 
 logger = logging.getLogger("website.app")
 
@@ -112,8 +116,28 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(engine_v2_router)
     app.include_router(chat_router)
     app.include_router(sandbox_router)
+    app.include_router(web_monitor_router)
     if nexus_enabled:
         app.include_router(nexus_router)
+
+    # ── Unhandled-exception alerting ──
+    # Any uncaught error in a request handler fans out to the #app-errors
+    # Slack channel via notify_app_error, then returns a generic 500 to the
+    # client. Missing SLACK_WEBHOOK_APP_ERRORS falls back to a logged warning
+    # (see post_to_slack); the handler itself never raises on Slack failure.
+    @app.exception_handler(Exception)
+    async def _on_unhandled_exception(request: Request, exc: Exception):
+        try:
+            await notify_app_error(
+                route=request.url.path,
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                request_id=request.headers.get("x-request-id"),
+            )
+        except Exception:  # noqa: BLE001 — never let alerting break the response path
+            logger.exception("web_monitor: alert dispatch failed")
+        logger.exception("Unhandled exception on %s", request.url.path)
+        return JSONResponse({"error": "internal_server_error"}, status_code=500)
 
     # ── Mobile static assets (/m/) ──
     app.mount("/m/css", StaticFiles(directory=str(MOBILE_DIR / "css")), name="m-css")
