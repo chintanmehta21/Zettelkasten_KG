@@ -13,6 +13,7 @@ reset per-minute.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import os
 import time
@@ -38,6 +39,22 @@ _EMBEDDING_MODEL = "gemini-embedding-001"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def parse_api_env_line(line: str) -> tuple[str, str]:
+    """Parse one api_env line into ``(key, role)``."""
+    parts = line.strip().split()
+    if not parts:
+        raise ValueError("empty api_env line")
+
+    key = parts[0]
+    role = "free"
+    for token in parts[1:]:
+        if token.startswith("role="):
+            role = token.split("=", 1)[1].strip().lower()
+            if role not in {"free", "billing"}:
+                raise ValueError(f"invalid role '{role}' on api_env line")
+    return key, role
+
 
 def _is_rate_limited(exc: Exception) -> bool:
     """Return True if *exc* is a Gemini 429 rate-limit error."""
@@ -74,19 +91,34 @@ def _send_slack_alert(message: str) -> None:
         logger.debug("Slack alert failed (non-critical)", exc_info=True)
 
 
-def _load_keys_from_file(path: str) -> list[str]:
-    """Read API keys from an api_env file.  One key per line, # comments ignored."""
+def _load_keys_from_file(path: str) -> list[str | tuple[str, str]]:
+    """Read API keys from an api_env file.
+
+    Plain one-key lines stay as strings for backward compatibility, while
+    ``role=...`` tagged lines return ``(key, role)`` tuples.
+    """
     try:
         with open(path, encoding="utf-8") as f:
-            keys = []
+            keys: list[str | tuple[str, str]] = []
             for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
                     continue
-                keys.append(line)
+                key, role = parse_api_env_line(stripped)
+                if "role=" in stripped:
+                    keys.append((key, role))
+                else:
+                    keys.append(key)
             return keys
     except FileNotFoundError:
         return []
+
+
+@dataclass(frozen=True)
+class Attempt:
+    key: str
+    role: str
+    model: str
 
 
 # ── GeminiKeyPool ────────────────────────────────────────────────────────────
@@ -94,13 +126,31 @@ def _load_keys_from_file(path: str) -> list[str]:
 class GeminiKeyPool:
     """Pool of Gemini API clients with automatic key/model rotation."""
 
-    def __init__(self, api_keys: list[str]) -> None:
+    def __init__(self, api_keys: list[str] | list[tuple[str, str]]) -> None:
         if not api_keys:
             raise ValueError("GeminiKeyPool requires at least one API key")
         if len(api_keys) > _MAX_KEYS:
             raise ValueError(f"GeminiKeyPool supports a maximum of {_MAX_KEYS} keys")
 
-        self._keys = list(api_keys)
+        normalized: list[tuple[str, str]] = []
+        for entry in api_keys:
+            if isinstance(entry, tuple):
+                key, role = entry
+            else:
+                key, role = entry, "free"
+
+            key = key.strip()
+            role = role.strip().lower()
+            if not key:
+                raise ValueError("Gemini API keys cannot be empty")
+            if role not in {"free", "billing"}:
+                raise ValueError(f"invalid Gemini key role '{role}'")
+            normalized.append((key, role))
+
+        normalized.sort(key=lambda item: item[1] != "free")
+
+        self._keys = [key for key, _role in normalized]
+        self._key_roles = [role for _key, role in normalized]
         self._clients: dict[int, genai.Client] = {}
         # (key_index, model_name) → cooldown expiry (monotonic timestamp)
         self._cooldowns: dict[tuple[int, str], float] = {}
@@ -144,6 +194,41 @@ class GeminiKeyPool:
             slot: exp for slot, exp in self._cooldowns.items() if exp > now
         }
 
+    def _role_for_key(self, key_index: int) -> str:
+        return self._key_roles[key_index]
+
+    def _ordered_key_indices(self, start_index: int) -> list[int]:
+        """Return rotated key order while keeping free keys ahead of billing."""
+        n = len(self._keys)
+        rotated = [(start_index + i) % n for i in range(n)]
+        free = [index for index in rotated if self._role_for_key(index) == "free"]
+        billing = [
+            index for index in rotated if self._role_for_key(index) == "billing"
+        ]
+        return free + billing
+
+    def next_attempt(self, model: str) -> Attempt:
+        """Return the next available attempt for *model* with role metadata."""
+        key_index, attempt_model = self._build_attempt_chain(starting_model=model)[0]
+        return Attempt(
+            key=self._keys[key_index],
+            role=self._role_for_key(key_index),
+            model=attempt_model,
+        )
+
+    def _log_quota_exhausted(
+        self,
+        *,
+        model: str,
+        current_key_role: str,
+        next_key_role: str | None,
+    ) -> None:
+        if current_key_role == "free" and next_key_role == "billing":
+            logger.warning(
+                "quota_exhausted_event model=%s escalating_to=billing",
+                model,
+            )
+
     # ── Chain building ───────────────────────────────────────────────
 
     def _build_attempt_chain(
@@ -166,8 +251,9 @@ class GeminiKeyPool:
         else:
             models = list(_GENERATIVE_MODEL_CHAIN)
 
-        # Rotate key order starting from _next_gen_key
-        key_indices = [(self._next_gen_key + i) % n for i in range(n)]
+        # Rotate key order starting from _next_gen_key, but always try free
+        # keys before billing keys so quota escalation happens last.
+        key_indices = self._ordered_key_indices(self._next_gen_key)
 
         full_chain = [
             (ki, model) for model in models for ki in key_indices
@@ -188,7 +274,7 @@ class GeminiKeyPool:
         self._purge_expired()
         n = len(self._keys)
 
-        key_indices = [(self._next_emb_key + i) % n for i in range(n)]
+        key_indices = self._ordered_key_indices(self._next_emb_key)
         full_chain = [(ki, _EMBEDDING_MODEL) for ki in key_indices]
 
         filtered = [
@@ -223,7 +309,7 @@ class GeminiKeyPool:
         last_exc: Exception | None = None
         retries = 0
 
-        for key_index, model in chain:
+        for position, (key_index, model) in enumerate(chain):
             try:
                 client = self._get_client(key_index)
                 response = await client.aio.models.generate_content(
@@ -239,6 +325,14 @@ class GeminiKeyPool:
                 if _is_retryable(exc):
                     retries += 1
                     self._mark_cooldown(key_index, model)
+                    next_key_role = None
+                    if position + 1 < len(chain):
+                        next_key_role = self._role_for_key(chain[position + 1][0])
+                    self._log_quota_exhausted(
+                        model=model,
+                        current_key_role=self._role_for_key(key_index),
+                        next_key_role=next_key_role,
+                    )
                     if _is_rate_limited(exc):
                         reason = "rate-limited"
                     elif "503" in str(exc) or "UNAVAILABLE" in str(exc):
@@ -290,7 +384,7 @@ class GeminiKeyPool:
         chain = self._build_embedding_chain()
         last_exc: Exception | None = None
 
-        for key_index, model in chain:
+        for position, (key_index, model) in enumerate(chain):
             try:
                 client = self._get_client(key_index)
                 response = client.models.embed_content(
@@ -304,6 +398,14 @@ class GeminiKeyPool:
                 last_exc = exc
                 if _is_rate_limited(exc):
                     self._mark_cooldown(key_index, model)
+                    next_key_role = None
+                    if position + 1 < len(chain):
+                        next_key_role = self._role_for_key(chain[position + 1][0])
+                    self._log_quota_exhausted(
+                        model=model,
+                        current_key_role=self._role_for_key(key_index),
+                        next_key_role=next_key_role,
+                    )
                     logger.warning(
                         "Embedding rate-limited on key[%d] — cooldown %ds, trying next",
                         key_index,
