@@ -69,3 +69,11 @@ new_envs.txt
 
 # claude-mem cross-LLM observation queue (drained by Claude Code at session start)
 .claude-mem-queue/
+
+# mem-vault auto-generated session artifacts (churn, not source of truth)
+.mem-vault/
+
+# Droplet cloud-init scripts with pubkey bake-ins (regeneratable; keep out of repo)
+# NOTE: ops/host/cloud-init.yaml itself is safe to commit (only contains public key);
+#       this pattern is a safety net for any *.local.* variants.
+ops/host/cloud-init.local.yaml

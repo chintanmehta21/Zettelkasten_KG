@@ -91,6 +91,19 @@ chmod 700 /home/deploy/.ssh
 chmod 600 /home/deploy/.ssh/authorized_keys
 chown -R deploy:deploy /home/deploy/.ssh
 
+echo "[bootstrap] Installing NOPASSWD sudoers whitelist for deploy user..."
+# Required by .github/workflows/deploy-droplet.yml:
+#   - sudo tee / chmod / chown on /opt/zettelkasten/compose/.env
+#   - sudo ops/deploy/*.sh (deploy, rollback, retire_color, reload_caddy, healthcheck)
+# Required by .github/workflows/droplet-maintenance.yml:
+#   - sudo fallocate / mkswap / swapon / sysctl / journalctl / apt-get / find / rm
+# Any other sudo command falls through to password prompt → CI fails cleanly.
+cat > /etc/sudoers.d/99-zettelkasten-deploy <<'EOF'
+deploy ALL=(root) NOPASSWD: /usr/bin/tee /opt/zettelkasten/compose/.env, /usr/bin/chmod 600 /opt/zettelkasten/compose/.env, /usr/bin/chown deploy\:deploy /opt/zettelkasten/compose/.env, /opt/zettelkasten/deploy/deploy.sh, /opt/zettelkasten/deploy/deploy.sh *, /opt/zettelkasten/deploy/rollback.sh, /opt/zettelkasten/deploy/rollback.sh *, /opt/zettelkasten/deploy/retire_color.sh, /opt/zettelkasten/deploy/retire_color.sh *, /opt/zettelkasten/deploy/reload_caddy.sh, /opt/zettelkasten/deploy/healthcheck.sh, /opt/zettelkasten/deploy/healthcheck.sh *, /usr/bin/fallocate, /usr/sbin/mkswap, /usr/sbin/swapon, /usr/sbin/sysctl, /usr/bin/journalctl, /usr/bin/apt-get, /usr/bin/find, /usr/bin/rm
+EOF
+chmod 440 /etc/sudoers.d/99-zettelkasten-deploy
+visudo -c -f /etc/sudoers.d/99-zettelkasten-deploy
+
 echo "[bootstrap] Hardening sshd (key-only, no root login)..."
 cat > /etc/ssh/sshd_config.d/99-zettelkasten.conf <<'EOF'
 PermitRootLogin no

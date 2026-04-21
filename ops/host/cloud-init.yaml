@@ -1,0 +1,22 @@
+#cloud-config
+# Zettelkasten droplet bootstrap — runs as root on first boot
+# Clones repo, exports DEPLOY_PUBKEY, runs ops/host/bootstrap.sh
+write_files:
+  - path: /root/zk-bootstrap.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euxo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends git ca-certificates
+      mkdir -p /opt/zettelkasten
+      if [[ ! -d /opt/zettelkasten/repo-cache/.git ]]; then
+        git clone --depth 1 https://github.com/chintanmehta21/Zettelkasten_KG.git /opt/zettelkasten/repo-cache
+      fi
+      export DEPLOY_PUBKEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBwkyweqKiTFWDTXDVuZAdyh7K04S9pcBaXObWG0r9XU deploy@zettelkasten-prod"
+      bash /opt/zettelkasten/repo-cache/ops/host/bootstrap.sh 2>&1 | tee /var/log/zk-bootstrap.log
+      touch /var/lib/cloud/zettelkasten-bootstrap.done
+runcmd:
+  - [ bash, -lc, "/root/zk-bootstrap.sh >> /var/log/zk-bootstrap-run.log 2>&1" ]
