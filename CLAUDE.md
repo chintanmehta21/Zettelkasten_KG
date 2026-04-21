@@ -115,6 +115,10 @@ Settings are loaded by `telegram_bot/config/settings.py` (Pydantic BaseSettings)
 
 The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache). Tests that need settings without valid credentials should be careful — `get_settings()` calls `_validate_settings()` which does `SystemExit(1)` on missing required fields.
 
+### Reddit credentials and RAG chunk density
+
+`REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` are **required for OAuth-backed Reddit extraction** (used by the website `RedditIngestor` and by `ops/scripts/backfill_chunks.py --refetch-source` when it encounters `/r/` URLs). Without them the ingestor degrades to the public JSON endpoint + HTML scraping, which often returns thin content for Reddit's anti-bot walls and caps RAG chunk density at ~1 chunk per post. Set both in the production container's env or `/etc/secrets/api_env`. See `ops/.env.example` for the template.
+
 ## Architecture
 
 ### Pipeline (the core flow)
