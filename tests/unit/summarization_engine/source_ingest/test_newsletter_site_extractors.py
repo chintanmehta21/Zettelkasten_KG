@@ -41,3 +41,61 @@ def test_non_substack_returns_empty_structured():
     )
     assert result.site == "unknown"
     assert result.title == ""
+
+
+def test_custom_domain_substack_uses_dom_markers():
+    result = extract_structured(
+        _SUBSTACK_HTML,
+        url="https://platformer.news/p/ai-moats",
+    )
+    assert result.site == "substack"
+    assert result.title == "The Real Question About AI Moats"
+
+
+def test_ghost_newsletter_extracts_publication_identity():
+    html = """
+    <html>
+      <head>
+        <meta property="og:site_name" content="Platformer">
+        <meta name="generator" content="Ghost 6.33">
+        <meta name="description" content="Why this matters now">
+      </head>
+      <body>
+        <article class="gh-article post">
+          <h1 class="gh-article-title is-title">Substack promotes a Nazi</h1>
+          <div class="gh-content">
+            <p>Opening paragraph.</p>
+          </div>
+        </article>
+      </body>
+    </html>
+    """
+    result = extract_structured(html, url="https://www.platformer.news/substack-nazi-push-notification/")
+    assert result.site == "ghost"
+    assert result.publication_identity == "Platformer"
+    assert result.title == "Substack promotes a Nazi"
+
+
+def test_beehiiv_custom_domain_extracts_rendered_post():
+    html = """
+    <html>
+      <head>
+        <meta property="og:site_name" content="Synthesis Spotlight">
+        <meta property="og:title" content="Organic Synthesis @ Beehiiv">
+        <meta name="description" content="Radical Sorting and More">
+      </head>
+      <body>
+        <h1>Organic Synthesis @ Beehiiv</h1>
+        <div class="rendered-post">
+          <p>Paragraph one.</p>
+        </div>
+      </body>
+    </html>
+    """
+    result = extract_structured(
+        html,
+        url="https://www.synthesisspotlight.com/p/organic-synthesis-beehiiv",
+    )
+    assert result.site == "beehiiv"
+    assert result.publication_identity == "Synthesis Spotlight"
+    assert "Paragraph one" in result.body_text

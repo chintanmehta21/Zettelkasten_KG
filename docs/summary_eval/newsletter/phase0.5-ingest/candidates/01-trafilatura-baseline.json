@@ -1,0 +1,51 @@
+{
+  "strategy": "01-trafilatura-baseline",
+  "urls_tested": [
+    "https://www.platformer.news/substack-nazi-push-notification/",
+    "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "https://product.beehiiv.com/p/introducing-email-boosts"
+  ],
+  "per_url": [
+    {
+      "url": "https://www.platformer.news/substack-nazi-push-notification/",
+      "success": true,
+      "raw_text_chars": 3307,
+      "extraction_confidence": "high",
+      "site": "unknown",
+      "has_preheader": true,
+      "cta_count": 1,
+      "conclusions_count": 0,
+      "detected_stance": "neutral",
+      "publication_identity": ""
+    },
+    {
+      "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+      "success": true,
+      "raw_text_chars": 16921,
+      "extraction_confidence": "high",
+      "site": "unknown",
+      "has_preheader": true,
+      "cta_count": 1,
+      "conclusions_count": 0,
+      "detected_stance": "neutral",
+      "publication_identity": ""
+    },
+    {
+      "url": "https://product.beehiiv.com/p/introducing-email-boosts",
+      "success": true,
+      "raw_text_chars": 7320,
+      "extraction_confidence": "high",
+      "site": "unknown",
+      "has_preheader": true,
+      "cta_count": 1,
+      "conclusions_count": 0,
+      "detected_stance": "neutral",
+      "publication_identity": ""
+    }
+  ],
+  "aggregate": {
+    "strategy": "01-trafilatura-baseline",
+    "mean_chars": 9182.666666666666,
+    "signal_coverage": 3
+  }
+}

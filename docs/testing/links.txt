@@ -20,7 +20,9 @@ https://github.com/encode/httpx
 https://github.com/psf/requests
 
 # Newsletter
-# (user adds before Newsletter cycle starts; else CLI auto-discovers)
+https://www.platformer.news/substack-nazi-push-notification/
+https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv
+https://product.beehiiv.com/p/introducing-email-boosts
 
 # HackerNews
 # (auto-discovered in polish phase)

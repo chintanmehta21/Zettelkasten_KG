@@ -8,6 +8,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
+from website.features.summarization_engine.core.models import SummaryMetadata
+
 
 _BRANDED_YAML_DEFAULT = (
     Path(__file__).resolve().parents[5] / "docs" / "summary_eval" / "_config" / "branded_newsletter_sources.yaml"
@@ -58,3 +60,11 @@ class NewsletterStructuredPayload(BaseModel):
                     f"Branded source '{publication}' requires publication name in label; got '{self.mini_title}'"
                 )
         return self
+
+
+class NewsletterSummaryResult(BaseModel):
+    mini_title: str
+    brief_summary: str
+    tags: list[str] = Field(..., min_length=7, max_length=10)
+    detailed_summary: NewsletterDetailedPayload
+    metadata: SummaryMetadata
