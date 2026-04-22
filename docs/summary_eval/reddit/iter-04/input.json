@@ -1,0 +1,36 @@
+{
+  "source": "reddit",
+  "iter": 4,
+  "urls": [
+    "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/"
+  ],
+  "started_at": "2026-04-22T16:20:40.890353+00:00",
+  "ended_at": "2026-04-22T16:26:22.551092+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+      "composite": 60.0,
+      "extraction_confidence": "high",
+      "latency_ms": 135521,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+      "composite": 56.0,
+      "extraction_confidence": "high",
+      "latency_ms": 206104,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

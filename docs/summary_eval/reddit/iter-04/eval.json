@@ -1,0 +1,336 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 5.0,
+        "fluency": 3.5,
+        "relevance": 3.5,
+        "reasoning": "The summary is generally coherent and consistent with the source. Fluency is good in the detailed section but suffers in the brief due to awkward phrasing and a meta-comment. Relevance is high for the detailed summary and tags, but the brief is incomplete, and the mini-title is poorly formatted, impacting overall relevance."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": "OP argued To assert",
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": "Many replies said Multiple users",
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": "Context: Removed or missing comments may limit what is visible in.",
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.75,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "Context: Removed or missing comments may limit what is visible in.",
+            "reason": "This sentence is a meta-comment about the summary's limitations, not a summary of the content of the Reddit thread itself."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 11.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.op_intent_captured",
+              "brief.consensus_signal"
+            ],
+            "criteria_missed": [
+              "brief.response_range",
+              "brief.caveats_surfaced",
+              "brief.neutral_tone",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 41.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": [
+              "detailed.unresolved_questions"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.thread_type",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 7.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": [
+              "label.rsubreddit_prefix"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": 60
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "editorialized_stance",
+            "source_region": "Context: Removed or missing comments may limit what is visible in.",
+            "auto_cap": 60
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 68.75,
+        "finesure": 72.5,
+        "qafact": 100.0,
+        "summac": 75.0
+      },
+      "editorialization_flags": [
+        {
+          "sentence": "Context: Removed or missing comments may limit what is visible in.",
+          "flag_type": "added_framing",
+          "explanation": "This sentence is a meta-comment about the summary's limitations, not a summary of the thread's content, adding the summarizer's own framing."
+        }
+      ],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 7696,
+        "total_tokens_out": 1783,
+        "latency_ms": 33235
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "eval": {
+      "g_eval": {
+        "coherence": 2.0,
+        "consistency": 4.0,
+        "fluency": 2.0,
+        "relevance": 2.5,
+        "reasoning": "The detailed summary is coherent, consistent, fluent, and highly relevant. However, the brief summary and the label (mini_title) are grammatically incomplete and poorly phrased, significantly detracting from the overall coherence, fluency, and relevance of the summary."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.545,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.565,
+          "items": [
+            {
+              "claim": "The brief summary is grammatically incomplete and fails to convey OP's intent, the range of responses, consensus, or caveats.",
+              "fact": null,
+              "sentence": "OP argued The original poster intended to share their first-time heroin experience, framing. Many replies said Former addicts highlighted that the user's mindset (feeling in control, rationalizing. Pushback included A minority agreed that one-time use does not automatically lead. Context: Removed or missing comments may limit what is visible in.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The label (mini_title) is grammatically incomplete and fails to capture the central issue.",
+              "fact": null,
+              "sentence": "r/IAmA intended to share their first-time",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags are missing a thread type tag (e.g., 'q-and-a', 'experience-report').",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.777,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.826,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "OP argued The original poster intended to share their first-time heroin experience, framing.",
+            "reason": "The sentence is grammatically incomplete and awkward, making its entailment unclear."
+          },
+          {
+            "sentence": "Many replies said Former addicts highlighted that the user's mindset (feeling in control, rationalizing.",
+            "reason": "The sentence is grammatically incomplete and awkward, making its entailment unclear."
+          },
+          {
+            "sentence": "Pushback included A minority agreed that one-time use does not automatically lead.",
+            "reason": "The sentence is grammatically incomplete and awkward, making its entailment unclear."
+          },
+          {
+            "sentence": "Context: Removed or missing comments may limit what is visible in.",
+            "reason": "The sentence is grammatically incomplete and awkward, making its entailment unclear."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 0.0,
+            "max_points": 25,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.caveats_surfaced",
+              "brief.neutral_tone",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 12.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": [
+              "tags.thread_type"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 0.0,
+            "max_points": 15,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 18.75,
+        "finesure": 62.06,
+        "qafact": 100.0,
+        "summac": 66.66
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 10416,
+        "total_tokens_out": 1284,
+        "latency_ms": 49458,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]

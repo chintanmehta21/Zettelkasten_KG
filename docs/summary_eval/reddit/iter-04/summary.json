@@ -1,0 +1,233 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "summary": {
+      "mini_title": "r/IndianStockMarket To assert Rajkot investors disproportion",
+      "brief_summary": "OP argued To assert that Rajkot investors disproportionately influence India's IPO Grey Market. Many replies said Multiple users identified the post as heavily based on or plagiarized. Pushback included The Hyundai IPO's reception was corrected from 'collapsed' to 'lukewarm'. Context: Removed or missing comments may limit what is visible in.",
+      "tags": [
+        "r-indianstockmarket",
+        "ipo",
+        "greymarket",
+        "gmp",
+        "rajkot",
+        "investing",
+        "india",
+        "duediligence",
+        "discussion"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "To assert that Rajkot investors disproportionately influence India's IPO Grey Market Premium (GMP) and are a critical hub for IPO sentiment, citing specific IPO case studies."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Post's content identified as derived from external source\", \"reasoning\": \"Multiple users identified the post as heavily based on or plagiarized from an article by Anand Kalyanaraman in The Ken.\", \"examples\": []}",
+            "{\"theme\": \"Confirmation of Rajkot's active stock market culture\", \"reasoning\": \"Commenters, including some from Rajkot, confirmed the city has a deep and active stock market culture, including a prominent grey market, local brokers, and illegal 'dabba trading', with SEBI known to monitor the city.\", \"examples\": []}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "The Hyundai IPO's reception was corrected from 'collapsed' to 'lukewarm', with fundamental factors cited as reasons for muted interest.",
+            "Hyundai's IPO was considered expensive (P/E of 26), structured as a 100% Offer for Sale (OFS) with proceeds going to the parent, and involved pre-IPO financial engineering (drained cash reserves via dividends, increased royalty percentage to parent).",
+            "Unfavorable general market conditions and a slowdown in the auto industry were also cited for Hyundai's lukewarm reception.",
+            "Critics questioned the flawed influence model, arguing that Rajkot's absolute contribution in INR might be significantly smaller than top-tier cities, limiting its market-moving power despite its application volume."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo",
+        "author": "Lazy-Transition8236",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=56/114 divergence=50.88%",
+        "total_tokens_used": 14904,
+        "gemini_pro_tokens": 13093,
+        "gemini_flash_tokens": 1811,
+        "total_latency_ms": 90113,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 3,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IndianStockMarket To assert Rajkot investors disproportion",
+          "brief_summary": "OP argued To assert that Rajkot investors disproportionately influence India's IPO Grey Market. Many replies said Multiple users identified the post as heavily based on or plagiarized. Pushback included The Hyundai IPO's reception was corrected from 'collapsed' to 'lukewarm'. Context: Removed or missing comments may limit what is visible in.",
+          "tags": [
+            "r-indianstockmarket",
+            "ipo",
+            "greymarket",
+            "gmp",
+            "rajkot",
+            "investing",
+            "india",
+            "duediligence",
+            "discussion"
+          ],
+          "detailed_summary": {
+            "op_intent": "To assert that Rajkot investors disproportionately influence India's IPO Grey Market Premium (GMP) and are a critical hub for IPO sentiment, citing specific IPO case studies.",
+            "reply_clusters": [
+              {
+                "theme": "Post's content identified as derived from external source",
+                "reasoning": "Multiple users identified the post as heavily based on or plagiarized from an article by Anand Kalyanaraman in The Ken.",
+                "examples": []
+              },
+              {
+                "theme": "Confirmation of Rajkot's active stock market culture",
+                "reasoning": "Commenters, including some from Rajkot, confirmed the city has a deep and active stock market culture, including a prominent grey market, local brokers, and illegal 'dabba trading', with SEBI known to monitor the city.",
+                "examples": []
+              }
+            ],
+            "counterarguments": [
+              "The Hyundai IPO's reception was corrected from 'collapsed' to 'lukewarm', with fundamental factors cited as reasons for muted interest.",
+              "Hyundai's IPO was considered expensive (P/E of 26), structured as a 100% Offer for Sale (OFS) with proceeds going to the parent, and involved pre-IPO financial engineering (drained cash reserves via dividends, increased royalty percentage to parent).",
+              "Unfavorable general market conditions and a slowdown in the auto industry were also cited for Hyundai's lukewarm reception.",
+              "Critics questioned the flawed influence model, arguing that Rajkot's absolute contribution in INR might be significantly smaller than top-tier cities, limiting its market-moving power despite its application volume."
+            ],
+            "unresolved_questions": [],
+            "moderation_context": "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "summary": {
+      "mini_title": "r/IAmA intended to share their first-time",
+      "brief_summary": "OP argued The original poster intended to share their first-time heroin experience, framing. Many replies said Former addicts highlighted that the user's mindset (feeling in control, rationalizing. Pushback included A minority agreed that one-time use does not automatically lead. Context: Removed or missing comments may limit what is visible in.",
+      "tags": [
+        "r-iama",
+        "heroin",
+        "first-time-use",
+        "addiction-warnings",
+        "substance-use-disorder",
+        "harm-reduction",
+        "drug-culture",
+        "opioids",
+        "psychological-effects",
+        "social-critique"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "The original poster intended to share their first-time heroin experience, framing it as a valuable insight gained from curiosity and risk-taking. They later updated to dismiss community warnings and announce plans to try cocaine."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Heroin Addiction Path\", \"reasoning\": \"Former addicts highlighted that the user's mindset (feeling in control, rationalizing use, pride) mirrors their own early stages of addiction, emphasizing the insidious nature of opiate dependence and the rapid development of tolerance and physical addiction.\", \"examples\": [\"One former CIO claimed to have spent over $500,000 on their habit.\", \"A professional shared a parallel story of trying cocaine on a whim, leading to rapid addiction and career/savings destruction.\", \"The first high is uniquely powerful; subsequent use becomes a futile attempt to recapture that initial experience.\", \"A user who saw one friend die and another become permanently disabled from overdoses admitted they 'still *want* it.'\", \"Tolerance builds quickly; daily or near-daily use can lead to physical addiction in as little as one week to a few months.\", \"Withdrawal was described as 'pure hell.'\", \"Commenters shared personal accounts of friends who died or suffered permanent brain damage from heroin overdoses.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "A minority agreed that one-time use does not automatically lead to addiction.",
+            "One user suggested it could be treated like pharmaceutical opioids (e.g., Oramorph) for 'infrequent special occasions.'",
+            "One commenter with a history of polysubstance use argued methamphetamine is more 'instantly' addictive and claimed most people they knew who tried heroin did not become addicted.",
+            "A chronic pain patient distinguished between medical use of prescription opiates and street heroin, discussing their own abuse of prescriptions and the struggle of being an opiate user while their partner is a recovering heroin addict.",
+            "Commenters noted the hypocrisy of a generally pro-legalization community lecturing the user on personal choice, drawing parallels to the dangers of legal alcohol.",
+            "Others observed the experience highlights how US drug laws are rooted in classism and racism."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "Did the original poster experience nausea, a common belief for new users?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and",
+        "author": "SpontaneousH",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=103/761 divergence=86.47%",
+        "total_tokens_used": 20481,
+        "gemini_pro_tokens": 18333,
+        "gemini_flash_tokens": 2148,
+        "total_latency_ms": 103366,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 5,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IAmA intended to share their first-time",
+          "brief_summary": "OP argued The original poster intended to share their first-time heroin experience, framing. Many replies said Former addicts highlighted that the user's mindset (feeling in control, rationalizing. Pushback included A minority agreed that one-time use does not automatically lead. Context: Removed or missing comments may limit what is visible in.",
+          "tags": [
+            "r-iama",
+            "heroin",
+            "first-time-use",
+            "addiction-warnings",
+            "substance-use-disorder",
+            "harm-reduction",
+            "drug-culture",
+            "opioids",
+            "psychological-effects",
+            "social-critique"
+          ],
+          "detailed_summary": {
+            "op_intent": "The original poster intended to share their first-time heroin experience, framing it as a valuable insight gained from curiosity and risk-taking. They later updated to dismiss community warnings and announce plans to try cocaine.",
+            "reply_clusters": [
+              {
+                "theme": "Heroin Addiction Path",
+                "reasoning": "Former addicts highlighted that the user's mindset (feeling in control, rationalizing use, pride) mirrors their own early stages of addiction, emphasizing the insidious nature of opiate dependence and the rapid development of tolerance and physical addiction.",
+                "examples": [
+                  "One former CIO claimed to have spent over $500,000 on their habit.",
+                  "A professional shared a parallel story of trying cocaine on a whim, leading to rapid addiction and career/savings destruction.",
+                  "The first high is uniquely powerful; subsequent use becomes a futile attempt to recapture that initial experience.",
+                  "A user who saw one friend die and another become permanently disabled from overdoses admitted they 'still *want* it.'",
+                  "Tolerance builds quickly; daily or near-daily use can lead to physical addiction in as little as one week to a few months.",
+                  "Withdrawal was described as 'pure hell.'",
+                  "Commenters shared personal accounts of friends who died or suffered permanent brain damage from heroin overdoses."
+                ]
+              }
+            ],
+            "counterarguments": [
+              "A minority agreed that one-time use does not automatically lead to addiction.",
+              "One user suggested it could be treated like pharmaceutical opioids (e.g., Oramorph) for 'infrequent special occasions.'",
+              "One commenter with a history of polysubstance use argued methamphetamine is more 'instantly' addictive and claimed most people they knew who tried heroin did not become addicted.",
+              "A chronic pain patient distinguished between medical use of prescription opiates and street heroin, discussing their own abuse of prescriptions and the struggle of being an opiate user while their partner is a recovering heroin addict.",
+              "Commenters noted the hypocrisy of a generally pro-legalization community lecturing the user on personal choice, drawing parallels to the dangers of legal alcohol.",
+              "Others observed the experience highlights how US drug laws are rooted in classism and racism."
+            ],
+            "unresolved_questions": [
+              "Did the original poster experience nausea, a common belief for new users?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]
