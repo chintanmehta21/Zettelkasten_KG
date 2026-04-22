@@ -1,7 +1,15 @@
+"""Unit tests for the Newsletter per-source summarizer.
+
+The summarizer calls ``self._client.generate(..., response_schema=...)`` directly,
+so the mock gemini client must return a ``GenerateResult`` whose ``.text`` parses
+into a valid ``NewsletterStructuredPayload``.
+"""
+import json
 from unittest.mock import AsyncMock
 
 import pytest
 
+from website.features.summarization_engine.core.gemini_client import GenerateResult
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.summarization.newsletter.schema import (
     NewsletterStructuredPayload,
@@ -20,14 +28,13 @@ def mock_gemini_client():
 
 
 @pytest.mark.asyncio
-async def test_newsletter_summarizer_uses_newsletter_payload_class(
+async def test_newsletter_summarizer_returns_newsletter_payload_shape(
     mock_gemini_client, monkeypatch
 ):
     from website.features.summarization_engine.summarization.common import (
         cod,
         patch as p_mod,
         self_check,
-        structured,
     )
 
     monkeypatch.setattr(
@@ -46,39 +53,28 @@ async def test_newsletter_summarizer_uses_newsletter_payload_class(
         AsyncMock(return_value=("dense", False, 0)),
     )
 
-    captured = {}
-    original_init = structured.StructuredExtractor.__init__
+    structured_payload = {
+        "mini_title": "Stratechery AI Outlook",
+        "brief_summary": "A concise newsletter summary capturing the thesis.",
+        "tags": ["ai", "strategy", "newsletter", "analysis", "tech", "platforms", "bundling"],
+        "detailed_summary": {
+            "publication_identity": "Stratechery",
+            "issue_thesis": "Platform dynamics shift with AI.",
+            "sections": [{"heading": "H", "bullets": ["b1"]}],
+            "conclusions_or_recommendations": ["Watch incumbents"],
+            "stance": "cautionary",
+            "cta": None,
+        },
+    }
 
-    def fake_init(
-        self, client, config, payload_class=structured.StructuredSummaryPayload
-    ):
-        captured["payload_class"] = payload_class
-        original_init(self, client, config, payload_class)
-
-    async def fake_extract(self, ingest, text, **kwargs):
-        from website.features.summarization_engine.core.models import (
-            DetailedSummarySection,
-            SummaryMetadata,
-            SummaryResult,
+    mock_gemini_client.generate = AsyncMock(
+        return_value=GenerateResult(
+            text=json.dumps(structured_payload),
+            model_used="flash",
+            input_tokens=10,
+            output_tokens=20,
         )
-
-        return SummaryResult(
-            mini_title="Stratechery AI Outlook",
-            brief_summary="b",
-            tags=["a", "b", "c", "d", "e", "f", "g"],
-            detailed_summary=[DetailedSummarySection(heading="H", bullets=["b"])],
-            metadata=SummaryMetadata(
-                source_type=SourceType.NEWSLETTER,
-                url=ingest.url,
-                extraction_confidence="high",
-                confidence_reason="ok",
-                total_tokens_used=0,
-                total_latency_ms=0,
-            ),
-        )
-
-    monkeypatch.setattr(structured.StructuredExtractor, "__init__", fake_init)
-    monkeypatch.setattr(structured.StructuredExtractor, "extract", fake_extract)
+    )
 
     ingest = IngestResult(
         source_type=SourceType.NEWSLETTER,
@@ -93,4 +89,7 @@ async def test_newsletter_summarizer_uses_newsletter_payload_class(
     result = await NewsletterSummarizer(mock_gemini_client, {}).summarize(ingest)
 
     assert result.mini_title.startswith("Stratechery")
-    assert captured["payload_class"] is NewsletterStructuredPayload
+    assert result.detailed_summary.stance == "cautionary"
+    # Contract: the summarizer invoked generate() with the Newsletter schema
+    call = mock_gemini_client.generate.await_args
+    assert call.kwargs["response_schema"] is NewsletterStructuredPayload

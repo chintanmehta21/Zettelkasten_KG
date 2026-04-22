@@ -133,3 +133,4 @@ anti_patterns:
 global_rules:
   editorialization_penalty:
     threshold_flags: 3
+    cap_on_trigger: 60
