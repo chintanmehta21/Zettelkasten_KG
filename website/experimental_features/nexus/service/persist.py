@@ -331,6 +331,18 @@ async def persist_summarized_result(
     )
 
 
+def _encode_summary_payload(payload: dict[str, Any]) -> str:
+    """Serialize brief + detailed summaries as JSON so both survive persistence."""
+    brief = _normalize_summary_text(payload.get("brief_summary"))
+    detailed = _normalize_summary_text(payload.get("detailed_summary") or payload.get("summary"))
+    if not brief and not detailed:
+        return ""
+    return json.dumps(
+        {"brief_summary": brief, "detailed_summary": detailed or brief},
+        ensure_ascii=False,
+    )
+
+
 def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str | None:
     if skip_duplicate:
         return None
@@ -339,7 +351,7 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
             title=str(payload["title"]),
             source_type=str(payload["source_type"]),
             source_url=str(payload["source_url"]),
-            summary=payload.get("brief_summary") or payload["summary"][:200],
+            summary=_encode_summary_payload(payload),
             tags=list(payload.get("tags", [])),
         )
     except Exception as exc:
@@ -433,7 +445,7 @@ def _build_supabase_node_payload(
         source_type=str(payload["source_type"]),
         tags=list(payload.get("tags", [])),
         url=str(payload["source_url"]),
-        summary=payload.get("brief_summary") or payload["summary"][:200],
+        summary=_encode_summary_payload(payload),
         node_date=captured_on,
         embedding=embedding,
         metadata=node_metadata,
