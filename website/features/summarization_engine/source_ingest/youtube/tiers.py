@@ -139,3 +139,40 @@ def _vtt_to_plaintext(vtt: str) -> str:
         if not deduped or deduped[-1] != line:
             deduped.append(line)
     return " ".join(deduped)
+
+
+async def tier_transcript_api_direct(video_id: str, config: dict) -> TierResult:
+    """Tier 2: youtube-transcript-api direct fetch."""
+    start = time.monotonic()
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+
+        api = YouTubeTranscriptApi()
+        entries = api.fetch(
+            video_id,
+            languages=config.get("transcript_languages", ["en"]),
+        )
+        text = " ".join(item.text for item in entries)
+        if len(text) > 100:
+            return TierResult(
+                tier=TierName.TRANSCRIPT_API_DIRECT,
+                transcript=text,
+                success=True,
+                confidence="high",
+                latency_ms=int((time.monotonic() - start) * 1000),
+            )
+    except Exception as exc:
+        return TierResult(
+            tier=TierName.TRANSCRIPT_API_DIRECT,
+            transcript="",
+            success=False,
+            error=str(exc),
+            latency_ms=int((time.monotonic() - start) * 1000),
+        )
+
+    return TierResult(
+        tier=TierName.TRANSCRIPT_API_DIRECT,
+        transcript="",
+        success=False,
+        latency_ms=int((time.monotonic() - start) * 1000),
+    )
