@@ -3,6 +3,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
+from website.features.summarization_engine.summarization.common.structured import (
+    _apply_identifier_hints,
+)
 from website.features.summarization_engine.summarization.github.schema import (
     GitHubStructuredPayload,
 )
@@ -94,3 +97,20 @@ async def test_github_summarizer_uses_github_payload_class(
 
     assert result.mini_title == "openai/gym"
     assert captured["payload_class"] is GitHubStructuredPayload
+
+
+def test_apply_identifier_hints_derives_github_repo_from_url_without_metadata():
+    ingest = IngestResult(
+        source_type=SourceType.GITHUB,
+        url="https://github.com/fastapi/fastapi",
+        original_url="https://github.com/fastapi/fastapi",
+        raw_text="hello",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+        metadata={},
+    )
+
+    patched = _apply_identifier_hints({"mini_title": "tiangolo/fastapi"}, ingest)
+
+    assert patched["mini_title"] == "fastapi/fastapi"

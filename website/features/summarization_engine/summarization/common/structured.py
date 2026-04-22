@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -291,6 +292,11 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     meta = ingest.metadata or {}
     if st == SourceType.GITHUB:
         full_name = meta.get("full_name") or meta.get("repo_full_name")
+        if not isinstance(full_name, str) or "/" not in full_name:
+            url = str(ingest.url or "")
+            match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
+            if match:
+                full_name = f"{match.group(1)}/{match.group(2)}"
         if isinstance(full_name, str) and "/" in full_name:
             raw["mini_title"] = full_name[:60]
     elif st == SourceType.REDDIT:
@@ -302,6 +308,32 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
                 suffix_source = current or str(meta.get("title") or "").strip()
                 suffix = suffix_source[: max(0, 60 - len(prefix) - 1)].strip()
                 raw["mini_title"] = f"{prefix} {suffix}".strip()[:60]
+    elif st == SourceType.YOUTUBE:
+        _YT_PLACEHOLDERS = {
+            "narrator", "host", "speaker", "analyst", "commentator",
+            "voiceover", "voice over", "author of the source",
+            "the host", "the speaker", "the narrator", "author",
+            "presenter", "the presenter",
+        }
+        channel = (
+            meta.get("channel")
+            or meta.get("uploader")
+            or meta.get("author")
+            or meta.get("channel_name")
+        )
+        speakers = raw.get("speakers")
+        if isinstance(speakers, list):
+            filtered = [
+                s.strip() for s in speakers
+                if isinstance(s, str) and s.strip()
+                and s.strip().lower() not in _YT_PLACEHOLDERS
+            ]
+            if not filtered and isinstance(channel, str) and channel.strip():
+                filtered = [channel.strip()]
+            if filtered:
+                raw["speakers"] = filtered
+        elif isinstance(channel, str) and channel.strip():
+            raw["speakers"] = [channel.strip()]
     return raw
 
 
