@@ -301,3 +301,112 @@ async def tier_invidious_pool(video_id: str, config: dict) -> TierResult:
         ttl,
         TierName.INVIDIOUS_POOL,
     )
+
+
+async def tier_gemini_audio(video_id: str, config: dict) -> TierResult:
+    """Tier 5: download audio locally, then upload bytes to Gemini File API."""
+    if not config.get("enable_gemini_audio_fallback", True):
+        return TierResult(
+            tier=TierName.GEMINI_AUDIO,
+            transcript="",
+            success=False,
+            error="disabled",
+        )
+
+    start = time.monotonic()
+    max_size_mb = config.get("gemini_audio_max_filesize_mb", 50)
+    max_duration_min = config.get("gemini_audio_max_duration_min", 60)
+    url = f"https://www.youtube.com/watch?v={video_id}"
+
+    try:
+        from yt_dlp import YoutubeDL
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_path = Path(tmp) / f"{video_id}.m4a"
+            opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "format": "bestaudio[ext=m4a]/bestaudio",
+                "outtmpl": str(out_path),
+                "max_filesize": max_size_mb * 1024 * 1024,
+                "match_filter": (
+                    lambda info: None
+                    if (info.get("duration") or 0) <= max_duration_min * 60
+                    else "video too long"
+                ),
+            }
+            with YoutubeDL(opts) as ydl:
+                ydl.download([url])
+
+            if not out_path.exists():
+                return TierResult(
+                    tier=TierName.GEMINI_AUDIO,
+                    transcript="",
+                    success=False,
+                    error="yt-dlp audio download did not produce file",
+                    latency_ms=int((time.monotonic() - start) * 1000),
+                )
+
+            import google.generativeai as genai
+
+            api_key = _first_available_key()
+            if not api_key:
+                return TierResult(
+                    tier=TierName.GEMINI_AUDIO,
+                    transcript="",
+                    success=False,
+                    error="no gemini key available",
+                )
+
+            genai.configure(api_key=api_key)
+            uploaded = genai.upload_file(path=str(out_path), mime_type="audio/mp4")
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            resp = model.generate_content(
+                [
+                    uploaded,
+                    (
+                        "Transcribe this audio into plain text with rough timestamps "
+                        "every ~60 seconds. Return only the transcription, no preamble."
+                    ),
+                ]
+            )
+            text = (resp.text or "").strip()
+            if len(text) > 200:
+                return TierResult(
+                    tier=TierName.GEMINI_AUDIO,
+                    transcript=text,
+                    success=True,
+                    confidence="high",
+                    latency_ms=int((time.monotonic() - start) * 1000),
+                    extra={"audio_bytes_uploaded": out_path.stat().st_size},
+                )
+    except Exception as exc:
+        return TierResult(
+            tier=TierName.GEMINI_AUDIO,
+            transcript="",
+            success=False,
+            error=str(exc),
+            latency_ms=int((time.monotonic() - start) * 1000),
+        )
+
+    return TierResult(
+        tier=TierName.GEMINI_AUDIO,
+        transcript="",
+        success=False,
+        latency_ms=int((time.monotonic() - start) * 1000),
+    )
+
+
+def _first_available_key() -> str | None:
+    import os
+
+    for name in ("GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2"):
+        if os.environ.get(name):
+            return os.environ[name]
+    api_env_path = Path(__file__).resolve().parents[5] / "api_env"
+    if api_env_path.exists():
+        for line in api_env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                return stripped.split()[0]
+    return None
