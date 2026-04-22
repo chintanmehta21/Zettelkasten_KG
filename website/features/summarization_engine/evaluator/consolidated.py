@@ -1,8 +1,10 @@
 """The consolidated Gemini-Pro evaluation call."""
 from __future__ import annotations
 
+import hashlib
 import json
 import time
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -21,6 +23,12 @@ from website.features.summarization_engine.summarization.common.json_utils impor
 class ConsolidatedEvaluator:
     def __init__(self, gemini_client: Any) -> None:
         self._client = gemini_client
+
+    def _tier(self) -> str:
+        cfg = getattr(self._client, "_config", None)
+        if cfg is None:
+            return "pro"
+        return getattr(cfg.gemini, "phase_tiers", {}).get("evaluator", "pro")
 
     async def evaluate(
         self,
@@ -46,7 +54,7 @@ class ConsolidatedEvaluator:
             try:
                 result = await self._client.generate(
                     prompt,
-                    tier="pro",
+                    tier=self._tier(),
                     system_instruction=CONSOLIDATED_SYSTEM,
                     temperature=0.0,
                     max_output_tokens=32768,
@@ -87,6 +95,13 @@ class ConsolidatedEvaluator:
         payload["evaluator_metadata"].setdefault(
             "rubric_version", rubric_yaml.get("version", "unknown")
         )
+        payload["evaluator_metadata"]["implementation_fingerprint"] = (
+            evaluator_implementation_fingerprint()
+        )
+        payload["evaluator_metadata"]["rubric_sha256"] = rubric_sha256(rubric_yaml)
+        payload["evaluator_metadata"]["model_used"] = getattr(
+            result, "model_used", payload["evaluator_metadata"].get("model_used")
+        )
         payload["evaluator_metadata"]["total_tokens_in"] = getattr(
             result, "input_tokens", 0
         )
@@ -95,3 +110,17 @@ class ConsolidatedEvaluator:
         )
         payload["evaluator_metadata"]["latency_ms"] = latency_ms
         return EvalResult(**payload)
+
+
+def evaluator_implementation_fingerprint() -> str:
+    digest = hashlib.sha256()
+    evaluator_dir = Path(__file__).resolve().parent
+    for path in sorted(evaluator_dir.glob("*.py")):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def rubric_sha256(rubric_yaml: dict) -> str:
+    payload = yaml.safe_dump(rubric_yaml, sort_keys=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()

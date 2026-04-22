@@ -30,6 +30,10 @@ from website.features.summarization_engine.evaluator.prompts import (
     MANUAL_REVIEW_PROMPT_TEMPLATE,
     PROMPT_VERSION,
 )
+from website.features.summarization_engine.evaluator.consolidated import (
+    evaluator_implementation_fingerprint,
+    rubric_sha256,
+)
 
 
 EVAL_USER_UUID = UUID("00000000-0000-0000-0000-000000000001")
@@ -334,6 +338,23 @@ def _composite_from_iter_dir(iter_dir: Path) -> float:
     return 0.0
 
 
+def _first_eval_payload(iter_dir: Path) -> dict | None:
+    paths = iter_artifact_paths(iter_dir)
+    if paths["eval"].exists():
+        payload = read_json(paths["eval"])
+        if isinstance(payload, list):
+            first = payload[0] if payload else {}
+            return first.get("eval", first) if isinstance(first, dict) else None
+        return payload if isinstance(payload, dict) else None
+    if paths["held_out"].exists():
+        for sub in sorted(paths["held_out"].iterdir()):
+            eval_file = sub / "eval.json"
+            if eval_file.exists():
+                payload = read_json(eval_file)
+                return payload if isinstance(payload, dict) else None
+    return None
+
+
 def _divergence_stamp(diff: float) -> str:
     if diff <= 5.0:
         return "AGREEMENT"
@@ -563,6 +584,24 @@ def run_determinism_check(
     paths = iter_artifact_paths(prev_iter_dir)
     if not paths["summary"].exists() or not paths["source_text"].exists():
         return {"status": "skipped", "reason": "prior iter missing summary/source_text"}
+
+    rubric_yaml = yaml.safe_load(rubric_path.read_text(encoding="utf-8")) or {}
+    stored_eval_payload = _first_eval_payload(prev_iter_dir) or {}
+    stored_meta = stored_eval_payload.get("evaluator_metadata", {}) or {}
+    current_fingerprint = evaluator_implementation_fingerprint()
+    current_rubric_hash = rubric_sha256(rubric_yaml)
+    if (
+        stored_meta.get("prompt_version") == PROMPT_VERSION
+        and stored_meta.get("implementation_fingerprint") == current_fingerprint
+        and stored_meta.get("rubric_sha256") == current_rubric_hash
+    ):
+        return {
+            "status": "stable_same_fingerprint",
+            "stored_composite": _composite_from_iter_dir(prev_iter_dir),
+            "new_composite": _composite_from_iter_dir(prev_iter_dir),
+            "drift": 0.0,
+            "tolerance": tolerance,
+        }
 
     stored_composite = _composite_from_iter_dir(prev_iter_dir)
     summary_payload = read_json(paths["summary"])

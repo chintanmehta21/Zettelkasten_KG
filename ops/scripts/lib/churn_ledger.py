@@ -17,8 +17,13 @@ criterion_delta < 1.0.  The caller can then either skip the file or write a
 from __future__ import annotations
 
 import json
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+_LEDGER_LOCK = threading.RLock()
 
 
 @dataclass
@@ -38,15 +43,27 @@ def load(source_dir: Path) -> list[LedgerEntry]:
     path = _path(source_dir)
     if not path.exists():
         return []
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return [LedgerEntry(**item) for item in data.get("entries", [])]
+    for attempt in range(3):
+        try:
+            text = path.read_text(encoding="utf-8")
+            if not text.strip():
+                return []
+            data = json.loads(text)
+            return [LedgerEntry(**item) for item in data.get("entries", [])]
+        except json.JSONDecodeError:
+            if attempt == 2:
+                raise
+            time.sleep(0.01 * (attempt + 1))
+    return []
 
 
 def save(source_dir: Path, entries: list[LedgerEntry]) -> None:
     path = _path(source_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"entries": [entry.__dict__ for entry in entries]}
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp_path.replace(path)
 
 
 def record(
@@ -58,19 +75,20 @@ def record(
     criterion_delta: float,
     composite_delta: float,
 ) -> None:
-    entries = load(source_dir)
-    entries = [entry for entry in entries if entry.iter != iter_num]
-    entries.append(
-        LedgerEntry(
-            iter=iter_num,
-            files=sorted(set(files)),
-            targeted_criterion=targeted_criterion,
-            criterion_delta=criterion_delta,
-            composite_delta=composite_delta,
+    with _LEDGER_LOCK:
+        entries = load(source_dir)
+        entries = [entry for entry in entries if entry.iter != iter_num]
+        entries.append(
+            LedgerEntry(
+                iter=iter_num,
+                files=sorted(set(files)),
+                targeted_criterion=targeted_criterion,
+                criterion_delta=criterion_delta,
+                composite_delta=composite_delta,
+            )
         )
-    )
-    entries.sort(key=lambda entry: entry.iter)
-    save(source_dir, entries)
+        entries.sort(key=lambda entry: entry.iter)
+        save(source_dir, entries)
 
 
 def churning_files(source_dir: Path, *, current_iter: int, lookback: int = 3) -> list[str]:

@@ -26,6 +26,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from ops.scripts.lib import artifacts, churn_ledger, git_helper, phases
 from ops.scripts.lib.state_detector import IterationState, detect_iteration_state
+from website.features.summarization_engine.evaluator.consolidated import (
+    evaluator_implementation_fingerprint,
+    rubric_sha256,
+)
+from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION
 
 
 # ── state_detector ───────────────────────────────────────────────────────────
@@ -214,6 +219,51 @@ def test_composite_from_iter_dir_uses_held_out_when_no_top_eval(tmp_path: Path):
 
 def test_composite_from_iter_dir_empty_returns_zero(tmp_path: Path):
     assert phases._composite_from_iter_dir(tmp_path) == 0.0
+
+
+def test_run_determinism_check_skips_reval_when_fingerprint_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    iter_dir = tmp_path / "iter-02"
+    iter_dir.mkdir()
+    (iter_dir / "summary.json").write_text("{}", encoding="utf-8")
+    (iter_dir / "source_text.md").write_text("source", encoding="utf-8")
+    artifacts.write_json(iter_dir / "atomic_facts.json", [{"facts": []}])
+
+    rubric_yaml = {
+        "version": "rubric_youtube.v1",
+        "source_type": "youtube",
+        "composite_max_points": 100,
+        "components": [],
+    }
+    rubric_path = tmp_path / "rubric.yaml"
+    rubric_path.write_text(
+        "version: rubric_youtube.v1\nsource_type: youtube\ncomposite_max_points: 100\ncomponents: []\n",
+        encoding="utf-8",
+    )
+
+    payload = _canned_eval_payload()
+    payload["evaluator_metadata"] = {
+        "prompt_version": PROMPT_VERSION,
+        "implementation_fingerprint": evaluator_implementation_fingerprint(),
+        "rubric_sha256": rubric_sha256(rubric_yaml),
+    }
+    artifacts.write_json(iter_dir / "eval.json", payload)
+
+    monkeypatch.setattr(
+        phases,
+        "_re_evaluate_from_summary",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("should not re-evaluate")),
+    )
+
+    result = phases.run_determinism_check(
+        source="youtube",
+        prev_iter_dir=iter_dir,
+        rubric_path=rubric_path,
+        gemini_client_factory=lambda: None,
+    )
+
+    assert result["status"] == "stable_same_fingerprint"
 
 
 # ── phases._write_diff / _write_next_actions (deterministic) ─────────────────

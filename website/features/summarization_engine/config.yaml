@@ -17,6 +17,7 @@ gemini:
     self_check: "pro"
     patch: "pro"
     structured_extract: "flash"
+    evaluator: "flash"
   temperature: 0.3
   max_output_tokens: 8192
   response_mime_type: "application/json"

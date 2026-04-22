@@ -5,6 +5,8 @@ import pytest
 
 from website.features.summarization_engine.evaluator.consolidated import (
     ConsolidatedEvaluator,
+    evaluator_implementation_fingerprint,
+    rubric_sha256,
 )
 from website.features.summarization_engine.evaluator.models import EvalResult
 
@@ -87,11 +89,14 @@ _GOOD_RESPONSE = {
 @pytest.mark.asyncio
 async def test_consolidated_evaluator_parses_response():
     client = MagicMock()
+    client._config = MagicMock()
+    client._config.gemini.phase_tiers = {"evaluator": "flash"}
     client.generate = AsyncMock(
         return_value=MagicMock(
             text=json.dumps(_GOOD_RESPONSE),
             input_tokens=100,
             output_tokens=50,
+            model_used="gemini-2.5-flash",
         )
     )
 
@@ -110,3 +115,17 @@ async def test_consolidated_evaluator_parses_response():
 
     assert isinstance(result, EvalResult)
     assert result.rubric.total_of_100 == 89
+    assert result.evaluator_metadata["model_used"] == "gemini-2.5-flash"
+    assert (
+        result.evaluator_metadata["implementation_fingerprint"]
+        == evaluator_implementation_fingerprint()
+    )
+    assert result.evaluator_metadata["rubric_sha256"] == rubric_sha256(
+        {
+            "version": "rubric_youtube.v1",
+            "composite_max_points": 100,
+            "source_type": "youtube",
+            "components": [],
+        }
+    )
+    assert client.generate.await_args.kwargs["tier"] == "flash"
