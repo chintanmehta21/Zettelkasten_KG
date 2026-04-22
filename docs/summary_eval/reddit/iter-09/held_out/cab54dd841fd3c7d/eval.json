@@ -1,0 +1,125 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 4.5,
+    "fluency": 4.5,
+    "relevance": 4.5,
+    "reasoning": "The summary is well-structured, coherent, and accurately reflects the source content. The brief summary is slightly underdeveloped in length and misses a key caveat, but the detailed summary is comprehensive and well-attributed."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.909,
+      "items": [
+        {
+          "claim": "The brief summary does not surface the important caveat about removed/missing comments, which is present in the detailed summary's moderation context.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 1.0,
+      "items": []
+    },
+    "conciseness": {
+      "score": 0.778,
+      "items": [
+        {
+          "claim": "The brief summary is 4 sentences long, falling short of the 5-7 sentence requirement.",
+          "fact": null,
+          "sentence": "OP's main point was To describe a personal intellectual journey from atheism to an appreciation of Advaita Vedanta. The dominant replies focused on Shared Journeys and Scientific Parallels. Consensus stayed around shared journeys and scientific parallels while critique of indian education system. Dissent centered on The value of philosophies like Advaita Vedanta primarily lies in personal growth.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 20.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.op_intent_captured",
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.neutral_tone"
+        ],
+        "criteria_missed": [
+          "brief.caveats_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.unresolved_questions",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.subreddit_present",
+          "tags.thread_type",
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.rsubreddit_prefix",
+          "label.central_issue",
+          "label.neutral"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 92.857,
+    "finesure": 96.153,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_reddit.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 8967,
+    "total_tokens_out": 1037,
+    "latency_ms": 35245
+  }
+}
