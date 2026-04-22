@@ -1,0 +1,505 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    "summary": {
+      "mini_title": "DMT History Effects Therapeutic Potential",
+      "brief_summary": "This commentary video explains DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly... It moves through sections on Historical Context and Discovery and Chemical Structure & Prohibition. It also covers N,N-dimethyltryptamine (DMT) and Ayahuasca. Featured voices include Richard Spruce and Richard Manske.",
+      "tags": [
+        "dmt",
+        "ayahuasca",
+        "psychedelics",
+        "neuroscience",
+        "richard-spruce",
+        "rick-strassman",
+        "therapeutic-potential",
+        "drug-history",
+        "serotonin-receptors",
+        "commentary"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "thesis",
+          "bullets": [
+            "DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly alters brain function, leading to unique subjective experiences, and is being explored for potential therapeutic applications."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "format",
+          "bullets": [
+            "commentary"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "chapters_or_segments",
+          "bullets": [
+            "{\"timestamp\": \"0:00\", \"title\": \"Historical Context and Discovery\", \"bullets\": [\"British botanist Richard Spruce documented indigenous ritual brews in the Amazon in the 1850s, observing and consuming 'capi' (Banisteriopsis caapi) in 1852 and 'iawaska' (ayahuasca) in 1857.\", \"Richard Manske synthesized N,N-dimethyltryptamine (DMT) in the early 1930s, though its psychoactive properties were unknown then.\", \"Albert Hofmann's 1943 LSD trip initiated modern psychedelic research; he later isolated psilocybin.\", \"By the 1960s, DMT was found in numerous plant species, mammals, and human blood, with Julius Axelrod providing evidence of its endogenous production in the human brain.\"]}",
+            "{\"timestamp\": \"0:00\", \"title\": \"Chemical Structure & Prohibition\", \"bullets\": [\"DMT's molecular structure, featuring an indole ring, is similar to LSD, psilocybin, and serotonin, allowing it to bind to serotonin receptors.\", \"Psychedelics entered popular culture in the 1960s, with Terrence McKenna describing his first DMT experience as encountering 'self-transforming machine elf creatures'.\", \"LSD was outlawed in California and Nevada in 1966, federally in 1968, and the 1971 UN Convention on Psychotropic Substances criminalized psychedelics, including DMT, halting clinical research.\"]}",
+            "{\"timestamp\": \"0:00\", \"title\": \"Modern Research and Subjective Effects\", \"bullets\": [\"Dr. Rick Strassman conducted the first US government-approved psychedelic study in over 20 years in the 1990s, administering DMT to 60 volunteers and coining it 'the spirit molecule'.\", \"A participant, Sarah (Subject 34), reported being 'blasted out of my body' into 'aggressive, terrifying' colors, encountering animated clowns and a 'Tinkerbell-like' entity, and feeling she communicated with beings in deep space.\", \"DMT consumption methods vary: smoking/IV injection have rapid onset (under 1 min/instantaneous) and short duration (minutes), snorting has a few minutes onset and slightly longer duration, while ayahuasca has ~45 min onset and lasts several hours, often inducing vomiting.\", \"5-MeO-DMT, found in Colorado River toad secretions, has fast onset but fewer visual hallucinations than N,N-DMT.\", \"Experts emphasize 'set and setting' for psychedelic use; substances are physiologically safe and non-addictive but can worsen existing mental health conditions.\"]}",
+            "{\"timestamp\": \"0:00\", \"title\": \"Neuroscience Hypotheses\", \"bullets\": [\"Chris Timmermann proposes DMT causes global hyperconnectivity, disrupting the brain's normal hierarchy, making it more 'democratic' or entering 'anarchy'.\", \"Functional deafferentation suggests the brain disconnects from external input, focusing on an internal simulation.\", \"Timmermann's research links DMT's peak to strong theta wave rhythms, similar to REM sleep, describing it as 'dreaming with your eyes open' but more vivid.\", \"Entity encounters may stem from intense activation of brain regions associated with social cognition, simulating social relations.\", \"A Johns Hopkins survey found most DMT users saw entities, over half heard them, and 85% described telepathic communication, with love, trust, and joy as common emotions.\", \"A study on 'God encounter experiences' showed a drop in participants identifying as atheist from 25% before to 7% after.\", \"DMT experiences share features with Near-Death Experiences (NDEs), like feeling a boundary, with Timmermann suggesting the brain's transformation may signal dying; DMT trips are typically more visual, NDEs more disembodied.\"]}",
+            "{\"timestamp\": \"0:00\", \"title\": \"Endogenous DMT and Therapeutic Potential (Early Stage)\", \"bullets\": [\"Strassman's hypothesis about endogenous DMT release during birth or death is under investigation, with studies showing increased DMT in rats after cardiac arrest and potential neuroprotective functions.\", \"Recent research suggests endogenous DMT levels may be higher than previously thought.\", \"Simon Ruffell studies ayahuasca for PTSD in war veterans, with mixed results showing reduced depression/anxiety in some, but worsening mental health in others.\", \"Timmermann theorizes DMT could help depressed individuals by changing entrenched negative beliefs, though all therapeutic research is preliminary.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "closing_takeaway",
+          "bullets": [
+            "While DMT's profound effects on consciousness and brain function are increasingly understood through modern research, its endogenous role and therapeutic potential remain subjects of preliminary investigation, with mixed results in early clinical applications."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "transcript via tier=ytdlp_player_rotation len=34612",
+        "total_tokens_used": 27027,
+        "gemini_pro_tokens": 23547,
+        "gemini_flash_tokens": 3480,
+        "total_latency_ms": 91257,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "DMT History Effects Therapeutic Potential",
+          "brief_summary": "This commentary video explains DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly... It moves through sections on Historical Context and Discovery and Chemical Structure & Prohibition. It also covers N,N-dimethyltryptamine (DMT) and Ayahuasca. Featured voices include Richard Spruce and Richard Manske.",
+          "tags": [
+            "dmt",
+            "ayahuasca",
+            "psychedelics",
+            "neuroscience",
+            "richard-spruce",
+            "rick-strassman",
+            "therapeutic-potential",
+            "drug-history",
+            "serotonin-receptors",
+            "commentary"
+          ],
+          "speakers": [
+            "Richard Spruce",
+            "Richard Manske",
+            "Albert Hofmann",
+            "Julius Axelrod",
+            "Terrence McKenna",
+            "Dr. Rick Strassman",
+            "Chris Timmermann",
+            "Simon Ruffell"
+          ],
+          "guests": null,
+          "entities_discussed": [
+            "N,N-dimethyltryptamine (DMT)",
+            "Ayahuasca",
+            "Banisteriopsis caapi",
+            "LSD",
+            "Psilocybin",
+            "Serotonin",
+            "5-MeO-DMT",
+            "UN Convention on Psychotropic Substances",
+            "PTSD",
+            "Depression",
+            "Near-Death Experiences (NDEs)"
+          ],
+          "detailed_summary": {
+            "thesis": "DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly alters brain function, leading to unique subjective experiences, and is being explored for potential therapeutic applications.",
+            "format": "commentary",
+            "chapters_or_segments": [
+              {
+                "timestamp": "0:00",
+                "title": "Historical Context and Discovery",
+                "bullets": [
+                  "British botanist Richard Spruce documented indigenous ritual brews in the Amazon in the 1850s, observing and consuming 'capi' (Banisteriopsis caapi) in 1852 and 'iawaska' (ayahuasca) in 1857.",
+                  "Richard Manske synthesized N,N-dimethyltryptamine (DMT) in the early 1930s, though its psychoactive properties were unknown then.",
+                  "Albert Hofmann's 1943 LSD trip initiated modern psychedelic research; he later isolated psilocybin.",
+                  "By the 1960s, DMT was found in numerous plant species, mammals, and human blood, with Julius Axelrod providing evidence of its endogenous production in the human brain."
+                ]
+              },
+              {
+                "timestamp": "0:00",
+                "title": "Chemical Structure & Prohibition",
+                "bullets": [
+                  "DMT's molecular structure, featuring an indole ring, is similar to LSD, psilocybin, and serotonin, allowing it to bind to serotonin receptors.",
+                  "Psychedelics entered popular culture in the 1960s, with Terrence McKenna describing his first DMT experience as encountering 'self-transforming machine elf creatures'.",
+                  "LSD was outlawed in California and Nevada in 1966, federally in 1968, and the 1971 UN Convention on Psychotropic Substances criminalized psychedelics, including DMT, halting clinical research."
+                ]
+              },
+              {
+                "timestamp": "0:00",
+                "title": "Modern Research and Subjective Effects",
+                "bullets": [
+                  "Dr. Rick Strassman conducted the first US government-approved psychedelic study in over 20 years in the 1990s, administering DMT to 60 volunteers and coining it 'the spirit molecule'.",
+                  "A participant, Sarah (Subject 34), reported being 'blasted out of my body' into 'aggressive, terrifying' colors, encountering animated clowns and a 'Tinkerbell-like' entity, and feeling she communicated with beings in deep space.",
+                  "DMT consumption methods vary: smoking/IV injection have rapid onset (under 1 min/instantaneous) and short duration (minutes), snorting has a few minutes onset and slightly longer duration, while ayahuasca has ~45 min onset and lasts several hours, often inducing vomiting.",
+                  "5-MeO-DMT, found in Colorado River toad secretions, has fast onset but fewer visual hallucinations than N,N-DMT.",
+                  "Experts emphasize 'set and setting' for psychedelic use; substances are physiologically safe and non-addictive but can worsen existing mental health conditions."
+                ]
+              },
+              {
+                "timestamp": "0:00",
+                "title": "Neuroscience Hypotheses",
+                "bullets": [
+                  "Chris Timmermann proposes DMT causes global hyperconnectivity, disrupting the brain's normal hierarchy, making it more 'democratic' or entering 'anarchy'.",
+                  "Functional deafferentation suggests the brain disconnects from external input, focusing on an internal simulation.",
+                  "Timmermann's research links DMT's peak to strong theta wave rhythms, similar to REM sleep, describing it as 'dreaming with your eyes open' but more vivid.",
+                  "Entity encounters may stem from intense activation of brain regions associated with social cognition, simulating social relations.",
+                  "A Johns Hopkins survey found most DMT users saw entities, over half heard them, and 85% described telepathic communication, with love, trust, and joy as common emotions.",
+                  "A study on 'God encounter experiences' showed a drop in participants identifying as atheist from 25% before to 7% after.",
+                  "DMT experiences share features with Near-Death Experiences (NDEs), like feeling a boundary, with Timmermann suggesting the brain's transformation may signal dying; DMT trips are typically more visual, NDEs more disembodied."
+                ]
+              },
+              {
+                "timestamp": "0:00",
+                "title": "Endogenous DMT and Therapeutic Potential (Early Stage)",
+                "bullets": [
+                  "Strassman's hypothesis about endogenous DMT release during birth or death is under investigation, with studies showing increased DMT in rats after cardiac arrest and potential neuroprotective functions.",
+                  "Recent research suggests endogenous DMT levels may be higher than previously thought.",
+                  "Simon Ruffell studies ayahuasca for PTSD in war veterans, with mixed results showing reduced depression/anxiety in some, but worsening mental health in others.",
+                  "Timmermann theorizes DMT could help depressed individuals by changing entrenched negative beliefs, though all therapeutic research is preliminary."
+                ]
+              }
+            ],
+            "demonstrations": [],
+            "closing_takeaway": "While DMT's profound effects on consciousness and brain function are increasingly understood through modern research, its endogenous role and therapeutic potential remain subjects of preliminary investigation, with mixed results in early clinical applications."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+    "summary": {
+      "mini_title": "Ross Ulbricht Silk Road Marketplace",
+      "brief_summary": "This commentary video explains Ross Ulbricht, driven by libertarian ideals, founded and operated the Silk Road dark web marketplace, which... It moves through sections on Ross Ulbricht: Founder of Silk Road and Operational Security Failures... It also covers Ross Ulbricht and Silk Road. Featured voices include Ross Ulbricht. Ross Ulbricht's ambition to create a free market outside government...",
+      "tags": [
+        "ross-ulbricht",
+        "silk-road",
+        "dark-web",
+        "bitcoin",
+        "dread-pirate-roberts",
+        "cybercrime",
+        "law-enforcement",
+        "libertarianism",
+        "online-marketplace",
+        "commentary"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "thesis",
+          "bullets": [
+            "Ross Ulbricht, driven by libertarian ideals, founded and operated the Silk Road dark web marketplace, which facilitated illegal transactions using Bitcoin and Tor, ultimately leading to his arrest, conviction, and life sentence due to a series of operational security failures and a multi-agency investigation."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "format",
+          "bullets": [
+            "commentary"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "chapters_or_segments",
+          "bullets": [
+            "{\"timestamp\": \"0:00\", \"title\": \"Ross Ulbricht: Founder of Silk Road\", \"bullets\": [\"Ross Ulbricht (b. March 27, 1984) founded and operated Silk Road under the pseudonym 'Dread Pirate Roberts'.\", \"He held a Master's in materials science and a physics degree, both on full scholarships.\", \"He was arrested at age 29 on October 1, 2013, in San Francisco.\", \"Silk Road operated from January 2011 to October 2013, inspired by libertarian ideology for anonymous transactions.\", \"It used Tor for anonymity and Bitcoin for all transactions.\", \"A June 2011 Gawker article significantly increased its public exposure.\", \"Federal prosecutors alleged nearly $214 million in sales from over 100,000 users.\", \"Primarily sold illegal drugs; guns were briefly listed then removed.\", \"Sellers used fake return addresses and concealed goods, with printed mailing labels noted by authorities.\"]}",
+            "{\"timestamp\": \"1:00\", \"title\": \"Operational Security Failures Leading to Arrest\", \"bullets\": [\"Ulbricht promoted Silk Road on forums using 'altoid', linking his personal email rossulbricht@gmail.com in one post.\", \"IRS investigator Gary Alford connected 'altoid' posts to 'Ross Ulbricht' during pre-Gawker searches.\", \"In May 2013, the FBI found the Silk Road server's IP address via a coding vulnerability, linking it to 'Frosty' (admin's master computer).\", \"Ulbricht's defense claimed the NSA illegally found the server location.\", \"In July 2013, U.S. Customs intercepted fake IDs addressed to Ulbricht, who 'hypothetically' mentioned buying such items on Silk Road.\", \"Ulbricht's Gmail login patterns consistently mirrored those of the 'Dread Pirate Roberts' account.\"]}",
+            "{\"timestamp\": \"2:00\", \"title\": \"Key Figures and Controversies\", \"bullets\": [\"Variety Jones (Roger Thomas Clark) was Ulbricht's mentor, suggesting the 'Dread Pirate Roberts' pseudonym and advising on OpSec.\", \"Clark was arrested in 2015 and pleaded guilty in 2020.\", \"Two federal agents, Carl Force (DEA) and Shaun Bridges (Secret Service), were convicted of corruption.\", \"Force posed as 'Nob', selling Ulbricht fake insider info.\", \"Bridges stole 20,000 Bitcoin from user accounts.\", \"Ulbricht paid Force $80,000 to 'kill' employee Curtis Green, believing Green stole Bitcoin (actually stolen by Bridges).\", \"Force staged Green's death with fake photos.\", \"Ulbricht was alleged to have ordered five other hits, but no proof of deaths exists, and he wasn't formally charged for them.\"]}",
+            "{\"timestamp\": \"3:00\", \"title\": \"Arrest, Conviction, and Life Sentence\", \"bullets\": [\"Ulbricht was arrested on Oct. 1, 2013, at a public library when an agent lured him into an admin screen and seized his unlocked laptop.\", \"He was found guilty on seven counts, including engaging in a continuing criminal enterprise, in Jan-Feb 2015.\", \"His defense argued he created the site but later handed it off.\", \"On May 29, 2015, Judge Katherine B. Forrest sentenced him to two concurrent life sentences plus 40 years without parole.\", \"The judge dismissed his libertarian justifications as a 'privileged argument' given his education.\", \"Corrupt agents Carl Force received 6.5 years, and Shaun Bridges received nearly 8 years.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "closing_takeaway",
+          "bullets": [
+            "Ross Ulbricht's ambition to create a free market outside government control, enabled by dark web technology and cryptocurrency, ultimately led to his downfall due to critical operational security lapses and the persistent efforts of law enforcement, resulting in a severe life sentence that highlighted the legal system's stance against such enterprises."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "transcript via tier=ytdlp_player_rotation len=30025",
+        "total_tokens_used": 30010,
+        "gemini_pro_tokens": 26937,
+        "gemini_flash_tokens": 3073,
+        "total_latency_ms": 89196,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 7,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "Ross Ulbricht Silk Road Marketplace",
+          "brief_summary": "This commentary video explains Ross Ulbricht, driven by libertarian ideals, founded and operated the Silk Road dark web marketplace, which... It moves through sections on Ross Ulbricht: Founder of Silk Road and Operational Security Failures... It also covers Ross Ulbricht and Silk Road. Featured voices include Ross Ulbricht. Ross Ulbricht's ambition to create a free market outside government...",
+          "tags": [
+            "ross-ulbricht",
+            "silk-road",
+            "dark-web",
+            "bitcoin",
+            "dread-pirate-roberts",
+            "cybercrime",
+            "law-enforcement",
+            "libertarianism",
+            "online-marketplace",
+            "commentary"
+          ],
+          "speakers": [
+            "Ross Ulbricht"
+          ],
+          "guests": null,
+          "entities_discussed": [
+            "Ross Ulbricht",
+            "Silk Road",
+            "Dread Pirate Roberts",
+            "FBI",
+            "DEA",
+            "Homeland Security",
+            "IRS",
+            "Tor",
+            "Bitcoin",
+            "Gawker",
+            "Chuck Schumer",
+            "Variety Jones",
+            "Roger Thomas Clark",
+            "Carl Force",
+            "Shaun Bridges",
+            "Curtis Green",
+            "Judge Katherine B. Forrest",
+            "Penn State",
+            "University of Texas at Dallas"
+          ],
+          "detailed_summary": {
+            "thesis": "Ross Ulbricht, driven by libertarian ideals, founded and operated the Silk Road dark web marketplace, which facilitated illegal transactions using Bitcoin and Tor, ultimately leading to his arrest, conviction, and life sentence due to a series of operational security failures and a multi-agency investigation.",
+            "format": "commentary",
+            "chapters_or_segments": [
+              {
+                "timestamp": "0:00",
+                "title": "Ross Ulbricht: Founder of Silk Road",
+                "bullets": [
+                  "Ross Ulbricht (b. March 27, 1984) founded and operated Silk Road under the pseudonym 'Dread Pirate Roberts'.",
+                  "He held a Master's in materials science and a physics degree, both on full scholarships.",
+                  "He was arrested at age 29 on October 1, 2013, in San Francisco.",
+                  "Silk Road operated from January 2011 to October 2013, inspired by libertarian ideology for anonymous transactions.",
+                  "It used Tor for anonymity and Bitcoin for all transactions.",
+                  "A June 2011 Gawker article significantly increased its public exposure.",
+                  "Federal prosecutors alleged nearly $214 million in sales from over 100,000 users.",
+                  "Primarily sold illegal drugs; guns were briefly listed then removed.",
+                  "Sellers used fake return addresses and concealed goods, with printed mailing labels noted by authorities."
+                ]
+              },
+              {
+                "timestamp": "1:00",
+                "title": "Operational Security Failures Leading to Arrest",
+                "bullets": [
+                  "Ulbricht promoted Silk Road on forums using 'altoid', linking his personal email rossulbricht@gmail.com in one post.",
+                  "IRS investigator Gary Alford connected 'altoid' posts to 'Ross Ulbricht' during pre-Gawker searches.",
+                  "In May 2013, the FBI found the Silk Road server's IP address via a coding vulnerability, linking it to 'Frosty' (admin's master computer).",
+                  "Ulbricht's defense claimed the NSA illegally found the server location.",
+                  "In July 2013, U.S. Customs intercepted fake IDs addressed to Ulbricht, who 'hypothetically' mentioned buying such items on Silk Road.",
+                  "Ulbricht's Gmail login patterns consistently mirrored those of the 'Dread Pirate Roberts' account."
+                ]
+              },
+              {
+                "timestamp": "2:00",
+                "title": "Key Figures and Controversies",
+                "bullets": [
+                  "Variety Jones (Roger Thomas Clark) was Ulbricht's mentor, suggesting the 'Dread Pirate Roberts' pseudonym and advising on OpSec.",
+                  "Clark was arrested in 2015 and pleaded guilty in 2020.",
+                  "Two federal agents, Carl Force (DEA) and Shaun Bridges (Secret Service), were convicted of corruption.",
+                  "Force posed as 'Nob', selling Ulbricht fake insider info.",
+                  "Bridges stole 20,000 Bitcoin from user accounts.",
+                  "Ulbricht paid Force $80,000 to 'kill' employee Curtis Green, believing Green stole Bitcoin (actually stolen by Bridges).",
+                  "Force staged Green's death with fake photos.",
+                  "Ulbricht was alleged to have ordered five other hits, but no proof of deaths exists, and he wasn't formally charged for them."
+                ]
+              },
+              {
+                "timestamp": "3:00",
+                "title": "Arrest, Conviction, and Life Sentence",
+                "bullets": [
+                  "Ulbricht was arrested on Oct. 1, 2013, at a public library when an agent lured him into an admin screen and seized his unlocked laptop.",
+                  "He was found guilty on seven counts, including engaging in a continuing criminal enterprise, in Jan-Feb 2015.",
+                  "His defense argued he created the site but later handed it off.",
+                  "On May 29, 2015, Judge Katherine B. Forrest sentenced him to two concurrent life sentences plus 40 years without parole.",
+                  "The judge dismissed his libertarian justifications as a 'privileged argument' given his education.",
+                  "Corrupt agents Carl Force received 6.5 years, and Shaun Bridges received nearly 8 years."
+                ]
+              }
+            ],
+            "demonstrations": [],
+            "closing_takeaway": "Ross Ulbricht's ambition to create a free market outside government control, enabled by dark web technology and cryptocurrency, ultimately led to his downfall due to critical operational security lapses and the persistent efforts of law enforcement, resulting in a severe life sentence that highlighted the legal system's stance against such enterprises."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=Brm71uCWr-I",
+    "summary": {
+      "mini_title": "Problematic Cannabis Use Adulthood",
+      "brief_summary": "This commentary video explains Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences... It moves through sections on Prevalence and Nature of Cannabis Use Disorder (CUD) and Compounding... It also covers Cannabis Use Disorder and Cannabis. Featured voices include Author of the source. Long-term problematic cannabis use can lead...",
+      "tags": [
+        "cannabis",
+        "addiction",
+        "psychology",
+        "sociology",
+        "development",
+        "mental-health",
+        "career",
+        "relationships",
+        "commentary"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "thesis",
+          "bullets": [
+            "Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences across social, relational, career, and mental health domains, particularly for adults in their 20s and 30s, hindering personal growth and life satisfaction."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "format",
+          "bullets": [
+            "commentary"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "chapters_or_segments",
+          "bullets": [
+            "{\"timestamp\": \"00:00\", \"title\": \"Prevalence and Nature of Cannabis Use Disorder (CUD)\", \"bullets\": [\"Problematic cannabis use is framed as a health issue for a minority of users, not a legal one; the source does not advocate for making cannabis illegal.\", \"Approximately 20% of individuals who have ever tried cannabis develop Cannabis Use Disorder (CUD).\", \"In 2023, 1 in 15 adult Americans reportedly had a form of cannabis addiction.\", \"For daily or near-daily users, the risk of developing CUD is up to 30%.\", \"In the US, daily cannabis use has surpassed daily alcohol consumption.\", \"In England, cannabis is the primary drug for which teenagers seek treatment.\", \"Addiction is described as a gradual process, often beginning as a tool for experimentation, coping, or enhancing experiences.\", \"Over time, the effect can shift from joy-enhancement to a 'comfortable numbness' that masks negative emotions.\", \"A proposed self-test for problematic use is the inability to abstain for four weeks.\", \"The source's author notes a personal history of 15 years of daily use before quitting.\"]}",
+            "{\"timestamp\": \"05:30\", \"title\": \"Compounding Effects by Life Stage\", \"bullets\": [\"The source deliberately focuses on adults in their 20s and 30s, arguing that the consequences of problematic cannabis use differ and compound by decade.\", \"In the 20s: This period is defined by peak physical health and fewer responsibilities, making it a key time for social exploration. External life structures (e.g., school, peer groups) and natural forward momentum can mask the stagnation caused by addiction. Time spent on passive activities while intoxicated is framed as a potential source of future regret.\", \"In the 30s: Described as a major 'inflection point,' this decade sees a reduction in external support structures, making personal initiative more critical for progress. Most people are said to naturally reduce or quit cannabis as priorities shift to careers and family. Those who continue heavy use risk social and professional stagnation as their peers advance.\"]}",
+            "{\"timestamp\": \"10:15\", \"title\": \"Social and Relational Consequences\", \"bullets\": [\"Heavy cannabis use is linked to the degradation of relationships.\", \"Friendships: Building a healthy social life in one's 20s is posited as the single greatest predictor of future happiness, making social withdrawal particularly consequential. Studies are cited showing cannabis can worsen social anxiety for some, leading to social avoidance and unreliability. As addiction causes withdrawal from shared hobbies, friendships can atrophy. In the 30s, a weed-centric lifestyle becomes incompatible with peers who have less time, leading to an 'isolation trap' where the user's social circle narrows to other users, reinforcing the behavior.\", \"Romantic Relationships: Partners of daily users report feeling neglected, leading to communication breakdown and loss of trust. The addicted partner often lacks self-awareness of the damage caused and can be blindsided when the relationship ends. A cannabis addiction is argued to become increasingly unattractive as partners are expected to share adult responsibilities.\"]}",
+            "{\"timestamp\": \"15:45\", \"title\": \"Career and Achievement Consequences\", \"bullets\": [\"Long-term studies are cited linking heavy cannabis use to negative professional and financial outcomes, even when controlling for family background.\", \"These outcomes include reduced academic performance, lower income, and less stable employment.\", \"The addiction's mechanisms include poor work performance, procrastination, and missed opportunities.\", \"This leads to a deficit of personal growth and life experiences (e.g., less travel, fewer new people met), causing one to have 'lived less' than their peers.\", \"The direct financial cost can be thousands of dollars annually, hindering savings.\", \"The social 'slack' afforded in one's 20s is said to expire in the 30s, making a lack of career progression more detrimental.\", \"Studies are cited showing long-term users report significantly lower life satisfaction.\"]}",
+            "{\"timestamp\": \"20:00\", \"title\": \"Mental Health Consequences\", \"bullets\": [\"While cannabis may be used for initial relief, the source claims long-term use can damage the brain's reward system and emotional regulation.\", \"This can worsen underlying anxiety and depression, creating a vicious cycle where users self-medicate with more cannabis, which in turn exacerbates the problem.\", \"This impairs coping skills and can cause mood swings and irritability.\", \"The addiction is described as holding back a 'dam of bottled up negative feelings.'\", \"Conversely, research is cited showing that addicted individuals who quit experience a noticeable improvement in their mental health.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "closing_takeaway",
+          "bullets": [
+            "Long-term problematic cannabis use can lead to a cycle of stagnation, isolation, and worsening mental health, with consequences that become increasingly detrimental as individuals transition from their 20s to 30s, underscoring the importance of addressing CUD for overall well-being and life achievement."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=Brm71uCWr-I",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "transcript via tier=ytdlp_player_rotation len=14977",
+        "total_tokens_used": 17773,
+        "gemini_pro_tokens": 14820,
+        "gemini_flash_tokens": 2953,
+        "total_latency_ms": 93308,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "Problematic Cannabis Use Adulthood",
+          "brief_summary": "This commentary video explains Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences... It moves through sections on Prevalence and Nature of Cannabis Use Disorder (CUD) and Compounding... It also covers Cannabis Use Disorder and Cannabis. Featured voices include Author of the source. Long-term problematic cannabis use can lead...",
+          "tags": [
+            "cannabis",
+            "addiction",
+            "psychology",
+            "sociology",
+            "development",
+            "mental-health",
+            "career",
+            "relationships",
+            "commentary"
+          ],
+          "speakers": [
+            "Author of the source"
+          ],
+          "guests": null,
+          "entities_discussed": [
+            "Cannabis Use Disorder",
+            "Cannabis",
+            "Adults (20s-30s)",
+            "United States",
+            "England"
+          ],
+          "detailed_summary": {
+            "thesis": "Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences across social, relational, career, and mental health domains, particularly for adults in their 20s and 30s, hindering personal growth and life satisfaction.",
+            "format": "commentary",
+            "chapters_or_segments": [
+              {
+                "timestamp": "00:00",
+                "title": "Prevalence and Nature of Cannabis Use Disorder (CUD)",
+                "bullets": [
+                  "Problematic cannabis use is framed as a health issue for a minority of users, not a legal one; the source does not advocate for making cannabis illegal.",
+                  "Approximately 20% of individuals who have ever tried cannabis develop Cannabis Use Disorder (CUD).",
+                  "In 2023, 1 in 15 adult Americans reportedly had a form of cannabis addiction.",
+                  "For daily or near-daily users, the risk of developing CUD is up to 30%.",
+                  "In the US, daily cannabis use has surpassed daily alcohol consumption.",
+                  "In England, cannabis is the primary drug for which teenagers seek treatment.",
+                  "Addiction is described as a gradual process, often beginning as a tool for experimentation, coping, or enhancing experiences.",
+                  "Over time, the effect can shift from joy-enhancement to a 'comfortable numbness' that masks negative emotions.",
+                  "A proposed self-test for problematic use is the inability to abstain for four weeks.",
+                  "The source's author notes a personal history of 15 years of daily use before quitting."
+                ]
+              },
+              {
+                "timestamp": "05:30",
+                "title": "Compounding Effects by Life Stage",
+                "bullets": [
+                  "The source deliberately focuses on adults in their 20s and 30s, arguing that the consequences of problematic cannabis use differ and compound by decade.",
+                  "In the 20s: This period is defined by peak physical health and fewer responsibilities, making it a key time for social exploration. External life structures (e.g., school, peer groups) and natural forward momentum can mask the stagnation caused by addiction. Time spent on passive activities while intoxicated is framed as a potential source of future regret.",
+                  "In the 30s: Described as a major 'inflection point,' this decade sees a reduction in external support structures, making personal initiative more critical for progress. Most people are said to naturally reduce or quit cannabis as priorities shift to careers and family. Those who continue heavy use risk social and professional stagnation as their peers advance."
+                ]
+              },
+              {
+                "timestamp": "10:15",
+                "title": "Social and Relational Consequences",
+                "bullets": [
+                  "Heavy cannabis use is linked to the degradation of relationships.",
+                  "Friendships: Building a healthy social life in one's 20s is posited as the single greatest predictor of future happiness, making social withdrawal particularly consequential. Studies are cited showing cannabis can worsen social anxiety for some, leading to social avoidance and unreliability. As addiction causes withdrawal from shared hobbies, friendships can atrophy. In the 30s, a weed-centric lifestyle becomes incompatible with peers who have less time, leading to an 'isolation trap' where the user's social circle narrows to other users, reinforcing the behavior.",
+                  "Romantic Relationships: Partners of daily users report feeling neglected, leading to communication breakdown and loss of trust. The addicted partner often lacks self-awareness of the damage caused and can be blindsided when the relationship ends. A cannabis addiction is argued to become increasingly unattractive as partners are expected to share adult responsibilities."
+                ]
+              },
+              {
+                "timestamp": "15:45",
+                "title": "Career and Achievement Consequences",
+                "bullets": [
+                  "Long-term studies are cited linking heavy cannabis use to negative professional and financial outcomes, even when controlling for family background.",
+                  "These outcomes include reduced academic performance, lower income, and less stable employment.",
+                  "The addiction's mechanisms include poor work performance, procrastination, and missed opportunities.",
+                  "This leads to a deficit of personal growth and life experiences (e.g., less travel, fewer new people met), causing one to have 'lived less' than their peers.",
+                  "The direct financial cost can be thousands of dollars annually, hindering savings.",
+                  "The social 'slack' afforded in one's 20s is said to expire in the 30s, making a lack of career progression more detrimental.",
+                  "Studies are cited showing long-term users report significantly lower life satisfaction."
+                ]
+              },
+              {
+                "timestamp": "20:00",
+                "title": "Mental Health Consequences",
+                "bullets": [
+                  "While cannabis may be used for initial relief, the source claims long-term use can damage the brain's reward system and emotional regulation.",
+                  "This can worsen underlying anxiety and depression, creating a vicious cycle where users self-medicate with more cannabis, which in turn exacerbates the problem.",
+                  "This impairs coping skills and can cause mood swings and irritability.",
+                  "The addiction is described as holding back a 'dam of bottled up negative feelings.'",
+                  "Conversely, research is cited showing that addicted individuals who quit experience a noticeable improvement in their mental health."
+                ]
+              }
+            ],
+            "demonstrations": [],
+            "closing_takeaway": "Long-term problematic cannabis use can lead to a cycle of stagnation, isolation, and worsening mental health, with consequences that become increasingly detrimental as individuals transition from their 20s to 30s, underscoring the importance of addressing CUD for overall well-being and life achievement."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]
