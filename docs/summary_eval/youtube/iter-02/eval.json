@@ -1,10 +1,10 @@
 {
   "g_eval": {
-    "coherence": 1.0,
-    "consistency": 1.0,
-    "fluency": 1.0,
-    "relevance": 1.0,
-    "reasoning": "The summary is a schema fallback, resulting in a single, incomplete sentence for the brief summary which is then repeated in the detailed summary. The tags are generic and irrelevant, and the label is missing. The output is completely unusable as a summary."
+    "coherence": 4.5,
+    "consistency": 5.0,
+    "fluency": 4.0,
+    "relevance": 5.0,
+    "reasoning": "The detailed summary is exceptionally well-structured and comprehensive. However, the brief summary is an ungrammatical, incomplete sentence fragment, which significantly harms its fluency and coherence."
   },
   "finesure": {
     "faithfulness": {
@@ -12,10 +12,24 @@
       "items": []
     },
     "completeness": {
-      "score": 0.0,
+      "score": 0.85,
       "items": [
         {
-          "claim": "The summary omits the vast majority of the video's content.",
+          "claim": "The brief summary should identify the video format.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary should name key speakers or entities.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The tags should include one identifying the content format.",
           "fact": null,
           "sentence": null,
           "span": null,
@@ -24,41 +38,51 @@
       ]
     },
     "conciseness": {
-      "score": 1.0,
-      "items": []
+      "score": 0.9,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "Theories suggest it disrupt",
+          "importance": null
+        }
+      ]
     }
   },
   "summac_lite": {
-    "score": 1.0,
+    "score": 0.97,
     "contradicted_sentences": [],
-    "neutral_sentences": []
+    "neutral_sentences": [
+      {
+        "sentence": "Theories suggest it disrupt",
+        "reason": "This is an incomplete sentence fragment and cannot be fully verified against the source."
+      }
+    ]
   },
   "rubric": {
     "components": [
       {
         "id": "brief_summary",
-        "score": 0.0,
+        "score": 10.0,
         "max_points": 25,
-        "criteria_fired": [],
+        "criteria_fired": [
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.no_clickbait"
+        ],
         "criteria_missed": [
           "brief.thesis_capture",
           "brief.format_identified",
           "brief.speakers_captured",
-          "brief.major_segments_outlined",
-          "brief.takeaways_surfaced",
-          "brief.length_5_to_7_sentences",
-          "brief.no_clickbait",
-          "schema_failure"
+          "brief.length_5_to_7_sentences"
         ]
       },
       {
         "id": "detailed_summary",
-        "score": 4.0,
+        "score": 45.0,
         "max_points": 45,
         "criteria_fired": [
-          "detailed.no_sponsor_padding"
-        ],
-        "criteria_missed": [
           "detailed.chronological_order",
           "detailed.all_chapters_covered",
           "detailed.demonstrations_preserved",
@@ -66,62 +90,56 @@
           "detailed.examples_purpose_not_verbatim",
           "detailed.entities_named",
           "detailed.closing_takeaway",
-          "schema_failure"
-        ]
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": []
       },
       {
         "id": "tags",
-        "score": 6.0,
+        "score": 13.0,
         "max_points": 15,
         "criteria_fired": [
           "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.technologies_named",
           "tags.no_unsupported_claims"
         ],
         "criteria_missed": [
-          "tags.topical_specificity",
-          "tags.format_tag_present",
-          "tags.technologies_named",
-          "schema_failure"
+          "tags.format_tag_present"
         ]
       },
       {
         "id": "label",
-        "score": 0.0,
+        "score": 13.0,
         "max_points": 15,
-        "criteria_fired": [],
-        "criteria_missed": [
-          "label.content_first_3_to_5_words",
+        "criteria_fired": [
           "label.reflects_primary_topic",
-          "label.no_clickbait_retention",
-          "schema_failure"
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": [
+          "label.content_first_3_to_5_words"
         ]
       }
     ],
     "caps_applied": {
-      "hallucination_cap": 60,
+      "hallucination_cap": null,
       "omission_cap": null,
       "generic_cap": null
     },
-    "anti_patterns_triggered": [
-      {
-        "id": "schema_failure",
-        "source_region": "structured_payload",
-        "auto_cap": 60
-      }
-    ]
+    "anti_patterns_triggered": []
   },
   "maps_to_metric_summary": {
-    "g_eval": 0.0,
-    "finesure": 13.7,
-    "qafact": 0.0,
-    "summac": 44.44
+    "g_eval": 84.0,
+    "finesure": 91.0,
+    "qafact": 93.0,
+    "summac": 100.0
   },
   "editorialization_flags": [],
   "evaluator_metadata": {
     "prompt_version": "evaluator.v3",
     "rubric_version": "rubric_youtube.v1",
-    "total_tokens_in": 9718,
-    "total_tokens_out": 1063,
-    "latency_ms": 33253
+    "total_tokens_in": 14192,
+    "total_tokens_out": 1194,
+    "latency_ms": 41371
   }
 }

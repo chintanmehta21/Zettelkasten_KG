@@ -3,29 +3,29 @@ eval_json_hash_at_review: "NOT_CONSULTED"
 # Manual Review - YouTube iter-02
 
 ## brief_summary (/25)
-The brief summary is badly malformed because it is just a transcript fragment rendered as markdown-like bullets rather than a 5-7 sentence synthesis. It does surface that the video concerns the historical discovery of ayahuasca and the Banisteria caapi vine, so there is a small amount of topic signal. However, it never states the actual thesis of the video, does not identify the format, and does not name the host, channel, or expert speakers. It also does not surface durable takeaways a viewer would remember after watching. This fails most of the brief-summary contract and reads like a broken extraction rather than a summary.
+The brief summary is much stronger than the baseline because it clearly identifies DMT as the main topic, touches history, mechanism, delivery methods, and subjective effects, and avoids the previous fabricated chapter structure. It also surfaces a real high-level thesis about DMT's identity, neurological action, and experiential impact. The main weakness is that the brief appears truncated at the end, so it does not land a clean closing sentence or fully surface the final takeaway. It also still fails to identify the channel/host and does not explicitly name the featured researchers in the brief itself. The format is only implicit unless the reader looks at the detailed payload.
 
-Score: 4/25
+Score: 17/25
 
 ## detailed_summary (/45)
-The detailed summary has collapsed into schema fallback, so there is only one synthetic heading and one duplicated transcript fragment instead of a chronological walkthrough. That means the summary does not cover the historical arc, the chemistry and pharmacology explanation, the expert commentary, the warnings about use, or the clinical-study material visible in the source text. There is no proper chapter progression, no preservation of demonstrations or topic turns, and no real closing takeaway. Because the content is mostly a raw excerpt, it also reproduces phrasing too literally rather than summarizing purpose. This is the clearest failure in the output.
+The detailed summary is materially improved and now follows a believable chronology from indigenous use and Richard Spruce through synthesis, psychedelic research, prohibition, Strassman's trials, administration modes, theories, and safety. It captures named entities, important mechanisms, subjective reports, and practical cautions with much better coverage than loop 1. The strongest part is that the summary now preserves the video's major educational arcs rather than inventing fake timestamped chapters. The main deduction is structural polish: several segments still use placeholder `00:00` timestamps instead of genuine in-video anchors, and the payload is dense enough that some topic groups feel more like note clusters than clean video segments. Even so, this is a solid source-grounded detailed summary.
 
-Score: 5/45
+Score: 39/45
 
 ## tags (/15)
-The tag set has the right count, but most of the tags are generic system boilerplate rather than source-grounded topical tags. `_schema_fallback_` is an implementation artifact, and `knowledge`, `notes`, `research`, `zettelkasten`, and `capture` are not useful topical descriptors for this video. There is no format tag, no mention of DMT, ayahuasca, psychedelics, neuroscience, or related entities actually present in the source. This tag set would be weak for retrieval and weak for human scanning.
+The tags are specific, source-grounded, and useful for retrieval. They capture domain, mechanism, substance, history, and therapeutic context without slipping back into generic boilerplate. The main miss is format metadata: there is no explicit lecture/commentary/documentary-style tag, and there is no creator/channel tag even though the rubric encourages that. Still, this is a strong tag set overall.
 
-Score: 2/15
+Score: 13/15
 
 ## label (/15)
-The label is concise and matches the source title shape, but that is also the main problem: it retains the original clickbait framing instead of converting the title into a content-first declarative label. It does not make the primary topic explicit enough for a knowledge note, since the key subject is DMT rather than a vague "strangest drug" hook. The wording is readable, but it does not meet the rubric's anti-clickbait intent.
+The label is much more content-first than the original clickbait title and correctly foregrounds DMT. It is concise and descriptive, though slightly broad and a little list-like. "Identity, History, Effects, and Theories" works for a knowledge note, but it still feels closer to a table-of-contents label than a crisp declarative title. This is a clear improvement over baseline and no longer reads as pure YouTube hook retention.
 
-Score: 6/15
+Score: 13/15
 
 ## Anti-patterns
-Triggered: `speakers_absent` yes, because no host/channel/expert names are captured in the summary. `clickbait_label_retention` yes, because the label repeats the hook phrasing from the source title. A schema-fallback artifact is also visible in both the tags and detailed summary. `invented_chapter` does not appear to be the core problem in this run; structural collapse is.
+No obvious `invented_chapter` issue in this run. No schema-fallback artifact. Residual issue: speaker/host capture is still weak because the brief does not identify the channel or foreground the key experts, even though some named people appear later in the detailed summary. The remaining timestamp placeholders in several later segments are worth watching, but they do not look like the same hallucinated-structure failure from iter-01.
 
 ## Most impactful improvement for iter-03
-The next fix should target the YouTube structured-extraction contract directly. The ingest layer now includes timestamp markers, but the summarizer is failing to turn that text into valid `YouTubeStructuredPayload`, so the whole run degrades into fallback garbage. The production-grade fix is to make the YouTube extraction path robust to timestamp-rich transcripts by tightening prompt/schema handling and adding a regression test that proves timestamped input still yields a valid structured payload instead of `_schema_fallback_`.
+The next tuning pass should focus on the remaining briefing-quality misses: make the brief a complete 5-7 sentence synthesis, explicitly name the host/channel plus the most important researchers, and ensure the format is stated directly. After that, the next biggest quality lift would be replacing placeholder `00:00` segment anchors with more faithful coarse timestamps or clearer untimed section labeling so the detailed summary stays chronologically grounded without collapsing later sections together.
 
-estimated_composite: 24.0
+estimated_composite: 86.0
