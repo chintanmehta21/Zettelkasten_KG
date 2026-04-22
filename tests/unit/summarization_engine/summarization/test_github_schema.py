@@ -114,3 +114,37 @@ def test_github_schema_repairs_brief_into_multi_sentence_contract():
     assert "Documented public surfaces include" in payload.brief_summary
     assert len(payload.brief_summary) <= 400
     assert "Its." not in payload.brief_summary
+
+
+def test_github_schema_derives_public_interfaces_and_usage_from_section_content():
+    payload = GitHubStructuredPayload(
+        mini_title="fastapi/fastapi",
+        architecture_overview=(
+            "FastAPI is an ASGI framework built on Starlette and Pydantic for API "
+            "validation, routing, and documentation."
+        ),
+        brief_summary="Short broken brief",
+        tags=["python", "api", "framework", "async", "pydantic", "starlette", "openapi"],
+        benchmarks_tests_examples=["TechEmpower benchmarks rank the framework highly."],
+        detailed_summary=[
+            GitHubDetailedSection(
+                heading="APIs & Features",
+                bullets=[
+                    "Serves Swagger UI (`/docs`) and ReDoc (`/redoc`) by default.",
+                    "The `fastapi dev` CLI command starts a development server with reload.",
+                ],
+                sub_sections={
+                    "Installation": [
+                        'Standard installation uses `pip install "fastapi[standard]"`.'
+                    ]
+                },
+                module_or_feature="api",
+                main_stack=["Python", "Starlette", "Pydantic"],
+                public_interfaces=[],
+                usability_signals=[],
+            )
+        ],
+    )
+
+    assert "/docs" in payload.brief_summary or "/redoc" in payload.brief_summary
+    assert "pip install" in payload.brief_summary or "fastapi dev" in payload.brief_summary

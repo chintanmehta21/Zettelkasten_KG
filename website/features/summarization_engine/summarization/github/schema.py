@@ -177,6 +177,16 @@ def _public_surface_phrase(detailed_summary: list[GitHubDetailedSection]) -> str
             cleaned = item.strip()
             if cleaned and cleaned not in interfaces:
                 interfaces.append(cleaned)
+        for bullet in section.bullets:
+            for match in re.findall(r"`([^`]+)`", bullet):
+                cleaned = match.strip()
+                if cleaned and cleaned not in interfaces and (
+                    cleaned.startswith("/")
+                    or " " in cleaned
+                    or cleaned.endswith(")")
+                    or cleaned in {"OpenAPI", "OpenAPI 3", "JSON Schema", "Swagger UI", "ReDoc", "ASGI"}
+                ):
+                    interfaces.append(cleaned)
     if not interfaces:
         return "documented APIs and developer tooling"
     return ", ".join(interfaces[:4])
@@ -188,6 +198,11 @@ def _usage_phrase(detailed_summary: list[GitHubDetailedSection]) -> str:
             lowered = bullet.lower()
             if any(token in lowered for token in ("pip install", "install", "dev command", "fastapi dev", "run", "reload")):
                 return _trim_fragment(bullet, 12)
+        for values in section.sub_sections.values():
+            for bullet in values:
+                lowered = bullet.lower()
+                if any(token in lowered for token in ("pip install", "install", "dev command", "fastapi dev", "run", "reload")):
+                    return _trim_fragment(bullet, 12)
     for section in detailed_summary:
         for item in section.usability_signals:
             cleaned = item.strip()
