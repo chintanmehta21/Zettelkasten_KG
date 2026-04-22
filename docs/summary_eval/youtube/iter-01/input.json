@@ -4,17 +4,17 @@
   "urls": [
     "https://www.youtube.com/watch?v=hhjhU5MXZOo"
   ],
-  "started_at": "2026-04-22T07:10:56.200543+00:00",
-  "ended_at": "2026-04-22T07:13:50.942009+00:00",
+  "started_at": "2026-04-22T09:28:07.216735+00:00",
+  "ended_at": "2026-04-22T09:32:10.448869+00:00",
   "env": "dev",
   "held_out": false,
-  "prompt_version": "evaluator.v2",
+  "prompt_version": "evaluator.v3",
   "records": [
     {
       "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
-      "composite": 32.7,
+      "composite": 60.0,
       "extraction_confidence": "high",
-      "latency_ms": 174650,
+      "latency_ms": 243151,
       "ingestor_version": "2.0.0"
     }
   ],

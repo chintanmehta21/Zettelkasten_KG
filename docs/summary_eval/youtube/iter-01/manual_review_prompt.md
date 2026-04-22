@@ -179,29 +179,106 @@ SUMMARY:
 
 ### SUMMARY
 ```yaml
-mini_title: The Strangest Drug Ever Studied
-brief_summary: '### N,N-Dimethyltryptamine (DMT) - Factual Summary **Chemical Properties
-  & Neurological Mechanism** N,N-Dimethyltryptamine (DMT) is a naturally occurring
-  psychedelic compound found in over 50 plant species, various mammals, and endogenously
-  in the human body. Its indole ring structure is similar to serotonin, LSD, and psilocybin.
-  DMT binds to serotonin receptors, disrupting'
+mini_title: DMT (N,N-dimethyltryptamine)
+brief_summary: This summary provides an overview of DMT (N,N-dimethyltryptamine),
+  covering its historical discovery, chemical properties, pharmacological mechanisms,
+  methods of administration, subjective effects, and current scientific hypotheses
+  regarding its action in the brain. It also touches on its therapeutic potential
+  and remaining unanswered questions.
 tags:
-- youtube
-- zettelkasten
-- summary
-- capture
-- research
-- source
-- notes
-- ai
+- dmt
+- n,n-dimethyltryptamine
+- psychedelics
+- neuroscience
+- pharmacology
+- ayahuasca
+- rick-strassman
+- mental-health
+- consciousness
+- history-of-science
 detailed_summary:
-- heading: Summary
+- heading: thesis
   bullets:
-  - '### N,N-Dimethyltryptamine (DMT) - Factual Summary **Chemical Properties & Neurological
-    Mechanism** N,N-Dimethyltryptamine (DMT) is a naturally occurring psychedelic
-    compound found in over 50 plant species, various mammals, and endogenously in
-    the human body. Its indole ring structure is similar to serotonin, LSD, and psilocybin.
-    DMT binds to serotonin receptors, disrupting'
+  - DMT (N,N-dimethyltryptamine) is a potent psychedelic compound with a rich history,
+    complex pharmacology, profound subjective effects, and emerging therapeutic potential,
+    despite many aspects of its endogenous function and precise mechanisms remaining
+    unknown.
+  sub_sections: {}
+- heading: format
+  bullets:
+  - lecture
+  sub_sections: {}
+- heading: chapters_or_segments
+  bullets:
+  - '{"timestamp": "00:00", "title": "Timeline & Discovery", "bullets": ["1852: British
+    botanist Richard Spruce documented *capi*, a psychedelic brew from *Banisteriopsis
+    caapi* in northwestern Brazil.", "1857: Spruce encountered and consumed *ayahuasca*
+    in Peru, reporting \"nauseous\" effects and visions shifting from \"gorgeous\"
+    to \"horrible.\"", "1930s: German-Canadian chemist Richard Manske performed the
+    first synthesis of DMT.", "1943: Albert Hofmann''s self-experiment with LSD initiated
+    modern psychedelic research.", "1960s: Psychedelics entered popular culture; a
+    German team detected DMT in human blood, and Julius Axelrod provided evidence
+    for its endogenous production.", "1966-1971: LSD was outlawed in California, Nevada,
+    and federally; the 1971 UN Convention restricted psychedelic research for decades.",
+    "1990s: Dr. Rick Strassman conducted the first US-based human study on psychedelics
+    in over 20 years, administering ~400 doses of DMT to 60 volunteers and coining
+    it ''the spirit molecule.''"]}'
+  - '{"timestamp": "00:00", "title": "Chemistry & Pharmacology", "bullets": ["DMT
+    is a simple molecule with a nitrogen atom, two methyl groups, and an indole ring,
+    structurally similar to serotonin, LSD, and psilocybin.", "It binds to serotonin
+    receptors in the brain, altering perception.", "DMT is found in at least 50 plant
+    species and in mammals; in ayahuasca, DMT comes from leaves, while *B. caapi*
+    vine compounds make it orally active.", "5-MeO-DMT, found in Colorado River toad
+    secretions, is a related substance producing fewer visual hallucinations; licking
+    the toad is ineffective and unsafe.", "DMT is considered physiologically safe
+    and non-addictive, with a mechanism different from stimulants like cocaine."]}'
+  - '{"timestamp": "00:00", "title": "Administration & Subjective Effects", "bullets":
+    ["Smoking DMT leads to onset under 1 minute, with a peak lasting a few minutes.",
+    "Snorting DMT results in onset in a few minutes and a longer duration.", "IV injection
+    offers near-instant onset, used in clinical settings.", "Ayahuasca has an onset
+    after ~45 minutes, can last several hours, and often causes vomiting.", "Common
+    experiences include a ''rocket ship'' sensation, vivid geometric and colorful
+    visual hallucinations (Terrence McKenna''s ''fractal geometric shapes'').", "Feelings
+    of love, trust, and joy are reported more often than fear, alongside a sense of
+    profound insight or revelation.", "Encounters with entities (beings, guides, spirits,
+    aliens, clowns), famously termed ''self-transforming machine elves'' by McKenna,
+    are common.", "In Strassman''s study, ''Subject 34'' (Sarah) reported a ''cosmic
+    psychedelic buzzsaw,'' encounters with clowns, and a sense of being a ''spiritual
+    emissary.''", "Experiences are highly dependent on ''set and setting''; ''bad
+    trips'' can be unsettling for days.", "DMT can worsen existing mental health conditions
+    and is contraindicated for those with psychotic disorders."]}'
+  - '{"timestamp": "00:00", "title": "Neuroscience & Hypotheses", "bullets": ["DMT
+    induces global hyperconnectivity, disrupting normal brain hierarchy, reducing
+    top-down control, and increasing communication between networks.", "Neuroscientist
+    Chris Timmermann proposes functional deafferentation, where DMT disconnects the
+    brain from external sensory input, leading to an immersive internal simulation.",
+    "The peak DMT experience correlates with strong theta wave rhythms, similar to
+    REM sleep; Andrew Gallimore theorizes it''s like ''dreaming with your eyes open.''",
+    "The entity hypothesis suggests DMT hyper-activates social cognition regions,
+    causing the brain to simulate social relations and perceive sentient beings.",
+    "DMT trips share features with Near-Death Experiences (NDEs), though DMT experiences
+    are typically more visual, while NDEs are more disembodied.", "Strassman hypothesized
+    endogenous DMT release during birth, death, or mystical experiences.", "Animal
+    studies observed a spike in DMT levels in rat brains following cardiac arrest.",
+    "A 2019 study suggests endogenous DMT levels in the mammalian brain may be higher
+    than thought, potentially involved in wider physiological processes."]}'
+  - '{"timestamp": "00:00", "title": "Therapeutic Potential & Open Questions", "bullets":
+    ["Research on ayahuasca for war veterans shows mixed results, with some reporting
+    reduced depression and anxiety, but others experiencing worsening mental health.",
+    "Timmermann theorizes DMT could help depression by dynamically changing rigid,
+    negative beliefs about the self.", "Some studies suggest meditation and mindfulness-based
+    practices can offer similar positive effects to psychedelic experiences.", "Unanswered
+    questions include the precise mechanism for vivid hallucinations, the full purpose
+    of its endogenous production, and how it fundamentally alters a person''s life
+    in minutes."]}'
+  sub_sections: {}
+- heading: closing_takeaway
+  bullets:
+  - Despite its known history, chemistry, and profound subjective effects, the precise
+    mechanisms behind DMT's vivid hallucinations, the full purpose of its endogenous
+    production, and how it can fundamentally alter a person's life in minutes remain
+    significant unanswered questions, highlighting the ongoing need for further research
+    into its therapeutic potential and neuroscientific implications.
   sub_sections: {}
 metadata:
   source_type: youtube
@@ -210,14 +287,157 @@ metadata:
   date: null
   extraction_confidence: high
   confidence_reason: transcript via tier=ytdlp_player_rotation len=34612
-  total_tokens_used: 26124
-  gemini_pro_tokens: 23031
-  gemini_flash_tokens: 3093
-  total_latency_ms: 104977
+  total_tokens_used: 27293
+  gemini_pro_tokens: 23774
+  gemini_flash_tokens: 3519
+  total_latency_ms: 106386
   cod_iterations_used: 2
-  self_check_missing_count: 5
+  self_check_missing_count: 8
   patch_applied: true
   engine_version: 2.0.0
+  structured_payload:
+    mini_title: DMT (N,N-dimethyltryptamine)
+    brief_summary: This summary provides an overview of DMT (N,N-dimethyltryptamine),
+      covering its historical discovery, chemical properties, pharmacological mechanisms,
+      methods of administration, subjective effects, and current scientific hypotheses
+      regarding its action in the brain. It also touches on its therapeutic potential
+      and remaining unanswered questions.
+    tags:
+    - DMT
+    - N,N-dimethyltryptamine
+    - Psychedelics
+    - Neuroscience
+    - Pharmacology
+    - Ayahuasca
+    - Rick Strassman
+    - Mental Health
+    - Consciousness
+    - History of Science
+    speakers:
+    - Richard Spruce
+    - Richard Manske
+    - Albert Hofmann
+    - Julius Axelrod
+    - Rick Strassman
+    - Terrence McKenna
+    - Chris Timmermann
+    - Andrew Gallimore
+    guests: null
+    entities_discussed:
+    - DMT
+    - N,N-dimethyltryptamine
+    - LSD
+    - Ayahuasca
+    - 5-MeO-DMT
+    - Banisteriopsis caapi
+    - Serotonin receptors
+    - Colorado River toad
+    - PTSD
+    - Depression
+    - Near-Death Experience (NDE)
+    - REM sleep
+    - Theta wave rhythms
+    detailed_summary:
+      thesis: DMT (N,N-dimethyltryptamine) is a potent psychedelic compound with a
+        rich history, complex pharmacology, profound subjective effects, and emerging
+        therapeutic potential, despite many aspects of its endogenous function and
+        precise mechanisms remaining unknown.
+      format: lecture
+      chapters_or_segments:
+      - timestamp: 00:00
+        title: Timeline & Discovery
+        bullets:
+        - '1852: British botanist Richard Spruce documented *capi*, a psychedelic
+          brew from *Banisteriopsis caapi* in northwestern Brazil.'
+        - '1857: Spruce encountered and consumed *ayahuasca* in Peru, reporting "nauseous"
+          effects and visions shifting from "gorgeous" to "horrible."'
+        - '1930s: German-Canadian chemist Richard Manske performed the first synthesis
+          of DMT.'
+        - '1943: Albert Hofmann''s self-experiment with LSD initiated modern psychedelic
+          research.'
+        - '1960s: Psychedelics entered popular culture; a German team detected DMT
+          in human blood, and Julius Axelrod provided evidence for its endogenous
+          production.'
+        - '1966-1971: LSD was outlawed in California, Nevada, and federally; the 1971
+          UN Convention restricted psychedelic research for decades.'
+        - '1990s: Dr. Rick Strassman conducted the first US-based human study on psychedelics
+          in over 20 years, administering ~400 doses of DMT to 60 volunteers and coining
+          it ''the spirit molecule.'''
+      - timestamp: 00:00
+        title: Chemistry & Pharmacology
+        bullets:
+        - DMT is a simple molecule with a nitrogen atom, two methyl groups, and an
+          indole ring, structurally similar to serotonin, LSD, and psilocybin.
+        - It binds to serotonin receptors in the brain, altering perception.
+        - DMT is found in at least 50 plant species and in mammals; in ayahuasca,
+          DMT comes from leaves, while *B. caapi* vine compounds make it orally active.
+        - 5-MeO-DMT, found in Colorado River toad secretions, is a related substance
+          producing fewer visual hallucinations; licking the toad is ineffective and
+          unsafe.
+        - DMT is considered physiologically safe and non-addictive, with a mechanism
+          different from stimulants like cocaine.
+      - timestamp: 00:00
+        title: Administration & Subjective Effects
+        bullets:
+        - Smoking DMT leads to onset under 1 minute, with a peak lasting a few minutes.
+        - Snorting DMT results in onset in a few minutes and a longer duration.
+        - IV injection offers near-instant onset, used in clinical settings.
+        - Ayahuasca has an onset after ~45 minutes, can last several hours, and often
+          causes vomiting.
+        - Common experiences include a 'rocket ship' sensation, vivid geometric and
+          colorful visual hallucinations (Terrence McKenna's 'fractal geometric shapes').
+        - Feelings of love, trust, and joy are reported more often than fear, alongside
+          a sense of profound insight or revelation.
+        - Encounters with entities (beings, guides, spirits, aliens, clowns), famously
+          termed 'self-transforming machine elves' by McKenna, are common.
+        - In Strassman's study, 'Subject 34' (Sarah) reported a 'cosmic psychedelic
+          buzzsaw,' encounters with clowns, and a sense of being a 'spiritual emissary.'
+        - Experiences are highly dependent on 'set and setting'; 'bad trips' can be
+          unsettling for days.
+        - DMT can worsen existing mental health conditions and is contraindicated
+          for those with psychotic disorders.
+      - timestamp: 00:00
+        title: Neuroscience & Hypotheses
+        bullets:
+        - DMT induces global hyperconnectivity, disrupting normal brain hierarchy,
+          reducing top-down control, and increasing communication between networks.
+        - Neuroscientist Chris Timmermann proposes functional deafferentation, where
+          DMT disconnects the brain from external sensory input, leading to an immersive
+          internal simulation.
+        - The peak DMT experience correlates with strong theta wave rhythms, similar
+          to REM sleep; Andrew Gallimore theorizes it's like 'dreaming with your eyes
+          open.'
+        - The entity hypothesis suggests DMT hyper-activates social cognition regions,
+          causing the brain to simulate social relations and perceive sentient beings.
+        - DMT trips share features with Near-Death Experiences (NDEs), though DMT
+          experiences are typically more visual, while NDEs are more disembodied.
+        - Strassman hypothesized endogenous DMT release during birth, death, or mystical
+          experiences.
+        - Animal studies observed a spike in DMT levels in rat brains following cardiac
+          arrest.
+        - A 2019 study suggests endogenous DMT levels in the mammalian brain may be
+          higher than thought, potentially involved in wider physiological processes.
+      - timestamp: 00:00
+        title: Therapeutic Potential & Open Questions
+        bullets:
+        - Research on ayahuasca for war veterans shows mixed results, with some reporting
+          reduced depression and anxiety, but others experiencing worsening mental
+          health.
+        - Timmermann theorizes DMT could help depression by dynamically changing rigid,
+          negative beliefs about the self.
+        - Some studies suggest meditation and mindfulness-based practices can offer
+          similar positive effects to psychedelic experiences.
+        - Unanswered questions include the precise mechanism for vivid hallucinations,
+          the full purpose of its endogenous production, and how it fundamentally
+          alters a person's life in minutes.
+      demonstrations: []
+      closing_takeaway: Despite its known history, chemistry, and profound subjective
+        effects, the precise mechanisms behind DMT's vivid hallucinations, the full
+        purpose of its endogenous production, and how it can fundamentally alter a
+        person's life in minutes remain significant unanswered questions, highlighting
+        the ongoing need for further research into its therapeutic potential and neuroscientific
+        implications.
+  is_schema_fallback: false
 
 ```
 
@@ -247,4 +467,4 @@ Score each criterion. 5-15 sentences of prose per criterion, source-grounded. Ca
 Final line of the file must be `estimated_composite: NN.N`.
 
 Save the output at the path printed by the CLI. eval.json SHA256 of the already-computed standard evaluator run
-(for enforcement only, do NOT open that file): 2e2a1bbca152cceec6c58ea697d0d344a81b9e0f1cbb985c882b632e0b6bcb12
+(for enforcement only, do NOT open that file): 677ccb52a2b4b4521c04d19260bb3e9aea3c293cce5abc30841f1b823af79107
