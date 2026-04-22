@@ -380,6 +380,109 @@
     return { brief: fallback, detailed: fallback };
   }
 
+  function renderDualSummary(container, parts) {
+    container.innerHTML = '';
+    var brief = (parts && parts.brief) ? String(parts.brief).trim() : '';
+    var detailed = (parts && parts.detailed) ? String(parts.detailed).trim() : '';
+    var hasBrief = brief && brief !== 'No summary available for this zettel.';
+    var hasDetailed = detailed && detailed !== brief && detailed !== 'No summary available for this zettel.';
+
+    if (!hasBrief && !hasDetailed) {
+      container.textContent = 'No summary available for this zettel.';
+      return;
+    }
+
+    if (hasBrief) {
+      var briefWrap = document.createElement('div');
+      briefWrap.className = 'home-summary-section home-summary-brief';
+      var briefHeading = document.createElement('h3');
+      briefHeading.className = 'home-summary-section-heading';
+      briefHeading.textContent = 'Brief';
+      var briefBody = document.createElement('p');
+      briefBody.className = 'home-summary-section-body';
+      briefBody.textContent = brief;
+      briefWrap.appendChild(briefHeading);
+      briefWrap.appendChild(briefBody);
+      container.appendChild(briefWrap);
+    }
+
+    if (hasDetailed) {
+      if (hasBrief) {
+        var divider = document.createElement('hr');
+        divider.className = 'home-summary-divider';
+        container.appendChild(divider);
+      }
+      var detailedWrap = document.createElement('div');
+      detailedWrap.className = 'home-summary-section home-summary-detailed';
+      var detailedHeading = document.createElement('h3');
+      detailedHeading.className = 'home-summary-section-heading';
+      detailedHeading.textContent = 'Detailed';
+      detailedWrap.appendChild(detailedHeading);
+      renderMarkdownLite(detailedWrap, detailed);
+      container.appendChild(detailedWrap);
+    }
+  }
+
+  function renderMarkdownLite(container, markdown) {
+    var lines = String(markdown || '').split(/\r?\n/);
+    var paraBuf = [];
+    var listStack = null; // { el: <ul>, level: number }
+
+    function flushPara() {
+      if (!paraBuf.length) return;
+      var joined = paraBuf.join(' ').trim();
+      if (joined) {
+        var p = document.createElement('p');
+        p.className = 'home-summary-para';
+        p.textContent = joined;
+        container.appendChild(p);
+      }
+      paraBuf = [];
+    }
+    function closeList() {
+      listStack = null;
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var trimmed = line.replace(/\s+$/, '');
+      if (!trimmed.trim()) {
+        flushPara();
+        closeList();
+        continue;
+      }
+      var h3 = trimmed.match(/^###\s+(.*)$/);
+      var h2 = trimmed.match(/^##\s+(.*)$/);
+      var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
+      if (h2 || h3) {
+        flushPara();
+        closeList();
+        var heading = document.createElement(h2 ? 'h4' : 'h5');
+        heading.className = h2 ? 'home-summary-h2' : 'home-summary-h3';
+        heading.textContent = (h2 ? h2[1] : h3[1]).trim();
+        container.appendChild(heading);
+        continue;
+      }
+      if (bullet) {
+        flushPara();
+        if (!listStack) {
+          listStack = { el: document.createElement('ul') };
+          listStack.el.className = 'home-summary-list';
+          container.appendChild(listStack.el);
+        }
+        var li = document.createElement('li');
+        li.className = 'home-summary-list-item';
+        li.textContent = bullet[1].trim();
+        listStack.el.appendChild(li);
+        continue;
+      }
+      closeList();
+      paraBuf.push(trimmed.trim());
+    }
+    flushPara();
+    closeList();
+  }
+
   function tryParseSummaryObject(rawText) {
     var cleaned = normalizeSummaryText(rawText || '');
     if (!cleaned) return null;
@@ -675,7 +778,10 @@
         date: today,
         group: sourceType,
         url: result.source_url || url,
-        summary: result.brief_summary || result.summary || '',
+        summary: JSON.stringify({
+          brief_summary: result.brief_summary || '',
+          detailed_summary: result.summary || result.brief_summary || ''
+        }),
         tags: result.tags || []
       };
 
@@ -741,7 +847,7 @@
       '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';
 
     var summaryParts = extractSummaryParts(node.summary || node.description || '');
-    text.textContent = summaryParts.detailed || summaryParts.brief || 'No summary available for this zettel.';
+    renderDualSummary(text, summaryParts);
 
     tags.innerHTML = '';
     var nodeTags = node.tags || [];
