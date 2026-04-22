@@ -78,3 +78,37 @@ def test_github_schema_rejects_short_architecture_overview():
 def test_github_schema_rejects_empty_detailed_summary():
     with pytest.raises(ValidationError):
         GitHubStructuredPayload(**{**_base_payload_kwargs(), "detailed_summary": []})
+
+
+def test_github_schema_normalizes_hash_tags_and_preserves_reserved_github_tags():
+    payload = GitHubStructuredPayload(
+        **{
+            **_base_payload_kwargs(),
+            "tags": [
+                "#python",
+                "#api",
+                "#framework",
+                "#async",
+                "#pydantic",
+                "#starlette",
+                "#openapi",
+            ],
+        }
+    )
+
+    assert all(not tag.startswith("#") for tag in payload.tags)
+    assert "python" in payload.tags
+    assert "openapi" in payload.tags
+
+
+def test_github_schema_repairs_brief_into_multi_sentence_contract():
+    payload = GitHubStructuredPayload(
+        **{
+            **_base_payload_kwargs(),
+            "brief_summary": "Tiny two sentence summary. Missing the rubric contract.",
+        }
+    )
+
+    sentences = [s for s in payload.brief_summary.split(". ") if s.strip()]
+    assert len(sentences) >= 5
+    assert "Documented public surfaces include" in payload.brief_summary
