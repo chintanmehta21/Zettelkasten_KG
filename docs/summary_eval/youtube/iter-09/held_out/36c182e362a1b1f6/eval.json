@@ -1,0 +1,309 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.0,
+    "fluency": 4.5,
+    "relevance": 4.0,
+    "reasoning": "The summary is generally coherent and relevant, covering the main points of the video. However, some details in the brief summary are slightly inaccurate or incomplete, and the detailed summary could be more precise in its descriptions."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "This commentary video explains The petrodollar system, established through a U.S.-Saudi agreement post-1973, underpins the U.S. dollar's global reserve status and enables.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "It moves through sections on Petrodollar System: Mechanics & Origins and Economic Impact on the United States. It also covers United States and Saudi Arabia. Key voices and figures include Source and United States.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.75,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The petrodollar system, established through a U.S.-Saudi agreement post-1973, underpins the U.S. dollar's global reserve status and enables U.S. deficit spending. However, this system is increasingly vulnerable due to perceived U.S. security failures, evolving global energy markets, the rise of China as an economic and military alternative, and Gulf states' efforts to diversify their economies and investments away from U.S. assets.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Agreement: Gulf States sell oil exclusively in U.S. dollars (USD) in exchange for U.S. military protection, traced to a Nixon administration deal with Saudi Arabia after the 1973 oil crisis, formalized by 1975.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Hypothetical Scenario (March 2026): A U.S./Israeli strike on Iran prompts retaliatory attacks on Gulf infrastructure; the U.S. fails to prevent the attacks and refuses to resupply Qatar, whose Patriot missile stockpiles could be depleted in four days.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.85,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.9,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "This commentary video explains The petrodollar system, established through a U.S.-Saudi agreement post-1973, underpins the U.S. dollar's global reserve status and enables.",
+        "reason": "The sentence is incomplete and thus cannot be fully evaluated for entailment."
+      },
+      {
+        "sentence": "It moves through sections on Petrodollar System: Mechanics & Origins and Economic Impact on the United States. It also covers United States and Saudi Arabia. Key voices and figures include Source and United States.",
+        "reason": "The statement about 'Key voices and figures' is partially inaccurate and not directly entailed by the source content in the way it's phrased."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Brief summary states the video's central thesis or learning objective in one sentence."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 1.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief names the host/channel and any guests or key products/libraries discussed."
+        ]
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 3.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+        ]
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief highlights 2-3 takeaways a viewer would remember after watching."
+        ]
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief is 5-7 sentences."
+        ]
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief does not reproduce clickbait/hook phrasing from the source title."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 5.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "Detailed bullets follow the video's chronological order."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 4.0,
+        "max_points": 10,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Every substantive chapter or major topic turn is covered by at least one bullet."
+        ]
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 4.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Demonstrations, code walkthroughs, or live examples are captured."
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Warnings, caveats, limitations the speaker mentions are captured."
+        ]
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Products, libraries, datasets, or case studies referenced are named."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 5.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "The video's closing takeaway is explicitly captured."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Exactly 7-10 tags."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Tags capture specific subject matter, not generic terms."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Named technologies/libraries/frameworks from the video are tagged."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "No tags imply topics not actually covered."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label is 3-5 words (max 50 chars), content-first, declarative."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label reflects the primary topic, not side tangents."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label removes clickbait/hook fragments from the original title."
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 75.0,
+    "finesure": 75.0,
+    "qafact": 75.0,
+    "summac": 90.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 15215,
+    "total_tokens_out": 2892,
+    "latency_ms": 67143,
+    "ragas_faithfulness": -1.0
+  }
+}

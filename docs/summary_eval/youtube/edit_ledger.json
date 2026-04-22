@@ -48,6 +48,13 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 43.500000000000014
+    },
+    {
+      "iter": 8,
+      "files": [],
+      "targeted_criterion": "brief.speakers_captured",
+      "criterion_delta": 0.0,
+      "composite_delta": -27.933333333333344
     }
   ]
 }

@@ -1,0 +1,329 @@
+{
+  "g_eval": {
+    "coherence": 3.0,
+    "consistency": 4.0,
+    "fluency": 4.5,
+    "relevance": 3.5,
+    "reasoning": "The summary is generally coherent and fluent, but it misses key aspects of the video's structure and content, particularly the detailed historical evolution and the psychological toll on chess masters. The thesis capture is weak, and the major segments are not well outlined. Relevance is moderate as it touches on chess and its metaphorical use but lacks depth."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.7,
+      "items": [
+        {
+          "claim": "The video moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess.",
+          "fact": null,
+          "sentence": "It moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Key voices and figures include Chataranga and Shatrange.",
+          "fact": null,
+          "sentence": "Key voices and figures include Chataranga and Shatrange.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.4,
+      "items": [
+        {
+          "claim": "The video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'.",
+          "fact": null,
+          "sentence": "This commentary video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "It covers Chataranga and Shatrange.",
+          "fact": null,
+          "sentence": "It also covers Chataranga and Shatrange.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The main takeaway is Chess, a game of immense combinatorial.",
+          "fact": null,
+          "sentence": "The main takeaway is Chess, a game of immense combinatorial.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.6,
+      "items": [
+        {
+          "claim": "The summary is 7 sentences long.",
+          "fact": null,
+          "sentence": "This commentary video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'. It moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess. It also covers Chataranga and Shatrange. Key voices and figures include Chataranga and Shatrange. The main takeaway is Chess, a game of immense combinatorial.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.4,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "This commentary video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'.",
+        "reason": "The video is a commentary, discusses chess history and rules, and uses 'zugzwang' as a metaphor, but the primary thesis is broader, encompassing infinity simulation and psychological toll."
+      },
+      {
+        "sentence": "It moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess.",
+        "reason": "The video does cover these topics, but the summary omits other significant sections like 'Piece Evolution and Precedents', 'The Psychological Toll on Masters', and 'Chess as an 'Infinity Simulator''."
+      },
+      {
+        "sentence": "It also covers Chataranga and Shatrange.",
+        "reason": "These historical games are covered, but the summary misses the detailed evolution of pieces and the psychological aspects discussed."
+      },
+      {
+        "sentence": "Key voices and figures include Chataranga and Shatrange.",
+        "reason": "Chataranga and Shatrange are games, not voices or figures. The video discusses many historical figures and real-world examples of animals in military roles."
+      },
+      {
+        "sentence": "The main takeaway is Chess, a game of immense combinatorial.",
+        "reason": "While chess has immense combinatorial aspects, this is an incomplete takeaway. The video emphasizes its role as an 'infinity simulator' and its psychological impact."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 2.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief summary states the video's central thesis or learning objective in one sentence."
+        ]
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief names the host/channel and any guests or key products/libraries discussed."
+        ]
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 1.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+        ]
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 1.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief highlights 2-3 takeaways a viewer would remember after watching."
+        ]
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief is 5-7 sentences."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief does not reproduce clickbait/hook phrasing from the source title."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Detailed bullets follow the video's chronological order."
+        ]
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 0.0,
+        "max_points": 10,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Every substantive chapter or major topic turn is covered by at least one bullet."
+        ]
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Demonstrations, code walkthroughs, or live examples are captured."
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Warnings, caveats, limitations the speaker mentions are captured."
+        ]
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+        ]
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Products, libraries, datasets, or case studies referenced are named."
+        ]
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "The video's closing takeaway is explicitly captured."
+        ]
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+        ]
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Exactly 7-10 tags."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Tags capture specific subject matter, not generic terms."
+        ]
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 0.0,
+        "max_points": 3,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Named technologies/libraries/frameworks from the video are tagged."
+        ]
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 2.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "No tags imply topics not actually covered."
+        ]
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Label is 3-5 words (max 50 chars), content-first, declarative."
+        ]
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Label reflects the primary topic, not side tangents."
+        ]
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Label removes clickbait/hook fragments from the original title."
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 20.0,
+    "finesure": 26.666666666666668,
+    "qafact": 0.0,
+    "summac": 40.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 16224,
+    "total_tokens_out": 3229,
+    "latency_ms": 65642,
+    "ragas_faithfulness": -1.0
+  }
+}
