@@ -1,0 +1,140 @@
+{
+  "g_eval": {
+    "coherence": 1.0,
+    "consistency": 1.0,
+    "fluency": 1.0,
+    "relevance": 1.0,
+    "reasoning": "The output is not a summary. It appears to be a malformed template or placeholder text. It consists of metadata, tags, and a single incomplete sentence, which is repeated in both the brief and detailed summary sections. The content is completely irrelevant to the source material, and the tags provided are meta-tags about the summarization process, not the topic of the Reddit thread."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "**ID:** 202407221035 **Title:** Rajkot's Perceived Influence on IPO Grey Market Premium (GMP) **Tags:** #IPO #GreyMarket #GMP #Rajkot #InvestingBehavior #India #Hyundai A Reddit post claims Rajkot, a tier-2 city in Gujarat, has a disproportionate influence on India's IPO Grey Market Premium (GMP).",
+        "reason": "This is not a summary sentence; it is a mix of metadata and an incomplete fragment that does not constitute a summary."
+      },
+      {
+        "sentence": "The post's content was alleged by multiple commenters to",
+        "reason": "This is an incomplete sentence fragment."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 0.0,
+        "max_points": 25,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "brief.op_intent_captured",
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.caveats_surfaced",
+          "brief.neutral_tone",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 0.0,
+        "max_points": 45,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.unresolved_questions",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 6.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.no_value_judgments"
+        ],
+        "criteria_missed": [
+          "tags.subreddit_present",
+          "tags.thread_type",
+          "tags.topical_specificity"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 0.0,
+        "max_points": 15,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "label.rsubreddit_prefix",
+          "label.central_issue",
+          "label.neutral"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 0.0,
+    "finesure": 8.11,
+    "qafact": 0.0,
+    "summac": 0.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v2",
+    "rubric_version": "rubric_reddit.v1",
+    "total_tokens_in": 6491,
+    "total_tokens_out": 1202,
+    "latency_ms": 45212,
+    "ragas_faithfulness": -1.0
+  }
+}

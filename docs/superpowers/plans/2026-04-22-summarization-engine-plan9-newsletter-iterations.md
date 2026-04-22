@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive Newsletter summarization quality to spec-§10.1 production-grade (composite ≥ 92 + ragas_faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook.
 
 **Architecture:** Same two-phase loop runbook as Plans 6-8. Per-source focus: Newsletter's rubric_newsletter.yaml emphasizes `brief.main_topic_thesis` (publication identity + central thesis in one sentence), `brief.conclusions_distinct` (separate conclusions from descriptive background), `brief.stance_preserved` (no editorializing), `label.branded_source_rule` (C2 hybrid: branded sources require publication name, others thesis-only), and anti-patterns `stance_mismatch` (auto_cap 60), `invented_number` (auto_cap 60), `branded_source_missing_publication` (auto_cap 90). Plan 4 shipped site-specific DOM extractors (Substack/Beehiiv/Medium), preheader + CTA + conclusions detectors, and a Gemini-Flash stance classifier; this plan tunes the summarizer to USE those signals as rubric requires.

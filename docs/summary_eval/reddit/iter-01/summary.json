@@ -1,0 +1,39 @@
+{
+  "mini_title": "Captured source",
+  "brief_summary": "**ID:** 202407221035 **Title:** Rajkot's Perceived Influence on IPO Grey Market Premium (GMP) **Tags:** #IPO #GreyMarket #GMP #Rajkot #InvestingBehavior #India #Hyundai A Reddit post claims Rajkot, a tier-2 city in Gujarat, has a disproportionate influence on India's IPO Grey Market Premium (GMP). The post's content was alleged by multiple commenters to",
+  "tags": [
+    "reddit",
+    "zettelkasten",
+    "summary",
+    "capture",
+    "research",
+    "source",
+    "notes",
+    "ai"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Summary",
+      "bullets": [
+        "**ID:** 202407221035 **Title:** Rajkot's Perceived Influence on IPO Grey Market Premium (GMP) **Tags:** #IPO #GreyMarket #GMP #Rajkot #InvestingBehavior #India #Hyundai A Reddit post claims Rajkot, a tier-2 city in Gujarat, has a disproportionate influence on India's IPO Grey Market Premium (GMP). The post's content was alleged by multiple commenters to"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "reddit",
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo",
+    "author": "Lazy-Transition8236",
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "json endpoint ok; rendered=56/114 divergence=50.88%",
+    "total_tokens_used": 15729,
+    "gemini_pro_tokens": 13535,
+    "gemini_flash_tokens": 2194,
+    "total_latency_ms": 90956,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 4,
+    "patch_applied": true,
+    "engine_version": "2.0.0"
+  }
+}

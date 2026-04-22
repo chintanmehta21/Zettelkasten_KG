@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive GitHub summarization quality to spec-§10.1 production-grade (composite ≥ 92 + ragas_faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook.
 
 **Architecture:** Same two-phase loop runbook as Plans 6/7. Per-source focus: GitHub's rubric_github.yaml gates heavily on `label.owner_slash_repo` (exact `owner/repo` format), `brief.no_maturity_fabrication` (no "production-ready" claim without README evidence), `detailed.interfaces_exact` (API routes/CLI commands by exact name), and the `invented_public_interface` anti-pattern (auto-cap 60). Plan 3 shipped 5 additional REST API signals (pages/workflows/releases/languages/root-dir) + Gemini-Flash architecture overview; this plan tunes the summarizer to USE those signals in the rubric-required way.

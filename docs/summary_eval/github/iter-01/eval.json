@@ -1,0 +1,154 @@
+{
+  "g_eval": {
+    "coherence": 1.0,
+    "consistency": 2.0,
+    "fluency": 1.0,
+    "relevance": 1.0,
+    "reasoning": "The summary is severely flawed. The brief and detailed summaries are identical, truncated mid-sentence, and missing a vast amount of critical information such as dependencies (Starlette, Pydantic), installation instructions, and the public surface area (CLI, API docs endpoints). The tags are completely irrelevant to the repository, appearing to be about the summarization process itself rather than the FastAPI framework."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.1,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.67,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The project's documentation claims it can increase development speed by 200-300% and",
+        "reason": "This is an incomplete sentence fragment."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 11.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern",
+          "brief.public_surface"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 0.0,
+        "max_points": 45,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 6.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 50.0,
+    "finesure": 36.0,
+    "qafact": 16.67,
+    "summac": 42.86
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v2",
+    "rubric_version": "rubric_github.v1",
+    "total_tokens_in": 11062,
+    "total_tokens_out": 1363,
+    "latency_ms": 49843
+  }
+}

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive YouTube summarization quality to spec-§10.1 "production-grade" criteria (composite ≥ 92, RAGAS faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook defined in spec §4.1 and §8.2.
 
 **Architecture:** Each loop is a two-phase CLI invocation with Codex's cross-model manual review in between. Tuning loops (2, 3, 5, 8) let Codex edit any allowed surface to move the score; churn protection (spec §8.4) blocks unproductive file re-edits. Measurement loops (1, 4, 6, 7) are scored but not tuned. Auto-triggered extensions 8-9 fire only if loop 6 fails held-out thresholds.

@@ -1,0 +1,39 @@
+{
+  "mini_title": "fastapi/fastapi",
+  "brief_summary": "**FastAPI Python Web Framework** FastAPI is a Python web framework for building high-performance APIs. It uses standard Python type hints to declare API parameters, request bodies, and responses, which enables automatic data validation, serialization, and interactive documentation generation. The project's documentation claims it can increase development speed by 200-300% and",
+  "tags": [
+    "github",
+    "zettelkasten",
+    "summary",
+    "capture",
+    "research",
+    "source",
+    "notes",
+    "ai"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Summary",
+      "bullets": [
+        "**FastAPI Python Web Framework** FastAPI is a Python web framework for building high-performance APIs. It uses standard Python type hints to declare API parameters, request bodies, and responses, which enables automatic data validation, serialization, and interactive documentation generation. The project's documentation claims it can increase development speed by 200-300% and"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/fastapi/fastapi",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 27351,
+    "gemini_pro_tokens": 25388,
+    "gemini_flash_tokens": 1963,
+    "total_latency_ms": 97150,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 7,
+    "patch_applied": true,
+    "engine_version": "2.0.0"
+  }
+}

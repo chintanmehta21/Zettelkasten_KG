@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive Reddit summarization quality to spec-§10.1 production-grade (composite ≥ 92 + faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook.
 
 **Architecture:** Same two-phase loop runbook as Plan 6 (Phase A Gemini eval → Codex manual_review → Phase B finalize). Per-source focus: Reddit's rubric_reddit.yaml emphasizes `hedged_attribution` (never assert comment claims as fact), `moderation_context` (mention divergence between `num_comments` and `rendered_count`), and `label.rsubreddit_prefix` (must start with `r/<sub> `). Plan 2 shipped pullpush.io enrichment + divergence tracking; this plan tunes the summarizer to USE those signals in the rubric-required way.

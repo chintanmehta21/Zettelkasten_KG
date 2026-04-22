@@ -22,10 +22,25 @@ class FineSurEItem(BaseModel):
     span: str | None = None
     importance: int | None = None
 
+    @classmethod
+    def _coerce(cls, value):
+        """Accept a bare string → treat as {sentence: <str>}."""
+        if isinstance(value, str):
+            return {"sentence": value}
+        return value
+
 
 class FineSurEDimension(BaseModel):
     score: float = Field(ge=0.0, le=1.0)
     items: list[FineSurEItem] = Field(default_factory=list)
+
+    @field_validator("items", mode="before")
+    @classmethod
+    def _coerce_items(cls, value):
+        """Accept a list with mixed strings/dicts; strings → {sentence: <str>}."""
+        if not isinstance(value, list):
+            return value
+        return [FineSurEItem._coerce(item) for item in value]
 
     @field_validator("score", mode="before")
     @classmethod
@@ -64,6 +79,24 @@ class SummaCLite(BaseModel):
     contradicted_sentences: list[SummaCLiteSentence] = Field(default_factory=list)
     neutral_sentences: list[SummaCLiteSentence] = Field(default_factory=list)
 
+    @field_validator("score", mode="before")
+    @classmethod
+    def _clamp_summac_score(cls, value):
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return value
+        if v > 1.0:
+            v = v / 100.0
+        return max(0.0, min(1.0, v))
+
+    @field_validator("contradicted_sentences", "neutral_sentences", mode="before")
+    @classmethod
+    def _coerce_sentences(cls, value):
+        if not isinstance(value, list):
+            return value
+        return [{"sentence": x} if isinstance(x, str) else x for x in value]
+
 
 class RubricComponent(BaseModel):
     id: str
@@ -94,6 +127,11 @@ class AntiPatternTrigger(BaseModel):
     source_region: str = ""
     auto_cap: int | None = None
 
+    @field_validator("source_region", mode="before")
+    @classmethod
+    def _none_to_empty(cls, value):
+        return "" if value is None else value
+
 
 class RubricBreakdown(BaseModel):
     components: list[RubricComponent]
@@ -106,6 +144,19 @@ class RubricBreakdown(BaseModel):
     )
     anti_patterns_triggered: list[AntiPatternTrigger] = Field(default_factory=list)
 
+    @field_validator("caps_applied", mode="before")
+    @classmethod
+    def _fill_caps(cls, value):
+        base = {"hallucination_cap": None, "omission_cap": None, "generic_cap": None}
+        if isinstance(value, dict):
+            for k in base:
+                if k in value and value[k] is not None:
+                    try:
+                        base[k] = int(value[k])
+                    except (TypeError, ValueError):
+                        base[k] = None
+        return base
+
     @property
     def total_of_100(self) -> float:
         return sum(component.score for component in self.components)
@@ -113,8 +164,20 @@ class RubricBreakdown(BaseModel):
 
 class EditorializationFlag(BaseModel):
     sentence: str
-    flag_type: Literal["added_stance", "added_judgment", "added_framing"]
+    flag_type: str = "added_stance"
     explanation: str = ""
+
+    @field_validator("flag_type", mode="before")
+    @classmethod
+    def _normalize_flag(cls, value):
+        """Permit any string; normalize to one of the 3 known types when close."""
+        if value is None:
+            return "added_stance"
+        v = str(value).lower().replace(" ", "_")
+        for known in ("added_stance", "added_judgment", "added_framing"):
+            if known in v:
+                return known
+        return "added_stance"
 
 
 class EvalResult(BaseModel):
