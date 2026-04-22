@@ -1,0 +1,426 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "summary": {
+      "mini_title": "r/IndianStockMarket Rajkot IPO influence debate",
+      "brief_summary": "OP's main point was The original poster intended to highlight Rajkot's alleged disproportionate influence on Indian IPO outcomes. The dominant replies focused on Confirmation of Rajkot's Active Local Market. Consensus stayed around confirmation of rajkot's active local market while original post plagiarism. Dissent centered on The claim that the Hyundai IPO 'collapsed' was an exaggeration; it was.",
+      "tags": [
+        "r-indianstockmarket",
+        "q-and-a",
+        "ipo",
+        "india",
+        "investing",
+        "greymarket",
+        "gmp",
+        "rajkot",
+        "hyundai"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "The original poster intended to highlight Rajkot's alleged disproportionate influence on Indian IPO outcomes and Grey Market Premium (GMP), suggesting it might be a strategic manipulation by large players to acquire shares at lower valuations."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Confirmation of Rajkot's Active Local Market\", \"reasoning\": \"Users from Rajkot corroborated the city's strong stock market culture, prevalence of local brokers in the grey market, and engagement in 'dabba trading,' which often attracts SEBI scrutiny.\", \"examples\": [\"maancast\", \"fintech_1712\"]}",
+            "{\"theme\": \"Original Post Plagiarism\", \"reasoning\": \"Multiple users identified the content of the original post as being plagiarized from an article by Anand Kalyanaraman published in *The Ken*.\", \"examples\": [\"Lanky-Patience-1523\", \"isnotsochill\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "The claim that the Hyundai IPO 'collapsed' was an exaggeration; it was a lukewarm reception, not a failure, with shares successfully sold above their initial valuation (\u20b91400 sold for \u20b91960).",
+            "The Hyundai IPO was a 100% Offer for Sale (OFS), meaning proceeds went to the parent company, not into the Indian entity for growth, which deterred some investors.",
+            "Hyundai's valuation was considered too high, with a 26x Price-to-Earnings (P/E) ratio deemed generous for an auto company, and management accused of being 'too greedy' by setting the price higher than the pre-IPO GMP.",
+            "Pre-IPO analysis indicated Hyundai India drained cash reserves through dividends and increased royalty payments to its parent, making its P/E ratio appear misleadingly attractive compared to competitors like Maruti.",
+            "Unfavorable market conditions at the time also contributed to Hyundai's reception.",
+            "A user from Rajkot explicitly stated they did not believe the claims regarding the city's outsized influence.",
+            "The significance of Rajkot being the #3 city for applications was questioned, arguing that the absolute investment value might be far lower than the top two cities, and if #3 could sway GMP, why not #1 or #2."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "What is the official data source for city-wise IPO application distribution?",
+            "Which cities are #1 and #2 in terms of IPO applications?",
+            "What is the absolute investment value (in INR) from these cities, which is needed to gauge their true market influence?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo",
+        "author": "Lazy-Transition8236",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=56/114 divergence=50.88%",
+        "total_tokens_used": 13757,
+        "gemini_pro_tokens": 11643,
+        "gemini_flash_tokens": 2114,
+        "total_latency_ms": 66526,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 2,
+        "patch_applied": false,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IndianStockMarket Rajkot IPO influence debate",
+          "brief_summary": "OP's main point was The original poster intended to highlight Rajkot's alleged disproportionate influence on Indian IPO outcomes. The dominant replies focused on Confirmation of Rajkot's Active Local Market. Consensus stayed around confirmation of rajkot's active local market while original post plagiarism. Dissent centered on The claim that the Hyundai IPO 'collapsed' was an exaggeration; it was. Caveat: removed or missing comments may limit what is visible in the thread.",
+          "tags": [
+            "r-indianstockmarket",
+            "q-and-a",
+            "ipo",
+            "india",
+            "investing",
+            "greymarket",
+            "gmp",
+            "rajkot",
+            "hyundai"
+          ],
+          "detailed_summary": {
+            "op_intent": "The original poster intended to highlight Rajkot's alleged disproportionate influence on Indian IPO outcomes and Grey Market Premium (GMP), suggesting it might be a strategic manipulation by large players to acquire shares at lower valuations.",
+            "reply_clusters": [
+              {
+                "theme": "Confirmation of Rajkot's Active Local Market",
+                "reasoning": "Users from Rajkot corroborated the city's strong stock market culture, prevalence of local brokers in the grey market, and engagement in 'dabba trading,' which often attracts SEBI scrutiny.",
+                "examples": [
+                  "maancast",
+                  "fintech_1712"
+                ]
+              },
+              {
+                "theme": "Original Post Plagiarism",
+                "reasoning": "Multiple users identified the content of the original post as being plagiarized from an article by Anand Kalyanaraman published in *The Ken*.",
+                "examples": [
+                  "Lanky-Patience-1523",
+                  "isnotsochill"
+                ]
+              }
+            ],
+            "counterarguments": [
+              "The claim that the Hyundai IPO 'collapsed' was an exaggeration; it was a lukewarm reception, not a failure, with shares successfully sold above their initial valuation (\u20b91400 sold for \u20b91960).",
+              "The Hyundai IPO was a 100% Offer for Sale (OFS), meaning proceeds went to the parent company, not into the Indian entity for growth, which deterred some investors.",
+              "Hyundai's valuation was considered too high, with a 26x Price-to-Earnings (P/E) ratio deemed generous for an auto company, and management accused of being 'too greedy' by setting the price higher than the pre-IPO GMP.",
+              "Pre-IPO analysis indicated Hyundai India drained cash reserves through dividends and increased royalty payments to its parent, making its P/E ratio appear misleadingly attractive compared to competitors like Maruti.",
+              "Unfavorable market conditions at the time also contributed to Hyundai's reception.",
+              "A user from Rajkot explicitly stated they did not believe the claims regarding the city's outsized influence.",
+              "The significance of Rajkot being the #3 city for applications was questioned, arguing that the absolute investment value might be far lower than the top two cities, and if #3 could sway GMP, why not #1 or #2."
+            ],
+            "unresolved_questions": [
+              "What is the official data source for city-wise IPO application distribution?",
+              "Which cities are #1 and #2 in terms of IPO applications?",
+              "What is the absolute investment value (in INR) from these cities, which is needed to gauge their true market influence?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "summary": {
+      "mini_title": "r/IAmA first-time heroin risks",
+      "brief_summary": "OP's main point was The user intended to share his first heroin experience, framing it as a \"memorable. The dominant replies focused on Insidious Nature of Opioid Addiction. Consensus stayed around insidious nature of opioid addiction while personal autonomy and challenging stereotypes. Dissent centered on The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's. C",
+      "tags": [
+        "r-iama",
+        "experience-report",
+        "heroin",
+        "addiction",
+        "risk-perception",
+        "sociology",
+        "drugs",
+        "reddit",
+        "harm-reduction",
+        "drug-policy"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "The user intended to share his first heroin experience, framing it as a \"memorable and life changing\" and \"valuable life experience\" for which he felt \"proud\" for taking the risk. He aimed to challenge what he perceived as \"misconceptions\" and \"junkie\" stereotypes about drug use. He also announced an intent to try cocaine next as an \"experiment\" to compare drugs and critique social classism."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Insidious Nature of Opioid Addiction\", \"reasoning\": \"Experienced users, many self-identified former addicts, consistently identified the user's mindset (feeling of control, pride, rationalization, 'at least not for a long time') as classic precursors to addiction. They emphasized that opioid addiction is typically insidious, not instantaneous, and subsequent use is often a futile attempt to recapture the unique intensity of the first high, leading to profound emotional detachment and severe life consequences.\", \"examples\": [\"You sound exactly like I did when I first did dope.\", \"someone could have told me my mother had just died a horrible death and i would have said 'oh...that's too bad.'\", \"Physical dependency can occur in as little as one week of daily use or 2-3 months of frequent use.\", \"Cited consequences included financial ruin (over $500,000), career loss (CIO), incarceration, friends dying or suffering permanent brain damage from overdoses.\", \"Heroin withdrawal was consistently described as 'pure hell'.\"]}",
+            "{\"theme\": \"Personal Autonomy and Challenging Stereotypes\", \"reasoning\": \"A minority of commenters argued for the user's right to experiment, criticizing perceived hypocrisy within a pro-legalization community. They also challenged the stereotype that one use inevitably leads to immediate addiction and ruin, suggesting other drugs might be more 'instantly' addictive or that many who try heroin do not become addicted. Comparisons were drawn to alcohol's societal acceptance despite its harms.\", \"examples\": [\"Criticism of what they saw as hypocrisy from a pro-legalization Reddit community.\", \"One user with 14 years of past drug use claimed meth was more 'instantly' addictive and that most people they knew who tried heroin did not become addicted.\", \"Several commenters argued that alcohol is a more dangerous, addictive, and socially destructive drug that is nonetheless culturally celebrated.\"]}",
+            "{\"theme\": \"Harm Reduction and Policy Implications\", \"reasoning\": \"Discussions included practical advice for safer drug use, inquiries into the physiological aspects of the user's experience, comparisons to other substances, and broader societal issues such as drug policy reform and classism.\", \"examples\": [\"The most frequent practical advice was to never use heroin alone, especially for the first time, due to the high risk of fatal overdose.\", \"Commenters questioned if the user experienced common opioid side effects like nausea and vomiting, which were absent from his report.\", \"The experience was compared to other opioids like morphine and oxycodone; LSD was suggested as a non-addictive alternative for a 'life changing' experience.\", \"The incident was cited as an argument for drug policy reform, with the point that if marijuana were legally available, the user might not have encountered a heroin dealer.\", \"A commenter expanded on the user's classism point, arguing that U.S. drug laws are rooted in systemic racism and classism.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's warning for perpetuating 'junkie' stereotypes.",
+            "A minority argued for the user's right to experiment, criticizing what they saw as hypocrisy from a pro-legalization Reddit community.",
+            "Some supported the user's challenge to the stereotype that one use leads to immediate addiction and ruin, with one user claiming meth was more 'instantly' addictive and that most people they knew who tried heroin did not become addicted.",
+            "Several commenters argued that alcohol is a more dangerous, addictive, and socially destructive drug that is nonetheless culturally celebrated."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "Did the user genuinely not experience common opioid side effects like nausea and vomiting, or was this omitted/downplayed in his report?",
+            "Will the user follow through on his stated intent to resist further heroin use 'at least not for a long time,' or will he succumb to the urge?",
+            "What will be the outcome of his stated intent to 'experiment' with cocaine next?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and",
+        "author": "SpontaneousH",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=103/761 divergence=86.47%",
+        "total_tokens_used": 21568,
+        "gemini_pro_tokens": 18848,
+        "gemini_flash_tokens": 2720,
+        "total_latency_ms": 112374,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 5,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IAmA first-time heroin risks",
+          "brief_summary": "OP's main point was The user intended to share his first heroin experience, framing it as a \"memorable. The dominant replies focused on Insidious Nature of Opioid Addiction. Consensus stayed around insidious nature of opioid addiction while personal autonomy and challenging stereotypes. Dissent centered on The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's. Caveat: removed or missing comments may limit what is visible in the thread.",
+          "tags": [
+            "r-iama",
+            "experience-report",
+            "heroin",
+            "addiction",
+            "risk-perception",
+            "sociology",
+            "drugs",
+            "reddit",
+            "harm-reduction",
+            "drug-policy"
+          ],
+          "detailed_summary": {
+            "op_intent": "The user intended to share his first heroin experience, framing it as a \"memorable and life changing\" and \"valuable life experience\" for which he felt \"proud\" for taking the risk. He aimed to challenge what he perceived as \"misconceptions\" and \"junkie\" stereotypes about drug use. He also announced an intent to try cocaine next as an \"experiment\" to compare drugs and critique social classism.",
+            "reply_clusters": [
+              {
+                "theme": "Insidious Nature of Opioid Addiction",
+                "reasoning": "Experienced users, many self-identified former addicts, consistently identified the user's mindset (feeling of control, pride, rationalization, 'at least not for a long time') as classic precursors to addiction. They emphasized that opioid addiction is typically insidious, not instantaneous, and subsequent use is often a futile attempt to recapture the unique intensity of the first high, leading to profound emotional detachment and severe life consequences.",
+                "examples": [
+                  "You sound exactly like I did when I first did dope.",
+                  "someone could have told me my mother had just died a horrible death and i would have said 'oh...that's too bad.'",
+                  "Physical dependency can occur in as little as one week of daily use or 2-3 months of frequent use.",
+                  "Cited consequences included financial ruin (over $500,000), career loss (CIO), incarceration, friends dying or suffering permanent brain damage from overdoses.",
+                  "Heroin withdrawal was consistently described as 'pure hell'."
+                ]
+              },
+              {
+                "theme": "Personal Autonomy and Challenging Stereotypes",
+                "reasoning": "A minority of commenters argued for the user's right to experiment, criticizing perceived hypocrisy within a pro-legalization community. They also challenged the stereotype that one use inevitably leads to immediate addiction and ruin, suggesting other drugs might be more 'instantly' addictive or that many who try heroin do not become addicted. Comparisons were drawn to alcohol's societal acceptance despite its harms.",
+                "examples": [
+                  "Criticism of what they saw as hypocrisy from a pro-legalization Reddit community.",
+                  "One user with 14 years of past drug use claimed meth was more 'instantly' addictive and that most people they knew who tried heroin did not become addicted.",
+                  "Several commenters argued that alcohol is a more dangerous, addictive, and socially destructive drug that is nonetheless culturally celebrated."
+                ]
+              },
+              {
+                "theme": "Harm Reduction and Policy Implications",
+                "reasoning": "Discussions included practical advice for safer drug use, inquiries into the physiological aspects of the user's experience, comparisons to other substances, and broader societal issues such as drug policy reform and classism.",
+                "examples": [
+                  "The most frequent practical advice was to never use heroin alone, especially for the first time, due to the high risk of fatal overdose.",
+                  "Commenters questioned if the user experienced common opioid side effects like nausea and vomiting, which were absent from his report.",
+                  "The experience was compared to other opioids like morphine and oxycodone; LSD was suggested as a non-addictive alternative for a 'life changing' experience.",
+                  "The incident was cited as an argument for drug policy reform, with the point that if marijuana were legally available, the user might not have encountered a heroin dealer.",
+                  "A commenter expanded on the user's classism point, arguing that U.S. drug laws are rooted in systemic racism and classism."
+                ]
+              }
+            ],
+            "counterarguments": [
+              "The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's warning for perpetuating 'junkie' stereotypes.",
+              "A minority argued for the user's right to experiment, criticizing what they saw as hypocrisy from a pro-legalization Reddit community.",
+              "Some supported the user's challenge to the stereotype that one use leads to immediate addiction and ruin, with one user claiming meth was more 'instantly' addictive and that most people they knew who tried heroin did not become addicted.",
+              "Several commenters argued that alcohol is a more dangerous, addictive, and socially destructive drug that is nonetheless culturally celebrated."
+            ],
+            "unresolved_questions": [
+              "Did the user genuinely not experience common opioid side effects like nausea and vomiting, or was this omitted/downplayed in his report?",
+              "Will the user follow through on his stated intent to resist further heroin use 'at least not for a long time,' or will he succumb to the urge?",
+              "What will be the outcome of his stated intent to 'experiment' with cocaine next?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+    "summary": {
+      "mini_title": "r/IAmA user s stated motivation was",
+      "brief_summary": "OP's main point was The user's stated motivation was an inability to tell anyone in their real life. The dominant replies focused on Alarm and dire warnings about the inevitable progression of heroin addiction. Consensus stayed around alarm and dire warnings about the inevitable progression of heroin addiction. while. Dissent centered on Accusations of being a \"troll\" fabricating the story for att",
+      "tags": [
+        "r-iama",
+        "q-and-a",
+        "addiction",
+        "heroin",
+        "social-media",
+        "case-study",
+        "crowdsourcing-support",
+        "reddit",
+        "ama",
+        "drug-abuse"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "The user's stated motivation was an inability to tell anyone in their real life and a desire not to keep their drug use secret, requesting the thread be treated as an \"AMA first and foremost\" despite acknowledging the danger."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Alarm and dire warnings about the inevitable progression of heroin addiction.\", \"reasoning\": \"Based on personal experiences and observations, commenters predicted a rapid decline leading to job loss, estrangement from family/friends, prison, or death.\", \"examples\": [\"QUIT NOW PLEASE\", \"Your posts may have saved my life.\", \"You've been sitting at home doing heroin for the last 11 hours, dude.\"]}",
+            "{\"theme\": \"Urgent advice to seek immediate professional and real-world support.\", \"reasoning\": \"The community emphasized that addiction requires external intervention and breaking secrecy for effective recovery.\", \"examples\": [\"seek immediate, real-world help via NA meetings or rehab facilities\", \"tell a trusted person for accountability\"]}",
+            "{\"theme\": \"Practical steps to mitigate harm and break the cycle of use.\", \"reasoning\": \"To prevent further escalation and reduce risks, commenters advised cutting ties with sources and, if use continued, safer practices.\", \"examples\": [\"cutting off all contact with dealers and other users\", \"links to safe injection guides and syringe exchange programs\"]}",
+            "{\"theme\": \"Suggestions for medical and cognitive approaches to addiction management.\", \"reasoning\": \"For sustained use, medication was proposed, and a unique perspective on knowledge and self-labeling was offered to empower the user.\", \"examples\": [\"Methadone or Suboxone were mentioned as potential long-term solutions\", \"researching heroin on Erowid to \\\"turn it into a science project\\\"\", \"adopting the \\\"addict\\\" label can become a self-fulfilling prophecy\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "Accusations of being a \"troll\" fabricating the story for attention, questioning the user's ability to write coherently while high.",
+            "Suggestions that the user was addicted to online attention rather than the drug itself.",
+            "Critiques of the post as \"narcissistic attention-seeking behavior\" that damaged the quality of the r/IAmA subreddit.",
+            "An anecdote about a \"prominent city architect\" who was a functioning addict, managing his habit with a clean supply, suggesting an alternative outcome."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "What was the ultimate outcome of the user's heroin use and recovery attempts?",
+            "Did the user successfully stop \"on my own\" as they believed, or did they seek further professional help?",
+            "How did the user's girlfriend's decision to put their breakup \"on hold\" ultimately resolve?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (114/1005 visible; divergence 88.66%). 21 removed comments were recovered from pullpush.io."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made",
+        "author": "SpontaneousH",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=114/1005 divergence=88.66%",
+        "total_tokens_used": 23931,
+        "gemini_pro_tokens": 21827,
+        "gemini_flash_tokens": 2104,
+        "total_latency_ms": 107482,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IAmA user s stated motivation was",
+          "brief_summary": "OP's main point was The user's stated motivation was an inability to tell anyone in their real life. The dominant replies focused on Alarm and dire warnings about the inevitable progression of heroin addiction. Consensus stayed around alarm and dire warnings about the inevitable progression of heroin addiction. while. Dissent centered on Accusations of being a \"troll\" fabricating the story for attention, questioning the. Caveat: removed or missing comments may limit what is visible in the thread.",
+          "tags": [
+            "r-iama",
+            "q-and-a",
+            "addiction",
+            "heroin",
+            "social-media",
+            "case-study",
+            "crowdsourcing-support",
+            "reddit",
+            "ama",
+            "drug-abuse"
+          ],
+          "detailed_summary": {
+            "op_intent": "The user's stated motivation was an inability to tell anyone in their real life and a desire not to keep their drug use secret, requesting the thread be treated as an \"AMA first and foremost\" despite acknowledging the danger.",
+            "reply_clusters": [
+              {
+                "theme": "Alarm and dire warnings about the inevitable progression of heroin addiction.",
+                "reasoning": "Based on personal experiences and observations, commenters predicted a rapid decline leading to job loss, estrangement from family/friends, prison, or death.",
+                "examples": [
+                  "QUIT NOW PLEASE",
+                  "Your posts may have saved my life.",
+                  "You've been sitting at home doing heroin for the last 11 hours, dude."
+                ]
+              },
+              {
+                "theme": "Urgent advice to seek immediate professional and real-world support.",
+                "reasoning": "The community emphasized that addiction requires external intervention and breaking secrecy for effective recovery.",
+                "examples": [
+                  "seek immediate, real-world help via NA meetings or rehab facilities",
+                  "tell a trusted person for accountability"
+                ]
+              },
+              {
+                "theme": "Practical steps to mitigate harm and break the cycle of use.",
+                "reasoning": "To prevent further escalation and reduce risks, commenters advised cutting ties with sources and, if use continued, safer practices.",
+                "examples": [
+                  "cutting off all contact with dealers and other users",
+                  "links to safe injection guides and syringe exchange programs"
+                ]
+              },
+              {
+                "theme": "Suggestions for medical and cognitive approaches to addiction management.",
+                "reasoning": "For sustained use, medication was proposed, and a unique perspective on knowledge and self-labeling was offered to empower the user.",
+                "examples": [
+                  "Methadone or Suboxone were mentioned as potential long-term solutions",
+                  "researching heroin on Erowid to \"turn it into a science project\"",
+                  "adopting the \"addict\" label can become a self-fulfilling prophecy"
+                ]
+              }
+            ],
+            "counterarguments": [
+              "Accusations of being a \"troll\" fabricating the story for attention, questioning the user's ability to write coherently while high.",
+              "Suggestions that the user was addicted to online attention rather than the drug itself.",
+              "Critiques of the post as \"narcissistic attention-seeking behavior\" that damaged the quality of the r/IAmA subreddit.",
+              "An anecdote about a \"prominent city architect\" who was a functioning addict, managing his habit with a clean supply, suggesting an alternative outcome."
+            ],
+            "unresolved_questions": [
+              "What was the ultimate outcome of the user's heroin use and recovery attempts?",
+              "Did the user successfully stop \"on my own\" as they believed, or did they seek further professional help?",
+              "How did the user's girlfriend's decision to put their breakup \"on hold\" ultimately resolve?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (114/1005 visible; divergence 88.66%). 21 removed comments were recovered from pullpush.io."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]

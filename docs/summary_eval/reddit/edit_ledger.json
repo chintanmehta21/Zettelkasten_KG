@@ -36,6 +36,20 @@
       "targeted_criterion": "brief.response_range",
       "criterion_delta": 0.0,
       "composite_delta": 17.629999999999995
+    },
+    {
+      "iter": 6,
+      "files": [
+        "ops/scripts/eval_loop.py",
+        "ops/scripts/lib/phases.py",
+        "website/features/summarization_engine/evaluator/prompts.py",
+        "website/features/summarization_engine/summarization/common/structured.py",
+        "website/features/summarization_engine/summarization/youtube/prompts.py",
+        "website/features/summarization_engine/summarization/youtube/schema.py"
+      ],
+      "targeted_criterion": "brief.op_intent_captured",
+      "criterion_delta": 0.0,
+      "composite_delta": 5.469999999999999
     }
   ]
 }
