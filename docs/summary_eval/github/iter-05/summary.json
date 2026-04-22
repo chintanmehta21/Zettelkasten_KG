@@ -1,0 +1,500 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "summary": {
+      "mini_title": "fastapi/fastapi",
+      "brief_summary": "Python web framework for building APIs. At a high level, FastAPI is a Python web framework built on Starlette for core ASGI and web. The main stack includes Starlette, Pydantic, OpenAPI, JSON Schema. Documented public surfaces include OpenAPI documentation, Swagger UI, ReDoc, async def. The documented workflow emphasizes `fastapi dev` command provides a Uvicorn server with auto-reloading.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "pydantic",
+        "starlette",
+        "openapi",
+        "cli-tool",
+        "api",
+        "framework",
+        "web"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Purpose and Core Concepts",
+          "bullets": [
+            "Python web framework for building APIs.",
+            "Uses standard Python type hints to define endpoints and data models.",
+            "Enables strong editor support with autocompletion."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "Architecture & Dependencies",
+          "bullets": [
+            "Built on Starlette for core ASGI and web functionality (WebSockets, CORS).",
+            "Uses Pydantic for data validation, serialization, and settings management.",
+            "Automatically generates API specifications compliant with OpenAPI and JSON Schema."
+          ],
+          "sub_sections": {
+            "Optional Standard Installation": [
+              "Bundles key dependencies like `uvicorn`, `httpx`, `python-multipart`, and `email-validator`."
+            ]
+          }
+        },
+        {
+          "heading": "API & Features",
+          "bullets": [
+            "Endpoints defined as standard or async Python functions (`def`/`async def`).",
+            "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies.",
+            "Pydantic models define complex JSON bodies.",
+            "Handles automatic data validation and serialization for types including `datetime` and `UUID`.",
+            "Returns structured validation errors.",
+            "Generates interactive API documentation at `/docs` (Swagger UI) and `/redoc` (ReDoc).",
+            "Includes a dependency injection system.",
+            "Provides helpers for security schemes (OAuth2, HTTP Basic).",
+            "Supports GraphQL integration via libraries like Strawberry."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "Maturity & Project Status",
+          "bullets": [
+            "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+            "Project documentation claims performance is on par with NodeJS and Go.",
+            "Used in production by companies including Microsoft, Uber, and Netflix.",
+            "Project's author also created Typer, a sibling library for CLIs.",
+            "Official deployment platform, FastAPI Cloud, is available.",
+            "Actively maintained with 31 GitHub Actions workflows.",
+            "Has a 99.9% Python codebase.",
+            "`fastapi dev` command provides a Uvicorn server with auto-reloading.",
+            "Security policy supports only the latest version.",
+            "Vulnerabilities are reported privately to `security@tiangolo.com`."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "Notable Issues & Development",
+          "bullets": [],
+          "sub_sections": {
+            "Type Hint Resolution": [
+              "Ongoing development addresses complex type annotation resolution involving `Annotated`, `ForwardRef`, and postponed annotations (e.g., issues #15364, #15307, #15300, #15234)."
+            ],
+            "Feature Development": [
+              "A long-standing request for class-based views (CBVs) is under active development (#15392, #2625).",
+              "Authentication for `StaticFiles` is a requested feature (#15295, #858)."
+            ],
+            "Recent Fixes": [
+              "Fixed dependency teardown deadlocks (#15388).",
+              "Fixed a memory usage regression in the `Dependant` object (#15336).",
+              "Fixed incorrect OpenAPI `operationId` generation for routes with multiple methods (#15398).",
+              "Improved error handling for client disconnects (#15315)."
+            ],
+            "Dependency Updates": [
+              "The project recently incorporated the major version update to Starlette 1.0.0 (#15397)."
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "source_type": "github",
+        "url": "https://github.com/fastapi/fastapi",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+        "total_tokens_used": 27836,
+        "gemini_pro_tokens": 25220,
+        "gemini_flash_tokens": 2616,
+        "total_latency_ms": 88937,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 8,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "fastapi/fastapi",
+          "architecture_overview": "FastAPI is a Python web framework built on Starlette for core ASGI and web functionality, and Pydantic for data validation and serialization. It leverages Python type hints to automatically generate OpenAPI and JSON Schema specifications, providing a robust foundation for API development. The framework integrates these components to offer features like dependency injection and automatic documentation.",
+          "brief_summary": "Python web framework for building APIs. At a high level, FastAPI is a Python web framework built on Starlette for core ASGI and web. The main stack includes Starlette, Pydantic, OpenAPI, JSON Schema. Documented public surfaces include OpenAPI documentation, Swagger UI, ReDoc, async def. The documented workflow emphasizes `fastapi dev` command provides a Uvicorn server with auto-reloading.",
+          "tags": [
+            "python",
+            "api-framework",
+            "async",
+            "pydantic",
+            "starlette",
+            "openapi",
+            "cli-tool",
+            "api",
+            "framework",
+            "web"
+          ],
+          "benchmarks_tests_examples": [
+            "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+            "Project documentation claims performance is on par with NodeJS and Go."
+          ],
+          "detailed_summary": [
+            {
+              "heading": "Purpose and Core Concepts",
+              "bullets": [
+                "Python web framework for building APIs.",
+                "Uses standard Python type hints to define endpoints and data models.",
+                "Enables strong editor support with autocompletion."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "FastAPI Framework",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": [
+                "Claims 200-300% increase in development speed.",
+                "Claims 40% reduction in human-induced errors."
+              ]
+            },
+            {
+              "heading": "Architecture & Dependencies",
+              "bullets": [
+                "Built on Starlette for core ASGI and web functionality (WebSockets, CORS).",
+                "Uses Pydantic for data validation, serialization, and settings management.",
+                "Automatically generates API specifications compliant with OpenAPI and JSON Schema."
+              ],
+              "sub_sections": {
+                "Optional Standard Installation": [
+                  "Bundles key dependencies like `uvicorn`, `httpx`, `python-multipart`, and `email-validator`."
+                ]
+              },
+              "module_or_feature": "Core Architecture",
+              "main_stack": [
+                "Starlette",
+                "Pydantic",
+                "OpenAPI",
+                "JSON Schema",
+                "ASGI"
+              ],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "API & Features",
+              "bullets": [
+                "Endpoints defined as standard or async Python functions (`def`/`async def`).",
+                "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies.",
+                "Pydantic models define complex JSON bodies.",
+                "Handles automatic data validation and serialization for types including `datetime` and `UUID`.",
+                "Returns structured validation errors.",
+                "Generates interactive API documentation at `/docs` (Swagger UI) and `/redoc` (ReDoc).",
+                "Includes a dependency injection system.",
+                "Provides helpers for security schemes (OAuth2, HTTP Basic).",
+                "Supports GraphQL integration via libraries like Strawberry."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "API Definition and Functionality",
+              "main_stack": [],
+              "public_interfaces": [
+                "OpenAPI documentation",
+                "Swagger UI",
+                "ReDoc"
+              ],
+              "usability_signals": []
+            },
+            {
+              "heading": "Maturity & Project Status",
+              "bullets": [
+                "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+                "Project documentation claims performance is on par with NodeJS and Go.",
+                "Used in production by companies including Microsoft, Uber, and Netflix.",
+                "Project's author also created Typer, a sibling library for CLIs.",
+                "Official deployment platform, FastAPI Cloud, is available.",
+                "Actively maintained with 31 GitHub Actions workflows.",
+                "Has a 99.9% Python codebase.",
+                "`fastapi dev` command provides a Uvicorn server with auto-reloading.",
+                "Security policy supports only the latest version.",
+                "Vulnerabilities are reported privately to `security@tiangolo.com`."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "Project Lifecycle",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": [
+                "High performance (TechEmpower benchmarks)",
+                "Production usage by major companies",
+                "Active maintenance"
+              ]
+            },
+            {
+              "heading": "Notable Issues & Development",
+              "bullets": [],
+              "sub_sections": {
+                "Type Hint Resolution": [
+                  "Ongoing development addresses complex type annotation resolution involving `Annotated`, `ForwardRef`, and postponed annotations (e.g., issues #15364, #15307, #15300, #15234)."
+                ],
+                "Feature Development": [
+                  "A long-standing request for class-based views (CBVs) is under active development (#15392, #2625).",
+                  "Authentication for `StaticFiles` is a requested feature (#15295, #858)."
+                ],
+                "Recent Fixes": [
+                  "Fixed dependency teardown deadlocks (#15388).",
+                  "Fixed a memory usage regression in the `Dependant` object (#15336).",
+                  "Fixed incorrect OpenAPI `operationId` generation for routes with multiple methods (#15398).",
+                  "Improved error handling for client disconnects (#15315)."
+                ],
+                "Dependency Updates": [
+                  "The project recently incorporated the major version update to Starlette 1.0.0 (#15397)."
+                ]
+              },
+              "module_or_feature": "Ongoing Development and Bug Fixes",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            }
+          ]
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "summary": {
+      "mini_title": "encode/httpx",
+      "brief_summary": "Built on the `httpcore` library. It can make requests directly to WSGI/ASGI applications and. At a high level, encode/httpx is a Python 3 HTTP client providing both synchronous and asynchronous APIs, designed. The main stack includes python. Documented public surfaces include documented APIs and developer tooling. The documented workflow emphasizes Includes an integrated CLI, installable via `http",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "cli-tool",
+        "http",
+        "requests",
+        "http-2",
+        "wsgi-asgi",
+        "cli",
+        "type-annotated"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Purpose and Architecture",
+          "bullets": [
+            "Offers a standard synchronous client and an `async` client compatible with `asyncio` and `trio`.",
+            "Natively supports HTTP/1.1. HTTP/2 support is optional via `httpx[http2]`.",
+            "Built on the `httpcore` library. It can make requests directly to WSGI/ASGI applications and supports mounting transports to specific domains for advanced routing."
+          ],
+          "sub_sections": {
+            "Dependencies": [
+              "Core: `httpcore`, `h11`, `certifi`, `idna`, `sniffio`.",
+              "Optional: `h2` (`[http2]`), `socksio` (`[socks]`), `rich` & `click` (`[cli]`), `brotli` or `brotlicffi` (`[brotli]`), `zstandard` (since v0.27.1, `[zstd]`)."
+            ]
+          }
+        },
+        {
+          "heading": "API and Behavior",
+          "bullets": [
+            "The API is broadly compatible with `requests`, inheriting features like sessions with cookie persistence, connection pooling, authentication, and multipart file uploads. Some behaviors differ or have been recently aligned.",
+            "Includes an integrated CLI, installable via `httpx[cli]`.",
+            "The library is fully type-annotated.",
+            "Enforces strict timeouts on all network operations by default."
+          ],
+          "sub_sections": {
+            "Parameter Merging": [
+              "As of issue #3761, the `params` argument now merges with existing URL query parameters rather than replacing them, matching `requests`' behavior."
+            ],
+            "JSON Serialization": [
+              "Version 0.28.0 changed the default JSON request body to a more compact representation."
+            ],
+            "SSL Configuration": [
+              "The `cert` argument and using a string for the `verify` argument were deprecated in v0.28.0."
+            ],
+            "Deprecations & Removals": [
+              "The `proxies` argument was deprecated in v0.26.0 and removed in v0.28.0 in favor of `proxy`.",
+              "The `app` shortcut for transports was deprecated in v0.27.0 and subsequently removed."
+            ]
+          }
+        },
+        {
+          "heading": "Maturity and Project Status",
+          "bullets": [
+            "Requires Python 3.9+. Support for 3.7 was dropped in v0.25.0 (Sep 2023), and 3.8 support is scheduled for removal.",
+            "The project has 100% test coverage.",
+            "Actively maintained, with v0.28.0 released in May 2024. The API is largely stable but undergoing refinement.",
+            "The official documentation website is `https://www.python-httpx.org/`."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "Notable Issues and Caveats",
+          "bullets": [],
+          "sub_sections": {
+            "Redirect Behavior": [
+              "By default, 301/302 redirects change the request method to `GET`. An open issue (#3783) requests an option to preserve the original method."
+            ],
+            "URL Path Encoding": [
+              "A bug (#3764) was fixed where the pipe character (`|`) was not being percent-encoded in URL paths."
+            ],
+            "Streaming Memory Usage": [
+              "A fix (#3752) was implemented to split large file uploads from iterators into 64KB chunks to prevent memory spikes."
+            ],
+            "Error Messages": [
+              "Error messages are being improved. For example, passing an invalid `data` type to `AsyncClient` now raises a clearer error (#3758)."
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "source_type": "github",
+        "url": "https://github.com/encode/httpx",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+        "total_tokens_used": 25842,
+        "gemini_pro_tokens": 19414,
+        "gemini_flash_tokens": 6428,
+        "total_latency_ms": 78148,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "encode/httpx",
+          "architecture_overview": "encode/httpx is a Python 3 HTTP client providing both synchronous and asynchronous APIs, designed as a modern successor to requests. It supports HTTP/1.1 and HTTP/2 and is BSD licensed. It is built on the httpcore library and can make requests directly to WSGI/ASGI applications. It offers dual APIs, supporting asyncio and trio.",
+          "brief_summary": "Built on the `httpcore` library. It can make requests directly to WSGI/ASGI applications and. At a high level, encode/httpx is a Python 3 HTTP client providing both synchronous and asynchronous APIs, designed. The main stack includes python. Documented public surfaces include documented APIs and developer tooling. The documented workflow emphasizes Includes an integrated CLI, installable via `httpx[cli]`.",
+          "tags": [
+            "python",
+            "api-framework",
+            "async",
+            "cli-tool",
+            "http",
+            "requests",
+            "http-2",
+            "wsgi-asgi",
+            "cli",
+            "type-annotated"
+          ],
+          "benchmarks_tests_examples": null,
+          "detailed_summary": [
+            {
+              "heading": "Purpose and Architecture",
+              "bullets": [
+                "Offers a standard synchronous client and an `async` client compatible with `asyncio` and `trio`.",
+                "Natively supports HTTP/1.1. HTTP/2 support is optional via `httpx[http2]`.",
+                "Built on the `httpcore` library. It can make requests directly to WSGI/ASGI applications and supports mounting transports to specific domains for advanced routing."
+              ],
+              "sub_sections": {
+                "Dependencies": [
+                  "Core: `httpcore`, `h11`, `certifi`, `idna`, `sniffio`.",
+                  "Optional: `h2` (`[http2]`), `socksio` (`[socks]`), `rich` & `click` (`[cli]`), `brotli` or `brotlicffi` (`[brotli]`), `zstandard` (since v0.27.1, `[zstd]`)."
+                ]
+              },
+              "module_or_feature": "Core Functionality and Design",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "API and Behavior",
+              "bullets": [
+                "The API is broadly compatible with `requests`, inheriting features like sessions with cookie persistence, connection pooling, authentication, and multipart file uploads. Some behaviors differ or have been recently aligned.",
+                "Includes an integrated CLI, installable via `httpx[cli]`.",
+                "The library is fully type-annotated.",
+                "Enforces strict timeouts on all network operations by default."
+              ],
+              "sub_sections": {
+                "Parameter Merging": [
+                  "As of issue #3761, the `params` argument now merges with existing URL query parameters rather than replacing them, matching `requests`' behavior."
+                ],
+                "JSON Serialization": [
+                  "Version 0.28.0 changed the default JSON request body to a more compact representation."
+                ],
+                "SSL Configuration": [
+                  "The `cert` argument and using a string for the `verify` argument were deprecated in v0.28.0."
+                ],
+                "Deprecations & Removals": [
+                  "The `proxies` argument was deprecated in v0.26.0 and removed in v0.28.0 in favor of `proxy`.",
+                  "The `app` shortcut for transports was deprecated in v0.27.0 and subsequently removed."
+                ]
+              },
+              "module_or_feature": "Client API",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "Maturity and Project Status",
+              "bullets": [
+                "Requires Python 3.9+. Support for 3.7 was dropped in v0.25.0 (Sep 2023), and 3.8 support is scheduled for removal.",
+                "The project has 100% test coverage.",
+                "Actively maintained, with v0.28.0 released in May 2024. The API is largely stable but undergoing refinement.",
+                "The official documentation website is `https://www.python-httpx.org/`."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "Project Lifecycle",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "Notable Issues and Caveats",
+              "bullets": [],
+              "sub_sections": {
+                "Redirect Behavior": [
+                  "By default, 301/302 redirects change the request method to `GET`. An open issue (#3783) requests an option to preserve the original method."
+                ],
+                "URL Path Encoding": [
+                  "A bug (#3764) was fixed where the pipe character (`|`) was not being percent-encoded in URL paths."
+                ],
+                "Streaming Memory Usage": [
+                  "A fix (#3752) was implemented to split large file uploads from iterators into 64KB chunks to prevent memory spikes."
+                ],
+                "Error Messages": [
+                  "Error messages are being improved. For example, passing an invalid `data` type to `AsyncClient` now raises a clearer error (#3758)."
+                ]
+              },
+              "module_or_feature": "Known Issues and Fixes",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            }
+          ]
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://github.com/psf/requests",
+    "summary": {
+      "mini_title": "psf/requests",
+      "brief_summary": "id: 20240718110011 title: psf/requests Python HTTP Client aliases: requests, python-requests tags: #python #library #http #client `psf/requests` is a simplicity-focused HTTP/1.1 client library for Python, written in 99.3% Python and officially supporting Python 3.10+. It can be installed from PyPI via `python -m pip install requests`. It is one of Python's",
+      "tags": [
+        "_schema_fallback_",
+        "github",
+        "ai",
+        "summary",
+        "zettelkasten",
+        "capture",
+        "source"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "schema_fallback",
+          "bullets": [
+            "structured extractor fell back; see metadata.is_schema_fallback",
+            "id: 20240718110011 title: psf/requests Python HTTP Client aliases: requests, python-requests tags: #python #library #http #client `psf/requests` is a simplicity-focused HTTP/1.1 client library for Python, written in 99.3% Python and officially supporting Python 3.10+. It can be installed from PyPI via `python -m pip install requests`. It is one of Python's"
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "github",
+        "url": "https://github.com/psf/requests",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "repo metadata and README fetched",
+        "total_tokens_used": 19401,
+        "gemini_pro_tokens": 12800,
+        "gemini_flash_tokens": 6601,
+        "total_latency_ms": 71906,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": null,
+        "is_schema_fallback": true
+      }
+    }
+  }
+]
