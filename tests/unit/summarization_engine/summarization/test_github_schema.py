@@ -148,3 +148,27 @@ def test_github_schema_derives_public_interfaces_and_usage_from_section_content(
 
     assert "/docs" in payload.brief_summary or "/redoc" in payload.brief_summary
     assert "pip install" in payload.brief_summary or "fastapi dev" in payload.brief_summary
+
+
+def test_github_schema_backfills_missing_module_or_feature():
+    payload = GitHubStructuredPayload(
+        mini_title="psf/requests",
+        architecture_overview=(
+            "Requests is a Python HTTP client library with a small core API and layered "
+            "request/response handling."
+        ),
+        brief_summary="Broken summary",
+        tags=["python", "http", "library", "client", "requests", "api", "web"],
+        benchmarks_tests_examples=None,
+        detailed_summary=[
+            GitHubDetailedSection(
+                heading="Core API",
+                bullets=["High-level HTTP client for Python."],
+                public_interfaces=["requests.get"],
+                main_stack=["Python"],
+                usability_signals=[],
+            )
+        ],
+    )
+
+    assert payload.detailed_summary[0].module_or_feature == "Core API"

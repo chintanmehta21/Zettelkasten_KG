@@ -14,10 +14,16 @@ GitHubLabel = Annotated[str, StringConstraints(pattern=r"^[^/]+/[^/]+$", max_len
 
 
 class GitHubDetailedSection(DetailedSummarySection):
-    module_or_feature: str
+    module_or_feature: str = ""
     main_stack: list[str] = Field(default_factory=list)
     public_interfaces: list[str] = Field(default_factory=list)
     usability_signals: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _fill_optional_descriptor_fields(self) -> "GitHubDetailedSection":
+        if not self.module_or_feature:
+            self.module_or_feature = self.heading
+        return self
 
 
 class GitHubStructuredPayload(BaseModel):
