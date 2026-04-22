@@ -16,7 +16,8 @@ GitHubSummarizer = make_wrapper("GitHubSummarizer", SourceType.GITHUB)
 HackerNewsSummarizer = make_wrapper("HackerNewsSummarizer", SourceType.HACKERNEWS)
 ArxivSummarizer = make_wrapper("ArxivSummarizer", SourceType.ARXIV)
 NewsletterSummarizer = make_wrapper("NewsletterSummarizer", SourceType.NEWSLETTER)
-RedditSummarizer = make_wrapper("RedditSummarizer", SourceType.REDDIT)
+# RedditSummarizer lives in `reddit/summarizer.py` — the iter-09 Reddit-specific
+# summarizer has its own prompt, schema, and brief-repair validators.
 YouTubeSummarizer = make_wrapper("YouTubeSummarizer", SourceType.YOUTUBE)
 LinkedInSummarizer = make_wrapper("LinkedInSummarizer", SourceType.LINKEDIN)
 PodcastSummarizer = make_wrapper("PodcastSummarizer", SourceType.PODCAST)
