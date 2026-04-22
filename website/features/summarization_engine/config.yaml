@@ -57,6 +57,16 @@ sources:
     fetch_commits: true
     max_commits: 10
     fetch_prs: false
+    fetch_pages: true
+    fetch_workflows: true
+    fetch_releases: true
+    max_releases: 5
+    fetch_languages: true
+    fetch_root_dir_listing: true
+    architecture_overview_enabled: true
+    architecture_overview_max_chars: 500
+    api_base_url: "https://api.github.com"
+    api_timeout_sec: 15
     fetch_docs: true
     max_docs: 4
     doc_char_cap: 4000
