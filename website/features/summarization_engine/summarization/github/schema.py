@@ -117,41 +117,41 @@ def _repair_brief_summary(
         for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
         if sentence.strip()
     ]
-    if 5 <= len(sentences) <= 7 and len(cleaned) <= 550:
+    if 5 <= len(sentences) <= 7 and len(cleaned) <= 380:
         return cleaned
 
-    purpose = _pick_sentence(
+    purpose = _purpose_phrase(
         detailed_summary,
-        preferred_headings=("APIs and Features", "Overview", "Core", "Architecture"),
-        fallback="The repository provides a documented software project with a defined public surface.",
+        fallback="This repository provides a documented software project with a defined public surface.",
     )
-    architecture = _trim_fragment(architecture_overview, 18)
+    architecture = _trim_fragment(architecture_overview, 14)
     stack = _stack_phrase(detailed_summary, tags)
     public_surface = _public_surface_phrase(detailed_summary)
     usage = _usage_phrase(detailed_summary)
     evidence = _examples_phrase(benchmarks_tests_examples)
 
     rebuilt = [
-        _as_sentence(_trim_fragment(purpose, 18)),
+        _as_sentence(_trim_fragment(purpose, 14)),
         _as_sentence(f"At a high level, {architecture}"),
         _as_sentence(f"The main stack includes {stack}"),
         _as_sentence(f"Documented public surfaces include {public_surface}"),
         _as_sentence(f"The documented workflow emphasizes {usage}"),
         _as_sentence(f"Evidence in the repository highlights {evidence}"),
     ]
-    return _fit_sentences(rebuilt, max_chars=550, min_sentences=5)
+    return _fit_sentences(rebuilt, max_chars=380, min_sentences=5)
 
 
-def _pick_sentence(
+def _purpose_phrase(
     detailed_summary: list[GitHubDetailedSection],
     *,
-    preferred_headings: tuple[str, ...],
     fallback: str,
 ) -> str:
-    heading_lookup = {heading.lower() for heading in preferred_headings}
     for section in detailed_summary:
-        if section.heading.lower() in heading_lookup and section.bullets:
-            return section.bullets[0]
+        if section.bullets:
+            for bullet in section.bullets:
+                lowered = bullet.lower()
+                if any(token in lowered for token in ("framework", "library", "tool", "build", "api")):
+                    return bullet
     for section in detailed_summary:
         if section.bullets:
             return section.bullets[0]
@@ -183,15 +183,17 @@ def _public_surface_phrase(detailed_summary: list[GitHubDetailedSection]) -> str
 
 
 def _usage_phrase(detailed_summary: list[GitHubDetailedSection]) -> str:
-    signals: list[str] = []
+    for section in detailed_summary:
+        for bullet in section.bullets:
+            lowered = bullet.lower()
+            if any(token in lowered for token in ("pip install", "install", "dev command", "fastapi dev", "run", "reload")):
+                return _trim_fragment(bullet, 12)
     for section in detailed_summary:
         for item in section.usability_signals:
             cleaned = item.strip()
-            if cleaned and cleaned not in signals:
-                signals.append(cleaned)
-    if not signals:
-        return "installation, configuration, and developer usage guidance"
-    return ", ".join(signals[:3])
+            if cleaned:
+                return _trim_fragment(cleaned, 10)
+    return "installation, configuration, and developer usage guidance"
 
 
 def _examples_phrase(benchmarks_tests_examples: list[str]) -> str:

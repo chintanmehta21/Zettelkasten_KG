@@ -112,3 +112,5 @@ def test_github_schema_repairs_brief_into_multi_sentence_contract():
     sentences = [s for s in payload.brief_summary.split(". ") if s.strip()]
     assert len(sentences) >= 5
     assert "Documented public surfaces include" in payload.brief_summary
+    assert len(payload.brief_summary) <= 400
+    assert "Its." not in payload.brief_summary
