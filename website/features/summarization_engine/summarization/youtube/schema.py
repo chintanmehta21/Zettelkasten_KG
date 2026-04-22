@@ -48,6 +48,12 @@ class YouTubeStructuredPayload(BaseModel):
 
     @model_validator(mode="after")
     def _normalize_note_facing_fields(self) -> "YouTubeStructuredPayload":
+        self.detailed_summary.format = _normalize_format_name(
+            self.detailed_summary.format,
+            brief=self.brief_summary,
+            thesis=self.detailed_summary.thesis,
+            chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
+        )
         self.mini_title = _normalize_mini_title(self.mini_title)
         self.tags = _ensure_format_tag(self.tags, self.detailed_summary.format)
         self.brief_summary = _repair_brief_summary(
@@ -102,27 +108,55 @@ def _repair_brief_summary(
     if cleaned.endswith((".", "!", "?")) and len(sentences) >= 5 and has_format and has_speaker and len(cleaned) <= 400:
         return cleaned
 
-    speaker_text = _join_items(speakers[:2])
     entity_text = _join_items(entities[:2]) or "its key compounds and research contexts"
     chapter_text = _join_items(chapter_titles[:2]) or "its history and modern research"
-    repaired = " ".join(
+    figure_text = _join_items(_select_figures_for_brief(speakers, entities))
+    repaired = _fit_brief_sentences(
         [
-            _as_sentence(f"This {format_name} video explains {thesis}"),
-            _as_sentence(f"It moves through sections on {chapter_text}"),
-            _as_sentence(f"It also covers {entity_text}"),
-            _as_sentence(f"Featured voices include {speaker_text}"),
-            _as_sentence(closing_takeaway),
-        ]
+            f"This {format_name} video explains {_trim_fragment(thesis, 18)}",
+            f"It moves through sections on {_trim_fragment(chapter_text, 12)}",
+            f"It also covers {_trim_fragment(entity_text, 8)}",
+            f"Key voices and figures include {_trim_fragment(figure_text, 8)}",
+            f"The main takeaway is {_trim_fragment(closing_takeaway, 18)}",
+        ],
+        max_chars=400,
     )
-    if len(repaired) <= 400:
-        return repaired
-    trimmed = repaired[:400]
-    last_stop = max(trimmed.rfind("."), trimmed.rfind("!"), trimmed.rfind("?"))
-    if last_stop >= 0:
-        trimmed = trimmed[: last_stop + 1]
-    else:
-        trimmed = trimmed.rstrip(". ") + "."
-    return trimmed
+    return repaired or _as_sentence(_trim_fragment(thesis, 24))
+
+
+def _normalize_format_name(
+    format_name: str,
+    *,
+    brief: str,
+    thesis: str,
+    chapter_titles: list[str],
+) -> str:
+    cleaned = (format_name or "").strip().lower()
+    if cleaned and cleaned != "other":
+        return cleaned
+
+    evidence = " ".join([brief or "", thesis or "", *chapter_titles]).lower()
+    lexical_hints = (
+        ("tutorial", "tutorial"),
+        ("walkthrough", "walkthrough"),
+        ("step-by-step", "tutorial"),
+        ("how to", "tutorial"),
+        ("interview", "interview"),
+        ("q&a", "interview"),
+        ("conversation", "interview"),
+        ("lecture", "lecture"),
+        ("seminar", "lecture"),
+        ("course", "lecture"),
+        ("review", "review"),
+        ("verdict", "review"),
+        ("reaction", "reaction"),
+        ("vlog", "vlog"),
+        ("debate", "debate"),
+    )
+    for needle, inferred in lexical_hints:
+        if needle in evidence:
+            return inferred
+    return "commentary"
 
 
 def _join_items(items: list[str]) -> str:
@@ -134,6 +168,32 @@ def _join_items(items: list[str]) -> str:
     return f"{values[0]} and {values[1]}"
 
 
+def _select_figures_for_brief(speakers: list[str], entities: list[str]) -> list[str]:
+    values = [re.sub(r"\s+", " ", item).strip() for item in speakers if item and item.strip()]
+    meaningful = [
+        value
+        for value in values
+        if value.lower() not in {"narrator", "author of the source"}
+    ]
+    if len(meaningful) >= 2:
+        return meaningful[-2:]
+    if len(meaningful) == 1:
+        fallback_entities = [
+            re.sub(r"\s+", " ", item).strip()
+            for item in entities
+            if item and item.strip() and item.strip() != meaningful[0]
+        ]
+        if fallback_entities:
+            return [meaningful[0], fallback_entities[0]]
+        return meaningful
+    fallback_entities = [
+        re.sub(r"\s+", " ", item).strip()
+        for item in entities
+        if item and item.strip()
+    ]
+    return fallback_entities[:2] or values[:2] or ["the source material"]
+
+
 def _as_sentence(text: str) -> str:
     cleaned = re.sub(r"\s+", " ", text).strip().rstrip(",;:")
     if not cleaned:
@@ -141,3 +201,38 @@ def _as_sentence(text: str) -> str:
     if cleaned.endswith((".", "!", "?")):
         return cleaned
     return f"{cleaned}."
+
+
+def _trim_fragment(text: str, max_words: int) -> str:
+    cleaned = re.sub(r"\s+", " ", text or "").strip().rstrip(",;:")
+    for marker in ("; ", ", but ", ", while ", ", which ", ", and "):
+        if marker in cleaned:
+            head = cleaned.split(marker, 1)[0].strip().rstrip(",;:")
+            if 4 <= len(re.findall(r"\S+", head)) <= max_words:
+                return head
+    words = re.findall(r"\S+", cleaned)
+    if len(words) <= max_words:
+        return " ".join(words).rstrip(",;:")
+    return " ".join(words[:max_words]).rstrip(",;:")
+
+
+def _fit_brief_sentences(sentences: list[str], *, max_chars: int) -> str:
+    fitted: list[str] = []
+    for sentence in sentences:
+        candidate = _as_sentence(sentence)
+        if not candidate:
+            continue
+        joined = " ".join([*fitted, candidate]).strip()
+        if len(joined) <= max_chars:
+            fitted.append(candidate)
+            continue
+
+        remaining = max_chars - len(" ".join(fitted)) - (1 if fitted else 0)
+        if remaining <= 8:
+            break
+        trimmed = _as_sentence(_trim_fragment(candidate, max(3, remaining // 7)))
+        joined = " ".join([*fitted, trimmed]).strip()
+        if len(joined) <= max_chars:
+            fitted.append(trimmed)
+        break
+    return " ".join(fitted).strip()

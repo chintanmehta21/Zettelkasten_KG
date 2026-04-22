@@ -60,6 +60,21 @@ def test_state_detector_returns_committed_when_diff_present(tmp_path: Path):
     assert detect_iteration_state(tmp_path) == IterationState.ALREADY_COMMITTED
 
 
+def test_state_detector_returns_awaiting_review_for_held_out_layout(tmp_path: Path):
+    (tmp_path / "held_out").mkdir()
+    (tmp_path / "aggregate.md").write_text("aggregate", encoding="utf-8")
+    (tmp_path / "manual_review_prompt.md").write_text("prompt", encoding="utf-8")
+    assert detect_iteration_state(tmp_path) == IterationState.AWAITING_MANUAL_REVIEW
+
+
+def test_state_detector_returns_phase_b_for_held_out_layout(tmp_path: Path):
+    (tmp_path / "held_out").mkdir()
+    (tmp_path / "aggregate.md").write_text("aggregate", encoding="utf-8")
+    (tmp_path / "manual_review_prompt.md").write_text("prompt", encoding="utf-8")
+    (tmp_path / "manual_review.md").write_text("review", encoding="utf-8")
+    assert detect_iteration_state(tmp_path) == IterationState.PHASE_B_REQUIRED
+
+
 # ── churn_ledger ─────────────────────────────────────────────────────────────
 
 

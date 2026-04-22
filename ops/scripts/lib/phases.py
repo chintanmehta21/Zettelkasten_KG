@@ -443,6 +443,49 @@ def _write_next_actions(
     write_text(paths["next_actions"], "\n".join(lines).rstrip() + "\n")
 
 
+def _infer_targeted_criterion(prev_dir: Path | None) -> str | None:
+    if prev_dir is None:
+        return None
+    path = prev_dir / "next_actions.md"
+    if not path.exists():
+        return None
+    in_missed = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if line == "### Missed criteria":
+            in_missed = True
+            continue
+        if in_missed and line.startswith("### "):
+            break
+        if in_missed and line.startswith("- "):
+            return line[2:].strip() or None
+    return None
+
+
+def _infer_changed_files(repo_root: Path, source: str) -> list[str]:
+    allowed_prefixes = (
+        "website/features/summarization_engine/",
+        "ops/scripts/",
+        "tests/",
+        "docs/summary_eval/_config/",
+    )
+    source_prefix = f"docs/summary_eval/{source}/"
+    ignored_prefixes = (
+        f"{source_prefix}iter-",
+        "docs/summary_eval/_cache/",
+    )
+    changed = []
+    for path in git_helper.worktree_changed_paths(repo_root):
+        normalized = path.replace("\\", "/")
+        if normalized == f"{source_prefix}edit_ledger.json":
+            continue
+        if normalized.startswith(ignored_prefixes):
+            continue
+        if normalized.startswith(allowed_prefixes):
+            changed.append(normalized)
+    return sorted(set(changed))
+
+
 def run_phase_b(
     *,
     source: str,
@@ -520,11 +563,13 @@ def run_phase_b(
         composite_delta = (
             computed - prev_composite if prev_composite is not None else 0.0
         )
+        changed_files = _infer_changed_files(repo_root, source)
+        targeted_criterion = _infer_targeted_criterion(prev_dir)
         churn_ledger.record(
             source_dir,
             iter_num=iter_num,
-            files=[],
-            targeted_criterion=None,
+            files=changed_files,
+            targeted_criterion=targeted_criterion,
             criterion_delta=0.0,
             composite_delta=composite_delta,
         )

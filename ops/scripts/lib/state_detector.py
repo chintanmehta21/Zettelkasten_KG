@@ -14,11 +14,13 @@ class IterationState(str, Enum):
 
 def detect_iteration_state(iter_dir: Path) -> IterationState:
     has = lambda name: (iter_dir / name).exists()
+    has_top_level_phase_a = has("summary.json") and has("eval.json")
+    has_held_out_phase_a = has("held_out") and has("aggregate.md")
 
     if has("diff.md"):
         return IterationState.ALREADY_COMMITTED
-    if has("manual_review.md") and has("summary.json") and has("eval.json"):
+    if has("manual_review.md") and (has_top_level_phase_a or has_held_out_phase_a):
         return IterationState.PHASE_B_REQUIRED
-    if has("summary.json") and has("eval.json") and has("manual_review_prompt.md"):
+    if (has_top_level_phase_a or has_held_out_phase_a) and has("manual_review_prompt.md"):
         return IterationState.AWAITING_MANUAL_REVIEW
     return IterationState.PHASE_A_REQUIRED

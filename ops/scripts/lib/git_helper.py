@@ -44,3 +44,18 @@ def commit(repo_root: Path, message: str) -> str:
         return ""
     _run(["commit", "-m", message], repo_root)
     return head_sha(repo_root)
+
+
+def worktree_changed_paths(repo_root: Path) -> list[str]:
+    """Return changed tracked/untracked paths from the current worktree."""
+    output = _run(["status", "--short"], repo_root).splitlines()
+    paths: list[str] = []
+    for line in output:
+        if not line:
+            continue
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if path:
+            paths.append(path)
+    return paths
