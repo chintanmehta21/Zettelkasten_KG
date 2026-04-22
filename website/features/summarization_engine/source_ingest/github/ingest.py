@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -60,7 +61,7 @@ class GitHubIngestor(BaseIngestor):
     async def ingest(self, url: str, *, config: dict[str, Any]) -> IngestResult:
         owner, repo = _parse_repo(url)
         headers = {"Accept": "application/vnd.github+json"}
-        token = os.environ.get(config.get("github_token_env", "GITHUB_TOKEN"))
+        token = _github_token(config)
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
@@ -136,7 +137,7 @@ class GitHubIngestor(BaseIngestor):
 
         owner_repo = f"{owner}/{repo}"
         api_client = GitHubApiClient(
-            token=os.environ.get(config.get("github_token_env", "GITHUB_TOKEN"), ""),
+            token=token or "",
             base_url=config.get("api_base_url", "https://api.github.com"),
             timeout_sec=int(config.get("api_timeout_sec", 15)),
         )
@@ -246,6 +247,25 @@ def _parse_repo(url: str) -> tuple[str, str]:
     if len(parts) < 2 or not re.match(r"^[A-Za-z0-9_.-]+$", parts[0]):
         raise_extraction("Invalid GitHub repository URL", SourceType.GITHUB, "bad_url")
     return parts[0], parts[1].removesuffix(".git")
+
+
+def _github_token(config: dict[str, Any]) -> str:
+    token = os.environ.get(config.get("github_token_env", "GITHUB_TOKEN"), "").strip()
+    if token:
+        return token
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
 
 
 async def _optional_json(client: httpx.AsyncClient, url: str, default: Any, **kwargs: Any) -> Any:
