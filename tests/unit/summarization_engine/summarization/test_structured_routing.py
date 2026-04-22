@@ -269,6 +269,68 @@ async def test_extract_schema_fallback_marks_metadata_and_tag():
 
 
 @pytest.mark.asyncio
+async def test_extract_retries_once_before_schema_fallback():
+    bad = SimpleNamespace(
+        text='{"mini_title":"DMT explainer"',
+        input_tokens=10,
+        output_tokens=20,
+        model_used="gemini-flash",
+    )
+    good = SimpleNamespace(
+        text=json.dumps(
+            {
+                "mini_title": "DMT explainer",
+                "brief_summary": "Short brief of the DMT video.",
+                "tags": [
+                    "dmt",
+                    "neuroscience",
+                    "psychedelics",
+                    "pharmacology",
+                    "serotonin",
+                    "consciousness",
+                    "science",
+                ],
+                "speakers": ["Dr. Smith"],
+                "guests": None,
+                "entities_discussed": ["DMT"],
+                "detailed_summary": {
+                    "thesis": "DMT binds serotonin receptors.",
+                    "format": "lecture",
+                    "chapters_or_segments": [
+                        {"timestamp": "0:00", "title": "Chemistry", "bullets": ["indole ring"]}
+                    ],
+                    "demonstrations": [],
+                    "closing_takeaway": "More research needed.",
+                },
+            }
+        ),
+        input_tokens=11,
+        output_tokens=21,
+        model_used="gemini-flash",
+    )
+    client = SimpleNamespace(generate=AsyncMock(side_effect=[bad, good]))
+    cfg = load_config()
+    ext = StructuredExtractor(client, cfg, payload_class=YouTubeStructuredPayload)
+    ingest = _make_ingest(SourceType.YOUTUBE, "https://www.youtube.com/watch?v=x")
+
+    result = await ext.extract(
+        ingest,
+        summary_text="Patched summary prose with [00:42] grounding markers.",
+        pro_tokens=100,
+        flash_tokens=0,
+        latency_ms=123,
+        cod_iterations_used=2,
+        self_check_missing_count=0,
+        patch_applied=False,
+    )
+
+    assert client.generate.await_count == 2
+    assert result.metadata.is_schema_fallback is False
+    assert result.metadata.structured_payload is not None
+    assert result.tags[0] == "dmt"
+
+
+@pytest.mark.asyncio
 async def test_extract_fallback_does_not_happen_on_missing_optional_fields():
     """Optional fields (guests=null, entities_discussed=[]) must not trigger fallback."""
     client = _mock_client_returning(

@@ -24,8 +24,13 @@ from website.features.summarization_engine.core.models import (
     SummaryMetadata,
     SummaryResult,
 )
-from website.features.summarization_engine.summarization.common.json_utils import parse_json_object
-from website.features.summarization_engine.summarization.common.prompts import SYSTEM_PROMPT, source_context
+from website.features.summarization_engine.summarization.common.json_utils import (
+    parse_json_object,
+)
+from website.features.summarization_engine.summarization.common.prompts import (
+    SYSTEM_PROMPT,
+    source_context,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -58,6 +63,39 @@ class StructuredExtractor:
         schema = self._payload_class.model_json_schema()
         return json.dumps(schema, separators=(",", ":"))[:3000]
 
+    def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
+        schema_json = self._schema_snippet()
+        return (
+            f"{source_context(ingest.source_type)}\n\n"
+            f"Return a JSON object that EXACTLY matches the following JSON schema "
+            f"for class {self._payload_class.__name__}. Populate every required field "
+            f"from the SUMMARY below - do not invent facts. Use temperature 0 judgment.\n\n"
+            f"SCHEMA:\n{schema_json}\n\n"
+            "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
+            f"SUMMARY:\n{summary_text}"
+        )
+
+    def _build_repair_prompt(
+        self,
+        ingest: IngestResult,
+        summary_text: str,
+        broken_response: str,
+        error: Exception,
+    ) -> str:
+        schema_json = self._schema_snippet()
+        broken_preview = (broken_response or "").strip()[:4000]
+        return (
+            f"{source_context(ingest.source_type)}\n\n"
+            f"Your previous JSON response for class {self._payload_class.__name__} "
+            f"was invalid. Repair it so it EXACTLY matches this JSON schema.\n\n"
+            f"SCHEMA:\n{schema_json}\n\n"
+            f"VALIDATION ERROR:\n{type(error).__name__}: {error}\n\n"
+            "Use the BROKEN RESPONSE only as a draft to fix structure and escaping. "
+            "Preserve grounded facts, do not add new claims, and return raw JSON only.\n\n"
+            f"BROKEN RESPONSE:\n{broken_preview}\n\n"
+            f"SUMMARY:\n{summary_text}"
+        )
+
     async def extract(
         self,
         ingest: IngestResult,
@@ -70,41 +108,53 @@ class StructuredExtractor:
         self_check_missing_count: int,
         patch_applied: bool,
     ) -> SummaryResult:
-        schema_json = self._schema_snippet()
-        prompt = (
-            f"{source_context(ingest.source_type)}\n\n"
-            f"Return a JSON object that EXACTLY matches the following JSON schema "
-            f"for class {self._payload_class.__name__}. Populate every required field "
-            f"from the SUMMARY below — do not invent facts. Use temperature 0 judgment.\n\n"
-            f"SCHEMA:\n{schema_json}\n\n"
-            "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
-            f"SUMMARY:\n{summary_text}"
-        )
-        result = await self._client.generate(
-            prompt,
-            tier="flash",
-            response_schema=self._payload_class,
-            system_instruction=SYSTEM_PROMPT,
-        )
-        flash_tokens += result.input_tokens + result.output_tokens
-
         is_fallback = False
         structured_payload: dict | None = None
-        try:
-            raw = parse_json_object(result.text)
-            raw = _apply_identifier_hints(raw, ingest)
-            payload = self._payload_class(**raw)
-            structured_payload = payload.model_dump(mode="json")
-        except Exception as exc:
-            _log.warning(
-                "structured.extract schema_fallback payload_class=%s err=%s preview=%s",
-                self._payload_class.__name__,
-                type(exc).__name__,
-                (result.text or "")[:160].replace("\n", " "),
+        prompt = self._build_prompt(ingest, summary_text)
+        max_attempts = 1 + max(
+            0, self._config.structured_extract.validation_retries
+        )
+        payload: BaseModel
+
+        for attempt in range(max_attempts):
+            result = await self._client.generate(
+                prompt,
+                tier="flash",
+                response_schema=self._payload_class,
+                system_instruction=SYSTEM_PROMPT,
             )
-            payload = _fallback_payload(ingest, summary_text, self._config)
-            is_fallback = True
-            structured_payload = None
+            flash_tokens += result.input_tokens + result.output_tokens
+
+            try:
+                raw = parse_json_object(result.text)
+                raw = _apply_identifier_hints(raw, ingest)
+                payload = self._payload_class(**raw)
+                structured_payload = payload.model_dump(mode="json")
+                break
+            except Exception as exc:
+                if attempt == max_attempts - 1:
+                    _log.warning(
+                        "structured.extract schema_fallback payload_class=%s err=%s preview=%s",
+                        self._payload_class.__name__,
+                        type(exc).__name__,
+                        (result.text or "")[:160].replace("\n", " "),
+                    )
+                    payload = _fallback_payload(ingest, summary_text, self._config)
+                    is_fallback = True
+                    structured_payload = None
+                    break
+                _log.info(
+                    "structured.extract retry payload_class=%s attempt=%d err=%s",
+                    self._payload_class.__name__,
+                    attempt + 2,
+                    type(exc).__name__,
+                )
+                prompt = self._build_repair_prompt(
+                    ingest,
+                    summary_text,
+                    result.text or "",
+                    exc,
+                )
 
         detailed_list = _coerce_detailed_summary(payload)
         tags = _normalize_tags(
@@ -124,7 +174,9 @@ class StructuredExtractor:
                 source_type=ingest.source_type,
                 url=ingest.url,
                 author=ingest.metadata.get("author"),
-                date=_date_or_none(ingest.metadata.get("published") or ingest.metadata.get("date")),
+                date=_date_or_none(
+                    ingest.metadata.get("published") or ingest.metadata.get("date")
+                ),
                 extraction_confidence=ingest.extraction_confidence,
                 confidence_reason=ingest.confidence_reason,
                 total_tokens_used=pro_tokens + flash_tokens,
@@ -153,20 +205,41 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
                 out.append(item)
             elif isinstance(item, BaseModel):
                 data = item.model_dump(mode="json")
-                heading = str(data.get("heading") or data.get("title") or data.get("timestamp") or "Section")
+                heading = str(
+                    data.get("heading")
+                    or data.get("title")
+                    or data.get("timestamp")
+                    or "Section"
+                )
                 bullets = data.get("bullets") or []
                 if not bullets:
-                    bullets = [f"{k}: {v}" for k, v in data.items() if k not in {"heading", "bullets", "sub_sections"} and v]
+                    bullets = [
+                        f"{k}: {v}"
+                        for k, v in data.items()
+                        if k not in {"heading", "bullets", "sub_sections"} and v
+                    ]
                 bullets = [str(b) for b in bullets if b]
                 if not bullets:
                     bullets = [heading]
-                out.append(DetailedSummarySection(heading=heading, bullets=bullets, sub_sections=data.get("sub_sections") or {}))
+                out.append(
+                    DetailedSummarySection(
+                        heading=heading,
+                        bullets=bullets,
+                        sub_sections=data.get("sub_sections") or {},
+                    )
+                )
             elif isinstance(item, dict):
                 heading = str(item.get("heading") or item.get("title") or "Section")
                 bullets = [str(b) for b in (item.get("bullets") or []) if b]
                 if not bullets:
                     bullets = [heading]
-                out.append(DetailedSummarySection(heading=heading, bullets=bullets, sub_sections=item.get("sub_sections") or {}))
+                out.append(
+                    DetailedSummarySection(
+                        heading=heading,
+                        bullets=bullets,
+                        sub_sections=item.get("sub_sections") or {},
+                    )
+                )
         return out or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
 
     if isinstance(raw, BaseModel):
@@ -185,7 +258,9 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
                     else:
                         bullets.append(str(item))
                 if bullets:
-                    sections.append(DetailedSummarySection(heading=key, bullets=bullets))
+                    sections.append(
+                        DetailedSummarySection(heading=key, bullets=bullets)
+                    )
             elif isinstance(value, dict):
                 sections.append(
                     DetailedSummarySection(
@@ -207,7 +282,7 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     instead of ``fastapi/fastapi``; ``IndianStockMarket thread`` instead of
     ``r/IndianStockMarket ...``). The ingest layer already knows the canonical identifier
     for these sources, so we always prefer it over the model's guess. This does NOT touch
-    prose fields (brief_summary, architecture_overview, detailed_summary) — only the
+    prose fields (brief_summary, architecture_overview, detailed_summary) - only the
     schema-gated identifier.
     """
     if not isinstance(raw, dict):
@@ -230,7 +305,9 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     return raw
 
 
-def _fallback_payload(ingest: IngestResult, summary_text: str, config: EngineConfig) -> StructuredSummaryPayload:
+def _fallback_payload(
+    ingest: IngestResult, summary_text: str, config: EngineConfig
+) -> StructuredSummaryPayload:
     """Explicit schema-fallback marker. Never silently pads with boilerplate tags.
 
     The `_schema_fallback_` tag is intentional: downstream gates / eval loop
@@ -255,7 +332,9 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config: EngineCon
     )
 
 
-_BOILERPLATE_TAGS = frozenset({"zettelkasten", "summary", "capture", "research", "source", "notes", "ai", "knowledge"})
+_BOILERPLATE_TAGS = frozenset(
+    {"zettelkasten", "summary", "capture", "research", "source", "notes", "ai", "knowledge"}
+)
 
 
 def _normalize_tags(
