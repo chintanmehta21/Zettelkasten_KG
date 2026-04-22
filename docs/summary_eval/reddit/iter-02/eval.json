@@ -1,0 +1,119 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 5.0,
+    "fluency": 4.5,
+    "relevance": 4.0,
+    "reasoning": "The summary is well-structured and comprehensive in its detailed sections, accurately capturing the OP's claims and the diverse commenter responses, including strong counterarguments and source attribution issues. However, the brief summary is significantly underdeveloped, failing to provide sufficient detail on the OP's core argument and the range of responses. The label is also slightly off by including a secondary subreddit and being truncated."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "The original poster alleged that Rajkot, a tier-2 city in Gujarat, wields disproportionate influence over Indian IPO success, primarily through its control of the Grey Market Premium (GMP). This influence was purportedly demonstrated by the 'collapse' of the Hyundai IPO due to Rajkot's disinterest, contrasting with the GMP surge for the Waaree Energies IPO driven by strong local interest. The post claimed Rajkot is India's third-largest source of IPO applications, a major grey market hub with a deep stock market culture, and speculated large players might have suppressed Hyundai's GMP.",
+          "fact": null,
+          "sentence": "The original poster alleged that Rajkot, a tier-2 city in Gujarat, wields disproportionate influence over Indian IPO success.",
+          "span": "wields disproportionate influence over Indian IPO success",
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 23.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.op_intent_captured",
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.caveats_surfaced",
+          "brief.neutral_tone"
+        ],
+        "criteria_missed": [
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.unresolved_questions",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 12.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.subreddit_present",
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": [
+          "tags.thread_type"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 12.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.central_issue",
+          "label.neutral"
+        ],
+        "criteria_missed": [
+          "label.rsubreddit_prefix"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 71.43,
+    "finesure": 100.0,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_reddit.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 9260,
+    "total_tokens_out": 1133,
+    "latency_ms": 22549
+  }
+}
