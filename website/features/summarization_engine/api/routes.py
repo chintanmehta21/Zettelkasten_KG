@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sse_starlette.sse import EventSourceResponse
 
 from website.api.auth import get_optional_user
-from website.features.api_key_switching.key_pool import GeminiKeyPool, parse_api_env_line
+from website.features.api_key_switching.key_pool import (
+    GeminiKeyPool,
+    _load_keys_from_file,
+    candidate_api_env_paths,
+)
 from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request, SummarizeV2Response
 from website.features.summarization_engine.batch.processor import BatchProcessor, progress_stream
 from website.features.summarization_engine.core.config import load_config
@@ -87,13 +91,12 @@ def _gemini_client() -> TieredGeminiClient:
             for key in os.environ["GEMINI_API_KEYS"].split(",")
             if key.strip()
         )
-    if not keys and os.path.exists("api_env"):
-        with open("api_env", encoding="utf-8") as handle:
-            for line in handle:
-                stripped = line.strip()
-                if not stripped or stripped.startswith("#"):
-                    continue
-                keys.append(parse_api_env_line(stripped))
+    if not keys:
+        for path in candidate_api_env_paths():
+            loaded = _load_keys_from_file(str(path))
+            if loaded:
+                keys.extend(loaded)
+                break
     if not keys:
         raise HTTPException(status_code=503, detail="Gemini API key not configured")
     return TieredGeminiClient(GeminiKeyPool(keys), load_config())

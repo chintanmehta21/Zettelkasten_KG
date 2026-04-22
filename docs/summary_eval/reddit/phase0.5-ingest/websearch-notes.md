@@ -4,13 +4,13 @@
 
 - Anonymous JSON endpoint stays primary. It was fast and reliable across all 4 benchmark URLs in this pass.
 - `pullpush.io` stays enrichment-only and only triggers when `comment_divergence_pct >= 20`.
-  Rationale: the benchmark showed large divergence values, but zero actual recovery, so it is not strong enough to become a primary ingest path.
+  Rationale: it materially improved recovered-comment coverage after the parameter fix, but anonymous JSON is still the faster and more stable primary ingest path.
 - PRAW or OAuth is still not justified here. For read-only ingest, it adds auth surface without improving the benchmark outcome we measured.
 
 ## Findings after benchmark
 
 - The phase-0.5 benchmark produced `success_rate=1.00` for both anonymous JSON strategies.
-- Both expected removed-comment `r/IAmA` threads showed very high divergence (`86.47%` and `88.66%`) but still yielded `pullpush_fetched = 0`.
+- Both expected removed-comment `r/IAmA` threads showed very high divergence (`86.47%` and `88.66%`) and now yielded positive archive recovery after switching to the bare submission id expected by PullPush.
 - Current archive-landscape signals remain noisy: public discussion indicates intermittent PullPush availability, historic Pushshift disruptions after Reddit API restrictions, and partial fallback use of Arctic Shift or mirrors when PullPush misses content.
 
 ## Sources checked

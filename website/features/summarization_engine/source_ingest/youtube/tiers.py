@@ -399,16 +399,25 @@ async def tier_gemini_audio(video_id: str, config: dict) -> TierResult:
 
 def _first_available_key() -> str | None:
     import os
+    from website.features.api_key_switching.key_pool import (
+        _load_keys_from_file,
+        candidate_api_env_paths,
+    )
 
     for name in ("GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2"):
         if os.environ.get(name):
             return os.environ[name]
-    api_env_path = Path(__file__).resolve().parents[5] / "api_env"
-    if api_env_path.exists():
-        for line in api_env_path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped and not stripped.startswith("#"):
-                return stripped.split()[0]
+    if os.environ.get("GEMINI_API_KEYS"):
+        for key in os.environ["GEMINI_API_KEYS"].split(","):
+            stripped = key.strip()
+            if stripped:
+                return stripped
+    for path in candidate_api_env_paths():
+        loaded = _load_keys_from_file(str(path))
+        if not loaded:
+            continue
+        first = loaded[0]
+        return first[0] if isinstance(first, tuple) else first
     return None
 
 

@@ -31,7 +31,7 @@ async def recover_removed_comments(
     """Fetch archived comments for a Reddit thread."""
     url = f"{base_url.rstrip('/')}/reddit/search/comment/"
     params = {
-        "link_id": f"t3_{link_id}",
+        "link_id": link_id,
         "size": max_recovered,
         "sort": "score",
         "sort_type": "score",

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 import logging
 import os
 import time
+from pathlib import Path
 
 import httpx
 from google import genai
@@ -112,6 +113,43 @@ def _load_keys_from_file(path: str) -> list[str | tuple[str, str]]:
             return keys
     except FileNotFoundError:
         return []
+
+
+def candidate_api_env_paths(anchor: Path | None = None) -> list[Path]:
+    """Return likely api_env locations for both normal repos and git worktrees."""
+    current = (anchor or Path(__file__)).resolve()
+    feature_dir = current.parent
+    project_root = feature_dir.parent.parent.parent
+
+    candidates = [
+        feature_dir / "api_env",
+        project_root / "api_env",
+    ]
+
+    main_checkout_root: Path | None = None
+    for parent in current.parents:
+        if parent.name == ".worktrees":
+            main_checkout_root = parent.parent
+            break
+
+    if main_checkout_root is not None:
+        candidates.extend(
+            [
+                main_checkout_root / "website" / "features" / "api_key_switching" / "api_env",
+                main_checkout_root / "api_env",
+            ]
+        )
+
+    candidates.append(Path("/etc/secrets/api_env"))
+
+    seen: set[Path] = set()
+    ordered: list[Path] = []
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
+        ordered.append(path)
+    return ordered
 
 
 @dataclass(frozen=True)
