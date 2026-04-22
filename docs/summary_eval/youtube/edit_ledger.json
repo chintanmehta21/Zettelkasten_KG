@@ -13,6 +13,13 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 26.349999999999994
+    },
+    {
+      "iter": 3,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 4.75
     }
   ]
 }

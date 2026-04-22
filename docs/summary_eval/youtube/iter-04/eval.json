@@ -1,0 +1,318 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.5,
+        "consistency": 3.0,
+        "fluency": 4.5,
+        "relevance": 4.0,
+        "reasoning": "The summary provides a comprehensive and well-structured overview of the video's content, covering historical context, scientific explanations, and user experiences of DMT. The detailed sections are coherent and mostly accurate, though there are several misspellings of speaker names and one instance of verbatim reproduction. The brief summary is too short and significantly incomplete regarding the identification of speakers and major video segments."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.75,
+          "items": [
+            {
+              "claim": "Chemist Richard Manske synthesized N,N-dimethyltryptamine (DMT).",
+              "fact": null,
+              "sentence": "Early 1930s: Chemist Richard Manske synthesizes N,N-dimethyltryptamine (DMT) without knowing its psychoactive properties.",
+              "span": "Richard Manske",
+              "importance": null
+            },
+            {
+              "claim": "Chris Timmermann proposed the Functional Deafferentation theory.",
+              "fact": null,
+              "sentence": "Functional Deafferentation (Chris Timmermann) theory: DMT disrupts external sensory input, causing the brain to generate a vivid internal simulation, akin to \"dreaming with your eyes open\"; brain wave patterns show strong theta waves, similar to REM sleep.",
+              "span": "Chris Timmermann",
+              "importance": null
+            },
+            {
+              "claim": "Timmermann's Theory states the brain's hyperconnected state during a DMT trip may send a signal that it is dying.",
+              "fact": null,
+              "sentence": "Timmermann's Theory: The brain's hyperconnected state during a DMT trip is such a massive transformation that the brain may send a signal that it is dying.",
+              "span": "Timmermann",
+              "importance": null
+            },
+            {
+              "claim": "Chris Timmermann theorizes DMT could treat depression.",
+              "fact": null,
+              "sentence": "Therapeutic Potential for Depression: Chris Timmermann theorizes DMT could treat depression by dynamically altering a patient's rigid, negative sense of self.",
+              "span": "Chris Timmermann",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.78,
+          "items": [
+            {
+              "claim": "The brief summary should name the host/channel and any guests or key products/libraries discussed.",
+              "fact": null,
+              "sentence": "Featured voices include Dr.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary should outline the major structural segments of the video.",
+              "fact": null,
+              "sentence": "It moves through sections on Historical Timeline and Chemistry and Brain Effects.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.667,
+          "items": [
+            {
+              "claim": "Examples/analogies should be summarized as PURPOSE, not reproduced verbatim.",
+              "fact": null,
+              "sentence": "Key Difference: DMT experiences are typically more visual, while NDEs are more disembodied.",
+              "span": "DMT experiences are typically more visual, while NDEs are more disembodied.",
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 14.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.thesis_capture",
+              "brief.format_identified",
+              "brief.no_clickbait"
+            ],
+            "criteria_missed": [
+              "brief.speakers_captured",
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 42.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.caveats_preserved",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding"
+            ],
+            "criteria_missed": [
+              "detailed.examples_purpose_not_verbatim"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.technologies_named",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": 75,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "example_verbatim_reproduction",
+            "source_region": "Key Difference: DMT experiences are typically more visual, while NDEs are more disembodied.",
+            "auto_cap": null
+          },
+          {
+            "id": "speakers_absent",
+            "source_region": "Featured voices include Dr.",
+            "auto_cap": 75
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 83.3,
+        "finesure": 73.9,
+        "qafact": 78.9,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 13028,
+        "total_tokens_out": 1781,
+        "latency_ms": 53613,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+    "eval": {
+      "g_eval": {
+        "coherence": 2.7,
+        "consistency": 5.0,
+        "fluency": 5.0,
+        "relevance": 4.6,
+        "reasoning": "The summary is well-structured and covers all key aspects of the video in a coherent and consistent manner. The language is fluent and easy to understand. The main points are highly relevant to the video's content. The brief summary's length and explicit outlining of segments/takeaways could be improved."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.85,
+          "items": [
+            {
+              "claim": "Brief summary outlines the major structural segments of the video (intro, sections, demo, conclusion).",
+              "fact": null,
+              "sentence": "This commentary video explains Ross Ulbricht founded and operated the Silk Road dark web marketplace, driven by libertarian ideals, but his operational security lapses and the site's illicit activities led to a federal investigation, his arrest, and a life sentence, amidst allegations of corruption within law enforcement.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief summary highlights 2-3 takeaways a viewer would remember after watching.",
+              "fact": null,
+              "sentence": "This commentary video explains Ross Ulbricht founded and operated the Silk Road dark web marketplace, driven by libertarian ideals, but his operational security lapses and the site's illicit activities led to a federal investigation, his arrest, and a life sentence, amidst allegations of corruption within law enforcement.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.89,
+          "items": [
+            {
+              "claim": "Brief is 5-7 sentences.",
+              "fact": null,
+              "sentence": "This commentary video explains Ross Ulbricht founded and operated the Silk Road dark web marketplace, driven by libertarian ideals, but his operational security lapses and the site's illicit activities led to a federal investigation, his arrest, and a life sentence, amidst allegations of corruption within law enforcement.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 16.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.thesis_capture",
+              "brief.format_identified",
+              "brief.speakers_captured",
+              "brief.no_clickbait"
+            ],
+            "criteria_missed": [
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.caveats_preserved",
+              "detailed.examples_purpose_not_verbatim",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.technologies_named",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 86.94,
+        "finesure": 91.22,
+        "qafact": 79.17,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 15082,
+        "total_tokens_out": 1199,
+        "latency_ms": 49755
+      }
+    }
+  }
+]
