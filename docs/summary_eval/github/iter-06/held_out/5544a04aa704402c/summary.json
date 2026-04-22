@@ -1,0 +1,255 @@
+{
+  "mini_title": "fastapi/typer",
+  "brief_summary": "A Python library for building command-line interface (CLI) applications. At a high level, typer is a Python library for building command-line interface (CLI) applications, positioned as a. The main stack includes Python, Click, rich, shellingham. Documented public surfaces include typer.run(), @app.command(), typer CLI tool, Python type hints. The documented workflow emphasizes The `typer-slim` pa",
+  "tags": [
+    "python",
+    "api-framework",
+    "cli-tool",
+    "cli",
+    "type-hints",
+    "click",
+    "fastapi",
+    "command-line-tool",
+    "developer-tool"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Purpose",
+      "bullets": [
+        "A Python library for building command-line interface (CLI) applications.",
+        "Positioned as a sibling project to FastAPI.",
+        "Utilizes Python type hints to define CLI arguments and options, aiming to reduce boilerplate code.",
+        "Includes a `typer` command-line tool to execute Python scripts as CLIs without explicit library usage."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture & Dependencies",
+      "bullets": [
+        "`typer` is built as a layer on top of `Click`.",
+        "Required dependencies include `Click` (underlying CLI framework), `rich` (formatted error messages/tracebacks), and `shellingham` (detects user's shell for completion).",
+        "`rich` can be disabled by setting `TYPER_USE_RICH` environment variable to `False` or `0`.",
+        "The `typer-slim` package, which previously omitted `rich` and `shellingham`, was deprecated in version 0.22.0 and now installs the full `typer` package."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "API & Functionality",
+      "bullets": [
+        "API leverages type hints for strong editor support (autocompletion, type checks), which can reduce debugging time."
+      ],
+      "sub_sections": {
+        "Core API": [
+          "CLI commands are defined as standard Python functions.",
+          "Function parameters and their type hints are automatically converted to CLI arguments and options (e.g., a `bool` parameter becomes `--flag`/`--no-flag`)."
+        ],
+        "Application Structure": [
+          "Single-command CLIs are created with minimal code, typically an import and a `typer.run(my_function)` call.",
+          "Multi-command CLIs with subcommands use an instance of the `typer.Typer` class with the `@app.command()` decorator."
+        ],
+        "Features": [
+          "**Automatic Help:** Generates `--help` text from function signatures and docstrings.",
+          "**Shell Completion:** Provides tab completion for Bash, Zsh, Fish, and PowerShell, enabled by the user via an `--install-completion` flag.",
+          "**Script Runner:** The `typer` executable can run a script's main function as a CLI (e.g., `typer main.py run`)."
+        ]
+      }
+    },
+    {
+      "heading": "Maturity & Project Status",
+      "bullets": [
+        "**License:** MIT.",
+        "**CI/CD:** Employs 16 GitHub Actions workflows for testing and publishing.",
+        "**Maintenance:** Actively maintained, with recent releases including version `0.24.2`.",
+        "**Security:** Vulnerabilities are reported privately to `security@tiangolo.com`. The policy advises using the latest versions for security fixes."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Notable Issues & Developments",
+      "bullets": [],
+      "sub_sections": {
+        "Refactoring": [
+          "Recent work includes vendoring parts of its core dependency, Click, to increase test coverage and internal control."
+        ],
+        "Features": [
+          "Support for `*args` and `**kwargs` in command function signatures was added (#1654)."
+        ],
+        "Bug Fixes": [
+          "Shell completion logic was fixed for PowerShell command hints (#1685) and for `click.Path` arguments in a `TyperGroup` (#1673).",
+          "An optimization that skipped `result_callback` execution in single-command apps was fixed (#1631, #445).",
+          "Type annotation edge cases were addressed for `Union` (#1683) and `Annotated` with `typer.Option(None)` (#1564)."
+        ],
+        "Error Handling": [
+          "Defining a command with multiple variadic arguments (e.g., multiple `List[...]` parameters) now raises a clear `UsageError` instead of an opaque `TypeError` from Click (#1555)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/tiangolo/typer",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 3 extra doc(s) fetched",
+    "total_tokens_used": 22522,
+    "gemini_pro_tokens": 19577,
+    "gemini_flash_tokens": 2945,
+    "total_latency_ms": 73817,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 3,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "fastapi/typer",
+      "architecture_overview": "typer is a Python library for building command-line interface (CLI) applications, positioned as a layer built on top of Click. It leverages Python type hints for defining CLI arguments and options, reducing boilerplate. Key dependencies include Click for the underlying framework, rich for formatted error messages, and shellingham for shell detection and completion installation.",
+      "brief_summary": "A Python library for building command-line interface (CLI) applications. At a high level, typer is a Python library for building command-line interface (CLI) applications, positioned as a. The main stack includes Python, Click, rich, shellingham. Documented public surfaces include typer.run(), @app.command(), typer CLI tool, Python type hints. The documented workflow emphasizes The `typer-slim` package, which previously omitted `rich` and `shellingham`, was deprecated in.",
+      "tags": [
+        "python",
+        "api-framework",
+        "cli-tool",
+        "cli",
+        "type-hints",
+        "click",
+        "fastapi",
+        "command-line-tool",
+        "developer-tool"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Purpose",
+          "bullets": [
+            "A Python library for building command-line interface (CLI) applications.",
+            "Positioned as a sibling project to FastAPI.",
+            "Utilizes Python type hints to define CLI arguments and options, aiming to reduce boilerplate code.",
+            "Includes a `typer` command-line tool to execute Python scripts as CLIs without explicit library usage."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Core Library",
+          "main_stack": [
+            "Python",
+            "Click"
+          ],
+          "public_interfaces": [
+            "typer.run()",
+            "@app.command()",
+            "typer CLI tool"
+          ],
+          "usability_signals": [
+            "Type Hinting for CLI",
+            "Reduced boilerplate",
+            "Strong editor support"
+          ]
+        },
+        {
+          "heading": "Architecture & Dependencies",
+          "bullets": [
+            "`typer` is built as a layer on top of `Click`.",
+            "Required dependencies include `Click` (underlying CLI framework), `rich` (formatted error messages/tracebacks), and `shellingham` (detects user's shell for completion).",
+            "`rich` can be disabled by setting `TYPER_USE_RICH` environment variable to `False` or `0`.",
+            "The `typer-slim` package, which previously omitted `rich` and `shellingham`, was deprecated in version 0.22.0 and now installs the full `typer` package."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Core Architecture",
+          "main_stack": [
+            "Click",
+            "rich",
+            "shellingham"
+          ],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Modular design",
+            "Configurable dependencies (rich)"
+          ]
+        },
+        {
+          "heading": "API & Functionality",
+          "bullets": [
+            "API leverages type hints for strong editor support (autocompletion, type checks), which can reduce debugging time."
+          ],
+          "sub_sections": {
+            "Core API": [
+              "CLI commands are defined as standard Python functions.",
+              "Function parameters and their type hints are automatically converted to CLI arguments and options (e.g., a `bool` parameter becomes `--flag`/`--no-flag`)."
+            ],
+            "Application Structure": [
+              "Single-command CLIs are created with minimal code, typically an import and a `typer.run(my_function)` call.",
+              "Multi-command CLIs with subcommands use an instance of the `typer.Typer` class with the `@app.command()` decorator."
+            ],
+            "Features": [
+              "**Automatic Help:** Generates `--help` text from function signatures and docstrings.",
+              "**Shell Completion:** Provides tab completion for Bash, Zsh, Fish, and PowerShell, enabled by the user via an `--install-completion` flag.",
+              "**Script Runner:** The `typer` executable can run a script's main function as a CLI (e.g., `typer main.py run`)."
+            ]
+          },
+          "module_or_feature": "Core API",
+          "main_stack": [],
+          "public_interfaces": [
+            "Python type hints",
+            "typer.run()",
+            "@app.command()",
+            "--help",
+            "--install-completion",
+            "typer <script> run"
+          ],
+          "usability_signals": [
+            "Strong editor support",
+            "Autocompletion",
+            "Type checks",
+            "Reduced debugging time",
+            "Automatic help generation",
+            "Tab completion"
+          ]
+        },
+        {
+          "heading": "Maturity & Project Status",
+          "bullets": [
+            "**License:** MIT.",
+            "**CI/CD:** Employs 16 GitHub Actions workflows for testing and publishing.",
+            "**Maintenance:** Actively maintained, with recent releases including version `0.24.2`.",
+            "**Security:** Vulnerabilities are reported privately to `security@tiangolo.com`. The policy advises using the latest versions for security fixes."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Project Lifecycle",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Actively maintained",
+            "Regular releases",
+            "Clear security policy"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Developments",
+          "bullets": [],
+          "sub_sections": {
+            "Refactoring": [
+              "Recent work includes vendoring parts of its core dependency, Click, to increase test coverage and internal control."
+            ],
+            "Features": [
+              "Support for `*args` and `**kwargs` in command function signatures was added (#1654)."
+            ],
+            "Bug Fixes": [
+              "Shell completion logic was fixed for PowerShell command hints (#1685) and for `click.Path` arguments in a `TyperGroup` (#1673).",
+              "An optimization that skipped `result_callback` execution in single-command apps was fixed (#1631, #445).",
+              "Type annotation edge cases were addressed for `Union` (#1683) and `Annotated` with `typer.Option(None)` (#1564)."
+            ],
+            "Error Handling": [
+              "Defining a command with multiple variadic arguments (e.g., multiple `List[...]` parameters) now raises a clear `UsageError` instead of an opaque `TypeError` from Click (#1555)."
+            ]
+          },
+          "module_or_feature": "Recent Updates",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Continuous improvement",
+            "Active bug resolution",
+            "Enhanced error messages"
+          ]
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

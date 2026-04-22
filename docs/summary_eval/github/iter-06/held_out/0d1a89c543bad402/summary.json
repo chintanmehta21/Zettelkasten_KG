@@ -1,0 +1,41 @@
+{
+  "mini_title": "psf/requests",
+  "brief_summary": "* **ID:** psf/requests * **Tags:** #python, #http, #library, #client **psf/requests** is a high-level HTTP/1.1 client library for Python, officially supporting versions 3.10+. Guided by the philosophy \"HTTP for Humans,\" it is one of Python's most downloaded packages (~300M/week) and a dependency for over 4,000,000 GitHub repositories. ### Architecture and API",
+  "tags": [
+    "_schema_fallback_",
+    "github",
+    "knowledge",
+    "capture",
+    "research",
+    "notes",
+    "summary"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "schema_fallback",
+      "bullets": [
+        "structured extractor fell back; see metadata.is_schema_fallback",
+        "* **ID:** psf/requests * **Tags:** #python, #http, #library, #client **psf/requests** is a high-level HTTP/1.1 client library for Python, officially supporting versions 3.10+. Guided by the philosophy \"HTTP for Humans,\" it is one of Python's most downloaded packages (~300M/week) and a dependency for over 4,000,000 GitHub repositories. ### Architecture and API"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/psf/requests",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata and README fetched",
+    "total_tokens_used": 19539,
+    "gemini_pro_tokens": 12802,
+    "gemini_flash_tokens": 6737,
+    "total_latency_ms": 86772,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 4,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": null,
+    "is_schema_fallback": true
+  }
+}

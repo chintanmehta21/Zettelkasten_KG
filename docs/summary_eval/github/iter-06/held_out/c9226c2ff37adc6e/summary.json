@@ -1,0 +1,185 @@
+{
+  "mini_title": "encode/httpx",
+  "brief_summary": "Architecture built upon the `httpcore` library for transport layer management. At a high level, httpx provides a modern, async-capable alternative to requests. Its architecture leverages the httpcore library. The main stack includes httpcore, h11 (for HTTP/1.1), certifi, idna. Documented public surfaces include WSGITransport, ASGITransport. The documented workflow emphasizes Actively maintained.",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "cli-tool",
+    "http-client",
+    "asyncio",
+    "trio",
+    "http-1-1",
+    "http-2",
+    "requests-compatible"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Repository Purpose & Architecture",
+      "bullets": [
+        "Offers a modern, async-capable alternative to `requests`.",
+        "Architecture built upon the `httpcore` library for transport layer management.",
+        "Supports direct requests to WSGI or ASGI applications via `WSGITransport` and `ASGITransport`."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "API & Maturity",
+      "bullets": [
+        "Actively maintained (v0.28.1).",
+        "BSD licensed.",
+        "Claims 100% test coverage.",
+        "Fully type-annotated.",
+        "Requires Python 3.9+ (Python 3.7 support dropped in v0.25.0)."
+      ],
+      "sub_sections": {
+        "API Simplification and Refinement": [
+          "WSGI/ASGI Shortcut: `app` argument deprecated in v0.27.0, removed in v0.28.0; favors explicit transport instances.",
+          "Proxy Config: `proxies` argument deprecated in v0.26.0, removed in v0.28.0; replaced by `proxy` or `mounts`.",
+          "SSL Config: `cert` argument and string for `verify` deprecated in v0.28.0.",
+          "Request Body: v0.28.0 introduced more compact JSON request bodies by default (potentially breaking change)."
+        ]
+      }
+    },
+    {
+      "heading": "Notable Issues & Behavior",
+      "bullets": [
+        "Recent development focused on correcting specific request and error handling behaviors."
+      ],
+      "sub_sections": {
+        "Query Parameters": [
+          "Fixed bugs where `params` would overwrite, not merge with, existing URL query parameters (#3761, #3614)."
+        ],
+        "URL Encoding": [
+          "Pipe character (`|`) now percent-encoded in URL paths (RFC 3986 conformance) (#3764)."
+        ],
+        "Redirects": [
+          "Feature requested (#3783) to optionally preserve original HTTP method on 301/302 redirects, diverging from common browser behavior of changing method to `GET`."
+        ],
+        "Error Handling": [
+          "Improved misleading error messages for invalid `data` arguments (#3758).",
+          "Fixed resource cleanup to ensure mounted transports are closed if main transport fails during initialization (#3769)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/encode/httpx",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 24631,
+    "gemini_pro_tokens": 18692,
+    "gemini_flash_tokens": 5939,
+    "total_latency_ms": 80808,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "encode/httpx",
+      "architecture_overview": "httpx provides a modern, async-capable alternative to requests. Its architecture leverages the httpcore library for transport management. Core dependencies include httpcore, h11 (HTTP/1.1), certifi, idna, and sniffio. Optional dependencies add features like HTTP/2 (h2), SOCKS proxies (socksio), decompression (brotli/zstandard), and a CLI (rich/click). It can make requests directly to WSGI or ASGI applications using WSGITransport and ASGITransport.",
+      "brief_summary": "Architecture built upon the `httpcore` library for transport layer management. At a high level, httpx provides a modern, async-capable alternative to requests. Its architecture leverages the httpcore library. The main stack includes httpcore, h11 (for HTTP/1.1), certifi, idna. Documented public surfaces include WSGITransport, ASGITransport. The documented workflow emphasizes Actively maintained.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "cli-tool",
+        "http-client",
+        "asyncio",
+        "trio",
+        "http-1-1",
+        "http-2",
+        "requests-compatible"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Repository Purpose & Architecture",
+          "bullets": [
+            "Offers a modern, async-capable alternative to `requests`.",
+            "Architecture built upon the `httpcore` library for transport layer management.",
+            "Supports direct requests to WSGI or ASGI applications via `WSGITransport` and `ASGITransport`."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Core Architecture & Dependencies",
+          "main_stack": [
+            "httpcore",
+            "h11 (for HTTP/1.1)",
+            "certifi",
+            "idna",
+            "sniffio",
+            "h2 (optional, for HTTP/2)",
+            "socksio (optional, for SOCKS proxies)",
+            "brotli/brotlicffi (optional, for decompression)",
+            "zstandard (optional, for decompression)",
+            "rich/click (optional, for CLI)"
+          ],
+          "public_interfaces": [
+            "WSGITransport",
+            "ASGITransport"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "API & Maturity",
+          "bullets": [
+            "Actively maintained (v0.28.1).",
+            "BSD licensed.",
+            "Claims 100% test coverage.",
+            "Fully type-annotated.",
+            "Requires Python 3.9+ (Python 3.7 support dropped in v0.25.0)."
+          ],
+          "sub_sections": {
+            "API Simplification and Refinement": [
+              "WSGI/ASGI Shortcut: `app` argument deprecated in v0.27.0, removed in v0.28.0; favors explicit transport instances.",
+              "Proxy Config: `proxies` argument deprecated in v0.26.0, removed in v0.28.0; replaced by `proxy` or `mounts`.",
+              "SSL Config: `cert` argument and string for `verify` deprecated in v0.28.0.",
+              "Request Body: v0.28.0 introduced more compact JSON request bodies by default (potentially breaking change)."
+            ]
+          },
+          "module_or_feature": "API Stability & Evolution",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Actively maintained",
+            "BSD licensed",
+            "100% test coverage (claimed)",
+            "Fully type-annotated",
+            "Ongoing API simplification and refinement"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Behavior",
+          "bullets": [
+            "Recent development focused on correcting specific request and error handling behaviors."
+          ],
+          "sub_sections": {
+            "Query Parameters": [
+              "Fixed bugs where `params` would overwrite, not merge with, existing URL query parameters (#3761, #3614)."
+            ],
+            "URL Encoding": [
+              "Pipe character (`|`) now percent-encoded in URL paths (RFC 3986 conformance) (#3764)."
+            ],
+            "Redirects": [
+              "Feature requested (#3783) to optionally preserve original HTTP method on 301/302 redirects, diverging from common browser behavior of changing method to `GET`."
+            ],
+            "Error Handling": [
+              "Improved misleading error messages for invalid `data` arguments (#3758).",
+              "Fixed resource cleanup to ensure mounted transports are closed if main transport fails during initialization (#3769)."
+            ]
+          },
+          "module_or_feature": "Behavioral Fixes & Enhancements",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Ongoing bug fixes and behavioral corrections"
+          ]
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

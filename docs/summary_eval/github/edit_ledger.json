@@ -60,6 +60,21 @@
       "targeted_criterion": "brief.usage_pattern",
       "criterion_delta": 0.0,
       "composite_delta": -1.8899999999999864
+    },
+    {
+      "iter": 5,
+      "files": [
+        "ops/scripts/eval_loop.py",
+        "ops/scripts/lib/phases.py",
+        "ops/scripts/push_iter_summaries.py",
+        "tests/unit/summarization_engine/summarization/test_youtube_schema.py",
+        "website/features/summarization_engine/evaluator/prompts.py",
+        "website/features/summarization_engine/summarization/youtube/prompts.py",
+        "website/features/summarization_engine/summarization/youtube/schema.py"
+      ],
+      "targeted_criterion": "brief.usage_pattern",
+      "criterion_delta": 0.0,
+      "composite_delta": -24.24333333333334
     }
   ]
 }

@@ -1,0 +1,160 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 4.0,
+    "relevance": 5.0,
+    "reasoning": "The summary effectively captures the core purpose, architecture, features, maturity, and development trends of FastAPI, leveraging information from the README, issues, and security policy. The structure is logical, and most claims are well-supported by the source. However, the brief summary contains incomplete and redundant sentences, and one claim about CI process maturity and count is not directly supported by the source."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9705,
+      "items": [
+        {
+          "claim": "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+          "fact": null,
+          "sentence": "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Brief states what the repo does in user-facing terms.",
+          "fact": null,
+          "sentence": "FastAPI is a composite framework orchestrating Starlette and Pydantic.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief describes documented usage/installation/workflow.",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes A `fastapi` CLI uses Uvicorn to run a dev",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Redundant information in brief summary.",
+          "fact": null,
+          "sentence": "FastAPI is a composite framework orchestrating Starlette and Pydantic. At a high level, FastAPI is a composite framework that orchestrates two primary libraries: Starlette (core web and.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.9117,
+    "contradicted_sentences": [
+      {
+        "sentence": "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+        "reason": "The source mentions a 'Test' workflow badge but does not specify the number of GitHub Actions workflows or explicitly state 'mature CI process'."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "At a high level, FastAPI is a composite framework that orchestrates two primary libraries: Starlette (core web and.",
+        "reason": "This sentence is incomplete and redundant with the preceding sentence."
+      },
+      {
+        "sentence": "The documented workflow emphasizes A `fastapi` CLI uses Uvicorn to run a dev",
+        "reason": "This sentence is incomplete."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 21.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.user_facing_purpose",
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 44.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.features_bullets"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 95.0,
+    "finesure": 86.15,
+    "qafact": 91.67,
+    "summac": 92.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+      "flag_type": "added_judgment",
+      "explanation": "The source does not explicitly state 'mature CI process' or the number '31 GitHub Actions workflows'."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 15772,
+    "total_tokens_out": 1432,
+    "latency_ms": 49622
+  }
+}
