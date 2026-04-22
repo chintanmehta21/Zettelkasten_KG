@@ -90,17 +90,19 @@ def _normalize_tags(tags: list[str], *, subreddit: str, thread_type: str) -> lis
             normalized.append(cleaned)
 
     canonical = f"r-{subreddit.lower().replace('_', '-')}"
-    if canonical not in normalized:
-        normalized.insert(0, canonical)
-    if thread_type not in normalized:
-        normalized.append(thread_type)
-    while len(normalized) < 7:
+    topical = [tag for tag in normalized if tag not in {canonical, thread_type}]
+    reserved = [canonical]
+    if thread_type != canonical:
+        reserved.append(thread_type)
+
+    final_tags = reserved + topical[: max(0, 10 - len(reserved))]
+    while len(final_tags) < 7:
         filler = "reddit-thread"
-        if filler not in normalized:
-            normalized.append(filler)
+        if filler not in final_tags:
+            final_tags.append(filler)
         else:
             break
-    return normalized[:10]
+    return final_tags[:10]
 
 
 def _infer_thread_type(
@@ -115,7 +117,22 @@ def _infer_thread_type(
             *[cluster.theme for cluster in reply_clusters],
         ]
     ).lower()
-    if any(token in combined for token in ("first-time", "i did", "i tried", "my experience", "share their", "experience")):
+    if any(
+        token in combined
+        for token in (
+            "first-time",
+            "i did",
+            "i tried",
+            "my experience",
+            "share their",
+            "experience",
+            "personal journey",
+            "intellectual journey",
+            "turning to",
+            "from atheism",
+            "spiritual journey",
+        )
+    ):
         return "experience-report"
     if any(token in combined for token in ("ask", "question", "how", "what", "why", "should", "ama")):
         return "q-and-a"
@@ -142,20 +159,22 @@ def _repair_brief_summary(
     if 5 <= len(sentences) <= 7 and len(cleaned) <= 400:
         return cleaned
 
-    primary = reply_clusters[0].reasoning if reply_clusters else "Commenters offered multiple competing explanations."
-    dissent = counterarguments[0] if counterarguments else "Some replies challenged the strongest thread narrative."
-    open_point = unresolved_questions[0] if unresolved_questions else "Some details remain unresolved in the thread."
-    moderation_line = moderation_context or "Removed or missing comments may limit what is visible in the rendered thread."
+    primary_theme = _cluster_phrase(reply_clusters, 0, fallback="the main reply cluster")
+    secondary_theme = _cluster_phrase(reply_clusters, 1, fallback="a secondary response pattern")
+    dissent = counterarguments[0] if counterarguments else "some replies challenged the strongest thread narrative"
+    open_point = unresolved_questions[0] if unresolved_questions else "key points remained unresolved in the discussion"
+    moderation_line = moderation_context or "removed or missing comments may limit what is visible in the thread"
     consensus = _consensus_phrase(reply_clusters, counterarguments)
     rebuilt = [
-        _as_sentence(f"OP argued {_trim_fragment(op_intent, 10)}"),
-        _as_sentence(f"Many replies said {_trim_fragment(primary, 10)}"),
-        _as_sentence(f"The thread mostly converged on {_trim_fragment(consensus, 10)}"),
-        _as_sentence(f"Pushback included {_trim_fragment(dissent, 9)}"),
-        _as_sentence(f"Context: {_trim_fragment(moderation_line, 8)}"),
-        _as_sentence(f"Open questions remain about {_trim_fragment(open_point, 9)}"),
+        _as_sentence(f"OP's main point was {_trim_fragment(op_intent, 14)}"),
+        _as_sentence(f"The dominant replies focused on {_trim_fragment(primary_theme, 12)}"),
+        _as_sentence(f"Consensus stayed around {_trim_fragment(consensus, 12)}"),
+        _as_sentence(f"Dissent centered on {_trim_fragment(dissent, 12)}"),
+        _as_sentence(f"Caveat: {_trim_fragment(moderation_line, 12)}"),
+        _as_sentence(f"A secondary cluster emphasized {_trim_fragment(secondary_theme, 12)}"),
+        _as_sentence(f"An open question was {_trim_fragment(open_point, 12)}"),
     ]
-    return _fit_sentences(rebuilt, max_chars=400)
+    return _fit_sentences(rebuilt, max_chars=400, min_sentences=5)
 
 
 def _consensus_phrase(reply_clusters: list[RedditCluster], counterarguments: list[str]) -> str:
@@ -166,6 +185,13 @@ def _consensus_phrase(reply_clusters: list[RedditCluster], counterarguments: lis
     if counterarguments:
         return "the strongest counterarguments in the thread"
     return "a mixed response"
+
+
+def _cluster_phrase(reply_clusters: list[RedditCluster], index: int, *, fallback: str) -> str:
+    if index >= len(reply_clusters):
+        return fallback
+    cluster = reply_clusters[index]
+    return cluster.theme or cluster.reasoning or fallback
 
 
 def _trim_fragment(text: str, max_words: int) -> str:
@@ -185,13 +211,13 @@ def _as_sentence(text: str) -> str:
     return f"{cleaned}."
 
 
-def _fit_sentences(sentences: list[str], *, max_chars: int) -> str:
+def _fit_sentences(sentences: list[str], *, max_chars: int, min_sentences: int = 1) -> str:
     fitted: list[str] = []
     for sentence in sentences:
         if not sentence:
             continue
         candidate = " ".join([*fitted, sentence]).strip()
-        if len(candidate) <= max_chars:
+        if len(candidate) <= max_chars or len(fitted) < min_sentences:
             fitted.append(sentence)
             continue
         break

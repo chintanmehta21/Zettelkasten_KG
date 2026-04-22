@@ -131,3 +131,83 @@ def test_reddit_schema_marks_experience_report_for_first_time_drug_thread():
 
     assert payload.mini_title == "r/IAmA first-time heroin risks"
     assert "experience-report" in payload.tags
+
+
+def test_reddit_schema_preserves_thread_type_when_tags_are_full():
+    payload = RedditStructuredPayload(
+        mini_title="r/hinduism long title",
+        brief_summary="Tiny brief",
+        tags=[
+            "atheism",
+            "advaita-vedanta",
+            "modern-physics",
+            "consciousness-theory",
+            "nima-arkani-hamed",
+            "donald-hoffman",
+            "emergent-spacetime",
+            "conscious-agents",
+            "spirituality",
+            "philosophy",
+        ],
+        detailed_summary=RedditDetailedPayload(
+            op_intent="OP shares a personal intellectual journey from atheism to Advaita Vedanta.",
+            reply_clusters=[
+                RedditCluster(
+                    theme="Personal journeys from materialism to spirituality",
+                    reasoning="Many users resonated with the same path.",
+                    examples=["similar journey"],
+                ),
+                RedditCluster(
+                    theme="Late discovery of indigenous philosophy",
+                    reasoning="Some regretted discovering Vedanta late.",
+                    examples=["westernized education"],
+                ),
+            ],
+            counterarguments=["Some replies warned against grounding philosophy in mutable science."],
+            unresolved_questions=["How much should science validate a spiritual framework?"],
+            moderation_context="Rendered comments covered only part of the thread.",
+        ),
+    )
+
+    assert payload.tags[0] == "r-hinduism"
+    assert "experience-report" in payload.tags
+    assert len(payload.tags) <= 10
+
+
+def test_reddit_schema_rebuilds_five_sentence_brief_with_caveat():
+    payload = RedditStructuredPayload(
+        mini_title="r/hinduism long title",
+        brief_summary="Short fragment",
+        tags=[
+            "atheism",
+            "advaita-vedanta",
+            "modern-physics",
+            "consciousness-theory",
+            "nima-arkani-hamed",
+            "donald-hoffman",
+            "spirituality",
+        ],
+        detailed_summary=RedditDetailedPayload(
+            op_intent="OP shares a personal intellectual journey from atheism to Advaita Vedanta through science.",
+            reply_clusters=[
+                RedditCluster(
+                    theme="Personal journeys from materialism to spirituality",
+                    reasoning="Many users resonated with the same path.",
+                    examples=["similar journey"],
+                ),
+                RedditCluster(
+                    theme="Late discovery of indigenous philosophy",
+                    reasoning="Some regretted discovering Vedanta late.",
+                    examples=["westernized education"],
+                ),
+            ],
+            counterarguments=["Some replies disputed using science as validation."],
+            unresolved_questions=["What is the historical relationship between Vedanta and quantum mechanics?"],
+            moderation_context="Rendered comments covered only part of the thread and removed comments were recovered.",
+        ),
+    )
+
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+", payload.brief_summary) if s.strip()]
+
+    assert len(sentences) >= 5
+    assert "Caveat:" in payload.brief_summary
