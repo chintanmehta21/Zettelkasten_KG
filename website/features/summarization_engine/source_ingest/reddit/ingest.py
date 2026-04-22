@@ -42,14 +42,23 @@ class RedditIngestor(BaseIngestor):
         headers = {"User-Agent": _BROWSER_UA}
         payload, final_url = await fetch_json(json_url, headers=headers)
         post = payload[0]["data"]["children"][0]["data"] if payload else {}
+        comment_children = payload[1]["data"]["children"] if len(payload) > 1 else []
         comments = _comment_texts(
-            payload[1]["data"]["children"] if len(payload) > 1 else [],
+            comment_children,
             int(config.get("max_comments", 50)),
         )
         sections = {
             "Post": f"{post.get('title') or ''}\n{post.get('selftext') or ''}\n{post.get('url') or ''}",
             "Comments": "\n".join(comments),
         }
+        rendered_count = len(
+            [child for child in comment_children if child.get("kind") == "t1"]
+        )
+        num_comments = int(post.get("num_comments") or 0)
+        divergence_pct = _compute_divergence(
+            num_comments=num_comments,
+            rendered_count=rendered_count,
+        )
         return IngestResult(
             source_type=self.source_type,
             url=final_url.removesuffix(".json"),
@@ -58,13 +67,20 @@ class RedditIngestor(BaseIngestor):
             sections=sections,
             metadata={
                 "subreddit": post.get("subreddit"),
-                "score": post.get("score"),
                 "author": post.get("author"),
-                "title": post.get("title"),
+                "score": post.get("score"),
+                "num_comments": num_comments,
+                "rendered_comment_count": rendered_count,
+                "comment_divergence_pct": divergence_pct,
+                "permalink": post.get("permalink"),
             },
-            extraction_confidence="high" if post.get("title") else "low",
-            confidence_reason="Reddit JSON endpoint fetched",
+            extraction_confidence="high",
+            confidence_reason=(
+                f"json endpoint ok; rendered={rendered_count}/{num_comments} "
+                f"divergence={divergence_pct}%"
+            ),
             fetched_at=utc_now(),
+            ingestor_version="2.0.0",
         )
 
     async def _ingest_html(self, url: str, config: dict[str, Any]) -> IngestResult:
@@ -135,3 +151,13 @@ def _comment_texts(children: list[dict[str, Any]], limit: int) -> list[str]:
         if body:
             out.append(f"{data.get('author') or 'unknown'}: {body}")
     return out
+
+
+def _compute_divergence(*, num_comments: int, rendered_count: int) -> float:
+    """Return the share of comments missing from the rendered JSON tree."""
+    if num_comments <= 0:
+        return 0.0
+    missing = num_comments - rendered_count
+    if missing <= 0:
+        return 0.0
+    return round((missing / num_comments) * 100.0, 2)
