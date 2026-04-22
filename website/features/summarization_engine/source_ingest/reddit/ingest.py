@@ -6,6 +6,9 @@ from typing import Any
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
+from website.features.summarization_engine.source_ingest.reddit.pullpush import (
+    recover_removed_comments,
+)
 from website.features.summarization_engine.source_ingest.utils import (
     compact_text,
     extract_html_text,
@@ -59,6 +62,39 @@ class RedditIngestor(BaseIngestor):
             num_comments=num_comments,
             rendered_count=rendered_count,
         )
+        pullpush_fetched = 0
+        if (
+            config.get("pullpush_enabled", True)
+            and divergence_pct >= float(config.get("divergence_threshold_pct", 20))
+            and num_comments > 0
+        ):
+            link_id = post.get("id")
+            if link_id:
+                pp = await recover_removed_comments(
+                    link_id=link_id,
+                    base_url=config.get("pullpush_base_url", "https://api.pullpush.io"),
+                    timeout_sec=int(config.get("pullpush_timeout_sec", 10)),
+                    max_recovered=int(
+                        config.get("pullpush_max_recovered_comments", 25)
+                    ),
+                )
+                if pp.success and pp.comments:
+                    sections["Recovered Comments"] = "\n".join(
+                        [
+                            (
+                                f"[u/{comment.author}, score {comment.score}, "
+                                f"recovered from pullpush.io] {comment.body}"
+                            )
+                            for comment in pp.comments
+                        ]
+                    )
+                    pullpush_fetched = len(pp.comments)
+                else:
+                    logger.info(
+                        "[reddit-pullpush] no recovery for link_id=%s err=%s",
+                        link_id,
+                        pp.error,
+                    )
         return IngestResult(
             source_type=self.source_type,
             url=final_url.removesuffix(".json"),
@@ -73,6 +109,8 @@ class RedditIngestor(BaseIngestor):
                 "rendered_comment_count": rendered_count,
                 "comment_divergence_pct": divergence_pct,
                 "permalink": post.get("permalink"),
+                "pullpush_fetched": pullpush_fetched,
+                "pullpush_enabled": bool(config.get("pullpush_enabled", True)),
             },
             extraction_confidence="high",
             confidence_reason=(
