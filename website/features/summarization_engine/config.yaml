@@ -162,6 +162,7 @@ sources:
       - "https://lightbrd.com"
       - "https://nitter.space"
     nitter_health_check_timeout_sec: 5
+    nitter_health_cache_ttl_sec: 300
     nitter_rotation_on_failure: true
 
 batch:
