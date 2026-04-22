@@ -4,7 +4,7 @@ from __future__ import annotations
 from statistics import mean
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GEvalScores(BaseModel):
@@ -27,11 +27,31 @@ class FineSurEDimension(BaseModel):
     score: float = Field(ge=0.0, le=1.0)
     items: list[FineSurEItem] = Field(default_factory=list)
 
+    @field_validator("score", mode="before")
+    @classmethod
+    def _clamp_score(cls, value):
+        """Accept 0-1 or 0-100 scale; clamp into [0,1]."""
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return value
+        if v > 1.0:
+            v = v / 100.0
+        return max(0.0, min(1.0, v))
+
 
 class FineSurEScores(BaseModel):
     faithfulness: FineSurEDimension
     completeness: FineSurEDimension
     conciseness: FineSurEDimension
+
+    @field_validator("faithfulness", "completeness", "conciseness", mode="before")
+    @classmethod
+    def _coerce_dimension(cls, value):
+        """Accept bare float (coerce to {score: v, items: []}) or dict."""
+        if isinstance(value, (int, float)):
+            return {"score": value, "items": []}
+        return value
 
 
 class SummaCLiteSentence(BaseModel):
@@ -51,6 +71,22 @@ class RubricComponent(BaseModel):
     max_points: int
     criteria_fired: list[str] = Field(default_factory=list)
     criteria_missed: list[str] = Field(default_factory=list)
+
+    @field_validator("criteria_fired", "criteria_missed", mode="before")
+    @classmethod
+    def _coerce_criteria(cls, value):
+        if not isinstance(value, list):
+            return value
+        out: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                out.append(item)
+            elif isinstance(item, dict):
+                # Accept {"id": "...", "score": ...} richer form from evaluator
+                out.append(str(item.get("id") or item.get("name") or item))
+            else:
+                out.append(str(item))
+        return out
 
 
 class AntiPatternTrigger(BaseModel):

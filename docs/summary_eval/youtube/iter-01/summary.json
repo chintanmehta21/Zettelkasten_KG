@@ -1,0 +1,39 @@
+{
+  "mini_title": "The Strangest Drug Ever Studied",
+  "brief_summary": "### N,N-Dimethyltryptamine (DMT) - Factual Summary **Chemical Properties & Neurological Mechanism** N,N-Dimethyltryptamine (DMT) is a naturally occurring psychedelic compound found in over 50 plant species, various mammals, and endogenously in the human body. Its indole ring structure is similar to serotonin, LSD, and psilocybin. DMT binds to serotonin receptors, disrupting",
+  "tags": [
+    "youtube",
+    "zettelkasten",
+    "summary",
+    "capture",
+    "research",
+    "source",
+    "notes",
+    "ai"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Summary",
+      "bullets": [
+        "### N,N-Dimethyltryptamine (DMT) - Factual Summary **Chemical Properties & Neurological Mechanism** N,N-Dimethyltryptamine (DMT) is a naturally occurring psychedelic compound found in over 50 plant species, various mammals, and endogenously in the human body. Its indole ring structure is similar to serotonin, LSD, and psilocybin. DMT binds to serotonin receptors, disrupting"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=34612",
+    "total_tokens_used": 26124,
+    "gemini_pro_tokens": 23031,
+    "gemini_flash_tokens": 3093,
+    "total_latency_ms": 104977,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0"
+  }
+}

@@ -240,6 +240,23 @@ def main() -> int:
         if args.force_phase_b:
             state = IterationState.PHASE_B_REQUIRED
 
+        if args.dry_run:
+            urls, held_out = _urls_for_iter(args.source, iter_num, args.url)
+            if iter_num in (6, 7, 9):
+                held_out = True
+            print(json.dumps({
+                "status": "dry_run",
+                "source": args.source,
+                "iter": iter_num,
+                "state": state.value,
+                "iter_dir": str(iter_dir),
+                "rubric": str(rubric_path),
+                "urls": urls,
+                "held_out": held_out,
+                "env": args.env,
+            }, indent=2))
+            return 0
+
         if state == IterationState.PHASE_A_REQUIRED:
             # Determinism check against prior iter (optional).
             prev_dir = _prev_iter_dir(args.source, iter_num)

@@ -13,16 +13,24 @@ https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyu
 https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/
 https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/
 https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/
+https://www.reddit.com/r/MachineLearning/comments/16zrllm/d_llms_are_actually_remarkably_good_at_reasoning/
+https://www.reddit.com/r/programming/comments/1g4c8br/why_im_using_postgres_for_everything/
 
 # GitHub
 https://github.com/fastapi/fastapi
 https://github.com/encode/httpx
 https://github.com/psf/requests
+https://github.com/pydantic/pydantic
+https://github.com/tiangolo/typer
+https://github.com/pallets/flask
 
 # Newsletter
 https://www.platformer.news/substack-nazi-push-notification/
 https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv
 https://product.beehiiv.com/p/introducing-email-boosts
+https://stratechery.com/2024/an-interview-with-daniel-ek-about-spotify-and-the-music-industry/
+https://www.lennysnewsletter.com/p/how-to-hire-your-first-product-manager
+https://newsletter.pragmaticengineer.com/p/stages-of-hypergrowth
 
 # HackerNews
 # (auto-discovered in polish phase)

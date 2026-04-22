@@ -1,0 +1,120 @@
+{
+  "g_eval": {
+    "coherence": 1.0,
+    "consistency": 1.0,
+    "fluency": 2.0,
+    "relevance": 1.0,
+    "reasoning": "The summary is a single, incomplete fragment that fails to capture the video's narrative, key figures, or scientific explanations. The tags are completely irrelevant to the video's content, appearing to be about the process of summarization itself rather than the source material."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.6666666666666666,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "DMT binds to serotonin receptors, disrupting",
+        "reason": "The sentence is an incomplete fragment."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 2.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 4.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 6.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 5.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.reflects_primary_topic"
+        ],
+        "criteria_missed": [
+          "label.content_first_3_to_5_words",
+          "label.no_clickbait_retention"
+        ]
+      }
+    ],
+    "caps_applied": {},
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 12.2,
+    "finesure": 16.44,
+    "qafact": 0.0,
+    "summac": 44.44
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v2",
+    "rubric_version": "rubric_youtube.v1",
+    "total_tokens_in": 9477,
+    "total_tokens_out": 1023,
+    "latency_ms": 39011
+  }
+}

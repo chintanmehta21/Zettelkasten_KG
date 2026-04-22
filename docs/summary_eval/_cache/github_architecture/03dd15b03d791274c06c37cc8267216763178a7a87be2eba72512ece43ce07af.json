@@ -1,0 +1,3 @@
+{
+  "overview": "FastAPI is a Python web framework for building high-performance APIs, leveraging Starlette for web handling and Pydantic for data validation. It integrates with OpenAPI and JSON Schema standards for automatic API documentation."
+}

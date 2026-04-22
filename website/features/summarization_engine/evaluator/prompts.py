@@ -1,7 +1,7 @@
 """Evaluator prompt templates. Bump PROMPT_VERSION on any edit."""
 from __future__ import annotations
 
-PROMPT_VERSION = "evaluator.v1"
+PROMPT_VERSION = "evaluator.v2"
 
 CONSOLIDATED_SYSTEM = (
     "You are a summary quality evaluator. Be strict, source-grounded, and terse. "
@@ -23,13 +23,60 @@ SOURCE:
 SUMMARY:
 {summary_json}
 
-Produce a JSON object with exactly these top-level keys: g_eval, finesure, summac_lite, rubric, maps_to_metric_summary, editorialization_flags, evaluator_metadata.
+Return a JSON object matching EXACTLY this shape (no extra keys, no nesting beyond what is shown):
 
-For every criterion in the rubric, check: does the summary satisfy its description? Tally scores per component.
-For every anti_pattern in the rubric, check: is it triggered? If yes, list in rubric.anti_patterns_triggered AND set the matching caps_applied field.
-For summac_lite, classify each summary sentence as entailed / neutral / contradicted vs source; score = entailed_count / total.
-For editorialization_flags, list summary sentences that introduce stance/judgment/framing absent from source.
-For maps_to_metric_summary, aggregate rubric criterion scores by their maps_to_metric tags into 4 composites (g_eval, finesure, qafact, summac), each 0-100.
+{{
+  "g_eval": {{
+    "coherence": 0.0,       // float 0.0-5.0
+    "consistency": 0.0,     // float 0.0-5.0
+    "fluency": 0.0,         // float 0.0-5.0
+    "relevance": 0.0,       // float 0.0-5.0
+    "reasoning": ""         // brief prose
+  }},
+  "finesure": {{
+    "faithfulness": {{ "score": 0.0, "items": [] }},   // score 0.0-1.0; items list factual errors
+    "completeness": {{ "score": 0.0, "items": [] }},   // score 0.0-1.0; items list missed important facts
+    "conciseness":  {{ "score": 0.0, "items": [] }}    // score 0.0-1.0; items list redundant spans
+  }},
+  "summac_lite": {{
+    "score": 0.0,                          // float 0.0-1.0 = entailed_sentences / total_sentences
+    "contradicted_sentences": [],           // each: {{ "sentence": "...", "reason": "..." }}
+    "neutral_sentences": []                 // each: {{ "sentence": "...", "reason": "..." }}
+  }},
+  "rubric": {{
+    "components": [                         // ARRAY — one entry per rubric component
+      {{
+        "id": "brief.thesis_capture",
+        "score": 0.0,                       // 0.0 to max_points
+        "max_points": 10,
+        "criteria_fired": [],
+        "criteria_missed": []
+      }}
+    ],
+    "caps_applied": {{
+      "hallucination_cap": null,            // int or null
+      "omission_cap": null,
+      "generic_cap": null
+    }},
+    "anti_patterns_triggered": []            // each: {{ "id": "...", "source_region": "...", "auto_cap": null }}
+  }},
+  "maps_to_metric_summary": {{
+    "g_eval": 0.0,                          // FLAT float 0-100 (aggregate of g_eval criteria)
+    "finesure": 0.0,                        // FLAT float 0-100
+    "qafact": 0.0,                          // FLAT float 0-100
+    "summac": 0.0                           // FLAT float 0-100
+  }},
+  "editorialization_flags": [],             // each: {{ "sentence": "...", "flag_type": "added_stance|added_judgment|added_framing", "explanation": "..." }}
+  "evaluator_metadata": {{}}                // leave empty; filled in by the harness
+}}
+
+RULES:
+- For every criterion in the rubric, check whether the summary satisfies its description; tally scores per component into `rubric.components`.
+- For every anti_pattern in the rubric: if triggered, add to `rubric.anti_patterns_triggered` AND set the matching key in `caps_applied` to its cap value.
+- For `summac_lite.score`: classify each summary sentence as entailed / neutral / contradicted vs source; score = entailed_count / total.
+- For `editorialization_flags`: list summary sentences that introduce stance/judgment/framing absent from source.
+- For `maps_to_metric_summary`: aggregate rubric criterion scores by their `maps_to_metric` tags into 4 composites, each a FLAT float 0-100 (not a nested dict).
+- Output JSON ONLY. No markdown fences, no commentary, no prose outside the JSON object.
 """
 
 ATOMIC_FACTS_PROMPT = """\

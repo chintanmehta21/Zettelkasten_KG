@@ -37,8 +37,10 @@ async def test_extract_atomic_facts_cache_hit(tmp_path: Path):
     from website.features.summarization_engine.core.cache import FsContentCache
 
     cache = FsContentCache(root=tmp_path, namespace="atomic_facts")
+    from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION
+
     cache.put(
-        ("https://a.com", "1.0.0", "evaluator.v1"),
+        ("https://a.com", "1.0.0", PROMPT_VERSION),
         {"facts": [{"claim": "cached", "importance": 3}]},
     )
 

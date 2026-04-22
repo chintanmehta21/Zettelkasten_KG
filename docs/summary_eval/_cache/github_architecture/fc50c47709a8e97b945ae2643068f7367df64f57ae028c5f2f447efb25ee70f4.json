@@ -1,0 +1,3 @@
+{
+  "overview": "HTTPX is a Python HTTP client library offering both synchronous and asynchronous APIs, with support for HTTP/1.1 and HTTP/2. It uses `httpcore` as its underlying transport and includes an optional command-line interface. The `tests` directory contains unit tests, and documentation is found in `docs`."
+}

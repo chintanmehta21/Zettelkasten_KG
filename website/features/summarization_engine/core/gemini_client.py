@@ -76,6 +76,7 @@ class TieredGeminiClient:
         response_schema: type[BaseModel] | None = None,
         system_instruction: str | None = None,
         temperature: float | None = None,
+        max_output_tokens: int | None = None,
     ) -> GenerateResult:
         chain = self._config.gemini.model_chains.get(tier)
         if not chain:
@@ -85,7 +86,9 @@ class TieredGeminiClient:
             "temperature": temperature
             if temperature is not None
             else self._config.gemini.temperature,
-            "max_output_tokens": self._config.gemini.max_output_tokens,
+            "max_output_tokens": max_output_tokens
+            if max_output_tokens is not None
+            else self._config.gemini.max_output_tokens,
         }
         if response_schema is not None:
             call_config["response_mime_type"] = "application/json"
