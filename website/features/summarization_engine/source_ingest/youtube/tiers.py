@@ -410,3 +410,55 @@ def _first_available_key() -> str | None:
             if stripped and not stripped.startswith("#"):
                 return stripped.split()[0]
     return None
+
+
+async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
+    """Tier 6: yt-dlp metadata-only fallback."""
+    from yt_dlp import YoutubeDL
+
+    start = time.monotonic()
+    try:
+        with YoutubeDL(
+            {"quiet": True, "skip_download": True, "no_warnings": True}
+        ) as ydl:
+            info = ydl.extract_info(
+                f"https://www.youtube.com/watch?v={video_id}",
+                download=False,
+            ) or {}
+        title = info.get("title", "")
+        description = info.get("description", "")
+        text = f"{title}\n\n{description}"
+        return TierResult(
+            tier=TierName.METADATA_ONLY,
+            transcript=text,
+            success=bool(title or description),
+            confidence="low",
+            latency_ms=int((time.monotonic() - start) * 1000),
+            extra={
+                "title": title,
+                "channel": info.get("channel", ""),
+                "duration": info.get("duration", 0),
+            },
+        )
+    except Exception as exc:
+        return TierResult(
+            tier=TierName.METADATA_ONLY,
+            transcript="",
+            success=False,
+            error=str(exc),
+            latency_ms=int((time.monotonic() - start) * 1000),
+        )
+
+
+def build_default_chain(config: dict) -> TranscriptChain:
+    return TranscriptChain(
+        tiers=[
+            tier_ytdlp_player_rotation,
+            tier_transcript_api_direct,
+            tier_piped_pool,
+            tier_invidious_pool,
+            tier_gemini_audio,
+            tier_metadata_only,
+        ],
+        budget_ms=config.get("transcript_budget_ms", 90000),
+    )
