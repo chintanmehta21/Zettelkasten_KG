@@ -1,16 +1,28 @@
 """YouTube transcript fallback chain scaffold."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import tempfile
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+_HEALTH_CACHE_PATH = (
+    Path(__file__).resolve().parents[5]
+    / "docs"
+    / "summary_eval"
+    / "_cache"
+    / "youtube_instance_health.json"
+)
 
 
 class TierName(str, Enum):
@@ -175,4 +187,117 @@ async def tier_transcript_api_direct(video_id: str, config: dict) -> TierResult:
         transcript="",
         success=False,
         latency_ms=int((time.monotonic() - start) * 1000),
+    )
+
+
+def _load_health() -> dict[str, str]:
+    if not _HEALTH_CACHE_PATH.exists():
+        return {}
+    try:
+        return json.loads(_HEALTH_CACHE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_health(health: dict[str, str]) -> None:
+    _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
+
+
+def _is_healthy(instance: str, ttl_hours: int) -> bool:
+    health = _load_health()
+    last_bad = health.get(instance)
+    if not last_bad:
+        return True
+    try:
+        when = datetime.fromisoformat(last_bad)
+        return datetime.now(timezone.utc) - when > timedelta(hours=ttl_hours)
+    except Exception:
+        return True
+
+
+def _mark_unhealthy(instance: str) -> None:
+    health = _load_health()
+    health[instance] = datetime.now(timezone.utc).isoformat()
+    _save_health(health)
+
+
+async def _try_pool(
+    video_id: str,
+    instances: list[str],
+    pattern: str,
+    ttl_hours: int,
+    tier_name: TierName,
+) -> TierResult:
+    start = time.monotonic()
+    for instance in instances:
+        if not _is_healthy(instance, ttl_hours):
+            continue
+        url = pattern.format(instance=instance, vid=video_id)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                if resp.status_code != 200:
+                    _mark_unhealthy(instance)
+                    continue
+                data = resp.json()
+                transcript = _extract_transcript_from_pool_response(data)
+                if transcript and len(transcript) > 100:
+                    return TierResult(
+                        tier=tier_name,
+                        transcript=transcript,
+                        success=True,
+                        confidence="high",
+                        latency_ms=int((time.monotonic() - start) * 1000),
+                        extra={"instance": instance},
+                    )
+        except Exception as exc:
+            logger.warning("[%s] instance=%s exc=%s", tier_name.value, instance, exc)
+            _mark_unhealthy(instance)
+            continue
+    return TierResult(
+        tier=tier_name,
+        transcript="",
+        success=False,
+        latency_ms=int((time.monotonic() - start) * 1000),
+    )
+
+
+def _extract_transcript_from_pool_response(data: dict) -> str:
+    """Return the first English captions URL advertised by the pool response."""
+    subtitles = data.get("subtitles") or data.get("captions") or []
+    for subtitle in subtitles:
+        code = (
+            subtitle.get("code")
+            or subtitle.get("languageCode")
+            or subtitle.get("label", "")
+        ).lower()
+        if "en" in code:
+            return subtitle.get("url", "") or ""
+    return ""
+
+
+async def tier_piped_pool(video_id: str, config: dict) -> TierResult:
+    instances = [f"https://{instance}" for instance in config.get("piped_instances", [])]
+    ttl = config.get("instance_health_ttl_hours", 1)
+    return await _try_pool(
+        video_id,
+        instances,
+        "{instance}/streams/{vid}",
+        ttl,
+        TierName.PIPED_POOL,
+    )
+
+
+async def tier_invidious_pool(video_id: str, config: dict) -> TierResult:
+    instances = [
+        f"https://{instance}" for instance in config.get("invidious_instances", [])
+    ]
+    ttl = config.get("instance_health_ttl_hours", 1)
+    return await _try_pool(
+        video_id,
+        instances,
+        "{instance}/api/v1/captions/{vid}",
+        ttl,
+        TierName.INVIDIOUS_POOL,
     )
