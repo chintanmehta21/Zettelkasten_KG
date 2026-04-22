@@ -27,6 +27,15 @@
       "targeted_criterion": "brief.caveats_surfaced",
       "criterion_delta": 0.0,
       "composite_delta": -37.650000000000006
+    },
+    {
+      "iter": 5,
+      "files": [
+        "website/features/summarization_engine/summarization/youtube/prompts.py"
+      ],
+      "targeted_criterion": "brief.response_range",
+      "criterion_delta": 0.0,
+      "composite_delta": 17.629999999999995
     }
   ]
 }
