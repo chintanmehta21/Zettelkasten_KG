@@ -21,9 +21,6 @@ from website.features.summarization_engine.summarization.common.self_check impor
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
 )
-from website.features.summarization_engine.summarization.youtube.prompts import (
-    STRUCTURED_EXTRACT_INSTRUCTION,
-)
 from website.features.summarization_engine.summarization.youtube.schema import (
     YouTubeStructuredPayload,
 )
@@ -47,7 +44,6 @@ class YouTubeSummarizer(BaseSummarizer):
             self._client,
             self._engine_config,
             payload_class=YouTubeStructuredPayload,
-            instruction_template=STRUCTURED_EXTRACT_INSTRUCTION,
         )
 
         dense = await densifier.densify(ingest)

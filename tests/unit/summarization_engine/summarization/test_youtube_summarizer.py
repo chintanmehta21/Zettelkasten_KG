@@ -53,11 +53,9 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
         client,
         config,
         payload_class=structured.StructuredSummaryPayload,
-        instruction_template=None,
     ):
         captured["payload_class"] = payload_class
-        captured["instruction_template"] = instruction_template
-        original_init(self, client, config, payload_class, instruction_template)
+        original_init(self, client, config, payload_class)
 
     async def fake_extract(self, ingest, text, **kwargs):
         from website.features.summarization_engine.core.models import (
@@ -99,4 +97,3 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
 
     assert result.mini_title == "t"
     assert captured["payload_class"] is YouTubeStructuredPayload
-    assert "chapters_or_segments" in captured["instruction_template"]

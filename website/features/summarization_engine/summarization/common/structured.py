@@ -43,12 +43,10 @@ class StructuredExtractor:
         client: TieredGeminiClient,
         config: EngineConfig,
         payload_class: type[BaseModel] = StructuredSummaryPayload,
-        instruction_template: str | None = None,
     ):
         self._client = client
         self._config = config
         self._payload_class = payload_class
-        self._instruction_template = instruction_template
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -73,21 +71,15 @@ class StructuredExtractor:
         patch_applied: bool,
     ) -> SummaryResult:
         schema_json = self._schema_snippet()
-        if self._instruction_template:
-            prompt = (
-                self._instruction_template.format(summary_text=summary_text)
-                + f"\n\nSCHEMA:\n{schema_json}"
-            )
-        else:
-            prompt = (
-                f"{source_context(ingest.source_type)}\n\n"
-                f"Return a JSON object that EXACTLY matches the following JSON schema "
-                f"for class {self._payload_class.__name__}. Populate every required field "
-                f"from the SUMMARY below — do not invent facts. Use temperature 0 judgment.\n\n"
-                f"SCHEMA:\n{schema_json}\n\n"
-                "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
-                f"SUMMARY:\n{summary_text}"
-            )
+        prompt = (
+            f"{source_context(ingest.source_type)}\n\n"
+            f"Return a JSON object that EXACTLY matches the following JSON schema "
+            f"for class {self._payload_class.__name__}. Populate every required field "
+            f"from the SUMMARY below — do not invent facts. Use temperature 0 judgment.\n\n"
+            f"SCHEMA:\n{schema_json}\n\n"
+            "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
+            f"SUMMARY:\n{summary_text}"
+        )
         result = await self._client.generate(
             prompt,
             tier="flash",
