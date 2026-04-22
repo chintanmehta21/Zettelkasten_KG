@@ -1,0 +1,281 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.0,
+    "fluency": 4.0,
+    "relevance": 4.0,
+    "reasoning": "The summary is coherent, fluent, and relevant. It accurately captures the main points of the video and presents them in a logical order. The detailed summary provides good coverage of the video's content."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video opens with a surreal, escalating fictional chess match.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Mentions chess variations: Fischer Random, Anti-chess, and \"Chess on a really big board.\"",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "brief.thesis_capture"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "brief.format_identified"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.speakers_captured"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "brief.major_segments_outlined"
+        ],
+        "criteria_missed": [
+          "brief.major_segments_outlined"
+        ]
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.takeaways_surfaced"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 6.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "detailed.chronological_order"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 8.0,
+        "max_points": 10,
+        "criteria_fired": [
+          "detailed.all_chapters_covered"
+        ],
+        "criteria_missed": [
+          "detailed.all_chapters_covered"
+        ]
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.demonstrations_preserved"
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.caveats_preserved"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.examples_purpose_not_verbatim"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.entities_named"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "detailed.closing_takeaway"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "tags.count_7_to_10"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "tags.format_tag_present"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.technologies_named"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "label.reflects_primary_topic"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 85.0,
+    "finesure": 88.33,
+    "qafact": 90.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 15317,
+    "total_tokens_out": 2183,
+    "latency_ms": 68464
+  }
+}
