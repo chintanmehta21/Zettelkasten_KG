@@ -1,0 +1,315 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 5.0,
+    "fluency": 4.5,
+    "relevance": 4.0,
+    "reasoning": "The summary is generally coherent and fluent, but some sections are less relevant or complete. The detailed summary covers many aspects, but the brief summary is somewhat lacking in detail and clarity."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.7,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video posits that games are how humans \"microdose infinity\"\u2014a way to confront overwhelming complexity in...",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "This commentary video explains The video posits that games are how humans \"microdose infinity\"\u2014a way to confront overwhelming complexity in...",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Featured voices include Narrator.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Alexander Fleming's discovery of penicillin",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Wrong turn leading to Archduke Franz Ferdinand's assassination",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.95,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "It moves through sections on The Nature of Play and Game Evolution and Timeline.",
+        "reason": "This sentence describes the structure of the video but does not convey specific factual information from the source."
+      },
+      {
+        "sentence": "It also covers Chess and Chaturanga.",
+        "reason": "This sentence states topics covered but lacks specific details from the source."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 2.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief summary states the video's central thesis or learning objective in one sentence."
+        ]
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 0.0,
+        "max_points": 3,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+        ]
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 1.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief names the host/channel and any guests or key products/libraries discussed."
+        ]
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 3.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+        ]
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief highlights 2-3 takeaways a viewer would remember after watching."
+        ]
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief is 5-7 sentences."
+        ]
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief does not reproduce clickbait/hook phrasing from the source title."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 6.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "Detailed bullets follow the video's chronological order."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 7.0,
+        "max_points": 10,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Every substantive chapter or major topic turn is covered by at least one bullet."
+        ]
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 3.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Demonstrations, code walkthroughs, or live examples are captured."
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Warnings, caveats, limitations the speaker mentions are captured."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Products, libraries, datasets, or case studies referenced are named."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "The video's closing takeaway is explicitly captured."
+        ]
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Exactly 7-10 tags."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Tags capture specific subject matter, not generic terms."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Named technologies/libraries/frameworks from the video are tagged."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "No tags imply topics not actually covered."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label is 3-5 words (max 50 chars), content-first, declarative."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label reflects the primary topic, not side tangents."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label removes clickbait/hook fragments from the original title."
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 70.0,
+    "finesure": 75.0,
+    "qafact": 80.0,
+    "summac": 95.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 15866,
+    "total_tokens_out": 2573,
+    "latency_ms": 71310
+  }
+}
