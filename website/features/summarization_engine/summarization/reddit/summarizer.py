@@ -193,10 +193,10 @@ def _parse_payload(
         return RedditStructuredPayload(**sanitized)
     except Exception as exc:  # noqa: BLE001 — any drift must fall back, never 500
         _log.warning(
-            "reddit.structured_parse_failed type=%s err=%s raw_head=%r",
+            "reddit.structured_parse_failed type=%s err=%s raw_full=%r",
             type(exc).__name__,
             exc,
-            (raw_text or "")[:240],
+            (raw_text or "")[:4096],
         )
         try:
             return _synthesize_fallback_payload(summary_text, ingest)
@@ -212,6 +212,20 @@ def _parse_payload(
             return _build_minimum_safe_payload(summary_text, ingest)
 
 
+def _normalize_keys(obj):
+    """Recursively strip stray surrounding quote/whitespace chars from dict keys
+    (e.g. ``'"theme"'`` → ``'theme'``) that the flash model occasionally emits
+    when it double-escapes JSON."""
+    if isinstance(obj, dict):
+        return {
+            str(k).strip().strip('"').strip("'").strip(): _normalize_keys(v)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_normalize_keys(v) for v in obj]
+    return obj
+
+
 def _sanitize_payload_shape(data: dict) -> dict:
     """Coerce common LLM drifts in ``detailed_summary.reply_clusters`` into the
     expected list-of-cluster-objects shape before Pydantic validation.
@@ -222,6 +236,7 @@ def _sanitize_payload_shape(data: dict) -> dict:
     so the schema can then enforce the contract. Unknown shapes are passed
     through untouched for Pydantic to reject and the ``except`` above to
     catch."""
+    data = _normalize_keys(data)
     detailed = data.get("detailed_summary")
     if not isinstance(detailed, dict):
         return data

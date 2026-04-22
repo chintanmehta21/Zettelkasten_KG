@@ -163,6 +163,30 @@ def test_sanitize_payload_shape_rescues_dict_of_clusters():
     assert len(payload.detailed_summary.reply_clusters) == 2
 
 
+def test_sanitize_payload_shape_strips_quoted_keys():
+    """LLM sometimes double-escapes and emits keys like ``'"theme"'`` with
+    literal surrounding quotes. The sanitizer must strip them before Pydantic
+    rejects the shape."""
+    raw = {
+        '"mini_title"': "r/test example",
+        '"brief_summary"': "",
+        '"tags"': ["a", "b", "c", "d", "e", "f", "g", "h"],
+        '"detailed_summary"': {
+            '"op_intent"': "OP asks a question.",
+            '"reply_clusters"': [
+                {'"theme"': "agreement", '"reasoning"': "Most agree.", '"examples"': []}
+            ],
+            '"counterarguments"': [],
+            '"unresolved_questions"': [],
+            '"moderation_context"': None,
+        },
+    }
+    sanitized = _sanitize_payload_shape(raw)
+    payload = RedditStructuredPayload(**sanitized)
+    assert payload.detailed_summary.reply_clusters[0].theme == "agreement"
+    assert payload.detailed_summary.op_intent == "OP asks a question."
+
+
 def test_schema_infers_thread_type_tag_for_experience_report():
     payload = RedditStructuredPayload(
         mini_title="r/IAmA first time heroin",
