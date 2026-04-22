@@ -1,0 +1,115 @@
+﻿version: "rubric_github.v1"
+source_type: "github"
+composite_max_points: 100
+
+components:
+  - id: "brief_summary"
+    max_points: 25
+    criteria:
+      - id: "brief.user_facing_purpose"
+        description: "Brief states what the repo does in user-facing terms."
+        max_points: 6
+        maps_to_metric: ["g_eval.relevance", "finesure.completeness"]
+      - id: "brief.architecture_high_level"
+        description: "Brief identifies main components/architecture at a high level."
+        max_points: 5
+        maps_to_metric: ["finesure.completeness"]
+      - id: "brief.languages_and_frameworks"
+        description: "Primary languages and major frameworks are mentioned."
+        max_points: 4
+        maps_to_metric: ["finesure.completeness", "qafact"]
+      - id: "brief.usage_pattern"
+        description: "Describes documented usage/installation/workflow."
+        max_points: 4
+        maps_to_metric: ["finesure.completeness"]
+      - id: "brief.public_surface"
+        description: "If exposed, REST routes, CLI entry, UI pages, or Pages URL are summarized."
+        max_points: 4
+        maps_to_metric: ["finesure.completeness"]
+      - id: "brief.no_maturity_fabrication"
+        description: "Maturity claims (experimental/production-ready) only if explicitly signaled."
+        max_points: 2
+        maps_to_metric: ["finesure.faithfulness", "summac"]
+
+  - id: "detailed_summary"
+    max_points: 45
+    criteria:
+      - id: "detailed.features_bullets"
+        description: "Core features as bullets, each tied to explicit code or docs."
+        max_points: 8
+        maps_to_metric: ["finesure.faithfulness", "qafact"]
+      - id: "detailed.architecture_modules"
+        description: "Architecture bullets: directories, key classes, interactions."
+        max_points: 8
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.interfaces_exact"
+        description: "Public APIs / CLI commands / config options with exact names."
+        max_points: 8
+        maps_to_metric: ["finesure.faithfulness", "summac"]
+      - id: "detailed.operational"
+        description: "Install steps, deps, env vars, build, deploy instructions captured."
+        max_points: 6
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.limitations_docs"
+        description: "Documented limitations, caveats, security notes preserved."
+        max_points: 5
+        maps_to_metric: ["finesure.faithfulness"]
+      - id: "detailed.benchmarks_tests_examples"
+        description: "If benchmarks/tests/examples exist, what they demonstrate is summarized."
+        max_points: 5
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.bullets_focused"
+        description: "Each bullet covers one coherent aspect."
+        max_points: 5
+        maps_to_metric: ["g_eval.coherence"]
+
+  - id: "tags"
+    max_points: 15
+    criteria:
+      - id: "tags.count_7_to_10"
+        description: "Exactly 7-10 tags."
+        max_points: 2
+        maps_to_metric: ["finesure.conciseness"]
+      - id: "tags.domain_tag"
+        description: "Main domain/application tag present."
+        max_points: 3
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "tags.languages"
+        description: "Primary language(s) tagged."
+        max_points: 3
+        maps_to_metric: ["finesure.completeness"]
+      - id: "tags.technical_concepts"
+        description: "Key technical concepts ('rest-api','cli-tool','ml-serving') present."
+        max_points: 3
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "tags.no_unsupported_claims"
+        description: "No tags claim 'production-ready' without evidence."
+        max_points: 4
+        maps_to_metric: ["finesure.faithfulness", "summac"]
+
+  - id: "label"
+    max_points: 15
+    criteria:
+      - id: "label.owner_slash_repo"
+        description: "Label is exactly 'owner/repo' matching the canonical GitHub path."
+        max_points: 10
+        maps_to_metric: ["finesure.faithfulness"]
+      - id: "label.no_extra_descriptors"
+        description: "No prepended/appended descriptors; qualifiers belong in summary or tags."
+        max_points: 5
+        maps_to_metric: ["g_eval.conciseness"]
+
+anti_patterns:
+  - id: "production_ready_claim_no_evidence"
+    description: "Summary claims 'production-ready' without README evidence."
+    auto_cap: 60
+  - id: "invented_public_interface"
+    description: "Summary claims an API route / CLI command / export not present in repo."
+    auto_cap: 60
+  - id: "label_not_owner_repo"
+    description: "Label doesn't match 'owner/repo' regex."
+    auto_cap: 75
+
+global_rules:
+  editorialization_penalty:
+    threshold_flags: 3
