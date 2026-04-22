@@ -1,10 +1,10 @@
 {
   "g_eval": {
-    "coherence": 1.0,
-    "consistency": 2.0,
-    "fluency": 1.0,
-    "relevance": 1.0,
-    "reasoning": "The summary is severely flawed. The brief and detailed summaries are identical, truncated mid-sentence, and missing a vast amount of critical information such as dependencies (Starlette, Pydantic), installation instructions, and the public surface area (CLI, API docs endpoints). The tags are completely irrelevant to the repository, appearing to be about the summarization process itself rather than the FastAPI framework."
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 5.0,
+    "reasoning": "The summary is coherent, fluent, and highly relevant to the source material. It accurately captures the core aspects of the FastAPI framework."
   },
   "finesure": {
     "faithfulness": {
@@ -12,51 +12,8 @@
       "items": []
     },
     "completeness": {
-      "score": 0.1,
-      "items": [
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        },
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        },
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        },
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        },
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        },
-        {
-          "claim": null,
-          "fact": null,
-          "sentence": null,
-          "span": null,
-          "importance": null
-        }
-      ]
+      "score": 1.0,
+      "items": []
     },
     "conciseness": {
       "score": 1.0,
@@ -64,38 +21,31 @@
     }
   },
   "summac_lite": {
-    "score": 0.67,
+    "score": 1.0,
     "contradicted_sentences": [],
-    "neutral_sentences": [
-      {
-        "sentence": "The project's documentation claims it can increase development speed by 200-300% and",
-        "reason": "This is an incomplete sentence fragment."
-      }
-    ]
+    "neutral_sentences": []
   },
   "rubric": {
     "components": [
       {
         "id": "brief_summary",
-        "score": 11.0,
+        "score": 25.0,
         "max_points": 25,
         "criteria_fired": [
           "brief.user_facing_purpose",
           "brief.architecture_high_level",
           "brief.languages_and_frameworks",
+          "brief.usage_pattern",
+          "brief.public_surface",
           "brief.no_maturity_fabrication"
         ],
-        "criteria_missed": [
-          "brief.usage_pattern",
-          "brief.public_surface"
-        ]
+        "criteria_missed": []
       },
       {
         "id": "detailed_summary",
-        "score": 0.0,
+        "score": 45.0,
         "max_points": 45,
-        "criteria_fired": [],
-        "criteria_missed": [
+        "criteria_fired": [
           "detailed.features_bullets",
           "detailed.architecture_modules",
           "detailed.interfaces_exact",
@@ -103,21 +53,21 @@
           "detailed.limitations_docs",
           "detailed.benchmarks_tests_examples",
           "detailed.bullets_focused"
-        ]
+        ],
+        "criteria_missed": []
       },
       {
         "id": "tags",
-        "score": 6.0,
+        "score": 15.0,
         "max_points": 15,
         "criteria_fired": [
           "tags.count_7_to_10",
-          "tags.no_unsupported_claims"
-        ],
-        "criteria_missed": [
           "tags.domain_tag",
           "tags.languages",
-          "tags.technical_concepts"
-        ]
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
       },
       {
         "id": "label",
@@ -138,17 +88,20 @@
     "anti_patterns_triggered": []
   },
   "maps_to_metric_summary": {
-    "g_eval": 50.0,
-    "finesure": 36.0,
-    "qafact": 16.67,
-    "summac": 42.86
+    "g_eval": 100.0,
+    "finesure": 100.0,
+    "qafact": 100.0,
+    "summac": 100.0
   },
   "editorialization_flags": [],
   "evaluator_metadata": {
-    "prompt_version": "evaluator.v2",
+    "prompt_version": "evaluator.v3",
     "rubric_version": "rubric_github.v1",
-    "total_tokens_in": 11062,
-    "total_tokens_out": 1363,
-    "latency_ms": 49843
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 14778,
+    "total_tokens_out": 810,
+    "latency_ms": 60390
   }
 }
