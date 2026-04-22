@@ -1,0 +1,48 @@
+{
+  "strategy": "01-readme-only",
+  "urls_tested": [
+    "https://github.com/fastapi/fastapi",
+    "https://github.com/encode/httpx",
+    "https://github.com/psf/requests"
+  ],
+  "per_url": [
+    {
+      "url": "https://github.com/fastapi/fastapi",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 34877,
+      "has_pages_url": false,
+      "has_workflows": false,
+      "releases_count": 0,
+      "languages_count": 0,
+      "architecture_overview_len": 0
+    },
+    {
+      "url": "https://github.com/encode/httpx",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 22642,
+      "has_pages_url": false,
+      "has_workflows": false,
+      "releases_count": 0,
+      "languages_count": 0,
+      "architecture_overview_len": 0
+    },
+    {
+      "url": "https://github.com/psf/requests",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 12314,
+      "has_pages_url": false,
+      "has_workflows": false,
+      "releases_count": 0,
+      "languages_count": 0,
+      "architecture_overview_len": 0
+    }
+  ],
+  "aggregate": {
+    "strategy": "01-readme-only",
+    "mean_chars": 23277.666666666668,
+    "signal_coverage_pct": 0.0
+  }
+}

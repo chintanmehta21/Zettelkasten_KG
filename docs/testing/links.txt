@@ -15,7 +15,9 @@ https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for
 https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/
 
 # GitHub
-# (user adds before GitHub cycle starts; else CLI auto-discovers via Gemini google_search grounding)
+https://github.com/fastapi/fastapi
+https://github.com/encode/httpx
+https://github.com/psf/requests
 
 # Newsletter
 # (user adds before Newsletter cycle starts; else CLI auto-discovers)

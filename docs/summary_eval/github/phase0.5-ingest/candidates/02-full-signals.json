@@ -1,0 +1,48 @@
+{
+  "strategy": "02-full-signals",
+  "urls_tested": [
+    "https://github.com/fastapi/fastapi",
+    "https://github.com/encode/httpx",
+    "https://github.com/psf/requests"
+  ],
+  "per_url": [
+    {
+      "url": "https://github.com/fastapi/fastapi",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 35242,
+      "has_pages_url": false,
+      "has_workflows": true,
+      "releases_count": 5,
+      "languages_count": 5,
+      "architecture_overview_len": 227
+    },
+    {
+      "url": "https://github.com/encode/httpx",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 23062,
+      "has_pages_url": true,
+      "has_workflows": true,
+      "releases_count": 5,
+      "languages_count": 2,
+      "architecture_overview_len": 301
+    },
+    {
+      "url": "https://github.com/psf/requests",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 12610,
+      "has_pages_url": false,
+      "has_workflows": true,
+      "releases_count": 5,
+      "languages_count": 2,
+      "architecture_overview_len": 193
+    }
+  ],
+  "aggregate": {
+    "strategy": "02-full-signals",
+    "mean_chars": 23638.0,
+    "signal_coverage_pct": 100.0
+  }
+}
