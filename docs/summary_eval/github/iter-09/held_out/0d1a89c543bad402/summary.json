@@ -1,0 +1,253 @@
+{
+  "mini_title": "psf/requests",
+  "brief_summary": "The library is a high-level abstraction over `urllib3`. At a high level, Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over. The main stack includes Python, urllib3, Makefile. Documented public surfaces include requests.get(), requests.post(), Response.status_code, Response.json(). The documented workflow emphasizes installation, configuration, and developer ",
+  "tags": [
+    "python",
+    "api-framework",
+    "http",
+    "library",
+    "api-client",
+    "web",
+    "networking",
+    "client"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Architecture",
+      "bullets": [
+        "The library is a high-level abstraction over `urllib3`.",
+        "Composed of 99.3% Python and 0.7% Makefile."
+      ],
+      "sub_sections": {
+        "Key components": [
+          "Session Objects: Manage persistent connections for connection pooling, Keep-Alive, and cookie persistence.",
+          "Request/Response Objects: Simple interfaces for building requests and parsing responses (e.g., `.status_code`, `.json()`).",
+          "Adapters: A mountable transport adapter system for customizing service interactions.",
+          "Hooks: A callback system for various stages of the request lifecycle."
+        ]
+      }
+    },
+    {
+      "heading": "API and Features",
+      "bullets": [
+        "Simplifies HTTP requests with functions like `requests.get()` and `requests.post()`.",
+        "Automatically handles query strings, form-encoding, and content decompression."
+      ],
+      "sub_sections": {
+        "Authentication": [
+          "Supports Basic and Digest auth (updated per RFC 7616 for non-Latin credentials, #7232).",
+          "Automatically honors credentials from `.netrc` files."
+        ],
+        "Content Handling": [
+          "Supports streaming downloads (`stream=True`).",
+          "Supports multi-part file uploads.",
+          "Supports automatic content decoding.",
+          "Cookie objects can be manipulated with a dictionary-like interface."
+        ],
+        "URL Handling": [
+          "Supports Internationalized Domain Names and URLs (IDNA)."
+        ],
+        "Proxies": [
+          "Provides built-in support for SOCKS proxies."
+        ],
+        "SSL/TLS": [
+          "Performs browser-style TLS/SSL verification by default."
+        ],
+        "Timeouts": [
+          "The `timeout` parameter is a `(connect, read)` tuple, not a total request timeout.",
+          "The connect timeout includes the time to send the request body (#7350, #7183)."
+        ]
+      }
+    },
+    {
+      "heading": "Notable Issues and Caveats",
+      "bullets": [
+        "Several configuration and concurrency issues have been identified and addressed.",
+        "Bugs related to `Content-Length`, URL encoding, and proxy handling have been fixed.",
+        "Ongoing efforts include modernization with type annotations and documentation localization.",
+        "Specific repository cloning steps are required due to historical commit issues."
+      ],
+      "sub_sections": {
+        "Configuration Precedence": [
+          "The `REQUESTS_CA_BUNDLE` environment variable can silently override `session.verify=False`, forcing TLS verification (#7384)."
+        ],
+        "Concurrency": [
+          "Using a `Session` object across forked processes is unsafe, as the shared underlying connection pool can cause race conditions (#7297)."
+        ],
+        "Hooks": [
+          "A bug was fixed where `PreparedRequest.copy()` would incorrectly share its `hooks` dictionary with the original, leading to unintended side effects."
+        ],
+        "Content-Length Fixes": [
+          "Bugs causing incorrect `Content-Length` have been fixed, including for `io.StringIO` with multi-byte characters (#7201).",
+          "Fixed when `data` contains `None` values, which previously led to malformed chunked requests (#7217)."
+        ],
+        "URL Handling": [
+          "A bug that collapsed leading slashes in URL paths (e.g., `//key`), breaking S3 presigned URLs, was fixed (#7315).",
+          "A regression in v2.32 incorrectly encoded `%` characters, affecting DMTF Redfish URLs (#7188)."
+        ],
+        "Proxy Handling": [
+          "A bug where the `no_proxy` environment variable was ignored during redirects has been resolved (#7194)."
+        ],
+        "Streaming": [
+          "When `stream=True`, automatic gzip decompression is disabled on the `Response.raw` object and must be handled manually (#7181)."
+        ],
+        "Modernization": [
+          "An ongoing effort is underway to add inline type annotations to the library (#7271, #7272).",
+          "A community project is underway to localize the documentation."
+        ],
+        "Repository Cloning": [
+          "Cloning the repository requires setting `git config fetch.fsck.badTimezone=ignore` to bypass a historical commit with a bad timestamp (#2690)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/psf/requests",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata and README fetched",
+    "total_tokens_used": 15134,
+    "gemini_pro_tokens": 12368,
+    "gemini_flash_tokens": 2766,
+    "total_latency_ms": 81883,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "psf/requests",
+      "architecture_overview": "Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over urllib3. Its architecture emphasizes simplicity and ease of use, featuring session objects for persistent connections, intuitive request/response objects, a mountable transport adapter system for customization, and a callback system for request lifecycle hooks. It is predominantly written in Python.",
+      "brief_summary": "The library is a high-level abstraction over `urllib3`. At a high level, Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over. The main stack includes Python, urllib3, Makefile. Documented public surfaces include requests.get(), requests.post(), Response.status_code, Response.json(). The documented workflow emphasizes installation, configuration, and developer usage guidance.",
+      "tags": [
+        "python",
+        "api-framework",
+        "http",
+        "library",
+        "api-client",
+        "web",
+        "networking",
+        "client"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Architecture",
+          "bullets": [
+            "The library is a high-level abstraction over `urllib3`.",
+            "Composed of 99.3% Python and 0.7% Makefile."
+          ],
+          "sub_sections": {
+            "Key components": [
+              "Session Objects: Manage persistent connections for connection pooling, Keep-Alive, and cookie persistence.",
+              "Request/Response Objects: Simple interfaces for building requests and parsing responses (e.g., `.status_code`, `.json()`).",
+              "Adapters: A mountable transport adapter system for customizing service interactions.",
+              "Hooks: A callback system for various stages of the request lifecycle."
+            ]
+          },
+          "module_or_feature": "Architecture",
+          "main_stack": [
+            "Python",
+            "urllib3",
+            "Makefile"
+          ],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "API and Features",
+          "bullets": [
+            "Simplifies HTTP requests with functions like `requests.get()` and `requests.post()`.",
+            "Automatically handles query strings, form-encoding, and content decompression."
+          ],
+          "sub_sections": {
+            "Authentication": [
+              "Supports Basic and Digest auth (updated per RFC 7616 for non-Latin credentials, #7232).",
+              "Automatically honors credentials from `.netrc` files."
+            ],
+            "Content Handling": [
+              "Supports streaming downloads (`stream=True`).",
+              "Supports multi-part file uploads.",
+              "Supports automatic content decoding.",
+              "Cookie objects can be manipulated with a dictionary-like interface."
+            ],
+            "URL Handling": [
+              "Supports Internationalized Domain Names and URLs (IDNA)."
+            ],
+            "Proxies": [
+              "Provides built-in support for SOCKS proxies."
+            ],
+            "SSL/TLS": [
+              "Performs browser-style TLS/SSL verification by default."
+            ],
+            "Timeouts": [
+              "The `timeout` parameter is a `(connect, read)` tuple, not a total request timeout.",
+              "The connect timeout includes the time to send the request body (#7350, #7183)."
+            ]
+          },
+          "module_or_feature": "API and Features",
+          "main_stack": [],
+          "public_interfaces": [
+            "requests.get()",
+            "requests.post()",
+            "Response.status_code",
+            "Response.json()",
+            "Session objects",
+            "Request objects",
+            "Response objects",
+            "Adapters",
+            "Hooks"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Notable Issues and Caveats",
+          "bullets": [
+            "Several configuration and concurrency issues have been identified and addressed.",
+            "Bugs related to `Content-Length`, URL encoding, and proxy handling have been fixed.",
+            "Ongoing efforts include modernization with type annotations and documentation localization.",
+            "Specific repository cloning steps are required due to historical commit issues."
+          ],
+          "sub_sections": {
+            "Configuration Precedence": [
+              "The `REQUESTS_CA_BUNDLE` environment variable can silently override `session.verify=False`, forcing TLS verification (#7384)."
+            ],
+            "Concurrency": [
+              "Using a `Session` object across forked processes is unsafe, as the shared underlying connection pool can cause race conditions (#7297)."
+            ],
+            "Hooks": [
+              "A bug was fixed where `PreparedRequest.copy()` would incorrectly share its `hooks` dictionary with the original, leading to unintended side effects."
+            ],
+            "Content-Length Fixes": [
+              "Bugs causing incorrect `Content-Length` have been fixed, including for `io.StringIO` with multi-byte characters (#7201).",
+              "Fixed when `data` contains `None` values, which previously led to malformed chunked requests (#7217)."
+            ],
+            "URL Handling": [
+              "A bug that collapsed leading slashes in URL paths (e.g., `//key`), breaking S3 presigned URLs, was fixed (#7315).",
+              "A regression in v2.32 incorrectly encoded `%` characters, affecting DMTF Redfish URLs (#7188)."
+            ],
+            "Proxy Handling": [
+              "A bug where the `no_proxy` environment variable was ignored during redirects has been resolved (#7194)."
+            ],
+            "Streaming": [
+              "When `stream=True`, automatic gzip decompression is disabled on the `Response.raw` object and must be handled manually (#7181)."
+            ],
+            "Modernization": [
+              "An ongoing effort is underway to add inline type annotations to the library (#7271, #7272).",
+              "A community project is underway to localize the documentation."
+            ],
+            "Repository Cloning": [
+              "Cloning the repository requires setting `git config fetch.fsck.badTimezone=ignore` to bypass a historical commit with a bad timestamp (#2690)."
+            ]
+          },
+          "module_or_feature": "Notable Issues and Caveats",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

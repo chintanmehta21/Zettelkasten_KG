@@ -1,0 +1,205 @@
+{
+  "mini_title": "encode/httpx",
+  "brief_summary": "Provides both synchronous and asynchronous APIs (for `asyncio` and `trio`) for HTTP/1.1 and HTTP/2. At a high level, The `httpx` library's transport layer is managed by the `httpcore` library. Core dependencies include. The main stack includes Python, asyncio, trio, h11. Documented public surfaces include Synchronous API, Asynchronous API, Command-line client, pip install 'httpx[cli]'. The documen",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "cli-tool",
+    "http",
+    "http-client",
+    "asyncio",
+    "networking",
+    "http-1-1",
+    "http-2"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Purpose & Features",
+      "bullets": [
+        "Provides both synchronous and asynchronous APIs (for `asyncio` and `trio`) for HTTP/1.1 and HTTP/2.",
+        "Designed for high compatibility with the `requests` library API.",
+        "Fully type-annotated.",
+        "Enforces strict timeouts by default.",
+        "Includes connection pooling, cookie persistence, HTTP(S) proxies, multipart file uploads, streaming downloads, and authentication helpers.",
+        "Offers transports for testing: `MockTransport`, `WSGITransport`, `ASGITransport`.",
+        "Optional command-line client available via `pip install 'httpx[cli]'`."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture & Dependencies",
+      "bullets": [
+        "The transport layer is managed by the `httpcore` library.",
+        "Core dependencies include `h11` (HTTP/1.1), `certifi` (SSL), `idna` (domain names), and `sniffio` (async library detection)."
+      ],
+      "sub_sections": {
+        "Optional Dependencies": [
+          "HTTP/2: `h2` (`pip install httpx[http2]`)",
+          "SOCKS Proxy: `socksio`",
+          "CLI: `rich`, `click`",
+          "Compression: `brotli` (or `brotlicffi`), `zstandard` for decoding brotli and zstd responses."
+        ]
+      }
+    },
+    {
+      "heading": "Maturity & Project State",
+      "bullets": [
+        "Requires Python 3.9+.",
+        "Support for Python 3.7 was dropped in v0.25.0 (Sept 2023).",
+        "Support for Python 3.8 was dropped after v0.28.1.",
+        "Support for `httpcore` 1.0 was added in v0.25.1.",
+        "The project is actively maintained."
+      ],
+      "sub_sections": {
+        "Release v0.28.0 (Nov 2024) Changes": [
+          "Behavior Change: JSON request bodies now default to a more compact representation.",
+          "Removals: The deprecated `proxies` and `app` arguments were removed; users must use `proxy` or explicit transports.",
+          "Deprecations: The `cert` argument and using a string for `verify` are deprecated to simplify SSL configuration."
+        ]
+      }
+    },
+    {
+      "heading": "Notable Issues & Behavior",
+      "bullets": [
+        "Parameter Merging: The `params` argument now merges with existing query parameters in a URL rather than replacing them, aligning with `requests` behavior (Fix for #3621).",
+        "URL Handling: Bugs causing query parameter corruption in a `base_url` due to path manipulation have been fixed (#3614, #3766).",
+        "Redirects: A feature has been requested (#3783) to add an option to preserve the original HTTP method (e.g., `POST`) on 301/302 redirects, as the default browser-like behavior of changing to `GET` is not always suitable for APIs.",
+        "Resource Cleanup: A bug was fixed to ensure mounted transports are always closed, even if the main transport fails during its own shutdown (#3769).",
+        "Error Messages: A misleading `RuntimeError` for invalid `data` types (e.g., a list of dicts) was fixed to provide a more accurate error message (#3471)."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/encode/httpx",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 21684,
+    "gemini_pro_tokens": 19032,
+    "gemini_flash_tokens": 2652,
+    "total_latency_ms": 73876,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "encode/httpx",
+      "architecture_overview": "The `httpx` library's transport layer is managed by the `httpcore` library. Core dependencies include `h11` for HTTP/1.1, `certifi` for SSL certificate management, `idna` for internationalized domain names, and `sniffio` for detecting the asynchronous library in use (e.g., `asyncio` or `trio`). Optional features like HTTP/2, SOCKS proxy support, CLI functionality, and advanced compression require additional, specific dependencies.",
+      "brief_summary": "Provides both synchronous and asynchronous APIs (for `asyncio` and `trio`) for HTTP/1.1 and HTTP/2. At a high level, The `httpx` library's transport layer is managed by the `httpcore` library. Core dependencies include. The main stack includes Python, asyncio, trio, h11. Documented public surfaces include Synchronous API, Asynchronous API, Command-line client, pip install 'httpx[cli]'. The documented workflow emphasizes Optional command-line client available via `pip install 'httpx[cli]'`.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "cli-tool",
+        "http",
+        "http-client",
+        "asyncio",
+        "networking",
+        "http-1-1",
+        "http-2"
+      ],
+      "benchmarks_tests_examples": [
+        "100% test coverage",
+        "Transports for testing: MockTransport, WSGITransport, ASGITransport"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Purpose & Features",
+          "bullets": [
+            "Provides both synchronous and asynchronous APIs (for `asyncio` and `trio`) for HTTP/1.1 and HTTP/2.",
+            "Designed for high compatibility with the `requests` library API.",
+            "Fully type-annotated.",
+            "Enforces strict timeouts by default.",
+            "Includes connection pooling, cookie persistence, HTTP(S) proxies, multipart file uploads, streaming downloads, and authentication helpers.",
+            "Offers transports for testing: `MockTransport`, `WSGITransport`, `ASGITransport`.",
+            "Optional command-line client available via `pip install 'httpx[cli]'`."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "httpx",
+          "main_stack": [
+            "Python",
+            "asyncio",
+            "trio"
+          ],
+          "public_interfaces": [
+            "Synchronous API",
+            "Asynchronous API",
+            "Command-line client"
+          ],
+          "usability_signals": [
+            "High compatibility with requests library API",
+            "Fully type-annotated",
+            "Enforces strict timeouts by default",
+            "100% test coverage",
+            "BSD-licensed"
+          ]
+        },
+        {
+          "heading": "Architecture & Dependencies",
+          "bullets": [
+            "The transport layer is managed by the `httpcore` library.",
+            "Core dependencies include `h11` (HTTP/1.1), `certifi` (SSL), `idna` (domain names), and `sniffio` (async library detection)."
+          ],
+          "sub_sections": {
+            "Optional Dependencies": [
+              "HTTP/2: `h2` (`pip install httpx[http2]`)",
+              "SOCKS Proxy: `socksio`",
+              "CLI: `rich`, `click`",
+              "Compression: `brotli` (or `brotlicffi`), `zstandard` for decoding brotli and zstd responses."
+            ]
+          },
+          "module_or_feature": "httpcore (transport layer)",
+          "main_stack": [
+            "h11",
+            "certifi",
+            "idna",
+            "sniffio"
+          ],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Maturity & Project State",
+          "bullets": [
+            "Requires Python 3.9+.",
+            "Support for Python 3.7 was dropped in v0.25.0 (Sept 2023).",
+            "Support for Python 3.8 was dropped after v0.28.1.",
+            "Support for `httpcore` 1.0 was added in v0.25.1.",
+            "The project is actively maintained."
+          ],
+          "sub_sections": {
+            "Release v0.28.0 (Nov 2024) Changes": [
+              "Behavior Change: JSON request bodies now default to a more compact representation.",
+              "Removals: The deprecated `proxies` and `app` arguments were removed; users must use `proxy` or explicit transports.",
+              "Deprecations: The `cert` argument and using a string for `verify` are deprecated to simplify SSL configuration."
+            ]
+          },
+          "module_or_feature": "Maturity & Project State",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Notable Issues & Behavior",
+          "bullets": [
+            "Parameter Merging: The `params` argument now merges with existing query parameters in a URL rather than replacing them, aligning with `requests` behavior (Fix for #3621).",
+            "URL Handling: Bugs causing query parameter corruption in a `base_url` due to path manipulation have been fixed (#3614, #3766).",
+            "Redirects: A feature has been requested (#3783) to add an option to preserve the original HTTP method (e.g., `POST`) on 301/302 redirects, as the default browser-like behavior of changing to `GET` is not always suitable for APIs.",
+            "Resource Cleanup: A bug was fixed to ensure mounted transports are always closed, even if the main transport fails during its own shutdown (#3769).",
+            "Error Messages: A misleading `RuntimeError` for invalid `data` types (e.g., a list of dicts) was fixed to provide a more accurate error message (#3471)."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Notable Issues & Behavior",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

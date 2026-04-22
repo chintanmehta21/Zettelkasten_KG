@@ -1,0 +1,120 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.5,
+    "fluency": 4.5,
+    "relevance": 4.5,
+    "reasoning": "The summary is generally coherent, fluent, and relevant. Some minor inconsistencies exist in the brief summary's flow and the detailed summary's structure, but overall it captures the essence of the repository well."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": "The summary mentions the `httpx` library's transport layer is managed by the `httpcore` library.",
+          "fact": null,
+          "sentence": "At a high level, The `httpx` library's transport layer is managed by the `httpcore` library.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary mentions the main stack includes Python, asyncio, trio, h11.",
+          "fact": null,
+          "sentence": "The main stack includes Python, asyncio, trio, h11.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.95,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.95,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 21.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern",
+          "brief.public_surface"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed_summary",
+        "score": 35.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.limitations_docs"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 10.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 90.0,
+    "finesure": 87.5,
+    "qafact": 90.0,
+    "summac": 95.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 12075,
+    "total_tokens_out": 999,
+    "latency_ms": 62974
+  }
+}

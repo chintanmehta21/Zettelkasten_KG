@@ -1,0 +1,190 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 4.0,
+    "fluency": 3.5,
+    "relevance": 4.0,
+    "reasoning": "The summary is generally coherent and relevant, but suffers from several incomplete sentences and some factual inaccuracies regarding the 'main stack' of Pydantic versus its associated projects. Fluency is impacted by these incomplete sentences. Consistency is good where facts are present and accurate."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.89,
+      "items": [
+        {
+          "claim": "core validation logic implemented in the.",
+          "fact": null,
+          "sentence": "At a high level, Pydantic V2 is a high-performance rewrite, with its core validation logic implemented in the.",
+          "span": "in the.",
+          "importance": null
+        },
+        {
+          "claim": "The main stack includes Python, Rust, JS/TS.",
+          "fact": null,
+          "sentence": "The main stack includes Python, Rust, JS/TS.",
+          "span": "JS/TS",
+          "importance": null
+        },
+        {
+          "claim": "The documented workflow emphasizes ",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes ",
+          "span": "The documented workflow emphasizes ",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.44,
+      "items": [
+        {
+          "claim": "Brief states what the repo does in user-facing terms.",
+          "fact": null,
+          "sentence": "Pydantic's primary API is the `pydantic.BaseModel`, which is subclassed to define data schemas.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief identifies main components/architecture at a high level.",
+          "fact": null,
+          "sentence": "At a high level, Pydantic V2 is a high-performance rewrite, with its core validation logic implemented in the.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Describes documented usage/installation/workflow.",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes ",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Public APIs / CLI commands / config options with exact names.",
+          "fact": null,
+          "sentence": "Pydantic's primary API is the `pydantic.BaseModel`, which is subclassed to define data schemas.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Install steps, deps, env vars, build, deploy instructions captured.",
+          "fact": null,
+          "sentence": "It is distributed via PyPI and Conda-Forge.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "If benchmarks/tests/examples exist, what they demonstrate is summarized.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.8928,
+    "contradicted_sentences": [
+      {
+        "sentence": "The main stack includes Python, Rust, JS/TS.",
+        "reason": "The source indicates Python and Rust as the primary languages for Pydantic itself, with JS/TS being relevant to the associated Pydantic Logfire project, not the core library's 'main stack'."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "At a high level, Pydantic V2 is a high-performance rewrite, with its core validation logic implemented in the.",
+        "reason": "The sentence is grammatically incomplete and lacks a clear object for 'implemented in the'."
+      },
+      {
+        "sentence": "The documented workflow emphasizes ",
+        "reason": "The sentence is incomplete."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 10.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 31.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.limitations_docs",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.benchmarks_tests_examples"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.technical_concepts"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 58.33,
+    "finesure": 44.44,
+    "qafact": 75.0,
+    "summac": 78.94
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10669,
+    "total_tokens_out": 1816,
+    "latency_ms": 56908,
+    "ragas_faithfulness": -1.0
+  }
+}
