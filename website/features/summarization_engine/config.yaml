@@ -71,6 +71,11 @@ sources:
     comment_depth: 3
     max_comments: 50
     top_comment_rank: "top"
+    pullpush_enabled: true
+    pullpush_base_url: "https://api.pullpush.io"
+    pullpush_timeout_sec: 10
+    pullpush_max_recovered_comments: 25
+    divergence_threshold_pct: 20
   youtube:
     transcript_languages: ["en", "en-US", "en-GB"]
     ytdlp_player_clients: ["android_embedded", "ios", "tv_embedded", "mweb", "web"]
