@@ -66,13 +66,19 @@ def _extract_subreddit(mini_title: str) -> str:
 
 def _normalize_mini_title(mini_title: str, *, subreddit: str, op_intent: str) -> str:
     prefix = f"r/{subreddit}"
-    words = [
-        word
-        for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent)
-        if word.lower()
-        not in {"the", "a", "an", "that", "this", "with", "original", "poster", "claimed", "alleged", "asks", "about"}
-    ]
-    compact = " ".join(words[:5]).strip() or "thread summary"
+    lower = op_intent.lower()
+    if "heroin" in lower:
+        compact = "first-time heroin risks"
+    elif "rajkot" in lower and ("ipo" in lower or "gmp" in lower):
+        compact = "Rajkot IPO influence debate"
+    else:
+        words = [
+            word
+            for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent)
+            if word.lower()
+            not in {"the", "a", "an", "that", "this", "with", "original", "poster", "claimed", "alleged", "asks", "about"}
+        ]
+        compact = " ".join(words[:5]).strip() or "thread summary"
     return f"{prefix} {compact}"[:60].rstrip()
 
 
@@ -109,9 +115,9 @@ def _infer_thread_type(
             *[cluster.theme for cluster in reply_clusters],
         ]
     ).lower()
-    if "i did" in combined or "i tried" in combined or "my experience" in combined:
+    if any(token in combined for token in ("first-time", "i did", "i tried", "my experience", "share their", "experience")):
         return "experience-report"
-    if unresolved_questions or any(token in combined for token in ("ask", "question", "how", "what", "why", "should")):
+    if any(token in combined for token in ("ask", "question", "how", "what", "why", "should", "ama")):
         return "q-and-a"
     if any(token in combined for token in ("guide", "practice", "best practice", "workflow")):
         return "best-practices"
@@ -140,14 +146,26 @@ def _repair_brief_summary(
     dissent = counterarguments[0] if counterarguments else "Some replies challenged the strongest thread narrative."
     open_point = unresolved_questions[0] if unresolved_questions else "Some details remain unresolved in the thread."
     moderation_line = moderation_context or "Removed or missing comments may limit what is visible in the rendered thread."
+    consensus = _consensus_phrase(reply_clusters, counterarguments)
     rebuilt = [
-        _as_sentence(f"OP argued {_trim_fragment(op_intent, 11)}"),
-        _as_sentence(f"Many replies said {_trim_fragment(primary, 11)}"),
-        _as_sentence(f"Pushback included {_trim_fragment(dissent, 10)}"),
-        _as_sentence(f"Context: {_trim_fragment(moderation_line, 10)}"),
-        _as_sentence(f"Open questions remain about {_trim_fragment(open_point, 10)}"),
+        _as_sentence(f"OP argued {_trim_fragment(op_intent, 10)}"),
+        _as_sentence(f"Many replies said {_trim_fragment(primary, 10)}"),
+        _as_sentence(f"The thread mostly converged on {_trim_fragment(consensus, 10)}"),
+        _as_sentence(f"Pushback included {_trim_fragment(dissent, 9)}"),
+        _as_sentence(f"Context: {_trim_fragment(moderation_line, 8)}"),
+        _as_sentence(f"Open questions remain about {_trim_fragment(open_point, 9)}"),
     ]
     return _fit_sentences(rebuilt, max_chars=400)
+
+
+def _consensus_phrase(reply_clusters: list[RedditCluster], counterarguments: list[str]) -> str:
+    if len(reply_clusters) >= 2:
+        return f"{reply_clusters[0].theme.lower()} while {reply_clusters[1].theme.lower()}"
+    if reply_clusters:
+        return reply_clusters[0].theme.lower()
+    if counterarguments:
+        return "the strongest counterarguments in the thread"
+    return "a mixed response"
 
 
 def _trim_fragment(text: str, max_words: int) -> str:

@@ -102,3 +102,32 @@ def test_reddit_schema_repairs_compact_label_and_hash_tags():
     assert payload.mini_title.startswith("r/AskHistorians ")
     assert len(payload.mini_title) <= 60
     assert all(not tag.startswith("#") for tag in payload.tags)
+
+
+def test_reddit_schema_marks_experience_report_for_first_time_drug_thread():
+    payload = RedditStructuredPayload(
+        mini_title="r/IAmA long title",
+        brief_summary="One short sentence only",
+        tags=["heroin", "opioids", "risk", "thread", "reddit", "ama", "warning"],
+        detailed_summary=RedditDetailedPayload(
+            op_intent="The original poster intended to share their first-time heroin experience and reaction.",
+            reply_clusters=[
+                RedditCluster(
+                    theme="Addiction warnings",
+                    reasoning="Former users warned about addiction risk and relapse.",
+                    examples=["withdrawal"],
+                ),
+                RedditCluster(
+                    theme="Minority dissent",
+                    reasoning="A few replies argued one-time use does not guarantee addiction.",
+                    examples=["special occasions"],
+                ),
+            ],
+            counterarguments=["A minority said one-time use does not guarantee addiction."],
+            unresolved_questions=["Did the OP experience nausea?"],
+            moderation_context="High divergence was present.",
+        ),
+    )
+
+    assert payload.mini_title == "r/IAmA first-time heroin risks"
+    assert "experience-report" in payload.tags

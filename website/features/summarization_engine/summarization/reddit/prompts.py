@@ -19,6 +19,8 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '- "tags": array of 7-10 lowercase hyphenated tags; include subreddit as a tag (e.g. "r-askhistorians")\n'
     '- "detailed_summary": object with keys "op_intent", "reply_clusters" (array of {theme, reasoning, examples}), '
     '"counterarguments" (array of strings), "unresolved_questions" (array of strings), "moderation_context" (string OR null)\n\n'
+    "For high-divergence or experiential threads, emit at least 2 materially different reply_clusters when the discussion contains major warnings, minority dissent, or contrasting lived experience.\n"
+    "Keep labels and briefs neutral. Do not simply compress the OP framing if the comments clearly debate or reject it.\n\n"
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )
