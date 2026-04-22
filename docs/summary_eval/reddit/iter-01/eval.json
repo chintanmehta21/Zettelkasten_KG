@@ -1,43 +1,78 @@
 {
   "g_eval": {
-    "coherence": 1.0,
-    "consistency": 1.0,
-    "fluency": 1.0,
-    "relevance": 1.0,
-    "reasoning": "The output is not a summary. It appears to be a malformed template or placeholder text. It consists of metadata, tags, and a single incomplete sentence, which is repeated in both the brief and detailed summary sections. The content is completely irrelevant to the source material, and the tags provided are meta-tags about the summarization process, not the topic of the Reddit thread."
+    "coherence": 4.0,
+    "consistency": 4.0,
+    "fluency": 4.0,
+    "relevance": 2.0,
+    "reasoning": "The summary accurately captures the core debate and the main arguments from the source. However, the brief is too short, and the label and tags are significantly flawed, impacting relevance and overall presentation. The detailed sections are well-structured and coherent."
   },
   "finesure": {
     "faithfulness": {
-      "score": 0.0,
+      "score": 0.67,
       "items": [
         {
-          "claim": null,
+          "claim": "The label includes 'r/investing' as a source subreddit.",
           "fact": null,
-          "sentence": null,
+          "sentence": "r/IndianStockMarket r/investing Rajkot Effect on IPO GMP: Co",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The label is incomplete.",
+          "fact": null,
+          "sentence": "r/IndianStockMarket r/investing Rajkot Effect on IPO GMP: Co",
           "span": null,
           "importance": null
         }
       ]
     },
     "completeness": {
-      "score": 0.0,
+      "score": 0.73,
       "items": [
         {
-          "claim": null,
+          "claim": "The brief summary does not meet the required length of 5-7 sentences.",
+          "fact": null,
+          "sentence": "A social media post claiming Rajkot's investor disinterest caused the Hyundai India IPO's Grey Market Premium (GMP) to fall is heavily debated, with many attributing the lukewarm reception to the IPO's fundamental flaws rather than regional sentiment.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary does not include the source subreddit as a tag.",
           "fact": null,
           "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary does not include a thread type tag.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary does not mention the presence of removed comments.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The label is incomplete.",
+          "fact": null,
+          "sentence": "r/IndianStockMarket r/investing Rajkot Effect on IPO GMP: Co",
           "span": null,
           "importance": null
         }
       ]
     },
     "conciseness": {
-      "score": 0.0,
+      "score": 0.78,
       "items": [
         {
-          "claim": null,
+          "claim": "The 'counterarguments' section contains redundant information.",
           "fact": null,
-          "sentence": null,
+          "sentence": "The post was accused of being plagiarized from an article in The Ken.",
           "span": null,
           "importance": null
         }
@@ -45,41 +80,32 @@
     }
   },
   "summac_lite": {
-    "score": 0.0,
+    "score": 1.0,
     "contradicted_sentences": [],
-    "neutral_sentences": [
-      {
-        "sentence": "**ID:** 202407221035 **Title:** Rajkot's Perceived Influence on IPO Grey Market Premium (GMP) **Tags:** #IPO #GreyMarket #GMP #Rajkot #InvestingBehavior #India #Hyundai A Reddit post claims Rajkot, a tier-2 city in Gujarat, has a disproportionate influence on India's IPO Grey Market Premium (GMP).",
-        "reason": "This is not a summary sentence; it is a mix of metadata and an incomplete fragment that does not constitute a summary."
-      },
-      {
-        "sentence": "The post's content was alleged by multiple commenters to",
-        "reason": "This is an incomplete sentence fragment."
-      }
-    ]
+    "neutral_sentences": []
   },
   "rubric": {
     "components": [
       {
         "id": "brief_summary",
-        "score": 0.0,
+        "score": 20.0,
         "max_points": 25,
-        "criteria_fired": [],
-        "criteria_missed": [
+        "criteria_fired": [
           "brief.op_intent_captured",
           "brief.response_range",
           "brief.consensus_signal",
+          "brief.neutral_tone"
+        ],
+        "criteria_missed": [
           "brief.caveats_surfaced",
-          "brief.neutral_tone",
           "brief.length_5_to_7_sentences"
         ]
       },
       {
         "id": "detailed_summary",
-        "score": 0.0,
+        "score": 42.0,
         "max_points": 45,
-        "criteria_fired": [],
-        "criteria_missed": [
+        "criteria_fired": [
           "detailed.reply_clusters",
           "detailed.hedged_attribution",
           "detailed.counterarguments_included",
@@ -87,20 +113,21 @@
           "detailed.unresolved_questions",
           "detailed.moderation_context",
           "detailed.no_joke_chains"
-        ]
+        ],
+        "criteria_missed": []
       },
       {
         "id": "tags",
-        "score": 6.0,
+        "score": 9.0,
         "max_points": 15,
         "criteria_fired": [
           "tags.count_7_to_10",
-          "tags.no_value_judgments"
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
         ],
         "criteria_missed": [
           "tags.subreddit_present",
-          "tags.thread_type",
-          "tags.topical_specificity"
+          "tags.thread_type"
         ]
       },
       {
@@ -117,24 +144,33 @@
     ],
     "caps_applied": {
       "hallucination_cap": null,
-      "omission_cap": null,
+      "omission_cap": 75,
       "generic_cap": null
     },
-    "anti_patterns_triggered": []
+    "anti_patterns_triggered": [
+      {
+        "id": "missing_removed_comment_note",
+        "source_region": "",
+        "auto_cap": 75
+      }
+    ]
   },
   "maps_to_metric_summary": {
-    "g_eval": 0.0,
-    "finesure": 8.11,
-    "qafact": 0.0,
-    "summac": 0.0
+    "g_eval": 44.12,
+    "finesure": 71.0,
+    "qafact": 100.0,
+    "summac": 100.0
   },
   "editorialization_flags": [],
   "evaluator_metadata": {
-    "prompt_version": "evaluator.v2",
+    "prompt_version": "evaluator.v3",
     "rubric_version": "rubric_reddit.v1",
-    "total_tokens_in": 6491,
-    "total_tokens_out": 1202,
-    "latency_ms": 45212,
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 8691,
+    "total_tokens_out": 1441,
+    "latency_ms": 53238,
     "ragas_faithfulness": -1.0
   }
 }
