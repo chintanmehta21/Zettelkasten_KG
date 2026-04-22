@@ -72,9 +72,19 @@ sources:
     doc_char_cap: 4000
   newsletter:
     extractors: ["trafilatura", "readability", "newspaper4k"]
-    paywall_fallbacks: ["wayback", "archive_ph", "twelveft", "freedium"]
+    paywall_fallbacks: ["googlebot", "wayback", "archive_ph", "twelveft", "freedium"]
     googlebot_ua: true
     min_text_length: 500
+    site_specific_selectors_enabled: true
+    preheader_fallback_chars: 150
+    cta_keyword_regex: "subscribe|sign up|sign-up|read more|learn more|join|try|start|continue reading"
+    cta_max_count: 5
+    conclusions_tail_fraction: 0.3
+    conclusions_prefixes: ["i recommend", "you should", "the key takeaway", "the bottom line", "in summary", "to conclude", "what to do"]
+    conclusions_max_count: 6
+    stance_classifier_enabled: true
+    stance_cache_ttl_days: 30
+    branded_sources_yaml: "docs/summary_eval/_config/branded_newsletter_sources.yaml"
   reddit:
     prefer_oauth: false
     user_agent: "zettelkasten-engine/2.0 (by u/chintanmehta21)"
