@@ -28,8 +28,10 @@ logger = logging.getLogger(__name__)
 # ── Constants ────────────────────────────────────────────────────────────────
 
 _MAX_KEYS = 10
-_MAX_RETRIES = 3  # Cap transient-error retries (across the attempt chain)
-_RATE_LIMIT_COOLDOWN_SECS = 10  # Short cooldown; Gemini resets per-minute
+_MAX_RETRIES = max(1, int(os.environ.get("GEMINI_MAX_RETRIES", "3")))
+_RATE_LIMIT_COOLDOWN_SECS = max(
+    1, int(os.environ.get("GEMINI_RATE_LIMIT_COOLDOWN_SECS", "10"))
+)  # Short cooldown; Gemini resets per-minute
 
 _GENERATIVE_MODEL_CHAIN = [
     "gemini-2.5-flash",
