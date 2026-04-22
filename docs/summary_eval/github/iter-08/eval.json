@@ -1,0 +1,792 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is well-structured and covers the key aspects of the FastAPI framework. It effectively synthesizes information from the README and other provided sources. Some minor points could be more precisely linked to specific sections of the source, but overall it's a strong summary."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.85,
+          "items": [
+            {
+              "claim": "The summary mentions that FastAPI is built upon Starlette for web handling and Pydantic for data handling.",
+              "fact": null,
+              "sentence": "FastAPI is an ASGI framework built upon Starlette for web handling (WebSockets, CORS, sessions) and Pydantic for data handling.",
+              "span": "FastAPI is an ASGI framework built upon Starlette for web handling (WebSockets, CORS, sessions) and Pydantic for data handling.",
+              "importance": null
+            },
+            {
+              "claim": "It highlights the use of Python type hints for defining API endpoints and Pydantic for automatic data validation and serialization/deserialization.",
+              "fact": null,
+              "sentence": "Uses Python type hints in function signatures to define API endpoints.",
+              "span": "Uses Python type hints in function signatures to define API endpoints.",
+              "importance": null
+            },
+            {
+              "claim": "It notes the native support for `async def` endpoints and serving by ASGI servers like Uvicorn.",
+              "fact": null,
+              "sentence": "Natively supports `async def` endpoints.",
+              "span": "Natively supports `async def` endpoints.",
+              "importance": null
+            },
+            {
+              "claim": "The summary details how path/query parameters, headers, cookies, form fields, and file uploads are declared as type-hinted function arguments, and complex JSON bodies are defined using Pydantic `BaseModel` classes.",
+              "fact": null,
+              "sentence": "Path/query parameters, headers, cookies, form fields, and file uploads are declared as type-hinted function arguments.",
+              "span": "Path/query parameters, headers, cookies, form fields, and file uploads are declared as type-hinted function arguments.",
+              "importance": null
+            },
+            {
+              "claim": "It mentions the automatic generation of OpenAPI 3 and JSON Schema, and the serving of interactive Swagger UI (`/docs`) and ReDoc (`/redoc`) interfaces.",
+              "fact": null,
+              "sentence": "Generates OpenAPI 3 and JSON Schema from code.",
+              "span": "Generates OpenAPI 3 and JSON Schema from code.",
+              "importance": null
+            },
+            {
+              "claim": "The summary points out the `Depends` system for dependency injection, managing resources, authentication, and logic reuse.",
+              "fact": null,
+              "sentence": "A system (`Depends`) is provided for managing resources, authentication, and logic reuse.",
+              "span": "A system (`Depends`) is provided for managing resources, authentication, and logic reuse.",
+              "importance": null
+            },
+            {
+              "claim": "It includes utilities for security schemes like OAuth2 with JWT and HTTP Basic authentication.",
+              "fact": null,
+              "sentence": "Includes utilities for security schemes like OAuth2 with JWT and HTTP Basic authentication.",
+              "span": "Includes utilities for security schemes like OAuth2 with JWT and HTTP Basic authentication.",
+              "importance": null
+            },
+            {
+              "claim": "GraphQL integration is supported, with recommendations for libraries like Strawberry.",
+              "fact": null,
+              "sentence": "Supports GraphQL integration, with documentation recommending libraries like Strawberry.",
+              "span": "Supports GraphQL integration, with documentation recommending libraries like Strawberry.",
+              "importance": null
+            },
+            {
+              "claim": "The `fastapi[standard]` package includes `uvicorn`, `httpx` (for `TestClient`), `python-multipart` (for form parsing), and `email-validator`.",
+              "fact": null,
+              "sentence": "The `fastapi[standard]` package includes `uvicorn`, `httpx` (for `TestClient`), `python-multipart` (for form parsing), and `email-validator`.",
+              "span": "The `fastapi[standard]` package includes `uvicorn`, `httpx` (for `TestClient`), `python-multipart` (for form parsing), and `email-validator`.",
+              "importance": null
+            },
+            {
+              "claim": "The summary notes active maintenance, frequent releases, and a mature CI process with 31 GitHub Actions workflows.",
+              "fact": null,
+              "sentence": "Actively maintained with frequent releases and a mature CI process using 31 GitHub Actions workflows.",
+              "span": "Actively maintained with frequent releases and a mature CI process using 31 GitHub Actions workflows.",
+              "importance": null
+            },
+            {
+              "claim": "It mentions the security policy supporting the latest version and requiring private vulnerability disclosure.",
+              "fact": null,
+              "sentence": "Security policy supports the latest version and requires private vulnerability disclosure.",
+              "span": "Security policy supports the latest version and requires private vulnerability disclosure.",
+              "importance": null
+            },
+            {
+              "claim": "The summary states that FastAPI is used in production by companies including Microsoft, Uber, and Netflix.",
+              "fact": null,
+              "sentence": "Used in production by companies including Microsoft, Uber, and Netflix.",
+              "span": "Used in production by companies including Microsoft, Uber, and Netflix.",
+              "importance": null
+            },
+            {
+              "claim": "It highlights performance claims on par with NodeJS and Go, and its position as one of the fastest Python frameworks in TechEmpower benchmarks.",
+              "fact": null,
+              "sentence": "A core design goal, with project claims of performance on par with NodeJS and Go.",
+              "span": "A core design goal, with project claims of performance on par with NodeJS and Go.",
+              "importance": null
+            },
+            {
+              "claim": "The summary includes claims of 200-300% faster development and 40% fewer bugs based on internal team tests.",
+              "fact": null,
+              "sentence": "Internal team tests claim it enables 200-300% faster development and results in 40% fewer bugs.",
+              "span": "Internal team tests claim it enables 200-300% faster development and results in 40% fewer bugs.",
+              "importance": null
+            },
+            {
+              "claim": "A recent significant dependency update was Starlette to v1.0.0 (#15397).",
+              "fact": null,
+              "sentence": "A recent significant dependency update was Starlette to v1.0.0 (#15397).",
+              "span": "A recent significant dependency update was Starlette to v1.0.0 (#15397).",
+              "importance": null
+            },
+            {
+              "claim": "Typer is described as a sibling project applying FastAPI's design principles to CLIs.",
+              "fact": null,
+              "sentence": "A sibling project from the same creator that applies FastAPI's design principles (type hints, automatic help) to build command-line interfaces (CLIs).",
+              "span": "A sibling project from the same creator that applies FastAPI's design principles (type hints, automatic help) to build command-line interfaces (CLIs).",
+              "importance": null
+            },
+            {
+              "claim": "FastAPI Cloud is mentioned as a commercial service for deploying applications.",
+              "fact": null,
+              "sentence": "A commercial service from the FastAPI team for deploying applications.",
+              "span": "A commercial service from the FastAPI team for deploying applications.",
+              "importance": null
+            },
+            {
+              "claim": "Recurring issues with complex type annotations, particularly with `Annotated` and string forward references, are noted.",
+              "fact": null,
+              "sentence": "Recurring issues involve the correct resolution of complex type annotations, particularly with `Annotated` and string forward references (`from __future__ import annotations`), leading to bugs in dependency injection and schema generation (#15364, #15307, #15234).",
+              "span": "Recurring issues involve the correct resolution of complex type annotations, particularly with `Annotated` and string forward references (`from __future__ import annotations`), leading to bugs in dependency injection and schema generation (#15364, #15307, #15234).",
+              "importance": null
+            },
+            {
+              "claim": "A long-standing request for class-based views (CBVs) is mentioned.",
+              "fact": null,
+              "sentence": "A long-standing request exists for class-based views (CBVs) (#15392, #2625).",
+              "span": "A long-standing request exists for class-based views (CBVs) (#15392, #2625).",
+              "importance": null
+            },
+            {
+              "claim": "Authentication for static file serving was recently added to address a limitation where static files bypassed the dependency injection system.",
+              "fact": null,
+              "sentence": "Authentication for static file serving was recently added (#15295) to address a limitation where static files bypassed the dependency injection system (#858).",
+              "span": "Authentication for static file serving was recently added (#15295) to address a limitation where static files bypassed the dependency injection system (#858).",
+              "importance": null
+            },
+            {
+              "claim": "Issues with the dependency injection system's concurrency, including potential deadlocks, are noted.",
+              "fact": null,
+              "sentence": "Issues have been identified with the dependency injection system's concurrency, including potential deadlocks requiring fixes to resource limiters (#15388).",
+              "span": "Issues have been identified with the dependency injection system's concurrency, including potential deadlocks requiring fixes to resource limiters (#15388).",
+              "importance": null
+            },
+            {
+              "claim": "A memory usage regression was recently identified and fixed.",
+              "fact": null,
+              "sentence": "A memory usage regression was recently identified and fixed (#15336).",
+              "span": "A memory usage regression was recently identified and fixed (#15336).",
+              "importance": null
+            },
+            {
+              "claim": "Bugs in OpenAPI schema generation, such as duplicate `operationId` and incorrect metadata propagation for SSE, are mentioned.",
+              "fact": null,
+              "sentence": "Bugs persist in OpenAPI schema generation, such as duplicate `operationId` for routes with multiple HTTP methods (#15398) and incorrect metadata propagation for Server-Sent Events (SSE) through `APIRouter` (#15401).",
+              "span": "Bugs persist in OpenAPI schema generation, such as duplicate `operationId` for routes with multiple HTTP methods (#15398) and incorrect metadata propagation for Server-Sent Events (SSE) through `APIRouter` (#15401).",
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.9,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.user_facing_purpose",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "brief.user_facing_purpose"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.architecture_high_level",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "brief.architecture_high_level"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.languages_and_frameworks",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.languages_and_frameworks"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.usage_pattern",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.usage_pattern"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.public_surface",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.public_surface"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.no_maturity_fabrication",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "brief.no_maturity_fabrication"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.features_bullets",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.features_bullets"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.architecture_modules",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.architecture_modules"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.interfaces_exact",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.interfaces_exact"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.operational",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "detailed.operational"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.limitations_docs",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.limitations_docs"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.benchmarks_tests_examples",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.benchmarks_tests_examples"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.bullets_focused",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "tags.count_7_to_10"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.domain_tag",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.domain_tag"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.languages",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.languages"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.technical_concepts",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.technical_concepts"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.no_unsupported_claims",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.owner_slash_repo",
+            "score": 10.0,
+            "max_points": 10,
+            "criteria_fired": [
+              "label.owner_slash_repo"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.no_extra_descriptors",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "label.no_extra_descriptors"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 90.0,
+        "finesure": 87.5,
+        "qafact": 90.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 14033,
+        "total_tokens_out": 3947,
+        "latency_ms": 70833
+      }
+    }
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is coherent, fluent, and relevant. It accurately captures the core aspects of the httpx library, including its architecture, features, and recent changes. Consistency is high, with information well-aligned with the source material."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.85,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "Built on a layered architecture, using `httpcore` as its low-level transport library. At a high level, httpx employs a layered architecture, utilizing `httpcore` as its foundational low-level transport library. It. The main stack includes Python 3.9+, httpcore, h11, certifi. Documented public surfaces include httpx.WSGITransport, httpx.ASGITransport. The documented workflow emphasizes installation",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.95,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 22.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.user_facing_purpose",
+              "brief.architecture_high_level",
+              "brief.languages_and_frameworks",
+              "brief.usage_pattern",
+              "brief.public_surface"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 35.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.features_bullets",
+              "detailed.architecture_modules",
+              "detailed.interfaces_exact",
+              "detailed.operational",
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": [
+              "detailed.limitations_docs"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 13.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_tag",
+              "tags.languages",
+              "tags.technical_concepts"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 10.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.owner_slash_repo"
+            ],
+            "criteria_missed": [
+              "label.no_extra_descriptors"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 90.0,
+        "finesure": 88.33,
+        "qafact": 90.0,
+        "summac": 95.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 11714,
+        "total_tokens_out": 941,
+        "latency_ms": 63265
+      }
+    }
+  },
+  {
+    "url": "https://github.com/psf/requests",
+    "eval": {
+      "g_eval": {
+        "coherence": 0.0,
+        "consistency": 0.0,
+        "fluency": 0.0,
+        "relevance": 0.0,
+        "reasoning": "The summary suffers from a severe schema fallback, leading to repeated content and inclusion of internal metadata. While some factual claims are accurate, the overall structure and content are highly incoherent and incomplete, making it largely irrelevant as a useful summary."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": "The brief_summary contains internal metadata not present in the source.",
+              "fact": null,
+              "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief_summary includes a heading '### Architecture and API' without providing any architectural content.",
+              "fact": null,
+              "sentence": "### Architecture and API",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed_summary contains internal metadata indicating a schema fallback.",
+              "fact": null,
+              "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed_summary repeats the entire brief_summary content.",
+              "fact": null,
+              "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client `psf/requests` is a high-level, user-friendly HTTP/1.1 client library for Python. It is one of the most downloaded Python packages, with ~300 million weekly downloads and usage in over 4,000,000 GitHub repositories. The library officially supports Python 3.10+. ### Architecture and API",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags provided are irrelevant to the source repository.",
+              "fact": null,
+              "sentence": "[\"_schema_fallback_\", \"github\", \"ai\", \"research\", \"knowledge\", \"capture\", \"summary\"]",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": "The brief summary fails to identify main components/architecture at a high level.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary fails to describe documented usage/installation/workflow.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary fails to summarize the public surface (e.g., REST routes, CLI entry).",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to list core features as bullets.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to describe architecture modules, key classes, or interactions.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to list public APIs / CLI commands / config options with exact names.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to capture install steps, dependencies, environment variables, build, or deploy instructions.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to preserve documented limitations, caveats, or security notes.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary fails to summarize what benchmarks/tests/examples demonstrate.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags fail to include the main domain/application tag.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags fail to include the primary language(s).",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags fail to include key technical concepts.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": "The brief_summary contains extraneous internal metadata.",
+              "fact": null,
+              "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed_summary contains extraneous internal metadata.",
+              "fact": null,
+              "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed_summary repeats the entire brief_summary content.",
+              "fact": null,
+              "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client `psf/requests` is a high-level, user-friendly HTTP/1.1 client library for Python. It is one of the most downloaded Python packages, with ~300 million weekly downloads and usage in over 4,000,000 GitHub repositories. The library officially supports Python 3.10+. ### Architecture and API",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The tags include irrelevant entries.",
+              "fact": null,
+              "sentence": "[\"_schema_fallback_\", \"github\", \"ai\", \"research\", \"knowledge\", \"capture\", \"summary\"]",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.6,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client",
+            "reason": "This is internal metadata, not a factual claim about the source."
+          },
+          {
+            "sentence": "### Architecture and API",
+            "reason": "This is a heading, not a factual claim."
+          },
+          {
+            "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+            "reason": "This is internal metadata, not a factual claim about the source."
+          },
+          {
+            "sentence": "* **ID:** 20240726101532 * **Tags:** #python, #http, #library, #api-client",
+            "reason": "This is internal metadata, not a factual claim about the source (repeated)."
+          },
+          {
+            "sentence": "### Architecture and API",
+            "reason": "This is a heading, not a factual claim (repeated)."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 0.0,
+            "max_points": 25,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 0.0,
+            "max_points": 45,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 0.0,
+            "max_points": 15,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.owner_slash_repo",
+              "label.no_extra_descriptors"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": 60,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "schema_failure",
+            "source_region": "structured_payload",
+            "auto_cap": 60
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 20.83,
+        "finesure": 0.0,
+        "qafact": 0.0,
+        "summac": 0.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 6585,
+        "total_tokens_out": 2446,
+        "latency_ms": 54595,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]
