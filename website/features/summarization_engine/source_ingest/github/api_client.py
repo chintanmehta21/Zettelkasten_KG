@@ -35,7 +35,10 @@ class GitHubApiClient:
         }
 
     async def _get(self, path: str) -> Any:
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=self._timeout,
+            follow_redirects=True,
+        ) as client:
             response = await client.get(
                 f"{self._base}{path}",
                 headers={k: v for k, v in self._headers.items() if v},

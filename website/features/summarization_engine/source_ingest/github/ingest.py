@@ -68,7 +68,11 @@ class GitHubIngestor(BaseIngestor):
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
-        async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+        async with httpx.AsyncClient(
+            timeout=20.0,
+            headers=headers,
+            follow_redirects=True,
+        ) as client:
             repo_resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}")
             if repo_resp.status_code == 404:
                 raise_extraction("GitHub repository not found", self.source_type, "404")
