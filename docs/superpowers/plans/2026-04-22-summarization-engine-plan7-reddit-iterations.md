@@ -198,6 +198,50 @@ rm -rf docs/summary_eval/reddit/iter-*
 
 ---
 
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Prove Reddit summarizer routes through `RedditStructuredPayload`. If this gate fails, STOP — iter-01 would score garbage.
+
+- [ ] **Step 1: Route smoke**
+
+```bash
+URL="$(python ops/scripts/eval_loop.py --source reddit --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
+curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/rd_smoke.json | python -m json.tool | head -80
+```
+
+- [ ] **Step 2: Assert shape gates**
+
+```bash
+python - <<'PY'
+import json, re, sys
+r = json.load(open("/tmp/rd_smoke.json"))
+md = r.get("metadata", {})
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
+if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
+mt = r.get("mini_title","")
+if not re.match(r"^r/[A-Za-z0-9_]+", mt): errs.append(f"mini_title missing r/SUB prefix: {mt!r}")
+ds = sp.get("detailed_summary") or {}
+for req in ("op_intent","reply_clusters","counterarguments","unresolved_questions"):
+    if req not in ds: errs.append(f"missing Reddit field: detailed_summary.{req}")
+if not (ds.get("reply_clusters") or []): errs.append("reply_clusters empty")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print("GATE OK")
+PY
+```
+
+- [ ] **Step 3: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
+```
+
+---
+
 ## Task 1: Loop 1 — Baseline (URL #1)
 
 - [ ] **Step 1: Phase A**

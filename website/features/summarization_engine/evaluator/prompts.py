@@ -1,7 +1,7 @@
 """Evaluator prompt templates. Bump PROMPT_VERSION on any edit."""
 from __future__ import annotations
 
-PROMPT_VERSION = "evaluator.v2"
+PROMPT_VERSION = "evaluator.v3"
 
 CONSOLIDATED_SYSTEM = (
     "You are a summary quality evaluator. Be strict, source-grounded, and terse. "
@@ -76,6 +76,8 @@ RULES:
 - For `summac_lite.score`: classify each summary sentence as entailed / neutral / contradicted vs source; score = entailed_count / total.
 - For `editorialization_flags`: list summary sentences that introduce stance/judgment/framing absent from source.
 - For `maps_to_metric_summary`: aggregate rubric criterion scores by their `maps_to_metric` tags into 4 composites, each a FLAT float 0-100 (not a nested dict).
+- For `finesure.*.items`: SKIP entries whose `claim`, `sentence`, or `span` fields are all null/empty. Only list concrete, quotable issues. Do NOT emit placeholder items to pad the list.
+- SCHEMA-FAILURE RULE: If the summary JSON is missing required fields for its source shape (e.g., YouTube missing `chapters_or_segments`; Reddit missing `op_intent`/`reply_clusters`; GitHub missing `architecture_overview`; Newsletter missing `issue_date`/`author`), OR the summary contains the `_schema_fallback_` tag, then: (a) score each affected rubric component at 0, (b) add `"schema_failure"` to that component's `criteria_missed`, (c) set `caps_applied.hallucination_cap` to cap the composite aggressively, (d) add a `{{ "id": "schema_failure", "source_region": "structured_payload", "auto_cap": <cap_value> }}` entry to `rubric.anti_patterns_triggered`.
 - Output JSON ONLY. No markdown fences, no commentary, no prose outside the JSON object.
 """
 

@@ -67,6 +67,8 @@ class SummaryMetadata(BaseModel):
     self_check_missing_count: int = 0
     patch_applied: bool = False
     engine_version: str = "2.0.0"
+    structured_payload: dict[str, Any] | None = None
+    is_schema_fallback: bool = False
 
 
 class SummaryResult(BaseModel):

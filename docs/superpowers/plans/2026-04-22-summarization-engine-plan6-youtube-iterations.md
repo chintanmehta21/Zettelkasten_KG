@@ -218,6 +218,52 @@ rm -rf docs/summary_eval/youtube/iter-*
 
 ---
 
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Before burning any training URL, prove that the YouTube summarizer actually routes through `YouTubeStructuredPayload` and produces source-shaped output. If this gate fails, STOP — iter-01 would score garbage and every later loop would inherit the bug.
+
+**Files:**
+- None created (assertions only).
+
+- [ ] **Step 1: Route smoke** — pick any short YouTube URL from the training list and run it through the live `/api/summarize` endpoint:
+
+```bash
+URL="$(python ops/scripts/eval_loop.py --source youtube --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
+curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/yt_smoke.json | python -m json.tool | head -80
+```
+
+- [ ] **Step 2: Assert shape gates**
+
+```bash
+python - <<'PY'
+import json, re, sys
+r = json.load(open("/tmp/yt_smoke.json"))
+md = r.get("metadata", {})
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True (routing broken)")
+if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
+ds = sp.get("detailed_summary") or {}
+for req in ("thesis","chapters_or_segments","closing_takeaway"):
+    if req not in ds: errs.append(f"missing YouTube field: detailed_summary.{req}")
+if not (ds.get("chapters_or_segments") or []): errs.append("chapters_or_segments empty")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print("GATE OK")
+PY
+```
+Expected: `GATE OK`. If it fails: fix routing/schema BEFORE starting iter-01. Do not proceed.
+
+- [ ] **Step 3: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
+```
+
+---
+
 ## Task 1: Loop 1 — Baseline (URL #1, measurement only)
 
 **Files:**

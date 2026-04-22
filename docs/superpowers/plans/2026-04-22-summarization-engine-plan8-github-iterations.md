@@ -194,6 +194,50 @@ rm -rf docs/summary_eval/github/iter-*
 
 ---
 
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Prove GitHub summarizer routes through `GitHubStructuredPayload`. If this gate fails, STOP.
+
+- [ ] **Step 1: Route smoke**
+
+```bash
+URL="$(python ops/scripts/eval_loop.py --source github --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
+curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/gh_smoke.json | python -m json.tool | head -80
+```
+
+- [ ] **Step 2: Assert shape gates**
+
+```bash
+python - <<'PY'
+import json, re, sys
+r = json.load(open("/tmp/gh_smoke.json"))
+md = r.get("metadata", {})
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
+if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
+mt = r.get("mini_title","")
+if not re.match(r"^[^/\s]+/[^/\s]+$", mt): errs.append(f"mini_title not owner/repo: {mt!r}")
+for req in ("architecture_overview",):
+    if req not in sp: errs.append(f"missing GitHub field: {req}")
+ds = sp.get("detailed_summary") or []
+if not (isinstance(ds, list) and ds and ds[0].get("heading")): errs.append("detailed_summary must be non-empty list of {heading,bullets,...}")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print("GATE OK")
+PY
+```
+
+- [ ] **Step 3: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
+```
+
+---
+
 ## Task 1: Loop 1 — Baseline (URL #1)
 
 - [ ] **Step 1: Phase A**
