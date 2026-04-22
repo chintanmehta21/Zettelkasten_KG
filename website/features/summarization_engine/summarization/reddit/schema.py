@@ -66,16 +66,13 @@ def _extract_subreddit(mini_title: str) -> str:
 
 def _normalize_mini_title(mini_title: str, *, subreddit: str, op_intent: str) -> str:
     prefix = f"r/{subreddit}"
-    current = re.sub(r"\s+", " ", (mini_title or "").strip())
-    tail = current[len(prefix) :].strip() if current.startswith(prefix) else current
-    if not tail:
-        tail = op_intent
     words = [
         word
-        for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", tail)
-        if word.lower() not in {"the", "a", "an", "that", "this", "with"}
+        for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent)
+        if word.lower()
+        not in {"the", "a", "an", "that", "this", "with", "original", "poster", "claimed", "alleged", "asks", "about"}
     ]
-    compact = " ".join(words[:6]).strip() or "thread summary"
+    compact = " ".join(words[:5]).strip() or "thread summary"
     return f"{prefix} {compact}"[:60].rstrip()
 
 
@@ -114,7 +111,7 @@ def _infer_thread_type(
     ).lower()
     if "i did" in combined or "i tried" in combined or "my experience" in combined:
         return "experience-report"
-    if any(token in combined for token in ("ask", "question", "how", "what", "why", "should")):
+    if unresolved_questions or any(token in combined for token in ("ask", "question", "how", "what", "why", "should")):
         return "q-and-a"
     if any(token in combined for token in ("guide", "practice", "best practice", "workflow")):
         return "best-practices"
@@ -144,11 +141,11 @@ def _repair_brief_summary(
     open_point = unresolved_questions[0] if unresolved_questions else "Some details remain unresolved in the thread."
     moderation_line = moderation_context or "Removed or missing comments may limit what is visible in the rendered thread."
     rebuilt = [
-        _as_sentence(_trim_fragment(op_intent, 18)),
-        _as_sentence(_trim_fragment(primary, 18)),
-        _as_sentence(f"Counterarguments included {_trim_fragment(dissent, 16)}"),
-        _as_sentence(_trim_fragment(moderation_line, 16)),
-        _as_sentence(f"Open questions remain about {_trim_fragment(open_point, 16)}"),
+        _as_sentence(f"OP argued {_trim_fragment(op_intent, 11)}"),
+        _as_sentence(f"Many replies said {_trim_fragment(primary, 11)}"),
+        _as_sentence(f"Pushback included {_trim_fragment(dissent, 10)}"),
+        _as_sentence(f"Context: {_trim_fragment(moderation_line, 10)}"),
+        _as_sentence(f"Open questions remain about {_trim_fragment(open_point, 10)}"),
     ]
     return _fit_sentences(rebuilt, max_chars=400)
 
