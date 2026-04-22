@@ -34,6 +34,7 @@ from website.features.summarization_engine.summarization.reddit.prompts import (
     STRUCTURED_EXTRACT_INSTRUCTION,
 )
 from website.features.summarization_engine.summarization.reddit.schema import (
+    RedditCluster,
     RedditDetailedPayload,
     RedditStructuredPayload,
 )
@@ -63,6 +64,42 @@ class RedditSummarizer(BaseSummarizer):
         self._engine_config = load_config()
 
     async def summarize(self, ingest: IngestResult) -> SummaryResult:
+        try:
+            return await self._summarize_inner(ingest)
+        except Exception as exc:  # noqa: BLE001
+            _log.error(
+                "reddit.summarize_unrecoverable type=%s err=%s url=%s",
+                type(exc).__name__,
+                exc,
+                getattr(ingest, "url", None),
+                exc_info=True,
+            )
+            payload = _apply_ingest_enrichments(
+                _build_minimum_safe_payload("", ingest), ingest
+            )
+            return SummaryResult(
+                mini_title=payload.mini_title[:60],
+                brief_summary=payload.brief_summary[:400],
+                tags=payload.tags,
+                detailed_summary=_detailed_payload_to_sections(payload.detailed_summary),
+                metadata=SummaryMetadata(
+                    source_type=ingest.source_type,
+                    url=ingest.url,
+                    author=ingest.metadata.get("author"),
+                    date=None,
+                    extraction_confidence=ingest.extraction_confidence,
+                    confidence_reason=ingest.confidence_reason,
+                    total_tokens_used=0,
+                    gemini_pro_tokens=0,
+                    gemini_flash_tokens=0,
+                    total_latency_ms=0,
+                    cod_iterations_used=0,
+                    self_check_missing_count=0,
+                    patch_applied=False,
+                ),
+            )
+
+    async def _summarize_inner(self, ingest: IngestResult) -> SummaryResult:
         start = time.perf_counter()
         # Full multi-iteration CoD preserved — quality is non-negotiable.
         dense = await ChainOfDensityDensifier(
@@ -170,7 +207,9 @@ def _parse_payload(
                 fb_exc,
                 exc_info=True,
             )
-            raise
+            # Last-ditch: build a guaranteed-valid payload bypassing validators.
+            # The pipeline MUST never 500 on Reddit — a minimal zettel beats an error.
+            return _build_minimum_safe_payload(summary_text, ingest)
 
 
 def _sanitize_payload_shape(data: dict) -> dict:
@@ -268,6 +307,58 @@ def _synthesize_fallback_payload(
             "thread",
             "capture",
         ],
+        detailed_summary=detailed,
+    )
+
+
+def _build_minimum_safe_payload(
+    summary_text: str, ingest: IngestResult
+) -> RedditStructuredPayload:
+    """Bypass validators and build a minimally-valid payload from ingest metadata.
+
+    Used only when both ``_sanitize_payload_shape`` and
+    ``_synthesize_fallback_payload`` have failed. Never raises — the user always
+    gets a zettel, even when the LLM drift is catastrophic."""
+    subreddit = str(ingest.metadata.get("subreddit") or "reddit").strip() or "reddit"
+    title = str(ingest.metadata.get("title") or "thread").strip() or "thread"
+    subreddit_tag = f"r-{subreddit.lower().replace('_', '-')}"
+    mini_title = f"r/{subreddit} {title}"[:60].rstrip() or f"r/{subreddit} thread"
+    brief_sentences = [
+        f"OP posted in r/{subreddit} about {title[:120]}.",
+        "The thread contained replies that could not be fully clustered by the summarizer.",
+        "Consensus stayed around general discussion of the topic.",
+        "Dissent was not reliably identified in the visible replies.",
+        "Caveat: structured extraction degraded; only minimal metadata is available.",
+    ]
+    brief = " ".join(brief_sentences)[:400]
+    clusters = [
+        RedditCluster.model_construct(
+            theme="general discussion",
+            reasoning=(summary_text or "Replies covered a mix of opinions.")[:500],
+            examples=[],
+        )
+    ]
+    detailed = RedditDetailedPayload.model_construct(
+        op_intent=(summary_text or f"OP posted in r/{subreddit}.")[:240],
+        reply_clusters=clusters,
+        counterarguments=[],
+        unresolved_questions=[],
+        moderation_context=None,
+    )
+    tags = [
+        subreddit_tag,
+        "discussion",
+        "reddit-thread",
+        "community-discussion",
+        "user-replies",
+        "reddit",
+        "thread",
+        "capture",
+    ]
+    return RedditStructuredPayload.model_construct(
+        mini_title=mini_title,
+        brief_summary=brief,
+        tags=tags,
         detailed_summary=detailed,
     )
 
