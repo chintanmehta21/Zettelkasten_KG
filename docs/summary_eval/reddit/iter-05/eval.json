@@ -1,0 +1,525 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "eval": {
+      "g_eval": {
+        "coherence": 1.0,
+        "consistency": 2.0,
+        "fluency": 1.0,
+        "relevance": 3.0,
+        "reasoning": "The brief summary is severely grammatically broken and incomplete, making it largely unreadable and failing to convey information accurately or comprehensively. This significantly impacts coherence, consistency, and fluency. The detailed summary is much stronger, accurately capturing OP's intent, reply clusters, counterarguments, unresolved questions, and moderation context, contributing positively to relevance. However, the detailed summary misses a significant external reference (The Ken article) that was central to the comments, which slightly reduces its overall relevance score."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.59,
+          "items": [
+            {
+              "claim": "The brief summary accurately captures OP's central claim.",
+              "fact": null,
+              "sentence": "OP argued The central claim is that an IPO's GMP will not.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary accurately summarizes the range of responses.",
+              "fact": null,
+              "sentence": "Many replies said There is general agreement that Rajkot has a deeply ingrained. The thread mostly converged on rajkot's established market culture while gmp as a key retail. Pushback included The Hyundai IPO was considered expensive and was a.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary captures external references cited by commenters.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.68,
+          "items": [
+            {
+              "claim": "The brief summary captures OP's core question, problem, or claim.",
+              "fact": null,
+              "sentence": "OP argued The central claim is that an IPO's GMP will not.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary summarizes the range of responses.",
+              "fact": null,
+              "sentence": "Many replies said There is general agreement that Rajkot has a deeply ingrained. The thread mostly converged on rajkot's established market culture while gmp as a key retail. Pushback included The Hyundai IPO was considered expensive and was a.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary surfaces important caveats.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The detailed summary captures external references cited by commenters.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.89,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.0,
+        "contradicted_sentences": [
+          {
+            "sentence": "OP argued The central claim is that an IPO's GMP will not.",
+            "reason": "The sentence is incomplete and misrepresents OP's full claim, which is that GMP will not rise *without interest from Rajkot's grey market*. The omission of the condition fundamentally alters the claim."
+          }
+        ],
+        "neutral_sentences": [
+          {
+            "sentence": "Many replies said There is general agreement that Rajkot has a deeply ingrained.",
+            "reason": "The sentence is grammatically incomplete and lacks crucial information, making it impossible to determine entailment."
+          },
+          {
+            "sentence": "The thread mostly converged on rajkot's established market culture while gmp as a key retail.",
+            "reason": "The sentence is grammatically incomplete and lacks crucial information, making it impossible to determine entailment."
+          },
+          {
+            "sentence": "Pushback included The Hyundai IPO was considered expensive and was a.",
+            "reason": "The sentence is grammatically incomplete and lacks crucial information, making it impossible to determine entailment."
+          },
+          {
+            "sentence": "Context: Removed or missing comments may limit what is.",
+            "reason": "The sentence is grammatically incomplete and lacks crucial information, making it impossible to determine entailment."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 6.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.neutral_tone",
+              "brief.length_5_to_7_sentences"
+            ],
+            "criteria_missed": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.caveats_surfaced"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 39.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": [
+              "detailed.external_refs_captured"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 12.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": [
+              "tags.thread_type"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 35.0,
+        "finesure": 67.1,
+        "qafact": 0.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 8405,
+        "total_tokens_out": 1764,
+        "latency_ms": 57800,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 5.0,
+        "fluency": 3.5,
+        "relevance": 5.0,
+        "reasoning": "The summary is generally coherent, consistent, and highly relevant to the source. However, the brief summary suffers from awkward phrasing and redundancy in its initial sentences, impacting fluency and slightly reducing completeness regarding OP's full intent. The detailed summary is strong in all aspects."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.896551724137931,
+          "items": [
+            {
+              "claim": "OP argued To document a first-time heroin experience, driven by boredom and.",
+              "fact": null,
+              "sentence": "OP argued To document a first-time heroin experience, driven by boredom and.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Many replies said The majority of responses came from former opiate addicts who.",
+              "fact": null,
+              "sentence": "Many replies said The majority of responses came from former opiate addicts who.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.9210526315789473,
+          "items": [
+            {
+              "claim": "The brief summary should capture OP's core question, problem, or claim in neutral wording.",
+              "fact": null,
+              "sentence": "OP argued To document a first-time heroin experience, driven by boredom and.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary should surface important caveats (regional, legal, risk).",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.7777777777777778,
+          "items": [
+            {
+              "claim": "The brief summary should be 5-7 sentences.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The sentence 'OP argued To document a first-time heroin experience, driven by boredom and.' is not concise.",
+              "fact": null,
+              "sentence": "OP argued To document a first-time heroin experience, driven by boredom and.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The sentence 'Many replies said The majority of responses came from former opiate addicts who.' is not concise.",
+              "fact": null,
+              "sentence": "Many replies said The majority of responses came from former opiate addicts who.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.5,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "OP argued To document a first-time heroin experience, driven by boredom and.",
+            "reason": "The phrasing 'OP argued To document' is awkward and not entirely accurate; OP stated intent rather than argued. The sentence also omits significant parts of OP's intent (challenging classism, future cocaine plans)."
+          },
+          {
+            "sentence": "Many replies said The majority of responses came from former opiate addicts who.",
+            "reason": "The sentence contains redundant phrasing ('Many replies said The majority of responses came from') which impacts its clarity and conciseness, making it less than fully entailed."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 17.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.neutral_tone"
+            ],
+            "criteria_missed": [
+              "brief.op_intent_captured",
+              "brief.caveats_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.thread_type",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 88.46,
+        "finesure": 86.52,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 10351,
+        "total_tokens_out": 1637,
+        "latency_ms": 37900,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+    "eval": {
+      "g_eval": {
+        "coherence": 3.0,
+        "consistency": 5.0,
+        "fluency": 3.0,
+        "relevance": 4.0,
+        "reasoning": "The brief summary contains significant grammatical errors, making it incoherent and not fluent. The detailed summary, however, is coherent, consistent, fluent, and relevant. The overall relevance is good, but the brief's flaws bring down the overall coherence and fluency."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.5,
+          "items": [
+            {
+              "claim": "The brief summary contains grammatically incorrect and incomplete sentences.",
+              "fact": null,
+              "sentence": "OP argued To document a rapid descent into heroin addiction, share the.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary contains grammatically incorrect and incomplete sentences.",
+              "fact": null,
+              "sentence": "The thread mostly converged on alarm and warning of predictable addiction trajectory while post as.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.5,
+          "items": [
+            {
+              "claim": "The brief summary fails to capture the full scope of OP's journey, including the NA meeting, subsequent relapse, and providing photo evidence.",
+              "fact": null,
+              "sentence": "OP argued To document a rapid descent into heroin addiction, share the. Many replies said Community members, including experienced users and recovering addicts, expressed alarm. The thread mostly converged on alarm and warning of predictable addiction trajectory while post as. Pushback included A significant portion of the community accused the poster.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary misses the strong 'cautionary tale' impact of the post on many readers.",
+              "fact": null,
+              "sentence": "OP argued To document a rapid descent into heroin addiction, share the. Many replies said Community members, including experienced users and recovering addicts, expressed alarm. The thread mostly converged on alarm and warning of predictable addiction trajectory while post as. Pushback included A significant portion of the community accused the poster.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary misses the support and advice offered by commenters.",
+              "fact": null,
+              "sentence": "OP argued To document a rapid descent into heroin addiction, share the. Many replies said Community members, including experienced users and recovering addicts, expressed alarm. The thread mostly converged on alarm and warning of predictable addiction trajectory while post as. Pushback included A significant portion of the community accused the poster.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.5,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "OP argued To document a rapid descent into heroin addiction, share the.",
+            "reason": "This sentence is grammatically incorrect and incomplete, making it unintelligible and thus neither entailed nor contradicted."
+          },
+          {
+            "sentence": "The thread mostly converged on alarm and warning of predictable addiction trajectory while post as.",
+            "reason": "This sentence is grammatically incorrect and incomplete, making it unintelligible and thus neither entailed nor contradicted."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 11.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.consensus_signal",
+              "brief.neutral_tone"
+            ],
+            "criteria_missed": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.caveats_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 12.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": [
+              "tags.thread_type"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 12.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.neutral"
+            ],
+            "criteria_missed": [
+              "label.central_issue"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 53.125,
+        "finesure": 76.315,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 12020,
+        "total_tokens_out": 1384,
+        "latency_ms": 35171,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]

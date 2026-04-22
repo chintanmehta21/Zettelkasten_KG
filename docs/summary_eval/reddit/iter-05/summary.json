@@ -1,0 +1,393 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "summary": {
+      "mini_title": "r/IndianStockMarket Rajkot IPO influence debate",
+      "brief_summary": "OP argued The central claim is that an IPO's GMP will not. Many replies said There is general agreement that Rajkot has a deeply ingrained. The thread mostly converged on rajkot's established market culture while gmp as a key retail. Pushback included The Hyundai IPO was considered expensive and was a. Context: Removed or missing comments may limit what is.",
+      "tags": [
+        "r-indianstockmarket",
+        "ipo",
+        "greymarket",
+        "gmp",
+        "investingbehavior",
+        "india",
+        "stockmarket",
+        "valuation",
+        "ofs",
+        "duediligence"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "The central claim is that an IPO's GMP will not rise without interest from Rajkot's grey market. The post cites two examples: 1. Hyundai IPO: Allegedly \"collapsed\" with a daily falling GMP due to a lack of interest from Rajkot investors. 2. Waaree Energies IPO: Allegedly saw a significant GMP increase driven by Rajkot's interest. The author speculated, as a personal \"hunch,\" that the low Hyundai GMP might have been a deliberate strategy by large players to acquire a fundamentally strong company at a lower valuation by suppressing retail competition."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Rajkot's Established Market Culture\", \"reasoning\": \"There is general agreement that Rajkot has a deeply ingrained stock market culture, serving as a major hub for local brokers, grey market activity, and \\\"dabba trading\\\" (unofficial trading). The Securities and Exchange Board of India (SEBI) is known to monitor the city.\", \"examples\": []}",
+            "{\"theme\": \"GMP as a Key Retail Decision Factor\", \"reasoning\": \"The premise that GMP is a highly influential factor for retail IPO applicants was undisputed.\", \"examples\": []}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "The Hyundai IPO was considered expensive and was a 100% Offer For Sale (OFS), with no capital reinvested into the Indian business.",
+            "Prior to the IPO, Hyundai India drained cash reserves through dividends and increased royalty payments to its parent, leaving it with far lower cash (11,000 cr) than peers like Maruti (89,000 cr). One analysis calculated the true PE ratio was closer to 27.5 after accounting for the higher royalty.",
+            "A commenter directly refuted the Waaree Energies example, stating its GMP actually fell from initial levels due to poor market conditions, not rose significantly as claimed.",
+            "The broader market environment was not favorable at the time, and one user claimed Hyundai management became \"too greedy and changed the price\" to be higher than anticipated.",
+            "Skeptics questioned why the 3rd-ranked city for applications would wield more influence than the top two. The grey market's influence was also described as overstated due to its \"shallow depth.\"",
+            "The source for the city-wise IPO application rankings was never provided. Critics noted that rank is misleading without knowing the absolute contribution in INR, as the gap between ranks #2 and #3 could be substantial.",
+            "At least one user identifying as being from Rajkot stated, \"I don't think this is true.\""
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "Why does Rajkot, as the alleged 3rd-ranked city for IPO applications, supposedly wield more influence than the top two cities?",
+            "What is the absolute INR contribution of Rajkot's IPO applications, and how does it compare to other major cities?",
+            "What is the actual depth and overall influence of the grey market on IPO pricing and retail investor behavior?",
+            "Was the low Hyundai GMP a deliberate strategy by large players to acquire the company at a lower valuation by suppressing retail competition, as speculated?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo",
+        "author": "Lazy-Transition8236",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=56/114 divergence=50.88%",
+        "total_tokens_used": 15667,
+        "gemini_pro_tokens": 13396,
+        "gemini_flash_tokens": 2271,
+        "total_latency_ms": 91541,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 3,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IndianStockMarket Rajkot IPO influence debate",
+          "brief_summary": "OP argued The central claim is that an IPO's GMP will not. Many replies said There is general agreement that Rajkot has a deeply ingrained. The thread mostly converged on rajkot's established market culture while gmp as a key retail. Pushback included The Hyundai IPO was considered expensive and was a. Context: Removed or missing comments may limit what is.",
+          "tags": [
+            "r-indianstockmarket",
+            "ipo",
+            "greymarket",
+            "gmp",
+            "investingbehavior",
+            "india",
+            "stockmarket",
+            "valuation",
+            "ofs",
+            "duediligence"
+          ],
+          "detailed_summary": {
+            "op_intent": "The central claim is that an IPO's GMP will not rise without interest from Rajkot's grey market. The post cites two examples: 1. Hyundai IPO: Allegedly \"collapsed\" with a daily falling GMP due to a lack of interest from Rajkot investors. 2. Waaree Energies IPO: Allegedly saw a significant GMP increase driven by Rajkot's interest. The author speculated, as a personal \"hunch,\" that the low Hyundai GMP might have been a deliberate strategy by large players to acquire a fundamentally strong company at a lower valuation by suppressing retail competition.",
+            "reply_clusters": [
+              {
+                "theme": "Rajkot's Established Market Culture",
+                "reasoning": "There is general agreement that Rajkot has a deeply ingrained stock market culture, serving as a major hub for local brokers, grey market activity, and \"dabba trading\" (unofficial trading). The Securities and Exchange Board of India (SEBI) is known to monitor the city.",
+                "examples": []
+              },
+              {
+                "theme": "GMP as a Key Retail Decision Factor",
+                "reasoning": "The premise that GMP is a highly influential factor for retail IPO applicants was undisputed.",
+                "examples": []
+              }
+            ],
+            "counterarguments": [
+              "The Hyundai IPO was considered expensive and was a 100% Offer For Sale (OFS), with no capital reinvested into the Indian business.",
+              "Prior to the IPO, Hyundai India drained cash reserves through dividends and increased royalty payments to its parent, leaving it with far lower cash (11,000 cr) than peers like Maruti (89,000 cr). One analysis calculated the true PE ratio was closer to 27.5 after accounting for the higher royalty.",
+              "A commenter directly refuted the Waaree Energies example, stating its GMP actually fell from initial levels due to poor market conditions, not rose significantly as claimed.",
+              "The broader market environment was not favorable at the time, and one user claimed Hyundai management became \"too greedy and changed the price\" to be higher than anticipated.",
+              "Skeptics questioned why the 3rd-ranked city for applications would wield more influence than the top two. The grey market's influence was also described as overstated due to its \"shallow depth.\"",
+              "The source for the city-wise IPO application rankings was never provided. Critics noted that rank is misleading without knowing the absolute contribution in INR, as the gap between ranks #2 and #3 could be substantial.",
+              "At least one user identifying as being from Rajkot stated, \"I don't think this is true.\""
+            ],
+            "unresolved_questions": [
+              "Why does Rajkot, as the alleged 3rd-ranked city for IPO applications, supposedly wield more influence than the top two cities?",
+              "What is the absolute INR contribution of Rajkot's IPO applications, and how does it compare to other major cities?",
+              "What is the actual depth and overall influence of the grey market on IPO pricing and retail investor behavior?",
+              "Was the low Hyundai GMP a deliberate strategy by large players to acquire the company at a lower valuation by suppressing retail competition, as speculated?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "summary": {
+      "mini_title": "r/IAmA first-time heroin risks",
+      "brief_summary": "OP argued To document a first-time heroin experience, driven by boredom and. Many replies said The majority of responses came from former opiate addicts who. The thread mostly converged on warnings of inevitable addiction while addiction is not guaranteed. Pushback included Addiction is not guaranteed; some individuals use heroin infrequently.",
+      "tags": [
+        "r-iama",
+        "heroin",
+        "addiction",
+        "opiates",
+        "risk-perception",
+        "drug-culture",
+        "reddit",
+        "classism",
+        "harm-reduction",
+        "experience-report"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "To document a first-time heroin experience, driven by boredom and media intrigue, while asserting perceived control over addiction and challenging societal distinctions between drugs like heroin and cocaine based on classism."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Warnings of Inevitable Addiction\", \"reasoning\": \"The majority of responses came from former opiate addicts who stated the user's narrative of self-control and rationalization was identical to their own before addiction. This mindset was identified as a classic precursor to dependency. Commenters warned that opiate addiction 'creeps up on you,' with red flags including planning future use, romanticizing the first high, and feeling pride. The first high is often unrepeatable ('chasing the dragon'), and withdrawal was described as 'pure hell'.\", \"examples\": [\"One former CIO cited spending over $500,000 on his habit.\", \"Another user lost his career and was jailed after trying cocaine on a whim.\", \"Heroin withdrawal was described as 'pure hell' and 'the most terrible thing in this world'.\"]}",
+            "{\"theme\": \"Addiction is Not Guaranteed\", \"reasoning\": \"A minority view challenged the inevitability of addiction, citing personal experiences and relative risks. Some users reported using heroin or powerful opiates once or infrequently without developing dependency, with one citing a 1987 experience in Amsterdam. Others criticized the community for lecturing the user while broadly supporting drug legalization, noting legal alcohol is more addictive and deadly.\", \"examples\": [\"A user with 14 years of drug experience argued that methamphetamine is 'an instant addiction,' whereas most people they knew who tried heroin did not become addicted.\", \"One user cited a 1987 experience in Amsterdam, after which they never used again.\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "Addiction is not guaranteed; some individuals use heroin infrequently without dependency.",
+            "Methamphetamine is considered more instantly addictive than heroin by some experienced users.",
+            "Community criticism of the user is hypocritical given support for drug legalization and the known dangers of legal substances like alcohol."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "Is the original poster's account of their first heroin experience authentic?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and",
+        "author": "SpontaneousH",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=103/761 divergence=86.47%",
+        "total_tokens_used": 20381,
+        "gemini_pro_tokens": 18273,
+        "gemini_flash_tokens": 2108,
+        "total_latency_ms": 109834,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 4,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IAmA first-time heroin risks",
+          "brief_summary": "OP argued To document a first-time heroin experience, driven by boredom and. Many replies said The majority of responses came from former opiate addicts who. The thread mostly converged on warnings of inevitable addiction while addiction is not guaranteed. Pushback included Addiction is not guaranteed; some individuals use heroin infrequently.",
+          "tags": [
+            "r-iama",
+            "heroin",
+            "addiction",
+            "opiates",
+            "risk-perception",
+            "drug-culture",
+            "reddit",
+            "classism",
+            "harm-reduction",
+            "experience-report"
+          ],
+          "detailed_summary": {
+            "op_intent": "To document a first-time heroin experience, driven by boredom and media intrigue, while asserting perceived control over addiction and challenging societal distinctions between drugs like heroin and cocaine based on classism.",
+            "reply_clusters": [
+              {
+                "theme": "Warnings of Inevitable Addiction",
+                "reasoning": "The majority of responses came from former opiate addicts who stated the user's narrative of self-control and rationalization was identical to their own before addiction. This mindset was identified as a classic precursor to dependency. Commenters warned that opiate addiction 'creeps up on you,' with red flags including planning future use, romanticizing the first high, and feeling pride. The first high is often unrepeatable ('chasing the dragon'), and withdrawal was described as 'pure hell'.",
+                "examples": [
+                  "One former CIO cited spending over $500,000 on his habit.",
+                  "Another user lost his career and was jailed after trying cocaine on a whim.",
+                  "Heroin withdrawal was described as 'pure hell' and 'the most terrible thing in this world'."
+                ]
+              },
+              {
+                "theme": "Addiction is Not Guaranteed",
+                "reasoning": "A minority view challenged the inevitability of addiction, citing personal experiences and relative risks. Some users reported using heroin or powerful opiates once or infrequently without developing dependency, with one citing a 1987 experience in Amsterdam. Others criticized the community for lecturing the user while broadly supporting drug legalization, noting legal alcohol is more addictive and deadly.",
+                "examples": [
+                  "A user with 14 years of drug experience argued that methamphetamine is 'an instant addiction,' whereas most people they knew who tried heroin did not become addicted.",
+                  "One user cited a 1987 experience in Amsterdam, after which they never used again."
+                ]
+              }
+            ],
+            "counterarguments": [
+              "Addiction is not guaranteed; some individuals use heroin infrequently without dependency.",
+              "Methamphetamine is considered more instantly addictive than heroin by some experienced users.",
+              "Community criticism of the user is hypocritical given support for drug legalization and the known dangers of legal substances like alcohol."
+            ],
+            "unresolved_questions": [
+              "Is the original poster's account of their first heroin experience authentic?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (103/761 visible; divergence 86.47%)."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+    "summary": {
+      "mini_title": "r/IAmA first-time heroin risks",
+      "brief_summary": "OP argued To document a rapid descent into heroin addiction, share the. Many replies said Community members, including experienced users and recovering addicts, expressed alarm. The thread mostly converged on alarm and warning of predictable addiction trajectory while post as. Pushback included A significant portion of the community accused the poster.",
+      "tags": [
+        "r-iama",
+        "heroin-addiction",
+        "drug-abuse",
+        "iv-drug-use",
+        "withdrawal",
+        "relapse",
+        "community-support",
+        "harm-reduction",
+        "cautionary-tale",
+        "mental-health"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "op_intent",
+          "bullets": [
+            "To document a rapid descent into heroin addiction, share the immediate consequences including a transition to IV use, and express internal conflict and suicidal ideation while seeking community engagement."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "reply_clusters",
+          "bullets": [
+            "{\"theme\": \"Alarm and Warning of Predictable Addiction Trajectory\", \"reasoning\": \"Community members, including experienced users and recovering addicts, expressed alarm and warned the poster about the well-known, destructive path of heroin addiction, emphasizing its rapid control and severe withdrawal symptoms.\", \"examples\": [\"Experienced users, including an IV morphine addict and a 5-year recovering heroin addict, warned the poster was on a well-known path to losing everything.\", \"Withdrawal was described as 'the high, but turned inside out.'\", \"Commenter `swac` observed the poster had been using for 11 consecutive hours while replying to comments, highlighting the drug's immediate control.\"]}",
+            "{\"theme\": \"Post as a Cautionary Tale\", \"reasoning\": \"Many readers found the post served as a powerful deterrent, eliminating their curiosity about heroin and reinforcing its destructive potential through shared anecdotes of ruined lives and long-term health consequences.\", \"examples\": [\"Many readers stated the post eliminated their curiosity about heroin.\", \"User `focks` shared the story of 'Jaime,' a promising 16-year-old whose life was destroyed by the drug.\", \"Another commenter told of their father, who got clean but later died from long-term health complications (hepatitis) related to his years of use, which had also led to homelessness and jail time.\"]}",
+            "{\"theme\": \"Analysis of Poster's Motivation and Attention-Seeking\", \"reasoning\": \"A commenter questioned if the online attention the poster was receiving was part of the drug's appeal, suggesting a potential shift from seeking attention to further degradation.\", \"examples\": [\"A commenter questioned if the online attention was part of the drug's appeal, warning the poster could go from an 'attention whore to regular whore.'\"]}"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "counterarguments",
+          "bullets": [
+            "A significant portion of the community accused the poster of fabricating the story for attention, prompting the photo evidence.",
+            "One user (`HyperSpaz`) decided to treat the post as a troll's to manage their own emotional response.",
+            "One commenter suggested the girlfriend's decision to leave indicated she might not be a suitable partner, as crises reveal character.",
+            "User `hajk` shared an anecdote of a city architect who was a functional addict, claiming that by using a clean supply and gear, the architect's life expectancy was only reduced by a few years, a risk they compared to tobacco use."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "unresolved_questions",
+          "bullets": [
+            "What was the ultimate outcome of the poster's recovery attempts and long-term well-being?",
+            "To what extent is the 'functional addict' anecdote presented by `hajk` generalizable or representative of heroin use?",
+            "What were the long-term psychological impacts of documenting such a rapid descent into addiction publicly on the poster's recovery and identity?"
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "moderation_context",
+          "bullets": [
+            "Rendered comments covered only part of the thread (114/1005 visible; divergence 88.66%). 21 removed comments were recovered from pullpush.io."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "reddit",
+        "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made",
+        "author": "SpontaneousH",
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "json endpoint ok; rendered=114/1005 divergence=88.66%",
+        "total_tokens_used": 24241,
+        "gemini_pro_tokens": 21850,
+        "gemini_flash_tokens": 2391,
+        "total_latency_ms": 101998,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 4,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "r/IAmA first-time heroin risks",
+          "brief_summary": "OP argued To document a rapid descent into heroin addiction, share the. Many replies said Community members, including experienced users and recovering addicts, expressed alarm. The thread mostly converged on alarm and warning of predictable addiction trajectory while post as. Pushback included A significant portion of the community accused the poster.",
+          "tags": [
+            "r-iama",
+            "heroin-addiction",
+            "drug-abuse",
+            "iv-drug-use",
+            "withdrawal",
+            "relapse",
+            "community-support",
+            "harm-reduction",
+            "cautionary-tale",
+            "mental-health"
+          ],
+          "detailed_summary": {
+            "op_intent": "To document a rapid descent into heroin addiction, share the immediate consequences including a transition to IV use, and express internal conflict and suicidal ideation while seeking community engagement.",
+            "reply_clusters": [
+              {
+                "theme": "Alarm and Warning of Predictable Addiction Trajectory",
+                "reasoning": "Community members, including experienced users and recovering addicts, expressed alarm and warned the poster about the well-known, destructive path of heroin addiction, emphasizing its rapid control and severe withdrawal symptoms.",
+                "examples": [
+                  "Experienced users, including an IV morphine addict and a 5-year recovering heroin addict, warned the poster was on a well-known path to losing everything.",
+                  "Withdrawal was described as 'the high, but turned inside out.'",
+                  "Commenter `swac` observed the poster had been using for 11 consecutive hours while replying to comments, highlighting the drug's immediate control."
+                ]
+              },
+              {
+                "theme": "Post as a Cautionary Tale",
+                "reasoning": "Many readers found the post served as a powerful deterrent, eliminating their curiosity about heroin and reinforcing its destructive potential through shared anecdotes of ruined lives and long-term health consequences.",
+                "examples": [
+                  "Many readers stated the post eliminated their curiosity about heroin.",
+                  "User `focks` shared the story of 'Jaime,' a promising 16-year-old whose life was destroyed by the drug.",
+                  "Another commenter told of their father, who got clean but later died from long-term health complications (hepatitis) related to his years of use, which had also led to homelessness and jail time."
+                ]
+              },
+              {
+                "theme": "Analysis of Poster's Motivation and Attention-Seeking",
+                "reasoning": "A commenter questioned if the online attention the poster was receiving was part of the drug's appeal, suggesting a potential shift from seeking attention to further degradation.",
+                "examples": [
+                  "A commenter questioned if the online attention was part of the drug's appeal, warning the poster could go from an 'attention whore to regular whore.'"
+                ]
+              }
+            ],
+            "counterarguments": [
+              "A significant portion of the community accused the poster of fabricating the story for attention, prompting the photo evidence.",
+              "One user (`HyperSpaz`) decided to treat the post as a troll's to manage their own emotional response.",
+              "One commenter suggested the girlfriend's decision to leave indicated she might not be a suitable partner, as crises reveal character.",
+              "User `hajk` shared an anecdote of a city architect who was a functional addict, claiming that by using a clean supply and gear, the architect's life expectancy was only reduced by a few years, a risk they compared to tobacco use."
+            ],
+            "unresolved_questions": [
+              "What was the ultimate outcome of the poster's recovery attempts and long-term well-being?",
+              "To what extent is the 'functional addict' anecdote presented by `hajk` generalizable or representative of heroin use?",
+              "What were the long-term psychological impacts of documenting such a rapid descent into addiction publicly on the poster's recovery and identity?"
+            ],
+            "moderation_context": "Rendered comments covered only part of the thread (114/1005 visible; divergence 88.66%). 21 removed comments were recovered from pullpush.io."
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]

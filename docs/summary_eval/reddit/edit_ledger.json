@@ -20,6 +20,13 @@
       "targeted_criterion": "brief.length_5_to_7_sentences",
       "criterion_delta": 0.0,
       "composite_delta": 2.700000000000003
+    },
+    {
+      "iter": 4,
+      "files": [],
+      "targeted_criterion": "brief.caveats_surfaced",
+      "criterion_delta": 0.0,
+      "composite_delta": -37.650000000000006
     }
   ]
 }
