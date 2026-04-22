@@ -120,7 +120,12 @@ def _urls_for_iter(source: str, iter_num: int, override: list[str] | None) -> tu
     if iter_num in (6, 7, 9):
         # held-out: URLs beyond the training slice (3)
         training_cut = 3
-        return all_urls[training_cut:], True
+        held_out = all_urls[training_cut:]
+        # Plan 7's Reddit loop was specified and reviewed against a single held-out URL.
+        # Later appends in links.txt are exploratory extras, not part of the scored plan.
+        if source == "reddit":
+            held_out = held_out[:1]
+        return held_out, True
     # default: first URL
     return all_urls[:1], False
 

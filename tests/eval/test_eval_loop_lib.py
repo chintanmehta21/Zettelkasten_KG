@@ -326,6 +326,20 @@ def test_urls_for_iter_respects_loop_url_counts(monkeypatch: pytest.MonkeyPatch)
     assert held_out_flag is True
 
 
+def test_urls_for_iter_limits_reddit_held_out_to_plan_defined_single_url(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from ops.scripts import eval_loop
+
+    fake_urls = [f"https://reddit.com/{i}" for i in range(6)]
+    monkeypatch.setattr(eval_loop, "_links_by_source", lambda: {"reddit": fake_urls})
+
+    held, held_out_flag = eval_loop._urls_for_iter("reddit", 6, None)
+
+    assert held == [fake_urls[3]]
+    assert held_out_flag is True
+
+
 def test_urls_for_iter_override_wins(monkeypatch: pytest.MonkeyPatch):
     from ops.scripts import eval_loop
     monkeypatch.setattr(eval_loop, "_links_by_source", lambda: {"youtube": ["a", "b"]})
