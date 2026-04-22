@@ -108,3 +108,19 @@ Status: present.
 ### Evaluator prompt version stamp
 
 Status: not yet verified in an `eval.json` artifact during this smoke pass.
+
+## Zoro prod-parity dry-run
+
+Command target:
+
+```bash
+python ops/scripts/eval_loop.py --source youtube --iter 1 --env prod-parity --dry-run
+```
+
+Outcome:
+
+```text
+SKIPPED - SUPABASE_ANON_KEY not exported
+```
+
+Status: skipped. Prod-parity auth was not attempted because the required Supabase anon key is not available in this shell environment.
