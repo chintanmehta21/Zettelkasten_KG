@@ -63,7 +63,14 @@ class RedditSummarizer(BaseSummarizer):
 
     async def summarize(self, ingest: IngestResult) -> SummaryResult:
         start = time.perf_counter()
-        dense = await ChainOfDensityDensifier(self._client, self._engine_config).densify(ingest)
+        # Reddit-specific latency trim: cap CoD at 1 iteration (default 2).
+        # Reddit threads are already discussion-dense rather than prose-heavy,
+        # and the self-check + patch stage recovers any missed facts — so a
+        # second densification pass yields near-zero composite gain in eval
+        # while costing ~6-10s of user-visible latency.
+        cod_config = self._engine_config.model_copy(deep=True)
+        cod_config.chain_of_density.iterations = 1
+        dense = await ChainOfDensityDensifier(self._client, cod_config).densify(ingest)
         check = await InvertedFactScoreSelfCheck(self._client, self._engine_config).check(
             ingest.raw_text, dense.text
         )
@@ -124,10 +131,88 @@ def _parse_payload(
     brief/label/tag contracts even on the fallback."""
     try:
         data = parse_json_object(raw_text)
-        return RedditStructuredPayload(**data)
-    except (ValidationError, ValueError, json.JSONDecodeError) as exc:
-        _log.warning("reddit.structured_parse_failed: %s", exc)
-        return _synthesize_fallback_payload(summary_text, ingest)
+        sanitized = _sanitize_payload_shape(data) if isinstance(data, dict) else data
+        return RedditStructuredPayload(**sanitized)
+    except Exception as exc:  # noqa: BLE001 — any drift must fall back, never 500
+        _log.warning(
+            "reddit.structured_parse_failed type=%s err=%s raw_head=%r",
+            type(exc).__name__,
+            exc,
+            (raw_text or "")[:240],
+        )
+        try:
+            return _synthesize_fallback_payload(summary_text, ingest)
+        except Exception as fb_exc:  # noqa: BLE001
+            _log.error(
+                "reddit.fallback_synthesis_failed type=%s err=%s",
+                type(fb_exc).__name__,
+                fb_exc,
+                exc_info=True,
+            )
+            raise
+
+
+def _sanitize_payload_shape(data: dict) -> dict:
+    """Coerce common LLM drifts in ``detailed_summary.reply_clusters`` into the
+    expected list-of-cluster-objects shape before Pydantic validation.
+
+    The flash model occasionally emits a single cluster as a dict with a joined
+    key (e.g. ``{"theme, reasoning, examples": "..."}``) or wraps clusters in
+    an outer map. Rather than 500, rescue those shapes into a best-effort list
+    so the schema can then enforce the contract. Unknown shapes are passed
+    through untouched for Pydantic to reject and the ``except`` above to
+    catch."""
+    detailed = data.get("detailed_summary")
+    if not isinstance(detailed, dict):
+        return data
+    clusters = detailed.get("reply_clusters")
+    if isinstance(clusters, list):
+        repaired: list[dict] = []
+        for entry in clusters:
+            if isinstance(entry, dict) and {"theme", "reasoning"}.issubset(entry.keys()):
+                repaired.append(entry)
+                continue
+            if isinstance(entry, dict) and len(entry) == 1:
+                # {"theme, reasoning, examples": "..."} or similar collapsed key
+                only_val = next(iter(entry.values()))
+                repaired.append(
+                    {"theme": "summary", "reasoning": str(only_val), "examples": []}
+                )
+                continue
+            if isinstance(entry, str):
+                repaired.append({"theme": "summary", "reasoning": entry, "examples": []})
+                continue
+            if isinstance(entry, dict):
+                repaired.append(
+                    {
+                        "theme": str(entry.get("theme") or entry.get("name") or "summary"),
+                        "reasoning": str(
+                            entry.get("reasoning") or entry.get("description") or ""
+                        ),
+                        "examples": list(entry.get("examples") or []),
+                    }
+                )
+        detailed["reply_clusters"] = repaired or [
+            {"theme": "general discussion", "reasoning": "No discrete clusters detected.", "examples": []}
+        ]
+    elif isinstance(clusters, dict):
+        repaired = []
+        for theme_key, body in clusters.items():
+            if isinstance(body, dict):
+                repaired.append(
+                    {
+                        "theme": str(body.get("theme") or theme_key),
+                        "reasoning": str(body.get("reasoning") or body.get("description") or ""),
+                        "examples": list(body.get("examples") or []),
+                    }
+                )
+            else:
+                repaired.append({"theme": str(theme_key), "reasoning": str(body), "examples": []})
+        detailed["reply_clusters"] = repaired or [
+            {"theme": "general discussion", "reasoning": "No discrete clusters detected.", "examples": []}
+        ]
+    data["detailed_summary"] = detailed
+    return data
 
 
 def _synthesize_fallback_payload(
