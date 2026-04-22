@@ -20,7 +20,9 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '- "guests": array of strings OR null\n'
     '- "entities_discussed": array of product/library/dataset/tool names mentioned\n'
     '- "detailed_summary": object with keys "thesis", "format" (enum tutorial|interview|commentary|lecture|review|debate|walkthrough|reaction|vlog|other), '
-    '"chapters_or_segments" (array of {timestamp, title, bullets}), "demonstrations" (array of strings), "closing_takeaway"\n\n'
+    '"chapters_or_segments" (array of {timestamp, title, bullets}; use null timestamp unless the source text gives an explicit chapter time, and never fabricate placeholder times like 00:00), '
+    '"demonstrations" (array of strings), "closing_takeaway"\n\n'
+    "For chapters_or_segments, preserve the transcript's real chronological topic turns. Do not invent thematic chaptering that the source does not support.\n\n"
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )
