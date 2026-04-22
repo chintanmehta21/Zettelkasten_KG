@@ -198,27 +198,33 @@ rm -rf docs/summary_eval/github/iter-*
 
 Prove GitHub summarizer routes through `GitHubStructuredPayload`. If this gate fails, STOP.
 
-- [ ] **Step 1: Route smoke**
-
-```bash
-URL="$(python ops/scripts/eval_loop.py --source github --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
-curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/gh_smoke.json | python -m json.tool | head -80
-```
-
-- [ ] **Step 2: Assert shape gates**
+- [ ] **Step 1: In-process route smoke + shape assertions**
 
 ```bash
 python - <<'PY'
-import json, re, sys
-r = json.load(open("/tmp/gh_smoke.json"))
-md = r.get("metadata", {})
+import asyncio, re, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("github") or []
+assert urls, "no github URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
 sp = md.get("structured_payload") or {}
 errs = []
 if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
-if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
 for bp in ("zettelkasten","summary","capture","research","notes"):
-    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
-mt = r.get("mini_title","")
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
+mt = r.get("mini_title","") or ""
 if not re.match(r"^[^/\s]+/[^/\s]+$", mt): errs.append(f"mini_title not owner/repo: {mt!r}")
 for req in ("architecture_overview",):
     if req not in sp: errs.append(f"missing GitHub field: {req}")
@@ -226,11 +232,11 @@ ds = sp.get("detailed_summary") or []
 if not (isinstance(ds, list) and ds and ds[0].get("heading")): errs.append("detailed_summary must be non-empty list of {heading,bullets,...}")
 if errs:
     print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
-print("GATE OK")
+print(f"GATE OK url={url}")
 PY
 ```
 
-- [ ] **Step 3: Evaluator-version gate**
+- [ ] **Step 2: Evaluator-version gate**
 
 ```bash
 python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"

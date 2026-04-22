@@ -20,6 +20,7 @@ from website.features.summarization_engine.core.gemini_client import TieredGemin
 from website.features.summarization_engine.core.models import (
     DetailedSummarySection,
     IngestResult,
+    SourceType,
     SummaryMetadata,
     SummaryResult,
 )
@@ -91,6 +92,7 @@ class StructuredExtractor:
         structured_payload: dict | None = None
         try:
             raw = parse_json_object(result.text)
+            raw = _apply_identifier_hints(raw, ingest)
             payload = self._payload_class(**raw)
             structured_payload = payload.model_dump(mode="json")
         except Exception as exc:
@@ -196,6 +198,36 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
         return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
 
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
+
+
+def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
+    """Patch mini_title from deterministic ingest metadata before pydantic validation.
+
+    Gemini often produces near-correct but schema-invalid labels (e.g. ``fastapi.repository``
+    instead of ``fastapi/fastapi``; ``IndianStockMarket thread`` instead of
+    ``r/IndianStockMarket ...``). The ingest layer already knows the canonical identifier
+    for these sources, so we always prefer it over the model's guess. This does NOT touch
+    prose fields (brief_summary, architecture_overview, detailed_summary) — only the
+    schema-gated identifier.
+    """
+    if not isinstance(raw, dict):
+        return raw
+    st = ingest.source_type
+    meta = ingest.metadata or {}
+    if st == SourceType.GITHUB:
+        full_name = meta.get("full_name") or meta.get("repo_full_name")
+        if isinstance(full_name, str) and "/" in full_name:
+            raw["mini_title"] = full_name[:60]
+    elif st == SourceType.REDDIT:
+        subreddit = meta.get("subreddit") or meta.get("sub")
+        if isinstance(subreddit, str) and subreddit:
+            prefix = f"r/{subreddit.lstrip('r/').lstrip('/')}"
+            current = str(raw.get("mini_title") or "")
+            if not current.startswith(prefix):
+                suffix_source = current or str(meta.get("title") or "").strip()
+                suffix = suffix_source[: max(0, 60 - len(prefix) - 1)].strip()
+                raw["mini_title"] = f"{prefix} {suffix}".strip()[:60]
+    return raw
 
 
 def _fallback_payload(ingest: IngestResult, summary_text: str, config: EngineConfig) -> StructuredSummaryPayload:

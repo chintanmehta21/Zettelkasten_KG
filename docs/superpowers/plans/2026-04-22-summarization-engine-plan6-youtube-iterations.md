@@ -225,38 +225,46 @@ Before burning any training URL, prove that the YouTube summarizer actually rout
 **Files:**
 - None created (assertions only).
 
-- [ ] **Step 1: Route smoke** — pick any short YouTube URL from the training list and run it through the live `/api/summarize` endpoint:
+- [ ] **Step 1: In-process route smoke + shape assertions**
 
-```bash
-URL="$(python ops/scripts/eval_loop.py --source youtube --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
-curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/yt_smoke.json | python -m json.tool | head -80
-```
-
-- [ ] **Step 2: Assert shape gates**
+Uses the same `summarize_url` entry-point the eval_loop calls in Phase A, so the gate sees exactly what iter-01 will see. Prints `GATE OK` on success, exits non-zero on any failure.
 
 ```bash
 python - <<'PY'
-import json, re, sys
-r = json.load(open("/tmp/yt_smoke.json"))
-md = r.get("metadata", {})
+import asyncio, json, os, re, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("youtube") or []
+assert urls, "no youtube URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
 sp = md.get("structured_payload") or {}
 errs = []
 if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True (routing broken)")
-if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
 for bp in ("zettelkasten","summary","capture","research","notes"):
-    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
 ds = sp.get("detailed_summary") or {}
 for req in ("thesis","chapters_or_segments","closing_takeaway"):
     if req not in ds: errs.append(f"missing YouTube field: detailed_summary.{req}")
 if not (ds.get("chapters_or_segments") or []): errs.append("chapters_or_segments empty")
 if errs:
     print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
-print("GATE OK")
+print(f"GATE OK url={url}")
 PY
 ```
-Expected: `GATE OK`. If it fails: fix routing/schema BEFORE starting iter-01. Do not proceed.
+Expected: `GATE OK url=...`. If it fails: fix routing/schema BEFORE starting iter-01. Do not proceed.
 
-- [ ] **Step 3: Evaluator-version gate**
+- [ ] **Step 2: Evaluator-version gate**
 
 ```bash
 python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"

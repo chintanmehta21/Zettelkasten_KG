@@ -202,27 +202,33 @@ rm -rf docs/summary_eval/reddit/iter-*
 
 Prove Reddit summarizer routes through `RedditStructuredPayload`. If this gate fails, STOP — iter-01 would score garbage.
 
-- [ ] **Step 1: Route smoke**
-
-```bash
-URL="$(python ops/scripts/eval_loop.py --source reddit --list-urls | python -c "import json,sys; print(json.load(sys.stdin)[0])")"
-curl -s -X POST http://127.0.0.1:10000/api/summarize -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" | tee /tmp/rd_smoke.json | python -m json.tool | head -80
-```
-
-- [ ] **Step 2: Assert shape gates**
+- [ ] **Step 1: In-process route smoke + shape assertions**
 
 ```bash
 python - <<'PY'
-import json, re, sys
-r = json.load(open("/tmp/rd_smoke.json"))
-md = r.get("metadata", {})
+import asyncio, re, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("reddit") or []
+assert urls, "no reddit URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
 sp = md.get("structured_payload") or {}
 errs = []
 if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
-if "_schema_fallback_" in r.get("tags", []): errs.append("_schema_fallback_ tag present")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
 for bp in ("zettelkasten","summary","capture","research","notes"):
-    if bp in r.get("tags", []): errs.append(f"boilerplate tag: {bp}")
-mt = r.get("mini_title","")
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
+mt = r.get("mini_title","") or ""
 if not re.match(r"^r/[A-Za-z0-9_]+", mt): errs.append(f"mini_title missing r/SUB prefix: {mt!r}")
 ds = sp.get("detailed_summary") or {}
 for req in ("op_intent","reply_clusters","counterarguments","unresolved_questions"):
@@ -230,11 +236,11 @@ for req in ("op_intent","reply_clusters","counterarguments","unresolved_question
 if not (ds.get("reply_clusters") or []): errs.append("reply_clusters empty")
 if errs:
     print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
-print("GATE OK")
+print(f"GATE OK url={url}")
 PY
 ```
 
-- [ ] **Step 3: Evaluator-version gate**
+- [ ] **Step 2: Evaluator-version gate**
 
 ```bash
 python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"

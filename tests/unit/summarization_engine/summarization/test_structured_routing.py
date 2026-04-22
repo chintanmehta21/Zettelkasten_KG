@@ -18,6 +18,7 @@ from website.features.summarization_engine.core.models import IngestResult, Sour
 from website.features.summarization_engine.summarization.common import structured
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
+    _apply_identifier_hints,
     _coerce_detailed_summary,
     _normalize_tags,
 )
@@ -47,6 +48,30 @@ def _mock_client_returning(json_payload: dict | str):
     result = SimpleNamespace(text=text, input_tokens=10, output_tokens=20, model_used="gemini-flash")
     client = SimpleNamespace(generate=AsyncMock(return_value=result))
     return client
+
+
+def test_identifier_hints_github_patches_mini_title_from_full_name():
+    ingest = _make_ingest(SourceType.GITHUB, "https://github.com/fastapi/fastapi")
+    ingest.metadata["full_name"] = "fastapi/fastapi"
+    raw = {"mini_title": "fastapi.repository", "brief_summary": "x"}
+    out = _apply_identifier_hints(raw, ingest)
+    assert out["mini_title"] == "fastapi/fastapi"
+
+
+def test_identifier_hints_reddit_prepends_subreddit_when_missing():
+    ingest = _make_ingest(SourceType.REDDIT, "https://reddit.com/r/IAmA/comments/x/")
+    ingest.metadata["subreddit"] = "IAmA"
+    raw = {"mini_title": "heroin-once", "brief_summary": "x"}
+    out = _apply_identifier_hints(raw, ingest)
+    assert out["mini_title"].startswith("r/IAmA ")
+
+
+def test_identifier_hints_reddit_keeps_already_prefixed_title():
+    ingest = _make_ingest(SourceType.REDDIT, "https://reddit.com/r/india/comments/y/")
+    ingest.metadata["subreddit"] = "india"
+    raw = {"mini_title": "r/india stock market thread", "brief_summary": "x"}
+    out = _apply_identifier_hints(raw, ingest)
+    assert out["mini_title"] == "r/india stock market thread"
 
 
 def test_normalize_tags_strips_boilerplate_unless_allowed():
