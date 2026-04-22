@@ -1,6 +1,7 @@
 """Reddit per-source summarizer (iter-09 contract ported to master)."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -63,34 +64,54 @@ class RedditSummarizer(BaseSummarizer):
 
     async def summarize(self, ingest: IngestResult) -> SummaryResult:
         start = time.perf_counter()
-        # Reddit-specific latency trim: cap CoD at 1 iteration (default 2).
-        # Reddit threads are already discussion-dense rather than prose-heavy,
-        # and the self-check + patch stage recovers any missed facts — so a
-        # second densification pass yields near-zero composite gain in eval
-        # while costing ~6-10s of user-visible latency.
-        cod_config = self._engine_config.model_copy(deep=True)
-        cod_config.chain_of_density.iterations = 1
-        dense = await ChainOfDensityDensifier(self._client, cod_config).densify(ingest)
-        check = await InvertedFactScoreSelfCheck(self._client, self._engine_config).check(
-            ingest.raw_text, dense.text
-        )
-        patched, patch_applied, patch_tokens = await SummaryPatcher(
+        # Full multi-iteration CoD preserved — quality is non-negotiable.
+        dense = await ChainOfDensityDensifier(
             self._client, self._engine_config
-        ).patch(dense.text, check)
+        ).densify(ingest)
 
-        pro_tokens = dense.pro_tokens + check.pro_tokens + patch_tokens
-        flash_tokens = 0
-
-        prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=patched)
-        gen = await self._client.generate(
-            prompt,
-            tier="flash",
-            response_schema=RedditStructuredPayload,
-            system_instruction=SYSTEM_PROMPT,
+        # Speculative parallelism: run self-check and the flash structured-
+        # extraction concurrently against the CoD output. On the common no-
+        # patch path (missing_count < threshold, ~majority of Reddit threads)
+        # the speculative extraction is the final answer — we save the whole
+        # flash round-trip of user-visible latency. When patching IS needed,
+        # we discard the speculative result and re-run extraction against the
+        # patched text; quality is identical to the sequential pipeline.
+        self_check = InvertedFactScoreSelfCheck(self._client, self._engine_config)
+        spec_prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=dense.text)
+        check, spec_gen = await asyncio.gather(
+            self_check.check(ingest.raw_text, dense.text),
+            self._client.generate(
+                spec_prompt,
+                tier="flash",
+                response_schema=RedditStructuredPayload,
+                system_instruction=SYSTEM_PROMPT,
+            ),
         )
-        flash_tokens += gen.input_tokens + gen.output_tokens
 
-        payload = _parse_payload(gen.text, patched, ingest)
+        patcher = SummaryPatcher(self._client, self._engine_config)
+        needs_patch = check.missing_count >= self._engine_config.self_check.patch_threshold
+
+        pro_tokens = dense.pro_tokens + check.pro_tokens
+        flash_tokens = spec_gen.input_tokens + spec_gen.output_tokens
+
+        if needs_patch:
+            patched, patch_applied, patch_tokens = await patcher.patch(dense.text, check)
+            pro_tokens += patch_tokens
+            prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=patched)
+            gen = await self._client.generate(
+                prompt,
+                tier="flash",
+                response_schema=RedditStructuredPayload,
+                system_instruction=SYSTEM_PROMPT,
+            )
+            flash_tokens += gen.input_tokens + gen.output_tokens
+            gen_text = gen.text
+        else:
+            patched = dense.text
+            patch_applied = False
+            gen_text = spec_gen.text
+
+        payload = _parse_payload(gen_text, patched, ingest)
         payload = _apply_ingest_enrichments(payload, ingest)
 
         latency_ms = int((time.perf_counter() - start) * 1000)

@@ -470,6 +470,24 @@ class KGRepository:
         )
         return bool(resp.data)
 
+    def update_node_embedding(
+        self,
+        user_id: UUID | str,
+        node_id: str,
+        embedding: list[float],
+    ) -> bool:
+        """Set the 768-dim embedding vector for one node. Returns True on success."""
+        if not embedding:
+            return False
+        resp = (
+            self._client.table("kg_nodes")
+            .update({"embedding": embedding})
+            .eq("user_id", str(_coerce_uuid(user_id)))
+            .eq("id", node_id)
+            .execute()
+        )
+        return bool(resp.data)
+
     def match_similar_nodes(
         self,
         user_id: UUID | str,

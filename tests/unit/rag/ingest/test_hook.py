@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 from uuid import uuid4
 
@@ -326,6 +327,12 @@ async def test_persist_supabase_node_invokes_ingest_when_flag_enabled(monkeypatc
     )
 
     assert (node_id, saved, duplicate) == ("web-article", True, False)
+    # RAG ingest is scheduled as a background task — drain it before asserting.
+    pending = [
+        t for t in asyncio.all_tasks() if t.get_name().startswith("rag-chunks-")
+    ]
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
     assert ingest_calls["node_id"] == "web-article"
     assert ingest_calls["user_uuid"] == user_uuid
 

@@ -376,29 +376,25 @@ async def _persist_supabase_node(
     if repo.node_exists(user_uuid, str(payload["source_url"])):
         return node_id, False, True
 
-    embedding = _generate_node_embedding(payload)
     node_create = _build_supabase_node_payload(
         payload=payload,
         node_id=node_id,
         captured_on=captured_on,
-        embedding=embedding,
+        embedding=None,
     )
     node_id = node_create.id
     repo.add_node(user_uuid, node_create)
 
-    if embedding:
-        _create_semantic_links(
-            repo=repo,
-            kg_user_id=kg_user_id,
-            user_uuid=user_uuid,
-            node_id=node_create.id,
-            embedding=embedding,
-        )
+    _schedule_embedding_and_links(
+        repo=repo,
+        kg_user_id=kg_user_id,
+        user_uuid=user_uuid,
+        node_id=node_create.id,
+        payload=payload,
+    )
 
     if get_settings().rag_chunks_enabled:
-        from website.features.rag_pipeline.ingest.hook import ingest_node_chunks
-
-        await ingest_node_chunks(
+        _schedule_rag_chunks(
             payload=payload,
             user_uuid=user_uuid,
             node_id=node_create.id,
@@ -413,6 +409,71 @@ async def _persist_supabase_node(
         brief_summary=brief_summary,
     )
     return node_id, True, False
+
+
+def _schedule_embedding_and_links(
+    *,
+    repo: KGRepository,
+    kg_user_id: str,
+    user_uuid: UUID,
+    node_id: str,
+    payload: dict[str, Any],
+) -> None:
+    """Generate embedding, persist it on the node, and create semantic links — off critical path."""
+
+    async def _run() -> None:
+        try:
+            embedding = await asyncio.to_thread(_generate_node_embedding, payload)
+            if not embedding:
+                return
+            await asyncio.to_thread(
+                repo.update_node_embedding, user_uuid, node_id, embedding
+            )
+            await asyncio.to_thread(
+                _create_semantic_links,
+                repo=repo,
+                kg_user_id=kg_user_id,
+                user_uuid=user_uuid,
+                node_id=node_id,
+                embedding=embedding,
+            )
+        except Exception as exc:
+            logger.warning("Background embedding/link failed for %s: %s", node_id, exc)
+
+    try:
+        task = asyncio.create_task(_run(), name=f"embed-link-{node_id}")
+    except RuntimeError:
+        logger.debug("No running event loop for embedding on %s", node_id)
+        return
+    task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+
+
+def _schedule_rag_chunks(
+    *,
+    payload: dict[str, Any],
+    user_uuid: UUID,
+    node_id: str,
+) -> None:
+    """Ingest RAG chunks off critical path so /api/summarize returns faster."""
+
+    async def _run() -> None:
+        try:
+            from website.features.rag_pipeline.ingest.hook import ingest_node_chunks
+
+            await ingest_node_chunks(
+                payload=payload,
+                user_uuid=user_uuid,
+                node_id=node_id,
+            )
+        except Exception as exc:
+            logger.warning("Background RAG chunk ingest failed for %s: %s", node_id, exc)
+
+    try:
+        task = asyncio.create_task(_run(), name=f"rag-chunks-{node_id}")
+    except RuntimeError:
+        logger.debug("No running event loop for RAG chunks on %s", node_id)
+        return
+    task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 
 
 def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:
