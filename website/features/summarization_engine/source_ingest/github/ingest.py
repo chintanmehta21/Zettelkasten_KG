@@ -4,12 +4,19 @@ from __future__ import annotations
 import base64
 import os
 import re
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
+from website.features.summarization_engine.source_ingest.github.api_client import (
+    GitHubApiClient,
+)
+from website.features.summarization_engine.source_ingest.github.architecture import (
+    extract_architecture_overview,
+)
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
 from website.features.summarization_engine.source_ingest.utils import (
     compact_text,
@@ -114,6 +121,99 @@ class GitHubIngestor(BaseIngestor):
             "Issues": "\n".join(_issue_line(issue) for issue in issues[: int(config.get("max_issues", 20))]),
             "Commits": "\n".join(_commit_line(commit) for commit in commits[: int(config.get("max_commits", 10))]),
         }
+        metadata = {
+            "owner": owner,
+            "repo": repo,
+            "full_name": repo_data.get("full_name"),
+            "stars": repo_data.get("stargazers_count", 0),
+            "forks": repo_data.get("forks_count", 0),
+            "language": repo_data.get("language"),
+            "topics": repo_data.get("topics") or [],
+            "license": (repo_data.get("license") or {}).get("spdx_id"),
+            "updated_at": repo_data.get("updated_at"),
+            "extra_doc_files": [name for name, _ in extra_docs],
+        }
+
+        owner_repo = f"{owner}/{repo}"
+        api_client = GitHubApiClient(
+            token=os.environ.get(config.get("github_token_env", "GITHUB_TOKEN"), ""),
+            base_url=config.get("api_base_url", "https://api.github.com"),
+            timeout_sec=int(config.get("api_timeout_sec", 15)),
+        )
+        signals = await api_client.fetch_all_signals(
+            owner_repo,
+            {
+                "fetch_pages": config.get("fetch_pages", False),
+                "fetch_workflows": config.get("fetch_workflows", False),
+                "fetch_releases": config.get("fetch_releases", False),
+                "max_releases": config.get("max_releases", 5),
+                "fetch_languages": config.get("fetch_languages", False),
+                "fetch_root_dir_listing": config.get("fetch_root_dir_listing", False),
+            },
+        )
+
+        metadata.update(
+            {
+                "pages_url": signals.pages_url,
+                "has_workflows": signals.has_workflows,
+                "workflow_count": signals.workflow_count,
+                "releases": signals.releases,
+                "languages": signals.languages,
+                **{k: v for k, v in signals.root_dir_flags.items()},
+            }
+        )
+
+        signal_lines = [
+            f"Pages URL: {signals.pages_url or 'none'}",
+            f"GitHub Actions workflows: {signals.workflow_count}",
+            "Recent releases: "
+            + (", ".join(r.get("tag_name", "?") for r in signals.releases) or "none"),
+            "Language composition: "
+            + (
+                ", ".join(f"{lang}={pct:.1f}%" for lang, pct in signals.languages[:5])
+                or "none"
+            ),
+            "Root dirs: "
+            + ", ".join(
+                key.replace("has_", "")
+                for key, value in signals.root_dir_flags.items()
+                if value
+            ),
+        ]
+        sections["Repository signals"] = "\n".join(signal_lines)
+
+        if config.get("architecture_overview_enabled", False):
+            try:
+                from website.features.summarization_engine.api.routes import _gemini_client
+
+                client = _gemini_client()
+                cache_root = (
+                    Path(__file__).resolve().parents[5]
+                    / "docs"
+                    / "summary_eval"
+                    / "_cache"
+                )
+                arch_overview = await extract_architecture_overview(
+                    client=client,
+                    readme_text=readme or "",
+                    top_level_dirs=[
+                        key.replace("has_", "")
+                        for key, value in signals.root_dir_flags.items()
+                        if value
+                    ],
+                    max_chars=int(config.get("architecture_overview_max_chars", 500)),
+                    cache_root=cache_root,
+                    slug=owner_repo,
+                )
+                sections["Architecture overview"] = arch_overview
+                metadata["architecture_overview"] = arch_overview
+            except Exception as exc:
+                logger.warning(
+                    "[gh-ingest] architecture overview failed for %s: %s",
+                    owner_repo,
+                    exc,
+                )
+
         raw_text = join_sections(sections)
 
         has_content = bool(readme) or bool(extra_docs)
@@ -133,18 +233,7 @@ class GitHubIngestor(BaseIngestor):
             original_url=url,
             raw_text=raw_text,
             sections=sections,
-            metadata={
-                "owner": owner,
-                "repo": repo,
-                "full_name": repo_data.get("full_name"),
-                "stars": repo_data.get("stargazers_count", 0),
-                "forks": repo_data.get("forks_count", 0),
-                "language": repo_data.get("language"),
-                "topics": repo_data.get("topics") or [],
-                "license": (repo_data.get("license") or {}).get("spdx_id"),
-                "updated_at": repo_data.get("updated_at"),
-                "extra_doc_files": [name for name, _ in extra_docs],
-            },
+            metadata=metadata,
             extraction_confidence=confidence,  # type: ignore[arg-type]
             confidence_reason=reason,
             fetched_at=utc_now(),
