@@ -9,6 +9,7 @@ from website.features.summarization_engine.source_ingest.youtube.ingest import (
 from website.features.summarization_engine.source_ingest.youtube.tiers import (
     TierName,
     TierResult,
+    _vtt_to_plaintext,
 )
 
 
@@ -98,3 +99,24 @@ async def test_ingestor_reports_last_error_when_all_tiers_fail():
     assert result.url == "https://www.youtube.com/watch?v=abc123"
     assert result.extraction_confidence == "low"
     assert result.confidence_reason == "All tiers failed; last error: upstream timeout"
+
+
+def test_vtt_to_plaintext_preserves_grounding_timestamps():
+    vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:04.000
+<c.colorE5E5E5>Opening line</c>
+
+00:00:04.000 --> 00:00:08.000
+<c.colorE5E5E5>Opening line</c>
+
+00:00:09.250 --> 00:00:12.000
+Next idea
+
+01:05:00.000 --> 01:05:03.000
+Later point
+"""
+
+    assert _vtt_to_plaintext(vtt) == (
+        "[00:00] Opening line [00:09] Next idea [1:05:00] Later point"
+    )

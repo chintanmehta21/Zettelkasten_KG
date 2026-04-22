@@ -131,26 +131,74 @@ async def tier_ytdlp_player_rotation(video_id: str, config: dict) -> TierResult:
 
 
 def _vtt_to_plaintext(vtt: str) -> str:
-    """Strip WEBVTT headers, timestamps, and cue metadata; return plain text."""
-    lines: list[str] = []
+    """Convert WEBVTT into de-duplicated text with coarse grounding timestamps."""
+
+    cue_entries: list[str] = []
+    current_timestamp: str | None = None
+    current_lines: list[str] = []
+    skip_block = False
+    last_text: str | None = None
+
+    def flush_current() -> None:
+        nonlocal current_lines, current_timestamp, last_text
+        if not current_lines:
+            current_timestamp = None
+            return
+        text = " ".join(current_lines).strip()
+        current_lines = []
+        if not text or text == last_text:
+            current_timestamp = None
+            return
+        last_text = text
+        if current_timestamp:
+            cue_entries.append(f"[{current_timestamp}] {text}")
+        else:
+            cue_entries.append(text)
+        current_timestamp = None
+
     for raw in vtt.splitlines():
         line = raw.strip()
-        if not line:
-            continue
-        if line == "WEBVTT" or line.startswith(("NOTE", "STYLE")):
-            continue
-        if re.match(r"\d{1,2}:\d{2}:\d{2}\.\d{3}\s*-->", line):
-            continue
-        if re.match(r"^\d+$", line):
-            continue
-        line = re.sub(r"<[^>]+>", "", line)
-        lines.append(line)
 
-    deduped: list[str] = []
-    for line in lines:
-        if not deduped or deduped[-1] != line:
-            deduped.append(line)
-    return " ".join(deduped)
+        if skip_block:
+            if not line:
+                skip_block = False
+            continue
+
+        if not line:
+            flush_current()
+            continue
+        if line == "WEBVTT":
+            continue
+        if line.startswith(("NOTE", "STYLE")):
+            flush_current()
+            skip_block = True
+            continue
+        if re.match(r"^\d+$", line) and not current_lines and current_timestamp is None:
+            continue
+
+        timing_match = re.match(
+            r"(?P<start>\d{1,2}:\d{2}:\d{2}\.\d{3})\s*-->",
+            line,
+        )
+        if timing_match:
+            flush_current()
+            current_timestamp = _format_vtt_timestamp(timing_match.group("start"))
+            continue
+
+        cleaned = re.sub(r"<[^>]+>", "", line).strip()
+        if cleaned:
+            current_lines.append(cleaned)
+
+    flush_current()
+    return " ".join(cue_entries)
+
+
+def _format_vtt_timestamp(timestamp: str) -> str:
+    hours, minutes, remainder = timestamp.split(":")
+    seconds = remainder.split(".", 1)[0]
+    if hours == "00":
+        return f"{minutes}:{seconds}"
+    return f"{int(hours)}:{minutes}:{seconds}"
 
 
 async def tier_transcript_api_direct(video_id: str, config: dict) -> TierResult:
