@@ -1,4 +1,5 @@
 import pytest
+import re
 from pydantic import ValidationError
 
 from website.features.summarization_engine.summarization.reddit.schema import (
@@ -11,9 +12,9 @@ from website.features.summarization_engine.summarization.reddit.schema import (
 def _base_payload_kwargs():
     return dict(
         mini_title="r/AskHistorians Roman roads",
-        brief_summary="...",
+        brief_summary="One short sentence only",
         tags=[
-            "history",
+            "#history",
             "rome",
             "infrastructure",
             "reddit",
@@ -22,10 +23,12 @@ def _base_payload_kwargs():
             "engineering",
         ],
         detailed_summary=RedditDetailedPayload(
-            op_intent="OP asks about Roman road construction.",
+            op_intent="OP asks about Roman road construction and maintenance.",
             reply_clusters=[
                 RedditCluster(
-                    theme="Construction", reasoning="Layered", examples=["concrete"]
+                    theme="Construction",
+                    reasoning="Most replies describe layered foundations, drainage, and long-term maintenance.",
+                    examples=["concrete"],
                 )
             ],
             counterarguments=["Some dispute dating"],
@@ -56,6 +59,9 @@ def test_reddit_schema_rejects_bad_label_format():
 def test_reddit_schema_accepts_valid_label():
     payload = RedditStructuredPayload(**_base_payload_kwargs())
     assert payload.mini_title.startswith("r/")
+    assert payload.tags[0] == "r-askhistorians"
+    assert "q-and-a" in payload.tags
+    assert len([s for s in re.split(r"(?<=[.!?])\s+", payload.brief_summary) if s.strip()]) >= 5
 
 
 def test_reddit_schema_rejects_missing_reply_clusters():
@@ -74,11 +80,25 @@ def test_reddit_schema_rejects_missing_reply_clusters():
         )
 
 
-def test_reddit_schema_rejects_label_past_length_limit():
-    with pytest.raises(ValidationError):
-        RedditStructuredPayload(
-            **{
-                **_base_payload_kwargs(),
-                "mini_title": "r/AskHistorians " + ("a" * 61),
-            }
-        )
+def test_reddit_schema_compacts_label_past_length_limit():
+    payload = RedditStructuredPayload(
+        **{
+            **_base_payload_kwargs(),
+            "mini_title": "r/AskHistorians " + ("a" * 61),
+        }
+    )
+
+    assert len(payload.mini_title) <= 60
+
+
+def test_reddit_schema_repairs_compact_label_and_hash_tags():
+    payload = RedditStructuredPayload(
+        **{
+            **_base_payload_kwargs(),
+            "mini_title": "r/AskHistorians A very long clipped title about roman roads and empires and maintenance",
+        }
+    )
+
+    assert payload.mini_title.startswith("r/AskHistorians ")
+    assert len(payload.mini_title) <= 60
+    assert all(not tag.startswith("#") for tag in payload.tags)
