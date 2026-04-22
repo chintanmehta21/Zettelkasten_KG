@@ -1,13 +1,13 @@
-status: continue_pessimistic
+status: continue
 
-computed_composite: 50.10
+computed_composite: 28.00
 
 ## URL: single
 
 ### Lowest components
-- brief_summary: 5.0/25
-- tags: 13.0/15
-- label: 15.0/15
+- brief_summary: 0.0/25
+- label: 0.0/15
+- detailed_summary: 4.0/45
 
 ### Missed criteria
 - brief.thesis_capture
@@ -16,14 +16,15 @@ computed_composite: 50.10
 - brief.major_segments_outlined
 - brief.takeaways_surfaced
 - brief.length_5_to_7_sentences
+- brief.no_clickbait
+- schema_failure
 - detailed.chronological_order
 - detailed.all_chapters_covered
-- detailed.entities_named
-- detailed.closing_takeaway
-- tags.format_tag_present
+- detailed.demonstrations_preserved
+- detailed.caveats_preserved
 
 ### Caps applied
 - hallucination_cap: 60
 
 ### Anti-patterns
-- invented_chapter
+- schema_failure

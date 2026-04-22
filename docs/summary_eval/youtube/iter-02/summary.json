@@ -1,49 +1,21 @@
 {
-  "mini_title": "DMT: Properties, Research, Experiences",
-  "brief_summary": "This summary provides a comprehensive review of Dimethyltryptamine (DMT), an endogenous psychedelic compound. It delves into its neuropharmacological properties, historical timeline, and various hypotheses concerning its subjective phenomena, including entity encounters and links to near-death experiences. Key figures like Chris Timmerman and Rick Strassman are highlighted for their significant re",
+  "mini_title": "The Strangest Drug Ever Studied",
+  "brief_summary": "### Historical Timeline & Discovery * **1852-1857:** British botanist Richard Spruce documents indigenous use of a ceremonial brew in Brazil (\"capi\") and Peru (\"iawaska,\" now Ayahuasca), identifying the key ingredient as the *Banisteria caapi* vine. He experiences visions and \"alternations of cold and heat.\" * The brew requires two components:",
   "tags": [
-    "dmt",
-    "dimethyltryptamine",
-    "psychedelics",
-    "neuropharmacology",
-    "consciousness",
-    "rick-strassman",
-    "terrence-mckenna",
+    "_schema_fallback_",
+    "youtube",
+    "knowledge",
+    "notes",
     "research",
-    "mental-health",
-    "altered-states"
+    "zettelkasten",
+    "capture"
   ],
   "detailed_summary": [
     {
-      "heading": "thesis",
+      "heading": "schema_fallback",
       "bullets": [
-        "To provide a comprehensive overview of Dimethyltryptamine (DMT), covering its neuropharmacological properties, historical context, subjective effects, research findings, consumption methods, and therapeutic potential, while also addressing safety and research limitations."
-      ],
-      "sub_sections": {}
-    },
-    {
-      "heading": "format",
-      "bullets": [
-        "review"
-      ],
-      "sub_sections": {}
-    },
-    {
-      "heading": "chapters_or_segments",
-      "bullets": [
-        "{\"timestamp\": null, \"title\": \"Properties & Neuropharmacology\", \"bullets\": [\"DMT is an endogenous psychedelic compound with an indole ring structure similar to serotonin, allowing it to bind to serotonin receptors.\", \"This binding disrupts the brain's top-down hierarchical control, inducing a state of \\\"global hyperconnectivity\\\" where disparate brain regions communicate more freely.\", \"Neuroscientist Chris Timmerman proposes DMT causes \\\"functional deafferentation,\\\" a state where the brain disconnects from external sensory input to generate a vivid internal simulation, likened to \\\"dreaming with your eyes open.\\\"\", \"This hypothesis is supported by findings of theta wave patterns similar to those in REM sleep.\", \"Recent research suggests endogenous DMT levels in the brain may be significantly higher than previously believed and could be involved in normal physiological processes.\", \"A key goal of some modern research is to use DMT as a tool to understand the fundamental nature of consciousness and how the brain constructs reality.\"]}",
-        "{\"timestamp\": null, \"title\": \"Timeline & Key Figures\", \"bullets\": [\"**1852-1857:** British botanist Richard Spruce documents indigenous Amazonian ceremonies using DMT-containing brews called \\\"capi\\\" (Brazil) and \\\"iawaska\\\" (Peru), sending samples of the *Banisteriopsis caapi* vine to England.\", \"**Early 1930s:** German-Canadian chemist Richard Manske first synthesizes N,N-dimethyltryptamine, though its psychoactive properties remained unknown.\", \"**1943:** Albert Hofmann's self-experiment with 250 micrograms of LSD on April 19 initiates modern psychedelic research.\", \"**1960s:** Researchers, including Julius Axelrod, find DMT in human blood and evidence of its presence in the brain.\", \"**Late 1960s:** Terrence McKenna has his first experience smoking DMT, later describing encounters with \\\"self-transforming machine elves.\\\"\", \"**1966-1971:** LSD is outlawed in the US (1966-68), and the 1971 UN Convention on Psychotropic Substances halts most psychedelic research for decades.\", \"**1990s:** Dr. Rick Strassman conducts the first US human study on psychedelics in over 20 years, administering approximately 400 intravenous doses of DMT to 60 volunteers over a 5-year period.\", \"**2000:** Terrence McKenna dies, leaving a 500+ hour audio archive.\"]}",
-        "{\"timestamp\": null, \"title\": \"Hypotheses on Subjective Phenomena\", \"bullets\": [\"**Strassman's \\\"Spirit Molecule\\\" Hypothesis:** Proposes the body naturally releases DMT during profound life events such as birth, death, or mystical experiences.\", \"**Entity Encounters:** One hypothesis suggests DMT hyper-activates brain regions for social cognition, causing the brain to simulate social interactions that manifest as sentient beings.\", \"**Near-Death Experience (NDE) Link:** The DMT experience shares features with NDEs (e.g., seeing a light, altered time). Timmerman suggests the brain's massive transformation may trigger a signal that it is dying.\", \"Supporting this, one study found a significant increase in DMT levels in rats after cardiac arrest, and other research suggests DMT may have a neuroprotective function against oxygen deprivation.\", \"However, a key difference is that DMT experiences are reported as being more visual, while NDEs are more disembodied.\"]}",
-        "{\"timestamp\": null, \"title\": \"Reported Experiences & Study Data\", \"bullets\": [\"**Strassman's Study (Subject 34):** A volunteer with a history of depression, a past suicide attempt, and pre-existing beliefs in spirit guides reported being \\\"blasted out of my body,\\\" encountering \\\"aggressive, terrifying\\\" colors, animated clowns, a \\\"Tinkerbell-like\\\" entity, and communicating telepathically with beings in \\\"deep space\\\" for whom she served as an emotional \\\"bridge.\\\"\", \"**Johns Hopkins Survey (2,500+ users on entity encounters):** Most users *saw* entities; >50% *heard* them; ~33% *touched* them. Communication was described as telepathic by 85%. Common labels were \\\"beings,\\\" \\\"guides,\\\" \\\"spirits,\\\" and \\\"aliens\\\"; \\\"clowns,\\\" \\\"demons,\\\" or \\\"devils\\\" were less common. The most reported emotions were love, trust, and joy; fear was a minority experience.\", \"**Belief Change:** In one study of users reporting a \\\"God encounter experience,\\\" the percentage identifying as atheist dropped from 25% pre-experience to 7% post-experience.\"]}",
-        "{\"timestamp\": null, \"title\": \"Consumption Methods & Related Compounds\", \"bullets\": [\"**Ayahuasca (Oral):** A brew requiring a DMT-containing plant and the *Banisteriopsis caapi* vine, which contains MAO inhibitors (MAOIs) that make DMT orally active. Onset is ~45 minutes, duration is several hours, and it often induces vomiting.\", \"**Smoking/Vaporizing:** Onset is nearly instant (<1 minute), with a peak experience lasting only a few minutes.\", \"**Snorting:** Onset takes a few minutes, with a duration slightly longer than smoking.\", \"**IV Injection:** Near-instantaneous onset, used in clinical research.\", \"**5-MeO-DMT:** A related compound found in Colorado River toad secretions (licking the toad is toxic). It is fast-acting but tends to produce fewer visual hallucinations than N,N-DMT.\"]}",
-        "{\"timestamp\": null, \"title\": \"Constraints & Research Status\", \"bullets\": [\"**Safety:** DMT is considered physiologically safe and non-addictive, altering perception itself, unlike stimulants (e.g., cocaine) which primarily activate the brain's reward system.\", \"However, \\\"set and setting\\\" (user's mindset and physical environment) are critical for the experience's outcome. \\\"Bad trips\\\" can occur, leaving some users shaken for days and experiencing flashbacks of frightening hallucinations.\", \"Psychedelics can worsen existing mental health conditions, particularly psychotic disorders, and should not be used without professional guidance.\", \"**Therapeutic Research:** A therapeutic theory for depression suggests DMT works by disrupting rigid, negative self-beliefs (e.g., \\\"I am worthless\\\"), allowing for dynamic change.\", \"Modern studies, such as psychiatrist Simon Ruffell's work with veterans, are preliminary, involve small participant numbers, and have inconclusive results. Some participants have reported a worsening of their mental health post-experience.\"]}"
-      ],
-      "sub_sections": {}
-    },
-    {
-      "heading": "closing_takeaway",
-      "bullets": [
-        "While DMT is physiologically safe and holds promise for understanding consciousness and treating conditions like depression by disrupting rigid thought patterns, its use requires careful consideration of \"set and setting,\" professional guidance, and awareness of potential adverse effects, especially for individuals with pre-existing mental health conditions, as current therapeutic research remains preliminary and inconclusive."
+        "structured extractor fell back; see metadata.is_schema_fallback",
+        "### Historical Timeline & Discovery * **1852-1857:** British botanist Richard Spruce documents indigenous use of a ceremonial brew in Brazil (\"capi\") and Peru (\"iawaska,\" now Ayahuasca), identifying the key ingredient as the *Banisteria caapi* vine. He experiences visions and \"alternations of cold and heat.\" * The brew requires two components:"
       ],
       "sub_sections": {}
     }
@@ -55,126 +27,15 @@
     "date": null,
     "extraction_confidence": "high",
     "confidence_reason": "transcript via tier=ytdlp_player_rotation len=34612",
-    "total_tokens_used": 27689,
-    "gemini_pro_tokens": 23382,
-    "gemini_flash_tokens": 4307,
-    "total_latency_ms": 111187,
+    "total_tokens_used": 27602,
+    "gemini_pro_tokens": 23554,
+    "gemini_flash_tokens": 4048,
+    "total_latency_ms": 112401,
     "cod_iterations_used": 2,
-    "self_check_missing_count": 8,
+    "self_check_missing_count": 6,
     "patch_applied": true,
     "engine_version": "2.0.0",
-    "structured_payload": {
-      "mini_title": "DMT: Properties, Research, Experiences",
-      "brief_summary": "This summary provides a comprehensive review of Dimethyltryptamine (DMT), an endogenous psychedelic compound. It delves into its neuropharmacological properties, historical timeline, and various hypotheses concerning its subjective phenomena, including entity encounters and links to near-death experiences. Key figures like Chris Timmerman and Rick Strassman are highlighted for their significant research contributions. The content also explores different consumption methods, safety considerations, and the current status of therapeutic research. While DMT shows promise for understanding consciousness and potentially treating conditions like depression by disrupting rigid thought patterns, the summary emphasizes the critical importance of \"set and setting\" and professional guidance due to potential adverse effects and the preliminary nature of current therapeutic studies.",
-      "tags": [
-        "dmt",
-        "dimethyltryptamine",
-        "psychedelics",
-        "neuropharmacology",
-        "consciousness",
-        "rick-strassman",
-        "terrence-mckenna",
-        "research",
-        "mental-health",
-        "altered-states"
-      ],
-      "speakers": [
-        "Chris Timmerman",
-        "Richard Spruce",
-        "Richard Manske",
-        "Albert Hofmann",
-        "Julius Axelrod",
-        "Terrence McKenna",
-        "Rick Strassman",
-        "Simon Ruffell"
-      ],
-      "guests": null,
-      "entities_discussed": [
-        "Dimethyltryptamine (DMT)",
-        "LSD",
-        "Ayahuasca",
-        "Banisteriopsis caapi",
-        "UN Convention on Psychotropic Substances",
-        "5-MeO-DMT",
-        "Colorado River toad"
-      ],
-      "detailed_summary": {
-        "thesis": "To provide a comprehensive overview of Dimethyltryptamine (DMT), covering its neuropharmacological properties, historical context, subjective effects, research findings, consumption methods, and therapeutic potential, while also addressing safety and research limitations.",
-        "format": "review",
-        "chapters_or_segments": [
-          {
-            "timestamp": null,
-            "title": "Properties & Neuropharmacology",
-            "bullets": [
-              "DMT is an endogenous psychedelic compound with an indole ring structure similar to serotonin, allowing it to bind to serotonin receptors.",
-              "This binding disrupts the brain's top-down hierarchical control, inducing a state of \"global hyperconnectivity\" where disparate brain regions communicate more freely.",
-              "Neuroscientist Chris Timmerman proposes DMT causes \"functional deafferentation,\" a state where the brain disconnects from external sensory input to generate a vivid internal simulation, likened to \"dreaming with your eyes open.\"",
-              "This hypothesis is supported by findings of theta wave patterns similar to those in REM sleep.",
-              "Recent research suggests endogenous DMT levels in the brain may be significantly higher than previously believed and could be involved in normal physiological processes.",
-              "A key goal of some modern research is to use DMT as a tool to understand the fundamental nature of consciousness and how the brain constructs reality."
-            ]
-          },
-          {
-            "timestamp": null,
-            "title": "Timeline & Key Figures",
-            "bullets": [
-              "**1852-1857:** British botanist Richard Spruce documents indigenous Amazonian ceremonies using DMT-containing brews called \"capi\" (Brazil) and \"iawaska\" (Peru), sending samples of the *Banisteriopsis caapi* vine to England.",
-              "**Early 1930s:** German-Canadian chemist Richard Manske first synthesizes N,N-dimethyltryptamine, though its psychoactive properties remained unknown.",
-              "**1943:** Albert Hofmann's self-experiment with 250 micrograms of LSD on April 19 initiates modern psychedelic research.",
-              "**1960s:** Researchers, including Julius Axelrod, find DMT in human blood and evidence of its presence in the brain.",
-              "**Late 1960s:** Terrence McKenna has his first experience smoking DMT, later describing encounters with \"self-transforming machine elves.\"",
-              "**1966-1971:** LSD is outlawed in the US (1966-68), and the 1971 UN Convention on Psychotropic Substances halts most psychedelic research for decades.",
-              "**1990s:** Dr. Rick Strassman conducts the first US human study on psychedelics in over 20 years, administering approximately 400 intravenous doses of DMT to 60 volunteers over a 5-year period.",
-              "**2000:** Terrence McKenna dies, leaving a 500+ hour audio archive."
-            ]
-          },
-          {
-            "timestamp": null,
-            "title": "Hypotheses on Subjective Phenomena",
-            "bullets": [
-              "**Strassman's \"Spirit Molecule\" Hypothesis:** Proposes the body naturally releases DMT during profound life events such as birth, death, or mystical experiences.",
-              "**Entity Encounters:** One hypothesis suggests DMT hyper-activates brain regions for social cognition, causing the brain to simulate social interactions that manifest as sentient beings.",
-              "**Near-Death Experience (NDE) Link:** The DMT experience shares features with NDEs (e.g., seeing a light, altered time). Timmerman suggests the brain's massive transformation may trigger a signal that it is dying.",
-              "Supporting this, one study found a significant increase in DMT levels in rats after cardiac arrest, and other research suggests DMT may have a neuroprotective function against oxygen deprivation.",
-              "However, a key difference is that DMT experiences are reported as being more visual, while NDEs are more disembodied."
-            ]
-          },
-          {
-            "timestamp": null,
-            "title": "Reported Experiences & Study Data",
-            "bullets": [
-              "**Strassman's Study (Subject 34):** A volunteer with a history of depression, a past suicide attempt, and pre-existing beliefs in spirit guides reported being \"blasted out of my body,\" encountering \"aggressive, terrifying\" colors, animated clowns, a \"Tinkerbell-like\" entity, and communicating telepathically with beings in \"deep space\" for whom she served as an emotional \"bridge.\"",
-              "**Johns Hopkins Survey (2,500+ users on entity encounters):** Most users *saw* entities; >50% *heard* them; ~33% *touched* them. Communication was described as telepathic by 85%. Common labels were \"beings,\" \"guides,\" \"spirits,\" and \"aliens\"; \"clowns,\" \"demons,\" or \"devils\" were less common. The most reported emotions were love, trust, and joy; fear was a minority experience.",
-              "**Belief Change:** In one study of users reporting a \"God encounter experience,\" the percentage identifying as atheist dropped from 25% pre-experience to 7% post-experience."
-            ]
-          },
-          {
-            "timestamp": null,
-            "title": "Consumption Methods & Related Compounds",
-            "bullets": [
-              "**Ayahuasca (Oral):** A brew requiring a DMT-containing plant and the *Banisteriopsis caapi* vine, which contains MAO inhibitors (MAOIs) that make DMT orally active. Onset is ~45 minutes, duration is several hours, and it often induces vomiting.",
-              "**Smoking/Vaporizing:** Onset is nearly instant (<1 minute), with a peak experience lasting only a few minutes.",
-              "**Snorting:** Onset takes a few minutes, with a duration slightly longer than smoking.",
-              "**IV Injection:** Near-instantaneous onset, used in clinical research.",
-              "**5-MeO-DMT:** A related compound found in Colorado River toad secretions (licking the toad is toxic). It is fast-acting but tends to produce fewer visual hallucinations than N,N-DMT."
-            ]
-          },
-          {
-            "timestamp": null,
-            "title": "Constraints & Research Status",
-            "bullets": [
-              "**Safety:** DMT is considered physiologically safe and non-addictive, altering perception itself, unlike stimulants (e.g., cocaine) which primarily activate the brain's reward system.",
-              "However, \"set and setting\" (user's mindset and physical environment) are critical for the experience's outcome. \"Bad trips\" can occur, leaving some users shaken for days and experiencing flashbacks of frightening hallucinations.",
-              "Psychedelics can worsen existing mental health conditions, particularly psychotic disorders, and should not be used without professional guidance.",
-              "**Therapeutic Research:** A therapeutic theory for depression suggests DMT works by disrupting rigid, negative self-beliefs (e.g., \"I am worthless\"), allowing for dynamic change.",
-              "Modern studies, such as psychiatrist Simon Ruffell's work with veterans, are preliminary, involve small participant numbers, and have inconclusive results. Some participants have reported a worsening of their mental health post-experience."
-            ]
-          }
-        ],
-        "demonstrations": [],
-        "closing_takeaway": "While DMT is physiologically safe and holds promise for understanding consciousness and treating conditions like depression by disrupting rigid thought patterns, its use requires careful consideration of \"set and setting,\" professional guidance, and awareness of potential adverse effects, especially for individuals with pre-existing mental health conditions, as current therapeutic research remains preliminary and inconclusive."
-      }
-    },
-    "is_schema_fallback": false
+    "structured_payload": null,
+    "is_schema_fallback": true
   }
 }

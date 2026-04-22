@@ -1,29 +1,21 @@
 {
   "g_eval": {
-    "coherence": 2.0,
-    "consistency": 1.5,
-    "fluency": 3.0,
-    "relevance": 2.5,
-    "reasoning": "The summary's quality is severely compromised by multiple major errors. The brief summary is incomplete, ending mid-sentence. The detailed summary invents a thematic chapter structure that breaks the chronological flow of the source video. Most critically, it hallucinates an entire section on therapeutic research, inventing a researcher (Simon Ruffell) and study findings that are not mentioned in the source transcript. This makes a significant portion of the summary unfaithful and irrelevant."
+    "coherence": 1.0,
+    "consistency": 1.0,
+    "fluency": 1.0,
+    "relevance": 1.0,
+    "reasoning": "The summary is a schema fallback, resulting in a single, incomplete sentence for the brief summary which is then repeated in the detailed summary. The tags are generic and irrelevant, and the label is missing. The output is completely unusable as a summary."
   },
   "finesure": {
     "faithfulness": {
-      "score": 0.2,
-      "items": [
-        {
-          "claim": "A section on therapeutic research, mentioning psychiatrist Simon Ruffell's work with veterans, is included in the summary.",
-          "fact": null,
-          "sentence": "Modern studies, such as psychiatrist Simon Ruffell's work with veterans, are preliminary, involve small participant numbers, and have inconclusive results.",
-          "span": null,
-          "importance": null
-        }
-      ]
+      "score": 1.0,
+      "items": []
     },
     "completeness": {
-      "score": 0.8,
+      "score": 0.0,
       "items": [
         {
-          "claim": "The name of the channel, Fern, is not mentioned.",
+          "claim": "The summary omits the vast majority of the video's content.",
           "fact": null,
           "sentence": null,
           "span": null,
@@ -37,87 +29,72 @@
     }
   },
   "summac_lite": {
-    "score": 0.9,
-    "contradicted_sentences": [
-      {
-        "sentence": "A therapeutic theory for depression suggests DMT works by disrupting rigid, negative self-beliefs (e.g., \\\"I am worthless\\\"), allowing for dynamic change.",
-        "reason": "The source video does not present this therapeutic theory for depression."
-      },
-      {
-        "sentence": "Modern studies, such as psychiatrist Simon Ruffell's work with veterans, are preliminary, involve small participant numbers, and have inconclusive results.",
-        "reason": "The source video does not mention Simon Ruffell or any studies involving veterans."
-      },
-      {
-        "sentence": "Some participants have reported a worsening of their mental health post-experience.",
-        "reason": "This claim is made in the context of the hallucinated study and is not supported by the source."
-      }
-    ],
-    "neutral_sentences": [
-      {
-        "sentence": "Key figures like Chris Timmerman and Rick Strassman are highlighted for their significant re",
-        "reason": "This sentence is incomplete and therefore cannot be verified against the source."
-      }
-    ]
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
   },
   "rubric": {
     "components": [
       {
         "id": "brief_summary",
-        "score": 5.0,
+        "score": 0.0,
         "max_points": 25,
-        "criteria_fired": [
-          "brief.no_clickbait"
-        ],
+        "criteria_fired": [],
         "criteria_missed": [
           "brief.thesis_capture",
           "brief.format_identified",
           "brief.speakers_captured",
           "brief.major_segments_outlined",
           "brief.takeaways_surfaced",
-          "brief.length_5_to_7_sentences"
+          "brief.length_5_to_7_sentences",
+          "brief.no_clickbait",
+          "schema_failure"
         ]
       },
       {
         "id": "detailed_summary",
-        "score": 23.0,
+        "score": 4.0,
         "max_points": 45,
         "criteria_fired": [
-          "detailed.demonstrations_preserved",
-          "detailed.caveats_preserved",
-          "detailed.examples_purpose_not_verbatim",
           "detailed.no_sponsor_padding"
         ],
         "criteria_missed": [
           "detailed.chronological_order",
           "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
           "detailed.entities_named",
-          "detailed.closing_takeaway"
+          "detailed.closing_takeaway",
+          "schema_failure"
         ]
       },
       {
         "id": "tags",
-        "score": 13.0,
+        "score": 6.0,
         "max_points": 15,
         "criteria_fired": [
           "tags.count_7_to_10",
-          "tags.topical_specificity",
-          "tags.technologies_named",
           "tags.no_unsupported_claims"
         ],
         "criteria_missed": [
-          "tags.format_tag_present"
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named",
+          "schema_failure"
         ]
       },
       {
         "id": "label",
-        "score": 15.0,
+        "score": 0.0,
         "max_points": 15,
-        "criteria_fired": [
+        "criteria_fired": [],
+        "criteria_missed": [
           "label.content_first_3_to_5_words",
           "label.reflects_primary_topic",
-          "label.no_clickbait_retention"
-        ],
-        "criteria_missed": []
+          "label.no_clickbait_retention",
+          "schema_failure"
+        ]
       }
     ],
     "caps_applied": {
@@ -127,25 +104,24 @@
     },
     "anti_patterns_triggered": [
       {
-        "id": "invented_chapter",
-        "source_region": "detailed_summary",
+        "id": "schema_failure",
+        "source_region": "structured_payload",
         "auto_cap": 60
       }
     ]
   },
   "maps_to_metric_summary": {
-    "g_eval": 35.29,
-    "finesure": 48.89,
-    "qafact": 48.89,
-    "summac": 50.0
+    "g_eval": 0.0,
+    "finesure": 13.7,
+    "qafact": 0.0,
+    "summac": 44.44
   },
   "editorialization_flags": [],
   "evaluator_metadata": {
     "prompt_version": "evaluator.v3",
     "rubric_version": "rubric_youtube.v1",
-    "total_tokens_in": 13429,
-    "total_tokens_out": 1378,
-    "latency_ms": 42843,
-    "ragas_faithfulness": -1.0
+    "total_tokens_in": 9718,
+    "total_tokens_out": 1063,
+    "latency_ms": 33253
   }
 }
