@@ -1,0 +1,43 @@
+{
+  "strategy": "gemini_audio",
+  "urls_tested": [
+    "hhjhU5MXZOo",
+    "HBTYVVUBAGs",
+    "Brm71uCWr-I"
+  ],
+  "per_url": [
+    {
+      "video_id": "hhjhU5MXZOo",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 3358,
+      "error": "No module named 'google.generativeai'",
+      "extra": {}
+    },
+    {
+      "video_id": "HBTYVVUBAGs",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 9000,
+      "error": "No module named 'google.generativeai'",
+      "extra": {}
+    },
+    {
+      "video_id": "Brm71uCWr-I",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 2531,
+      "error": "No module named 'google.generativeai'",
+      "extra": {}
+    }
+  ],
+  "aggregate": {
+    "tier": "gemini_audio",
+    "success_rate": 0.0,
+    "mean_chars": 0.0,
+    "mean_latency_ms": 4963.0
+  }
+}
