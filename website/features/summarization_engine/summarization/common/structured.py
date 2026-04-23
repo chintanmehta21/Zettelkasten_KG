@@ -247,32 +247,50 @@ class StructuredExtractor:
 
 
 def _smart_truncate(text: str, max_chars: int) -> str:
-    """Truncate at a sentence boundary when possible, never mid-clause."""
+    """Truncate at a sentence boundary when possible, never mid-clause.
+
+    Prefers the last terminal-punctuation boundary in range. If none exists
+    above the half-window mark, drops back to the last whole-word boundary
+    — never cuts mid-word and never appends a period to a mid-word cut.
+    """
     cleaned = re.sub(r"\s+", " ", text or "").strip()
     if len(cleaned) <= max_chars:
         return cleaned
     window = cleaned[:max_chars]
-    for stop in (".", "!", "?"):
+    best_idx = -1
+    for stop in (".!?"):
         idx = window.rfind(stop)
-        if idx >= max_chars // 2:
-            return window[: idx + 1].strip()
+        if idx > best_idx:
+            best_idx = idx
+    if best_idx >= max_chars // 2:
+        return window[: best_idx + 1].strip()
+    # No sentence boundary: back off to last whole-word boundary, but ONLY
+    # if the next character in the source would extend this word (i.e. the
+    # cut lands mid-word). Never append "." to a mid-word stub.
     idx = window.rfind(" ")
-    if idx > 0:
-        return window[:idx].rstrip(",;:") + "."
-    return window
+    if idx <= 0:
+        return window.rstrip(",;: ")
+    trimmed = window[:idx].rstrip(",;: ")
+    if not trimmed:
+        return window.rstrip(",;: ")
+    return trimmed
 
 
 def _safe_brief(text: str) -> str:
     """Return a dangling-free version of the brief.
 
-    Sanitize every sentence: for each, if it ends in a dangling connector,
-    strip trailing dangling words until the tail is safe, else drop it.
-    Never just append a period to a dangling clause.
+    Sanitize every sentence: strip trailing dangling connectors, drop
+    incomplete tail sentences. If the raw text didn't end with terminal
+    punctuation, the last sentence is almost certainly truncated — drop it
+    rather than terminating mid-clause.
     """
     cleaned = re.sub(r"\s+", " ", text or "").strip()
     if not cleaned:
         return ""
+    raw_terminated = cleaned[-1] in ".!?"
     sentences = split_sentences(ensure_terminator(cleaned))
+    if not raw_terminated and len(sentences) > 1:
+        sentences = sentences[:-1]
     safe: list[str] = []
     for sentence in sentences:
         repaired = _strip_dangling_tail(sentence)
@@ -281,7 +299,6 @@ def _safe_brief(text: str) -> str:
     if safe:
         return " ".join(safe).strip()
 
-    # No sentence boundary found — strip dangling from raw text directly
     return _strip_dangling_tail(cleaned)
 
 

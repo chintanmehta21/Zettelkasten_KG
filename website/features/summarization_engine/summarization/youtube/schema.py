@@ -19,6 +19,9 @@ _SPEAKER_PLACEHOLDERS = frozenset({
     "creator", "the creator", "interviewer", "the interviewer",
     "interviewee", "the interviewee", "participant", "the participant",
     "guest", "the guest", "youtuber", "the youtuber",
+    "unidentified", "unidentified speaker", "unknown", "unknown speaker",
+    "the author", "the video", "video", "lecture", "the lecture",
+    "anonymous", "n/a", "na",
 })
 
 
