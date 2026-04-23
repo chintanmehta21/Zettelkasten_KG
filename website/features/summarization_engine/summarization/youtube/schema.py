@@ -81,7 +81,7 @@ class YouTubeStructuredPayload(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _reject_placeholder_only_speakers(self) -> "YouTubeStructuredPayload":
+    def _sanitize_speakers(self) -> "YouTubeStructuredPayload":
         real = [
             s.strip()
             for s in (self.speakers or [])
@@ -89,12 +89,13 @@ class YouTubeStructuredPayload(BaseModel):
             and s.strip()
             and not _is_placeholder_speaker(s.strip())
         ]
-        if not real:
-            raise ValueError(
-                "speakers must contain at least one non-placeholder name; "
-                "got only placeholders or empty list"
-            )
-        self.speakers = real
+        if real:
+            self.speakers = real
+            return self
+        # No real speaker extracted; keep a neutral label instead of raising
+        # a ValidationError (raising drops the entire structured payload to a
+        # raw-text schema_fallback, which collapses summary quality).
+        self.speakers = ["The speaker"]
         return self
 
 
@@ -155,6 +156,13 @@ def _strip_scaffold_phrases(text: str) -> str:
     if not text:
         return text
     cleaned = text
+    # Strip markdown heading prefixes ("### Zettelkasten Note: ...") and
+    # inline bold markers ("**word**" -> "word") that the model sometimes
+    # echoes back from its system prompt framing.
+    cleaned = re.sub(r"^#{1,6}\s+[^\n]+?:\s*", "", cleaned).strip()
+    cleaned = re.sub(r"^#{1,6}\s+", "", cleaned).strip()
+    cleaned = re.sub(r"\*\*(.+?)\*\*", r"\1", cleaned)
+    cleaned = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", cleaned)
     cleaned = _PLACEHOLDER_SPEAKER_PHRASE.sub("The speaker", cleaned)
     sentences = _split_sentences(cleaned)
     out: list[str] = []

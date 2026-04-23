@@ -1,0 +1,127 @@
+{
+  "g_eval": {
+    "coherence": 0.0,
+    "consistency": 0.0,
+    "fluency": 0.0,
+    "relevance": 1.3,
+    "reasoning": "The summary suffers from severe schema failure, particularly in the brief and detailed summary sections, leading to a lack of structure and content. The label is merely the original video title, and tags are mostly generic. While some factual information is present in the brief summary, its presentation is incorrect."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.25,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.02,
+      "items": []
+    },
+    "conciseness": {
+      "score": 0.11,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 0.0,
+        "max_points": 25,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences",
+          "brief.no_clickbait",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 0.0,
+        "max_points": 45,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 8.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 5.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.reflects_primary_topic"
+        ],
+        "criteria_missed": [
+          "label.content_first_3_to_5_words",
+          "label.no_clickbait_retention"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "schema_failure",
+        "source_region": "structured_payload",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 15.38,
+    "finesure": 8.24,
+    "qafact": 4.55,
+    "summac": 44.44
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "### Zettelkasten Note: Transformer Architecture and Data Flow",
+      "flag_type": "added_framing",
+      "explanation": "The video is a tutorial/lecture, not a 'Zettelkasten Note'. This introduces an external framing not present in the source."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 11690,
+    "total_tokens_out": 1034,
+    "latency_ms": 35415,
+    "ragas_faithfulness": -1.0
+  }
+}

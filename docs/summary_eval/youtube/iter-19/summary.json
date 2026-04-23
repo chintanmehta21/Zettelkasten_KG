@@ -1,0 +1,40 @@
+{
+  "mini_title": "Transformers, the tech behind LLMs | Deep Learning Chapter 5",
+  "brief_summary": "### Zettelkasten Note: Transformer Architecture and Data Flow The **Transformer** is a neural network architecture introduced by Google in 2017, originally for machine translation. **GPT (Generative Pretrained Transformer)** is an implementation of this architecture. It is **Generative** (creates new text), **Pretrained** on a large dataset for later fine-tuning, and uses the **Transformer** architecture.",
+  "tags": [
+    "_schema_fallback_",
+    "youtube",
+    "summary",
+    "capture",
+    "zettelkasten",
+    "knowledge",
+    "notes"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Summary",
+      "bullets": [
+        "(empty)"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=wjZofJX0v4M",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=32687",
+    "total_tokens_used": 32299,
+    "gemini_pro_tokens": 25489,
+    "gemini_flash_tokens": 6810,
+    "total_latency_ms": 98327,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": null,
+    "is_schema_fallback": true
+  }
+}
