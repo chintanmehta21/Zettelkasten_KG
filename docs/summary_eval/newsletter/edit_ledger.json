@@ -61,6 +61,21 @@
       "composite_delta": -4.726666666666674
     },
     {
+      "iter": 7,
+      "files": [
+        "docs/summary_eval/_config/branded_newsletter_sources.yaml",
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "tests/unit/summarization_engine/summarization/test_self_check.py",
+        "website/features/summarization_engine/core/router.py",
+        "website/features/summarization_engine/summarization/common/self_check.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py",
+        "website/features/summarization_engine/tests/unit/test_router.py"
+      ],
+      "targeted_criterion": "brief.caveats_addressed",
+      "criterion_delta": 0.0,
+      "composite_delta": 13.602000000000018
+    },
+    {
       "iter": 8,
       "files": [],
       "targeted_criterion": null,
