@@ -99,8 +99,8 @@ sources:
     divergence_threshold_pct: 20
   youtube:
     transcript_languages: ["en", "en-US", "en-GB"]
-    ytdlp_player_clients: ["android_embedded", "ios", "tv_embedded", "mweb", "web"]
-    transcript_budget_ms: 90000
+    ytdlp_player_clients: ["android_embedded", "ios"]
+    transcript_budget_ms: 45000
     piped_instances:
       - pipedapi.kavin.rocks
       - pipedapi.adminforge.de
