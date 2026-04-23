@@ -1,0 +1,202 @@
+{
+  "mini_title": "fastapi/fastapi",
+  "brief_summary": "FastAPI is a Python framework for building high-performance REST and GraphQL APIs. It is built on Starlette for web functionality and Pydantic for data handling, using Python type hints to define API endpoints, parameters, and data models for automatic validation, serialization, and documentation. Users adopt it via `pip install \"fastapi[standard]\"`. Core public interfaces include `@app.get`, `@ap",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "pydantic",
+    "starlette",
+    "openapi",
+    "http-client",
+    "testing",
+    "api",
+    "web-framework"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "FastAPI is a Python framework for building REST APIs, designed for high performance and rapid development.",
+        "It uses standard Python type hints to define API endpoints, parameters, and data models."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture / Modules",
+      "bullets": [
+        "Built on Starlette for core web functionality, including the ASGI interface, routing, WebSockets, and request/response handling.",
+        "Uses Pydantic for all data validation, serialization, and deserialization of request bodies, parameters, and response models.",
+        "Requires an ASGI server like Uvicorn for deployment.",
+        "API behavior is declared using Python type hints in function signatures, enabling runtime data validation, automatic serialization to JSON, editor autocompletion, and type checking.",
+        "Automatically generates OpenAPI 3 and JSON Schema, serving interactive API documentation UIs: Swagger UI at `/docs` and ReDoc at `/redoc`.",
+        "Natively supports `async def` endpoints using Python's `asyncio`.",
+        "Includes a dependency injection system for managing dependencies like database sessions or authentication.",
+        "Provides helpers for security schemes, including OAuth2 with JWT tokens and HTTP Basic authentication.",
+        "Supports GraphQL APIs through integration with libraries like Strawberry."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Public API / Interfaces",
+      "bullets": [
+        "API endpoints are defined using decorators applied to asynchronous or synchronous Python functions.",
+        "Path operations are declared using HTTP method decorators."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Operational guidance",
+      "bullets": [
+        "Installation of FastAPI and common dependencies can be done using pip.",
+        "Deployment requires an ASGI server."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Tests / Benchmarks / Examples",
+      "bullets": [
+        "Includes a `TestClient` based on `httpx` for testing applications, designed to work well with `pytest`.",
+        "TechEmpower benchmarks consistently place FastAPI among the fastest Python frameworks.",
+        "GraphQL APIs are supported through integration with libraries like Strawberry."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/fastapi/fastapi",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 29319,
+    "gemini_pro_tokens": 26124,
+    "gemini_flash_tokens": 3195,
+    "total_latency_ms": 91854,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "fastapi/fastapi",
+      "architecture_overview": "FastAPI is a Python framework for building REST and GraphQL APIs, leveraging Starlette for core web functionality and Pydantic for data validation and serialization. It uses standard Python type hints to declare API endpoints, parameters, and data models, which enables automatic data validation, serialization, editor support, and OpenAPI documentation. As an ASGI framework, it requires an ASGI server like Uvicorn for deployment.",
+      "brief_summary": "FastAPI is a Python framework for building high-performance REST and GraphQL APIs. It is built on Starlette for web functionality and Pydantic for data handling, using Python type hints to define API endpoints, parameters, and data models for automatic validation, serialization, and documentation. Users adopt it via `pip install \"fastapi[standard]\"`. Core public interfaces include `@app.get`, `@app.post`, `@app.put`, `@app.head`, and `@app.api_route` for defining routes.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "pydantic",
+        "starlette",
+        "openapi",
+        "http-client",
+        "testing",
+        "api",
+        "web-framework"
+      ],
+      "benchmarks_tests_examples": [
+        "TechEmpower benchmarks consistently place FastAPI among the fastest Python frameworks, with performance claimed to be on par with NodeJS and Go.",
+        "Includes a `TestClient` based on `httpx` for testing applications, designed to work well with `pytest`.",
+        "Supports GraphQL APIs through integration with libraries like Strawberry."
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Overview",
+          "bullets": [
+            "FastAPI is a Python framework for building REST APIs, designed for high performance and rapid development.",
+            "It uses standard Python type hints to define API endpoints, parameters, and data models."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Overview",
+          "main_stack": [
+            "Python",
+            "Starlette",
+            "Pydantic",
+            "Uvicorn"
+          ],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Production-ready",
+            "actively maintained",
+            "formal security policy"
+          ]
+        },
+        {
+          "heading": "Architecture / Modules",
+          "bullets": [
+            "Built on Starlette for core web functionality, including the ASGI interface, routing, WebSockets, and request/response handling.",
+            "Uses Pydantic for all data validation, serialization, and deserialization of request bodies, parameters, and response models.",
+            "Requires an ASGI server like Uvicorn for deployment.",
+            "API behavior is declared using Python type hints in function signatures, enabling runtime data validation, automatic serialization to JSON, editor autocompletion, and type checking.",
+            "Automatically generates OpenAPI 3 and JSON Schema, serving interactive API documentation UIs: Swagger UI at `/docs` and ReDoc at `/redoc`.",
+            "Natively supports `async def` endpoints using Python's `asyncio`.",
+            "Includes a dependency injection system for managing dependencies like database sessions or authentication.",
+            "Provides helpers for security schemes, including OAuth2 with JWT tokens and HTTP Basic authentication.",
+            "Supports GraphQL APIs through integration with libraries like Strawberry."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Starlette, Pydantic, Uvicorn, OpenAPI 3, JSON Schema, Swagger UI, ReDoc, asyncio, OAuth2, JWT, HTTP Basic authentication, Strawberry",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Public API / Interfaces",
+          "bullets": [
+            "API endpoints are defined using decorators applied to asynchronous or synchronous Python functions.",
+            "Path operations are declared using HTTP method decorators."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Public API / Interfaces",
+          "main_stack": [],
+          "public_interfaces": [
+            "@app.get",
+            "@app.put",
+            "@app.api_route",
+            "@app.post",
+            "@app.head"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Operational guidance",
+          "bullets": [
+            "Installation of FastAPI and common dependencies can be done using pip.",
+            "Deployment requires an ASGI server."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Operational guidance",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "pip install \"fastapi[standard]\"",
+            "pip install fastapi",
+            "pip install \"fastapi[standard-no-fastapi-cloud-cli]\""
+          ]
+        },
+        {
+          "heading": "Tests / Benchmarks / Examples",
+          "bullets": [
+            "Includes a `TestClient` based on `httpx` for testing applications, designed to work well with `pytest`.",
+            "TechEmpower benchmarks consistently place FastAPI among the fastest Python frameworks.",
+            "GraphQL APIs are supported through integration with libraries like Strawberry."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "TestClient, httpx, pytest, TechEmpower benchmarks, Strawberry",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        }
+      ],
+      "_github_archetype": {
+        "archetype": "framework_api",
+        "confidence": 0.692,
+        "reasons": [
+          "framework_tokens=10",
+          "topics_framework"
+        ]
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

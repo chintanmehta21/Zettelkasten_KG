@@ -563,7 +563,11 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
             "narrator", "host", "speaker", "analyst", "commentator",
             "voiceover", "voice over", "author of the source",
             "the host", "the speaker", "the narrator", "author",
-            "presenter", "the presenter",
+            "presenter", "the presenter", "source", "the source",
+            "channel", "the channel", "uploader", "the uploader",
+            "creator", "the creator", "interviewer", "the interviewer",
+            "interviewee", "the interviewee", "participant", "the participant",
+            "guest", "the guest", "youtuber", "the youtuber",
         }
         channel = (
             meta.get("channel")

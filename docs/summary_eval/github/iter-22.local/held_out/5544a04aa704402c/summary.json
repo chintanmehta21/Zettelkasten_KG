@@ -1,0 +1,224 @@
+{
+  "mini_title": "tiangolo/typer",
+  "brief_summary": "Typer is a Python library for building Command Line Interface (CLI) applications, designed as the \"FastAPI of CLIs\". It leverages standard Python type hints for defining CLI arguments and options, building on top of the Click framework. This approach enhances developer experience with editor autocompletion and type checking, abstracting away Click's complexities while providing robust CLI generati",
+  "tags": [
+    "python",
+    "cli-tool",
+    "pydantic",
+    "typer",
+    "cli",
+    "command-line-interface",
+    "type-hints",
+    "click",
+    "fastapi",
+    "developer-tools"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "Typer is a Python library designed for building Command Line Interface (CLI) applications, sharing a design philosophy with FastAPI.",
+        "It emphasizes using standard Python type hints for defining CLI arguments and options, aiming to improve developer experience with editor autocompletion and type checks.",
+        "The library includes a `typer` command-line tool capable of running Python scripts as CLIs, even without explicit library usage.",
+        "The project is actively maintained, with recent releases like 0.24.2, and is licensed under the MIT license.",
+        "A security policy is in place, directing vulnerability reports to `security@tiangolo.com`."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture / Modules",
+      "bullets": [
+        "`typer` is built as a layer on top of `Click`.",
+        "Required dependencies include `Click`, `rich` (for formatted error output), and `shellingham` (for shell detection in completion installation).",
+        "The use of `rich` can be disabled by setting the environment variable `TYPER_USE_RICH` to `False` or `0`.",
+        "The `typer-slim` package was deprecated in version 0.22.0 and now installs the full package.",
+        "Recent development includes vendoring parts of Click to improve test coverage (#1690)."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Public API / Interfaces",
+      "bullets": [
+        "CLI parameters are defined as function parameters using type hints, e.g., `name: str`.",
+        "Boolean parameters automatically generate corresponding `--option` and `--no-option` flags.",
+        "The library supports two main patterns: `typer.run(my_function)` for single-command applications.",
+        "For multi-command applications with subcommands, users instantiate `app = typer.Typer()` and use the `@app.command()` decorator.",
+        "Command function signatures now support `*args` and `**kwargs` (#1654)."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Operational Guidance",
+      "bullets": [
+        "The library is installed using `pip install typer`.",
+        "The `typer` command-line tool can run Python scripts as CLIs.",
+        "Shell completion is automatically generated for Bash, Zsh, Fish, and PowerShell.",
+        "The use of `rich` for formatted output can be disabled by setting the `TYPER_USE_RICH` environment variable to `False` or `0`.",
+        "Vulnerability reports should be directed to `security@tiangolo.com`."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Notable Issues & Fixes",
+      "bullets": [
+        "Fixed autocompletion for PowerShell command hints (#1685, closing #266).",
+        "Fixed autocompletion for `click.Path` arguments within a `TyperGroup` (#1673).",
+        "A bug preventing `result_callback` from triggering in single-command applications was fixed (#1631, closing #445).",
+        "Improved error handling for commands with multiple variadic arguments (e.g., multiple `List[...]` parameters), which previously raised an opaque `TypeError` from Click (#1555, closing #260).",
+        "Resolved an `AttributeError` when using `Annotated[..., typer.Option(None)]` (#1564).",
+        "Fixed an issue where enum option values were lost when a callback was present (#1554)."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/tiangolo/typer",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 3 extra doc(s) fetched",
+    "total_tokens_used": 21973,
+    "gemini_pro_tokens": 18779,
+    "gemini_flash_tokens": 3194,
+    "total_latency_ms": 74042,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "tiangolo/typer",
+      "architecture_overview": "Typer is a Python library for building Command Line Interface (CLI) applications, designed as the \"FastAPI of CLIs\". It leverages standard Python type hints for defining CLI arguments and options, building on top of the Click framework. This approach enhances developer experience with editor autocompletion and type checking, abstracting away Click's complexities while providing robust CLI generation capabilities. It supports both single-command applications via typer.run() and multi-command appl",
+      "brief_summary": "Typer is a Python library for building Command Line Interface (CLI) applications, designed as the \"FastAPI of CLIs\". It leverages standard Python type hints for defining CLI arguments and options, building on top of the Click framework. This approach enhances developer experience with editor autocompletion and type checking, abstracting away Click's complexities while providing robust CLI generation capabilities. It supports both single-command applications via typer.run() and multi-command appl",
+      "tags": [
+        "python",
+        "cli-tool",
+        "pydantic",
+        "typer",
+        "cli",
+        "command-line-interface",
+        "type-hints",
+        "click",
+        "fastapi",
+        "developer-tools"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Overview",
+          "bullets": [
+            "Typer is a Python library designed for building Command Line Interface (CLI) applications, sharing a design philosophy with FastAPI.",
+            "It emphasizes using standard Python type hints for defining CLI arguments and options, aiming to improve developer experience with editor autocompletion and type checks.",
+            "The library includes a `typer` command-line tool capable of running Python scripts as CLIs, even without explicit library usage.",
+            "The project is actively maintained, with recent releases like 0.24.2, and is licensed under the MIT license.",
+            "A security policy is in place, directing vulnerability reports to `security@tiangolo.com`."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Overview",
+          "main_stack": [
+            "Python",
+            "Shell",
+            "Dockerfile",
+            "pydantic",
+            "click",
+            "rich",
+            "shellingham"
+          ],
+          "public_interfaces": [],
+          "usability_signals": [
+            "`pip install typer`",
+            "Shell completion for Bash, Zsh, Fish, and PowerShell is automatically generated."
+          ]
+        },
+        {
+          "heading": "Architecture / Modules",
+          "bullets": [
+            "`typer` is built as a layer on top of `Click`.",
+            "Required dependencies include `Click`, `rich` (for formatted error output), and `shellingham` (for shell detection in completion installation).",
+            "The use of `rich` can be disabled by setting the environment variable `TYPER_USE_RICH` to `False` or `0`.",
+            "The `typer-slim` package was deprecated in version 0.22.0 and now installs the full package.",
+            "Recent development includes vendoring parts of Click to improve test coverage (#1690)."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Architecture / Modules",
+          "main_stack": [
+            "Click",
+            "rich",
+            "shellingham"
+          ],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Public API / Interfaces",
+          "bullets": [
+            "CLI parameters are defined as function parameters using type hints, e.g., `name: str`.",
+            "Boolean parameters automatically generate corresponding `--option` and `--no-option` flags.",
+            "The library supports two main patterns: `typer.run(my_function)` for single-command applications.",
+            "For multi-command applications with subcommands, users instantiate `app = typer.Typer()` and use the `@app.command()` decorator.",
+            "Command function signatures now support `*args` and `**kwargs` (#1654)."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Public API / Interfaces",
+          "main_stack": [],
+          "public_interfaces": [
+            "`@app.command()`",
+            "`typer.run()`",
+            "`typer.Typer()`",
+            "`name: str`",
+            "`--option`",
+            "`--no-option`",
+            "`*args`",
+            "`**kwargs`"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Operational Guidance",
+          "bullets": [
+            "The library is installed using `pip install typer`.",
+            "The `typer` command-line tool can run Python scripts as CLIs.",
+            "Shell completion is automatically generated for Bash, Zsh, Fish, and PowerShell.",
+            "The use of `rich` for formatted output can be disabled by setting the `TYPER_USE_RICH` environment variable to `False` or `0`.",
+            "Vulnerability reports should be directed to `security@tiangolo.com`."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Operational Guidance",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "`pip install typer`",
+            "`TYPER_USE_RICH=False`",
+            "`TYPER_USE_RICH=0`",
+            "`security@tiangolo.com`"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Fixes",
+          "bullets": [
+            "Fixed autocompletion for PowerShell command hints (#1685, closing #266).",
+            "Fixed autocompletion for `click.Path` arguments within a `TyperGroup` (#1673).",
+            "A bug preventing `result_callback` from triggering in single-command applications was fixed (#1631, closing #445).",
+            "Improved error handling for commands with multiple variadic arguments (e.g., multiple `List[...]` parameters), which previously raised an opaque `TypeError` from Click (#1555, closing #260).",
+            "Resolved an `AttributeError` when using `Annotated[..., typer.Option(None)]` (#1564).",
+            "Fixed an issue where enum option values were lost when a callback was present (#1554)."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Notable Issues & Fixes",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        }
+      ],
+      "_github_archetype": {
+        "archetype": "cli_tool",
+        "confidence": 0.724,
+        "reasons": [
+          "cli_tokens=6",
+          "topics_cli"
+        ]
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

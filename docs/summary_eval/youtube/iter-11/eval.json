@@ -1,0 +1,270 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.0,
+    "fluency": 4.5,
+    "relevance": 4.0,
+    "reasoning": "The summary is well-structured and covers the main points of the video. It accurately captures Yann LeCun's arguments about LLM limitations, the importance of sensory data and world models, and his views on open-source AI and AI safety. The detailed breakdown of chapters provides a good overview of the discussion."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": "The summary missed mentioning the specific architecture proposed by LeCun, JEPA (Joint Embedding Predictive Architecture), in the brief summary.",
+          "fact": null,
+          "sentence": "In this lecture, Yann LeCun argues that yann lecun argues that current auto-regressive large language models are fundamentally limited and cannot achieve human-level intelligence. It references GPT-4, Llama 2, and GANs. The closing takeaway: Yann LeCun concludes that open-source AI development is crucial for preventing the concentration of power and fostering a diverse, beneficial AI ecosystem.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Brief summary states the video's central thesis or learning objective in one sentence."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Brief names the host/channel and any guests or key products/libraries discussed."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Brief highlights 2-3 takeaways a viewer would remember after watching."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief is 5-7 sentences."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief does not reproduce clickbait/hook phrasing from the source title."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 6.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "Detailed bullets follow the video's chronological order."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 10.0,
+        "max_points": 10,
+        "criteria_fired": [
+          "Every substantive chapter or major topic turn is covered by at least one bullet."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Demonstrations, code walkthroughs, or live examples are captured."
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Warnings, caveats, limitations the speaker mentions are captured."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Products, libraries, datasets, or case studies referenced are named."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "The video's closing takeaway is explicitly captured."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Exactly 7-10 tags."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Tags capture specific subject matter, not generic terms."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "Named technologies/libraries/frameworks from the video are tagged."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "No tags imply topics not actually covered."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label is 3-5 words (max 50 chars), content-first, declarative."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label reflects the primary topic, not side tangents."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label removes clickbait/hook fragments from the original title."
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 94.44,
+    "finesure": 93.33,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 15135,
+    "total_tokens_out": 2309,
+    "latency_ms": 67456
+  }
+}

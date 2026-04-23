@@ -1,0 +1,264 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 4.5,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is highly coherent, fluent, and relevant. It accurately captures the core aspects of the FastAPI framework. Consistency is high, with minor areas where more detail could be extracted."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.95,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.92,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.user_facing_purpose",
+        "score": 6.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "brief.user_facing_purpose"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.architecture_high_level",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "brief.architecture_high_level"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.languages_and_frameworks",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.languages_and_frameworks"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.usage_pattern",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.usage_pattern"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "brief.public_surface",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.public_surface"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.no_maturity_fabrication",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.features_bullets",
+        "score": 8.0,
+        "max_points": 8,
+        "criteria_fired": [
+          "detailed.features_bullets"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.architecture_modules",
+        "score": 7.0,
+        "max_points": 8,
+        "criteria_fired": [
+          "detailed.architecture_modules"
+        ],
+        "criteria_missed": [
+          "detailed.architecture_modules"
+        ]
+      },
+      {
+        "id": "detailed.interfaces_exact",
+        "score": 8.0,
+        "max_points": 8,
+        "criteria_fired": [
+          "detailed.interfaces_exact"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.operational",
+        "score": 5.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "detailed.operational"
+        ],
+        "criteria_missed": [
+          "detailed.operational"
+        ]
+      },
+      {
+        "id": "detailed.limitations_docs",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.limitations_docs"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.benchmarks_tests_examples",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.benchmarks_tests_examples"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.bullets_focused",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "tags.count_7_to_10"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.domain_tag",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.domain_tag"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.languages",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.languages"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.technical_concepts",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.technical_concepts"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.owner_slash_repo",
+        "score": 10.0,
+        "max_points": 10,
+        "criteria_fired": [
+          "label.owner_slash_repo"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.no_extra_descriptors",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 97.5,
+    "finesure": 91.66666666666667,
+    "qafact": 97.5,
+    "summac": 92.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "418ac484eee08c0a1056ec600bfc2554de75a32b1ca3b330c698bf5ac4ef7470",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 13095,
+    "total_tokens_out": 2019,
+    "latency_ms": 64957
+  }
+}

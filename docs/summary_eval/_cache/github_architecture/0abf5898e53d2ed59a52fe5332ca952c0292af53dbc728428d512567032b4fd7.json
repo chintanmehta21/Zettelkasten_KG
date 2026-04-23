@@ -1,0 +1,3 @@
+{
+  "overview": "Typer is a Python library for building command-line interfaces (CLIs) using type hints, also functioning as a command-line tool to run scripts. Its core functionality, implemented as the `typer` module and used via `typer.run` or `typer.Typer` in user code, is validated by the `tests` directory. The `docs_dir` contains the source for the comprehensive documentation, explaining how to leverage the library."
+}

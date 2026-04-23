@@ -1,0 +1,272 @@
+{
+  "mini_title": "psf/requests",
+  "brief_summary": "The `requests` library provides a high-level functional API (e.g., `requests.get()`, `post()`) and a class-based `requests.Session` object for stateful operations like connection pooling and cookie persistence. Responses are encapsulated in a `Response` object, offering access to `status_code`, `headers`, and content via methods like `.text` and `.json()`. The library handles data encoding, authen",
+  "tags": [
+    "python",
+    "library",
+    "http-client",
+    "http",
+    "client",
+    "networking",
+    "api-client",
+    "web-development"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "A Python library for sending HTTP/1.1 requests, designed with a \"for humans\" philosophy to simplify common operations.",
+        "One of Python's most downloaded packages (~300M/week, used by >4M GitHub repositories).",
+        "Actively maintained, officially supporting Python 3.10+."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture / Modules",
+      "bullets": [
+        "Provides a high-level functional API.",
+        "Offers a class-based `requests.Session` object for stateful operations (connection pooling, Keep-Alive, cookie persistence).",
+        "Responses are encapsulated in a `Response` object with attributes like `status_code`, `headers`, and content access methods.",
+        "The codebase is 99.3% Python."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Features",
+      "bullets": [],
+      "sub_sections": {
+        "Data Handling": [
+          "Automatic query string encoding, form-encoding for `PUT`/`POST`, multi-part file uploads, and content decompression."
+        ],
+        "Authentication": [
+          "Built-in support for Basic and Digest authentication.",
+          "`HTTPDigestAuth` was updated to support non-Latin credentials per RFC 7616 (#7232)."
+        ],
+        "Connection Management": [
+          "Connection pooling, browser-style TLS/SSL verification, SOCKS proxy support, and connection timeouts."
+        ],
+        "Internationalization": [
+          "Supports International Domains and URLs."
+        ],
+        "Advanced": [
+          "Streaming downloads (`stream=True`), chunked requests, and automatic `.netrc` file usage."
+        ]
+      }
+    },
+    {
+      "heading": "Operational Guidance",
+      "bullets": [
+        "Installation is performed via pip."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Notable Issues & Caveats",
+      "bullets": [],
+      "sub_sections": {
+        "Configuration": [
+          "The `REQUESTS_CA_BUNDLE` environment variable can silently override an explicit `session.verify=False`, forcing TLS verification (#7384)."
+        ],
+        "Concurrency": [
+          "Using a single `Session` object across forked processes is unsafe due to the shared underlying connection pool, which can lead to race conditions (#7297)."
+        ],
+        "Timeouts": [
+          "The `timeout` parameter is not a total request timeout; it applies separately to the connection attempt and the read time between bytes. The connect timeout also includes the time to send the request body (#7350, #7183)."
+        ],
+        "State Management": [
+          "A bug was fixed where `PreparedRequest.copy()` shared its `hooks` dictionary with the original, leading to unintended side effects when modifying the copy."
+        ],
+        "Content Handling": [
+          "When `stream=True`, automatic gzip decompression is disabled on the `Response.raw` object (#7181).",
+          "Documentation was improved to clarify that `ChunkedEncodingError` is often caused by transient network outages.",
+          "A bug was fixed where `data={'key': None}` created a malformed chunked request because `Content-Length` was not set to 0 (#7217).",
+          "A `Content-Length` bug with `io.StringIO` objects containing multi-byte characters was fixed; `tell()` was incorrectly returning character count instead of byte offset (#7201)."
+        ],
+        "URL & Proxy Handling": [
+          "A bug that collapsed leading slashes in URL paths (e.g., `//key`), breaking S3 presigned URLs, has been fixed (#7315).",
+          "`no_proxy` environment variables were previously ignored on redirects (e.g., 302), but this is now resolved (#7194).",
+          "A v2.32 regression that broke DMTF Redfish URLs by incorrectly encoding `%` to `%25` was fixed (#7188)."
+        ],
+        "Dependencies": [
+          "The library uses `chardet` for encoding detection if it is present in the environment, not only if installed via the `[use-chardet-on-py3]` extra, which can cause unexpected behavior (#7223)."
+        ],
+        "Development": [
+          "A major effort is underway to add inline type annotations (#7271, #7272).",
+          "A project (`requests-docs-l10n`) has been launched to localize documentation.",
+          "Cloning the repository may require `git config --global fetch.fsck.badTimezone ignore` to work around a commit with a bad timestamp (#2690)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/psf/requests",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata and README fetched",
+    "total_tokens_used": 16666,
+    "gemini_pro_tokens": 12908,
+    "gemini_flash_tokens": 3758,
+    "total_latency_ms": 91616,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "psf/requests",
+      "architecture_overview": "The `requests` library provides a high-level functional API (e.g., `requests.get()`, `post()`) and a class-based `requests.Session` object for stateful operations like connection pooling and cookie persistence. Responses are encapsulated in a `Response` object, offering access to `status_code`, `headers`, and content via methods like `.text` and `.json()`. The library handles data encoding, authentication (Basic, Digest), connection management (TLS/SSL verification, SOCKS proxies, timeouts), int",
+      "brief_summary": "The `requests` library provides a high-level functional API (e.g., `requests.get()`, `post()`) and a class-based `requests.Session` object for stateful operations like connection pooling and cookie persistence. Responses are encapsulated in a `Response` object, offering access to `status_code`, `headers`, and content via methods like `.text` and `.json()`. The library handles data encoding, authentication (Basic, Digest), connection management (TLS/SSL verification, SOCKS proxies, timeouts), int",
+      "tags": [
+        "python",
+        "library",
+        "http-client",
+        "http",
+        "client",
+        "networking",
+        "api-client",
+        "web-development"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Overview",
+          "bullets": [
+            "A Python library for sending HTTP/1.1 requests, designed with a \"for humans\" philosophy to simplify common operations.",
+            "One of Python's most downloaded packages (~300M/week, used by >4M GitHub repositories).",
+            "Actively maintained, officially supporting Python 3.10+."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Overview",
+          "main_stack": [
+            "Python"
+          ],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Architecture / Modules",
+          "bullets": [
+            "Provides a high-level functional API.",
+            "Offers a class-based `requests.Session` object for stateful operations (connection pooling, Keep-Alive, cookie persistence).",
+            "Responses are encapsulated in a `Response` object with attributes like `status_code`, `headers`, and content access methods.",
+            "The codebase is 99.3% Python."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Core Library",
+          "main_stack": [
+            "Python"
+          ],
+          "public_interfaces": [
+            "requests.get()",
+            "requests.post()",
+            "requests.Session",
+            "Response",
+            "status_code",
+            "headers",
+            ".text",
+            ".json()"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Features",
+          "bullets": [],
+          "sub_sections": {
+            "Data Handling": [
+              "Automatic query string encoding, form-encoding for `PUT`/`POST`, multi-part file uploads, and content decompression."
+            ],
+            "Authentication": [
+              "Built-in support for Basic and Digest authentication.",
+              "`HTTPDigestAuth` was updated to support non-Latin credentials per RFC 7616 (#7232)."
+            ],
+            "Connection Management": [
+              "Connection pooling, browser-style TLS/SSL verification, SOCKS proxy support, and connection timeouts."
+            ],
+            "Internationalization": [
+              "Supports International Domains and URLs."
+            ],
+            "Advanced": [
+              "Streaming downloads (`stream=True`), chunked requests, and automatic `.netrc` file usage."
+            ]
+          },
+          "module_or_feature": "Features",
+          "main_stack": [],
+          "public_interfaces": [
+            "stream=True",
+            "HTTPDigestAuth",
+            "timeout"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Operational Guidance",
+          "bullets": [
+            "Installation is performed via pip."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Operational Guidance",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "pip install requests"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Caveats",
+          "bullets": [],
+          "sub_sections": {
+            "Configuration": [
+              "The `REQUESTS_CA_BUNDLE` environment variable can silently override an explicit `session.verify=False`, forcing TLS verification (#7384)."
+            ],
+            "Concurrency": [
+              "Using a single `Session` object across forked processes is unsafe due to the shared underlying connection pool, which can lead to race conditions (#7297)."
+            ],
+            "Timeouts": [
+              "The `timeout` parameter is not a total request timeout; it applies separately to the connection attempt and the read time between bytes. The connect timeout also includes the time to send the request body (#7350, #7183)."
+            ],
+            "State Management": [
+              "A bug was fixed where `PreparedRequest.copy()` shared its `hooks` dictionary with the original, leading to unintended side effects when modifying the copy."
+            ],
+            "Content Handling": [
+              "When `stream=True`, automatic gzip decompression is disabled on the `Response.raw` object (#7181).",
+              "Documentation was improved to clarify that `ChunkedEncodingError` is often caused by transient network outages.",
+              "A bug was fixed where `data={'key': None}` created a malformed chunked request because `Content-Length` was not set to 0 (#7217).",
+              "A `Content-Length` bug with `io.StringIO` objects containing multi-byte characters was fixed; `tell()` was incorrectly returning character count instead of byte offset (#7201)."
+            ],
+            "URL & Proxy Handling": [
+              "A bug that collapsed leading slashes in URL paths (e.g., `//key`), breaking S3 presigned URLs, has been fixed (#7315).",
+              "`no_proxy` environment variables were previously ignored on redirects (e.g., 302), but this is now resolved (#7194).",
+              "A v2.32 regression that broke DMTF Redfish URLs by incorrectly encoding `%` to `%25` was fixed (#7188)."
+            ],
+            "Dependencies": [
+              "The library uses `chardet` for encoding detection if it is present in the environment, not only if installed via the `[use-chardet-on-py3]` extra, which can cause unexpected behavior (#7223)."
+            ],
+            "Development": [
+              "A major effort is underway to add inline type annotations (#7271, #7272).",
+              "A project (`requests-docs-l10n`) has been launched to localize documentation.",
+              "Cloning the repository may require `git config --global fetch.fsck.badTimezone ignore` to work around a commit with a bad timestamp (#2690)."
+            ]
+          },
+          "module_or_feature": "Notable Issues & Caveats",
+          "main_stack": [
+            "chardet"
+          ],
+          "public_interfaces": [
+            "REQUESTS_CA_BUNDLE",
+            "session.verify=False"
+          ],
+          "usability_signals": []
+        }
+      ],
+      "_github_archetype": {
+        "archetype": "cli_tool",
+        "confidence": 0.6,
+        "reasons": [
+          "cli_tokens=1"
+        ]
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

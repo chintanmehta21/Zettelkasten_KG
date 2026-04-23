@@ -1,0 +1,17 @@
+{
+  "confidence_reason": "Reddit HTML fallback (JSON blocked)",
+  "extraction_confidence": "medium",
+  "fetched_at": "2026-04-22T16:42:32.827400Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "subreddit": "MachineLearning",
+    "title": "Reddit - Please wait for verification"
+  },
+  "original_url": "https://www.reddit.com/r/MachineLearning/comments/16zrllm/d_llms_are_actually_remarkably_good_at_reasoning/",
+  "raw_text": "Post\nReddit - Please wait for verification",
+  "sections": {
+    "Post": "Reddit - Please wait for verification"
+  },
+  "source_type": "reddit",
+  "url": "https://www.reddit.com/r/MachineLearning/comments/16zrllm/d_llms_are_actually_remarkably_good_at_reasoning/"
+}

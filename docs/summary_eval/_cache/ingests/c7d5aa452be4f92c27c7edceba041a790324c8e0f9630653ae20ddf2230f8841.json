@@ -1,0 +1,99 @@
+{
+  "confidence_reason": "repo metadata and README fetched",
+  "extraction_confidence": "high",
+  "fetched_at": "2026-04-23T07:01:22.665175Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "architecture_overview": "Flask is a lightweight WSGI web application framework, initially a wrapper around Werkzeug and Jinja, that doesn't enforce project layout. The repository includes `examples` to demonstrate its usage, `tests` for quality assurance, and `docs_dir` for comprehensive documentation.",
+    "extra_doc_files": [],
+    "forks": 16805,
+    "full_name": "pallets/flask",
+    "has_benchmarks": false,
+    "has_demo": false,
+    "has_docs_dir": true,
+    "has_examples": true,
+    "has_tests": true,
+    "has_workflows": true,
+    "language": "Python",
+    "languages": [
+      [
+        "Python",
+        99.8913880988862
+      ],
+      [
+        "HTML",
+        0.07140879862189835
+      ],
+      [
+        "Shell",
+        0.03402937810870711
+      ],
+      [
+        "CSS",
+        0.003173724383195482
+      ]
+    ],
+    "license": "BSD-3-Clause",
+    "owner": "pallets",
+    "pages_url": null,
+    "releases": [
+      {
+        "name": "",
+        "prerelease": false,
+        "published_at": "2026-02-19T05:01:30Z",
+        "tag_name": "3.1.3"
+      },
+      {
+        "name": "",
+        "prerelease": false,
+        "published_at": "2025-08-19T21:03:31Z",
+        "tag_name": "3.1.2"
+      },
+      {
+        "name": "",
+        "prerelease": false,
+        "published_at": "2025-05-13T15:01:32Z",
+        "tag_name": "3.1.1"
+      },
+      {
+        "name": "",
+        "prerelease": false,
+        "published_at": "2024-11-13T18:29:05Z",
+        "tag_name": "3.1.0"
+      },
+      {
+        "name": "",
+        "prerelease": false,
+        "published_at": "2024-04-07T19:27:16Z",
+        "tag_name": "3.0.3"
+      }
+    ],
+    "repo": "flask",
+    "stars": 71437,
+    "topics": [
+      "flask",
+      "jinja",
+      "pallets",
+      "python",
+      "web-framework",
+      "werkzeug",
+      "wsgi"
+    ],
+    "updated_at": "2026-04-23T06:03:09Z",
+    "workflow_count": 11
+  },
+  "original_url": "https://github.com/pallets/flask",
+  "raw_text": "Repository\npallets/flask The Python micro framework for building web applications. Language: Python Topics: flask, jinja, pallets, python, web-framework, werkzeug, wsgi\n\nREADME\n<div align=\"center\"><img src=\"https://raw.githubusercontent.com/pallets/flask/refs/heads/stable/docs/_static/flask-name.svg\" alt=\"\" height=\"150\"></div> # Flask Flask is a lightweight [WSGI] web application framework. It is designed to make getting started quick and easy, with the ability to scale up to complex applications. It began as a simple wrapper around [Werkzeug] and [Jinja], and has become one of the most popular Python web application frameworks. Flask offers suggestions, but doesn't enforce any dependencies or project layout. It is up to the developer to choose the tools and libraries they want to use. There are many extensions provided by the community that make adding new functionality easy. [WSGI]: https://wsgi.readthedocs.io/ [Werkzeug]: https://werkzeug.palletsprojects.com/ [Jinja]: https://jinja.palletsprojects.com/ ## A Simple Example ```python # save this as app.py from flask import Flask app = Flask(__name__) @app.route(\"/\") def hello(): return \"Hello, World!\" ``` ``` $ flask run * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit) ``` ## Donate The Pallets organization develops and supports Flask and the libraries it uses. In order to grow the community of contributors and users, and allow the maintainers to devote more time to the projects, [please donate today]. [please donate today]: https://palletsprojects.com/donate ## Contributing See our [detailed contributing documentation][contrib] for many ways to contribute, including reporting issues, requesting features, asking or answering questions, and making PRs. [contrib]: https://palletsprojects.com/contributing/\n\nLanguages\nPython: 566541, HTML: 405, Shell: 193, CSS: 18\n\nIssues\n#5918: automatic options as separate route Implement `provide_automatic_options` as a regular part of the routing and view dispatch, rather than as a special check on every request. Can be updated to do `except DuplicateRuleError` instead of `Exception` once Werkzeug 3.2 is out. Relies on the duplicate check to not add the internal route multiple times, for example if `@app.get` and `@app.post` r... #5665: Workflow <!-- Before opening a PR, open a ticket describing the issue or feature the PR will address. An issue is not required for fixing typos in documentation, or other simple non-code changes. Replace this comment with a description of the change. Describe how it addresses the linked ticket. --> <!-- Link to relevant issues or previous PRs, one per line. Use \"fixes\" to automatically clo... #5660: Move parts of the session code to sansio This will allow it to be used in Quart, thereby reducing duplication, and ensuring the APIs match. <!-- Before opening a PR, open a ticket describing the issue or feature the PR will address. An issue is not required for fixing typos in documentation, or other simple non-code changes. Replace this comment with a description of the change. Describe h...\n\nCommits\n2ac89889f4cc330eabd50f295dcef02828522c69: Merge branch 'stable' 689362089edd09b6d68f7cfe99075e1345e0fede: fix typo 258d68b6ff5e2244386540f48b48bab90d6ab827: Merge branch 'stable' a31e6b73469cb2bf7eb8f70b5ff21f710fd2e23c: remove werkzeug host tests e4e4bf6543ac1f132afddb1ffd0bf02bea4c93f7: Merge branch 'stable' b21425d6df207fec0c47e9563faa10a2819984ca: reduce venv size 83dbcb222a65a87741c9d96bb183f34528149269: update dev dependencies 7ef2946fb5151b745df30201b8c27790cac53875: remove unicode host test (#5962) 91c6b3fecf36b1f04554e57cc4060ccb737a445d: remove unicode host test 4cae5d8e411b1e69949d8fae669afeacbd3e5908: Merge branch 'stable'\n\nRepository signals\nPages URL: none GitHub Actions workflows: 11 Recent releases: 3.1.3, 3.1.2, 3.1.1, 3.1.0, 3.0.3 Language composition: Python=99.9%, HTML=0.1%, Shell=0.0%, CSS=0.0% Root dirs: tests, examples, docs_dir\n\nArchitecture overview\nFlask is a lightweight WSGI web application framework, initially a wrapper around Werkzeug and Jinja, that doesn't enforce project layout. The repository includes `examples` to demonstrate its usage, `tests` for quality assurance, and `docs_dir` for comprehensive documentation.",
+  "sections": {
+    "Architecture overview": "Flask is a lightweight WSGI web application framework, initially a wrapper around Werkzeug and Jinja, that doesn't enforce project layout. The repository includes `examples` to demonstrate its usage, `tests` for quality assurance, and `docs_dir` for comprehensive documentation.",
+    "Commits": "2ac89889f4cc330eabd50f295dcef02828522c69: Merge branch 'stable'\n689362089edd09b6d68f7cfe99075e1345e0fede: fix typo\n258d68b6ff5e2244386540f48b48bab90d6ab827: Merge branch 'stable'\na31e6b73469cb2bf7eb8f70b5ff21f710fd2e23c: remove werkzeug host tests\ne4e4bf6543ac1f132afddb1ffd0bf02bea4c93f7: Merge branch 'stable'\nb21425d6df207fec0c47e9563faa10a2819984ca: reduce venv size\n83dbcb222a65a87741c9d96bb183f34528149269: update dev dependencies\n7ef2946fb5151b745df30201b8c27790cac53875: remove unicode host test (#5962)\n91c6b3fecf36b1f04554e57cc4060ccb737a445d: remove unicode host test\n4cae5d8e411b1e69949d8fae669afeacbd3e5908: Merge branch 'stable'",
+    "Docs": "",
+    "Issues": "#5918: automatic options as separate route Implement `provide_automatic_options` as a regular part of the routing and view dispatch, rather than as a special check on every request. Can be updated to do `except DuplicateRuleError` instead of `Exception` once Werkzeug 3.2 is out. Relies on the duplicate check to not add the internal route multiple times, for example if `@app.get` and `@app.post` r...\n#5665: Workflow <!-- Before opening a PR, open a ticket describing the issue or feature the PR will address. An issue is not required for fixing typos in documentation, or other simple non-code changes. Replace this comment with a description of the change. Describe how it addresses the linked ticket. --> <!-- Link to relevant issues or previous PRs, one per line. Use \"fixes\" to automatically clo...\n#5660: Move parts of the session code to sansio This will allow it to be used in Quart, thereby reducing duplication, and ensuring the APIs match. <!-- Before opening a PR, open a ticket describing the issue or feature the PR will address. An issue is not required for fixing typos in documentation, or other simple non-code changes. Replace this comment with a description of the change. Describe h...",
+    "Languages": "Python: 566541, HTML: 405, Shell: 193, CSS: 18",
+    "README": "<div align=\"center\"><img src=\"https://raw.githubusercontent.com/pallets/flask/refs/heads/stable/docs/_static/flask-name.svg\" alt=\"\" height=\"150\"></div>\n\n# Flask\n\nFlask is a lightweight [WSGI] web application framework. It is designed\nto make getting started quick and easy, with the ability to scale up to\ncomplex applications. It began as a simple wrapper around [Werkzeug]\nand [Jinja], and has become one of the most popular Python web\napplication frameworks.\n\nFlask offers suggestions, but doesn't enforce any dependencies or\nproject layout. It is up to the developer to choose the tools and\nlibraries they want to use. There are many extensions provided by the\ncommunity that make adding new functionality easy.\n\n[WSGI]: https://wsgi.readthedocs.io/\n[Werkzeug]: https://werkzeug.palletsprojects.com/\n[Jinja]: https://jinja.palletsprojects.com/\n\n## A Simple Example\n\n```python\n# save this as app.py\nfrom flask import Flask\n\napp = Flask(__name__)\n\n@app.route(\"/\")\ndef hello():\n    return \"Hello, World!\"\n```\n\n```\n$ flask run\n  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)\n```\n\n## Donate\n\nThe Pallets organization develops and supports Flask and the libraries\nit uses. In order to grow the community of contributors and users, and\nallow the maintainers to devote more time to the projects, [please\ndonate today].\n\n[please donate today]: https://palletsprojects.com/donate\n\n## Contributing\n\nSee our [detailed contributing documentation][contrib] for many ways to\ncontribute, including reporting issues, requesting features, asking or answering\nquestions, and making PRs.\n\n[contrib]: https://palletsprojects.com/contributing/\n",
+    "Repository": "pallets/flask\nThe Python micro framework for building web applications.\nLanguage: Python\nTopics: flask, jinja, pallets, python, web-framework, werkzeug, wsgi",
+    "Repository signals": "Pages URL: none\nGitHub Actions workflows: 11\nRecent releases: 3.1.3, 3.1.2, 3.1.1, 3.1.0, 3.0.3\nLanguage composition: Python=99.9%, HTML=0.1%, Shell=0.0%, CSS=0.0%\nRoot dirs: tests, examples, docs_dir"
+  },
+  "source_type": "github",
+  "url": "https://github.com/pallets/flask"
+}

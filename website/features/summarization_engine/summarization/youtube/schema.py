@@ -14,7 +14,11 @@ _SPEAKER_PLACEHOLDERS = frozenset({
     "narrator", "host", "speaker", "analyst", "commentator",
     "voiceover", "voice over", "author of the source",
     "the host", "the speaker", "the narrator", "author",
-    "presenter", "the presenter",
+    "presenter", "the presenter", "source", "the source",
+    "channel", "the channel", "uploader", "the uploader",
+    "creator", "the creator", "interviewer", "the interviewer",
+    "interviewee", "the interviewee", "participant", "the participant",
+    "guest", "the guest", "youtuber", "the youtuber",
 })
 
 
@@ -130,16 +134,35 @@ def _repair_brief_summary(
     sentences). The rebuilt brief uses whole source sentences — never
     word-count truncation — so it never dies mid-clause.
     """
+    from website.features.summarization_engine.summarization.common.text_guards import (
+        ends_with_dangling_word,
+        repair_or_drop,
+    )
+
     cleaned = re.sub(r"\s+", " ", brief or "").strip()
     sentences = _split_sentences(cleaned)
+    tail_ok = bool(sentences) and not ends_with_dangling_word(sentences[-1])
     looks_complete = (
         cleaned
         and cleaned[-1] in ".!?"
         and len(sentences) >= 2
         and len(cleaned) <= 500
+        and tail_ok
     )
     if looks_complete:
         return cleaned
+
+    already_terminated = bool(cleaned) and cleaned[-1] in ".!?"
+    if already_terminated:
+        repaired = repair_or_drop(cleaned)
+        if repaired:
+            repaired_sentences = _split_sentences(repaired)
+            if (
+                len(repaired_sentences) >= 2
+                and len(repaired) <= 500
+                and not ends_with_dangling_word(repaired_sentences[-1])
+            ):
+                return repaired
 
     speaker = _primary_speaker(speakers) or "The speaker"
     parts: list[str] = []

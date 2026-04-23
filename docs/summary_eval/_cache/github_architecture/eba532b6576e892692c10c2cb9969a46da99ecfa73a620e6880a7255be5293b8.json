@@ -1,0 +1,3 @@
+{
+  "overview": "This repository implements Pydantic, a data validation library that uses Python type hints, primarily via its BaseModel. The `tests` directory validates the core logic, while `docs_dir` provides user documentation. Pydantic V2, a ground-up rewrite, also includes V1 for incremental upgrades."
+}

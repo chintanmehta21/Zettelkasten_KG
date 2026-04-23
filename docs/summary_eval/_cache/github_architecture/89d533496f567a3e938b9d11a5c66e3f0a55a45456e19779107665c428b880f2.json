@@ -1,0 +1,3 @@
+{
+  "overview": "Flask is a lightweight WSGI web application framework, initially a wrapper around Werkzeug and Jinja, that doesn't enforce project layout. The repository includes `examples` to demonstrate its usage, `tests` for quality assurance, and `docs_dir` for comprehensive documentation."
+}
