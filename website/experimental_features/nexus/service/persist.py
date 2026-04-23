@@ -282,10 +282,16 @@ async def persist_summarized_result(
     payload = dict(result)
     captured_on = captured_on or date.today()
 
-    brief_summary, detailed_summary = extract_summary_parts(
-        payload.get("summary"),
-        payload.get("brief_summary"),
-    )
+    explicit_brief = _normalize_summary_text(payload.get("brief_summary"))
+    explicit_detailed = _normalize_summary_text(payload.get("detailed_summary"))
+    if explicit_brief and explicit_detailed:
+        brief_summary = explicit_brief
+        detailed_summary = explicit_detailed
+    else:
+        brief_summary, detailed_summary = extract_summary_parts(
+            payload.get("summary"),
+            payload.get("brief_summary"),
+        )
     payload["brief_summary"] = brief_summary
     payload["detailed_summary"] = detailed_summary
     payload["summary"] = detailed_summary
