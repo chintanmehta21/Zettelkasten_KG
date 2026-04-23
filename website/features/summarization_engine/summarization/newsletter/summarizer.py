@@ -73,8 +73,8 @@ class NewsletterSummarizer(BaseSummarizer):
             payload = _fallback_payload(ingest, patched, self._engine_config)
         latency_ms = int((time.perf_counter() - start) * 1000)
         return NewsletterSummaryResult(
-            mini_title=payload.mini_title[:60],
-            brief_summary=payload.brief_summary[:400],
+            mini_title=payload.mini_title[: self._engine_config.structured_extract.mini_title_max_chars],
+            brief_summary=payload.brief_summary[: self._engine_config.structured_extract.brief_summary_max_chars],
             tags=_normalize_tags(
                 payload.tags,
                 self._engine_config.structured_extract.tags_min,

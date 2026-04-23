@@ -66,8 +66,8 @@ class StructuredExtractor:
             payload = _fallback_payload(ingest, summary_text, self._config)
 
         return SummaryResult(
-            mini_title=payload.mini_title[:60],
-            brief_summary=payload.brief_summary[:400],
+            mini_title=payload.mini_title[: self._config.structured_extract.mini_title_max_chars],
+            brief_summary=payload.brief_summary[: self._config.structured_extract.brief_summary_max_chars],
             tags=_normalize_tags(payload.tags, self._config.structured_extract.tags_min, self._config.structured_extract.tags_max),
             detailed_summary=payload.detailed_summary,
             metadata=SummaryMetadata(

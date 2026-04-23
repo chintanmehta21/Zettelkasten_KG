@@ -117,34 +117,58 @@ def _repair_brief_summary(
     tags: list[str],
     benchmarks_tests_examples: list[str],
 ) -> str:
+    """Accept the LLM brief if it's a natural paragraph. Rebuild only when
+    the model returns empty or malformed output. The rebuild uses whole
+    source sentences so it never dies mid-clause.
+    """
     cleaned = re.sub(r"\s+", " ", (brief_summary or "").strip())
     sentences = [
         sentence.strip()
         for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
         if sentence.strip()
     ]
-    if 5 <= len(sentences) <= 7 and len(cleaned) <= 380:
+    looks_complete = (
+        cleaned
+        and cleaned[-1] in ".!?"
+        and len(sentences) >= 2
+        and len(cleaned) <= 500
+    )
+    if looks_complete:
         return cleaned
 
-    purpose = _purpose_phrase(
-        detailed_summary,
-        fallback="This repository provides a documented software project with a defined public surface.",
+    purpose_sentence = _first_full_sentence(
+        _purpose_phrase(
+            detailed_summary,
+            fallback="This repository provides a documented software project with a defined public surface.",
+        )
     )
-    architecture = _trim_fragment(architecture_overview, 14)
+    architecture_sentence = _first_full_sentence(architecture_overview)
     stack = _stack_phrase(detailed_summary, tags)
     public_surface = _public_surface_phrase(detailed_summary)
-    usage = _usage_phrase(detailed_summary)
-    evidence = _examples_phrase(benchmarks_tests_examples)
 
-    rebuilt = [
-        _as_sentence(_trim_fragment(purpose, 14)),
-        _as_sentence(f"At a high level, {architecture}"),
-        _as_sentence(f"The main stack includes {stack}"),
-        _as_sentence(f"Documented public surfaces include {public_surface}"),
-        _as_sentence(f"The documented workflow emphasizes {usage}"),
-        _as_sentence(f"Evidence in the repository highlights {evidence}"),
-    ]
-    return _fit_sentences(rebuilt, max_chars=380, min_sentences=5)
+    parts: list[str] = []
+    if purpose_sentence:
+        parts.append(purpose_sentence)
+    if architecture_sentence:
+        parts.append(f"At a high level, {architecture_sentence.rstrip('.')}.")
+    if stack and stack != "documented framework components":
+        parts.append(f"The main stack includes {stack}.")
+    if public_surface and public_surface != "documented APIs and developer tooling":
+        parts.append(f"Documented public surfaces include {public_surface}.")
+    rebuilt = " ".join(parts).strip()
+    if len(rebuilt) > 500:
+        rebuilt = " ".join(parts[: max(2, len(parts) - 1)]).strip()
+    return rebuilt[:500].rstrip() or cleaned[:500]
+
+
+def _first_full_sentence(text: str) -> str:
+    cleaned = re.sub(r"\s+", " ", (text or "")).strip()
+    if not cleaned:
+        return ""
+    match = re.match(r"^.+?[.!?](?=\s|$)", cleaned)
+    if match:
+        return match.group(0).strip()
+    return cleaned
 
 
 def _purpose_phrase(

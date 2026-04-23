@@ -157,7 +157,7 @@ class StructuredExtractor:
                     exc,
                 )
 
-        detailed_list = _coerce_detailed_summary(payload)
+        detailed_list = _coerce_detailed_summary(payload, ingest.source_type)
         tags = _normalize_tags(
             getattr(payload, "tags", []) or [],
             self._config.structured_extract.tags_min,
@@ -166,9 +166,14 @@ class StructuredExtractor:
             source_type_value=ingest.source_type.value,
         )
 
+        brief_max = self._config.structured_extract.brief_summary_max_chars
         return SummaryResult(
-            mini_title=str(getattr(payload, "mini_title", ""))[:60],
-            brief_summary=str(getattr(payload, "brief_summary", ""))[:400],
+            mini_title=str(getattr(payload, "mini_title", ""))[
+                : self._config.structured_extract.mini_title_max_chars
+            ],
+            brief_summary=_smart_truncate(
+                str(getattr(payload, "brief_summary", "")), brief_max
+            ),
             tags=tags,
             detailed_summary=detailed_list,
             metadata=SummaryMetadata(
@@ -193,11 +198,33 @@ class StructuredExtractor:
         )
 
 
-def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]:
+def _smart_truncate(text: str, max_chars: int) -> str:
+    """Truncate at a sentence boundary when possible, never mid-clause."""
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if len(cleaned) <= max_chars:
+        return cleaned
+    window = cleaned[:max_chars]
+    for stop in (".", "!", "?"):
+        idx = window.rfind(stop)
+        if idx >= max_chars // 2:
+            return window[: idx + 1].strip()
+    idx = window.rfind(" ")
+    if idx > 0:
+        return window[:idx].rstrip(",;:") + "."
+    return window
+
+
+def _coerce_detailed_summary(
+    payload: BaseModel,
+    source_type: SourceType | None = None,
+) -> list[DetailedSummarySection]:
     """Convert a source-specific or generic detailed_summary into a list of sections."""
     raw = getattr(payload, "detailed_summary", None)
     if raw is None:
         return [DetailedSummarySection(heading="Summary", bullets=[""])]
+
+    if source_type == SourceType.YOUTUBE and isinstance(raw, BaseModel):
+        return _coerce_youtube_detailed(raw)
 
     if isinstance(raw, list):
         out: list[DetailedSummarySection] = []
@@ -274,6 +301,47 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
         return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
 
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
+
+
+def _coerce_youtube_detailed(raw: BaseModel) -> list[DetailedSummarySection]:
+    """Render YouTubeDetailedPayload as readable chapter-by-chapter sections.
+
+    Produces: Thesis -> one section per chapter (heading = "timestamp - title",
+    bullets = chapter.bullets) -> optional Demonstrations -> Closing Takeaway.
+    Never emits raw JSON-serialized ChapterBullet objects.
+    """
+    data = raw.model_dump(mode="json")
+    sections: list[DetailedSummarySection] = []
+
+    thesis = str(data.get("thesis") or "").strip()
+    if thesis:
+        sections.append(DetailedSummarySection(heading="Thesis", bullets=[thesis]))
+
+    for chapter in data.get("chapters_or_segments") or []:
+        if not isinstance(chapter, dict):
+            continue
+        title = str(chapter.get("title") or "").strip() or "Segment"
+        timestamp = str(chapter.get("timestamp") or "").strip()
+        if timestamp and timestamp.lower() not in {"n/a", "none", ""}:
+            heading = f"{timestamp} — {title}"
+        else:
+            heading = title
+        bullets = [str(b).strip() for b in (chapter.get("bullets") or []) if b and str(b).strip()]
+        if not bullets:
+            bullets = [title]
+        sections.append(DetailedSummarySection(heading=heading, bullets=bullets))
+
+    demos = [str(d).strip() for d in (data.get("demonstrations") or []) if d and str(d).strip()]
+    if demos:
+        sections.append(DetailedSummarySection(heading="Demonstrations", bullets=demos))
+
+    takeaway = str(data.get("closing_takeaway") or "").strip()
+    if takeaway:
+        sections.append(
+            DetailedSummarySection(heading="Closing Takeaway", bullets=[takeaway])
+        )
+
+    return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
 
 
 def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
