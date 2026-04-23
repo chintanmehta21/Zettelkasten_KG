@@ -16,6 +16,8 @@ from website.features.summarization_engine.summarization.newsletter.schema impor
 )
 from website.features.summarization_engine.summarization.newsletter.summarizer import (
     NewsletterSummarizer,
+    _apply_ingest_guardrails,
+    _parse_payload_with_ingest,
     _trim_at_sentence_boundary,
 )
 
@@ -115,6 +117,72 @@ def test_trim_at_sentence_boundary_avoids_mid_word_cutoff():
     assert len(trimmed) <= 120
     assert trimmed.endswith(".")
     assert not trimmed.endswith("oth")
+
+
+def test_parse_payload_with_ingest_prefixes_publication_label():
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        original_url="https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        raw_text="No numbers here.",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+    raw = {
+        "mini_title": "Product-Minded Engineering Diagnostics",
+        "brief_summary": "A concise brief.",
+        "tags": ["engineering", "product", "diagnostics", "analysis", "teams", "software", "craft"],
+        "detailed_summary": {
+            "publication_identity": "Unknown",
+            "issue_thesis": "Engineers should think about users.",
+            "sections": [{"heading": "Main", "bullets": ["Think about product impact."]}],
+            "conclusions_or_recommendations": [],
+            "stance": "neutral",
+            "cta": None,
+        },
+    }
+
+    payload = _parse_payload_with_ingest(json.dumps(raw), ingest)
+
+    assert payload.mini_title.startswith("Pragmatic Engineer:")
+    assert payload.detailed_summary.publication_identity == "Pragmatic Engineer"
+
+
+def test_apply_ingest_guardrails_removes_unsupported_numbers_without_source_numbers():
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://product.beehiiv.com/p/new-dashboard",
+        original_url="https://product.beehiiv.com/p/new-dashboard",
+        raw_text="The article describes a new dashboard and workflow changes.",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+    payload = NewsletterStructuredPayload(
+        mini_title="Dashboard Launch",
+        brief_summary="The dashboard launched. It reached 42 teams.",
+        tags=["dashboard", "product", "workflow", "newsletter", "tools", "launch", "updates"],
+        detailed_summary={
+            "publication_identity": "Unknown",
+            "issue_thesis": "The product workflow changed.",
+            "sections": [
+                {
+                    "heading": "Launch",
+                    "bullets": ["The dashboard changed workflows.", "It hit 42 teams."],
+                }
+            ],
+            "conclusions_or_recommendations": ["Adopt it by 2027.", "Review the workflow."],
+            "stance": "neutral",
+            "cta": None,
+        },
+    )
+
+    guarded = _apply_ingest_guardrails(payload, ingest)
+
+    assert "42" not in guarded.brief_summary
+    assert guarded.detailed_summary.sections[0].bullets == ["The dashboard changed workflows."]
+    assert guarded.detailed_summary.conclusions_or_recommendations == ["Review the workflow."]
 
 
 @pytest.mark.asyncio
