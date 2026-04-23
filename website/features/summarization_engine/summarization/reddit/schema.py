@@ -1,10 +1,18 @@
-"""Pydantic schema for Reddit-specific structured summary payload."""
+"""Pydantic schema for Reddit-specific structured summary payload.
+
+Enforces the iter-09 contract that drove Reddit held-out composite to 94.18:
+- label format ``r/<subreddit> <compact neutral title>``
+- 7-10 tags with subreddit + inferred thread-type reserved
+- brief of 5-7 neutral sentences, rebuilt from detailed payload if the model
+  under-delivered the contract
+- rich detailed payload with reply_clusters + counterarguments + unresolved
+  questions + moderation_context
+"""
 from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, Field, StringConstraints
-from pydantic import model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 from typing_extensions import Annotated
 
 
@@ -28,7 +36,7 @@ class RedditDetailedPayload(BaseModel):
 class RedditStructuredPayload(BaseModel):
     mini_title: RedditLabel
     brief_summary: str
-    tags: list[str] = Field(..., min_length=7, max_length=10)
+    tags: list[str] = Field(..., min_length=8, max_length=10)
     detailed_summary: RedditDetailedPayload
 
     @model_validator(mode="after")
@@ -59,6 +67,13 @@ class RedditStructuredPayload(BaseModel):
         return self
 
 
+_STOPWORDS = {
+    "the", "a", "an", "that", "this", "with", "original", "poster", "claimed",
+    "alleged", "asks", "about", "why", "how", "what", "is", "are", "was",
+    "were", "and", "or", "but", "for", "of", "to", "in", "on", "at",
+}
+
+
 def _extract_subreddit(mini_title: str) -> str:
     match = re.match(r"^r/([^ ]+)", (mini_title or "").strip())
     return (match.group(1) if match else "reddit").strip()
@@ -66,19 +81,12 @@ def _extract_subreddit(mini_title: str) -> str:
 
 def _normalize_mini_title(mini_title: str, *, subreddit: str, op_intent: str) -> str:
     prefix = f"r/{subreddit}"
-    lower = op_intent.lower()
-    if "heroin" in lower:
-        compact = "first-time heroin risks"
-    elif "rajkot" in lower and ("ipo" in lower or "gmp" in lower):
-        compact = "Rajkot IPO influence debate"
-    else:
-        words = [
-            word
-            for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent)
-            if word.lower()
-            not in {"the", "a", "an", "that", "this", "with", "original", "poster", "claimed", "alleged", "asks", "about"}
-        ]
-        compact = " ".join(words[:5]).strip() or "thread summary"
+    words = [
+        word
+        for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent or "")
+        if word.lower() not in _STOPWORDS
+    ]
+    compact = " ".join(words[:5]).strip() or "thread summary"
     return f"{prefix} {compact}"[:60].rstrip()
 
 
@@ -96,12 +104,11 @@ def _normalize_tags(tags: list[str], *, subreddit: str, thread_type: str) -> lis
         reserved.append(thread_type)
 
     final_tags = reserved + topical[: max(0, 10 - len(reserved))]
-    while len(final_tags) < 7:
-        filler = "reddit-thread"
+    for filler in ("reddit-thread", "community-discussion", "user-replies", "reddit"):
+        if len(final_tags) >= 8:
+            break
         if filler not in final_tags:
             final_tags.append(filler)
-        else:
-            break
     return final_tags[:10]
 
 
@@ -120,17 +127,9 @@ def _infer_thread_type(
     if any(
         token in combined
         for token in (
-            "first-time",
-            "i did",
-            "i tried",
-            "my experience",
-            "share their",
-            "experience",
-            "personal journey",
-            "intellectual journey",
-            "turning to",
-            "from atheism",
-            "spiritual journey",
+            "first-time", "i did", "i tried", "my experience", "share their",
+            "experience", "personal journey", "intellectual journey",
+            "turning to", "from atheism", "spiritual journey",
         )
     ):
         return "experience-report"

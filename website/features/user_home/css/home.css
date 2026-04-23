@@ -945,6 +945,68 @@
     margin-bottom: 1rem;
 }
 
+.home-summary-section + .home-summary-section,
+.home-summary-section {
+    margin-bottom: 0.25rem;
+}
+
+.home-summary-section-heading {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.4rem;
+}
+
+.home-summary-section-body {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.65;
+}
+
+.home-summary-divider {
+    border: 0;
+    border-top: 1px solid hsla(172, 66%, 50%, 0.18);
+    margin: 1rem 0;
+}
+
+.home-summary-para {
+    margin: 0 0 0.65rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+}
+
+.home-summary-h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: capitalize;
+    margin: 0.85rem 0 0.35rem;
+}
+
+.home-summary-h3 {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0.7rem 0 0.3rem;
+}
+
+.home-summary-list {
+    margin: 0 0 0.75rem 1.1rem;
+    padding: 0;
+    list-style: disc;
+}
+
+.home-summary-list-item {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 0.3rem;
+}
+
 .home-summary-tags {
     display: flex;
     flex-wrap: wrap;
