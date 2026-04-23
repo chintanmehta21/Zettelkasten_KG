@@ -1,0 +1,175 @@
+{
+  "g_eval": {
+    "coherence": 3.0,
+    "consistency": 4.0,
+    "fluency": 2.0,
+    "relevance": 3.5,
+    "reasoning": "The summary provides a good overview of the core technical content (the book excerpt on diagnostics) but significantly omits the introductory sections of the newsletter, including the author's background and the context of writing the book. There is one factual error with an invented number in an example. The mini-title and brief summary are truncated, indicating a formatting issue that impacts fluency and clarity. The label also misses the publication name."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Stripe's test mode uses specific card numbers (e.g., 4000 0000 0000 9995) to trigger specific API errors like card_declined with an insufficient_funds reason.",
+          "fact": null,
+          "sentence": "Fakes / Test Modes: Provide a high-fidelity, in-memory version of a service for developers to reliably test error conditions. Example: Stripe's test mode uses specific card numbers (e.g., 4000 0000 0000 9995) to trigger specific API errors like card_declined with an insufficient_funds reason.",
+          "span": "4000 0000 0000 9995",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.6,
+      "items": [
+        {
+          "claim": "Author's background (Drew Hoskins' career history)",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The story behind writing the book 'The Product-Minded Engineer'",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "John Carmack as an example of a product-minded engineer",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The newsletter's disclaimer regarding payment and affiliate links",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.85,
+    "contradicted_sentences": [
+      {
+        "sentence": "Fakes / Test Modes: Provide a high-fidelity, in-memory version of a service for developers to reliably test error conditions. Example: Stripe's test mode uses specific card numbers (e.g., 4000 0000 0000 9995) to trigger specific API errors like card_declined with an insufficient_funds reason.",
+        "reason": "The specific card number and error details provided for Stripe's test mode are not present in the source text."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "Product-Minded Engineering Treats Diagnostics as a Primary U",
+        "reason": "The sentence is truncated ('U' instead of 'User Interface'), making it incomplete and therefore neutral in its current form."
+      },
+      {
+        "sentence": "The rise of AI further emphasizes the value of product-minded engineers who can effectively specify what to bui",
+        "reason": "The sentence is truncated ('bui' instead of 'build'), making it incomplete and therefore neutral in its current form."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 17.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.conclusions_distinct",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.caveats_addressed"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 34.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 10.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": [
+          "tags.count_7_to_10",
+          "tags.type_intent"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 8.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": [
+          "label.compact_declarative",
+          "label.branded_source_rule"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "invented_number",
+        "source_region": "detailed_summary.3.sub_sections.Methods for shifting left:.3",
+        "auto_cap": 60
+      },
+      {
+        "id": "branded_source_missing_publication",
+        "source_region": "mini_title",
+        "auto_cap": 90
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 57.5,
+    "finesure": 72.73,
+    "qafact": 60.0,
+    "summac": 60.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 11075,
+    "total_tokens_out": 1828,
+    "latency_ms": 55491,
+    "ragas_faithfulness": -1.0
+  }
+}

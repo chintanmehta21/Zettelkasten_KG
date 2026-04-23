@@ -36,6 +36,17 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": -46.85
+    },
+    {
+      "iter": 5,
+      "files": [
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "website/features/summarization_engine/summarization/newsletter/prompts.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py"
+      ],
+      "targeted_criterion": "brief.main_topic_thesis",
+      "criterion_delta": 0.0,
+      "composite_delta": 33.11666666666667
     }
   ]
 }

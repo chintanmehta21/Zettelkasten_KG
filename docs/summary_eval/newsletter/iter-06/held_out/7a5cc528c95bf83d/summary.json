@@ -1,0 +1,147 @@
+{
+  "mini_title": "Product-Minded Engineering Treats Diagnostics as a Primary U",
+  "brief_summary": "Diagnostics (errors and warnings) should be treated as a primary user interface, not an afterthought, especially for complex applications like developer tools and APIs. The quality of diagnostics directly impacts usability and retention, and is increasingly crucial for autonomous agents. The rise of AI further emphasizes the value of product-minded engineers who can effectively specify what to bui",
+  "tags": [
+    "#product-engineering",
+    "#software-design",
+    "#error-handling",
+    "#user-experience",
+    "#api-design",
+    "#diagnostics"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Error Categorization by Audience and Action",
+      "bullets": [
+        "Errors should be categorized by their audience (Human end-user vs. Programmer) and when they can be fixed (runtime vs. development)."
+      ],
+      "sub_sections": {
+        "A proposed five-category model:": [
+          "System Error: An unforeseen, catastrophic failure (e.g., network timeout). Action: Retry or contact support.",
+          "User's Invalid Argument: Malformed input from an end-user. Action: User corrects input at runtime.",
+          "Precondition Not Met: System state prevents the action (e.g., insufficient permissions, expired account). Action: User must perform a prerequisite action.",
+          "Developer's Invalid Argument: Malformed input from a developer via an API. Action: Developer must fix their code.",
+          "Assertion: An unhandled internal state the developers did not foresee (e.g., a ZeroDivisionError from an empty list). Action: The internal team must fix the code. Assertions signal that upfront validation is missing and should be converted into a more specific error type, like Developer's Invalid Argument."
+        ]
+      }
+    },
+    {
+      "heading": "Crafting and Locating Actionable Messages",
+      "bullets": [
+        "Effective error messages must answer two questions: 'What happened?' and 'What can I do about it?'.",
+        "Messages should use the product's public vocabulary (ontology), not implementation details, and echo the user's input to provide context.",
+        "Errors are best generated at the application's interface boundary (API/UI), which has access to both low-level system failure details and high-level user intent."
+      ],
+      "sub_sections": {
+        "Techniques for locating and crafting messages:": [
+          "Upfront Validation: Proactively check inputs at the boundary. Caveat: Can be expensive (e.g., extra network calls) and may duplicate validation logic from deeper in the system.",
+          "Error Chaining: Catch a generic, low-level error and wrap it in a new, context-rich exception, preserving the original error's details (e.g., Python's 'raise NewException from original_error')."
+        ]
+      }
+    },
+    {
+      "heading": "\"Shifting Left\": Providing Diagnostics Early",
+      "bullets": [
+        "\"Shifting left\" means providing feedback as early as possible in a user's workflow to save time, reduce system load, and prevent data loss."
+      ],
+      "sub_sections": {
+        "Methods for shifting left:": [
+          "Static Validation: Cheap, immediate checks without network calls (e.g., credit card checksums, postal code length, IDE linters).",
+          "Upfront Validation: Used in multi-step workflows to prevent wasted effort (e.g., validating a destination bank account before initiating a withdrawal).",
+          "Fakes / Test Modes: Provide a high-fidelity, in-memory version of a service for developers to reliably test error conditions. Example: Stripe's test mode uses specific card numbers (e.g., 4000 0000 0000 9995) to trigger specific API errors like card_declined with an insufficient_funds reason.",
+          "User Confirmation: For inputs that are suspicious but not definitively wrong. Examples include Google's \"Did you mean...\" suggestions, API \"dry run\" modes, and CLI --force flags."
+        ]
+      }
+    },
+    {
+      "heading": "Developing a Product Mindset",
+      "bullets": [
+        "To become more product-minded, engineers can: frequently ask \"why\" to understand purpose, switch between system-level and user-level viewpoints, use scenarios to simulate user interactions, and spend time on customer support to understand user pain points directly.",
+        "AI tools can help aggregate this \"customer signal\" from sources like Slack, GitHub, and Gong."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "web",
+    "url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "HTML article text extracted",
+    "total_tokens_used": 25816,
+    "gemini_pro_tokens": 23356,
+    "gemini_flash_tokens": 2460,
+    "total_latency_ms": 97367,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Product-Minded Engineering Treats Diagnostics as a Primary User Interface",
+      "brief_summary": "Diagnostics (errors and warnings) should be treated as a primary user interface, not an afterthought, especially for complex applications like developer tools and APIs. The quality of diagnostics directly impacts usability and retention, and is increasingly crucial for autonomous agents. The rise of AI further emphasizes the value of product-minded engineers who can effectively specify what to build, including robust diagnostic experiences.",
+      "tags": [
+        "#product-engineering",
+        "#software-design",
+        "#error-handling",
+        "#user-experience",
+        "#api-design",
+        "#diagnostics"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Error Categorization by Audience and Action",
+          "bullets": [
+            "Errors should be categorized by their audience (Human end-user vs. Programmer) and when they can be fixed (runtime vs. development)."
+          ],
+          "sub_sections": {
+            "A proposed five-category model:": [
+              "System Error: An unforeseen, catastrophic failure (e.g., network timeout). Action: Retry or contact support.",
+              "User's Invalid Argument: Malformed input from an end-user. Action: User corrects input at runtime.",
+              "Precondition Not Met: System state prevents the action (e.g., insufficient permissions, expired account). Action: User must perform a prerequisite action.",
+              "Developer's Invalid Argument: Malformed input from a developer via an API. Action: Developer must fix their code.",
+              "Assertion: An unhandled internal state the developers did not foresee (e.g., a ZeroDivisionError from an empty list). Action: The internal team must fix the code. Assertions signal that upfront validation is missing and should be converted into a more specific error type, like Developer's Invalid Argument."
+            ]
+          }
+        },
+        {
+          "heading": "Crafting and Locating Actionable Messages",
+          "bullets": [
+            "Effective error messages must answer two questions: 'What happened?' and 'What can I do about it?'.",
+            "Messages should use the product's public vocabulary (ontology), not implementation details, and echo the user's input to provide context.",
+            "Errors are best generated at the application's interface boundary (API/UI), which has access to both low-level system failure details and high-level user intent."
+          ],
+          "sub_sections": {
+            "Techniques for locating and crafting messages:": [
+              "Upfront Validation: Proactively check inputs at the boundary. Caveat: Can be expensive (e.g., extra network calls) and may duplicate validation logic from deeper in the system.",
+              "Error Chaining: Catch a generic, low-level error and wrap it in a new, context-rich exception, preserving the original error's details (e.g., Python's 'raise NewException from original_error')."
+            ]
+          }
+        },
+        {
+          "heading": "\"Shifting Left\": Providing Diagnostics Early",
+          "bullets": [
+            "\"Shifting left\" means providing feedback as early as possible in a user's workflow to save time, reduce system load, and prevent data loss."
+          ],
+          "sub_sections": {
+            "Methods for shifting left:": [
+              "Static Validation: Cheap, immediate checks without network calls (e.g., credit card checksums, postal code length, IDE linters).",
+              "Upfront Validation: Used in multi-step workflows to prevent wasted effort (e.g., validating a destination bank account before initiating a withdrawal).",
+              "Fakes / Test Modes: Provide a high-fidelity, in-memory version of a service for developers to reliably test error conditions. Example: Stripe's test mode uses specific card numbers (e.g., 4000 0000 0000 9995) to trigger specific API errors like card_declined with an insufficient_funds reason.",
+              "User Confirmation: For inputs that are suspicious but not definitively wrong. Examples include Google's \"Did you mean...\" suggestions, API \"dry run\" modes, and CLI --force flags."
+            ]
+          }
+        },
+        {
+          "heading": "Developing a Product Mindset",
+          "bullets": [
+            "To become more product-minded, engineers can: frequently ask \"why\" to understand purpose, switch between system-level and user-level viewpoints, use scenarios to simulate user interactions, and spend time on customer support to understand user pain points directly.",
+            "AI tools can help aggregate this \"customer signal\" from sources like Slack, GitHub, and Gong."
+          ],
+          "sub_sections": {}
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}
