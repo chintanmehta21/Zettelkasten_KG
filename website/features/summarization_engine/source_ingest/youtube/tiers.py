@@ -248,8 +248,11 @@ def _load_health() -> dict[str, str]:
 
 
 def _save_health(health: dict[str, str]) -> None:
-    _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
+    try:
+        _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
+    except OSError:
+        return
 
 
 def _is_healthy(instance: str, ttl_hours: int) -> bool:
