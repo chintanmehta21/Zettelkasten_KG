@@ -125,6 +125,51 @@ def _is_placeholder_speaker(name: str) -> bool:
     return False
 
 
+_SCAFFOLD_SENTENCE_PREFIXES = (
+    r"^the closing takeaway[:\-]\s*",
+    r"^closing takeaway[:\-]\s*",
+    r"^in conclusion[,:\-]\s*",
+    r"^to summarize[,:\-]\s*",
+    r"^overall[,:\-]\s*",
+)
+_PLACEHOLDER_SPEAKER_PHRASE = re.compile(
+    r"\b("
+    r"(?:the\s+)?unidentified\s+(?:speaker|presenter|narrator|host|interviewer|lecturer|author)"
+    r"|(?:the\s+)?unknown\s+(?:speaker|presenter|narrator|host|author)"
+    r"|(?:the\s+)?anonymous\s+(?:speaker|presenter|narrator|host|author)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_scaffold_phrases(text: str) -> str:
+    """Remove LLM scaffolding artifacts from the brief.
+
+    Targets two recurring regressions:
+      1. ``"The closing takeaway:"`` / ``"In conclusion:"`` framing prefixes
+         that announce the summary's structure rather than speaking
+         naturally.
+      2. Placeholder speaker phrases like ``"Unidentified Presenter"`` that
+         leak into the brief when the LLM cannot identify the speaker.
+    """
+    if not text:
+        return text
+    cleaned = text
+    cleaned = _PLACEHOLDER_SPEAKER_PHRASE.sub("The speaker", cleaned)
+    sentences = _split_sentences(cleaned)
+    out: list[str] = []
+    for sentence in sentences:
+        s = sentence.strip()
+        for pattern in _SCAFFOLD_SENTENCE_PREFIXES:
+            s = re.sub(pattern, "", s, flags=re.IGNORECASE).strip()
+        if s:
+            if s[:1].islower():
+                s = s[:1].upper() + s[1:]
+            out.append(s)
+    rebuilt = " ".join(out).strip()
+    return rebuilt or cleaned
+
+
 def _normalize_mini_title(title: str) -> str:
     tokens = re.findall(r"[A-Za-z0-9]+", title or "")
     preferred = [token for token in tokens if token.lower() not in _TITLE_STOPWORDS]
@@ -170,6 +215,7 @@ def _repair_brief_summary(
     )
 
     cleaned = re.sub(r"\s+", " ", brief or "").strip()
+    cleaned = _strip_scaffold_phrases(cleaned)
     sentences = _split_sentences(cleaned)
     tail_ok = bool(sentences) and not ends_with_dangling_word(sentences[-1])
     looks_complete = (
