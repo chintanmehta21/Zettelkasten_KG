@@ -1,0 +1,759 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    "eval": {
+      "g_eval": {
+        "coherence": 3.18,
+        "consistency": 4.5,
+        "fluency": 4.5,
+        "relevance": 3.04,
+        "reasoning": "The brief summary is significantly incomplete, failing to capture the full thesis, most key speakers, major segments, and takeaways. The detailed summary is strong and chronologically ordered but misses some important caveats regarding DMT use. Overall, the summary is well-written and generally accurate."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.6304,
+          "items": [
+            {
+              "claim": "Brief summary states the video's central thesis or learning objective in one sentence.",
+              "fact": null,
+              "sentence": "This commentary video explains DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly...",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief names the host/channel and any guests or key products/libraries discussed.",
+              "fact": null,
+              "sentence": "Featured voices include Richard Spruce and Richard Manske.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion).",
+              "fact": null,
+              "sentence": "It moves through sections on Historical Context and Discovery and Chemical Structure & Prohibition.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief highlights 2-3 takeaways a viewer would remember after watching.",
+              "fact": null,
+              "sentence": "This commentary video explains DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly...",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief is 5-7 sentences.",
+              "fact": null,
+              "sentence": "The brief summary is 4 sentences long.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Warnings, caveats, limitations the speaker mentions are captured.",
+              "fact": null,
+              "sentence": "Experts emphasize 'set and setting' for psychedelic use; substances are physiologically safe and non-addictive but can worsen existing mental health conditions.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Named technologies/libraries/frameworks from the video are tagged.",
+              "fact": null,
+              "sentence": null,
+              "span": "LSD, psilocybin",
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.9333,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "This commentary video explains DMT, a potent psychedelic with a rich history of indigenous use and modern scientific inquiry, profoundly...",
+            "reason": "The sentence is cut off and incomplete, making it neutral in its ability to fully convey a thesis."
+          },
+          {
+            "sentence": "Featured voices include Richard Spruce and Richard Manske.",
+            "reason": "While these individuals are discussed, calling them 'featured voices' is slightly misleading as they are historical figures, not interviewed voices in the video. More importantly, the statement is incomplete as it omits many other key figures who are interviewed or extensively discussed."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 7.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.format_identified",
+              "brief.no_clickbait"
+            ],
+            "criteria_missed": [
+              "brief.thesis_capture",
+              "brief.speakers_captured",
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 43.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.examples_purpose_not_verbatim",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding"
+            ],
+            "criteria_missed": [
+              "detailed.caveats_preserved"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 14.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": [
+              "tags.technologies_named"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": 75,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "speakers_absent",
+            "source_region": "brief_summary",
+            "auto_cap": 75
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 61.76,
+        "finesure": 79.81,
+        "qafact": 84.21,
+        "summac": 77.78
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 12367,
+        "total_tokens_out": 1697,
+        "latency_ms": 55558
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+    "eval": {
+      "g_eval": {
+        "coherence": 3.5,
+        "consistency": 4.0,
+        "fluency": 4.0,
+        "relevance": 3.5,
+        "reasoning": "The summary is generally coherent and relevant, especially the detailed section. However, the brief summary's lack of clear takeaways and generic segment outlining, along with the incorrect identification of \"featured voices,\" detract from its overall quality."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.97,
+          "items": [
+            {
+              "claim": "Ross Ulbricht is a featured voice in the video.",
+              "fact": null,
+              "sentence": "Featured voices include Ross Ulbricht.",
+              "span": "Featured voices include Ross Ulbricht.",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.82,
+          "items": [
+            {
+              "claim": "The host/channel of the video is identified.",
+              "fact": null,
+              "sentence": "Featured voices include Ross Ulbricht.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary outlines major structural segments of the video.",
+              "fact": null,
+              "sentence": "It moves through sections on Ross Ulbricht: Founder of Silk Road and Operational Security Failures... It also covers Ross Ulbricht and Silk Road.",
+              "span": "It moves through sections on Ross Ulbricht: Founder of Silk Road and Operational Security Failures... It also covers Ross Ulbricht and Silk Road.",
+              "importance": null
+            },
+            {
+              "claim": "The brief summary highlights 2-3 takeaways a viewer would remember.",
+              "fact": null,
+              "sentence": "Ross Ulbricht's ambition to create a free market outside government...",
+              "span": "Ross Ulbricht's ambition to create a free market outside government...",
+              "importance": null
+            },
+            {
+              "claim": "Named technologies/libraries/frameworks from the video are tagged.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.97,
+          "items": [
+            {
+              "claim": "The brief summary is concise without redundancy.",
+              "fact": null,
+              "sentence": "It also covers Ross Ulbricht and Silk Road.",
+              "span": "It also covers Ross Ulbricht and Silk Road.",
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [
+          {
+            "sentence": "Featured voices include Ross Ulbricht.",
+            "reason": "Ross Ulbricht is the subject of the video, not a featured voice speaking in the video. The video is narrated by an unnamed person."
+          }
+        ],
+        "neutral_sentences": [
+          {
+            "sentence": "Ross Ulbricht's ambition to create a free market outside government...",
+            "reason": "This sentence is a fragment and does not constitute a complete takeaway."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.thesis_capture",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.format_identified",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.speakers_captured",
+            "score": 0.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.speakers_captured"
+            ]
+          },
+          {
+            "id": "brief.major_segments_outlined",
+            "score": 1.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.major_segments_outlined"
+            ]
+          },
+          {
+            "id": "brief.takeaways_surfaced",
+            "score": 0.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.takeaways_surfaced"
+            ]
+          },
+          {
+            "id": "brief.length_5_to_7_sentences",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.no_clickbait",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.chronological_order",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.all_chapters_covered",
+            "score": 10.0,
+            "max_points": 10,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.demonstrations_preserved",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.caveats_preserved",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.examples_purpose_not_verbatim",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.entities_named",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.closing_takeaway",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.no_sponsor_padding",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.topical_specificity",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.format_tag_present",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.technologies_named",
+            "score": 2.0,
+            "max_points": 3,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "tags.technologies_named"
+            ]
+          },
+          {
+            "id": "tags.no_unsupported_claims",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.content_first_3_to_5_words",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.reflects_primary_topic",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.no_clickbait_retention",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": 75,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "speakers_absent",
+            "source_region": "brief_summary",
+            "auto_cap": 75
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 80.49,
+        "finesure": 81.69,
+        "qafact": 78.95,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 14845,
+        "total_tokens_out": 2453,
+        "latency_ms": 58663
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=Brm71uCWr-I",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.0,
+        "reasoning": "The summary is generally coherent and relevant, covering the main points of the video. However, some sections are less detailed than others, and the brief summary is somewhat repetitive."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.8,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.thesis_capture",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Brief summary states the video's central thesis or learning objective in one sentence."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.format_identified",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.speakers_captured",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Brief names the host/channel and any guests or key products/libraries discussed."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.major_segments_outlined",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.takeaways_surfaced",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Brief highlights 2-3 takeaways a viewer would remember after watching."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.length_5_to_7_sentences",
+            "score": 0.0,
+            "max_points": 2,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "Brief is 5-7 sentences."
+            ]
+          },
+          {
+            "id": "brief.no_clickbait",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "Brief does not reproduce clickbait/hook phrasing from the source title."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.chronological_order",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "Detailed bullets follow the video's chronological order."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.all_chapters_covered",
+            "score": 10.0,
+            "max_points": 10,
+            "criteria_fired": [
+              "Every substantive chapter or major topic turn is covered by at least one bullet."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.demonstrations_preserved",
+            "score": 0.0,
+            "max_points": 6,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "Demonstrations, code walkthroughs, or live examples are captured."
+            ]
+          },
+          {
+            "id": "detailed.caveats_preserved",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Warnings, caveats, limitations the speaker mentions are captured."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.examples_purpose_not_verbatim",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.entities_named",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Products, libraries, datasets, or case studies referenced are named."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.closing_takeaway",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "The video's closing takeaway is explicitly captured."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.no_sponsor_padding",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "Exactly 7-10 tags."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.topical_specificity",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Tags capture specific subject matter, not generic terms."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.format_tag_present",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.technologies_named",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "Named technologies/libraries/frameworks from the video are tagged."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.no_unsupported_claims",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "No tags imply topics not actually covered."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.content_first_3_to_5_words",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Label is 3-5 words (max 50 chars), content-first, declarative."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.reflects_primary_topic",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Label reflects the primary topic, not side tangents."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.no_clickbait_retention",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Label removes clickbait/hook fragments from the original title."
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 85.0,
+        "finesure": 86.66666666666667,
+        "qafact": 90.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 10387,
+        "total_tokens_out": 2424,
+        "latency_ms": 71988
+      }
+    }
+  }
+]

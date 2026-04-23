@@ -17,6 +17,7 @@ gemini:
     self_check: "pro"
     patch: "pro"
     structured_extract: "flash"
+    evaluator: "flash"
   temperature: 0.3
   max_output_tokens: 8192
   response_mime_type: "application/json"
@@ -40,10 +41,14 @@ self_check:
 
 structured_extract:
   validation_retries: 1
-  mini_title_max_words: 5
-  brief_summary_max_words: 50
-  tags_min: 8
-  tags_max: 15
+  mini_title_max_chars: 60
+  brief_summary_max_chars: 400
+  brief_summary_max_sentences: 7
+  brief_summary_min_sentences: 5
+  detailed_summary_max_bullets_per_section: 8
+  detailed_summary_min_bullets_per_section: 1
+  tags_min: 7
+  tags_max: 10
 
 sources:
   github:
@@ -53,24 +58,71 @@ sources:
     fetch_commits: true
     max_commits: 10
     fetch_prs: false
+    fetch_pages: true
+    fetch_workflows: true
+    fetch_releases: true
+    max_releases: 5
+    fetch_languages: true
+    fetch_root_dir_listing: true
+    architecture_overview_enabled: true
+    architecture_overview_max_chars: 500
+    api_base_url: "https://api.github.com"
+    api_timeout_sec: 15
     fetch_docs: true
     max_docs: 4
     doc_char_cap: 4000
   newsletter:
     extractors: ["trafilatura", "readability", "newspaper4k"]
-    paywall_fallbacks: ["wayback", "archive_ph", "twelveft", "freedium"]
+    paywall_fallbacks: ["googlebot", "wayback", "archive_ph", "twelveft", "freedium"]
     googlebot_ua: true
     min_text_length: 500
+    site_specific_selectors_enabled: true
+    preheader_fallback_chars: 150
+    cta_keyword_regex: "subscribe|sign up|sign-up|read more|learn more|join|try|start|continue reading"
+    cta_max_count: 5
+    conclusions_tail_fraction: 0.3
+    conclusions_prefixes: ["i recommend", "you should", "the key takeaway", "the bottom line", "in summary", "to conclude", "what to do"]
+    conclusions_max_count: 6
+    stance_classifier_enabled: true
+    stance_cache_ttl_days: 30
+    branded_sources_yaml: "docs/summary_eval/_config/branded_newsletter_sources.yaml"
   reddit:
     prefer_oauth: false
     user_agent: "zettelkasten-engine/2.0 (by u/chintanmehta21)"
     comment_depth: 3
     max_comments: 50
     top_comment_rank: "top"
+    pullpush_enabled: true
+    pullpush_base_url: "https://api.pullpush.io"
+    pullpush_timeout_sec: 10
+    pullpush_max_recovered_comments: 25
+    divergence_threshold_pct: 20
   youtube:
     transcript_languages: ["en", "en-US", "en-GB"]
+    ytdlp_player_clients: ["android_embedded", "ios", "tv_embedded", "mweb", "web"]
+    transcript_budget_ms: 90000
+    piped_instances:
+      - pipedapi.kavin.rocks
+      - pipedapi.adminforge.de
+      - pipedapi.r4fo.com
+      - pipedapi.syncpundit.io
+      - pipedapi.in.projectsegfau.lt
+      - pipedapi.us.projectsegfau.lt
+      - pipedapi.smnz.de
+      - pipedapi.drgns.space
+    invidious_instances:
+      - invidious.fdn.fr
+      - yewtu.be
+      - inv.tux.pizza
+      - iv.melmac.space
+      - invidious.privacydev.net
+      - vid.puffyan.us
+    instance_health_ttl_hours: 1
+    enable_gemini_audio_fallback: true
+    gemini_audio_max_duration_min: 60
+    gemini_audio_max_filesize_mb: 50
     use_ytdlp_fallback: true
-    use_gemini_video_fallback: true
+    use_gemini_video_fallback: false
     webshare_proxy_env: "WEBSHARE_PROXY_URL"
   hackernews:
     api: "algolia"
@@ -111,6 +163,7 @@ sources:
       - "https://lightbrd.com"
       - "https://nitter.space"
     nitter_health_check_timeout_sec: 5
+    nitter_health_cache_ttl_sec: 300
     nitter_rotation_on_failure: true
 
 batch:

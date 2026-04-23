@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "facts": []
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "facts": []
+  },
+  {
+    "url": "https://github.com/psf/requests",
+    "facts": []
+  },
+  {
+    "url": "https://github.com/pydantic/pydantic",
+    "facts": []
+  },
+  {
+    "url": "https://github.com/tiangolo/typer",
+    "facts": []
+  }
+]

@@ -1,0 +1,150 @@
+{
+  "g_eval": {
+    "coherence": 2.0,
+    "consistency": 5.0,
+    "fluency": 2.0,
+    "relevance": 4.0,
+    "reasoning": "The summary accurately reflects the arguments and counterarguments presented in the source, including the OP's intellectual journey and the various commenter viewpoints. However, the brief summary is poorly structured and contains fragmented sentences, significantly impacting overall coherence and fluency."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.82,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.84,
+      "items": [
+        {
+          "claim": "The brief summarizes the range of responses (main solution, common advice, dissent).",
+          "fact": null,
+          "sentence": "Many replies said Many users resonated with the author's intellectual path, indicating a. The thread mostly converged on personal journeys from scientific materialism to spirituality while frustration with. Pushback included Caution against basing philosophical adoption on mutable scientific consistency.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief describes consensus, partial agreement, or disagreement.",
+          "fact": null,
+          "sentence": "Many replies said Many users resonated with the author's intellectual path, indicating a. The thread mostly converged on personal journeys from scientific materialism to spirituality while frustration with.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief surfaces important caveats (regional, legal, risk).",
+          "fact": null,
+          "sentence": "Pushback included Caution against basing philosophical adoption on mutable scientific consistency.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Unresolved questions or open points are listed.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.78,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.5,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "Many replies said Many users resonated with the author's intellectual path, indicating a.",
+        "reason": "The sentence is grammatically incomplete and unclear in its meaning, making it difficult to assess its entailment."
+      },
+      {
+        "sentence": "The thread mostly converged on personal journeys from scientific materialism to spirituality while frustration with.",
+        "reason": "The sentence is grammatically incomplete and unclear in its meaning, making it difficult to assess its entailment."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 13.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.op_intent_captured",
+          "brief.neutral_tone"
+        ],
+        "criteria_missed": [
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.caveats_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 43.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ],
+        "criteria_missed": [
+          "detailed.unresolved_questions"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 12.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.subreddit_present",
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": [
+          "tags.thread_type"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.rsubreddit_prefix",
+          "label.central_issue",
+          "label.neutral"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 78.04,
+    "finesure": 82.5,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_reddit.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 8448,
+    "total_tokens_out": 1428,
+    "latency_ms": 47861,
+    "ragas_faithfulness": -1.0
+  }
+}

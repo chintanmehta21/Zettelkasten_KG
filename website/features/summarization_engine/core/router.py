@@ -35,7 +35,9 @@ _NEWSLETTER_DOMAINS: tuple[str, ...] = (
     "hackernoon.com",
     "dev.to",
     "stratechery.com",
+    "platformer.news",
 )
+_NEWSLETTER_CUSTOM_SUFFIXES: tuple[str, ...] = (".news",)
 
 
 def _strip_known_mobile_prefix(host: str) -> str:
@@ -43,6 +45,11 @@ def _strip_known_mobile_prefix(host: str) -> str:
         if host.startswith(prefix):
             return host[len(prefix) :]
     return host
+
+
+def _looks_like_newsletter_post(path: str) -> bool:
+    normalized = (path or "").rstrip("/")
+    return normalized == "/p" or normalized.startswith("/p/")
 
 
 def detect_source_type(url: str) -> SourceType:
@@ -67,5 +74,10 @@ def detect_source_type(url: str) -> SourceType:
     for domain in _NEWSLETTER_DOMAINS:
         if host == domain or host.endswith("." + domain):
             return SourceType.NEWSLETTER
+
+    if _looks_like_newsletter_post(parsed.path):
+        for suffix in _NEWSLETTER_CUSTOM_SUFFIXES:
+            if host.endswith(suffix):
+                return SourceType.NEWSLETTER
 
     return SourceType.WEB

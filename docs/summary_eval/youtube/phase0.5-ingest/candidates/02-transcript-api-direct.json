@@ -1,0 +1,43 @@
+{
+  "strategy": "transcript_api_direct",
+  "urls_tested": [
+    "hhjhU5MXZOo",
+    "HBTYVVUBAGs",
+    "Brm71uCWr-I"
+  ],
+  "per_url": [
+    {
+      "video_id": "hhjhU5MXZOo",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 34372,
+      "latency_ms": 1687,
+      "error": null,
+      "extra": {}
+    },
+    {
+      "video_id": "HBTYVVUBAGs",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 24477,
+      "latency_ms": 1703,
+      "error": null,
+      "extra": {}
+    },
+    {
+      "video_id": "Brm71uCWr-I",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 12657,
+      "latency_ms": 1405,
+      "error": null,
+      "extra": {}
+    }
+  ],
+  "aggregate": {
+    "tier": "transcript_api_direct",
+    "success_rate": 1.0,
+    "mean_chars": 23835.333333333332,
+    "mean_latency_ms": 1598.3333333333333
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "source": "github",
+  "iter": 1,
+  "urls": [
+    "https://github.com/fastapi/fastapi"
+  ],
+  "started_at": "2026-04-22T20:18:27.535698+00:00",
+  "ended_at": "2026-04-22T20:21:51.099177+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://github.com/fastapi/fastapi",
+      "composite": 100.0,
+      "extraction_confidence": "high",
+      "latency_ms": 203498,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

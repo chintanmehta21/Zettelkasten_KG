@@ -1,0 +1,172 @@
+{
+  "g_eval": {
+    "coherence": 2.5,
+    "consistency": 4.0,
+    "fluency": 5.0,
+    "relevance": 3.0,
+    "reasoning": "The summary suffers from a major structural hallucination by inventing thematic chapters with incorrect timestamps, which severely impacts its coherence and faithfulness to the source's narrative flow. The brief summary is also weak, failing to state the video's thesis, identify its format, or name any speakers. While the detailed summary does capture many factual details, entities, and caveats from the source, it also contains a significant factual hallucination about research on war veterans. The label and tags are generally good, but the overall quality is brought down by the structural and factual errors."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Research on ayahuasca for war veterans shows mixed results...",
+          "fact": null,
+          "sentence": "Research on ayahuasca for war veterans shows mixed results, with some reporting reduced depression and anxiety, but others experiencing worsening mental health.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The video is structured into thematic chapters such as 'Timeline & Discovery', 'Chemistry & Pharmacology', etc.",
+          "fact": null,
+          "sentence": "chapters_or_segments",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.6,
+      "items": [
+        {
+          "claim": "The video's central thesis.",
+          "fact": null,
+          "sentence": "This summary provides an overview of DMT (N,N-dimethyltryptamine), covering its historical discovery, chemical properties, pharmacological mechanisms, methods of administration, subjective effects, and current scientific hypotheses regarding its action in the brain.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The video's format.",
+          "fact": null,
+          "sentence": "brief_summary",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The speakers and channel name.",
+          "fact": null,
+          "sentence": "brief_summary",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "The brief summary is too short.",
+          "fact": null,
+          "sentence": "brief_summary",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.9487179487179487,
+    "contradicted_sentences": [
+      {
+        "sentence": "Research on ayahuasca for war veterans shows mixed results, with some reporting reduced depression and anxiety, but others experiencing worsening mental health.",
+        "reason": "The source does not mention research on war veterans."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "This summary provides an overview of DMT (N,N-dimethyltryptamine), covering its historical discovery, chemical properties, pharmacological mechanisms, methods of administration, subjective effects, and current scientific hypotheses regarding its action in the brain.",
+        "reason": "This sentence is a meta-description of the summary itself, not a statement about the source content."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 8.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.major_segments_outlined",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 29.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.technologies_named",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.format_tag_present"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "invented_chapter",
+        "source_region": "detailed_summary.chapters_or_segments",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 51.21951219512195,
+    "finesure": 64.38356164383562,
+    "qafact": 36.84210526315789,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "total_tokens_in": 12663,
+    "total_tokens_out": 1725,
+    "latency_ms": 47349,
+    "ragas_faithfulness": -1.0
+  }
+}

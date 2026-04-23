@@ -1,0 +1,52 @@
+{
+  "strategy": "ytdlp_player_rotation",
+  "urls_tested": [
+    "hhjhU5MXZOo",
+    "HBTYVVUBAGs",
+    "Brm71uCWr-I"
+  ],
+  "per_url": [
+    {
+      "video_id": "hhjhU5MXZOo",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 34612,
+      "latency_ms": 2890,
+      "error": null,
+      "extra": {
+        "player_client": "android_embedded",
+        "title": "The Strangest Drug Ever Studied"
+      }
+    },
+    {
+      "video_id": "HBTYVVUBAGs",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 27265,
+      "latency_ms": 2907,
+      "error": null,
+      "extra": {
+        "player_client": "android_embedded",
+        "title": "One Mistake Took Down a 29-Yr-Old Dark Web Drug Lord"
+      }
+    },
+    {
+      "video_id": "Brm71uCWr-I",
+      "success": true,
+      "confidence": "high",
+      "transcript_chars": 13425,
+      "latency_ms": 2500,
+      "error": null,
+      "extra": {
+        "player_client": "android_embedded",
+        "title": "You Need To Quit Weed."
+      }
+    }
+  ],
+  "aggregate": {
+    "tier": "ytdlp_player_rotation",
+    "success_rate": 1.0,
+    "mean_chars": 25100.666666666668,
+    "mean_latency_ms": 2765.6666666666665
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "entries": [
+    {
+      "iter": 1,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 0.0
+    },
+    {
+      "iter": 2,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 26.349999999999994
+    },
+    {
+      "iter": 3,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 4.75
+    },
+    {
+      "iter": 4,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": -7.724999999999994
+    },
+    {
+      "iter": 5,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": -2.8916666666666657
+    },
+    {
+      "iter": 6,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 10.791666666666671
+    },
+    {
+      "iter": 7,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 43.500000000000014
+    },
+    {
+      "iter": 8,
+      "files": [],
+      "targeted_criterion": "brief.speakers_captured",
+      "criterion_delta": 0.0,
+      "composite_delta": -27.933333333333344
+    }
+  ]
+}

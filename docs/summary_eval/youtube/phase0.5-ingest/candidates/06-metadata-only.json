@@ -1,0 +1,47 @@
+{
+  "strategy": "metadata_only",
+  "urls_tested": [
+    "hhjhU5MXZOo",
+    "HBTYVVUBAGs",
+    "Brm71uCWr-I"
+  ],
+  "per_url": [
+    {
+      "video_id": "hhjhU5MXZOo",
+      "success": true,
+      "confidence": "low",
+      "transcript_chars": 2465,
+      "latency_ms": 2422,
+      "error": null,
+      "extra": {
+        "title": "The Strangest Drug Ever Studied",
+        "channel": "fern",
+        "duration": 2138
+      }
+    },
+    {
+      "video_id": "HBTYVVUBAGs",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 1937,
+      "error": "ERROR: [youtube] HBTYVVUBAGs: Sign in to confirm you\u2019re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+      "extra": {}
+    },
+    {
+      "video_id": "Brm71uCWr-I",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 2125,
+      "error": "ERROR: [youtube] Brm71uCWr-I: Sign in to confirm you\u2019re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies",
+      "extra": {}
+    }
+  ],
+  "aggregate": {
+    "tier": "metadata_only",
+    "success_rate": 0.3333333333333333,
+    "mean_chars": 821.6666666666666,
+    "mean_latency_ms": 2161.3333333333335
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "strategy": "02-anon-json-plus-pullpush",
+  "urls_tested": [
+    "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+    "https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/"
+  ],
+  "per_url": [
+    {
+      "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 13492,
+      "num_comments": 114,
+      "rendered_comment_count": 56,
+      "comment_divergence_pct": 50.88,
+      "pullpush_fetched": 24
+    },
+    {
+      "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 34035,
+      "num_comments": 761,
+      "rendered_comment_count": 103,
+      "comment_divergence_pct": 86.47,
+      "pullpush_fetched": 24
+    },
+    {
+      "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 31203,
+      "num_comments": 1005,
+      "rendered_comment_count": 114,
+      "comment_divergence_pct": 88.66,
+      "pullpush_fetched": 21
+    },
+    {
+      "url": "https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/",
+      "success": true,
+      "extraction_confidence": "high",
+      "raw_text_chars": 15875,
+      "num_comments": 38,
+      "rendered_comment_count": 13,
+      "comment_divergence_pct": 65.79,
+      "pullpush_fetched": 25
+    }
+  ],
+  "aggregate": {
+    "strategy": "02-anon-json-plus-pullpush",
+    "success_rate": 1.0,
+    "mean_chars": 23651.25,
+    "total_pullpush_fetched": 94
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "mini_title": "Chess History Obsession Infinity",
+  "brief_summary": "This commentary video explains Chess serves as a means for humans to 'microdose infinity' by confronting endlessness in numerical, causal... It moves through sections on Origins and Early Evolution and Piece Transformations. It also covers Chaturanga and Shatranj. Featured voices include Narrator.",
+  "tags": [
+    "chess-history",
+    "chess-evolution",
+    "monomomania",
+    "paul-morphy",
+    "shannon-number",
+    "infinity-concepts",
+    "game-theory",
+    "psychology-of-chess",
+    "zugzwang",
+    "commentary"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "thesis",
+      "bullets": [
+        "Chess serves as a means for humans to 'microdose infinity' by confronting endlessness in numerical, causal, mental, and spatial forms, drawing them to activities that exist on the edge of understanding before spiraling into chaos."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "format",
+      "bullets": [
+        "commentary"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "chapters_or_segments",
+      "bullets": [
+        "{\"timestamp\": \"01:48\", \"title\": \"Origins and Early Evolution\", \"bullets\": [\"Originated in India ~1,500 years ago as Chaturanga, featuring elephants and a four-player version.\", \"Evolved in Persia into Shatranj, introducing \\\"checkmate\\\" from \\\"Shah\\\" and \\\"Shahmat.\\\"\", \"Variations included Emperor Timur's version with giraffes and camels, and a Chinese variant with cannons.\", \"European additions like castling and the two-square pawn advance led to rule standardization by the 1800s.\"]}",
+        "{\"timestamp\": \"02:39\", \"title\": \"Piece Transformations\", \"bullets\": [\"Queen: Originally a weak \\\"adviser,\\\" its power increased in the 15th century, possibly to honor Queen Isabella.\", \"Bishop: Replaced the elephant from earlier versions.\", \"Rook: Originally represented a chariot.\", \"Knight: The L-shaped move has been consistent throughout its history.\"]}",
+        "{\"timestamp\": \"08:29\", \"title\": \"Obsession and Mental Impact\", \"bullets\": [\"Paul Morphy (1800s): Defeated top opponents, played eight simultaneous blindfolded games, retired young, developed paranoia, and died at 47, stating, \\\"The ability to play chess is the sign of a gentleman. The ability to play chess well is the sign of a wasted life.\\\"\", \"Mikhail Tal: Known for a creative, aggressive style, advised taking opponents \\\"into a deep dark forest where two and two make five and the path leading out is only wide enough for one.\\\"\", \"Alexander Alekhine: World champion who suffered from paranoia, once claiming his cat \\\"Chess\\\" and his status were sufficient ID to cross a border.\", \"Wilhelm Steinitz (19th Century): First official world champion, pioneered positional style, later fell into poverty and mental illness, claiming to play chess by phone with God, and died penniless.\"]}",
+        "{\"timestamp\": \"00:00\", \"title\": \"Video's Narrative and Metaphorical Elements\", \"bullets\": [\"The video opens with a surreal, escalating fictional chess match.\", \"A recurring narrative follows the narrator's obsession after losing an online match, stalking his opponent, and demanding a rematch, linking it to a past defeat by an elderly man.\", \"The chess concept of \\\"Zugzwang\\\" is presented as a metaphor for life's unavoidable difficult choices.\"]}",
+        "{\"timestamp\": \"11:01\", \"title\": \"Chess's Infinite Possibilities\", \"bullets\": [\"The number of possible board positions grows exponentially, reaching 69 trillion after five moves each.\", \"Claude Shannon estimated 10^120 unique games in a 40-move match (the \\\"Shannon number\\\"), exceeding the number of atoms in the observable universe.\", \"Chess is presented as a way for humans to \\\"microdose infinity\\\" by confronting endlessness in numerical, causal, mental, and spatial forms.\"]}",
+        "{\"timestamp\": \"13:12\", \"title\": \"Exploring Different Infinities\", \"bullets\": [\"Contrasts countable infinity (natural numbers) with uncountable infinity (real numbers between 0 and 1).\", \"Explores concepts of causal, mental, and spatial infinity.\", \"Cites Emmanuel Levinas's idea that infinity is confronted in the unknowable inner lives of other people.\"]}",
+        "{\"timestamp\": \"03:10\", \"title\": \"Miscellaneous Chess Facts and Examples\", \"bullets\": [\"Mentions chess variations: Fischer Random, Anti-chess, and \\\"Chess on a really big board.\\\"\", \"Justifies the knight piece with examples of animals holding military ranks: Staff Sergeant Reckless (horse), Nils Olav (penguin brigadier), and William Windsor (goat lance corporal).\"]}"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "closing_takeaway",
+      "bullets": [
+        "Chess allows humans to 'microdose infinity' by providing a structured environment to confront endlessness in numerical, causal, mental, and spatial forms, satisfying a fundamental human desire to explore the limits of understanding."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ctwc8t5CsQs",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=66540",
+    "total_tokens_used": 53645,
+    "gemini_pro_tokens": 50687,
+    "gemini_flash_tokens": 2958,
+    "total_latency_ms": 113039,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Chess History Obsession Infinity",
+      "brief_summary": "This commentary video explains Chess serves as a means for humans to 'microdose infinity' by confronting endlessness in numerical, causal... It moves through sections on Origins and Early Evolution and Piece Transformations. It also covers Chaturanga and Shatranj. Featured voices include Narrator.",
+      "tags": [
+        "chess-history",
+        "chess-evolution",
+        "monomomania",
+        "paul-morphy",
+        "shannon-number",
+        "infinity-concepts",
+        "game-theory",
+        "psychology-of-chess",
+        "zugzwang",
+        "commentary"
+      ],
+      "speakers": [
+        "Narrator"
+      ],
+      "guests": null,
+      "entities_discussed": [
+        "Chaturanga",
+        "Shatranj",
+        "Emperor Timur",
+        "Queen Isabella",
+        "Paul Morphy",
+        "Mikhail Tal",
+        "Alexander Alekhine",
+        "Wilhelm Steinitz",
+        "Claude Shannon",
+        "Emmanuel Levinas",
+        "Fischer Random",
+        "Anti-chess",
+        "Staff Sergeant Reckless",
+        "Nils Olav",
+        "William Windsor"
+      ],
+      "detailed_summary": {
+        "thesis": "Chess serves as a means for humans to 'microdose infinity' by confronting endlessness in numerical, causal, mental, and spatial forms, drawing them to activities that exist on the edge of understanding before spiraling into chaos.",
+        "format": "commentary",
+        "chapters_or_segments": [
+          {
+            "timestamp": "01:48",
+            "title": "Origins and Early Evolution",
+            "bullets": [
+              "Originated in India ~1,500 years ago as Chaturanga, featuring elephants and a four-player version.",
+              "Evolved in Persia into Shatranj, introducing \"checkmate\" from \"Shah\" and \"Shahmat.\"",
+              "Variations included Emperor Timur's version with giraffes and camels, and a Chinese variant with cannons.",
+              "European additions like castling and the two-square pawn advance led to rule standardization by the 1800s."
+            ]
+          },
+          {
+            "timestamp": "02:39",
+            "title": "Piece Transformations",
+            "bullets": [
+              "Queen: Originally a weak \"adviser,\" its power increased in the 15th century, possibly to honor Queen Isabella.",
+              "Bishop: Replaced the elephant from earlier versions.",
+              "Rook: Originally represented a chariot.",
+              "Knight: The L-shaped move has been consistent throughout its history."
+            ]
+          },
+          {
+            "timestamp": "08:29",
+            "title": "Obsession and Mental Impact",
+            "bullets": [
+              "Paul Morphy (1800s): Defeated top opponents, played eight simultaneous blindfolded games, retired young, developed paranoia, and died at 47, stating, \"The ability to play chess is the sign of a gentleman. The ability to play chess well is the sign of a wasted life.\"",
+              "Mikhail Tal: Known for a creative, aggressive style, advised taking opponents \"into a deep dark forest where two and two make five and the path leading out is only wide enough for one.\"",
+              "Alexander Alekhine: World champion who suffered from paranoia, once claiming his cat \"Chess\" and his status were sufficient ID to cross a border.",
+              "Wilhelm Steinitz (19th Century): First official world champion, pioneered positional style, later fell into poverty and mental illness, claiming to play chess by phone with God, and died penniless."
+            ]
+          },
+          {
+            "timestamp": "00:00",
+            "title": "Video's Narrative and Metaphorical Elements",
+            "bullets": [
+              "The video opens with a surreal, escalating fictional chess match.",
+              "A recurring narrative follows the narrator's obsession after losing an online match, stalking his opponent, and demanding a rematch, linking it to a past defeat by an elderly man.",
+              "The chess concept of \"Zugzwang\" is presented as a metaphor for life's unavoidable difficult choices."
+            ]
+          },
+          {
+            "timestamp": "11:01",
+            "title": "Chess's Infinite Possibilities",
+            "bullets": [
+              "The number of possible board positions grows exponentially, reaching 69 trillion after five moves each.",
+              "Claude Shannon estimated 10^120 unique games in a 40-move match (the \"Shannon number\"), exceeding the number of atoms in the observable universe.",
+              "Chess is presented as a way for humans to \"microdose infinity\" by confronting endlessness in numerical, causal, mental, and spatial forms."
+            ]
+          },
+          {
+            "timestamp": "13:12",
+            "title": "Exploring Different Infinities",
+            "bullets": [
+              "Contrasts countable infinity (natural numbers) with uncountable infinity (real numbers between 0 and 1).",
+              "Explores concepts of causal, mental, and spatial infinity.",
+              "Cites Emmanuel Levinas's idea that infinity is confronted in the unknowable inner lives of other people."
+            ]
+          },
+          {
+            "timestamp": "03:10",
+            "title": "Miscellaneous Chess Facts and Examples",
+            "bullets": [
+              "Mentions chess variations: Fischer Random, Anti-chess, and \"Chess on a really big board.\"",
+              "Justifies the knight piece with examples of animals holding military ranks: Staff Sergeant Reckless (horse), Nils Olav (penguin brigadier), and William Windsor (goat lance corporal)."
+            ]
+          }
+        ],
+        "demonstrations": [],
+        "closing_takeaway": "Chess allows humans to 'microdose infinity' by providing a structured environment to confront endlessness in numerical, causal, mental, and spatial forms, satisfying a fundamental human desire to explore the limits of understanding."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

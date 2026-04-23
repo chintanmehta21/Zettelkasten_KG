@@ -6,6 +6,9 @@ from typing import Any
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
+from website.features.summarization_engine.source_ingest.reddit.pullpush import (
+    recover_removed_comments,
+)
 from website.features.summarization_engine.source_ingest.utils import (
     compact_text,
     extract_html_text,
@@ -42,14 +45,56 @@ class RedditIngestor(BaseIngestor):
         headers = {"User-Agent": _BROWSER_UA}
         payload, final_url = await fetch_json(json_url, headers=headers)
         post = payload[0]["data"]["children"][0]["data"] if payload else {}
+        comment_children = payload[1]["data"]["children"] if len(payload) > 1 else []
         comments = _comment_texts(
-            payload[1]["data"]["children"] if len(payload) > 1 else [],
+            comment_children,
             int(config.get("max_comments", 50)),
         )
         sections = {
             "Post": f"{post.get('title') or ''}\n{post.get('selftext') or ''}\n{post.get('url') or ''}",
             "Comments": "\n".join(comments),
         }
+        rendered_count = len(
+            [child for child in comment_children if child.get("kind") == "t1"]
+        )
+        num_comments = int(post.get("num_comments") or 0)
+        divergence_pct = _compute_divergence(
+            num_comments=num_comments,
+            rendered_count=rendered_count,
+        )
+        pullpush_fetched = 0
+        if (
+            config.get("pullpush_enabled", True)
+            and divergence_pct >= float(config.get("divergence_threshold_pct", 20))
+            and num_comments > 0
+        ):
+            link_id = post.get("id")
+            if link_id:
+                pp = await recover_removed_comments(
+                    link_id=link_id,
+                    base_url=config.get("pullpush_base_url", "https://api.pullpush.io"),
+                    timeout_sec=int(config.get("pullpush_timeout_sec", 10)),
+                    max_recovered=int(
+                        config.get("pullpush_max_recovered_comments", 25)
+                    ),
+                )
+                if pp.success and pp.comments:
+                    sections["Recovered Comments"] = "\n".join(
+                        [
+                            (
+                                f"[u/{comment.author}, score {comment.score}, "
+                                f"recovered from pullpush.io] {comment.body}"
+                            )
+                            for comment in pp.comments
+                        ]
+                    )
+                    pullpush_fetched = len(pp.comments)
+                else:
+                    logger.info(
+                        "[reddit-pullpush] no recovery for link_id=%s err=%s",
+                        link_id,
+                        pp.error,
+                    )
         return IngestResult(
             source_type=self.source_type,
             url=final_url.removesuffix(".json"),
@@ -58,13 +103,22 @@ class RedditIngestor(BaseIngestor):
             sections=sections,
             metadata={
                 "subreddit": post.get("subreddit"),
-                "score": post.get("score"),
                 "author": post.get("author"),
-                "title": post.get("title"),
+                "score": post.get("score"),
+                "num_comments": num_comments,
+                "rendered_comment_count": rendered_count,
+                "comment_divergence_pct": divergence_pct,
+                "permalink": post.get("permalink"),
+                "pullpush_fetched": pullpush_fetched,
+                "pullpush_enabled": bool(config.get("pullpush_enabled", True)),
             },
-            extraction_confidence="high" if post.get("title") else "low",
-            confidence_reason="Reddit JSON endpoint fetched",
+            extraction_confidence="high",
+            confidence_reason=(
+                f"json endpoint ok; rendered={rendered_count}/{num_comments} "
+                f"divergence={divergence_pct}%"
+            ),
             fetched_at=utc_now(),
+            ingestor_version="2.0.0",
         )
 
     async def _ingest_html(self, url: str, config: dict[str, Any]) -> IngestResult:
@@ -135,3 +189,13 @@ def _comment_texts(children: list[dict[str, Any]], limit: int) -> list[str]:
         if body:
             out.append(f"{data.get('author') or 'unknown'}: {body}")
     return out
+
+
+def _compute_divergence(*, num_comments: int, rendered_count: int) -> float:
+    """Return the share of comments missing from the rendered JSON tree."""
+    if num_comments <= 0:
+        return 0.0
+    missing = num_comments - rendered_count
+    if missing <= 0:
+        return 0.0
+    return round((missing / num_comments) * 100.0, 2)

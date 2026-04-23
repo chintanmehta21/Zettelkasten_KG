@@ -72,6 +72,18 @@ def test_load_keys_from_file_empty(tmp_path):
     assert keys == []
 
 
+def test_filter_api_keys_by_role_keeps_only_billing():
+    """Role filter trims free keys so eval loops can skip exhausted free tiers."""
+    from website.features.api_key_switching.key_pool import filter_api_keys_by_role
+
+    filtered = filter_api_keys_by_role(
+        [("free-key", "free"), ("billing-key", "billing")],
+        role_filter="billing",
+    )
+
+    assert filtered == [("billing-key", "billing")]
+
+
 # ── Attempt chain building ──────────────────────────────────────────────────
 
 
@@ -138,6 +150,21 @@ def test_chain_all_on_cooldown_returns_full():
     pool._cooldowns[(1, "gemini-2.5-flash-lite")] = far_future
     chain = pool._build_attempt_chain()
     assert len(chain) == 4
+
+
+def test_chain_all_on_cooldown_fail_fast(monkeypatch):
+    """Fail-fast mode returns no slots instead of re-hammering cooled-down ones."""
+    from website.features.api_key_switching.key_pool import GeminiKeyPool
+
+    monkeypatch.setenv("GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS", "1")
+    pool = GeminiKeyPool(["k0", "k1"])
+    far_future = time.monotonic() + 9999
+    pool._cooldowns[(0, "gemini-2.5-flash")] = far_future
+    pool._cooldowns[(1, "gemini-2.5-flash")] = far_future
+    pool._cooldowns[(0, "gemini-2.5-flash-lite")] = far_future
+    pool._cooldowns[(1, "gemini-2.5-flash-lite")] = far_future
+
+    assert pool._build_attempt_chain() == []
 
 
 def test_chain_embedding_model():

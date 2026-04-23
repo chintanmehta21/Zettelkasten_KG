@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive Reddit summarization quality to spec-§10.1 production-grade (composite ≥ 92 + faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook.
 
 **Architecture:** Same two-phase loop runbook as Plan 6 (Phase A Gemini eval → Codex manual_review → Phase B finalize). Per-source focus: Reddit's rubric_reddit.yaml emphasizes `hedged_attribution` (never assert comment claims as fact), `moderation_context` (mention divergence between `num_comments` and `rendered_count`), and `label.rsubreddit_prefix` (must start with `r/<sub> `). Plan 2 shipped pullpush.io enrichment + divergence tracking; this plan tunes the summarizer to USE those signals in the rubric-required way.
@@ -192,6 +194,56 @@ Expected: 200.
 
 ```bash
 rm -rf docs/summary_eval/reddit/iter-*
+```
+
+---
+
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Prove Reddit summarizer routes through `RedditStructuredPayload`. If this gate fails, STOP — iter-01 would score garbage.
+
+- [ ] **Step 1: In-process route smoke + shape assertions**
+
+```bash
+python - <<'PY'
+import asyncio, re, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("reddit") or []
+assert urls, "no reddit URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
+mt = r.get("mini_title","") or ""
+if not re.match(r"^r/[A-Za-z0-9_]+", mt): errs.append(f"mini_title missing r/SUB prefix: {mt!r}")
+ds = sp.get("detailed_summary") or {}
+for req in ("op_intent","reply_clusters","counterarguments","unresolved_questions"):
+    if req not in ds: errs.append(f"missing Reddit field: detailed_summary.{req}")
+if not (ds.get("reply_clusters") or []): errs.append("reply_clusters empty")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print(f"GATE OK url={url}")
+PY
+```
+
+- [ ] **Step 2: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
 ```
 
 ---

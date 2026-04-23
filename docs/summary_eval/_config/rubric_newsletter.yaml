@@ -1,0 +1,119 @@
+﻿version: "rubric_newsletter.v1"
+source_type: "newsletter"
+composite_max_points: 100
+
+components:
+  - id: "brief_summary"
+    max_points: 25
+    criteria:
+      - id: "brief.main_topic_thesis"
+        description: "Brief states main topic or thesis in one sentence."
+        max_points: 6
+        maps_to_metric: ["g_eval.relevance", "finesure.completeness"]
+      - id: "brief.argument_structure"
+        description: "Brief summarizes how the author structures their argument."
+        max_points: 5
+        maps_to_metric: ["finesure.completeness", "g_eval.coherence"]
+      - id: "brief.key_evidence"
+        description: "Important evidence or examples are captured without invention."
+        max_points: 5
+        maps_to_metric: ["finesure.faithfulness", "qafact"]
+      - id: "brief.conclusions_distinct"
+        description: "Author's conclusions/recommendations distinguished from background."
+        max_points: 4
+        maps_to_metric: ["finesure.completeness"]
+      - id: "brief.caveats_addressed"
+        description: "If explicit caveats or counterarguments present, how author addresses them is summarized."
+        max_points: 3
+        maps_to_metric: ["finesure.faithfulness"]
+      - id: "brief.stance_preserved"
+        description: "Tone reflects author's stance without editorializing."
+        max_points: 2
+        maps_to_metric: ["summac"]
+
+  - id: "detailed_summary"
+    max_points: 45
+    criteria:
+      - id: "detailed.sections_ordered"
+        description: "Bullets represent major sections/argumentative steps in logical order."
+        max_points: 8
+        maps_to_metric: ["g_eval.coherence", "finesure.completeness"]
+      - id: "detailed.claims_source_grounded"
+        description: "Claims in bullets are grounded in the source; no new claims."
+        max_points: 8
+        maps_to_metric: ["finesure.faithfulness", "summac"]
+      - id: "detailed.examples_captured"
+        description: "Notable examples, case studies, data anchors are captured."
+        max_points: 7
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.action_items"
+        description: "Explicit action items / practical takeaways bulleted if present."
+        max_points: 6
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.multiple_scenarios"
+        description: "If multiple viewpoints/scenarios discussed, each gets a bullet."
+        max_points: 6
+        maps_to_metric: ["finesure.completeness"]
+      - id: "detailed.no_footer_padding"
+        description: "Unsubscribe language, house style, boilerplate not given bullets."
+        max_points: 5
+        maps_to_metric: ["finesure.conciseness"]
+      - id: "detailed.bullets_specific"
+        description: "Bullets concise yet specific; no vague paraphrase."
+        max_points: 5
+        maps_to_metric: ["g_eval.conciseness"]
+
+  - id: "tags"
+    max_points: 15
+    criteria:
+      - id: "tags.count_7_to_10"
+        description: "Exactly 7-10 tags."
+        max_points: 2
+        maps_to_metric: ["finesure.conciseness"]
+      - id: "tags.domain_subdomain"
+        description: "Main domain and subdomain tagged."
+        max_points: 3
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "tags.key_concepts"
+        description: "Key concepts or frameworks introduced in the piece tagged."
+        max_points: 3
+        maps_to_metric: ["finesure.completeness"]
+      - id: "tags.type_intent"
+        description: "Piece type tagged (opinion, research-summary, how-to, case-study)."
+        max_points: 3
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "tags.no_stance_misrepresentation"
+        description: "Tags don't misrepresent stance (no 'bullish-call' on neutral piece)."
+        max_points: 4
+        maps_to_metric: ["finesure.faithfulness"]
+
+  - id: "label"
+    max_points: 15
+    criteria:
+      - id: "label.compact_declarative"
+        description: "Label is a compact, declarative phrase reflecting main thesis."
+        max_points: 6
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "label.branded_source_rule"
+        description: "For branded sources (Stratechery/Platformer/etc.), label includes publication name."
+        max_points: 5
+        maps_to_metric: ["g_eval.relevance"]
+      - id: "label.informative_not_catchy"
+        description: "Informative over catchy; obvious what the Zettel is about."
+        max_points: 4
+        maps_to_metric: ["g_eval.conciseness"]
+
+anti_patterns:
+  - id: "stance_mismatch"
+    description: "Summary's implied stance differs from source's detected stance."
+    auto_cap: 60
+  - id: "invented_number"
+    description: "Summary cites a number, date, or source not present in the newsletter."
+    auto_cap: 60
+  - id: "branded_source_missing_publication"
+    description: "Branded newsletter label missing publication name."
+    auto_cap: 90
+
+global_rules:
+  editorialization_penalty:
+    threshold_flags: 3

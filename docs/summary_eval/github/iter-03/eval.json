@@ -1,0 +1,198 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 3.0,
+    "fluency": 5.0,
+    "relevance": 4.0,
+    "reasoning": "The summary is well-structured and fluent, covering most aspects of the repository. However, it suffers from several factual inaccuracies, particularly in the 'Maturity & Project Health' and 'Notable Issues & Developments' sections, where it invents specific version numbers, issue numbers, and feature names not present in the provided source. It also misses explicit operational steps in the brief and detailed summaries."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.83,
+      "items": [
+        {
+          "claim": "Utilizes 31 GitHub Actions workflows for testing and maintenance, indicating robust CI/CD.",
+          "fact": null,
+          "sentence": "Utilizes 31 GitHub Actions workflows for testing and maintenance, indicating robust CI/CD.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Recently upgraded its core dependency Starlette from v0.52.1 to v1.0.0.",
+          "fact": null,
+          "sentence": "Recently upgraded its core dependency Starlette from v0.52.1 to v1.0.0.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Type hint resolution, especially for complex and forward-referenced annotations, is a recurring maintenance area (e.g., #15364, #15307, #15234).",
+          "fact": null,
+          "sentence": "Type hint resolution, especially for complex and forward-referenced annotations, is a recurring maintenance area (e.g., #15364, #15307, #15234).",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Recent feature enhancements include `AuthStaticFiles` for authenticated static files (#15295, #858) and automatic `HEAD` request support for `GET` routes (#15356).",
+          "fact": null,
+          "sentence": "Recent feature enhancements include `AuthStaticFiles` for authenticated static files (#15295, #858) and automatic `HEAD` request support for `GET` routes (#15356).",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Performance and concurrency fixes addressed deadlocks in dependency injection teardown (#15388) and a memory usage regression in the `Dependant` object (#15336).",
+          "fact": null,
+          "sentence": "Performance and concurrency fixes addressed deadlocks in dependency injection teardown (#15388) and a memory usage regression in the `Dependant` object (#15336).",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "An error handling fix addressed incorrect HTTP 400 reporting for client disconnects during body parsing (#15315).",
+          "fact": null,
+          "sentence": "An error handling fix addressed incorrect HTTP 400 reporting for client disconnects during body parsing (#15315).",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.88,
+      "items": [
+        {
+          "claim": "Brief describes documented usage/installation/workflow.",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes Operates as an ASGI framework, running on servers like Uvicorn",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Detailed summary captures install steps, deploy instructions.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.81,
+    "contradicted_sentences": [
+      {
+        "sentence": "Utilizes 31 GitHub Actions workflows for testing and maintenance, indicating robust CI/CD.",
+        "reason": "The source only shows a badge for one workflow (`test.yml`) and does not mention '31 GitHub Actions workflows'."
+      },
+      {
+        "sentence": "Recently upgraded its core dependency Starlette from v0.52.1 to v1.0.0.",
+        "reason": "The source states FastAPI depends on Starlette but does not mention a specific upgrade from v0.52.1 to v1.0.0."
+      },
+      {
+        "sentence": "Type hint resolution, especially for complex and forward-referenced annotations, is a recurring maintenance area (e.g., #15364, #15307, #15234).",
+        "reason": "Issue numbers #15307 and #15234 are not present in the provided source's issues list."
+      },
+      {
+        "sentence": "Recent feature enhancements include `AuthStaticFiles` for authenticated static files (#15295, #858) and automatic `HEAD` request support for `GET` routes (#15356).",
+        "reason": "Issue numbers #15295 and #858 are not present in the provided source's issues list."
+      },
+      {
+        "sentence": "Performance and concurrency fixes addressed deadlocks in dependency injection teardown (#15388) and a memory usage regression in the `Dependant` object (#15336).",
+        "reason": "Issue number #15336 is not present in the provided source's issues list."
+      },
+      {
+        "sentence": "An error handling fix addressed incorrect HTTP 400 reporting for client disconnects during body parsing (#15315).",
+        "reason": "Issue number #15315 is not present in the provided source's issues list."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "The documented workflow emphasizes Operates as an ASGI framework, running on servers like Uvicorn",
+        "reason": "While the statement is factually true about FastAPI's operation, it does not describe a 'workflow' or 'usage pattern' as typically understood (e.g., installation, running commands) but rather an architectural characteristic."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 21.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 41.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.operational"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 85.0,
+    "finesure": 90.0,
+    "qafact": 100.0,
+    "summac": 81.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 15074,
+    "total_tokens_out": 2322,
+    "latency_ms": 54387,
+    "ragas_faithfulness": -1.0
+  }
+}

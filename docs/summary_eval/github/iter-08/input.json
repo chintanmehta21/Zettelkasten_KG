@@ -1,0 +1,44 @@
+{
+  "source": "github",
+  "iter": 8,
+  "urls": [
+    "https://github.com/fastapi/fastapi",
+    "https://github.com/encode/httpx",
+    "https://github.com/psf/requests"
+  ],
+  "started_at": "2026-04-22T21:51:47.546912+00:00",
+  "ended_at": "2026-04-22T22:00:26.773882+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://github.com/fastapi/fastapi",
+      "composite": 95.0,
+      "extraction_confidence": "high",
+      "latency_ms": 172044,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/encode/httpx",
+      "composite": 83.0,
+      "extraction_confidence": "high",
+      "latency_ms": 178948,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/psf/requests",
+      "composite": 9.0,
+      "extraction_confidence": "high",
+      "latency_ms": 168172,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.5,
+    "fluency": 4.0,
+    "relevance": 4.5,
+    "reasoning": "The summary provides a good overview of Pydantic's core functionality, architecture, and ecosystem. However, the brief summary contains a truncated sentence, leading to an omission of the usage pattern. There are also minor inaccuracies in classifying OpenTelemetry as part of Pydantic's core stack and 'api-framework'/'openapi' as direct technical concepts of Pydantic itself. The detailed summary is comprehensive regarding features, architecture, and limitations."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.88,
+      "items": [
+        {
+          "claim": "The main stack includes ... OpenTelemetry.",
+          "fact": null,
+          "sentence": "The main stack includes Python, Rust, GitHub Actions, OpenTelemetry.",
+          "span": "OpenTelemetry",
+          "importance": null
+        },
+        {
+          "claim": "Tags 'api-framework'.",
+          "fact": null,
+          "sentence": null,
+          "span": "api-framework",
+          "importance": null
+        },
+        {
+          "claim": "Tags 'openapi'.",
+          "fact": null,
+          "sentence": null,
+          "span": "openapi",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.87,
+      "items": [
+        {
+          "claim": "Brief describes documented usage/installation/workflow.",
+          "fact": null,
+          "sentence": "The ",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Detailed summary lists public APIs / CLI commands / config options with exact names.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.92,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The main stack includes Python, Rust, GitHub Actions, OpenTelemetry.",
+        "reason": "OpenTelemetry is associated with Pydantic Logfire, an ecosystem product, rather than being a core component of Pydantic's 'main stack' itself."
+      },
+      {
+        "sentence": "The ",
+        "reason": "The sentence is truncated and incomplete, making it impossible to fully assess its entailment."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 19.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 37.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.interfaces_exact"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 83.33,
+    "finesure": 86.67,
+    "qafact": 83.33,
+    "summac": 57.89
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 11243,
+    "total_tokens_out": 1327,
+    "latency_ms": 52555,
+    "ragas_faithfulness": -1.0
+  }
+}

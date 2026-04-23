@@ -1,0 +1,290 @@
+{
+  "mini_title": "fastapi/fastapi",
+  "brief_summary": "Automatically generates OpenAPI v3 and JSON Schema from code. At a high level, FastAPI leverages Starlette for ASGI, routing, WebSockets, and testing, and Pydantic for data validation, serialization, and settings. Its. The main stack includes Starlette, Pydantic. Documented public surfaces include OpenAPI v3, JSON Schema, Swagger UI, ReDoc. The documented workflow emphasizes High adoption (Microso",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "pydantic",
+    "starlette",
+    "openapi",
+    "cli-tool",
+    "api",
+    "framework",
+    "web"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "APIs & Features",
+      "bullets": [
+        "Automatically generates OpenAPI v3 and JSON Schema from code.",
+        "Provides built-in interactive documentation UIs with Swagger UI and ReDoc.",
+        "Natively parses and validates data from path/query parameters, headers, cookies, form fields, files, and JSON request bodies.",
+        "Features a dependency injection system (`Depends`) for resource management.",
+        "Includes utilities for security schemes like OAuth2 with JWT tokens and HTTP Basic auth.",
+        "The `fastapi dev` CLI command provides a Uvicorn-based development server with live reloading.",
+        "Supports GraphQL integration with libraries like Strawberry.",
+        "Inherits capabilities from Starlette, including WebSocket support, CORS middleware, and an `httpx`-based `TestClient` for `pytest`."
+      ],
+      "sub_sections": {
+        "Specification & Docs": [
+          "Automatically generates OpenAPI v3 and JSON Schema from code.",
+          "Provides built-in interactive documentation UIs with Swagger UI (at `/docs`) and ReDoc (at `/redoc`)."
+        ],
+        "Data Handling": [
+          "Natively parses and validates data from path/query parameters, headers, cookies, form fields, files, and JSON request bodies."
+        ],
+        "Core Systems": [
+          "Features a dependency injection system (Depends) for resource management.",
+          "Includes utilities for security schemes like OAuth2 with JWT tokens and HTTP Basic auth.",
+          "The fastapi dev CLI command provides a Uvicorn-based development server with live reloading."
+        ],
+        "Integrations": [
+          "Supports GraphQL integration with libraries like Strawberry."
+        ],
+        "Inherited Features": [
+          "Inherits capabilities from Starlette, including WebSocket support, CORS middleware, and an httpx-based TestClient for pytest."
+        ]
+      }
+    },
+    {
+      "heading": "Maturity & Maintenance",
+      "bullets": [
+        "Used in production by companies including Microsoft, Uber, and Netflix.",
+        "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+        "Performance is claimed to be on par with NodeJS and Go.",
+        "Actively maintained (latest release 0.136.0) with a CI setup using 31 GitHub Actions workflows.",
+        "Primarily sponsored by FastAPI Cloud, a commercial platform from the same team.",
+        "Security policy covers the latest version and requires private vulnerability disclosure.",
+        "Standard installation (`pip install \"fastapi[standard]\"`) bundles `uvicorn`, `httpx`, `jinja2`, and `python-multipart`."
+      ],
+      "sub_sections": {
+        "Adoption": [
+          "Used in production by companies including Microsoft, Uber, and Netflix."
+        ],
+        "Performance": [
+          "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+          "Performance is claimed to be on par with NodeJS and Go."
+        ],
+        "Maintenance": [
+          "Actively maintained (latest release 0.136.0) with a CI setup using 31 GitHub Actions workflows.",
+          "Primarily sponsored by FastAPI Cloud, a commercial platform from the same team.",
+          "Security policy covers the latest version and requires private vulnerability disclosure."
+        ],
+        "Installation": [
+          "Standard installation (`pip install \"fastapi[standard]\"`) bundles `uvicorn`, `httpx`, `jinja2`, and `python-multipart`."
+        ]
+      }
+    },
+    {
+      "heading": "Ecosystem",
+      "bullets": [
+        "Typer: A sibling project that applies FastAPI's design principles (type hints, dependency injection) to building command-line interfaces (CLIs)."
+      ],
+      "sub_sections": {
+        "Related Projects": [
+          "Typer: A sibling project that applies FastAPI's design principles (type hints, dependency injection) to building command-line interfaces (CLIs)."
+        ]
+      }
+    },
+    {
+      "heading": "Notable Issues & Developments",
+      "bullets": [
+        "Type System: A recurring development challenge is correctly resolving complex type annotations, especially involving `ForwardRef` and `Annotated` (e.g., issues #15364, #15307, #15234).",
+        "Feature Requests: Recent work addresses long-standing requests, including adding authentication to static files via `AuthStaticFiles` (#15295), automatic `HEAD` request support for `GET` routes (#15356), and a proposal for class-based views (#15392).",
+        "Fixes: Recent bug fixes address incorrect OpenAPI `operationId` generation (#15398), dependency system deadlocks (#15388), and memory regressions (#15336).",
+        "Core Dependency Update: The project recently updated its core dependency to Starlette 1.0.0 (#15397)."
+      ],
+      "sub_sections": {
+        "Type System Challenges": [
+          "A recurring development challenge is correctly resolving complex type annotations, especially involving `ForwardRef` and `Annotated` (e.g., issues #15364, #15307, #15234)."
+        ],
+        "Feature Implementations": [
+          "Recent work addresses long-standing requests, including adding authentication to static files via `AuthStaticFiles` (#15295), automatic `HEAD` request support for `GET` routes (#15356), and a proposal for class-based views (#15392)."
+        ],
+        "Bug Fixes": [
+          "Recent bug fixes address incorrect OpenAPI `operationId` generation (#15398), dependency system deadlocks (#15388), and memory regressions (#15336)."
+        ],
+        "Dependency Updates": [
+          "The project recently updated its core dependency to Starlette 1.0.0 (#15397)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/fastapi/fastapi",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 32591,
+    "gemini_pro_tokens": 25299,
+    "gemini_flash_tokens": 7292,
+    "total_latency_ms": 85964,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "fastapi/fastapi",
+      "architecture_overview": "FastAPI leverages Starlette for ASGI, routing, WebSockets, and testing, and Pydantic for data validation, serialization, and settings. Its core design uses single type-hint declarations for function parameters to enable editor autocompletion, data validation, serialization (e.g., JSON), and automatic documentation. It supports both synchronous (`def`) and asynchronous (`async def`) route handlers.",
+      "brief_summary": "Automatically generates OpenAPI v3 and JSON Schema from code. At a high level, FastAPI leverages Starlette for ASGI, routing, WebSockets, and testing, and Pydantic for data validation, serialization, and settings. Its. The main stack includes Starlette, Pydantic. Documented public surfaces include OpenAPI v3, JSON Schema, Swagger UI, ReDoc. The documented workflow emphasizes High adoption (Microsoft, Uber, Netflix), Strong performance benchmarks, Active maintenance. Evidence in the repository highlights TechEmpower benchmarks.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "pydantic",
+        "starlette",
+        "openapi",
+        "cli-tool",
+        "api",
+        "framework",
+        "web"
+      ],
+      "benchmarks_tests_examples": [
+        "TechEmpower benchmarks",
+        "httpx-based TestClient for pytest"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "APIs & Features",
+          "bullets": [
+            "Automatically generates OpenAPI v3 and JSON Schema from code.",
+            "Provides built-in interactive documentation UIs with Swagger UI and ReDoc.",
+            "Natively parses and validates data from path/query parameters, headers, cookies, form fields, files, and JSON request bodies.",
+            "Features a dependency injection system (`Depends`) for resource management.",
+            "Includes utilities for security schemes like OAuth2 with JWT tokens and HTTP Basic auth.",
+            "The `fastapi dev` CLI command provides a Uvicorn-based development server with live reloading.",
+            "Supports GraphQL integration with libraries like Strawberry.",
+            "Inherits capabilities from Starlette, including WebSocket support, CORS middleware, and an `httpx`-based `TestClient` for `pytest`."
+          ],
+          "sub_sections": {
+            "Specification & Docs": [
+              "Automatically generates OpenAPI v3 and JSON Schema from code.",
+              "Provides built-in interactive documentation UIs with Swagger UI (at `/docs`) and ReDoc (at `/redoc`)."
+            ],
+            "Data Handling": [
+              "Natively parses and validates data from path/query parameters, headers, cookies, form fields, files, and JSON request bodies."
+            ],
+            "Core Systems": [
+              "Features a dependency injection system (Depends) for resource management.",
+              "Includes utilities for security schemes like OAuth2 with JWT tokens and HTTP Basic auth.",
+              "The fastapi dev CLI command provides a Uvicorn-based development server with live reloading."
+            ],
+            "Integrations": [
+              "Supports GraphQL integration with libraries like Strawberry."
+            ],
+            "Inherited Features": [
+              "Inherits capabilities from Starlette, including WebSocket support, CORS middleware, and an httpx-based TestClient for pytest."
+            ]
+          },
+          "module_or_feature": "API Development",
+          "main_stack": [
+            "Starlette",
+            "Pydantic"
+          ],
+          "public_interfaces": [
+            "OpenAPI v3",
+            "JSON Schema",
+            "Swagger UI",
+            "ReDoc",
+            "Dependency Injection (Depends)",
+            "OAuth2",
+            "HTTP Basic Auth",
+            "WebSockets",
+            "CORS middleware"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Maturity & Maintenance",
+          "bullets": [
+            "Used in production by companies including Microsoft, Uber, and Netflix.",
+            "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+            "Performance is claimed to be on par with NodeJS and Go.",
+            "Actively maintained (latest release 0.136.0) with a CI setup using 31 GitHub Actions workflows.",
+            "Primarily sponsored by FastAPI Cloud, a commercial platform from the same team.",
+            "Security policy covers the latest version and requires private vulnerability disclosure.",
+            "Standard installation (`pip install \"fastapi[standard]\"`) bundles `uvicorn`, `httpx`, `jinja2`, and `python-multipart`."
+          ],
+          "sub_sections": {
+            "Adoption": [
+              "Used in production by companies including Microsoft, Uber, and Netflix."
+            ],
+            "Performance": [
+              "TechEmpower benchmarks rank FastAPI among the fastest Python frameworks.",
+              "Performance is claimed to be on par with NodeJS and Go."
+            ],
+            "Maintenance": [
+              "Actively maintained (latest release 0.136.0) with a CI setup using 31 GitHub Actions workflows.",
+              "Primarily sponsored by FastAPI Cloud, a commercial platform from the same team.",
+              "Security policy covers the latest version and requires private vulnerability disclosure."
+            ],
+            "Installation": [
+              "Standard installation (`pip install \"fastapi[standard]\"`) bundles `uvicorn`, `httpx`, `jinja2`, and `python-multipart`."
+            ]
+          },
+          "module_or_feature": "Project Lifecycle",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "High adoption (Microsoft, Uber, Netflix)",
+            "Strong performance benchmarks",
+            "Active maintenance",
+            "Clear security policy"
+          ]
+        },
+        {
+          "heading": "Ecosystem",
+          "bullets": [
+            "Typer: A sibling project that applies FastAPI's design principles (type hints, dependency injection) to building command-line interfaces (CLIs)."
+          ],
+          "sub_sections": {
+            "Related Projects": [
+              "Typer: A sibling project that applies FastAPI's design principles (type hints, dependency injection) to building command-line interfaces (CLIs)."
+            ]
+          },
+          "module_or_feature": "Related Tools",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Consistent design principles across related tools"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Developments",
+          "bullets": [
+            "Type System: A recurring development challenge is correctly resolving complex type annotations, especially involving `ForwardRef` and `Annotated` (e.g., issues #15364, #15307, #15234).",
+            "Feature Requests: Recent work addresses long-standing requests, including adding authentication to static files via `AuthStaticFiles` (#15295), automatic `HEAD` request support for `GET` routes (#15356), and a proposal for class-based views (#15392).",
+            "Fixes: Recent bug fixes address incorrect OpenAPI `operationId` generation (#15398), dependency system deadlocks (#15388), and memory regressions (#15336).",
+            "Core Dependency Update: The project recently updated its core dependency to Starlette 1.0.0 (#15397)."
+          ],
+          "sub_sections": {
+            "Type System Challenges": [
+              "A recurring development challenge is correctly resolving complex type annotations, especially involving `ForwardRef` and `Annotated` (e.g., issues #15364, #15307, #15234)."
+            ],
+            "Feature Implementations": [
+              "Recent work addresses long-standing requests, including adding authentication to static files via `AuthStaticFiles` (#15295), automatic `HEAD` request support for `GET` routes (#15356), and a proposal for class-based views (#15392)."
+            ],
+            "Bug Fixes": [
+              "Recent bug fixes address incorrect OpenAPI `operationId` generation (#15398), dependency system deadlocks (#15388), and memory regressions (#15336)."
+            ],
+            "Dependency Updates": [
+              "The project recently updated its core dependency to Starlette 1.0.0 (#15397)."
+            ]
+          },
+          "module_or_feature": "Recent Development",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Active development",
+            "Responsive to community requests",
+            "Continuous bug fixing"
+          ]
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

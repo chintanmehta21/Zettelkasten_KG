@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sse_starlette.sse import EventSourceResponse
 
 from website.api.auth import get_optional_user
-from website.features.api_key_switching.key_pool import GeminiKeyPool
+from website.features.api_key_switching.key_pool import (
+    GeminiKeyPool,
+    _load_keys_from_file,
+    candidate_api_env_paths,
+)
 from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request, SummarizeV2Response
 from website.features.summarization_engine.batch.processor import BatchProcessor, progress_stream
 from website.features.summarization_engine.core.config import load_config
@@ -75,11 +79,24 @@ def _user_id(user: dict | None) -> UUID:
 
 
 def _gemini_client() -> TieredGeminiClient:
-    keys = [os.environ[name] for name in ("GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2") if os.environ.get(name)]
+    keys: list[str | tuple[str, str]] = []
+    keys.extend(
+        (os.environ[name], "free")
+        for name in ("GEMINI_API_KEY", "GEMINI_API_KEY_1", "GEMINI_API_KEY_2")
+        if os.environ.get(name)
+    )
     if os.environ.get("GEMINI_API_KEYS"):
-        keys.extend(key.strip() for key in os.environ["GEMINI_API_KEYS"].split(",") if key.strip())
-    if not keys and os.path.exists("api_env"):
-        keys = [line.strip() for line in open("api_env", encoding="utf-8") if line.strip() and not line.startswith("#")]
+        keys.extend(
+            (key.strip(), "free")
+            for key in os.environ["GEMINI_API_KEYS"].split(",")
+            if key.strip()
+        )
+    if not keys:
+        for path in candidate_api_env_paths():
+            loaded = _load_keys_from_file(str(path))
+            if loaded:
+                keys.extend(loaded)
+                break
     if not keys:
         raise HTTPException(status_code=503, detail="Gemini API key not configured")
     return TieredGeminiClient(GeminiKeyPool(keys), load_config())

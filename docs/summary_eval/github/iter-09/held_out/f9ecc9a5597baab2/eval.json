@@ -1,0 +1,134 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is well-structured and covers most aspects of the source. Minor omissions in operational details and exact interface names prevent a perfect score."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.87,
+      "items": [
+        {
+          "claim": "API endpoints, parameters (path, query, header, cookie), and bodies are declared using Python type hints in function signatures, supporting both `def` and `async def`.",
+          "fact": null,
+          "sentence": "API endpoints, parameters (path, query, header, cookie), and bodies are declared using Python type hints in function signatures, supporting both `def` and `async def`.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The `fastapi[standard]` installation bundles `uvicorn`, `httpx` (for `TestClient`), `python-multipart`, `email-validator`, and `jinja2`.",
+          "fact": null,
+          "sentence": "The `fastapi[standard]` installation bundles `uvicorn`, `httpx` (for `TestClient`), `python-multipart`, `email-validator`, and `jinja2`.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.97,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The project is actively maintained with frequent releases and CI workflows.",
+        "reason": "The source implies active maintenance through badges and issue activity, but does not explicitly state 'actively maintained' or 'frequent releases and CI workflows' as a direct fact."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 25.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed_summary",
+        "score": 39.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.interfaces_exact",
+          "detailed.operational"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 100.0,
+    "finesure": 92.86,
+    "qafact": 80.0,
+    "summac": 86.21
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "The project is actively maintained with frequent releases and CI workflows.",
+      "flag_type": "added_judgment",
+      "explanation": "The phrases 'actively maintained' and 'frequent releases' are judgments not explicitly stated in the source, though implied by project activity and badges."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 13993,
+    "total_tokens_out": 1258,
+    "latency_ms": 45209
+  }
+}

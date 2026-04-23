@@ -1,10 +1,48 @@
-1. https://www.youtube.com/watch?v=hhjhU5MXZOo
-2. https://www.youtube.com/watch?v=HBTYVVUBAGs
-3. https://www.youtube.com/watch?v=Brm71uCWr-I
-4. https://www.youtube.com/watch?v=Ctwc8t5CsQs
-5. https://www.youtube.com/watch?v=CtrhU7GOjOg
-6. https://x.com/arrgnt_sanatan/status/1854027462042321075?s=46
-7. https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/?share_id=VyHRsq_Le3EAd90yD74uD&utm_content=1&utm_medium=ios_app&utm_name=ioscss&utm_source=share&utm_term=1
-8. https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/
-9. https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/
-10. https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/
+# YouTube
+https://www.youtube.com/watch?v=hhjhU5MXZOo
+https://www.youtube.com/watch?v=HBTYVVUBAGs
+https://www.youtube.com/watch?v=Brm71uCWr-I
+https://www.youtube.com/watch?v=Ctwc8t5CsQs
+https://www.youtube.com/watch?v=CtrhU7GOjOg
+
+# Twitter
+https://x.com/arrgnt_sanatan/status/1854027462042321075
+
+# Reddit
+https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/
+https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/
+https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/
+https://www.reddit.com/r/hinduism/comments/180eb1m/a_lifelong_atheist_turning_to_hindu_spirituality/
+https://www.reddit.com/r/MachineLearning/comments/16zrllm/d_llms_are_actually_remarkably_good_at_reasoning/
+https://www.reddit.com/r/programming/comments/1g4c8br/why_im_using_postgres_for_everything/
+
+# GitHub
+https://github.com/fastapi/fastapi
+https://github.com/encode/httpx
+https://github.com/psf/requests
+https://github.com/pydantic/pydantic
+https://github.com/tiangolo/typer
+https://github.com/pallets/flask
+
+# Newsletter
+https://www.platformer.news/substack-nazi-push-notification/
+https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv
+https://product.beehiiv.com/p/introducing-email-boosts
+https://stratechery.com/2024/an-interview-with-daniel-ek-about-spotify-and-the-music-industry/
+https://www.lennysnewsletter.com/p/how-to-hire-your-first-product-manager
+https://newsletter.pragmaticengineer.com/p/stages-of-hypergrowth
+
+# HackerNews
+# (auto-discovered in polish phase)
+
+# LinkedIn
+# (auto-discovered in polish phase)
+
+# Arxiv
+# (auto-discovered in polish phase)
+
+# Podcast
+# (auto-discovered in polish phase)
+
+# Web
+# (auto-discovered in polish phase)

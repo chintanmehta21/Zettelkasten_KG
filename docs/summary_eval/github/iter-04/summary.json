@@ -1,0 +1,578 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "summary": {
+      "mini_title": "fastapi/fastapi",
+      "brief_summary": "FastAPI is a composition of Starlette and Pydantic. At a high level, FastAPI is a Python 3 web framework for high-performance APIs, using standard Python type. The main stack includes Python 3, Starlette, Pydantic, ASGI. Documented public surfaces include documented APIs and developer tooling. The documented workflow emphasizes The optional `fastapi[standard]` installation bundles `uvicorn`, `http",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "pydantic",
+        "starlette",
+        "openapi",
+        "cli-tool",
+        "web-framework",
+        "api",
+        "asyncio"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Architecture & Dependencies",
+          "bullets": [
+            "FastAPI is a composition of Starlette and Pydantic.",
+            "Starlette provides core web functionality: ASGI support, routing, WebSockets, CORS, and cookie sessions.",
+            "Pydantic handles data operations: type-hint-based validation, serialization, deserialization, and documentation schema generation.",
+            "The optional `fastapi[standard]` installation bundles `uvicorn`, `httpx` (for the `TestClient`), `jinja2`, `python-multipart`, and `email-validator`."
+          ],
+          "sub_sections": {
+            "Starlette": [
+              "Provides all core web functionality, including ASGI support, routing, WebSockets, CORS, and cookie sessions."
+            ],
+            "Pydantic": [
+              "Handles all data operations, including type-hint-based validation, serialization, deserialization, and documentation schema generation."
+            ],
+            "Optional Dependencies": [
+              "`fastapi[standard]` bundles `uvicorn`, `httpx` (for the `TestClient`), `jinja2`, `python-multipart`, and `email-validator`."
+            ]
+          }
+        },
+        {
+          "heading": "API & Features",
+          "bullets": [
+            "API endpoints are defined as synchronous or `async def` functions.",
+            "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies.",
+            "Incoming data is automatically validated against Pydantic models and Python types.",
+            "Python objects like `datetime` and `UUID` are automatically serialized to JSON.",
+            "Invalid data returns a clear error response.",
+            "The framework generates an OpenAPI 3 schema from the code, which powers two built-in interactive documentation UIs: Swagger UI (`/docs`) and ReDoc (`/redoc`).",
+            "A built-in dependency injection system manages dependencies such as database connections, authentication logic, and complex parameter validation.",
+            "Includes helpers for implementing security schemes, notably OAuth2 with JWT tokens and HTTP Basic authentication.",
+            "Provides direct support for WebSocket communication, inherited from Starlette.",
+            "The project claims its design increases development speed by 200-300% and reduces human-induced errors by 40%, primarily through type hints and editor support."
+          ],
+          "sub_sections": {
+            "Type-Driven Endpoints": [
+              "API endpoints are defined as synchronous or `async def` functions.",
+              "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies."
+            ],
+            "Automatic Validation & Serialization": [
+              "Incoming data is automatically validated against Pydantic models and Python types.",
+              "Python objects like `datetime` and `UUID` are automatically serialized to JSON.",
+              "Invalid data returns a clear error response."
+            ],
+            "Automatic Documentation": [
+              "The framework generates an OpenAPI 3 schema from the code, which powers two built-in interactive documentation UIs: Swagger UI (`/docs`) and ReDoc (`/redoc`)."
+            ],
+            "Dependency Injection": [
+              "A built-in system manages dependencies such as database connections, authentication logic, and complex parameter validation."
+            ],
+            "Security": [
+              "Includes helpers for implementing security schemes, notably OAuth2 with JWT tokens and HTTP Basic authentication."
+            ],
+            "WebSockets": [
+              "Provides direct support for WebSocket communication, inherited from Starlette."
+            ],
+            "Developer Experience": [
+              "The project claims its design increases development speed by 200-300% and reduces human-induced errors by 40%, primarily through type hints and editor support."
+            ]
+          }
+        },
+        {
+          "heading": "Ecosystem",
+          "bullets": [
+            "Supports GraphQL integration via libraries like Strawberry.",
+            "Typer is an official sibling project for building command-line interfaces, sharing similar design principles and described as 'the FastAPI of CLIs'.",
+            "FastAPI Cloud is a first-party deployment platform under development by the project's creator."
+          ],
+          "sub_sections": {
+            "GraphQL": [
+              "Supports GraphQL integration via libraries like Strawberry."
+            ],
+            "Typer": [
+              "An official sibling project for building command-line interfaces, sharing similar design principles and described as 'the FastAPI of CLIs'."
+            ],
+            "FastAPI Cloud": [
+              "A first-party deployment platform under development by the project's creator."
+            ]
+          }
+        },
+        {
+          "heading": "Maturity & Project Health",
+          "bullets": [
+            "Described as 'production-ready' and is in use at companies like Microsoft, Uber, and Netflix.",
+            "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+            "Dependencies are kept current, with a recent update to Starlette 1.0.0.",
+            "Security coverage is limited to the latest version only.",
+            "Vulnerabilities are handled privately via `security@tiangolo.com`."
+          ],
+          "sub_sections": {
+            "Status": [
+              "Described as 'production-ready' and is in use at companies like Microsoft, Uber, and Netflix."
+            ],
+            "Maintenance": [
+              "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+              "Dependencies are kept current, with a recent update to Starlette 1.0.0."
+            ],
+            "Security Policy": [
+              "Security coverage is limited to the latest version only.",
+              "Vulnerabilities are handled privately via `security@tiangolo.com`."
+            ]
+          }
+        },
+        {
+          "heading": "Notable Issues & Development Focus",
+          "bullets": [
+            "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234).",
+            "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392).",
+            "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388).",
+            "Ongoing work improves correctness, such as automatically supporting `HEAD` requests for `GET` routes per RFC 7231 (#15356) and fixing duplicate `operationId` generation in OpenAPI schemas (#15398)."
+          ],
+          "sub_sections": {
+            "Advanced Type Hinting": [
+              "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234)."
+            ],
+            "Feature Implementation": [
+              "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392)."
+            ],
+            "Resource Management & Stability": [
+              "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388)."
+            ],
+            "Standards Compliance": [
+              "Ongoing work improves correctness, such as automatically supporting `HEAD` requests for `GET` routes per RFC 7231 (#15356) and fixing duplicate `operationId` generation in OpenAPI schemas (#15398)."
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "source_type": "github",
+        "url": "https://github.com/fastapi/fastapi",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+        "total_tokens_used": 33820,
+        "gemini_pro_tokens": 25395,
+        "gemini_flash_tokens": 8425,
+        "total_latency_ms": 89007,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "fastapi/fastapi",
+          "architecture_overview": "FastAPI is a Python 3 web framework for high-performance APIs, using standard Python type hints for API contracts. It requires an ASGI server (e.g., Uvicorn). Its architecture is a composition of Starlette, providing core web functionality (ASGI, routing, WebSockets, CORS, sessions), and Pydantic, handling data operations (type-hint-based validation, serialization, deserialization, and documentation schema generation).",
+          "brief_summary": "FastAPI is a composition of Starlette and Pydantic. At a high level, FastAPI is a Python 3 web framework for high-performance APIs, using standard Python type. The main stack includes Python 3, Starlette, Pydantic, ASGI. Documented public surfaces include documented APIs and developer tooling. The documented workflow emphasizes The optional `fastapi[standard]` installation bundles `uvicorn`, `httpx` (for the `TestClient`), `jinja2`, `python-multipart`.",
+          "tags": [
+            "python",
+            "api-framework",
+            "async",
+            "pydantic",
+            "starlette",
+            "openapi",
+            "cli-tool",
+            "web-framework",
+            "api",
+            "asyncio"
+          ],
+          "benchmarks_tests_examples": null,
+          "detailed_summary": [
+            {
+              "heading": "Architecture & Dependencies",
+              "bullets": [
+                "FastAPI is a composition of Starlette and Pydantic.",
+                "Starlette provides core web functionality: ASGI support, routing, WebSockets, CORS, and cookie sessions.",
+                "Pydantic handles data operations: type-hint-based validation, serialization, deserialization, and documentation schema generation.",
+                "The optional `fastapi[standard]` installation bundles `uvicorn`, `httpx` (for the `TestClient`), `jinja2`, `python-multipart`, and `email-validator`."
+              ],
+              "sub_sections": {
+                "Starlette": [
+                  "Provides all core web functionality, including ASGI support, routing, WebSockets, CORS, and cookie sessions."
+                ],
+                "Pydantic": [
+                  "Handles all data operations, including type-hint-based validation, serialization, deserialization, and documentation schema generation."
+                ],
+                "Optional Dependencies": [
+                  "`fastapi[standard]` bundles `uvicorn`, `httpx` (for the `TestClient`), `jinja2`, `python-multipart`, and `email-validator`."
+                ]
+              },
+              "module_or_feature": "Core Architecture",
+              "main_stack": [
+                "Python 3",
+                "Starlette",
+                "Pydantic",
+                "ASGI"
+              ],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "API & Features",
+              "bullets": [
+                "API endpoints are defined as synchronous or `async def` functions.",
+                "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies.",
+                "Incoming data is automatically validated against Pydantic models and Python types.",
+                "Python objects like `datetime` and `UUID` are automatically serialized to JSON.",
+                "Invalid data returns a clear error response.",
+                "The framework generates an OpenAPI 3 schema from the code, which powers two built-in interactive documentation UIs: Swagger UI (`/docs`) and ReDoc (`/redoc`).",
+                "A built-in dependency injection system manages dependencies such as database connections, authentication logic, and complex parameter validation.",
+                "Includes helpers for implementing security schemes, notably OAuth2 with JWT tokens and HTTP Basic authentication.",
+                "Provides direct support for WebSocket communication, inherited from Starlette.",
+                "The project claims its design increases development speed by 200-300% and reduces human-induced errors by 40%, primarily through type hints and editor support."
+              ],
+              "sub_sections": {
+                "Type-Driven Endpoints": [
+                  "API endpoints are defined as synchronous or `async def` functions.",
+                  "Function parameters with type hints declare path/query parameters, headers, cookies, and request bodies."
+                ],
+                "Automatic Validation & Serialization": [
+                  "Incoming data is automatically validated against Pydantic models and Python types.",
+                  "Python objects like `datetime` and `UUID` are automatically serialized to JSON.",
+                  "Invalid data returns a clear error response."
+                ],
+                "Automatic Documentation": [
+                  "The framework generates an OpenAPI 3 schema from the code, which powers two built-in interactive documentation UIs: Swagger UI (`/docs`) and ReDoc (`/redoc`)."
+                ],
+                "Dependency Injection": [
+                  "A built-in system manages dependencies such as database connections, authentication logic, and complex parameter validation."
+                ],
+                "Security": [
+                  "Includes helpers for implementing security schemes, notably OAuth2 with JWT tokens and HTTP Basic authentication."
+                ],
+                "WebSockets": [
+                  "Provides direct support for WebSocket communication, inherited from Starlette."
+                ],
+                "Developer Experience": [
+                  "The project claims its design increases development speed by 200-300% and reduces human-induced errors by 40%, primarily through type hints and editor support."
+                ]
+              },
+              "module_or_feature": "API Functionality",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "Ecosystem",
+              "bullets": [
+                "Supports GraphQL integration via libraries like Strawberry.",
+                "Typer is an official sibling project for building command-line interfaces, sharing similar design principles and described as 'the FastAPI of CLIs'.",
+                "FastAPI Cloud is a first-party deployment platform under development by the project's creator."
+              ],
+              "sub_sections": {
+                "GraphQL": [
+                  "Supports GraphQL integration via libraries like Strawberry."
+                ],
+                "Typer": [
+                  "An official sibling project for building command-line interfaces, sharing similar design principles and described as 'the FastAPI of CLIs'."
+                ],
+                "FastAPI Cloud": [
+                  "A first-party deployment platform under development by the project's creator."
+                ]
+              },
+              "module_or_feature": "Ecosystem Integration",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "heading": "Maturity & Project Health",
+              "bullets": [
+                "Described as 'production-ready' and is in use at companies like Microsoft, Uber, and Netflix.",
+                "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+                "Dependencies are kept current, with a recent update to Starlette 1.0.0.",
+                "Security coverage is limited to the latest version only.",
+                "Vulnerabilities are handled privately via `security@tiangolo.com`."
+              ],
+              "sub_sections": {
+                "Status": [
+                  "Described as 'production-ready' and is in use at companies like Microsoft, Uber, and Netflix."
+                ],
+                "Maintenance": [
+                  "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+                  "Dependencies are kept current, with a recent update to Starlette 1.0.0."
+                ],
+                "Security Policy": [
+                  "Security coverage is limited to the latest version only.",
+                  "Vulnerabilities are handled privately via `security@tiangolo.com`."
+                ]
+              },
+              "module_or_feature": "Project Status",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": [
+                "production-ready",
+                "active maintenance",
+                "security policy"
+              ]
+            },
+            {
+              "heading": "Notable Issues & Development Focus",
+              "bullets": [
+                "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234).",
+                "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392).",
+                "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388).",
+                "Ongoing work improves correctness, such as automatically supporting `HEAD` requests for `GET` routes per RFC 7231 (#15356) and fixing duplicate `operationId` generation in OpenAPI schemas (#15398)."
+              ],
+              "sub_sections": {
+                "Advanced Type Hinting": [
+                  "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234)."
+                ],
+                "Feature Implementation": [
+                  "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392)."
+                ],
+                "Resource Management & Stability": [
+                  "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388)."
+                ],
+                "Standards Compliance": [
+                  "Ongoing work improves correctness, such as automatically supporting `HEAD` requests for `GET` routes per RFC 7231 (#15356) and fixing duplicate `operationId` generation in OpenAPI schemas (#15398)."
+                ]
+              },
+              "module_or_feature": "Development Roadmap",
+              "main_stack": [],
+              "public_interfaces": [],
+              "usability_signals": []
+            }
+          ]
+        },
+        "is_schema_fallback": false
+      }
+    }
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "summary": {
+      "mini_title": "encode/httpx",
+      "brief_summary": "Built on `httpcore` for core transport. At a high level, The core transport is built on `httpcore`. It supports HTTP/1.1 via `h11` and optional. The main stack includes Python, httpcore, h11, h2. Documented public surfaces include WSGITransport, ASGITransport, synchronous client API, asynchronous client API. The documented workflow emphasizes actively maintained.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "cli-tool",
+        "http-client",
+        "asyncio",
+        "trio",
+        "http-2",
+        "networking",
+        "api-client"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Architecture & Dependencies",
+          "bullets": [
+            "Built on `httpcore` for core transport.",
+            "`h11` for HTTP/1.1 protocol support.",
+            "`h2` for optional HTTP/2 support (`httpx[http2]`).",
+            "Core dependencies include `certifi` (SSL), `idna` (domain names), `sniffio` (async detection).",
+            "Includes `WSGITransport` and `ASGITransport` for direct requests to WSGI/ASGI applications."
+          ],
+          "sub_sections": {
+            "Optional Features": [
+              "`rich`, `click` for CLI (`httpx[cli]`).",
+              "`socksio` for SOCKS proxies (`httpx[socks]`).",
+              "`brotli`/`brotlicffi` for Brotli decompression (`httpx[brotli]`).",
+              "`zstandard` for Zstandard decompression (`httpx[zstd]`)."
+            ]
+          }
+        },
+        {
+          "heading": "APIs & Features",
+          "bullets": [
+            "Provides both synchronous and asynchronous client interfaces.",
+            "Supports strict timeouts.",
+            "Offers full type annotations.",
+            "Includes connection pooling.",
+            "Manages sessions with cookie persistence.",
+            "Supports browser-style SSL verification.",
+            "Provides Basic/Digest authentication.",
+            "Handles multipart file uploads.",
+            "Enables streaming downloads.",
+            "An optional command-line client is available."
+          ],
+          "sub_sections": {}
+        },
+        {
+          "heading": "Maturity & Project State",
+          "bullets": [
+            "Claims 100% test coverage.",
+            "Requires Python 3.9+.",
+            "Support for Python 3.7 was dropped in v0.25.0.",
+            "Support for Python 3.8 was dropped in a subsequent unreleased version.",
+            "The project is actively maintained.",
+            "Recent versions simplify configuration.",
+            "v0.28.0 altered default JSON serialization to a more compact format."
+          ],
+          "sub_sections": {
+            "API Refinement": [
+              "The `app` argument for WSGI/ASGI transports was deprecated in v0.27.0 and removed in v0.28.0.",
+              "v0.28.0 deprecated `proxies` (in favor of `proxy` or `mounts`).",
+              "v0.28.0 deprecated the `cert` argument.",
+              "v0.28.0 deprecated string values for `verify`."
+            ]
+          }
+        },
+        {
+          "heading": "Notable Issues & Behavior",
+          "bullets": [
+            "A feature request (#3783) exists to preserve the original HTTP method on 301/302 redirects, as the default behavior is to switch to `GET`.",
+            "Fixes ensure `params` merge with, rather than replace, existing query parameters in a URL (#3761).",
+            "Fixes prevent corruption of `base_url` query parameters (#3760, #3766).",
+            "A bug was fixed to ensure mounted transports are closed even if the main transport raises an exception during shutdown (#3769).",
+            "Ongoing performance improvements include refactoring hot paths away from `contextlib.contextmanager` (#3778).",
+            "Ongoing performance improvements include chunking large request body iterators into 64KB pieces to reduce memory usage (#3752)."
+          ],
+          "sub_sections": {}
+        }
+      ],
+      "metadata": {
+        "source_type": "github",
+        "url": "https://github.com/encode/httpx",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+        "total_tokens_used": 21619,
+        "gemini_pro_tokens": 18924,
+        "gemini_flash_tokens": 2695,
+        "total_latency_ms": 84118,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 3,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "encode/httpx",
+          "architecture_overview": "The core transport is built on `httpcore`. It supports HTTP/1.1 via `h11` and optional HTTP/2 via `h2`. Key dependencies include `certifi` for SSL, `idna` for domain names, and `sniffio` for async detection. It also provides `WSGITransport` and `ASGITransport` for direct interaction with WSGI/ASGI applications. Optional features like CLI, SOCKS proxies, and decompression are available via extra dependencies.",
+          "brief_summary": "Built on `httpcore` for core transport. At a high level, The core transport is built on `httpcore`. It supports HTTP/1.1 via `h11` and optional. The main stack includes Python, httpcore, h11, h2. Documented public surfaces include WSGITransport, ASGITransport, synchronous client API, asynchronous client API. The documented workflow emphasizes actively maintained.",
+          "tags": [
+            "python",
+            "api-framework",
+            "async",
+            "cli-tool",
+            "http-client",
+            "asyncio",
+            "trio",
+            "http-2",
+            "networking",
+            "api-client"
+          ],
+          "benchmarks_tests_examples": null,
+          "detailed_summary": [
+            {
+              "heading": "Architecture & Dependencies",
+              "bullets": [
+                "Built on `httpcore` for core transport.",
+                "`h11` for HTTP/1.1 protocol support.",
+                "`h2` for optional HTTP/2 support (`httpx[http2]`).",
+                "Core dependencies include `certifi` (SSL), `idna` (domain names), `sniffio` (async detection).",
+                "Includes `WSGITransport` and `ASGITransport` for direct requests to WSGI/ASGI applications."
+              ],
+              "sub_sections": {
+                "Optional Features": [
+                  "`rich`, `click` for CLI (`httpx[cli]`).",
+                  "`socksio` for SOCKS proxies (`httpx[socks]`).",
+                  "`brotli`/`brotlicffi` for Brotli decompression (`httpx[brotli]`).",
+                  "`zstandard` for Zstandard decompression (`httpx[zstd]`)."
+                ]
+              },
+              "module_or_feature": "Architecture",
+              "main_stack": [
+                "Python",
+                "httpcore",
+                "h11",
+                "h2",
+                "certifi",
+                "idna",
+                "sniffio"
+              ],
+              "public_interfaces": [
+                "WSGITransport",
+                "ASGITransport"
+              ],
+              "usability_signals": []
+            },
+            {
+              "heading": "APIs & Features",
+              "bullets": [
+                "Provides both synchronous and asynchronous client interfaces.",
+                "Supports strict timeouts.",
+                "Offers full type annotations.",
+                "Includes connection pooling.",
+                "Manages sessions with cookie persistence.",
+                "Supports browser-style SSL verification.",
+                "Provides Basic/Digest authentication.",
+                "Handles multipart file uploads.",
+                "Enables streaming downloads.",
+                "An optional command-line client is available."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "API",
+              "main_stack": [
+                "Python"
+              ],
+              "public_interfaces": [
+                "synchronous client API",
+                "asynchronous client API",
+                "CLI"
+              ],
+              "usability_signals": []
+            },
+            {
+              "heading": "Maturity & Project State",
+              "bullets": [
+                "Claims 100% test coverage.",
+                "Requires Python 3.9+.",
+                "Support for Python 3.7 was dropped in v0.25.0.",
+                "Support for Python 3.8 was dropped in a subsequent unreleased version.",
+                "The project is actively maintained.",
+                "Recent versions simplify configuration.",
+                "v0.28.0 altered default JSON serialization to a more compact format."
+              ],
+              "sub_sections": {
+                "API Refinement": [
+                  "The `app` argument for WSGI/ASGI transports was deprecated in v0.27.0 and removed in v0.28.0.",
+                  "v0.28.0 deprecated `proxies` (in favor of `proxy` or `mounts`).",
+                  "v0.28.0 deprecated the `cert` argument.",
+                  "v0.28.0 deprecated string values for `verify`."
+                ]
+              },
+              "module_or_feature": "Maturity",
+              "main_stack": [
+                "Python"
+              ],
+              "public_interfaces": [],
+              "usability_signals": [
+                "actively maintained",
+                "100% test coverage",
+                "API configuration simplification",
+                "breaking changes in API arguments and JSON serialization"
+              ]
+            },
+            {
+              "heading": "Notable Issues & Behavior",
+              "bullets": [
+                "A feature request (#3783) exists to preserve the original HTTP method on 301/302 redirects, as the default behavior is to switch to `GET`.",
+                "Fixes ensure `params` merge with, rather than replace, existing query parameters in a URL (#3761).",
+                "Fixes prevent corruption of `base_url` query parameters (#3760, #3766).",
+                "A bug was fixed to ensure mounted transports are closed even if the main transport raises an exception during shutdown (#3769).",
+                "Ongoing performance improvements include refactoring hot paths away from `contextlib.contextmanager` (#3778).",
+                "Ongoing performance improvements include chunking large request body iterators into 64KB pieces to reduce memory usage (#3752)."
+              ],
+              "sub_sections": {},
+              "module_or_feature": "Behavior",
+              "main_stack": [
+                "Python"
+              ],
+              "public_interfaces": [],
+              "usability_signals": [
+                "redirect behavior inconsistency (feature request)",
+                "URL parameter handling fixed",
+                "resource management bug fixed",
+                "ongoing performance improvements"
+              ]
+            }
+          ]
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]

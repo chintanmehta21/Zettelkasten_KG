@@ -1,0 +1,135 @@
+{
+  "mini_title": "r/IndianStockMarket post intended to highlight disproportion",
+  "brief_summary": "OP argued The original post intended to highlight the disproportionate influence of Rajkot. Many replies said Commenters widely acknowledged Rajkot as a major hub for stock and. Pushback included The IPO did not 'collapse' but rather had a 'lukewarm. Context: The Reddit post was an uncredited copy of an article.",
+  "tags": [
+    "r-indianstockmarket",
+    "hyundai-ipo",
+    "rajkot-investors",
+    "grey-market-premium",
+    "ipo-valuation",
+    "offer-for-sale",
+    "indian-financial-markets",
+    "market-sentiment",
+    "due-diligence",
+    "financial-journalism"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "op_intent",
+      "bullets": [
+        "The original post intended to highlight the disproportionate influence of Rajkot investors on the Hyundai India IPO, alleging their disinterest led to its 'collapse' by dictating the Grey Market Premium (GMP). It also speculated that large players might have deliberately suppressed GMP to acquire shares at a lower valuation."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "reply_clusters",
+      "bullets": [
+        "{\"theme\": \"Rajkot's Significant Role in Indian Financial Markets\", \"reasoning\": \"Commenters widely acknowledged Rajkot as a major hub for stock and commodity trading with a deep-rooted market culture dating back to the 1990s. Its investor community is considered to have a notable presence, with involvement comparable to Mumbai despite a smaller population.\", \"examples\": [\"Rajkot is India's third-largest source of IPO applications.\", \"Major IPO roadshows specifically target Mumbai, Ahmedabad, and Rajkot.\", \"A Rajkot resident confirmed the general claims about the city's influence.\"]}",
+        "{\"theme\": \"Rajkot's Grey Market and Regulatory Scrutiny\", \"reasoning\": \"The city has a high concentration of local brokers active in the grey market and unofficial 'dabba trading.' This activity reportedly attracts significant regulatory scrutiny.\", \"examples\": [\"SEBI officials are often alleged to operate in plain clothes in the city due to this activity.\"]}"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "counterarguments",
+      "bullets": [
+        "The IPO did not 'collapse' but rather had a 'lukewarm reception.'",
+        "It is illogical that the third-largest city of applicants could have more impact than the top two cities.",
+        "The comparison to Waaree Energies IPO was flawed, as Waaree's GMP also fell from initial levels.",
+        "No official source was provided to substantiate the claim about city-wise IPO application rankings.",
+        "The Price-to-Earnings (P/E) ratio of 26x was considered expensive or 'generous' for an automobile company.",
+        "The IPO was a 100% Offer for Sale (OFS), meaning all proceeds went to the South Korean parent company, not for funding Hyundai India's growth.",
+        "Just before the IPO, Hyundai India paid large dividends to its parent, draining cash reserves.",
+        "Hyundai India increased the royalty percentage paid to its parent on revenue, negatively impacting future margins, leading to an effective P/E ratio of 27.5, unfavorable compared to Maruti.",
+        "Broader market sentiment was not favorable at the time.",
+        "Hyundai management became 'greedy,' increasing the final price and dampening initial enthusiasm."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "unresolved_questions",
+      "bullets": [
+        "Is there official data to substantiate city-wise IPO application rankings, particularly Rajkot's alleged position as the third-largest source?",
+        "What is the true extent of Rajkot investors' direct power to influence or 'collapse' major IPOs versus merely reflecting sentiment?"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "moderation_context",
+      "bullets": [
+        "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "reddit",
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo",
+    "author": "Lazy-Transition8236",
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "json endpoint ok; rendered=56/114 divergence=50.88%",
+    "total_tokens_used": 15042,
+    "gemini_pro_tokens": 12782,
+    "gemini_flash_tokens": 2260,
+    "total_latency_ms": 87545,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 4,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "r/IndianStockMarket post intended to highlight disproportion",
+      "brief_summary": "OP argued The original post intended to highlight the disproportionate influence of Rajkot. Many replies said Commenters widely acknowledged Rajkot as a major hub for stock and. Pushback included The IPO did not 'collapse' but rather had a 'lukewarm. Context: The Reddit post was an uncredited copy of an article.",
+      "tags": [
+        "r-indianstockmarket",
+        "hyundai-ipo",
+        "rajkot-investors",
+        "grey-market-premium",
+        "ipo-valuation",
+        "offer-for-sale",
+        "indian-financial-markets",
+        "market-sentiment",
+        "due-diligence",
+        "financial-journalism"
+      ],
+      "detailed_summary": {
+        "op_intent": "The original post intended to highlight the disproportionate influence of Rajkot investors on the Hyundai India IPO, alleging their disinterest led to its 'collapse' by dictating the Grey Market Premium (GMP). It also speculated that large players might have deliberately suppressed GMP to acquire shares at a lower valuation.",
+        "reply_clusters": [
+          {
+            "theme": "Rajkot's Significant Role in Indian Financial Markets",
+            "reasoning": "Commenters widely acknowledged Rajkot as a major hub for stock and commodity trading with a deep-rooted market culture dating back to the 1990s. Its investor community is considered to have a notable presence, with involvement comparable to Mumbai despite a smaller population.",
+            "examples": [
+              "Rajkot is India's third-largest source of IPO applications.",
+              "Major IPO roadshows specifically target Mumbai, Ahmedabad, and Rajkot.",
+              "A Rajkot resident confirmed the general claims about the city's influence."
+            ]
+          },
+          {
+            "theme": "Rajkot's Grey Market and Regulatory Scrutiny",
+            "reasoning": "The city has a high concentration of local brokers active in the grey market and unofficial 'dabba trading.' This activity reportedly attracts significant regulatory scrutiny.",
+            "examples": [
+              "SEBI officials are often alleged to operate in plain clothes in the city due to this activity."
+            ]
+          }
+        ],
+        "counterarguments": [
+          "The IPO did not 'collapse' but rather had a 'lukewarm reception.'",
+          "It is illogical that the third-largest city of applicants could have more impact than the top two cities.",
+          "The comparison to Waaree Energies IPO was flawed, as Waaree's GMP also fell from initial levels.",
+          "No official source was provided to substantiate the claim about city-wise IPO application rankings.",
+          "The Price-to-Earnings (P/E) ratio of 26x was considered expensive or 'generous' for an automobile company.",
+          "The IPO was a 100% Offer for Sale (OFS), meaning all proceeds went to the South Korean parent company, not for funding Hyundai India's growth.",
+          "Just before the IPO, Hyundai India paid large dividends to its parent, draining cash reserves.",
+          "Hyundai India increased the royalty percentage paid to its parent on revenue, negatively impacting future margins, leading to an effective P/E ratio of 27.5, unfavorable compared to Maruti.",
+          "Broader market sentiment was not favorable at the time.",
+          "Hyundai management became 'greedy,' increasing the final price and dampening initial enthusiasm."
+        ],
+        "unresolved_questions": [
+          "Is there official data to substantiate city-wise IPO application rankings, particularly Rajkot's alleged position as the third-largest source?",
+          "What is the true extent of Rajkot investors' direct power to influence or 'collapse' major IPOs versus merely reflecting sentiment?"
+        ],
+        "moderation_context": "Rendered comments covered only part of the thread (56/114 visible; divergence 50.88%). 24 removed comments were recovered from pullpush.io."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

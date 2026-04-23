@@ -1,0 +1,194 @@
+{
+  "g_eval": {
+    "coherence": 0.0,
+    "consistency": 0.0,
+    "fluency": 0.0,
+    "relevance": 0.0,
+    "reasoning": "The summary is severely malformed due to a schema fallback, resulting in incomplete, redundant, and irrelevant content. The tags are generic, and the detailed summary is entirely replaced by a fallback message. The brief summary is also a fragment of fallback content."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.27,
+      "items": [
+        {
+          "claim": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click",
+          "fact": null,
+          "sentence": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+          "span": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click",
+          "importance": null
+        },
+        {
+          "claim": "CLI arguments and",
+          "fact": null,
+          "sentence": "It functions as a layer on top of Click, using standard Python type hints to define CLI arguments and",
+          "span": "and",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": "brief summary content (user-facing purpose, architecture, languages, usage, public surface)",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "detailed summary content (features, architecture, interfaces, operational details, limitations, benchmarks/tests/examples)",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "relevant tags (domain, languages, technical concepts)",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.5,
+      "items": [
+        {
+          "claim": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+          "fact": null,
+          "sentence": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+          "span": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+          "importance": null
+        },
+        {
+          "claim": "It functions as a layer on top of Click, using standard Python type hints to define CLI arguments and",
+          "fact": null,
+          "sentence": "It functions as a layer on top of Click, using standard Python type hints to define CLI arguments and",
+          "span": "It functions as a layer on top of Click, using standard Python type hints to define CLI arguments and",
+          "importance": null
+        },
+        {
+          "claim": "structured extractor fell back; see metadata.is_schema_fallback",
+          "fact": null,
+          "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+          "span": "structured extractor fell back; see metadata.is_schema_fallback",
+          "importance": null
+        },
+        {
+          "claim": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click",
+          "fact": null,
+          "sentence": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+          "span": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click",
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.4,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+        "reason": "This sentence is meta-commentary about the summary generation process, not a statement about the source content itself."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 0.0,
+        "max_points": 25,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 0.0,
+        "max_points": 45,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 0.0,
+        "max_points": 15,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "schema_failure",
+        "source_region": "structured_payload",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 0.0,
+    "finesure": 16.85,
+    "qafact": 0.0,
+    "summac": 0.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI.",
+      "flag_type": "added_framing",
+      "explanation": "The 'ID' and 'Tags' are internal metadata not present in the source, framing the summary with extraneous system information."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10163,
+    "total_tokens_out": 2281,
+    "latency_ms": 36271,
+    "ragas_faithfulness": -1.0
+  }
+}

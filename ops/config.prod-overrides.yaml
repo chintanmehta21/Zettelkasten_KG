@@ -1,0 +1,3 @@
+# Prod-parity overrides loaded when SUMMARIZE_ENV=prod-parity.
+# Empty by default; Codex fills values during iteration loops as prod diverges from dev.
+# Shape matches website/features/summarization_engine/config.yaml.

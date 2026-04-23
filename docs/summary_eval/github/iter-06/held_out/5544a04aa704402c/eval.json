@@ -1,0 +1,176 @@
+{
+  "g_eval": {
+    "coherence": 3.5,
+    "consistency": 4.5,
+    "fluency": 3.5,
+    "relevance": 4.0,
+    "reasoning": "The brief summary contains incomplete sentences and repetition, impacting coherence and fluency. The 'api-framework' tag is factually incorrect for a CLI library, affecting relevance and consistency."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "The tag 'api-framework'",
+          "fact": null,
+          "sentence": "api-framework",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief summary sentence fragment 'positioned as a.'",
+          "fact": null,
+          "sentence": "At a high level, typer is a Python library for building command-line interface (CLI) applications, positioned as a.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief summary sentence fragment 'The documented workflow emphasizes The `typer-slim` pa'",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes The `typer-slim` pa",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Brief summary's description of usage pattern",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes The `typer-slim` pa",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Detailed summary's architecture modules",
+          "fact": null,
+          "sentence": "The 'Architecture & Dependencies' section describes the software architecture.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Detailed summary's operational instructions",
+          "fact": null,
+          "sentence": "Required dependencies include `Click` (underlying CLI framework), `rich` (formatted error messages/tracebacks), and `shellingham` (detects user's shell for completion).",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Repetitive phrasing in brief summary",
+          "fact": null,
+          "sentence": "A Python library for building command-line interface (CLI) applications. At a high level, typer is a Python library for building command-line interface (CLI) applications, positioned as a.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Redundant tags",
+          "fact": null,
+          "sentence": "cli-tool, cli, command-line-tool",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.94,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "At a high level, typer is a Python library for building command-line interface (CLI) applications, positioned as a.",
+        "reason": "This sentence is incomplete and grammatically broken, making its meaning unclear."
+      },
+      {
+        "sentence": "The documented workflow emphasizes The `typer-slim` pa",
+        "reason": "This sentence is incomplete and grammatically broken, making its meaning unclear."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 17.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 39.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 86.36,
+    "finesure": 81.08,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 12709,
+    "total_tokens_out": 1542,
+    "latency_ms": 50183
+  }
+}

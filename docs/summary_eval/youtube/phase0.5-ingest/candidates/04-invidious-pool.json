@@ -1,0 +1,43 @@
+{
+  "strategy": "invidious_pool",
+  "urls_tested": [
+    "hhjhU5MXZOo",
+    "HBTYVVUBAGs",
+    "Brm71uCWr-I"
+  ],
+  "per_url": [
+    {
+      "video_id": "hhjhU5MXZOo",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 10469,
+      "error": null,
+      "extra": {}
+    },
+    {
+      "video_id": "HBTYVVUBAGs",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 46,
+      "error": null,
+      "extra": {}
+    },
+    {
+      "video_id": "Brm71uCWr-I",
+      "success": false,
+      "confidence": "low",
+      "transcript_chars": 0,
+      "latency_ms": 0,
+      "error": null,
+      "extra": {}
+    }
+  ],
+  "aggregate": {
+    "tier": "invidious_pool",
+    "success_rate": 0.0,
+    "mean_chars": 0.0,
+    "mean_latency_ms": 3505.0
+  }
+}

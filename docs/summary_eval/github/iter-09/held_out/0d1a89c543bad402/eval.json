@@ -1,0 +1,233 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 5.0,
+    "fluency": 4.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is generally coherent and consistent. Fluency is slightly impacted by an incomplete sentence in the brief. Relevance is high, though some architectural details are not directly supported by the provided source text."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.875,
+      "items": [
+        {
+          "claim": "The library is a high-level abstraction over `urllib3`.",
+          "fact": null,
+          "sentence": "The library is a high-level abstraction over `urllib3`.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The main stack includes Python, urllib3, Makefile.",
+          "fact": null,
+          "sentence": "The main stack includes Python, urllib3, Makefile.",
+          "span": "urllib3",
+          "importance": null
+        },
+        {
+          "claim": "Adapters: A mountable transport adapter system for customizing service interactions.",
+          "fact": null,
+          "sentence": "Adapters: A mountable transport adapter system for customizing service interactions.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Hooks: A callback system for various stages of the request lifecycle.",
+          "fact": null,
+          "sentence": "Hooks: A callback system for various stages of the request lifecycle.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.5111,
+      "items": [
+        {
+          "claim": "Brief identifies main components/architecture at a high level.",
+          "fact": null,
+          "sentence": "The library is a high-level abstraction over `urllib3`. At a high level, Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief identifies main components/architecture at a high level.",
+          "fact": null,
+          "sentence": "The main stack includes Python, urllib3, Makefile.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Describes documented usage/installation/workflow.",
+          "fact": null,
+          "sentence": "The documented workflow emphasizes installation, configuration, and developer usage guidance.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Architecture bullets: directories, key classes, interactions.",
+          "fact": null,
+          "sentence": "The library is a high-level abstraction over `urllib3`.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Architecture bullets: directories, key classes, interactions.",
+          "fact": null,
+          "sentence": "Adapters: A mountable transport adapter system for customizing service interactions.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Architecture bullets: directories, key classes, interactions.",
+          "fact": null,
+          "sentence": "Hooks: A callback system for various stages of the request lifecycle.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Install steps, deps, env vars, build, deploy instructions captured.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "If benchmarks/tests/examples exist, what they demonstrate is summarized.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.975,
+      "items": [
+        {
+          "claim": "Redundant phrasing in brief summary.",
+          "fact": null,
+          "sentence": "The library is a high-level abstraction over `urllib3`. At a high level, Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.825,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The library is a high-level abstraction over `urllib3`.",
+        "reason": "`urllib3` is not mentioned in the source README as an underlying abstraction."
+      },
+      {
+        "sentence": "At a high level, Requests is a high-level HTTP/1.1 client library for Python, built as an abstraction over.",
+        "reason": "This sentence is incomplete and vague, making it difficult to verify against the source."
+      },
+      {
+        "sentence": "The main stack includes Python, urllib3, Makefile.",
+        "reason": "`urllib3` is not mentioned in the source README as part of the main stack."
+      },
+      {
+        "sentence": "The documented workflow emphasizes installation, configuration, and developer usage guidance.",
+        "reason": "The terms 'configuration' and 'developer usage guidance' are general and not explicitly detailed as a 'workflow' in the source's brief description."
+      },
+      {
+        "sentence": "The library is a high-level abstraction over `urllib3`.",
+        "reason": "`urllib3` is not mentioned in the source README as an underlying abstraction."
+      },
+      {
+        "sentence": "Adapters: A mountable transport adapter system for customizing service interactions.",
+        "reason": "The source does not describe 'Adapters' as a key architectural component or its function."
+      },
+      {
+        "sentence": "Hooks: A callback system for various stages of the request lifecycle.",
+        "reason": "While 'hooks' are mentioned in an issue, their description as a 'callback system for various stages of the request lifecycle' is not present in the source."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 17.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 31.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.interfaces_exact",
+          "detailed.limitations_docs",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.architecture_modules",
+          "detailed.operational",
+          "detailed.benchmarks_tests_examples"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 94.11,
+    "finesure": 78.7,
+    "qafact": 83.33,
+    "summac": 82.5
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 8959,
+    "total_tokens_out": 2280,
+    "latency_ms": 52558,
+    "ragas_faithfulness": -1.0
+  }
+}

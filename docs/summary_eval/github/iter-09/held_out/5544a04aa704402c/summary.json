@@ -1,0 +1,41 @@
+{
+  "mini_title": "fastapi/typer",
+  "brief_summary": "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI. It functions as a layer on top of `Click`, using standard Python type hints to define CLI arguments and",
+  "tags": [
+    "_schema_fallback_",
+    "github",
+    "source",
+    "notes",
+    "summary",
+    "research",
+    "zettelkasten"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "schema_fallback",
+      "bullets": [
+        "structured extractor fell back; see metadata.is_schema_fallback",
+        "* **ID:** 20240718110531 * **Tags:** #python, #cli, #type-hints, #click **Purpose & Architecture** Typer is a Python library for building Command Line Interface (CLI) applications, positioned as a sibling project to FastAPI. It functions as a layer on top of `Click`, using standard Python type hints to define CLI arguments and"
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/tiangolo/typer",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 3 extra doc(s) fetched",
+    "total_tokens_used": 24693,
+    "gemini_pro_tokens": 18707,
+    "gemini_flash_tokens": 5986,
+    "total_latency_ms": 68620,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 3,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": null,
+    "is_schema_fallback": true
+  }
+}

@@ -1,0 +1,470 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 5.0,
+        "fluency": 5.0,
+        "relevance": 3.5,
+        "reasoning": "The summary is generally coherent, consistent, and fluent. However, the brief summary's relevance is impacted by an incomplete thesis and vague takeaways, and its coherence is affected by a sparse outline of major segments. The detailed summary, tags, and label are highly relevant and well-structured."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": "Key voices and figures include Andrew Gallimore and Simon Ruffell.",
+              "fact": null,
+              "sentence": "Key voices and figures include Andrew Gallimore and Simon Ruffell.",
+              "span": "Key voices and figures include Andrew Gallimore and Simon Ruffell.",
+              "importance": null
+            },
+            {
+              "claim": "It moves through sections on Substance & Mechanism and Historical Timeline. It also covers N,N-dimethyltryptamine (DMT) and Serotonin.",
+              "fact": null,
+              "sentence": "It moves through sections on Substance & Mechanism and Historical Timeline. It also covers N,N-dimethyltryptamine (DMT) and Serotonin.",
+              "span": "It moves through sections on Substance & Mechanism and Historical Timeline. It also covers N,N-dimethyltryptamine (DMT) and Serotonin.",
+              "importance": null
+            },
+            {
+              "claim": "This lecture video explains N,N-dimethyltryptamine (DMT) is a potent psychedelic compound with a complex history, diverse subjective effects.",
+              "fact": null,
+              "sentence": "This lecture video explains N,N-dimethyltryptamine (DMT) is a potent psychedelic compound with a complex history, diverse subjective effects.",
+              "span": "This lecture video explains N,N-dimethyltryptamine (DMT) is a potent psychedelic compound with a complex history, diverse subjective effects.",
+              "importance": null
+            },
+            {
+              "claim": "The main takeaway is DMT is a powerful.",
+              "fact": null,
+              "sentence": "The main takeaway is DMT is a powerful.",
+              "span": "The main takeaway is DMT is a powerful.",
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "Key voices and figures include Andrew Gallimore and Simon Ruffell.",
+            "reason": "While Andrew Gallimore and Simon Ruffell are indeed key voices, the sentence is incomplete in the context of capturing *all* key speakers/figures from the video, as it omits several others (e.g., Richard Spruce, Richard Manske, Albert Hofmann, Julius Axelrod, Terence McKenna, Rick Strassman, Chris Timberman, and the channel host Fern)."
+          },
+          {
+            "sentence": "The main takeaway is DMT is a powerful.",
+            "reason": "This sentence is grammatically incomplete and vague, failing to convey a clear and substantive takeaway from the video."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 11.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.format_identified",
+              "brief.length_5_to_7_sentences",
+              "brief.no_clickbait"
+            ],
+            "criteria_missed": [
+              "brief.thesis_capture",
+              "brief.speakers_captured",
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.caveats_preserved",
+              "detailed.examples_purpose_not_verbatim",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.technologies_named",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 80.77,
+        "finesure": 79.1,
+        "qafact": 78.95,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 14163,
+        "total_tokens_out": 1607,
+        "latency_ms": 52108
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.5,
+        "fluency": 4.0,
+        "relevance": 4.0,
+        "reasoning": "The detailed summary, tags, and label are of high quality, demonstrating strong coherence, consistency, fluency, and relevance. However, the brief summary is poorly constructed with incomplete sentences, vague phrasing, and missed key information, which significantly detracts from the overall quality and brings down the aggregate scores."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9375,
+          "items": [
+            {
+              "claim": "Key voices and figures include Ross Ulbricht and Silk Road.",
+              "fact": null,
+              "sentence": "Key voices and figures include Ross Ulbricht and Silk Road.",
+              "span": "Silk Road",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.6304347826086957,
+          "items": [
+            {
+              "claim": "Brief summary states the video's central thesis or learning objective in one sentence.",
+              "fact": null,
+              "sentence": "This commentary video explains Ross Ulbricht, driven by libertarian ideals, created and operated Silk Road, a darknet marketplace for illegal goods, leading.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief names the host/channel and any guests or key products/libraries discussed.",
+              "fact": null,
+              "sentence": "Key voices and figures include Ross Ulbricht and Silk Road.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion).",
+              "fact": null,
+              "sentence": "It moves through sections on Silk Road's Operational Timeline and Scale and Ross Ulbricht's Background and Ideological. It also covers Silk Road and Ross Ulbricht.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief highlights 2-3 takeaways a viewer would remember after watching.",
+              "fact": null,
+              "sentence": "The main takeaway.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.8888888888888888,
+          "items": [
+            {
+              "claim": "Brief is 5-7 sentences.",
+              "fact": null,
+              "sentence": "It moves through sections on Silk Road's Operational Timeline and Scale and Ross Ulbricht's Background and Ideological. It also covers Silk Road and Ross Ulbricht.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Brief is 5-7 sentences.",
+              "fact": null,
+              "sentence": "The main takeaway.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.8611111111111112,
+        "contradicted_sentences": [
+          {
+            "sentence": "Key voices and figures include Ross Ulbricht and Silk Road.",
+            "reason": "Silk Road is a platform/market, not a 'voice' or 'figure'."
+          }
+        ],
+        "neutral_sentences": [
+          {
+            "sentence": "This commentary video explains Ross Ulbricht, driven by libertarian ideals, created and operated Silk Road, a darknet marketplace for illegal goods, leading.",
+            "reason": "This sentence is incomplete and does not form a coherent claim."
+          },
+          {
+            "sentence": "It moves through sections on Silk Road's Operational Timeline and Scale and Ross Ulbricht's Background and Ideological.",
+            "reason": "This sentence vaguely describes the structure but doesn't convey specific factual content from the video."
+          },
+          {
+            "sentence": "It also covers Silk Road and Ross Ulbricht.",
+            "reason": "This sentence is too vague to be considered entailed or contradicted; it's a generic statement about the video's topic."
+          },
+          {
+            "sentence": "The main takeaway.",
+            "reason": "This sentence is incomplete and does not form a coherent claim."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 8.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.format_identified",
+              "brief.length_5_to_7_sentences",
+              "brief.no_clickbait"
+            ],
+            "criteria_missed": [
+              "brief.thesis_capture",
+              "brief.speakers_captured",
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.caveats_preserved",
+              "detailed.examples_purpose_not_verbatim",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.technologies_named",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": 75
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "speakers_absent",
+            "source_region": "brief_summary",
+            "auto_cap": 75
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 67.5,
+        "finesure": 81.0,
+        "qafact": 78.95,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 15585,
+        "total_tokens_out": 1842,
+        "latency_ms": 47468
+      }
+    }
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=Brm71uCWr-I",
+    "eval": {
+      "g_eval": {
+        "coherence": 0.0,
+        "consistency": 0.0,
+        "fluency": 0.0,
+        "relevance": 0.0,
+        "reasoning": "The brief summary is incomplete and malformed. The detailed summary contains JSON strings within its bullet points, making it unreadable and impossible to evaluate against the source content or rubric criteria."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 0.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 0.0,
+            "max_points": 25,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.thesis_capture",
+              "brief.format_identified",
+              "brief.speakers_captured",
+              "brief.major_segments_outlined",
+              "brief.takeaways_surfaced",
+              "brief.length_5_to_7_sentences",
+              "brief.no_clickbait",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 0.0,
+            "max_points": 45,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "detailed.chronological_order",
+              "detailed.all_chapters_covered",
+              "detailed.demonstrations_preserved",
+              "detailed.caveats_preserved",
+              "detailed.examples_purpose_not_verbatim",
+              "detailed.entities_named",
+              "detailed.closing_takeaway",
+              "detailed.no_sponsor_padding",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.topical_specificity",
+              "tags.format_tag_present",
+              "tags.technologies_named",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.content_first_3_to_5_words",
+              "label.reflects_primary_topic",
+              "label.no_clickbait_retention"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": 60,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "schema_failure",
+            "source_region": "structured_payload",
+            "auto_cap": 60
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 11.9565,
+        "finesure": 33.88,
+        "qafact": 0.0,
+        "summac": 44.44
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_youtube.v1",
+        "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+        "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 10234,
+        "total_tokens_out": 932,
+        "latency_ms": 47278,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]

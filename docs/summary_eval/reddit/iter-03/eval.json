@@ -1,0 +1,133 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is well-structured, coherent, and fluent. It accurately captures the central issues and responses from the source. All information presented is relevant. The only minor issues are the brief summary being slightly too short and the omission of a thread type tag."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.95,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "OP argued The original post intended to highlight the disproportionate influence of Rajkot. Many replies said Commenters widely acknowledged Rajkot as a major hub for stock and. Pushback included The IPO did not 'collapse' but rather had a 'lukewarm. Context: The Reddit post was an uncredited copy of an article.",
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "Context: The Reddit post was an uncredited copy of an article.",
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.95,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "OP argued The original post intended to highlight the disproportionate influence of Rajkot. Many replies said Commenters widely acknowledged Rajkot as a major hub for stock and. Pushback included The IPO did not 'collapse' but rather had a 'lukewarm. Context: The Reddit post was an uncredited copy of an article.",
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 22.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.op_intent_captured",
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.neutral_tone"
+        ],
+        "criteria_missed": [
+          "brief.caveats_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.unresolved_questions",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 12.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.subreddit_present",
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": [
+          "tags.thread_type"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.rsubreddit_prefix",
+          "label.central_issue",
+          "label.neutral"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 82.14,
+    "finesure": 98.65,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_reddit.v1",
+    "implementation_fingerprint": "74adfe32d087b508fb7eb711621645da1a0c9b403d628e5f76c3374bf306be21",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 8319,
+    "total_tokens_out": 1231,
+    "latency_ms": 37883
+  }
+}

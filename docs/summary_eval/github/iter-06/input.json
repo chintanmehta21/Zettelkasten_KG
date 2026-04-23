@@ -1,0 +1,60 @@
+{
+  "source": "github",
+  "iter": 6,
+  "urls": [
+    "https://github.com/fastapi/fastapi",
+    "https://github.com/encode/httpx",
+    "https://github.com/psf/requests",
+    "https://github.com/pydantic/pydantic",
+    "https://github.com/tiangolo/typer"
+  ],
+  "started_at": "2026-04-22T21:35:26.931219+00:00",
+  "ended_at": "2026-04-22T21:49:29.523871+00:00",
+  "env": "dev",
+  "held_out": true,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://github.com/fastapi/fastapi",
+      "composite": 93.91,
+      "extraction_confidence": "high",
+      "latency_ms": 180903,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/encode/httpx",
+      "composite": 83.0,
+      "extraction_confidence": "high",
+      "latency_ms": 168576,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/psf/requests",
+      "composite": 25.0,
+      "extraction_confidence": "high",
+      "latency_ms": 153522,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/pydantic/pydantic",
+      "composite": 85.2,
+      "extraction_confidence": "high",
+      "latency_ms": 149974,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://github.com/tiangolo/typer",
+      "composite": 84.75,
+      "extraction_confidence": "high",
+      "latency_ms": 189547,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

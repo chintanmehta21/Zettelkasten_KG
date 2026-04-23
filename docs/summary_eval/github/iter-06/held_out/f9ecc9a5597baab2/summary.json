@@ -1,0 +1,361 @@
+{
+  "mini_title": "fastapi/fastapi",
+  "brief_summary": "FastAPI is a composite framework orchestrating Starlette and Pydantic. At a high level, FastAPI is a composite framework that orchestrates two primary libraries: Starlette (core web and. The main stack includes Python, Starlette, Pydantic, ASGI. Documented public surfaces include OpenAPI 3, JSON Schema, Swagger UI, ReDoc. The documented workflow emphasizes A `fastapi` CLI uses Uvicorn to run a dev",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "pydantic",
+    "starlette",
+    "openapi",
+    "cli-tool",
+    "api",
+    "framework"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Purpose & Architecture",
+      "bullets": [
+        "FastAPI is a composite framework orchestrating Starlette and Pydantic.",
+        "Starlette provides core web and ASGI functionality, including routing, requests, responses, and WebSockets.",
+        "Pydantic handles all data validation, serialization, and deserialization, driven by Python type hints.",
+        "Design philosophy is to be \"Short\" by minimizing code duplication.",
+        "A single type-hinted parameter declaration is used to derive multiple features: data validation, serialization, and API documentation.",
+        "FastAPI integrates these components, using type hints and Pydantic models to automatically generate API schemas (OpenAPI 3, JSON Schema)."
+      ],
+      "sub_sections": {
+        "Starlette": [
+          "Provides all core web and ASGI (Asynchronous Server Gateway Interface) functionality.",
+          "Includes routing, requests, responses, and WebSockets."
+        ],
+        "Pydantic": [
+          "Handles all data validation, serialization, and deserialization.",
+          "Driven by Python type hints."
+        ],
+        "Design Philosophy": [
+          "Designed to be \"Short\" by minimizing code duplication.",
+          "A single type-hinted parameter declaration is used to derive multiple features: data validation, serialization, and API documentation."
+        ]
+      }
+    },
+    {
+      "heading": "APIs & Features",
+      "bullets": [
+        "API endpoints are standard Python functions (`def` or `async def`).",
+        "Path/query parameters, headers, cookies, and request bodies are declared as type-hinted function arguments.",
+        "The use of standard type hints enables editor autocompletion (\"IntelliSense\") for request bodies and parameters, reducing debugging time.",
+        "Automatically validates incoming data against types and serializes outgoing Python objects (including `datetime`, `UUID`, database models) to JSON.",
+        "Pydantic raises detailed validation errors on failure.",
+        "Automatically generates and serves interactive API documentation: Swagger UI (at `/docs`) and ReDoc (at `/redoc`).",
+        "A Dependency Injection system manages dependencies like database sessions or authentication, handling resolution and resource cleanup (teardown).",
+        "Includes helpers and dependency injection patterns for security schemes like OAuth2 (with JWT) and HTTP Basic auth.",
+        "A `fastapi` CLI uses Uvicorn to run a development server with auto-reloading.",
+        "The `fastapi[standard]` installation includes `starlette`, `pydantic`, `uvicorn`, `httpx` (for `TestClient`), and `python-multipart`.",
+        "Optional high-performance JSON encoders like `orjson` and `ujson` are supported."
+      ],
+      "sub_sections": {
+        "Declaration": [
+          "API endpoints are standard Python functions (`def` or `async def`).",
+          "Path/query parameters, headers, cookies, and request bodies are declared as type-hinted function arguments."
+        ],
+        "Developer Experience": [
+          "The use of standard type hints enables editor autocompletion (\"IntelliSense\") for request bodies and parameters, reducing debugging time."
+        ],
+        "Data Handling": [
+          "Automatically validates incoming data against types and serializes outgoing Python objects (including `datetime`, `UUID`, database models) to JSON.",
+          "Pydantic raises detailed validation errors on failure."
+        ],
+        "Documentation": [
+          "Automatically generates and serves interactive API documentation: Swagger UI (at `/docs`) and ReDoc (at `/redoc`)."
+        ],
+        "Dependency Injection": [
+          "A system for managing dependencies like database sessions or authentication. It handles dependency resolution and resource cleanup (teardown)."
+        ],
+        "Security": [
+          "Includes helpers and dependency injection patterns for security schemes like OAuth2 (with JWT) and HTTP Basic auth."
+        ],
+        "Tooling": [
+          "A `fastapi` CLI uses Uvicorn to run a development server with auto-reloading.",
+          "The `fastapi[standard]` installation includes `starlette`, `pydantic`, `uvicorn`, `httpx` (for `TestClient`), and `python-multipart`.",
+          "Optional high-performance JSON encoders like `orjson` and `ujson` are supported."
+        ]
+      }
+    },
+    {
+      "heading": "Maturity & Ecosystem",
+      "bullets": [
+        "Used in production by companies including Microsoft, Uber, and Netflix, according to project testimonials.",
+        "The project is primarily sponsored by FastAPI Cloud, a commercial deployment platform from the same team.",
+        "The creator also developed Typer, a library for building CLI applications with a similar design philosophy (\"the FastAPI of CLIs\").",
+        "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+        "The security policy covers the latest version and requires private vulnerability disclosure.",
+        "Project's README claims performance is on par with NodeJS and Go, citing TechEmpower benchmarks where FastAPI/Uvicorn ranks among the fastest Python frameworks.",
+        "Claims a 200-300% increase in development speed and a 40% reduction in human-induced errors, based on internal team tests."
+      ],
+      "sub_sections": {
+        "Adoption": [
+          "Used in production by companies including Microsoft, Uber, and Netflix, according to project testimonials."
+        ],
+        "Sponsorship": [
+          "The project is primarily sponsored by FastAPI Cloud, a commercial deployment platform from the same team."
+        ],
+        "Sibling Projects": [
+          "The creator also developed Typer, a library for building CLI applications with a similar design philosophy (\"the FastAPI of CLIs\")."
+        ],
+        "Maintenance": [
+          "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+          "The security policy covers the latest version and requires private vulnerability disclosure."
+        ],
+        "Performance Claims": [
+          "The project's README claims performance is on par with NodeJS and Go, citing TechEmpower benchmarks where FastAPI/Uvicorn ranks among the fastest Python frameworks.",
+          "It also claims a 200-300% increase in development speed and a 40% reduction in human-induced errors, based on internal team tests."
+        ]
+      }
+    },
+    {
+      "heading": "Notable Issues & Development Trends",
+      "bullets": [
+        "A primary development focus is keeping pace with Python's evolving typing system.",
+        "Recent issues and fixes address complexities with `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (e.g., #15364, #15307).",
+        "Ongoing work targets the DI system's performance and stability, with recent issues addressing deadlocks in dependency teardown (#15388) and memory regressions in the `Dependant` object (#15336).",
+        "Bugs are being fixed for OpenAPI schema generation with multi-method routes (#15398) and type propagation for Server-Sent Event (SSE) streams across routers (#15401).",
+        "Long-standing feature requests are being implemented, such as adding authentication to static file serving (#15295, closing #858), with active discussions on features like class-based views (#15392)."
+      ],
+      "sub_sections": {
+        "Advanced Typing": [
+          "A primary development focus is keeping pace with Python's evolving typing system.",
+          "Recent issues and fixes address complexities with `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (e.g., #15364, #15307)."
+        ],
+        "Dependency Injection Robustness": [
+          "Ongoing work targets the DI system's performance and stability, with recent issues addressing deadlocks in dependency teardown (#15388) and memory regressions in the `Dependant` object (#15336)."
+        ],
+        "Schema & Routing Edge Cases": [
+          "Bugs are being fixed for OpenAPI schema generation with multi-method routes (#15398) and type propagation for Server-Sent Event (SSE) streams across routers (#15401)."
+        ],
+        "Feature Development": [
+          "Long-standing feature requests are being implemented, such as adding authentication to static file serving (#15295, closing #858), with active discussions on features like class-based views (#15392)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/fastapi/fastapi",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 34878,
+    "gemini_pro_tokens": 25998,
+    "gemini_flash_tokens": 8880,
+    "total_latency_ms": 80257,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 5,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "fastapi/fastapi",
+      "architecture_overview": "FastAPI is a composite framework that orchestrates two primary libraries: Starlette (core web and ASGI functionality) and Pydantic (data validation, serialization). Its design philosophy minimizes code duplication by using a single type-hinted parameter declaration for multiple features. FastAPI integrates these components, using type hints and Pydantic models to automatically generate API schemas (OpenAPI 3, JSON Schema).",
+      "brief_summary": "FastAPI is a composite framework orchestrating Starlette and Pydantic. At a high level, FastAPI is a composite framework that orchestrates two primary libraries: Starlette (core web and. The main stack includes Python, Starlette, Pydantic, ASGI. Documented public surfaces include OpenAPI 3, JSON Schema, Swagger UI, ReDoc. The documented workflow emphasizes A `fastapi` CLI uses Uvicorn to run a development server with auto-reloading.",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "pydantic",
+        "starlette",
+        "openapi",
+        "cli-tool",
+        "api",
+        "framework"
+      ],
+      "benchmarks_tests_examples": [
+        "TechEmpower benchmarks",
+        "TestClient (via httpx)"
+      ],
+      "detailed_summary": [
+        {
+          "heading": "Purpose & Architecture",
+          "bullets": [
+            "FastAPI is a composite framework orchestrating Starlette and Pydantic.",
+            "Starlette provides core web and ASGI functionality, including routing, requests, responses, and WebSockets.",
+            "Pydantic handles all data validation, serialization, and deserialization, driven by Python type hints.",
+            "Design philosophy is to be \"Short\" by minimizing code duplication.",
+            "A single type-hinted parameter declaration is used to derive multiple features: data validation, serialization, and API documentation.",
+            "FastAPI integrates these components, using type hints and Pydantic models to automatically generate API schemas (OpenAPI 3, JSON Schema)."
+          ],
+          "sub_sections": {
+            "Starlette": [
+              "Provides all core web and ASGI (Asynchronous Server Gateway Interface) functionality.",
+              "Includes routing, requests, responses, and WebSockets."
+            ],
+            "Pydantic": [
+              "Handles all data validation, serialization, and deserialization.",
+              "Driven by Python type hints."
+            ],
+            "Design Philosophy": [
+              "Designed to be \"Short\" by minimizing code duplication.",
+              "A single type-hinted parameter declaration is used to derive multiple features: data validation, serialization, and API documentation."
+            ]
+          },
+          "module_or_feature": "Core Framework Design",
+          "main_stack": [
+            "Python",
+            "Starlette",
+            "Pydantic",
+            "ASGI"
+          ],
+          "public_interfaces": [
+            "OpenAPI 3",
+            "JSON Schema"
+          ],
+          "usability_signals": [
+            "Minimizes code duplication",
+            "Leverages standard Python type hints"
+          ]
+        },
+        {
+          "heading": "APIs & Features",
+          "bullets": [
+            "API endpoints are standard Python functions (`def` or `async def`).",
+            "Path/query parameters, headers, cookies, and request bodies are declared as type-hinted function arguments.",
+            "The use of standard type hints enables editor autocompletion (\"IntelliSense\") for request bodies and parameters, reducing debugging time.",
+            "Automatically validates incoming data against types and serializes outgoing Python objects (including `datetime`, `UUID`, database models) to JSON.",
+            "Pydantic raises detailed validation errors on failure.",
+            "Automatically generates and serves interactive API documentation: Swagger UI (at `/docs`) and ReDoc (at `/redoc`).",
+            "A Dependency Injection system manages dependencies like database sessions or authentication, handling resolution and resource cleanup (teardown).",
+            "Includes helpers and dependency injection patterns for security schemes like OAuth2 (with JWT) and HTTP Basic auth.",
+            "A `fastapi` CLI uses Uvicorn to run a development server with auto-reloading.",
+            "The `fastapi[standard]` installation includes `starlette`, `pydantic`, `uvicorn`, `httpx` (for `TestClient`), and `python-multipart`.",
+            "Optional high-performance JSON encoders like `orjson` and `ujson` are supported."
+          ],
+          "sub_sections": {
+            "Declaration": [
+              "API endpoints are standard Python functions (`def` or `async def`).",
+              "Path/query parameters, headers, cookies, and request bodies are declared as type-hinted function arguments."
+            ],
+            "Developer Experience": [
+              "The use of standard type hints enables editor autocompletion (\"IntelliSense\") for request bodies and parameters, reducing debugging time."
+            ],
+            "Data Handling": [
+              "Automatically validates incoming data against types and serializes outgoing Python objects (including `datetime`, `UUID`, database models) to JSON.",
+              "Pydantic raises detailed validation errors on failure."
+            ],
+            "Documentation": [
+              "Automatically generates and serves interactive API documentation: Swagger UI (at `/docs`) and ReDoc (at `/redoc`)."
+            ],
+            "Dependency Injection": [
+              "A system for managing dependencies like database sessions or authentication. It handles dependency resolution and resource cleanup (teardown)."
+            ],
+            "Security": [
+              "Includes helpers and dependency injection patterns for security schemes like OAuth2 (with JWT) and HTTP Basic auth."
+            ],
+            "Tooling": [
+              "A `fastapi` CLI uses Uvicorn to run a development server with auto-reloading.",
+              "The `fastapi[standard]` installation includes `starlette`, `pydantic`, `uvicorn`, `httpx` (for `TestClient`), and `python-multipart`.",
+              "Optional high-performance JSON encoders like `orjson` and `ujson` are supported."
+            ]
+          },
+          "module_or_feature": "API Declaration & Tooling",
+          "main_stack": [
+            "Python",
+            "ASGI",
+            "Pydantic",
+            "Starlette"
+          ],
+          "public_interfaces": [
+            "Swagger UI",
+            "ReDoc",
+            "OAuth2",
+            "HTTP Basic Auth"
+          ],
+          "usability_signals": [
+            "Editor autocompletion",
+            "Automatic data validation",
+            "Automatic documentation generation",
+            "Dependency Injection"
+          ]
+        },
+        {
+          "heading": "Maturity & Ecosystem",
+          "bullets": [
+            "Used in production by companies including Microsoft, Uber, and Netflix, according to project testimonials.",
+            "The project is primarily sponsored by FastAPI Cloud, a commercial deployment platform from the same team.",
+            "The creator also developed Typer, a library for building CLI applications with a similar design philosophy (\"the FastAPI of CLIs\").",
+            "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+            "The security policy covers the latest version and requires private vulnerability disclosure.",
+            "Project's README claims performance is on par with NodeJS and Go, citing TechEmpower benchmarks where FastAPI/Uvicorn ranks among the fastest Python frameworks.",
+            "Claims a 200-300% increase in development speed and a 40% reduction in human-induced errors, based on internal team tests."
+          ],
+          "sub_sections": {
+            "Adoption": [
+              "Used in production by companies including Microsoft, Uber, and Netflix, according to project testimonials."
+            ],
+            "Sponsorship": [
+              "The project is primarily sponsored by FastAPI Cloud, a commercial deployment platform from the same team."
+            ],
+            "Sibling Projects": [
+              "The creator also developed Typer, a library for building CLI applications with a similar design philosophy (\"the FastAPI of CLIs\")."
+            ],
+            "Maintenance": [
+              "Actively maintained with a mature CI process (31 GitHub Actions workflows).",
+              "The security policy covers the latest version and requires private vulnerability disclosure."
+            ],
+            "Performance Claims": [
+              "The project's README claims performance is on par with NodeJS and Go, citing TechEmpower benchmarks where FastAPI/Uvicorn ranks among the fastest Python frameworks.",
+              "It also claims a 200-300% increase in development speed and a 40% reduction in human-induced errors, based on internal team tests."
+            ]
+          },
+          "module_or_feature": "Project Status & Adoption",
+          "main_stack": [
+            "Python"
+          ],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Industry adoption",
+            "Active maintenance",
+            "Performance claims",
+            "Developer productivity claims"
+          ]
+        },
+        {
+          "heading": "Notable Issues & Development Trends",
+          "bullets": [
+            "A primary development focus is keeping pace with Python's evolving typing system.",
+            "Recent issues and fixes address complexities with `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (e.g., #15364, #15307).",
+            "Ongoing work targets the DI system's performance and stability, with recent issues addressing deadlocks in dependency teardown (#15388) and memory regressions in the `Dependant` object (#15336).",
+            "Bugs are being fixed for OpenAPI schema generation with multi-method routes (#15398) and type propagation for Server-Sent Event (SSE) streams across routers (#15401).",
+            "Long-standing feature requests are being implemented, such as adding authentication to static file serving (#15295, closing #858), with active discussions on features like class-based views (#15392)."
+          ],
+          "sub_sections": {
+            "Advanced Typing": [
+              "A primary development focus is keeping pace with Python's evolving typing system.",
+              "Recent issues and fixes address complexities with `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (e.g., #15364, #15307)."
+            ],
+            "Dependency Injection Robustness": [
+              "Ongoing work targets the DI system's performance and stability, with recent issues addressing deadlocks in dependency teardown (#15388) and memory regressions in the `Dependant` object (#15336)."
+            ],
+            "Schema & Routing Edge Cases": [
+              "Bugs are being fixed for OpenAPI schema generation with multi-method routes (#15398) and type propagation for Server-Sent Event (SSE) streams across routers (#15401)."
+            ],
+            "Feature Development": [
+              "Long-standing feature requests are being implemented, such as adding authentication to static file serving (#15295, closing #858), with active discussions on features like class-based views (#15392)."
+            ]
+          },
+          "module_or_feature": "Current Development Focus",
+          "main_stack": [
+            "Python Typing",
+            "Dependency Injection",
+            "OpenAPI"
+          ],
+          "public_interfaces": [],
+          "usability_signals": [
+            "Active bug fixing",
+            "Feature development",
+            "Adaptation to Python evolution"
+          ]
+        }
+      ]
+    },
+    "is_schema_fallback": false
+  }
+}

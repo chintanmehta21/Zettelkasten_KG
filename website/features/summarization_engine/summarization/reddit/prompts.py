@@ -24,7 +24,7 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '      "unresolved_questions": array of strings\n'
     '      "moderation_context": string OR null\n\n'
     "Each reply_clusters entry MUST be a JSON object literally shaped like "
-    '{"theme": "...", "reasoning": "...", "examples": ["...", "..."]}. '
+    '{{"theme": "...", "reasoning": "...", "examples": ["...", "..."]}}. '
     "Never collapse those three keys into a single key, never wrap them in another object, "
     "never output the literal placeholder text.\n\n"
     "For high-divergence or experiential threads, emit at least 2 materially different reply_clusters when the discussion contains major warnings, minority dissent, or contrasting lived experience.\n"

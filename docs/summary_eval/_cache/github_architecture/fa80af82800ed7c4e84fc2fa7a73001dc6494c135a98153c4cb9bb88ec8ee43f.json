@@ -1,0 +1,3 @@
+{
+  "overview": "The Requests repository provides a simple HTTP library, accessible via `import requests`. Its `tests` directory ensures the library's functionality, while `docs_dir` contains its documentation."
+}

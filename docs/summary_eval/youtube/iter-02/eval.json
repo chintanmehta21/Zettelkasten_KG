@@ -1,0 +1,145 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 5.0,
+    "fluency": 4.0,
+    "relevance": 5.0,
+    "reasoning": "The detailed summary is exceptionally well-structured and comprehensive. However, the brief summary is an ungrammatical, incomplete sentence fragment, which significantly harms its fluency and coherence."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": "The brief summary should identify the video format.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary should name key speakers or entities.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The tags should include one identifying the content format.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "Theories suggest it disrupt",
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.97,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "Theories suggest it disrupt",
+        "reason": "This is an incomplete sentence fragment and cannot be fully verified against the source."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 10.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.technologies_named",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.format_tag_present"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": [
+          "label.content_first_3_to_5_words"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 84.0,
+    "finesure": 91.0,
+    "qafact": 93.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "total_tokens_in": 14192,
+    "total_tokens_out": 1194,
+    "latency_ms": 41371
+  }
+}

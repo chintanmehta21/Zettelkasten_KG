@@ -96,6 +96,7 @@ class RedditSummarizer(BaseSummarizer):
                     cod_iterations_used=0,
                     self_check_missing_count=0,
                     patch_applied=False,
+                    structured_payload=payload.model_dump(mode="json"),
                 ),
             )
 
@@ -174,6 +175,7 @@ class RedditSummarizer(BaseSummarizer):
                 cod_iterations_used=dense.iterations_used,
                 self_check_missing_count=check.missing_count,
                 patch_applied=patch_applied,
+                structured_payload=payload.model_dump(mode="json"),
             ),
         )
 

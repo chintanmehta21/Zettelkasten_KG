@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive Newsletter summarization quality to spec-§10.1 production-grade (composite ≥ 92 + ragas_faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook.
 
 **Architecture:** Same two-phase loop runbook as Plans 6-8. Per-source focus: Newsletter's rubric_newsletter.yaml emphasizes `brief.main_topic_thesis` (publication identity + central thesis in one sentence), `brief.conclusions_distinct` (separate conclusions from descriptive background), `brief.stance_preserved` (no editorializing), `label.branded_source_rule` (C2 hybrid: branded sources require publication name, others thesis-only), and anti-patterns `stance_mismatch` (auto_cap 60), `invented_number` (auto_cap 60), `branded_source_missing_publication` (auto_cap 90). Plan 4 shipped site-specific DOM extractors (Substack/Beehiiv/Medium), preheader + CTA + conclusions detectors, and a Gemini-Flash stance classifier; this plan tunes the summarizer to USE those signals as rubric requires.
@@ -176,6 +178,56 @@ Expected: 200.
 
 ```bash
 rm -rf docs/summary_eval/newsletter/iter-*
+```
+
+---
+
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Prove Newsletter summarizer routes through `NewsletterStructuredPayload`. If this gate fails, STOP.
+
+- [ ] **Step 1: In-process route smoke + shape assertions**
+
+```bash
+python - <<'PY'
+import asyncio, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("newsletter") or []
+assert urls, "no newsletter URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
+ds = sp.get("detailed_summary") or {}
+for req in ("publication_identity","issue_thesis","sections","stance"):
+    if req not in ds: errs.append(f"missing Newsletter field: detailed_summary.{req}")
+if not (ds.get("sections") or []): errs.append("sections empty")
+tags = r.get("tags") or []
+if not (7 <= len(tags) <= 10): errs.append(f"tags out of range 7-10: len={len(tags)}")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print(f"GATE OK url={url}")
+PY
+```
+
+- [ ] **Step 2: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
 ```
 
 ---

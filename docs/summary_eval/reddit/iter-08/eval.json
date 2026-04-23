@@ -1,0 +1,409 @@
+[
+  {
+    "url": "https://www.reddit.com/r/IndianStockMarket/comments/1getc4l/rajkot_collapsed_hyundai_ipo/",
+    "eval": {
+      "g_eval": {
+        "coherence": 5.0,
+        "consistency": 5.0,
+        "fluency": 5.0,
+        "relevance": 5.0,
+        "reasoning": "The summary is highly coherent, consistent, fluent, and relevant. It accurately captures the core intent of the original post, the range of community responses, key counterarguments, and unresolved questions. The structure is logical, and the language is clear and precise."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 1.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 25.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.caveats_surfaced",
+              "brief.neutral_tone",
+              "brief.length_5_to_7_sentences"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.thread_type",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 100.0,
+        "finesure": 100.0,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 8223,
+        "total_tokens_out": 848,
+        "latency_ms": 28536
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/",
+    "eval": {
+      "g_eval": {
+        "coherence": 2.0,
+        "consistency": 5.0,
+        "fluency": 2.0,
+        "relevance": 4.0,
+        "reasoning": "The brief summary is severely truncated and grammatically incorrect, making it largely unreadable and failing to convey its intended information effectively. This significantly impacts coherence and fluency. However, the detailed summary, tags, and label are well-structured, comprehensive, and accurately reflect the source content, demonstrating strong consistency and relevance in those sections."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.818,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.789,
+          "items": [
+            {
+              "claim": "The brief summary fails to fully capture OP's core intent, including his challenge to stereotypes and his plan to try cocaine next.",
+              "fact": null,
+              "sentence": "OP's main point was The user intended to share his first heroin experience, framing it as a \"memorable.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary fails to adequately summarize the range of responses, including the full scope of dominant replies, consensus, and dissent.",
+              "fact": null,
+              "sentence": "The dominant replies focused on Insidious Nature of Opioid Addiction. Consensus stayed around insidious nature of opioid addiction while personal autonomy and challenging stereotypes. Dissent centered on The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's. C",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The brief summary does not surface important caveats, such as the high divergence of comments due to removals.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.778,
+          "items": [
+            {
+              "claim": "The brief summary is significantly shorter than the required 5-7 sentences.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.939,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "OP's main point was The user intended to share his first heroin experience, framing it as a \"memorable.",
+            "reason": "Sentence is truncated and grammatically incomplete, making its full meaning unclear."
+          },
+          {
+            "sentence": "Dissent centered on The OP dismissed community warnings as 'misconceptions' and denounced a specific addict's. C",
+            "reason": "Sentence is truncated and grammatically incomplete, making its full meaning unclear."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 9.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.neutral_tone"
+            ],
+            "criteria_missed": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.caveats_surfaced",
+              "brief.length_5_to_7_sentences"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context",
+              "detailed.no_joke_chains"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.thread_type",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 75.0,
+        "finesure": 79.5,
+        "qafact": 100.0,
+        "summac": 93.9
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 11379,
+        "total_tokens_out": 1252,
+        "latency_ms": 42632,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://www.reddit.com/r/IAmA/comments/9ohdc/2_weeks_ago_i_tried_heroin_once_for_fun_and_made/",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.0,
+        "relevance": 4.0,
+        "reasoning": "The summary is coherent, consistent, fluent, and relevant to the source material. It captures the main points of the OP and the community's responses effectively."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.8,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "OP's main point was The user's stated motivation was an inability to tell anyone in their real life.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "The dominant replies focused on Alarm and dire warnings about the inevitable progression of heroin addiction.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.9,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "The user's stated motivation was an inability to tell anyone in their real life.",
+            "reason": "This is a factual statement about the OP's motivation."
+          },
+          {
+            "sentence": "The dominant replies focused on Alarm and dire warnings about the inevitable progression of heroin addiction.",
+            "reason": "This describes the general theme of the replies."
+          },
+          {
+            "sentence": "Consensus stayed around alarm and dire warnings about the inevitable progression of heroin addiction.",
+            "reason": "This describes the consensus of the replies."
+          },
+          {
+            "sentence": "Dissent centered on Accusations of being a \"troll\" fabricating the story for att",
+            "reason": "This describes the dissenting opinions."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 18.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.op_intent_captured",
+              "brief.response_range",
+              "brief.consensus_signal",
+              "brief.neutral_tone",
+              "brief.length_5_to_7_sentences"
+            ],
+            "criteria_missed": [
+              "brief.caveats_surfaced"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 30.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.reply_clusters",
+              "detailed.hedged_attribution",
+              "detailed.counterarguments_included",
+              "detailed.external_refs_captured",
+              "detailed.unresolved_questions",
+              "detailed.moderation_context"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 13.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.subreddit_present",
+              "tags.thread_type",
+              "tags.no_value_judgments",
+              "tags.topical_specificity"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 11.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.rsubreddit_prefix",
+              "label.central_issue",
+              "label.neutral"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 75.0,
+        "finesure": 76.67,
+        "qafact": 100.0,
+        "summac": 95.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_reddit.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 11976,
+        "total_tokens_out": 1133,
+        "latency_ms": 59753,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]

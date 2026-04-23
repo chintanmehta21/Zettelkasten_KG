@@ -1,0 +1,320 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "eval": {
+      "g_eval": {
+        "coherence": 5.0,
+        "consistency": 3.0,
+        "fluency": 4.0,
+        "relevance": 5.0,
+        "reasoning": "The summary is generally coherent, fluent, and relevant. However, it contains several factual inconsistencies (fabrications of issue numbers, workflow count, and a specific dependency update) and the brief summary has an incomplete sentence and vague descriptions for public surfaces and usage patterns."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.84375,
+          "items": [
+            {
+              "claim": "31 GitHub Actions workflows for CI.",
+              "fact": null,
+              "sentence": "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+              "span": "31 GitHub Actions workflows for CI",
+              "importance": null
+            },
+            {
+              "claim": "Dependencies are kept current, with a recent update to Starlette 1.0.0.",
+              "fact": null,
+              "sentence": "Dependencies are kept current, with a recent update to Starlette 1.0.0.",
+              "span": "with a recent update to Starlette 1.0.0",
+              "importance": null
+            },
+            {
+              "claim": "Issues #15307, #15234",
+              "fact": null,
+              "sentence": "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234).",
+              "span": "Issues #15307, #15234",
+              "importance": null
+            },
+            {
+              "claim": "Issue #15295",
+              "fact": null,
+              "sentence": "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392).",
+              "span": "#15295",
+              "importance": null
+            },
+            {
+              "claim": "Issue #15336",
+              "fact": null,
+              "sentence": "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388).",
+              "span": "#15336",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.8444,
+          "items": [
+            {
+              "claim": "The documented workflow emphasizes creating a main.py file, running with `fastapi dev`, and accessing interactive documentation at /docs or /redoc.",
+              "fact": null,
+              "sentence": "The documented workflow emphasizes The optional `fastapi[standard]` installation bundles `uvicorn`, `http",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Specific public surfaces include `/docs` (Swagger UI), `/redoc` (ReDoc), and CLI commands like `fastapi dev` and `fastapi deploy`.",
+              "fact": null,
+              "sentence": "Documented public surfaces include documented APIs and developer tooling.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.78125,
+        "contradicted_sentences": [
+          {
+            "sentence": "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+            "reason": "The source does not mention '31 GitHub Actions workflows for CI'; it only shows a 'Test' workflow badge."
+          },
+          {
+            "sentence": "Dependencies are kept current, with a recent update to Starlette 1.0.0.",
+            "reason": "The source mentions Starlette as a dependency but does not state a 'recent update to Starlette 1.0.0'."
+          },
+          {
+            "sentence": "A primary development focus is correctly resolving complex type hints, especially those involving `Annotated`, `ForwardRef`, and postponed annotations (`from __future__ import annotations`) (Issues #15364, #15307, #15234).",
+            "reason": "Issues #15307 and #15234 are not listed in the provided source's issues section."
+          },
+          {
+            "sentence": "Work is underway on long-standing feature requests, such as adding authentication to static file serving (`AuthStaticFiles`, #15295) and exploring class-based views (#15392).",
+            "reason": "Issue #15295 is not listed in the provided source's issues section."
+          },
+          {
+            "sentence": "Recent fixes have addressed performance regressions like memory usage in the `Dependant` class (#15336) and stability problems like deadlocks during dependency injection teardown (#15388).",
+            "reason": "Issue #15336 is not listed in the provided source's issues section."
+          }
+        ],
+        "neutral_sentences": [
+          {
+            "sentence": "Documented public surfaces include documented APIs and developer tooling.",
+            "reason": "This statement is too vague; while APIs and tooling exist, the summary does not specify the concrete public surfaces (e.g., /docs, /redoc, fastapi dev CLI) as detailed in the source."
+          },
+          {
+            "sentence": "The documented workflow emphasizes The optional `fastapi[standard]` installation bundles `uvicorn`, `http",
+            "reason": "The sentence is incomplete and cut off, making it difficult to fully assess its entailment regarding the workflow emphasis."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 18.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.user_facing_purpose",
+              "brief.architecture_high_level",
+              "brief.languages_and_frameworks",
+              "brief.no_maturity_fabrication"
+            ],
+            "criteria_missed": [
+              "brief.usage_pattern",
+              "brief.public_surface"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.features_bullets",
+              "detailed.architecture_modules",
+              "detailed.interfaces_exact",
+              "detailed.operational",
+              "detailed.limitations_docs",
+              "detailed.benchmarks_tests_examples",
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_tag",
+              "tags.languages",
+              "tags.technical_concepts",
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.owner_slash_repo",
+              "label.no_extra_descriptors"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 85.0,
+        "finesure": 89.61,
+        "qafact": 100.0,
+        "summac": 78.13
+      },
+      "editorialization_flags": [
+        {
+          "sentence": "The project (99.9% Python) is actively maintained with a high commit volume and 31 GitHub Actions workflows for CI.",
+          "flag_type": "added_judgment",
+          "explanation": "The phrase 'high commit volume' is a subjective judgment not explicitly stated in the source."
+        }
+      ],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 15384,
+        "total_tokens_out": 2253,
+        "latency_ms": 55562,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is generally coherent, consistent, and fluent. It accurately reflects the source material and focuses on relevant aspects of the httpx library."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.85,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.95,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 22.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.user_facing_purpose",
+              "brief.architecture_high_level",
+              "brief.languages_and_frameworks",
+              "brief.usage_pattern",
+              "brief.public_surface"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 38.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.features_bullets",
+              "detailed.architecture_modules",
+              "detailed.interfaces_exact",
+              "detailed.operational",
+              "detailed.limitations_docs",
+              "detailed.benchmarks_tests_examples",
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": [
+              "{'criterion_id': 'detailed.features_bullets', 'explanation': 'The summary does not explicitly mention the `requests`-compatible API as a feature, although it is implied.'}"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 13.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_tag",
+              "tags.languages",
+              "tags.technical_concepts"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 10.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.owner_slash_repo"
+            ],
+            "criteria_missed": [
+              "{'criterion_id': 'label.owner_slash_repo', 'explanation': \"The label 'encode/httpx' is missing from the summary.\"}"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 90.0,
+        "finesure": 88.33,
+        "qafact": 90.0,
+        "summac": 95.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 12000,
+        "total_tokens_out": 937,
+        "latency_ms": 60752
+      }
+    }
+  }
+]

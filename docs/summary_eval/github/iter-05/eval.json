@@ -1,0 +1,666 @@
+[
+  {
+    "url": "https://github.com/fastapi/fastapi",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is well-structured and coherent. It accurately reflects the source material, covering the key aspects of the FastAPI framework. Fluency is high, and relevance is excellent."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.9,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "Bundles key dependencies like `uvicorn`, `httpx`, `python-multipart`, and `email-validator`.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.95,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.user_facing_purpose",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "brief.user_facing_purpose"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.architecture_high_level",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "brief.architecture_high_level"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.languages_and_frameworks",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.languages_and_frameworks"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.usage_pattern",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.usage_pattern"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.public_surface",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.public_surface"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.no_maturity_fabrication",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "brief.no_maturity_fabrication"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.features_bullets",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.features_bullets"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.architecture_modules",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.architecture_modules"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.interfaces_exact",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.interfaces_exact"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.operational",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "detailed.operational"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.limitations_docs",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.limitations_docs"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.benchmarks_tests_examples",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.benchmarks_tests_examples"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.bullets_focused",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "tags.count_7_to_10"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.domain_tag",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.domain_tag"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.languages",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.languages"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.technical_concepts",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.technical_concepts"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.no_unsupported_claims",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.owner_slash_repo",
+            "score": 10.0,
+            "max_points": 10,
+            "criteria_fired": [
+              "label.owner_slash_repo"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.no_extra_descriptors",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "label.no_extra_descriptors"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 95.0,
+        "finesure": 96.66666666666667,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 13578,
+        "total_tokens_out": 1866,
+        "latency_ms": 64859
+      }
+    }
+  },
+  {
+    "url": "https://github.com/encode/httpx",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 4.0,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is generally coherent, fluent, and relevant. It captures the main aspects of the httpx library effectively. Consistency is good, with minor areas where the summary could be more precise in its mapping to the source."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.9,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.85,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "At a high level, encode/httpx is a Python 3 HTTP client providing both synchronous and asynchronous APIs, designed.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "The API is broadly compatible with `requests`, inheriting features like sessions with cookie persistence, connection pooling, authentication, and multipart file uploads. Some behaviors differ or have been recently aligned.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.95,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.9,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "The main stack includes python.",
+            "reason": "This sentence is too vague to be directly entailed or contradicted by the source."
+          },
+          {
+            "sentence": "Documented public surfaces include documented APIs and developer tooling.",
+            "reason": "While implied, the source does not explicitly list 'developer tooling' as a public surface in this exact phrasing."
+          },
+          {
+            "sentence": "The documented workflow emphasizes Includes an integrated CLI, installable via `http",
+            "reason": "This sentence is incomplete and grammatically incorrect, making it difficult to assess entailment."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.user_facing_purpose",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "brief.user_facing_purpose"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.architecture_high_level",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "brief.architecture_high_level"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.languages_and_frameworks",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.languages_and_frameworks"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.usage_pattern",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.usage_pattern"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.public_surface",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "brief.public_surface"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.no_maturity_fabrication",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "brief.no_maturity_fabrication"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.features_bullets",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.features_bullets"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.architecture_modules",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.architecture_modules"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.interfaces_exact",
+            "score": 7.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "detailed.interfaces_exact"
+            ],
+            "criteria_missed": [
+              "detailed.interfaces_exact"
+            ]
+          },
+          {
+            "id": "detailed.operational",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "detailed.operational"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.limitations_docs",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.limitations_docs"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.benchmarks_tests_examples",
+            "score": 0.0,
+            "max_points": 5,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "detailed.benchmarks_tests_examples"
+            ]
+          },
+          {
+            "id": "detailed.bullets_focused",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "detailed.bullets_focused"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "tags.count_7_to_10"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.domain_tag",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.domain_tag"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.languages",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.languages"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.technical_concepts",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "tags.technical_concepts"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.no_unsupported_claims",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "tags.no_unsupported_claims"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.owner_slash_repo",
+            "score": 10.0,
+            "max_points": 10,
+            "criteria_fired": [
+              "label.owner_slash_repo"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.no_extra_descriptors",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "label.no_extra_descriptors"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 95.0,
+        "finesure": 91.66666666666667,
+        "qafact": 96.0,
+        "summac": 90.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 11959,
+        "total_tokens_out": 2089,
+        "latency_ms": 61937
+      }
+    }
+  },
+  {
+    "url": "https://github.com/psf/requests",
+    "eval": {
+      "g_eval": {
+        "coherence": 0.0,
+        "consistency": 0.0,
+        "fluency": 0.0,
+        "relevance": 0.0,
+        "reasoning": "The summary content is a schema fallback, rendering all evaluation metrics to zero."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 0.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "id: 20240718110011 title: psf/requests Python HTTP Client aliases: requests, python-requests tags: #python #library #http #client `psf/requests` is a simplicity-focused HTTP/1.1 client library for Python, written in 99.3% Python and officially supporting Python 3.10+.",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          },
+          {
+            "sentence": "It can be installed from PyPI via `python -m pip install requests`.",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          },
+          {
+            "sentence": "It is one of Python's",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          },
+          {
+            "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+            "reason": "This sentence explicitly states a schema fallback and is not a summary of the source content."
+          },
+          {
+            "sentence": "id: 20240718110011 title: psf/requests Python HTTP Client aliases: requests, python-requests tags: #python #library #http #client `psf/requests` is a simplicity-focused HTTP/1.1 client library for Python, written in 99.3% Python and officially supporting Python 3.10+.",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          },
+          {
+            "sentence": "It can be installed from PyPI via `python -m pip install requests`.",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          },
+          {
+            "sentence": "It is one of Python's",
+            "reason": "This sentence is part of a schema fallback and does not represent a coherent summary of the source."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 0.0,
+            "max_points": 25,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.user_facing_purpose",
+              "brief.architecture_high_level",
+              "brief.languages_and_frameworks",
+              "brief.usage_pattern",
+              "brief.public_surface",
+              "brief.no_maturity_fabrication",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 0.0,
+            "max_points": 45,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "detailed.features_bullets",
+              "detailed.architecture_modules",
+              "detailed.interfaces_exact",
+              "detailed.operational",
+              "detailed.limitations_docs",
+              "detailed.benchmarks_tests_examples",
+              "detailed.bullets_focused",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 0.0,
+            "max_points": 15,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "tags.count_7_to_10",
+              "tags.domain_tag",
+              "tags.languages",
+              "tags.technical_concepts",
+              "tags.no_unsupported_claims",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 0.0,
+            "max_points": 15,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "label.owner_slash_repo",
+              "label.no_extra_descriptors",
+              "schema_failure"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": 60,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "schema_failure",
+            "source_region": "structured_payload",
+            "auto_cap": 60
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 0.0,
+        "finesure": 0.0,
+        "qafact": 0.0,
+        "summac": 0.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_github.v1",
+        "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+        "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 6580,
+        "total_tokens_out": 1350,
+        "latency_ms": 12913,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]

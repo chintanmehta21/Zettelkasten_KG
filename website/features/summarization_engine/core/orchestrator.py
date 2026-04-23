@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 from website.core.url_utils import validate_url
 
+from website.features.summarization_engine.core.cache import FsContentCache
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.errors import (
     ExtractionConfidenceError,
@@ -23,6 +25,9 @@ from website.features.summarization_engine.source_ingest import get_ingestor
 from website.features.summarization_engine.summarization import get_summarizer
 
 logger = logging.getLogger("summarization_engine.orchestrator")
+
+_CACHE_ROOT = Path(__file__).resolve().parents[4] / "docs" / "summary_eval" / "_cache"
+_INGEST_CACHE = FsContentCache(root=_CACHE_ROOT, namespace="ingests")
 
 
 @dataclass(frozen=True)
@@ -83,7 +88,20 @@ async def summarize_url_bundle(
     ingestor_cls = get_ingestor(effective_source_type)
     ingestor = ingestor_cls()
     source_config = config.sources.get(effective_source_type.value, {})
-    ingest_result = await ingestor.ingest(url, config=source_config)
+    ingest_cache_key = (
+        url,
+        getattr(ingestor, "version", "1.0.0"),
+        effective_source_type.value,
+    )
+    cached = _INGEST_CACHE.get(ingest_cache_key)
+    if cached:
+        logger.info("orchestrator.ingest_cache_hit url=%s", url)
+        ingest_result = IngestResult(
+            **{key: value for key, value in cached.items() if not key.startswith("_")}
+        )
+    else:
+        ingest_result = await ingestor.ingest(url, config=source_config)
+        _INGEST_CACHE.put(ingest_cache_key, ingest_result.model_dump(mode="json"))
 
     if ingest_result.extraction_confidence == "low":
         logger.warning(

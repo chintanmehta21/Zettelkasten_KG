@@ -1,0 +1,171 @@
+{
+  "mini_title": "Evolution Psychology Chess",
+  "brief_summary": "This commentary video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'. It moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess. It also covers Chataranga and Shatrange. Key voices and figures include Chataranga and Shatrange. The main takeaway is Chess, a game of immense combinatorial.",
+  "tags": [
+    "chess",
+    "history",
+    "psychology",
+    "zugzwang",
+    "infinity",
+    "game-theory",
+    "mental-health",
+    "evolution",
+    "strategy",
+    "commentary"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "thesis",
+      "bullets": [
+        "Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang' situations and an 'infinity simulator' due to its combinatorial complexity and psychological depth, often taking a significant toll on its master players."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "format",
+      "bullets": [
+        "commentary"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "chapters_or_segments",
+      "bullets": [
+        "{\"timestamp\": \"00:00\", \"title\": \"Narrative Framing and Core Metaphor\", \"bullets\": [\"Video opens with surreal commentary of a fictional chess match featuring absurd moves and escalating events.\", \"A recurring sketch involves the narrator losing to 'Alan Sharp 91,' stalking him, insulting him, and challenging him to a rematch.\", \"The chess concept of 'zugzwang' (any move is a bad one) is introduced as a central metaphor for life's enduring appeal.\"]}",
+        "{\"timestamp\": \"01:48\", \"title\": \"The Evolution of Chess\", \"bullets\": [\"Originated in India ~1,500 years ago as 'Chataranga,' a four-player game with elephants instead of queens [01:48].\", \"Evolved in Persia into 'Shatrange,' introducing 'checkmate' (Shak/Shakmat) [02:00, 02:08].\", \"Modified by Emperor Timur (adding giraffes, camels, war engines), the Chinese (adding cannons), and Europeans (adding castling, two-square pawn advance) [02:12, 02:19, 02:23].\", \"Rules largely stabilized by the 1800s, but modern variations like Fischer Random, anti-chess, and larger boards continue to evolve [02:27].\"]}",
+        "{\"timestamp\": \"02:39\", \"title\": \"Piece Evolution and Precedents\", \"bullets\": [\"Queen: Originally 'adviser,' moved one diagonal square; power increased in 15th century, possibly to honor Queen Isabella of Spain [02:39, 02:43, 02:48].\", \"Bishop: Evolved from the elephant piece [03:47].\", \"Rook: Evolved from the chariot piece [03:54].\", \"Knight: Horse as a military piece contextualized with real-world examples.\", \"Staff Sergeant Reckless: Horse promoted twice by US Army in Korean War [03:10].\", \"Nils Olav: Penguin brigadier in Norwegian King's Guard [03:19].\", \"William Windsor: Goat in British Army, demoted then reinstated for headbutting a drummer [03:24, 03:32].\"]}",
+        "{\"timestamp\": \"08:01\", \"title\": \"The Psychological Toll on Masters\", \"bullets\": [\"Game complexity linked to 'monomania'\u2014obsession with one thing to the exclusion of all else [10:24].\", \"Paul Morphy (1800s): Defeated eight opponents blindfolded [08:29, 08:40]; retired early, developed paranoia, died at 47 [08:45, 08:55].\", \"Alexander Alekhine: World champion who became paranoid and showed up drunk to matches [09:10, 09:15]; claimed 'I am Alekhine, chess champion of the world. I have a cat called Chess. I do not need papers' at Polish border [09:20, 09:25].\", \"Wilhelm Steinitz (19th Century): First official world champion, undefeated for 30 years with positional style [09:34, 09:52]. After losing title, fell into poverty and mental illness [09:56, 10:02]. Claimed to play chess with God over the phone, stating 'I have the better position, but he's playing a very strong game' [10:07, 10:13]. Died penniless [10:17].\", \"Mikhail Tal: 'Chess demon' known for artistic, sacrificial style; philosophy: 'You must take your opponents into a deep dark forest where two and two make five and the path leading out is only wide enough for one' [08:01, 08:16].\"]}",
+        "{\"timestamp\": \"10:46\", \"title\": \"Chess as an 'Infinity Simulator'\", \"bullets\": [\"Combinatorial Explosion: 20 white opening moves, 400 positions after one move each, 69 trillion after five moves each [10:46, 11:04].\", \"Claude Shannon estimated 10^120 possible 40-move games (Shannon number), exceeding atoms in observable universe [11:06].\", \"Numerical Infinity: Uncountable real numbers (e.g., between 0 and 1) are a larger infinity than countable natural numbers (1, 2, 3...) [12:27, 13:20].\", \"Spatial Infinity: Travel times illustrate cosmic scale: 12,000 years to Alpha Centauri (400,000 km/h), 52,000 years to Galactic Center (half light speed), 2.5 million years to Andromeda (light speed) [17:12, 17:37, 17:58].\", \"Most distant observed galaxy, JADES-GS-z14-0, is 13 billion light-years away [18:38].\", \"Other Infinities: Causal (unpredictable event chains), Mental (imagination within ~14cm skull), Interpersonal (Levinas on unknowable inner lives of others) [13:31, 15:05, 15:48].\", \"Narrator's anecdote: Chance loss to elderly man sparked chess obsession, leading to video's creation, illustrating causal infinity.\"]}"
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "closing_takeaway",
+      "bullets": [
+        "Chess, a game of immense combinatorial depth and psychological impact, not only reflects the human mind's capacity for obsession and strategic thought but also serves as a tangible model for understanding various concepts of infinity, demonstrating how a single event can lead to vast, unpredictable outcomes."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=Ctwc8t5CsQs",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=66540",
+    "total_tokens_used": 55445,
+    "gemini_pro_tokens": 51599,
+    "gemini_flash_tokens": 3846,
+    "total_latency_ms": 103619,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Evolution Psychology Chess",
+      "brief_summary": "This commentary video explains Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang'. It moves through sections on Narrative Framing and Core Metaphor and The Evolution of Chess. It also covers Chataranga and Shatrange. Key voices and figures include Chataranga and Shatrange. The main takeaway is Chess, a game of immense combinatorial.",
+      "tags": [
+        "chess",
+        "history",
+        "psychology",
+        "zugzwang",
+        "infinity",
+        "game-theory",
+        "mental-health",
+        "evolution",
+        "strategy",
+        "commentary"
+      ],
+      "speakers": [
+        "narrator"
+      ],
+      "guests": null,
+      "entities_discussed": [
+        "Chataranga",
+        "Shatrange",
+        "Fischer Random",
+        "Paul Morphy",
+        "Alexander Alekhine",
+        "Wilhelm Steinitz",
+        "Mikhail Tal",
+        "Claude Shannon",
+        "Emmanuel Levinas",
+        "Staff Sergeant Reckless",
+        "Nils Olav",
+        "William Windsor",
+        "Queen Isabella of Spain",
+        "Emperor Timur",
+        "Emanuel Lasker",
+        "JADES-GS-z14-0",
+        "Alpha Centauri",
+        "Andromeda"
+      ],
+      "detailed_summary": {
+        "thesis": "Chess, a game with a rich history and evolving rules, serves as a powerful metaphor for life's 'zugzwang' situations and an 'infinity simulator' due to its combinatorial complexity and psychological depth, often taking a significant toll on its master players.",
+        "format": "commentary",
+        "chapters_or_segments": [
+          {
+            "timestamp": "00:00",
+            "title": "Narrative Framing and Core Metaphor",
+            "bullets": [
+              "Video opens with surreal commentary of a fictional chess match featuring absurd moves and escalating events.",
+              "A recurring sketch involves the narrator losing to 'Alan Sharp 91,' stalking him, insulting him, and challenging him to a rematch.",
+              "The chess concept of 'zugzwang' (any move is a bad one) is introduced as a central metaphor for life's enduring appeal."
+            ]
+          },
+          {
+            "timestamp": "01:48",
+            "title": "The Evolution of Chess",
+            "bullets": [
+              "Originated in India ~1,500 years ago as 'Chataranga,' a four-player game with elephants instead of queens [01:48].",
+              "Evolved in Persia into 'Shatrange,' introducing 'checkmate' (Shak/Shakmat) [02:00, 02:08].",
+              "Modified by Emperor Timur (adding giraffes, camels, war engines), the Chinese (adding cannons), and Europeans (adding castling, two-square pawn advance) [02:12, 02:19, 02:23].",
+              "Rules largely stabilized by the 1800s, but modern variations like Fischer Random, anti-chess, and larger boards continue to evolve [02:27]."
+            ]
+          },
+          {
+            "timestamp": "02:39",
+            "title": "Piece Evolution and Precedents",
+            "bullets": [
+              "Queen: Originally 'adviser,' moved one diagonal square; power increased in 15th century, possibly to honor Queen Isabella of Spain [02:39, 02:43, 02:48].",
+              "Bishop: Evolved from the elephant piece [03:47].",
+              "Rook: Evolved from the chariot piece [03:54].",
+              "Knight: Horse as a military piece contextualized with real-world examples.",
+              "Staff Sergeant Reckless: Horse promoted twice by US Army in Korean War [03:10].",
+              "Nils Olav: Penguin brigadier in Norwegian King's Guard [03:19].",
+              "William Windsor: Goat in British Army, demoted then reinstated for headbutting a drummer [03:24, 03:32]."
+            ]
+          },
+          {
+            "timestamp": "08:01",
+            "title": "The Psychological Toll on Masters",
+            "bullets": [
+              "Game complexity linked to 'monomania'\u2014obsession with one thing to the exclusion of all else [10:24].",
+              "Paul Morphy (1800s): Defeated eight opponents blindfolded [08:29, 08:40]; retired early, developed paranoia, died at 47 [08:45, 08:55].",
+              "Alexander Alekhine: World champion who became paranoid and showed up drunk to matches [09:10, 09:15]; claimed 'I am Alekhine, chess champion of the world. I have a cat called Chess. I do not need papers' at Polish border [09:20, 09:25].",
+              "Wilhelm Steinitz (19th Century): First official world champion, undefeated for 30 years with positional style [09:34, 09:52]. After losing title, fell into poverty and mental illness [09:56, 10:02]. Claimed to play chess with God over the phone, stating 'I have the better position, but he's playing a very strong game' [10:07, 10:13]. Died penniless [10:17].",
+              "Mikhail Tal: 'Chess demon' known for artistic, sacrificial style; philosophy: 'You must take your opponents into a deep dark forest where two and two make five and the path leading out is only wide enough for one' [08:01, 08:16]."
+            ]
+          },
+          {
+            "timestamp": "10:46",
+            "title": "Chess as an 'Infinity Simulator'",
+            "bullets": [
+              "Combinatorial Explosion: 20 white opening moves, 400 positions after one move each, 69 trillion after five moves each [10:46, 11:04].",
+              "Claude Shannon estimated 10^120 possible 40-move games (Shannon number), exceeding atoms in observable universe [11:06].",
+              "Numerical Infinity: Uncountable real numbers (e.g., between 0 and 1) are a larger infinity than countable natural numbers (1, 2, 3...) [12:27, 13:20].",
+              "Spatial Infinity: Travel times illustrate cosmic scale: 12,000 years to Alpha Centauri (400,000 km/h), 52,000 years to Galactic Center (half light speed), 2.5 million years to Andromeda (light speed) [17:12, 17:37, 17:58].",
+              "Most distant observed galaxy, JADES-GS-z14-0, is 13 billion light-years away [18:38].",
+              "Other Infinities: Causal (unpredictable event chains), Mental (imagination within ~14cm skull), Interpersonal (Levinas on unknowable inner lives of others) [13:31, 15:05, 15:48].",
+              "Narrator's anecdote: Chance loss to elderly man sparked chess obsession, leading to video's creation, illustrating causal infinity."
+            ]
+          }
+        ],
+        "demonstrations": [],
+        "closing_takeaway": "Chess, a game of immense combinatorial depth and psychological impact, not only reflects the human mind's capacity for obsession and strategic thought but also serves as a tangible model for understanding various concepts of infinity, demonstrating how a single event can lead to vast, unpredictable outcomes."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

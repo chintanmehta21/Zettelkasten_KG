@@ -1,26 +1,8 @@
-"""Newsletter ingestor with paywall-bypass chain.
-
-Handles Substack, Medium, Beehiiv, Buttondown, HackerNoon, dev.to, Stratechery
-and similar publications. The extractor:
-
-1. Fetches the article directly, optionally pretending to be Googlebot.
-2. If content is below ``min_text_length``, walks a configured fallback chain
-   (Wayback Machine → archive.today → 12ft.io → Freedium for Medium) and
-   returns the longest body it can recover.
-3. Falls back to the thin direct response if every provider fails.
-
-Config is read from ``summarization_engine/config.yaml`` under
-``sources.newsletter``:
-
-    newsletter:
-      extractors: ["trafilatura", "readability", "newspaper4k"]
-      paywall_fallbacks: ["googlebot", "wayback", "archive_ph", "twelveft", "freedium"]
-      googlebot_ua: true
-      min_text_length: 500
-"""
+"""Newsletter ingestor with paywall bypass and structural signal extraction."""
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -28,10 +10,26 @@ import httpx
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
+from website.features.summarization_engine.source_ingest.newsletter.conclusions import (
+    extract_conclusions,
+)
+from website.features.summarization_engine.source_ingest.newsletter.cta import (
+    extract_ctas,
+)
+from website.features.summarization_engine.source_ingest.newsletter.preheader import (
+    extract_preheader,
+)
+from website.features.summarization_engine.source_ingest.newsletter.site_extractors import (
+    StructuredNewsletter,
+    extract_structured,
+)
+from website.features.summarization_engine.source_ingest.newsletter.stance import (
+    classify_stance,
+)
 from website.features.summarization_engine.source_ingest.utils import (
     DEFAULT_TIMEOUT,
-    compact_text,
     extract_html_text,
+    join_sections,
     utc_now,
 )
 
@@ -47,9 +45,6 @@ _GOOGLEBOT_UA = (
 )
 _FACEBOOK_UA = "facebookexternalhit/1.1"
 
-# Ordered bypass chain. Each entry is (name, url-builder-callable).
-# Providers return full HTML; we pipe them through extract_html_text like
-# the direct fetch so we can compare body length and pick the best.
 _PROVIDER_ORDER = (
     "googlebot",
     "wayback",
@@ -73,14 +68,18 @@ class NewsletterIngestor(BaseIngestor):
         best_meta: dict[str, Any] = {}
         best_final_url = url
         best_provider = "direct"
+        best_html = ""
 
-        # Step 1 — direct fetch with either Googlebot or a regular browser UA.
         direct_ua = _GOOGLEBOT_UA if use_googlebot else _DEFAULT_UA
-        direct_text, direct_meta, direct_final = await _fetch_and_extract(
-            url, headers={"User-Agent": direct_ua}
+        direct_text, direct_meta, direct_final, direct_html = await _fetch_and_extract(
+            url,
+            headers={"User-Agent": direct_ua},
         )
         if direct_text:
-            best_text, best_meta, best_final_url = direct_text, direct_meta, direct_final
+            best_text = direct_text
+            best_meta = direct_meta
+            best_final_url = direct_final
+            best_html = direct_html
             logger.info(
                 "[newsletter] direct fetch len=%d ua=%s url=%s",
                 len(direct_text),
@@ -88,19 +87,20 @@ class NewsletterIngestor(BaseIngestor):
                 url,
             )
 
-        # Step 2 — walk paywall bypass providers if below threshold.
         if len(best_text) < min_len:
             for name in fallback_names:
                 if name == "googlebot" and use_googlebot:
-                    # already tried via direct fetch
                     continue
                 try:
-                    provider_text, provider_meta, provider_final = await _try_provider(
-                        name, url
+                    provider_text, provider_meta, provider_final, provider_html = (
+                        await _try_provider(name, url)
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
-                        "[newsletter] provider %s failed for %s: %s", name, url, exc
+                        "[newsletter] provider %s failed for %s: %s",
+                        name,
+                        url,
+                        exc,
                     )
                     continue
 
@@ -113,18 +113,77 @@ class NewsletterIngestor(BaseIngestor):
                         url,
                     )
                     best_text = provider_text
-                    # Keep the original URL's meta.title if we have it; overlay new keys.
-                    merged_meta = {**provider_meta, **{k: v for k, v in best_meta.items() if v}}
-                    best_meta = merged_meta
-                    best_final_url = best_final_url or provider_final
+                    best_meta = {**provider_meta, **{k: v for k, v in best_meta.items() if v}}
+                    best_final_url = provider_final or best_final_url
                     best_provider = name
+                    best_html = provider_html
                     if len(best_text) >= min_len:
                         break
 
-        confidence = "high" if len(best_text) >= min_len else "low" if not best_text else "medium"
+        body_text = best_text
+        structured = _structured_newsletter(best_html, url, config)
+        preheader = (
+            extract_preheader(
+                best_html,
+                fallback_chars=int(config.get("preheader_fallback_chars", 150)),
+            )
+            if best_html
+            else ""
+        )
+        ctas = (
+            extract_ctas(
+                best_html,
+                keyword_regex=config.get(
+                    "cta_keyword_regex",
+                    "subscribe|sign up|learn more",
+                ),
+                max_count=int(config.get("cta_max_count", 5)),
+            )
+            if best_html
+            else []
+        )
+        conclusions = extract_conclusions(
+            body_text,
+            tail_fraction=float(config.get("conclusions_tail_fraction", 0.3)),
+            prefixes=list(config.get("conclusions_prefixes", [])),
+            max_count=int(config.get("conclusions_max_count", 6)),
+        )
+        detected_stance = await _detect_stance(body_text, url, config)
+
+        sections = {"Article": body_text}
+        if structured.site != "unknown":
+            sections["Title"] = structured.title
+            if structured.subtitle:
+                sections["Subtitle"] = structured.subtitle
+            if len(structured.body_text) > len(body_text):
+                body_text = structured.body_text
+                sections["Article"] = structured.body_text
+
+        if preheader:
+            sections["Preheader"] = preheader
+        if ctas:
+            sections["CTAs"] = "\n".join(f"- {cta.text} ({cta.href})" for cta in ctas)
+        if conclusions:
+            sections["Conclusions"] = "\n".join(f"- {item}" for item in conclusions)
+
+        metadata = {
+            **best_meta,
+            "paywall_provider": best_provider,
+            "site": structured.site,
+            "publication_identity": structured.publication_identity,
+            "preheader": preheader,
+            "cta_count": len(ctas),
+            "conclusions_count": len(conclusions),
+            "detected_stance": detected_stance,
+        }
+        raw_text = join_sections(sections)
+
+        confidence = (
+            "high" if len(body_text) >= min_len else "low" if not body_text else "medium"
+        )
         reason = (
             f"HTML article text extracted via {best_provider}"
-            if best_text
+            if body_text
             else "all paywall-bypass providers failed"
         )
 
@@ -132,52 +191,42 @@ class NewsletterIngestor(BaseIngestor):
             source_type=self.source_type,
             url=best_final_url or url,
             original_url=url,
-            raw_text=best_text,
-            sections={"Article": best_text},
-            metadata={
-                **best_meta,
-                "paywall_provider": best_provider,
-            },
+            raw_text=raw_text,
+            sections=sections,
+            metadata=metadata,
             extraction_confidence=confidence,
             confidence_reason=reason,
             fetched_at=utc_now(),
         )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 async def _fetch_and_extract(
     url: str,
     *,
     headers: dict[str, str] | None = None,
     timeout: float = DEFAULT_TIMEOUT,
-) -> tuple[str, dict[str, Any], str]:
-    """Fetch ``url`` and run the shared HTML extractor.
-
-    Returns ``("", {}, url)`` on any network / status-code failure so callers can
-    simply compare content lengths across providers.
-    """
+) -> tuple[str, dict[str, Any], str, str]:
+    """Fetch one URL and return extracted text, metadata, final URL, and raw HTML."""
     try:
         async with httpx.AsyncClient(
-            timeout=timeout, follow_redirects=True, headers=headers
+            timeout=timeout,
+            follow_redirects=True,
+            headers=headers,
         ) as client:
             response = await client.get(url)
             if response.status_code >= 400:
-                return "", {}, str(response.url)
+                return "", {}, str(response.url), ""
             html = response.text
             final_url = str(response.url)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[newsletter] fetch failed for %s: %s", url, exc)
-        return "", {}, url
+        return "", {}, url, ""
 
     text, metadata = extract_html_text(html)
-    return text, metadata, final_url
+    return text, metadata, final_url, html
 
 
-async def _try_provider(name: str, url: str) -> tuple[str, dict[str, Any], str]:
-    """Dispatch to a named bypass provider."""
+async def _try_provider(name: str, url: str) -> tuple[str, dict[str, Any], str, str]:
     if name == "googlebot":
         return await _fetch_and_extract(url, headers={"User-Agent": _GOOGLEBOT_UA})
     if name == "facebook":
@@ -190,52 +239,80 @@ async def _try_provider(name: str, url: str) -> tuple[str, dict[str, Any], str]:
         return await _twelveft(url)
     if name == "freedium":
         return await _freedium(url)
-    logger.debug("[newsletter] unknown provider %s — skipping", name)
-    return "", {}, url
+    logger.debug("[newsletter] unknown provider %s; skipping", name)
+    return "", {}, url, ""
 
 
-async def _wayback(url: str) -> tuple[str, dict[str, Any], str]:
-    """Ask the Wayback Machine for the most recent snapshot and extract it."""
+async def _wayback(url: str) -> tuple[str, dict[str, Any], str, str]:
     api = f"https://archive.org/wayback/available?url={quote(url, safe='')}"
     async with httpx.AsyncClient(
-        timeout=DEFAULT_TIMEOUT, follow_redirects=True
+        timeout=DEFAULT_TIMEOUT,
+        follow_redirects=True,
     ) as client:
         info_resp = await client.get(api)
         if info_resp.status_code >= 400:
-            return "", {}, url
+            return "", {}, url, ""
         info = info_resp.json() or {}
         snapshot = (
             ((info.get("archived_snapshots") or {}).get("closest") or {}).get("url")
         )
         if not snapshot:
-            return "", {}, url
+            return "", {}, url, ""
         return await _fetch_and_extract(snapshot)
 
 
-async def _archive_ph(url: str) -> tuple[str, dict[str, Any], str]:
-    """archive.today mirror. Uses the /newest/ endpoint which 302s to the
-    latest snapshot. Returns empty-tuple if none exists yet."""
+async def _archive_ph(url: str) -> tuple[str, dict[str, Any], str, str]:
     target = f"https://archive.ph/newest/{url}"
     return await _fetch_and_extract(target, headers={"User-Agent": _DEFAULT_UA})
 
 
-async def _twelveft(url: str) -> tuple[str, dict[str, Any], str]:
-    """12ft.io strips simple paywalls for many mainstream publishers."""
+async def _twelveft(url: str) -> tuple[str, dict[str, Any], str, str]:
     target = f"https://12ft.io/{url}"
     return await _fetch_and_extract(target, headers={"User-Agent": _DEFAULT_UA})
 
 
-async def _freedium(url: str) -> tuple[str, dict[str, Any], str]:
-    """Freedium is a Medium-specific paywall bypass; skip for non-Medium URLs."""
+async def _freedium(url: str) -> tuple[str, dict[str, Any], str, str]:
     host = (urlparse(url).hostname or "").lower()
     if "medium.com" not in host and not host.endswith(".medium.com"):
-        return "", {}, url
+        return "", {}, url, ""
     target = f"https://freedium.cfd/{url}"
-    text, meta, final = await _fetch_and_extract(
-        target, headers={"User-Agent": _DEFAULT_UA}
-    )
-    # Freedium pre-pends its own banner; compact_text already trims, no-op here.
-    return text, meta, final
+    return await _fetch_and_extract(target, headers={"User-Agent": _DEFAULT_UA})
+
+
+def _structured_newsletter(
+    html: str,
+    url: str,
+    config: dict[str, Any],
+) -> StructuredNewsletter:
+    if not html or not config.get("site_specific_selectors_enabled", True):
+        return StructuredNewsletter(site="unknown")
+    return extract_structured(html, url=url)
+
+
+async def _detect_stance(
+    body_text: str,
+    url: str,
+    config: dict[str, Any],
+) -> str:
+    if not body_text or not config.get("stance_classifier_enabled", True):
+        return "neutral"
+
+    try:
+        from website.features.summarization_engine.api.routes import _gemini_client
+
+        client = _gemini_client()
+        cache_root = (
+            Path(__file__).resolve().parents[5] / "docs" / "summary_eval" / "_cache"
+        )
+        return await classify_stance(
+            client=client,
+            body_text=body_text,
+            cache_root=cache_root,
+            url=url,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[newsletter] stance classify failed for %s: %s", url, exc)
+        return "neutral"
 
 
 __all__ = ["NewsletterIngestor"]

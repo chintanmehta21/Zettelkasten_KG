@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **RUNBOOK:** Execute commands strictly from `docs/summary_eval/RUNBOOK_CODEX.md` — it is the single source of truth for the two-phase state machine, manual_review.md template, per-iter URL allocation, recovery procedures, and the halt switch. The plan below is the goal spec; the runbook is how you actually run it.
+
 **Goal:** Drive YouTube summarization quality to spec-§10.1 "production-grade" criteria (composite ≥ 92, RAGAS faithfulness ≥ 0.95 on training URL; held-out mean ≥ 88; prod-parity delta ≤ 5) through the 7-loop runbook defined in spec §4.1 and §8.2.
 
 **Architecture:** Each loop is a two-phase CLI invocation with Codex's cross-model manual review in between. Tuning loops (2, 3, 5, 8) let Codex edit any allowed surface to move the score; churn protection (spec §8.4) blocks unproductive file re-edits. Measurement loops (1, 4, 6, 7) are scored but not tuned. Auto-triggered extensions 8-9 fire only if loop 6 fails held-out thresholds.
@@ -212,6 +214,60 @@ ls docs/summary_eval/youtube/iter-*/ 2>/dev/null
 Expected: no output (no prior iteration folders). If any exist from aborted prior runs, delete them before starting:
 ```bash
 rm -rf docs/summary_eval/youtube/iter-*
+```
+
+---
+
+## Task 0.6: Pre-loop correctness gate (schema-routing smoke)
+
+Before burning any training URL, prove that the YouTube summarizer actually routes through `YouTubeStructuredPayload` and produces source-shaped output. If this gate fails, STOP — iter-01 would score garbage and every later loop would inherit the bug.
+
+**Files:**
+- None created (assertions only).
+
+- [ ] **Step 1: In-process route smoke + shape assertions**
+
+Uses the same `summarize_url` entry-point the eval_loop calls in Phase A, so the gate sees exactly what iter-01 will see. Prints `GATE OK` on success, exits non-zero on any failure.
+
+```bash
+python - <<'PY'
+import asyncio, json, os, re, sys
+from uuid import UUID
+from pathlib import Path
+from website.features.summarization_engine.core.orchestrator import summarize_url
+from website.features.summarization_engine.api.routes import _gemini_client
+from ops.scripts.lib.links_parser import parse_links_file
+
+by_source = parse_links_file(Path("docs/testing/links.txt"))
+urls = by_source.get("youtube") or []
+assert urls, "no youtube URLs in links.txt"
+url = urls[0]
+client = _gemini_client()
+USER = UUID("00000000-0000-0000-0000-000000000001")
+res = asyncio.run(summarize_url(url, user_id=USER, gemini_client=client))
+r = res.model_dump(mode="json")
+md = r.get("metadata", {}) or {}
+sp = md.get("structured_payload") or {}
+errs = []
+if md.get("is_schema_fallback"): errs.append("is_schema_fallback=True (routing broken)")
+if "_schema_fallback_" in (r.get("tags") or []): errs.append("_schema_fallback_ tag present")
+for bp in ("zettelkasten","summary","capture","research","notes"):
+    if bp in (r.get("tags") or []): errs.append(f"boilerplate tag: {bp}")
+ds = sp.get("detailed_summary") or {}
+for req in ("thesis","chapters_or_segments","closing_takeaway"):
+    if req not in ds: errs.append(f"missing YouTube field: detailed_summary.{req}")
+if not (ds.get("chapters_or_segments") or []): errs.append("chapters_or_segments empty")
+if errs:
+    print("GATE FAILED:", *errs, sep="\n - "); sys.exit(1)
+print(f"GATE OK url={url}")
+PY
+```
+Expected: `GATE OK url=...`. If it fails: fix routing/schema BEFORE starting iter-01. Do not proceed.
+
+- [ ] **Step 2: Evaluator-version gate**
+
+```bash
+python -c "from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION; assert PROMPT_VERSION=='evaluator.v3', PROMPT_VERSION; print('evaluator.v3 OK')"
 ```
 
 ---

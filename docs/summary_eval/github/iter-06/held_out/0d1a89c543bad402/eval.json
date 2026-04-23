@@ -1,0 +1,202 @@
+{
+  "g_eval": {
+    "coherence": 1.0,
+    "consistency": 4.0,
+    "fluency": 4.0,
+    "relevance": 1.0,
+    "reasoning": "The summary explicitly indicates a schema fallback, leading to a broken structure where the detailed summary repeats the brief. This severely impacts coherence and relevance, despite the limited factual content being accurate."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Brief summary misses high-level architecture details.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Brief summary misses documented usage/installation/workflow.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Brief summary misses public surface details (e.g., REST routes, CLI entry, UI pages).",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses core features as bullets.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses architecture details (directories, key classes, interactions).",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses public APIs / CLI commands / config options with exact names.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses install steps, dependencies, environment variables, build, deploy instructions.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses documented limitations, caveats, security notes.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Detailed summary misses what benchmarks/tests/examples demonstrate.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.0,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The detailed summary section repeats the content of the brief summary.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.4,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "### Architecture and API",
+        "reason": "This is a heading, not a factual claim."
+      },
+      {
+        "sentence": "structured extractor fell back; see metadata.is_schema_fallback",
+        "reason": "This is meta-commentary about the summary generation process, not content about the repository."
+      },
+      {
+        "sentence": "* **ID:** psf/requests * **Tags:** #python, #http, #library, #client **psf/requests** is a high-level HTTP/1.1 client library for Python, officially supporting versions 3.10+. Guided by the philosophy \"HTTP for Humans,\" it is one of Python's most downloaded packages (~300M/week) and a dependency for over 4,000,000 GitHub repositories. ### Architecture and API",
+        "reason": "This sentence contains meta-information (ID, Tags) and a heading, which are not factual claims about the repository from the source, in addition to factual claims."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 0.0,
+        "max_points": 25,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.usage_pattern",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 0.0,
+        "max_points": 45,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 0.0,
+        "max_points": 15,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims",
+          "schema_failure"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 0.0,
+        "max_points": 15,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors",
+          "schema_failure"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "schema_failure",
+        "source_region": "structured_payload",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 0.0,
+    "finesure": 0.0,
+    "qafact": 0.0,
+    "summac": 0.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "37a4b49231fc1cbf3beeeac6092b560ef7b7fee0441531aa2eba11ee30f1ff27",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 6567,
+    "total_tokens_out": 1281,
+    "latency_ms": 30769
+  }
+}
