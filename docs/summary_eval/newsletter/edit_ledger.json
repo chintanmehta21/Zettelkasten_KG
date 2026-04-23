@@ -59,6 +59,13 @@
       "targeted_criterion": "label.compact_declarative",
       "criterion_delta": 0.0,
       "composite_delta": -4.726666666666674
+    },
+    {
+      "iter": 8,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 92.45
     }
   ]
 }
