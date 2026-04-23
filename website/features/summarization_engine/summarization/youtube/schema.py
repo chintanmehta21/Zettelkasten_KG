@@ -76,6 +76,7 @@ class YouTubeStructuredPayload(BaseModel):
             speakers=self.speakers,
             entities=self.entities_discussed,
             chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
+            demonstrations=list(self.detailed_summary.demonstrations or []),
             closing_takeaway=self.detailed_summary.closing_takeaway,
         )
         return self
@@ -208,14 +209,23 @@ def _repair_brief_summary(
     speakers: list[str],
     entities: list[str],
     chapter_titles: list[str],
+    demonstrations: list[str],
     closing_takeaway: str,
 ) -> str:
-    """Accept the LLM brief as-is when it's a plausible natural paragraph.
+    """Accept the LLM brief as-is when it already looks natural and
+    hits the rubric target length. Otherwise extend or rebuild from
+    structured fields so the brief always lands in the 5–7 sentence
+    window without truncating mid-clause.
 
-    Only rebuild from structured fields when the model output is empty or
-    clearly malformed (no terminal punctuation, fewer than 2 complete
-    sentences). The rebuilt brief uses whole source sentences — never
-    word-count truncation — so it never dies mid-clause.
+    Regression note (iter-06 → iter-09):
+      * iter-07 dropped brief.length_5_to_7_sentences to 0/2 because a
+        2-sentence LLM brief passed the prior ``>= 2`` gate and was
+        returned verbatim. The gate now accepts 5–7 sentences; shorter
+        complete briefs are *extended* with structured facts (never
+        truncated).
+      * iter-08 cratered when placeholder speakers raised a
+        ValidationError → schema_fallback → raw output → hallucination
+        cap. That is handled by ``_sanitize_speakers`` coercion.
     """
     from website.features.summarization_engine.summarization.common.text_guards import (
         ends_with_dangling_word,
@@ -226,67 +236,205 @@ def _repair_brief_summary(
     cleaned = _strip_scaffold_phrases(cleaned)
     sentences = _split_sentences(cleaned)
     tail_ok = bool(sentences) and not ends_with_dangling_word(sentences[-1])
-    looks_complete = (
+
+    # Path 1: LLM brief already hits the 5–7 sentence target window.
+    if (
         cleaned
         and cleaned[-1] in ".!?"
-        and len(sentences) >= 2
+        and 5 <= len(sentences) <= 7
         and len(cleaned) <= 500
         and tail_ok
-    )
-    if looks_complete:
+    ):
         return cleaned
 
+    # Path 2: brief is coherent (2–4 complete sentences) but short of
+    # the rubric target — extend with structured sentences rather than
+    # discard the natural paragraph.
+    if (
+        cleaned
+        and cleaned[-1] in ".!?"
+        and 2 <= len(sentences) < 5
+        and len(cleaned) <= 500
+        and tail_ok
+    ):
+        extended = _extend_brief_with_structured(
+            sentences=sentences,
+            format_name=format_name,
+            speakers=speakers,
+            entities=entities,
+            chapter_titles=chapter_titles,
+            demonstrations=demonstrations,
+            closing_takeaway=closing_takeaway,
+        )
+        if extended:
+            return extended
+
+    # Path 3: brief has too many sentences — clip to 7 whole ones.
+    if (
+        cleaned
+        and cleaned[-1] in ".!?"
+        and len(sentences) > 7
+        and tail_ok
+    ):
+        clipped = " ".join(sentences[:7]).strip()
+        if 0 < len(clipped) <= 500:
+            return clipped
+
+    # Path 4: brief looks dangling but is terminated — last-chance repair.
     already_terminated = bool(cleaned) and cleaned[-1] in ".!?"
     if already_terminated:
         repaired = repair_or_drop(cleaned)
         if repaired:
             repaired_sentences = _split_sentences(repaired)
             if (
-                len(repaired_sentences) >= 2
+                5 <= len(repaired_sentences) <= 7
                 and len(repaired) <= 500
                 and not ends_with_dangling_word(repaired_sentences[-1])
             ):
                 return repaired
 
+    # Path 5: full rebuild from structured fields (broken/empty LLM brief).
+    return _compose_structured_brief(
+        format_name=format_name,
+        thesis=thesis,
+        speakers=speakers,
+        entities=entities,
+        chapter_titles=chapter_titles,
+        demonstrations=demonstrations,
+        closing_takeaway=closing_takeaway,
+    )
+
+
+def _compose_structured_brief(
+    *,
+    format_name: str,
+    thesis: str,
+    speakers: list[str],
+    entities: list[str],
+    chapter_titles: list[str],
+    demonstrations: list[str],
+    closing_takeaway: str,
+) -> str:
     speaker = _primary_speaker(speakers) or "The speaker"
     parts: list[str] = []
+
     thesis_sentence = _first_sentence(thesis)
     if thesis_sentence:
-        parts.append(f"In this {format_name}, {speaker} argues that {thesis_sentence.lower().rstrip('.')}.")
+        parts.append(
+            f"In this {format_name}, {speaker} argues that "
+            f"{thesis_sentence.lower().rstrip('.')}."
+        )
     else:
         parts.append(f"This {format_name} is delivered by {speaker}.")
 
-    if chapter_titles:
-        titles = [t for t in chapter_titles if t.strip()][:3]
-        if titles:
-            parts.append(f"The video moves through {_join_series(titles)}.")
+    titles = [t for t in (chapter_titles or []) if t and t.strip()][:3]
+    if titles:
+        parts.append(f"The {format_name} moves through {_join_series(titles)}.")
 
-    entity_text = [e for e in entities if e and e.strip()][:3]
+    demos = [d for d in (demonstrations or []) if d and d.strip()][:2]
+    if demos:
+        parts.append(f"It walks through {_join_series(demos)}.")
+
+    entity_text = [e for e in (entities or []) if e and e.strip()][:3]
     if entity_text:
-        parts.append(f"It references {_join_series(entity_text)}.")
+        parts.append(f"Along the way {speaker} references {_join_series(entity_text)}.")
 
     closing_sentence = _first_sentence(closing_takeaway)
     if closing_sentence:
-        parts.append(f"{closing_sentence.rstrip('.')}.")
+        parts.append(f"The closing point is that {closing_sentence.lower().rstrip('.')}.")
 
+    return _fit_parts_to_budget(parts)
+
+
+def _extend_brief_with_structured(
+    *,
+    sentences: list[str],
+    format_name: str,
+    speakers: list[str],
+    entities: list[str],
+    chapter_titles: list[str],
+    demonstrations: list[str],
+    closing_takeaway: str,
+) -> str:
+    """Append structured sentences until the brief reaches 5 sentences.
+
+    Only adds content that is not already mentioned in the natural
+    brief, so the extension reads as continuation rather than
+    duplication.
+    """
+    existing = " ".join(sentences).lower()
+    extensions: list[str] = []
+    target = 5 - len(sentences)
+    if target <= 0:
+        return " ".join(sentences).strip()
+
+    def already_mentioned(snippet: str) -> bool:
+        token = snippet.strip().lower().rstrip(".")
+        return bool(token) and token in existing
+
+    titles = [t for t in (chapter_titles or []) if t and t.strip()][:3]
+    if titles and len(extensions) < target:
+        unseen = [t for t in titles if not already_mentioned(t)]
+        if unseen:
+            extensions.append(
+                f"The {format_name} moves through {_join_series(unseen)}."
+            )
+
+    demos = [d for d in (demonstrations or []) if d and d.strip()][:2]
+    if demos and len(extensions) < target:
+        unseen = [d for d in demos if not already_mentioned(d)]
+        if unseen:
+            extensions.append(f"It walks through {_join_series(unseen)}.")
+
+    speaker = _primary_speaker(speakers)
+    entity_text = [e for e in (entities or []) if e and e.strip()][:3]
+    if entity_text and len(extensions) < target:
+        unseen = [e for e in entity_text if not already_mentioned(e)]
+        if unseen:
+            subject = speaker or "the speaker"
+            extensions.append(f"Along the way {subject} references {_join_series(unseen)}.")
+
+    closing_sentence = _first_sentence(closing_takeaway)
+    if closing_sentence and len(extensions) < target and not already_mentioned(closing_sentence):
+        extensions.append(
+            f"The closing point is that {closing_sentence.lower().rstrip('.')}."
+        )
+
+    if not extensions:
+        return ""
+
+    combined = (" ".join(sentences) + " " + " ".join(extensions)).strip()
+    if len(combined) <= 500:
+        return combined
+
+    # Budget overflow — keep original brief plus as many extensions as fit.
+    acc = " ".join(sentences).strip()
+    for ext in extensions:
+        candidate = (acc + " " + ext).strip()
+        if len(candidate) > 500:
+            break
+        acc = candidate
+    return acc
+
+
+def _fit_parts_to_budget(parts: list[str]) -> str:
     rebuilt = " ".join(parts).strip()
-    if len(rebuilt) <= 500 and rebuilt:
+    if rebuilt and len(rebuilt) <= 500:
         return rebuilt
-    # Rebuilt overshoots: drop middle entity sentence first, then chapters.
-    for drop_index in (2, 1):
+    # Drop the least load-bearing sentences first (entity ref, then walkthrough).
+    for drop_index in (3, 2, 1):
         if drop_index < len(parts):
             trimmed = " ".join(parts[:drop_index] + parts[drop_index + 1 :]).strip()
             if len(trimmed) <= 500:
                 return trimmed
-    # Last resort: thesis + closing only
-    fallback = " ".join([p for p in (parts[0], parts[-1]) if p])
+    fallback = " ".join([p for p in (parts[0], parts[-1]) if p]) if parts else ""
     return fallback[:500].rstrip()
 
 
 def _primary_speaker(speakers: list[str]) -> str:
     for speaker in speakers or []:
         name = re.sub(r"\s+", " ", (speaker or "")).strip()
-        if name and name.lower() not in {"narrator", "host", "speaker", "presenter"}:
+        if name and not _is_placeholder_speaker(name):
             return name
     return ""
 
