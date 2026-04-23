@@ -1,3 +1,4 @@
+import json
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,8 +14,45 @@ from website.features.summarization_engine.summarization.reddit.summarizer impor
 
 @pytest.fixture
 def mock_gemini_client():
+    class Generation:
+        def __init__(self, payload: dict):
+            self.text = json.dumps(payload)
+            self.input_tokens = 10
+            self.output_tokens = 20
+
     class Client:
-        generate = AsyncMock()
+        def __init__(self):
+            self.generate = AsyncMock(
+                return_value=Generation(
+                    {
+                        "mini_title": "r/python Async IO",
+                        "brief_summary": "One short sentence only",
+                        "tags": [
+                            "python",
+                            "asyncio",
+                            "q-and-a",
+                            "discussion",
+                            "help",
+                            "code",
+                            "tips",
+                            "reddit-thread",
+                        ],
+                        "detailed_summary": {
+                            "op_intent": "OP asks about async IO.",
+                            "reply_clusters": [
+                                {
+                                    "theme": "Usage",
+                                    "reasoning": "Replies explain event loops.",
+                                    "examples": ["await"],
+                                }
+                            ],
+                            "counterarguments": [],
+                            "unresolved_questions": [],
+                            "moderation_context": None,
+                        },
+                    }
+                )
+            )
 
     return Client()
 
@@ -25,9 +63,7 @@ async def test_reddit_summarizer_uses_reddit_payload_class(
 ):
     from website.features.summarization_engine.summarization.common import (
         cod,
-        patch as p_mod,
         self_check,
-        structured,
     )
 
     monkeypatch.setattr(
@@ -40,64 +76,6 @@ async def test_reddit_summarizer_uses_reddit_payload_class(
         "check",
         AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
     )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
-
-    captured = {}
-    original_init = structured.StructuredExtractor.__init__
-
-    def fake_init(
-        self, client, config, payload_class=structured.StructuredSummaryPayload
-    ):
-        captured["payload_class"] = payload_class
-        original_init(self, client, config, payload_class)
-
-    async def fake_extract(self, ingest, text, **kwargs):
-        from website.features.summarization_engine.core.models import (
-            DetailedSummarySection,
-            SummaryMetadata,
-            SummaryResult,
-        )
-
-        return SummaryResult(
-            mini_title="r/python Async IO",
-            brief_summary="b",
-            tags=["a", "b", "c", "d", "e", "f", "g"],
-            detailed_summary=[DetailedSummarySection(heading="H", bullets=["b"])],
-            metadata=SummaryMetadata(
-                source_type=SourceType.REDDIT,
-                url=ingest.url,
-                extraction_confidence="high",
-                confidence_reason="ok",
-                total_tokens_used=0,
-                total_latency_ms=0,
-                structured_payload={
-                    "mini_title": "r/python Async IO",
-                    "brief_summary": "b",
-                    "tags": ["python", "asyncio", "q-and-a", "discussion", "help", "code", "tips"],
-                    "detailed_summary": {
-                        "op_intent": "OP asks about async IO.",
-                        "reply_clusters": [
-                            {
-                                "theme": "Usage",
-                                "reasoning": "Replies explain event loops.",
-                                "examples": ["await"],
-                            }
-                        ],
-                        "counterarguments": [],
-                        "unresolved_questions": [],
-                        "moderation_context": None,
-                    },
-                },
-            ),
-        )
-
-    monkeypatch.setattr(structured.StructuredExtractor, "__init__", fake_init)
-    monkeypatch.setattr(structured.StructuredExtractor, "extract", fake_extract)
-
     ingest = IngestResult(
         source_type=SourceType.REDDIT,
         url="https://reddit.com/r/python/comments/x",
@@ -111,16 +89,16 @@ async def test_reddit_summarizer_uses_reddit_payload_class(
     result = await RedditSummarizer(mock_gemini_client, {}).summarize(ingest)
 
     assert result.mini_title.startswith("r/")
-    assert captured["payload_class"] is RedditStructuredPayload
+    assert result.metadata.structured_payload is not None
+    assert result.metadata.structured_payload["detailed_summary"]["op_intent"] == "OP asks about async IO."
+    assert mock_gemini_client.generate.await_args.kwargs["response_schema"] is RedditStructuredPayload
 
 
 @pytest.mark.asyncio
 async def test_reddit_summarizer_injects_moderation_context(mock_gemini_client, monkeypatch):
     from website.features.summarization_engine.summarization.common import (
         cod,
-        patch as p_mod,
         self_check,
-        structured,
     )
 
     monkeypatch.setattr(
@@ -133,54 +111,6 @@ async def test_reddit_summarizer_injects_moderation_context(mock_gemini_client, 
         "check",
         AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
     )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
-
-    async def fake_extract(self, ingest, text, **kwargs):
-        from website.features.summarization_engine.core.models import (
-            DetailedSummarySection,
-            SummaryMetadata,
-            SummaryResult,
-        )
-
-        return SummaryResult(
-            mini_title="r/python Async IO",
-            brief_summary="A repaired brief.",
-            tags=["python", "asyncio", "discussion", "code", "tips", "patterns", "loops"],
-            detailed_summary=[DetailedSummarySection(heading="reply_clusters", bullets=["b"])],
-            metadata=SummaryMetadata(
-                source_type=SourceType.REDDIT,
-                url=ingest.url,
-                extraction_confidence="high",
-                confidence_reason="ok",
-                total_tokens_used=0,
-                total_latency_ms=0,
-                structured_payload={
-                    "mini_title": "r/python Async IO",
-                    "brief_summary": "A repaired brief.",
-                    "tags": ["python", "asyncio", "discussion", "code", "tips", "patterns", "loops"],
-                    "detailed_summary": {
-                        "op_intent": "OP asks about async IO.",
-                        "reply_clusters": [
-                            {
-                                "theme": "Usage",
-                                "reasoning": "Replies explain event loops.",
-                                "examples": ["await"],
-                            }
-                        ],
-                        "counterarguments": [],
-                        "unresolved_questions": [],
-                        "moderation_context": None,
-                    },
-                },
-            ),
-        )
-
-    monkeypatch.setattr(structured.StructuredExtractor, "extract", fake_extract)
-
     ingest = IngestResult(
         source_type=SourceType.REDDIT,
         url="https://reddit.com/r/python/comments/x",
