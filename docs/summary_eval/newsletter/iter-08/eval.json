@@ -1,0 +1,519 @@
+[
+  {
+    "url": "https://www.platformer.news/substack-nazi-push-notification/",
+    "eval": {
+      "g_eval": {
+        "coherence": 5.0,
+        "consistency": 5.0,
+        "fluency": 5.0,
+        "relevance": 5.0,
+        "reasoning": "The summary is highly coherent, consistent, fluent, and relevant, accurately capturing the source's main arguments and details without editorialization."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 1.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 25.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.main_topic_thesis",
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.action_items",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts",
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.branded_source_rule",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 100.0,
+        "finesure": 100.0,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 5087,
+        "total_tokens_out": 823,
+        "latency_ms": 31925
+      }
+    }
+  },
+  {
+    "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.5,
+        "consistency": 4.5,
+        "fluency": 5.0,
+        "relevance": 4.5,
+        "reasoning": "The summary is highly coherent, logically structured, and fluent. It accurately reflects the source content and maintains relevance throughout. Minor points deducted for slight brevity in some sections."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.9,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": "This unnamed chemistry newsletter presents recent research highlights, focusing on significant advances in synthetic organic chemistry.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief.main_topic_thesis",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "Brief states main topic or thesis in one sentence."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.argument_structure",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Brief summarizes how the author structures their argument."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.key_evidence",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Important evidence or examples are captured without invention."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.conclusions_distinct",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Author's conclusions/recommendations distinguished from background."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.caveats_addressed",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "If explicit caveats or counterarguments present, how author addresses them is summarized."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "brief.stance_preserved",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "Tone reflects author's stance without editorializing."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.sections_ordered",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "Bullets represent major sections/argumentative steps in logical order."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.claims_source_grounded",
+            "score": 8.0,
+            "max_points": 8,
+            "criteria_fired": [
+              "Claims in bullets are grounded in the source; no new claims."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.examples_captured",
+            "score": 7.0,
+            "max_points": 7,
+            "criteria_fired": [
+              "Notable examples, case studies, data anchors are captured."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.action_items",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "Explicit action items / practical takeaways bulleted if present."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.multiple_scenarios",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "If multiple viewpoints/scenarios discussed, each gets a bullet."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.no_footer_padding",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Unsubscribe language, house style, boilerplate not given bullets."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed.bullets_specific",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "Bullets concise yet specific; no vague paraphrase."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.count_7_to_10",
+            "score": 2.0,
+            "max_points": 2,
+            "criteria_fired": [
+              "Exactly 7-10 tags."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.domain_subdomain",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "Main domain and subdomain tagged."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.key_concepts",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "Key concepts or frameworks introduced in the piece tagged."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.type_intent",
+            "score": 3.0,
+            "max_points": 3,
+            "criteria_fired": [
+              "Piece type tagged (opinion, research-summary, how-to, case-study)."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags.no_stance_misrepresentation",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Tags don't misrepresent stance (no 'bullish-call' on neutral piece)."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.compact_declarative",
+            "score": 6.0,
+            "max_points": 6,
+            "criteria_fired": [
+              "Label is a compact, declarative phrase reflecting main thesis."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.branded_source_rule",
+            "score": 5.0,
+            "max_points": 5,
+            "criteria_fired": [
+              "For branded sources (Stratechery/Platformer/etc.), label includes publication name."
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label.informative_not_catchy",
+            "score": 4.0,
+            "max_points": 4,
+            "criteria_fired": [
+              "Informative over catchy; obvious what the Zettel is about."
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 95.0,
+        "finesure": 93.33,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash-lite",
+        "total_tokens_in": 11236,
+        "total_tokens_out": 4057,
+        "latency_ms": 72770
+      }
+    }
+  },
+  {
+    "url": "https://product.beehiiv.com/p/introducing-email-boosts",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.5,
+        "consistency": 5.0,
+        "fluency": 4.5,
+        "relevance": 4.0,
+        "reasoning": "The summary accurately extracts and organizes information, and makes reasonable inferences in the 'Implications' section that are well-supported by the source content."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 0.63,
+          "items": [
+            {
+              "claim": "The summary's `brief_summary` does not include any key evidence or examples from the source.",
+              "fact": null,
+              "sentence": "beehiiv has launched \"Email Boosts,\" an expansion of its cross-promotion network. This feature allows publishers to embed paid recommendations directly into their newsletters, targeting their entire subscriber base. It creates a two-sided marketplace for growth and monetization, aiming to scale paid acquisition and foster a self-funding flywheel.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The summary's `brief_summary` does not adequately summarize how the author structures their argument.",
+              "fact": null,
+              "sentence": "beehiiv has launched \"Email Boosts,\" an expansion of its cross-promotion network. This feature allows publishers to embed paid recommendations directly into their newsletters, targeting their entire subscriber base. It creates a two-sided marketplace for growth and monetization, aiming to scale paid acquisition and foster a self-funding flywheel.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The summary's `detailed_summary.conclusions_or_recommendations` and `cta` fields are empty/null, missing explicit calls to action present in the source such as 'Start Growing with Boosts', 'Start Monetizing with Boosts', and 'upgrade here'.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The `metadata.author` and `metadata.date` fields are null, despite the source clearly stating 'Tyler Denk Aug 16, 2023'.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.9,
+          "items": [
+            {
+              "claim": "The `brief_summary` uses three sentences to state the main topic/thesis, while the criterion specifies one sentence.",
+              "fact": null,
+              "sentence": "beehiiv has launched \"Email Boosts,\" an expansion of its cross-promotion network. This feature allows publishers to embed paid recommendations directly into their newsletters, targeting their entire subscriber base. It creates a two-sided marketplace for growth and monetization, aiming to scale paid acquisition and foster a self-funding flywheel.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 8.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.conclusions_distinct",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": [
+              "brief.main_topic_thesis",
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.caveats_addressed"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 39.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": [
+              "detailed.action_items"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 11.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts"
+            ],
+            "criteria_missed": [
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.branded_source_rule",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 78.85,
+        "finesure": 63.41,
+        "qafact": 0.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 6555,
+        "total_tokens_out": 1309,
+        "latency_ms": 50179
+      }
+    }
+  }
+]

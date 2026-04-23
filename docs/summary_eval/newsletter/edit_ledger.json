@@ -47,6 +47,18 @@
       "targeted_criterion": "brief.main_topic_thesis",
       "criterion_delta": 0.0,
       "composite_delta": 33.11666666666667
+    },
+    {
+      "iter": 6,
+      "files": [
+        "tests/unit/summarization_engine/evaluator/test_models.py",
+        "tests/unit/summarization_engine/summarization/test_json_utils.py",
+        "website/features/summarization_engine/evaluator/models.py",
+        "website/features/summarization_engine/summarization/common/json_utils.py"
+      ],
+      "targeted_criterion": "label.compact_declarative",
+      "criterion_delta": 0.0,
+      "composite_delta": -4.726666666666674
     }
   ]
 }
