@@ -53,7 +53,11 @@ SUPPORTED_SOURCES = [
 #   7:  held-out URLs (prod-parity)
 #   8:  URL #1 + #2 + #3 + failed held-out (conditional tune)
 #   9:  all held-out (conditional measurement)
+#  10+: cadence policy — even iter = full held-out sweep (≥5 URLs);
+#       odd iter = 3-URL training tune
 LOOP_URL_COUNTS = {1: 1, 2: 1, 3: 1, 4: 2, 5: 3, 8: 3}
+HELD_OUT_MIN_URLS = 5
+EVAL_SOURCES_WITH_CHEAP_FAILFAST = {"youtube", "reddit", "github", "newsletter"}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -125,7 +129,20 @@ def _urls_for_iter(source: str, iter_num: int, override: list[str] | None) -> tu
         # Later appends in links.txt are exploratory extras, not part of the scored plan.
         if source == "reddit":
             held_out = held_out[:1]
+        # For non-Reddit sources: ensure ≥HELD_OUT_MIN_URLS by promoting to the
+        # full sweep when the held-out slice alone is too small.
+        elif len(held_out) < HELD_OUT_MIN_URLS and len(all_urls) >= HELD_OUT_MIN_URLS:
+            held_out = all_urls[:HELD_OUT_MIN_URLS]
         return held_out, True
+    if iter_num >= 10:
+        # Cadence: even iter = held-out sweep; odd iter = 3-URL training tune.
+        if iter_num % 2 == 0:
+            held_out = all_urls
+            if source == "reddit":
+                training_cut = 3
+                held_out = all_urls[training_cut:][:1]
+            return held_out, True
+        return all_urls[:3], False
     # default: first URL
     return all_urls[:1], False
 
@@ -177,8 +194,18 @@ def _report(source: str, since: str | None = None) -> dict:
     return {"source": source, "iterations": rows}
 
 
+def _apply_eval_key_pool_overrides(source: str | None) -> None:
+    if source not in EVAL_SOURCES_WITH_CHEAP_FAILFAST:
+        return
+    os.environ.setdefault("GEMINI_KEY_ROLE_FILTER", "billing")
+    os.environ.setdefault("GEMINI_MAX_RETRIES", "1")
+    os.environ.setdefault("GEMINI_RATE_LIMIT_COOLDOWN_SECS", "75")
+    os.environ.setdefault("GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS", "1")
+
+
 def main() -> int:
     args = _parse_args()
+    _apply_eval_key_pool_overrides(args.source)
 
     if args.stop_server:
         print(json.dumps({"status": "noop"}))

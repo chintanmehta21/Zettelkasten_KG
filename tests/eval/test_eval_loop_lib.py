@@ -347,6 +347,27 @@ def test_urls_for_iter_override_wins(monkeypatch: pytest.MonkeyPatch):
     assert urls == ["https://manual"] and held_out is False
 
 
+def test_apply_eval_key_pool_overrides_sets_failfast_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from ops.scripts import eval_loop
+
+    for name in (
+        "GEMINI_KEY_ROLE_FILTER",
+        "GEMINI_MAX_RETRIES",
+        "GEMINI_RATE_LIMIT_COOLDOWN_SECS",
+        "GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    eval_loop._apply_eval_key_pool_overrides("github")
+
+    assert os.environ["GEMINI_KEY_ROLE_FILTER"] == "billing"
+    assert os.environ["GEMINI_MAX_RETRIES"] == "1"
+    assert os.environ["GEMINI_RATE_LIMIT_COOLDOWN_SECS"] == "75"
+    assert os.environ["GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS"] == "1"
+
+
 # ── git_helper (isolated temp repo) ──────────────────────────────────────────
 
 
