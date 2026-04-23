@@ -242,7 +242,12 @@ async def test_extract_success_github_list_detailed_summary():
 
     assert result.metadata.is_schema_fallback is False
     assert result.mini_title == "fastapi/fastapi"
-    assert result.detailed_summary[0].heading == "routing"
+    headings = {s.heading for s in result.detailed_summary}
+    assert "Overview" in headings
+    assert "Features and modules" in headings
+    assert "Closing remarks" in headings
+    features = next(s for s in result.detailed_summary if s.heading == "Features and modules")
+    assert "routing" in features.sub_sections
 
 
 @pytest.mark.asyncio

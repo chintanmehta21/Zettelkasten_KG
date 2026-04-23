@@ -33,6 +33,12 @@ from website.features.summarization_engine.summarization.common.prompts import (
     SYSTEM_PROMPT,
     source_context,
 )
+from website.features.summarization_engine.summarization.common.text_guards import (
+    ensure_terminator,
+    repair_or_drop,
+    sanitize_bullets,
+    sanitize_sub_sections,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -190,13 +196,14 @@ class StructuredExtractor:
         )
 
         brief_max = self._config.structured_extract.brief_summary_max_chars
+        brief_raw = str(getattr(payload, "brief_summary", ""))
+        brief_truncated = _smart_truncate(brief_raw, brief_max)
+        brief_safe = repair_or_drop(brief_truncated) or ensure_terminator(brief_truncated)
         return SummaryResult(
             mini_title=str(getattr(payload, "mini_title", ""))[
                 : self._config.structured_extract.mini_title_max_chars
             ],
-            brief_summary=_smart_truncate(
-                str(getattr(payload, "brief_summary", "")), brief_max
-            ),
+            brief_summary=brief_safe,
             tags=tags,
             detailed_summary=detailed_list,
             metadata=SummaryMetadata(
@@ -241,9 +248,23 @@ def _coerce_detailed_summary(
     payload: BaseModel,
     source_type: SourceType | None = None,
 ) -> list[DetailedSummarySection]:
-    """Convert a source-specific or generic detailed_summary into a list of sections."""
+    """Convert a source-specific or generic detailed_summary into a list of sections.
+
+    Per-source composers (``compose_*_detailed``) build a stable Overview →
+    walkthrough → Closing remarks hierarchy with populated ``sub_sections``
+    so the renderer never emits raw schema-key headings (``thesis``,
+    ``reply_clusters``) or JSON-stringified chapter objects. The generic
+    path below remains the fallback when source_type is unknown or when the
+    payload class does not match the expected per-source schema.
+    """
     if source_type == SourceType.YOUTUBE:
         return _coerce_youtube_detailed(payload)
+    if source_type == SourceType.REDDIT:
+        return _coerce_reddit_detailed(payload)
+    if source_type == SourceType.GITHUB:
+        return _coerce_github_detailed(payload)
+    if source_type == SourceType.NEWSLETTER:
+        return _coerce_newsletter_detailed(payload)
 
     raw = getattr(payload, "detailed_summary", None)
     if raw is None:
@@ -326,6 +347,39 @@ def _coerce_detailed_summary(
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
 
 
+def _sanitize_composed(
+    sections: list[DetailedSummarySection],
+) -> list[DetailedSummarySection]:
+    """Post-process composed sections to drop dangling-tail bullets.
+
+    Composers pull bullets directly from LLM output; the text-guard layer
+    catches the class of defect observed in YouTube iter-08 where the
+    closing takeaway was ``"The main takeaway is DMT is a powerful."`` —
+    a terminated sentence whose tail word is a scaffold requiring a
+    following noun. Sections whose primary bullets all drop are kept in
+    place with a safe fallback so the renderer's section count stays
+    stable; empty sub_sections are pruned.
+    """
+    out: list[DetailedSummarySection] = []
+    for section in sections:
+        safe_bullets = sanitize_bullets(section.bullets or [])
+        safe_subs = sanitize_sub_sections(section.sub_sections or {})
+        if not safe_bullets and not safe_subs:
+            continue
+        if not safe_bullets and safe_subs:
+            safe_bullets = []
+        out.append(
+            DetailedSummarySection(
+                heading=section.heading,
+                bullets=safe_bullets,
+                sub_sections=safe_subs,
+            )
+        )
+    if not out:
+        return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return out
+
+
 def _coerce_youtube_detailed(payload: BaseModel) -> list[DetailedSummarySection]:
     """Delegate YouTube detailed composition to the dedicated layout module.
 
@@ -341,12 +395,66 @@ def _coerce_youtube_detailed(payload: BaseModel) -> list[DetailedSummarySection]
     )
 
     if isinstance(payload, YouTubeStructuredPayload):
-        return compose_youtube_detailed(payload)
+        return _sanitize_composed(compose_youtube_detailed(payload))
     try:
         validated = YouTubeStructuredPayload.model_validate(payload.model_dump(mode="json"))
     except Exception:
         return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
-    return compose_youtube_detailed(validated)
+    return _sanitize_composed(compose_youtube_detailed(validated))
+
+
+def _coerce_reddit_detailed(payload: BaseModel) -> list[DetailedSummarySection]:
+    """Delegate Reddit detailed composition to the dedicated layout module."""
+    from website.features.summarization_engine.summarization.reddit.layout import (
+        compose_reddit_detailed,
+    )
+    from website.features.summarization_engine.summarization.reddit.schema import (
+        RedditStructuredPayload,
+    )
+
+    if isinstance(payload, RedditStructuredPayload):
+        return _sanitize_composed(compose_reddit_detailed(payload))
+    try:
+        validated = RedditStructuredPayload.model_validate(payload.model_dump(mode="json"))
+    except Exception:
+        return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return _sanitize_composed(compose_reddit_detailed(validated))
+
+
+def _coerce_github_detailed(payload: BaseModel) -> list[DetailedSummarySection]:
+    """Delegate GitHub detailed composition to the dedicated layout module."""
+    from website.features.summarization_engine.summarization.github.layout import (
+        compose_github_detailed,
+    )
+    from website.features.summarization_engine.summarization.github.schema import (
+        GitHubStructuredPayload,
+    )
+
+    if isinstance(payload, GitHubStructuredPayload):
+        return _sanitize_composed(compose_github_detailed(payload))
+    try:
+        validated = GitHubStructuredPayload.model_validate(payload.model_dump(mode="json"))
+    except Exception:
+        return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return _sanitize_composed(compose_github_detailed(validated))
+
+
+def _coerce_newsletter_detailed(payload: BaseModel) -> list[DetailedSummarySection]:
+    """Delegate Newsletter detailed composition to the dedicated layout module."""
+    from website.features.summarization_engine.summarization.newsletter.layout import (
+        compose_newsletter_detailed,
+    )
+    from website.features.summarization_engine.summarization.newsletter.schema import (
+        NewsletterStructuredPayload,
+    )
+
+    if isinstance(payload, NewsletterStructuredPayload):
+        return _sanitize_composed(compose_newsletter_detailed(payload))
+    try:
+        validated = NewsletterStructuredPayload.model_validate(payload.model_dump(mode="json"))
+    except Exception:
+        return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return _sanitize_composed(compose_newsletter_detailed(validated))
 
 
 def _mini_title_hint_for(ingest: IngestResult) -> str:
@@ -412,6 +520,29 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
                 suffix_source = current or str(meta.get("title") or "").strip()
                 suffix = suffix_source[: max(0, 60 - len(prefix) - 1)].strip()
                 raw["mini_title"] = f"{prefix} {suffix}".strip()[:60]
+        _REDDIT_PLACEHOLDERS = {
+            "op", "the op", "original poster", "the original poster",
+            "the author", "author", "user", "the user", "commenter",
+            "the commenter", "poster", "the poster",
+        }
+        detailed = raw.get("detailed_summary")
+        if isinstance(detailed, dict):
+            op = detailed.get("op_intent")
+            if isinstance(op, str) and op.strip().lower() in _REDDIT_PLACEHOLDERS:
+                title_hint = str(meta.get("title") or "").strip()
+                if title_hint:
+                    detailed["op_intent"] = f"sought discussion about {title_hint}"[:200]
+    elif st == SourceType.NEWSLETTER:
+        detailed = raw.get("detailed_summary")
+        if isinstance(detailed, dict):
+            pub = detailed.get("publication_identity")
+            if not isinstance(pub, str) or pub.strip().lower() in {
+                "", "source", "the source", "newsletter", "the newsletter",
+                "unknown", "n/a", "none",
+            }:
+                host = meta.get("site_name") or meta.get("publication") or meta.get("author")
+                if isinstance(host, str) and host.strip():
+                    detailed["publication_identity"] = host.strip()[:120]
     elif st == SourceType.YOUTUBE:
         _YT_PLACEHOLDERS = {
             "narrator", "host", "speaker", "analyst", "commentator",
