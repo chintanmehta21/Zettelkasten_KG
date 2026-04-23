@@ -20,6 +20,15 @@
       "targeted_criterion": "brief.key_evidence",
       "criterion_delta": 0.0,
       "composite_delta": 0.9000000000000057
+    },
+    {
+      "iter": 3,
+      "files": [
+        "website/features/summarization_engine/summarization/newsletter/prompts.py"
+      ],
+      "targeted_criterion": "brief.caveats_addressed",
+      "criterion_delta": 0.0,
+      "composite_delta": 4.599999999999994
     }
   ]
 }
