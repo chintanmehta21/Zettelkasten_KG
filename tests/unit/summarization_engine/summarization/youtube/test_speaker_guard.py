@@ -1,13 +1,12 @@
-"""Hard-fail tests for placeholder-only speakers on YouTubeStructuredPayload.
+"""Placeholder-speaker coercion tests for YouTubeStructuredPayload.
 
-Regression anchor: iter-08 of docs/summary_eval/youtube shipped a payload with
-speakers=["narrator"] and no channel metadata, which the soft filter could not
-repair. This test locks the new hard validator in place.
+Design note: an earlier iteration raised ValidationError on placeholder-only
+speakers, but raising cascaded into schema_fallback (raw content dump) and
+collapsed downstream summary quality from ~91 to ~13 composite score. The
+validator now coerces placeholders to ``["The speaker"]`` so the structured
+payload survives, and downstream code can still detect the neutral label.
 """
 from __future__ import annotations
-
-import pytest
-from pydantic import ValidationError
 
 from website.features.summarization_engine.summarization.youtube.schema import (
     ChapterBullet,
@@ -53,14 +52,16 @@ def _base_kwargs(**speaker_overrides):
     return kwargs
 
 
-def test_placeholder_only_speakers_raise():
-    with pytest.raises(ValidationError):
-        YouTubeStructuredPayload(**_base_kwargs(speakers=["narrator", "host"]))
+def test_placeholder_only_speakers_coerced_to_neutral_label():
+    payload = YouTubeStructuredPayload(
+        **_base_kwargs(speakers=["narrator", "host"])
+    )
+    assert payload.speakers == ["The speaker"]
 
 
-def test_single_placeholder_speaker_raises():
-    with pytest.raises(ValidationError):
-        YouTubeStructuredPayload(**_base_kwargs(speakers=["the host"]))
+def test_single_placeholder_speaker_coerced():
+    payload = YouTubeStructuredPayload(**_base_kwargs(speakers=["the host"]))
+    assert payload.speakers == ["The speaker"]
 
 
 def test_real_speaker_passes():
@@ -75,13 +76,13 @@ def test_mixed_placeholders_and_real_speaker_passes_with_placeholders_dropped():
     assert payload.speakers == ["Joe Rogan"]
 
 
-def test_case_insensitive_placeholder_rejection():
-    with pytest.raises(ValidationError):
-        YouTubeStructuredPayload(
-            **_base_kwargs(speakers=["Narrator", "HOST", "Presenter"])
-        )
+def test_case_insensitive_placeholders_coerced():
+    payload = YouTubeStructuredPayload(
+        **_base_kwargs(speakers=["Narrator", "HOST", "Presenter"])
+    )
+    assert payload.speakers == ["The speaker"]
 
 
-def test_whitespace_only_speakers_treated_as_empty_and_raise():
-    with pytest.raises(ValidationError):
-        YouTubeStructuredPayload(**_base_kwargs(speakers=["   ", ""]))
+def test_whitespace_only_speakers_coerced():
+    payload = YouTubeStructuredPayload(**_base_kwargs(speakers=["   ", ""]))
+    assert payload.speakers == ["The speaker"]

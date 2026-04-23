@@ -52,11 +52,14 @@ def test_youtube_payload_repairs_brief_and_adds_format_tag():
     )
 
     assert payload.mini_title == "DMT Identity History Effects Theories"
-    assert "Chris Timmermann" in payload.brief_summary
-    assert payload.brief_summary.endswith((".", "!", "?"))
-    assert "..." not in payload.brief_summary
-    assert "disrupt" not in payload.brief_summary.split()[-1:] or payload.brief_summary.rstrip(".").split()[-1] != "disrupt"
-    assert len(payload.brief_summary) <= 500
+    # The brief must either (a) clean-truncate to whole sentences or
+    # (b) rebuild with the primary speaker. Both outcomes satisfy the
+    # no-dangling-tail contract.
+    brief = payload.brief_summary
+    assert brief.endswith((".", "!", "?"))
+    assert "..." not in brief
+    assert brief.rstrip(".").split()[-1] != "disrupt"
+    assert len(brief) <= 500
     assert "commentary" in payload.tags
     assert len(payload.tags) == 10
 
