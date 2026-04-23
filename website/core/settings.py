@@ -6,6 +6,7 @@ pulling in telegram_bot-specific validation or dependencies.
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Tuple, Type
@@ -17,6 +18,11 @@ from pydantic_settings import (
     SettingsConfigDict,
     YamlConfigSettingsSource,
 )
+
+logger = logging.getLogger(__name__)
+
+# Module-level latch so the Reddit OAuth warning fires exactly once per process.
+_reddit_warning_emitted = False
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 _DEFAULT_CONFIG_YAML = _PROJECT_ROOT / "ops" / "config.yaml"
@@ -55,6 +61,16 @@ class Settings(BaseSettings):
     @property
     def github_enabled(self) -> bool:
         return bool(self.github_token.strip() and self.github_repo.strip())
+
+    @property
+    def reddit_oauth_configured(self) -> bool:
+        """True iff both Reddit OAuth credentials are non-empty.
+
+        When False, the Reddit ingestor degrades to the public JSON endpoint
+        plus HTML scraping, which often returns thin content behind Reddit's
+        anti-bot wall.
+        """
+        return bool(self.reddit_client_id.strip() and self.reddit_client_secret.strip())
 
     reddit_comment_depth: int = 10
 
@@ -100,6 +116,34 @@ class Settings(BaseSettings):
         return (init_settings, env_settings, dotenv_settings, yaml_settings)
 
 
+def validate_reddit_credentials(settings: Settings) -> None:
+    """Emit a one-shot startup warning when Reddit OAuth creds are missing
+    in a production-like environment.
+
+    "Production-like" is inferred from ``settings.webhook_mode`` because that
+    is the existing prod/dev split in this codebase (polling=dev, webhook=prod).
+    The warning fires at most once per process via a module-level latch; it
+    never raises or exits, because Reddit capture is optional — the ingestor
+    still works via the public JSON endpoint, just with thinner content.
+    """
+    global _reddit_warning_emitted
+    if _reddit_warning_emitted:
+        return
+    if not settings.webhook_mode:
+        return
+    if settings.reddit_oauth_configured:
+        return
+    logger.warning(
+        "Reddit OAuth credentials missing (REDDIT_CLIENT_ID and/or "
+        "REDDIT_CLIENT_SECRET are unset). Reddit ingestion will use public "
+        "JSON fallback; set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET for "
+        "full-quality extraction."
+    )
+    _reddit_warning_emitted = True
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    validate_reddit_credentials(settings)
+    return settings
