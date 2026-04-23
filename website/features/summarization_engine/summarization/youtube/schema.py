@@ -259,7 +259,7 @@ def _repair_brief_summary(
 
     closing_sentence = _first_sentence(closing_takeaway)
     if closing_sentence:
-        parts.append(f"The closing takeaway: {closing_sentence.rstrip('.')}.")
+        parts.append(f"{closing_sentence.rstrip('.')}.")
 
     rebuilt = " ".join(parts).strip()
     if len(rebuilt) <= 500 and rebuilt:

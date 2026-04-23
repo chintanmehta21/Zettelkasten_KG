@@ -1,0 +1,23 @@
+{
+  "confidence_reason": "All transcript tiers failed; metadata-only fallback (composite capped at 75)",
+  "extraction_confidence": "low",
+  "fetched_at": "2026-04-23T19:04:42.254572Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "channel": "",
+    "duration": 0,
+    "tier_latency_ms": 4327,
+    "tier_used": "metadata_only",
+    "title": "",
+    "video_id": "_r_O_hPPPH4"
+  },
+  "original_url": "https://www.youtube.com/watch?v=_r_O_hPPPH4",
+  "raw_text": "",
+  "sections": {
+    "Channel": "",
+    "Transcript": "",
+    "Video": ""
+  },
+  "source_type": "youtube",
+  "url": "https://www.youtube.com/watch?v=_r_O_hPPPH4"
+}

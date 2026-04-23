@@ -1,0 +1,121 @@
+{
+  "mini_title": "African Wildlife Showreel 2017",
+  "brief_summary": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video moves through Visual Showcase and Audio Composition.",
+  "tags": [
+    "african-wildlife",
+    "nature-showreel",
+    "robert-hofmeyr",
+    "visual-showcase",
+    "non-narrative",
+    "4k-footage",
+    "wildlife-cinematography",
+    "ambient-music",
+    "short-film",
+    "commentary"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary."
+      ],
+      "sub_sections": {
+        "Format and speakers": [
+          "Format: commentary.",
+          "Speakers: Robert Hofmeyr."
+        ],
+        "Thesis": [
+          "Robert Hofmeyr's 2017 showreel aims to provide a pure visual experience of African wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video's primary objective is aesthetic appreciation of nature."
+        ]
+      }
+    },
+    {
+      "heading": "Chapter walkthrough",
+      "bullets": [],
+      "sub_sections": {
+        "Visual Showcase and Audio Composition": [
+          "The video functions as a visual showreel, presenting diverse scenes of African wildlife.",
+          "The audio track predominantly features non-verbal music throughout its duration.",
+          "No narrative commentary or descriptive information about the depicted wildlife is present in the transcript.",
+          "Isolated lexical items, such as 'so' and 'uh', are briefly noted in the transcript at various points.",
+          "The word 'thank you' appears once, and 'foreign' is repeated without contextual meaning.",
+          "The video's structure emphasizes continuous visual flow rather than segmented topics or discussions."
+        ]
+      }
+    },
+    {
+      "heading": "Demonstrations",
+      "bullets": [
+        "The entire video serves as a visual demonstration of African wildlife in its natural habitat."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Closing remarks",
+      "bullets": [
+        "The video offers an immersive, non-narrated visual journey through African nature, inviting viewers to experience the beauty of wildlife without explicit educational content. Its value lies in the aesthetic presentation of high-definition footage."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=TxbE79-1OSI",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=247",
+    "total_tokens_used": 3273,
+    "gemini_pro_tokens": 1418,
+    "gemini_flash_tokens": 1855,
+    "total_latency_ms": 34544,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 0,
+    "patch_applied": false,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "African Wildlife Showreel 2017",
+      "brief_summary": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video moves through Visual Showcase and Audio Composition.",
+      "tags": [
+        "african-wildlife",
+        "nature-showreel",
+        "robert-hofmeyr",
+        "visual-showcase",
+        "non-narrative",
+        "4k-footage",
+        "wildlife-cinematography",
+        "ambient-music",
+        "short-film",
+        "commentary"
+      ],
+      "speakers": [
+        "Robert Hofmeyr"
+      ],
+      "guests": null,
+      "entities_discussed": [],
+      "detailed_summary": {
+        "thesis": "Robert Hofmeyr's 2017 showreel aims to provide a pure visual experience of African wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video's primary objective is aesthetic appreciation of nature.",
+        "format": "commentary",
+        "chapters_or_segments": [
+          {
+            "timestamp": "",
+            "title": "Visual Showcase and Audio Composition",
+            "bullets": [
+              "The video functions as a visual showreel, presenting diverse scenes of African wildlife.",
+              "The audio track predominantly features non-verbal music throughout its duration.",
+              "No narrative commentary or descriptive information about the depicted wildlife is present in the transcript.",
+              "Isolated lexical items, such as 'so' and 'uh', are briefly noted in the transcript at various points.",
+              "The word 'thank you' appears once, and 'foreign' is repeated without contextual meaning.",
+              "The video's structure emphasizes continuous visual flow rather than segmented topics or discussions."
+            ]
+          }
+        ],
+        "demonstrations": [
+          "The entire video serves as a visual demonstration of African wildlife in its natural habitat."
+        ],
+        "closing_takeaway": "The video offers an immersive, non-narrated visual journey through African nature, inviting viewers to experience the beauty of wildlife without explicit educational content. Its value lies in the aesthetic presentation of high-definition footage."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

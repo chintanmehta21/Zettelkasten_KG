@@ -1,0 +1,22 @@
+{
+  "confidence_reason": "transcript via tier=ytdlp_player_rotation len=247",
+  "extraction_confidence": "high",
+  "fetched_at": "2026-04-23T18:41:32.318538Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "player_client": "android_embedded",
+    "tier_latency_ms": 2797,
+    "tier_used": "ytdlp_player_rotation",
+    "title": "4K African Wildlife | African Nature Showreel 2017 by Robert Hofmeyr",
+    "video_id": "TxbE79-1OSI"
+  },
+  "original_url": "https://www.youtube.com/watch?v=TxbE79-1OSI",
+  "raw_text": "Video\n4K African Wildlife | African Nature Showreel 2017 by Robert Hofmeyr\n\nTranscript\nKind: captions Language: en [Music] [01:03] [Music] so [01:05] so [01:05] so [Music] so [01:34] so [Music] [02:09] [Music] [02:09] [Music] uh [Music] [02:37] [Music] thank you [Music] [03:03] [Music] foreign [03:05] foreign [03:05] foreign [Music]",
+  "sections": {
+    "Channel": "",
+    "Transcript": "Kind: captions Language: en [Music] [01:03] [Music] so [01:05] so [01:05] so [Music] so [01:34] so [Music] [02:09] [Music] [02:09] [Music] uh [Music] [02:37] [Music] thank you [Music] [03:03] [Music] foreign [03:05] foreign [03:05] foreign [Music]",
+    "Video": "4K African Wildlife | African Nature Showreel 2017 by Robert Hofmeyr"
+  },
+  "source_type": "youtube",
+  "url": "https://www.youtube.com/watch?v=TxbE79-1OSI"
+}

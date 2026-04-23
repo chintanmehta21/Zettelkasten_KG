@@ -1,0 +1,23 @@
+{
+  "confidence_reason": "All transcript tiers failed; metadata-only fallback (composite capped at 75)",
+  "extraction_confidence": "low",
+  "fetched_at": "2026-04-23T19:05:06.568753Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "channel": "The Nihongo Nook",
+    "duration": 1695,
+    "tier_latency_ms": 1610,
+    "tier_used": "metadata_only",
+    "title": "JLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS ちょうかい",
+    "video_id": "0e0duD8_LFE"
+  },
+  "original_url": "https://www.youtube.com/watch?v=0e0duD8_LFE",
+  "raw_text": "Video\nJLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS ちょうかい\n\nChannel\nThe Nihongo Nook\n\nTranscript\nJLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS ちょうかい JLPT - N5 聴解, ちょうかい You can check answers in the End of every question. JLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS (ちょうかい ) Music: Vlad Gluschenko — Serpantine License: Creative Commons Attribution 3.0 Unported: https://creativecommons.org/licenses/by/3.0/deed.en #jlpt #jlpt #listening_practice #N5",
+  "sections": {
+    "Channel": "The Nihongo Nook",
+    "Transcript": "JLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS ちょうかい\n\nJLPT - N5\n聴解, ちょうかい\nYou can check answers in the End of every question.\nJLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS (ちょうかい ) \n\nMusic: Vlad Gluschenko — Serpantine\n\nLicense: Creative Commons Attribution 3.0 \nUnported: https://creativecommons.org/licenses/by/3.0/deed.en\n\n#jlpt #jlpt #listening_practice #N5",
+    "Video": "JLPT N5 JAPANESE LISTENING PRACTICE TEST 2025 WITH ANSWERS ちょうかい"
+  },
+  "source_type": "youtube",
+  "url": "https://www.youtube.com/watch?v=0e0duD8_LFE"
+}

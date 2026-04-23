@@ -1,0 +1,23 @@
+{
+  "confidence_reason": "All transcript tiers failed; metadata-only fallback (composite capped at 75)",
+  "extraction_confidence": "low",
+  "fetched_at": "2026-04-23T19:04:19.671265Z",
+  "ingestor_version": "2.0.0",
+  "metadata": {
+    "channel": "",
+    "duration": 0,
+    "tier_latency_ms": 2718,
+    "tier_used": "metadata_only",
+    "title": "",
+    "video_id": "2Dhg2VOLVRY"
+  },
+  "original_url": "https://www.youtube.com/watch?v=2Dhg2VOLVRY",
+  "raw_text": "",
+  "sections": {
+    "Channel": "",
+    "Transcript": "",
+    "Video": ""
+  },
+  "source_type": "youtube",
+  "url": "https://www.youtube.com/watch?v=2Dhg2VOLVRY"
+}

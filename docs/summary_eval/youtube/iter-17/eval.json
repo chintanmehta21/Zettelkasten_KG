@@ -1,0 +1,147 @@
+{
+  "g_eval": {
+    "coherence": 0.0,
+    "consistency": 4.2,
+    "fluency": 4.5,
+    "relevance": 5.0,
+    "reasoning": "The summary accurately captures the video's purpose as a JLPT N5 listening practice test and includes key details from the sparse source. However, it invents a chapter structure for a continuous video, significantly impacting coherence. The brief summary is also too short, and there is some minor editorialization and repetition."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.83,
+      "items": []
+    },
+    "conciseness": {
+      "score": 0.82,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": null,
+          "span": "In this walkthrough, The Nihongo Nook argues that the video serves as a practical, self-paced listening comprehension practice test for the japanese language proficiency test (jlpt) n5 level, offering immediate feedback to aid in exam preparation.",
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.83,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "In this walkthrough, The Nihongo Nook argues that the video serves as a practical, self-paced listening comprehension practice test for the japanese language proficiency test (jlpt) n5 level, offering immediate feedback to aid in exam preparation.",
+        "reason": "The video *is* a practice test; it does not 'argue' that it serves as one. This phrasing introduces an unsupported framing."
+      },
+      {
+        "sentence": "In this walkthrough, The Nihongo Nook argues that the video serves as a practical, self-paced listening comprehension practice test for the Japanese Language Proficiency Test (JLPT) N5 level, offering immediate feedback to aid in exam preparation.",
+        "reason": "The video *is* a practice test; it does not 'argue' that it serves as one. This phrasing introduces an unsupported framing."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 18.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.takeaways_surfaced",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.major_segments_outlined",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 39.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": [
+          "detailed.chronological_order"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 12.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.technologies_named"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "invented_chapter",
+        "source_region": "detailed_summary",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 71.11,
+    "finesure": 86.3,
+    "qafact": 79.17,
+    "summac": 100.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "In this walkthrough, The Nihongo Nook argues that the video serves as a practical, self-paced listening comprehension practice test for the japanese language proficiency test (jlpt) n5 level, offering immediate feedback to aid in exam preparation.",
+      "flag_type": "added_framing",
+      "explanation": "The video *is* a practice test; it does not 'argue' that it serves as one. This phrasing introduces an unnecessary framing."
+    },
+    {
+      "sentence": "In this walkthrough, The Nihongo Nook argues that the video serves as a practical, self-paced listening comprehension practice test for the Japanese Language Proficiency Test (JLPT) N5 level, offering immediate feedback to aid in exam preparation.",
+      "flag_type": "added_framing",
+      "explanation": "The video *is* a practice test; it does not 'argue' that it serves as one. This phrasing introduces an unnecessary framing."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 4607,
+    "total_tokens_out": 1825,
+    "latency_ms": 47409
+  }
+}

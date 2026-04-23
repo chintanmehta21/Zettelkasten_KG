@@ -1,0 +1,109 @@
+{
+  "mini_title": "Me at Zoo Elephant Observation",
+  "brief_summary": "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction. The video moves through Elephant Observation. It references elephants. The closing takeaway: The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+  "tags": [
+    "zoo-visit",
+    "elephant-observation",
+    "short-video",
+    "personal-commentary",
+    "animal-facts",
+    "youtube-classic",
+    "vlogging",
+    "simple-observations",
+    "vlog"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction."
+      ],
+      "sub_sections": {
+        "Format and speakers": [
+          "Format: vlog.",
+          "Speakers: Unknown Speaker."
+        ],
+        "Thesis": [
+          "The video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction."
+        ]
+      }
+    },
+    {
+      "heading": "Chapter walkthrough",
+      "bullets": [],
+      "sub_sections": {
+        "00:01 \u2014 Elephant Observation": [
+          "The speaker initiates their narration by establishing their location in front of the elephants at the zoo.",
+          "A key factual observation is made regarding the elephants' notably long trunks.",
+          "The speaker offers a subjective assessment, describing the elephants' long trunks as \"cool.\".",
+          "An animal sound is audibly captured within the video segment."
+        ]
+      }
+    },
+    {
+      "heading": "Closing remarks",
+      "bullets": [
+        "The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience."
+      ],
+      "sub_sections": {}
+    }
+  ],
+  "metadata": {
+    "source_type": "youtube",
+    "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "transcript via tier=ytdlp_player_rotation len=293",
+    "total_tokens_used": 2836,
+    "gemini_pro_tokens": 1162,
+    "gemini_flash_tokens": 1674,
+    "total_latency_ms": 30578,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 0,
+    "patch_applied": false,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Me at Zoo Elephant Observation",
+      "brief_summary": "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction. The video moves through Elephant Observation. It references elephants. The closing takeaway: The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+      "tags": [
+        "zoo-visit",
+        "elephant-observation",
+        "short-video",
+        "personal-commentary",
+        "animal-facts",
+        "youtube-classic",
+        "vlogging",
+        "simple-observations",
+        "vlog"
+      ],
+      "speakers": [
+        "Unknown Speaker"
+      ],
+      "guests": null,
+      "entities_discussed": [
+        "elephants"
+      ],
+      "detailed_summary": {
+        "thesis": "The video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction.",
+        "format": "vlog",
+        "chapters_or_segments": [
+          {
+            "timestamp": "00:01",
+            "title": "Elephant Observation",
+            "bullets": [
+              "The speaker initiates their narration by establishing their location in front of the elephants at the zoo.",
+              "A key factual observation is made regarding the elephants' notably long trunks.",
+              "The speaker offers a subjective assessment, describing the elephants' long trunks as \"cool.\"",
+              "An animal sound is audibly captured within the video segment.",
+              "The commentary concludes with the speaker stating that there is nothing further to elaborate on."
+            ]
+          }
+        ],
+        "demonstrations": [],
+        "closing_takeaway": "The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

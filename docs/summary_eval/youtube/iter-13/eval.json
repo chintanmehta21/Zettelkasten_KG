@@ -1,0 +1,175 @@
+{
+  "g_eval": {
+    "coherence": 4.16,
+    "consistency": 4.0,
+    "fluency": 5.0,
+    "relevance": 4.16,
+    "reasoning": "The summary is generally coherent and relevant, but suffers from editorialization and minor completeness issues, particularly in the brief summary's length and number of takeaways. The detailed summary is strong in covering the video's content."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Unknown Speaker argues that the video offers a straightforward, personal observation.",
+          "fact": null,
+          "sentence": "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction.",
+          "span": "argues that the video offers",
+          "importance": null
+        },
+        {
+          "claim": "The video's takeaway indicates that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+          "fact": null,
+          "sentence": "The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+          "span": "indicating that the speaker's commentary is brief and focused solely on the immediate visual experience",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.7,
+      "items": [
+        {
+          "claim": "The brief summary should be 5-7 sentences long.",
+          "fact": null,
+          "sentence": null,
+          "span": "The brief summary itself.",
+          "importance": null
+        },
+        {
+          "claim": "The brief summary should highlight 2-3 takeaways.",
+          "fact": null,
+          "sentence": null,
+          "span": "The brief summary's takeaway section.",
+          "importance": null
+        },
+        {
+          "claim": "The detailed summary's bullets for 'Elephant Observation' should explicitly capture the speaker's concluding remark 'and that's pretty much all there is to say'.",
+          "fact": null,
+          "sentence": null,
+          "span": "detailed_summary -> Chapter walkthrough -> 00:01 \u2014 Elephant Observation bullets.",
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.818,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction.",
+        "reason": "The phrase 'argues that the video offers' introduces an interpretive framing not present in the source, where the speaker simply presents an observation."
+      },
+      {
+        "sentence": "The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+        "reason": "The phrase 'indicating that' introduces an interpretation of the speaker's intent, which is not explicitly stated in the source."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 18.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": 60
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "editorialized_stance",
+        "source_region": "brief_summary",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 82.92,
+    "finesure": 92.95,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "In this vlog, Unknown Speaker argues that the video offers a straightforward, personal observation of elephants at a zoo, focusing on their distinctive physical features and the speaker's immediate reaction.",
+      "flag_type": "added_framing",
+      "explanation": "The speaker does not 'argue' that the video offers an observation; the video simply *is* an observation. This introduces an interpretive framing."
+    },
+    {
+      "sentence": "The video's takeaway is the simplicity and directness of the observation, indicating that the speaker's commentary is brief and focused solely on the immediate visual experience.",
+      "flag_type": "added_stance",
+      "explanation": "The phrase 'indicating that' introduces an interpretation of the speaker's intent, which is not explicitly stated in the source."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 4175,
+    "total_tokens_out": 1766,
+    "latency_ms": 46257,
+    "ragas_faithfulness": -1.0
+  }
+}

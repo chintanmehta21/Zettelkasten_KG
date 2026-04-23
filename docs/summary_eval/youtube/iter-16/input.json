@@ -1,0 +1,28 @@
+{
+  "source": "youtube",
+  "iter": 16,
+  "urls": [
+    "https://www.youtube.com/watch?v=zjkBMFhNj_g"
+  ],
+  "started_at": "2026-04-23T18:44:19.995458+00:00",
+  "ended_at": "2026-04-23T18:48:32.423396+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://www.youtube.com/watch?v=zjkBMFhNj_g",
+      "composite": 91.5,
+      "extraction_confidence": "high",
+      "latency_ms": 252383,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

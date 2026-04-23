@@ -1,0 +1,180 @@
+{
+  "g_eval": {
+    "coherence": 3.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.0,
+    "reasoning": "The summary is generally relevant, consistent, and fluent. However, the detailed summary has a chronological issue where the initial anecdote and stress explanation are placed after the introduction of the pre-mortem concept, which deviates from the video's narrative flow, impacting coherence."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8125,
+      "items": [
+        {
+          "claim": "The summary missed Levitin's explicit caveat about not telling people whether to take statins, but rather to have the conversation with their doctor.",
+          "fact": null,
+          "sentence": "This data is crucial for ensuring informed consent, enabling rational discussions about risks versus benefits.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary missed the speaker's caveat that one might change their mind in the heat of the moment, but practicing thinking ahead helps.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The summary missed Levitin's personal caveat about not being completely organized, viewing it as a gradual process.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.7608695652173914,
+      "items": [
+        {
+          "claim": "The brief summary missed naming Danny Kahneman and Gary Klein, who were key figures in the development/discussion of the pre-mortem concept.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary does not outline the major structural segments of the video (intro, sections, demo, conclusion).",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary only highlights two takeaways (thesis and closing takeaway), rather than 2-3 distinct takeaways a viewer would remember.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The detailed summary missed naming Bloomberg.com, Jerome Groopman, and Pamela Hartzband as sources for the NNT data.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The tags missed including 'Hippocampus', 'Cortisol', and 'Statins' as named technologies/entities from the video.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.8181818181818182,
+      "items": [
+        {
+          "claim": "The brief summary is 3 sentences long, which is shorter than the required 5-7 sentences.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 15.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.speakers_captured",
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 38.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": [
+          "detailed.chronological_order",
+          "detailed.caveats_preserved",
+          "detailed.entities_named"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 13.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.technologies_named"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 76.92,
+    "finesure": 78.08,
+    "qafact": 89.47,
+    "summac": 66.67
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10733,
+    "total_tokens_out": 1415,
+    "latency_ms": 53132,
+    "ragas_faithfulness": -1.0
+  }
+}

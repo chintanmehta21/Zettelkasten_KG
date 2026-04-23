@@ -1,0 +1,458 @@
+{
+  "g_eval": {
+    "coherence": 3.0,
+    "consistency": 4.0,
+    "fluency": 4.5,
+    "relevance": 3.5,
+    "reasoning": "The summary is generally coherent and consistent, but it struggles with relevance due to the source material being primarily visual and auditory with minimal spoken content. Fluency is high."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.7,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.3,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video moves through Visual Showcase and Audio Composition.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video functions as a visual showreel, presenting diverse scenes of African wildlife.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The audio track predominantly features non-verbal music throughout its duration.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "No narrative commentary or descriptive information about the depicted wildlife is present in the transcript.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "Isolated lexical items, such as 'so' and 'uh', are briefly noted in the transcript at various points.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The word 'thank you' appears once, and 'foreign' is repeated without contextual meaning.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video's structure emphasizes continuous visual flow rather than segmented topics or discussions.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The entire video serves as a visual demonstration of African wildlife in its natural habitat.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The video offers an immersive, non-narrated visual journey through African nature, inviting viewers to experience the beauty of wildlife without explicit educational content. Its value lies in the aesthetic presentation of high-definition footage.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.5,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video moves through Visual Showcase and Audio Composition.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.0,
+    "contradicted_sentences": [
+      {
+        "sentence": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary.",
+        "reason": "The source transcript does not contain a commentary or an argument from Robert Hofmeyr. It consists primarily of music and very few spoken words."
+      },
+      {
+        "sentence": "The video moves through Visual Showcase and Audio Composition.",
+        "reason": "The transcript does not delineate specific chapters or segments like 'Visual Showcase' or 'Audio Composition'."
+      },
+      {
+        "sentence": "Format: commentary.",
+        "reason": "The transcript does not indicate the format is a commentary."
+      },
+      {
+        "sentence": "Speakers: Robert Hofmeyr.",
+        "reason": "While the video title mentions Robert Hofmeyr, the transcript does not contain any spoken words attributed to him."
+      },
+      {
+        "sentence": "Robert Hofmeyr's 2017 showreel aims to provide a pure visual experience of African wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video's primary objective is aesthetic appreciation of nature.",
+        "reason": "The transcript does not contain any spoken words from Robert Hofmeyr or any explicit statement of the video's objective beyond what can be inferred from the title."
+      },
+      {
+        "sentence": "The video functions as a visual showreel, presenting diverse scenes of African wildlife.",
+        "reason": "This is an interpretation based on the title, not explicitly stated or detailed in the transcript."
+      },
+      {
+        "sentence": "The audio track predominantly features non-verbal music throughout its duration.",
+        "reason": "While the transcript indicates '[Music]', it does not explicitly state that the audio track *predominantly* features non-verbal music or describe its nature beyond that."
+      },
+      {
+        "sentence": "No narrative commentary or descriptive information about the depicted wildlife is present in the transcript.",
+        "reason": "This is an inference based on the lack of spoken words, but the summary presents it as a definitive statement about the video's content."
+      },
+      {
+        "sentence": "Isolated lexical items, such as 'so' and 'uh', are briefly noted in the transcript at various points.",
+        "reason": "The transcript does note these, but the summary's framing implies they are significant observations rather than incidental transcript artifacts."
+      },
+      {
+        "sentence": "The word 'thank you' appears once, and 'foreign' is repeated without contextual meaning.",
+        "reason": "This is directly from the transcript, but presented as a key observation rather than a transcription note."
+      },
+      {
+        "sentence": "The video's structure emphasizes continuous visual flow rather than segmented topics or discussions.",
+        "reason": "The transcript does not provide information about the video's structure or flow."
+      },
+      {
+        "sentence": "The entire video serves as a visual demonstration of African wildlife in its natural habitat.",
+        "reason": "This is an interpretation based on the title, not explicitly stated in the transcript."
+      },
+      {
+        "sentence": "The video offers an immersive, non-narrated visual journey through African nature, inviting viewers to experience the beauty of wildlife without explicit educational content. Its value lies in the aesthetic presentation of high-definition footage.",
+        "reason": "This is an interpretation and elaboration not directly supported by the sparse transcript."
+      }
+    ],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.thesis_capture",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief summary states the video's central thesis or learning objective in one sentence."
+        ]
+      },
+      {
+        "id": "brief.format_identified",
+        "score": 0.0,
+        "max_points": 3,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief identifies the video format explicitly (tutorial/interview/lecture/commentary/etc.)."
+        ]
+      },
+      {
+        "id": "brief.speakers_captured",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief names the host/channel and any guests or key products/libraries discussed."
+        ]
+      },
+      {
+        "id": "brief.major_segments_outlined",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief outlines the major structural segments of the video (intro, sections, demo, conclusion)."
+        ]
+      },
+      {
+        "id": "brief.takeaways_surfaced",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief highlights 2-3 takeaways a viewer would remember after watching."
+        ]
+      },
+      {
+        "id": "brief.length_5_to_7_sentences",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Brief is 5-7 sentences."
+        ]
+      },
+      {
+        "id": "brief.no_clickbait",
+        "score": 5.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "Brief does not reproduce clickbait/hook phrasing from the source title."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.chronological_order",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Detailed bullets follow the video's chronological order."
+        ]
+      },
+      {
+        "id": "detailed.all_chapters_covered",
+        "score": 0.0,
+        "max_points": 10,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Every substantive chapter or major topic turn is covered by at least one bullet."
+        ]
+      },
+      {
+        "id": "detailed.demonstrations_preserved",
+        "score": 0.0,
+        "max_points": 6,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Demonstrations, code walkthroughs, or live examples are captured."
+        ]
+      },
+      {
+        "id": "detailed.caveats_preserved",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Warnings, caveats, limitations the speaker mentions are captured."
+        ]
+      },
+      {
+        "id": "detailed.examples_purpose_not_verbatim",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Examples/analogies summarized as PURPOSE, not reproduced verbatim."
+        ]
+      },
+      {
+        "id": "detailed.entities_named",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Products, libraries, datasets, or case studies referenced are named."
+        ]
+      },
+      {
+        "id": "detailed.closing_takeaway",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "The video's closing takeaway is explicitly captured."
+        ]
+      },
+      {
+        "id": "detailed.no_sponsor_padding",
+        "score": 5.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "Sponsor reads, intros, and 'like and subscribe' fluff are not given bullets."
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Exactly 7-10 tags."
+        ]
+      },
+      {
+        "id": "tags.topical_specificity",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Tags capture specific subject matter, not generic terms."
+        ]
+      },
+      {
+        "id": "tags.format_tag_present",
+        "score": 0.0,
+        "max_points": 2,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Includes a tag for content type (tutorial/interview/beginner/advanced)."
+        ]
+      },
+      {
+        "id": "tags.technologies_named",
+        "score": 0.0,
+        "max_points": 3,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Named technologies/libraries/frameworks from the video are tagged."
+        ]
+      },
+      {
+        "id": "tags.no_unsupported_claims",
+        "score": 0.0,
+        "max_points": 4,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "No tags imply topics not actually covered."
+        ]
+      },
+      {
+        "id": "label.content_first_3_to_5_words",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Label is 3-5 words (max 50 chars), content-first, declarative."
+        ]
+      },
+      {
+        "id": "label.reflects_primary_topic",
+        "score": 0.0,
+        "max_points": 5,
+        "criteria_fired": [],
+        "criteria_missed": [
+          "Label reflects the primary topic, not side tangents."
+        ]
+      },
+      {
+        "id": "label.no_clickbait_retention",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "Label removes clickbait/hook fragments from the original title."
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "clickbait_label_retention",
+        "source_region": "structured_payload.mini_title",
+        "auto_cap": 90
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 18.0,
+    "finesure": 30.0,
+    "qafact": 0.0,
+    "summac": 0.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "In this commentary, Robert Hofmeyr argues that robert hofmeyr's 2017 showreel aims to provide a pure visual experience of african wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary.",
+      "flag_type": "added_stance",
+      "explanation": "The summary claims the video is a 'commentary' and that Robert Hofmeyr 'argues' a specific point, neither of which is supported by the provided transcript. The transcript only contains music and minimal spoken words."
+    },
+    {
+      "sentence": "The video moves through Visual Showcase and Audio Composition.",
+      "flag_type": "added_framing",
+      "explanation": "The summary imposes a structure ('Visual Showcase and Audio Composition') that is not present in the sparse transcript."
+    },
+    {
+      "sentence": "Format: commentary.",
+      "flag_type": "added_stance",
+      "explanation": "The summary labels the format as 'commentary', which is not supported by the transcript."
+    },
+    {
+      "sentence": "Speakers: Robert Hofmeyr.",
+      "flag_type": "added_stance",
+      "explanation": "While the video title mentions Robert Hofmeyr, the transcript does not contain any spoken words attributed to him, making the claim of him being a 'speaker' in this context an added stance."
+    },
+    {
+      "sentence": "Robert Hofmeyr's 2017 showreel aims to provide a pure visual experience of African wildlife, relying on high-quality cinematography and an accompanying musical score rather than spoken narration or factual commentary. The video's primary objective is aesthetic appreciation of nature.",
+      "flag_type": "added_stance",
+      "explanation": "This sentence reiterates the fabricated 'argument' and 'objective' not present in the transcript."
+    },
+    {
+      "sentence": "The video functions as a visual showreel, presenting diverse scenes of African wildlife.",
+      "flag_type": "added_framing",
+      "explanation": "This is an interpretation based on the title, not explicitly stated or detailed in the transcript."
+    },
+    {
+      "sentence": "The audio track predominantly features non-verbal music throughout its duration.",
+      "flag_type": "added_judgment",
+      "explanation": "The summary uses 'predominantly' and elaborates on the audio beyond what the transcript explicitly states."
+    },
+    {
+      "sentence": "No narrative commentary or descriptive information about the depicted wildlife is present in the transcript.",
+      "flag_type": "added_judgment",
+      "explanation": "While inferable from the lack of speech, the summary presents this as a definitive statement about the video's content rather than an observation about the transcript."
+    },
+    {
+      "sentence": "The video's structure emphasizes continuous visual flow rather than segmented topics or discussions.",
+      "flag_type": "added_framing",
+      "explanation": "The transcript does not provide information about the video's structure or flow."
+    },
+    {
+      "sentence": "The entire video serves as a visual demonstration of African wildlife in its natural habitat.",
+      "flag_type": "added_framing",
+      "explanation": "This is an interpretation based on the title, not explicitly stated in the transcript."
+    },
+    {
+      "sentence": "The video offers an immersive, non-narrated visual journey through African nature, inviting viewers to experience the beauty of wildlife without explicit educational content. Its value lies in the aesthetic presentation of high-definition footage.",
+      "flag_type": "added_judgment",
+      "explanation": "This is an interpretation and elaboration not directly supported by the sparse transcript."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 4435,
+    "total_tokens_out": 4575,
+    "latency_ms": 67829,
+    "ragas_faithfulness": -1.0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "source": "youtube",
+  "iter": 15,
+  "urls": [
+    "https://www.youtube.com/watch?v=TxbE79-1OSI"
+  ],
+  "started_at": "2026-04-23T18:41:29.126296+00:00",
+  "ended_at": "2026-04-23T18:43:38.144172+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://www.youtube.com/watch?v=TxbE79-1OSI",
+      "composite": 33.5,
+      "extraction_confidence": "high",
+      "latency_ms": 128960,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

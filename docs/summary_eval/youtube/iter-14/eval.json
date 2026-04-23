@@ -1,0 +1,169 @@
+{
+  "g_eval": {
+    "coherence": 0.91,
+    "consistency": 3.96,
+    "fluency": 5.0,
+    "relevance": 4.13,
+    "reasoning": "The brief summary is too short and lacks an outline of the video's structural segments. The detailed summary's organization is thematic rather than strictly chronological, which deviates from the video's flow. Some specific word embedding examples from the demonstrations were not fully captured. The closing takeaway is a synthesized statement framed as an explicit takeaway, which is not directly present in the source."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.696,
+      "items": [
+        {
+          "claim": "Brief summary outlines the major structural segments of the video (intro, sections, demo, conclusion).",
+          "fact": null,
+          "sentence": "In this lecture, Unidentified Speaker argues that the transformer neural network architecture, introduced in 2017, is the foundational technology for the ai boom of the early 2020s, with gpt models generating text by predicting the next token based on learned probability distributions. The closing takeaway: The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve i.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief summary highlights 2-3 takeaways a viewer would remember after watching.",
+          "fact": null,
+          "sentence": "In this lecture, Unidentified Speaker argues that the transformer neural network architecture, introduced in 2017, is the foundational technology for the ai boom of the early 2020s, with gpt models generating text by predicting the next token based on learned probability distributions. The closing takeaway: The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve i.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Every substantive chapter or major topic turn is covered by at least one bullet.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Demonstrations, code walkthroughs, or live examples are captured.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.889,
+      "items": [
+        {
+          "claim": "Brief is 5-7 sentences.",
+          "fact": null,
+          "sentence": "In this lecture, Unidentified Speaker argues that the transformer neural network architecture, introduced in 2017, is the foundational technology for the ai boom of the early 2020s, with gpt models generating text by predicting the next token based on learned probability distributions. The closing takeaway: The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve i.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.792,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The closing takeaway: The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve i.",
+        "reason": "This sentence presents a synthesized conclusion as 'The closing takeaway', which is a framing not explicitly present in the source. The video ends by discussing softmax and temperature, and the speaker's actual closing remarks for *this chapter* are about setting the scene for future chapters and reviewing background knowledge."
+      },
+      {
+        "sentence": "The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve its capabilities. Understanding its core components, from tokenization to the softmax function, is crucial for comprehending the mechanics behind modern large language models.",
+        "reason": "This sentence presents a synthesized conclusion as 'Closing remarks', which is a framing not explicitly present in the source. The video ends by discussing softmax and temperature, and the speaker's actual closing remarks for *this chapter* are about setting the scene for future chapters and reviewing background knowledge."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 14.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.speakers_captured",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.major_segments_outlined",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 36.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 63.41,
+    "finesure": 73.33,
+    "qafact": 84.21,
+    "summac": 100.0
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "The closing takeaway: The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve i.",
+      "flag_type": "added_framing",
+      "explanation": "The summary presents a synthesized conclusion as 'The closing takeaway,' which is a framing not explicitly stated in the source video. The video's actual closing remarks for the chapter are about setting up future content and reviewing background."
+    },
+    {
+      "sentence": "The Transformer architecture, exemplified by GPT-3, represents a powerful paradigm for AI text generation, relying on intricate data processing steps and massive parameter counts to achieve its capabilities. Understanding its core components, from tokenization to the softmax function, is crucial for comprehending the mechanics behind modern large language models.",
+      "flag_type": "added_framing",
+      "explanation": "The summary presents a synthesized conclusion as the 'closing remarks,' which is a framing not explicitly stated in the source video. The video's actual closing remarks for the chapter are about setting up future content and reviewing background."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "1814a3721227e8d0b26ba7b3f00f2083f94a2b30bb103a77b76697b32e94871d",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 14355,
+    "total_tokens_out": 2089,
+    "latency_ms": 57808
+  }
+}
