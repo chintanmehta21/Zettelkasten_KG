@@ -53,9 +53,22 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
         client,
         config,
         payload_class=structured.StructuredSummaryPayload,
+        *,
+        fallback_builder=None,
+        prompt_builder=None,
+        prompt_instruction=None,
     ):
         captured["payload_class"] = payload_class
-        original_init(self, client, config, payload_class)
+        captured["prompt_instruction"] = prompt_instruction
+        original_init(
+            self,
+            client,
+            config,
+            payload_class,
+            fallback_builder=fallback_builder,
+            prompt_builder=prompt_builder,
+            prompt_instruction=prompt_instruction,
+        )
 
     async def fake_extract(self, ingest, text, **kwargs):
         from website.features.summarization_engine.core.models import (

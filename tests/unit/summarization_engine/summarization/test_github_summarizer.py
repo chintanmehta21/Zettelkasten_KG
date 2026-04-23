@@ -60,10 +60,12 @@ async def test_github_summarizer_uses_github_payload_class(
         *,
         fallback_builder=None,
         prompt_builder=None,
+        prompt_instruction=None,
     ):
         captured["payload_class"] = payload_class
         captured["fallback_builder"] = fallback_builder
         captured["prompt_builder"] = prompt_builder
+        captured["prompt_instruction"] = prompt_instruction
         original_init(
             self,
             client,
@@ -71,6 +73,7 @@ async def test_github_summarizer_uses_github_payload_class(
             payload_class,
             fallback_builder=fallback_builder,
             prompt_builder=prompt_builder,
+            prompt_instruction=prompt_instruction,
         )
 
     async def fake_extract(self, ingest, text, **kwargs):

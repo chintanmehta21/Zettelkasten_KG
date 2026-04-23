@@ -57,12 +57,14 @@ class StructuredExtractor:
         prompt_builder: Optional[
             Callable[[IngestResult, str, str], str]
         ] = None,
+        prompt_instruction: str | None = None,
     ):
         self._client = client
         self._config = config
         self._payload_class = payload_class
         self._fallback_builder = fallback_builder
         self._prompt_builder = prompt_builder
+        self._prompt_instruction = prompt_instruction
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -75,6 +77,19 @@ class StructuredExtractor:
         return json.dumps(schema, separators=(",", ":"))[:3000]
 
     def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
+        if self._prompt_instruction:
+            schema_json = self._schema_snippet()
+            try:
+                return self._prompt_instruction.format(
+                    summary_text=summary_text,
+                    schema_json=schema_json,
+                )
+            except (KeyError, IndexError):
+                return (
+                    f"{self._prompt_instruction}\n\n"
+                    f"SCHEMA:\n{schema_json}\n\n"
+                    f"SUMMARY:\n{summary_text}"
+                )
         schema_json = self._schema_snippet()
         if self._prompt_builder is not None:
             return self._prompt_builder(ingest, summary_text, schema_json)
@@ -468,20 +483,20 @@ def _fallback_payload(
     detect this and treat the iteration as a routing bug, not a real summary.
     """
     title = ingest.metadata.get("title") or ingest.metadata.get("full_name") or "Captured source"
-    words = summary_text.split()
-    brief = " ".join(words[:50]) or "No summary text was available."
+    brief_max = config.structured_extract.brief_summary_max_chars
+    brief = _smart_truncate(summary_text, brief_max) or "No summary text was available."
+
+    sentences = re.split(r"(?<=[.!?])\s+", re.sub(r"\s+", " ", summary_text or "").strip())
+    sentences = [s.strip() for s in sentences if s.strip()]
+    key_points = sentences[:5] if sentences else [brief]
+
     return StructuredSummaryPayload(
         mini_title=str(title)[: config.structured_extract.mini_title_max_chars],
         brief_summary=brief,
         tags=["_schema_fallback_"],
         detailed_summary=[
-            DetailedSummarySection(
-                heading="schema_fallback",
-                bullets=[
-                    "structured extractor fell back; see metadata.is_schema_fallback",
-                    brief,
-                ],
-            )
+            DetailedSummarySection(heading="Overview", bullets=[brief]),
+            DetailedSummarySection(heading="Key Points", bullets=key_points),
         ],
     )
 
