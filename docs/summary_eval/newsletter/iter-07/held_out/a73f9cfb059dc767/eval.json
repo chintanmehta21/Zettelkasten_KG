@@ -1,0 +1,116 @@
+{
+  "g_eval": {
+    "coherence": 4.8,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 5.0,
+    "reasoning": "The summary is highly coherent, consistent, fluent, and relevant. It accurately captures all key aspects of the source article, including the main topic, argument structure, specific examples, and implications, without any factual errors or editorialization. The detailed summary is well-structured, distinguishing between the two user types (growers and monetizers) and providing specific details for each. The brief summary could have been slightly more explicit about the article's two-sided marketplace structure."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.972,
+      "items": [
+        {
+          "claim": "The brief summary could more explicitly state the article's argument structure regarding the two-sided marketplace for growers and monetizers.",
+          "fact": null,
+          "sentence": "beehiiv has launched \"Email Boosts,\" an expansion of its ad network allowing newsletter publishers to embed paid recommendations directly into their email content. This feature moves beyond web-only placements, enabling publishers to monetize their entire email list for a single send.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 23.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 95.6,
+    "finesure": 97.2,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 6791,
+    "total_tokens_out": 993,
+    "latency_ms": 51274
+  }
+}

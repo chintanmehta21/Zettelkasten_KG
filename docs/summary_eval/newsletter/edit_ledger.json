@@ -66,6 +66,18 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 92.45
+    },
+    {
+      "iter": 9,
+      "files": [
+        "tests/unit/summarization_engine/summarization/test_self_check.py",
+        "website/features/summarization_engine/core/router.py",
+        "website/features/summarization_engine/summarization/common/self_check.py",
+        "website/features/summarization_engine/tests/unit/test_router.py"
+      ],
+      "targeted_criterion": "brief.main_topic_thesis",
+      "criterion_delta": 0.0,
+      "composite_delta": -3.852000000000004
     }
   ]
 }

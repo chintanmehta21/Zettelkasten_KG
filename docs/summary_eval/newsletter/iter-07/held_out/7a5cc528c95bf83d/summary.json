@@ -1,0 +1,133 @@
+{
+  "mini_title": "The Pragmatic Engineer: The Product-Minded Engineer in the A",
+  "brief_summary": "The Pragmatic Engineer newsletter highlights the growing demand for \"product-minded engineers\" due to AI's automation of coding *how*. It summarizes Drew Hoskins's book, \"The Product-Minded Engineer,\" which offers a framework for developing this skill. The issue details advice for engineers and product managers, emphasizing asking \"why\" and understanding user perspectives.",
+  "tags": [
+    "software-engineering",
+    "product-management",
+    "ai-impact",
+    "developer-tools",
+    "diagnostics",
+    "api-design",
+    "career-development",
+    "book-summary",
+    "analysis",
+    "how-to"
+  ],
+  "detailed_summary": {
+    "publication_identity": "Pragmatic Engineer",
+    "issue_thesis": "The increasing automation of software creation by AI elevates the importance of engineers who can define *what* to build, necessitating the development of \"product-minded\" skills as outlined in Drew Hoskins's book.",
+    "sections": [
+      {
+        "heading": "The Product-Minded Engineer: An Introduction",
+        "bullets": [
+          "AI code generation automates the \"how\" of software, increasing the value of engineers who can specify \"what\" to build.",
+          "This trend drives demand for \"product-minded engineers\" combining software engineering with product ideation.",
+          "Drew Hoskins's book, \"The Product-Minded Engineer,\" provides a framework for developing this skill.",
+          "Hoskins, a former engineer at Microsoft, Facebook, Oculus, and Stripe, and current PM at Temporal, clarifies the book wasn't written *because* of AI, but acknowledges AI's influence on its publication.",
+          "The book originated from an O'Reilly outline on usable API design and includes practical exercises, citing John Carmack as an exemplar of technical and product focus."
+        ]
+      },
+      {
+        "heading": "Key Arguments & Advice",
+        "bullets": [
+          "For Engineers: Develop a \"product muscle\" by frequently asking \"why,\" switching between system and user perspectives, using scenarios to simulate interactions, and spending time on customer support.",
+          "For Product Managers: Involve engineers in authoring use cases, invite them to customer calls, and require them to justify ideas with scenarios.",
+          "AI Application: Hoskins's team at Temporal uses a Claude skill to aggregate user signals from various sources (internal Slack, community Slack, Miro, GitHub, Gong) to enhance customer understanding."
+        ]
+      },
+      {
+        "heading": "Chapter 3 Excerpt: Diagnostics as a Primary Product Interface",
+        "bullets": [
+          "Diagnostics (errors and warnings) are a high-leverage, often overlooked, product interface that improves \"stickiness\" by helping users succeed despite issues.",
+          "For complex applications, developer tools, and autonomous agents, users spend significant time reacting to diagnostics, where poor diagnostics have measurable costs.",
+          "Principles for Designing Diagnostics:",
+          "1. Categorize Error Scenarios: Tailor messages by understanding context, proposing five categories: System, User's Invalid Argument, Precondition Not Met, Developer's Invalid Argument, Assertion.",
+          "2. Craft Contextual and Actionable Messages: Explain what happened using product concepts, not implementation details, and suggest concrete next steps, documentation links, or corrections.",
+          "3. Raise Errors at the Interface (API/UI Boundary): This boundary combines system knowledge with user context, enabling upfront validation and repackaging low-level errors into higher-level, contextual ones (e.g., Python's \"chained exceptions\")."
+        ]
+      }
+    ],
+    "conclusions_or_recommendations": [
+      "Engineers should develop a \"product muscle\" by asking \"why,\" switching perspectives, using scenarios, and engaging in customer support.",
+      "Product Managers should involve engineers in use case authoring, customer calls, and scenario-based justification.",
+      "Design diagnostics as a primary product interface by categorizing errors, crafting contextual and actionable messages, raising errors at the interface boundary, and \"shifting left\" to diagnose issues early."
+    ],
+    "stance": "neutral",
+    "cta": "Drew Hoskins will be a speaker at The Pragmatic Summit. The publication also has a job opening."
+  },
+  "metadata": {
+    "source_type": "newsletter",
+    "url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "HTML article text extracted via direct",
+    "total_tokens_used": 26127,
+    "gemini_pro_tokens": 23602,
+    "gemini_flash_tokens": 2525,
+    "total_latency_ms": 104489,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 7,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "The Pragmatic Engineer: The Product-Minded Engineer in the AI Era",
+      "brief_summary": "The Pragmatic Engineer newsletter highlights the growing demand for \"product-minded engineers\" due to AI's automation of coding *how*. It summarizes Drew Hoskins's book, \"The Product-Minded Engineer,\" which offers a framework for developing this skill. The issue details advice for engineers and product managers, emphasizing asking \"why\" and understanding user perspectives. A key excerpt focuses on designing diagnostics as a critical product interface. Hoskins's team also uses AI to aggregate user signals. The author, Gergely Orosz, notes Hoskins will speak at The Pragmatic Summit and mentions a job opening.",
+      "tags": [
+        "software-engineering",
+        "product-management",
+        "ai-impact",
+        "developer-tools",
+        "diagnostics",
+        "api-design",
+        "career-development",
+        "book-summary",
+        "analysis",
+        "how-to"
+      ],
+      "detailed_summary": {
+        "publication_identity": "Pragmatic Engineer",
+        "issue_thesis": "The increasing automation of software creation by AI elevates the importance of engineers who can define *what* to build, necessitating the development of \"product-minded\" skills as outlined in Drew Hoskins's book.",
+        "sections": [
+          {
+            "heading": "The Product-Minded Engineer: An Introduction",
+            "bullets": [
+              "AI code generation automates the \"how\" of software, increasing the value of engineers who can specify \"what\" to build.",
+              "This trend drives demand for \"product-minded engineers\" combining software engineering with product ideation.",
+              "Drew Hoskins's book, \"The Product-Minded Engineer,\" provides a framework for developing this skill.",
+              "Hoskins, a former engineer at Microsoft, Facebook, Oculus, and Stripe, and current PM at Temporal, clarifies the book wasn't written *because* of AI, but acknowledges AI's influence on its publication.",
+              "The book originated from an O'Reilly outline on usable API design and includes practical exercises, citing John Carmack as an exemplar of technical and product focus."
+            ]
+          },
+          {
+            "heading": "Key Arguments & Advice",
+            "bullets": [
+              "For Engineers: Develop a \"product muscle\" by frequently asking \"why,\" switching between system and user perspectives, using scenarios to simulate interactions, and spending time on customer support.",
+              "For Product Managers: Involve engineers in authoring use cases, invite them to customer calls, and require them to justify ideas with scenarios.",
+              "AI Application: Hoskins's team at Temporal uses a Claude skill to aggregate user signals from various sources (internal Slack, community Slack, Miro, GitHub, Gong) to enhance customer understanding."
+            ]
+          },
+          {
+            "heading": "Chapter 3 Excerpt: Diagnostics as a Primary Product Interface",
+            "bullets": [
+              "Diagnostics (errors and warnings) are a high-leverage, often overlooked, product interface that improves \"stickiness\" by helping users succeed despite issues.",
+              "For complex applications, developer tools, and autonomous agents, users spend significant time reacting to diagnostics, where poor diagnostics have measurable costs.",
+              "Principles for Designing Diagnostics:",
+              "1. Categorize Error Scenarios: Tailor messages by understanding context, proposing five categories: System, User's Invalid Argument, Precondition Not Met, Developer's Invalid Argument, Assertion.",
+              "2. Craft Contextual and Actionable Messages: Explain what happened using product concepts, not implementation details, and suggest concrete next steps, documentation links, or corrections.",
+              "3. Raise Errors at the Interface (API/UI Boundary): This boundary combines system knowledge with user context, enabling upfront validation and repackaging low-level errors into higher-level, contextual ones (e.g., Python's \"chained exceptions\")."
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [
+          "Engineers should develop a \"product muscle\" by asking \"why,\" switching perspectives, using scenarios, and engaging in customer support.",
+          "Product Managers should involve engineers in use case authoring, customer calls, and scenario-based justification.",
+          "Design diagnostics as a primary product interface by categorizing errors, crafting contextual and actionable messages, raising errors at the interface boundary, and \"shifting left\" to diagnose issues early."
+        ],
+        "stance": "neutral",
+        "cta": "Drew Hoskins will be a speaker at The Pragmatic Summit. The publication also has a job opening."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}
