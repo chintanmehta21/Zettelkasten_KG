@@ -29,6 +29,13 @@
       "targeted_criterion": "brief.caveats_addressed",
       "criterion_delta": 0.0,
       "composite_delta": 4.599999999999994
+    },
+    {
+      "iter": 4,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": -46.85
     }
   ]
 }

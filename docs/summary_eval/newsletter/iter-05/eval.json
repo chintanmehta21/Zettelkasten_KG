@@ -1,0 +1,486 @@
+[
+  {
+    "url": "https://www.platformer.news/substack-nazi-push-notification/",
+    "eval": {
+      "g_eval": {
+        "coherence": 5.0,
+        "consistency": 5.0,
+        "fluency": 4.5,
+        "relevance": 5.0,
+        "reasoning": "The summary is highly accurate and comprehensive. A minor typo ('Outc' instead of 'Outcome') is present in the mini_title and label."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 1.0,
+          "items": []
+        },
+        "completeness": {
+          "score": 1.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 25.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.main_topic_thesis",
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.action_items",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts",
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 14.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.branded_source_rule",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": [
+              "label.compact_declarative"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 97.8,
+        "finesure": 100.0,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 4914,
+        "total_tokens_out": 828,
+        "latency_ms": 51084
+      }
+    }
+  },
+  {
+    "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.5,
+        "consistency": 3.5,
+        "fluency": 4.0,
+        "relevance": 4.0,
+        "reasoning": "The summary effectively condenses the technical content of the research papers, presenting it in a well-structured format with logical sections and specific bullet points. However, it fails to correctly identify the publication name in the `mini_title` and `publication_identity` field, and the `brief_summary` could be more precise about the newsletter's specific purpose and structure. The `mini_title` is also truncated."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.8,
+          "items": [
+            {
+              "claim": "Not specified; appears to be a digest of recent academic research.",
+              "fact": null,
+              "sentence": "Not specified; appears to be a digest of recent academic research.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "fact": null,
+              "sentence": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "span": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": "This digest presents recent advancements across organic chemistry, targeting researchers and practitioners. It covers new catalytic methods for C-C and C-X bond formation, enantioselective reactions, and complex molecule synthesis. Key sections detail method development, total synthesis of natural products, and functionalization techniques relevant to medicinal chemistry.",
+              "fact": null,
+              "sentence": "This digest presents recent advancements across organic chemistry, targeting researchers and practitioners. It covers new catalytic methods for C-C and C-X bond formation, enantioselective reactions, and complex molecule synthesis. Key sections detail method development, total synthesis of natural products, and functionalization techniques relevant to medicinal chemistry.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "fact": null,
+              "sentence": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "span": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.8,
+          "items": [
+            {
+              "claim": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "fact": null,
+              "sentence": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "span": "Organic Chemistry Research Digest: Catalysis, Synthesis, & F",
+              "importance": null
+            },
+            {
+              "claim": "Not specified; appears to be a digest of recent academic research.",
+              "fact": null,
+              "sentence": "Not specified; appears to be a digest of recent academic research.",
+              "span": null,
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.95,
+        "contradicted_sentences": [
+          {
+            "sentence": "Not specified; appears to be a digest of recent academic research.",
+            "reason": "The source explicitly states its publication identity as 'Organic Synthesis @ Beehiiv'."
+          }
+        ],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 19.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.main_topic_thesis",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": [
+              "brief.argument_structure"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.action_items",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts",
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 5.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": [
+              "label.branded_source_rule"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": 90,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "branded_source_missing_publication",
+            "source_region": "mini_title",
+            "auto_cap": 90
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 61.9,
+        "finesure": 88.0,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 9908,
+        "total_tokens_out": 1605,
+        "latency_ms": 44237,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://product.beehiiv.com/p/introducing-email-boosts",
+    "eval": {
+      "g_eval": {
+        "coherence": 4.0,
+        "consistency": 3.5,
+        "fluency": 4.5,
+        "relevance": 4.5,
+        "reasoning": "The summary is generally coherent and fluent. It captures most of the relevant information. Consistency is impacted by some interpretive framing not directly present in the source. Coherence is good in the detailed summary's structure, but the brief's argument structure could be more explicit about the author's flow."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.7,
+          "items": [
+            {
+              "claim": "creating an incentive for platform lock-in",
+              "fact": null,
+              "sentence": "The Boosts network is exclusive to users on beehiiv's 'Scale' or 'Enterprise' plans, creating an incentive for platform lock-in.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "adds an administrative layer",
+              "fact": null,
+              "sentence": "The per-send approval process gives Growers granular control over partnerships and budget, but adds an administrative layer, with 72-hour escrow and send windows enforcing a structured workflow.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "Email Boosts create a self-contained ad network that directly competes with external newsletter cross-promotion tools and general ad platforms.",
+              "fact": null,
+              "sentence": "Email Boosts create a self-contained ad network that directly competes with external newsletter cross-promotion tools and general ad platforms.",
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "analysis",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.8,
+          "items": [
+            {
+              "claim": "specific evidence of impact (e.g., 'hundreds of thousands of dollars' paid out, 'nearly half a million' new subscribers, Rowan Cheung's 10,000+ subscribers)",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "author's conclusions/recommendations",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "caveat about Boosts being available only to Scale or Enterprise plans",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "explicit action items / practical takeaways",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 0.8125,
+        "contradicted_sentences": [],
+        "neutral_sentences": [
+          {
+            "sentence": "The Boosts network is exclusive to users on beehiiv's 'Scale' or 'Enterprise' plans, creating an incentive for platform lock-in.",
+            "reason": "The phrase 'creating an incentive for platform lock-in' is an interpretive addition by the summarizer, not explicitly stated in the source."
+          },
+          {
+            "sentence": "The per-send approval process gives Growers granular control over partnerships and budget, but adds an administrative layer, with 72-hour escrow and send windows enforcing a structured workflow.",
+            "reason": "The phrase 'adds an administrative layer' is an interpretive addition by the summarizer, not explicitly stated in the source."
+          },
+          {
+            "sentence": "Email Boosts create a self-contained ad network that directly competes with external newsletter cross-promotion tools and general ad platforms.",
+            "reason": "The framing of Boosts as 'directly competing with external newsletter cross-promotion tools and general ad platforms' is an interpretive addition by the summarizer, not explicitly stated in the source."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 16.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.main_topic_thesis",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": [
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 37.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.examples_captured",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": [
+              "detailed.claims_source_grounded",
+              "detailed.action_items"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 12.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts"
+            ],
+            "criteria_missed": [
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.branded_source_rule",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": []
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 93.61,
+        "finesure": 75.0,
+        "qafact": 60.0,
+        "summac": 80.0
+      },
+      "editorialization_flags": [
+        {
+          "sentence": "The Boosts network is exclusive to users on beehiiv's 'Scale' or 'Enterprise' plans, creating an incentive for platform lock-in.",
+          "flag_type": "added_framing",
+          "explanation": "The source states the exclusivity but does not frame it as 'creating an incentive for platform lock-in'."
+        },
+        {
+          "sentence": "The per-send approval process gives Growers granular control over partnerships and budget, but adds an administrative layer, with 72-hour escrow and send windows enforcing a structured workflow.",
+          "flag_type": "added_judgment",
+          "explanation": "The source describes the process but does not explicitly label it an 'administrative layer'."
+        },
+        {
+          "sentence": "Email Boosts create a self-contained ad network that directly competes with external newsletter cross-promotion tools and general ad platforms.",
+          "flag_type": "added_framing",
+          "explanation": "The source describes Boosts as an acquisition channel but does not explicitly frame it as 'directly competing with external newsletter cross-promotion tools and general ad platforms'."
+        }
+      ],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 6282,
+        "total_tokens_out": 2060,
+        "latency_ms": 46011,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  }
+]
