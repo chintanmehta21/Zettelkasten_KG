@@ -34,10 +34,13 @@ from website.features.summarization_engine.summarization.common.prompts import (
     source_context,
 )
 from website.features.summarization_engine.summarization.common.text_guards import (
+    _DANGLING_TAIL_WORDS,
+    ends_with_dangling_word,
     ensure_terminator,
     repair_or_drop,
     sanitize_bullets,
     sanitize_sub_sections,
+    split_sentences,
 )
 
 _log = logging.getLogger(__name__)
@@ -213,7 +216,7 @@ class StructuredExtractor:
         brief_max = self._config.structured_extract.brief_summary_max_chars
         brief_raw = str(getattr(payload, "brief_summary", ""))
         brief_truncated = _smart_truncate(brief_raw, brief_max)
-        brief_safe = repair_or_drop(brief_truncated) or ensure_terminator(brief_truncated)
+        brief_safe = _safe_brief(brief_truncated)
         return SummaryResult(
             mini_title=str(getattr(payload, "mini_title", ""))[
                 : self._config.structured_extract.mini_title_max_chars
@@ -257,6 +260,44 @@ def _smart_truncate(text: str, max_chars: int) -> str:
     if idx > 0:
         return window[:idx].rstrip(",;:") + "."
     return window
+
+
+def _safe_brief(text: str) -> str:
+    """Return a dangling-free version of the brief.
+
+    Sanitize every sentence: for each, if it ends in a dangling connector,
+    strip trailing dangling words until the tail is safe, else drop it.
+    Never just append a period to a dangling clause.
+    """
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if not cleaned:
+        return ""
+    sentences = split_sentences(ensure_terminator(cleaned))
+    safe: list[str] = []
+    for sentence in sentences:
+        repaired = _strip_dangling_tail(sentence)
+        if repaired:
+            safe.append(repaired)
+    if safe:
+        return " ".join(safe).strip()
+
+    # No sentence boundary found — strip dangling from raw text directly
+    return _strip_dangling_tail(cleaned)
+
+
+def _strip_dangling_tail(sentence: str) -> str:
+    """Drop trailing dangling words from a single sentence; terminate safely."""
+    body = re.sub(r"\s+", " ", sentence or "").strip().rstrip(".!?,;: ").strip()
+    while body:
+        match = re.search(r"([A-Za-z][A-Za-z'-]*)\s*$", body)
+        if not match:
+            break
+        if match.group(1).lower() not in _DANGLING_TAIL_WORDS:
+            break
+        body = body[: match.start()].rstrip(".!?,;: ").strip()
+    if not body:
+        return ""
+    return ensure_terminator(body)
 
 
 def _coerce_detailed_summary(
@@ -378,20 +419,55 @@ def _sanitize_composed(
     out: list[DetailedSummarySection] = []
     for section in sections:
         safe_bullets = sanitize_bullets(section.bullets or [])
-        safe_subs = sanitize_sub_sections(section.sub_sections or {})
+        safe_subs = _sanitize_heading_keyed_subs(section.sub_sections or {})
         if not safe_bullets and not safe_subs:
             continue
         if not safe_bullets and safe_subs:
             safe_bullets = []
+        safe_heading = _sanitize_heading(section.heading)
         out.append(
             DetailedSummarySection(
-                heading=section.heading,
+                heading=safe_heading,
                 bullets=safe_bullets,
                 sub_sections=safe_subs,
             )
         )
     if not out:
         return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return out
+
+
+def _sanitize_heading(heading: str) -> str:
+    """Strip dangling connectors from a section/chapter heading.
+
+    Headings like ``"Love and Loss: Founding and"`` leak a trailing
+    conjunction that looks like a truncated clause. Strip the dangling
+    word rather than pad with punctuation.
+    """
+    body = re.sub(r"\s+", " ", heading or "").strip().rstrip(":;,.!? ")
+    while body:
+        match = re.search(r"([A-Za-z][A-Za-z'-]*)\s*$", body)
+        if not match:
+            break
+        if match.group(1).lower() not in _DANGLING_TAIL_WORDS:
+            break
+        body = body[: match.start()].rstrip(":;,.!? ").strip()
+    return body or (heading or "").strip()
+
+
+def _sanitize_heading_keyed_subs(
+    sub_sections: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Sanitize both the sub_section headings and their bullets."""
+    out: dict[str, list[str]] = {}
+    for heading, bullets in (sub_sections or {}).items():
+        safe_bullets = sanitize_bullets(bullets or [])
+        if not safe_bullets:
+            continue
+        safe_heading = _sanitize_heading(heading)
+        if not safe_heading:
+            safe_heading = heading
+        out[safe_heading] = safe_bullets
     return out
 
 
