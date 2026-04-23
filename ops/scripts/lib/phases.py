@@ -4,11 +4,15 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
+import statistics
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 import yaml
 
@@ -96,6 +100,7 @@ async def _summarize_and_evaluate(
         eval_result.evaluator_metadata["ragas_faithfulness"] = ragas
 
     eval_json = eval_result.model_dump(mode="json")
+    ingest_metadata = dict(ingest.metadata) if isinstance(ingest.metadata, dict) else {}
     return {
         "url": url,
         "source_type": source_type,
@@ -108,6 +113,7 @@ async def _summarize_and_evaluate(
         "latency_ms": int((time.perf_counter() - t0) * 1000),
         "extraction_confidence": ingest.extraction_confidence,
         "rubric_yaml": rubric_yaml,
+        "ingest_metadata": ingest_metadata,
     }
 
 
@@ -191,12 +197,22 @@ def run_phase_a(
             sub.mkdir(parents=True, exist_ok=True)
             write_json(sub / "summary.json", record["summary"])
             write_json(sub / "eval.json", record["eval"])
-            per_url.append({
+            entry = {
                 "url": record["url"],
                 "composite": record["composite"],
                 "faithfulness": record["eval"]["finesure"]["faithfulness"]["score"],
                 "extraction_confidence": record["extraction_confidence"],
-            })
+            }
+            # Reddit-only: surface pullpush_fetched per-item so the scorecard
+            # (and the rollup below) can track how often the divergence recovery
+            # path fired across the held-out sweep.
+            if source == "reddit":
+                pp_fetched = record.get("ingest_metadata", {}).get("pullpush_fetched", 0)
+                try:
+                    entry["pullpush_fetched_count"] = int(pp_fetched or 0)
+                except (TypeError, ValueError):
+                    entry["pullpush_fetched_count"] = 0
+            per_url.append(entry)
         composites = [entry["composite"] for entry in per_url]
         mean_composite = sum(composites) / len(composites) if composites else 0.0
         min_faithfulness = min((entry["faithfulness"] for entry in per_url), default=0.0)
@@ -206,17 +222,55 @@ def run_phase_a(
             f"- urls: {len(per_url)}",
             f"- mean_composite: {mean_composite:.2f}",
             f"- min_faithfulness: {min_faithfulness:.3f}",
-            "",
-            "## Per-URL",
-            "",
         ]
+        pullpush_rollup: dict[str, float] | None = None
+        if source == "reddit":
+            counts = [entry.get("pullpush_fetched_count", 0) for entry in per_url]
+            if counts:
+                pullpush_rollup = {
+                    "mean": sum(counts) / len(counts),
+                    "median": float(statistics.median(counts)),
+                    "total": float(sum(counts)),
+                    "n": float(len(counts)),
+                }
+                aggregate_lines.append(
+                    f"- pullpush_fetched_mean: {pullpush_rollup['mean']:.2f}"
+                )
+                aggregate_lines.append(
+                    f"- pullpush_fetched_median: {pullpush_rollup['median']:.2f}"
+                )
+                aggregate_lines.append(
+                    f"- pullpush_fetched_total: {int(pullpush_rollup['total'])}"
+                )
+        aggregate_lines.extend(["", "## Per-URL", ""])
         for entry in per_url:
+            extras = ""
+            if "pullpush_fetched_count" in entry:
+                extras = f" pullpush_fetched={entry['pullpush_fetched_count']}"
             aggregate_lines.append(
                 f"- {entry['url']}: composite={entry['composite']:.2f} "
                 f"faithfulness={entry['faithfulness']:.3f} "
-                f"confidence={entry['extraction_confidence']}"
+                f"confidence={entry['extraction_confidence']}{extras}"
             )
         write_text(paths["aggregate"], "\n".join(aggregate_lines) + "\n")
+        # Emit a structured scorecard sibling so downstream tooling can read
+        # the rollup without re-parsing the Markdown. Kept small and JSON-only.
+        scorecard_payload: dict[str, Any] = {
+            "source": source,
+            "iter": iter_num,
+            "urls": len(per_url),
+            "mean_composite": round(mean_composite, 4),
+            "min_faithfulness": round(min_faithfulness, 4),
+            "per_url": per_url,
+        }
+        if pullpush_rollup is not None:
+            scorecard_payload["pullpush_fetched"] = {
+                "mean": round(pullpush_rollup["mean"], 4),
+                "median": pullpush_rollup["median"],
+                "total": int(pullpush_rollup["total"]),
+                "n": int(pullpush_rollup["n"]),
+            }
+        write_json(iter_dir / "scorecard.json", scorecard_payload)
     else:
         if len(records) == 1:
             write_json(paths["summary"], records[0]["summary"])
@@ -353,6 +407,71 @@ def _first_eval_payload(iter_dir: Path) -> dict | None:
                 payload = read_json(eval_file)
                 return payload if isinstance(payload, dict) else None
     return None
+
+
+def _collect_calibration_pairs(source_dir: Path) -> list[tuple[float, float]]:
+    """Walk ``source_dir/iter-*`` and return (computed, estimated) pairs.
+
+    Drops iters that have no manual_review.md or no computable composite. The
+    returned list is ordered by iter name so downstream Spearman sees a stable
+    pairing across runs.
+    """
+    pairs: list[tuple[float, float]] = []
+    if not source_dir.exists():
+        return pairs
+    for iter_path in sorted(source_dir.glob("iter-*")):
+        review_path = iter_path / "manual_review.md"
+        if not review_path.exists():
+            continue
+        ok, estimated = verify_manual_review(review_path)
+        if not ok or estimated is None:
+            continue
+        computed = _composite_from_iter_dir(iter_path)
+        if computed is None or computed == 0.0:
+            # 0.0 means no eval.json was written; skip to avoid poisoning the
+            # rank correlation with zero-variance points.
+            continue
+        pairs.append((float(computed), float(estimated)))
+    return pairs
+
+
+def _run_calibration_check(source: str, source_dir: Path) -> dict | None:
+    """Compute Spearman rho between computed and manual composites for ``source``.
+
+    Returns a dict with ``rho``, ``n``, ``threshold``, ``below_threshold`` when
+    computable, else ``None``. WARN-only: callers must not treat this as a
+    gate. The underlying helper logs a WARNING when rho < threshold so the
+    calibration drift shows up in CI output.
+    """
+    from ops.scripts.lib.calibration_spearman import (
+        DEFAULT_WARN_THRESHOLD,
+        check_calibration,
+    )
+
+    pairs = _collect_calibration_pairs(source_dir)
+    if len(pairs) < 2:
+        return None
+    auto_scores = [pair[0] for pair in pairs]
+    manual_scores = [pair[1] for pair in pairs]
+    result = check_calibration(
+        auto_scores, manual_scores, source=source,
+        threshold=DEFAULT_WARN_THRESHOLD,
+    )
+    if result is None:
+        return {
+            "rho": None,
+            "n": len(pairs),
+            "threshold": DEFAULT_WARN_THRESHOLD,
+            "below_threshold": False,
+            "note": "insufficient_variance",
+        }
+    return {
+        "rho": round(result.rho, 4),
+        "n": result.n,
+        "threshold": DEFAULT_WARN_THRESHOLD,
+        "below_threshold": result.rho < DEFAULT_WARN_THRESHOLD,
+        "used_scipy": result.used_scipy,
+    }
 
 
 def _divergence_stamp(diff: float) -> str:
@@ -593,6 +712,19 @@ def run_phase_b(
     except Exception as exc:
         append_log(paths["log"], f"churn_ledger_error {exc}")
 
+    # Calibration drift probe (WARN-only; never fails Phase B).
+    calibration: dict | None = None
+    try:
+        calibration = _run_calibration_check(source, iter_dir.parent)
+    except Exception as exc:  # pragma: no cover - defensive, calibration must never break Phase B
+        logger.warning("calibration_spearman_error source=%s err=%s", source, exc)
+        calibration = None
+    if calibration is not None:
+        try:
+            write_json(iter_dir / "calibration.json", calibration)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("calibration_write_error source=%s err=%s", source, exc)
+
     append_log(paths["log"], f"phase_b done stamp={stamp} commit={commit_sha[:12] if commit_sha else 'none'}")
     return {
         "status": status,
@@ -600,6 +732,7 @@ def run_phase_b(
         "estimated_composite": estimated,
         "divergence": stamp,
         "commit": commit_sha,
+        "calibration_spearman": calibration,
     }
 
 

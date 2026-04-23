@@ -20,6 +20,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from ops.scripts.lib.eval_diversity import (
+    EvalConfigInsufficientDiversity,
+    check_github_heldout_diversity,
+    check_reddit_training_diversity,
+)
 from ops.scripts.lib.links_parser import parse_links_file
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -147,6 +152,36 @@ def _urls_for_iter(source: str, iter_num: int, override: list[str] | None) -> tu
         return all_urls[:3], False
     # default: first URL
     return all_urls[:1], False
+
+
+def _enforce_diversity_gates(source: str, urls: list[str], held_out: bool) -> None:
+    """Run per-source config-level diversity gates before spending Gemini calls.
+
+    Raises ``EvalConfigInsufficientDiversity`` (``AssertionError`` subclass) on
+    failure, which ``main`` turns into a clean exit-code-2 message. Respects
+    ``EVAL_SKIP_*_DIVERSITY=1`` bypass envs for operator waivers.
+    """
+    if source == "reddit" and not held_out:
+        check_reddit_training_diversity(urls)
+    elif source == "github" and held_out:
+        archetype_map = _load_github_archetype_map()
+        check_github_heldout_diversity(urls, archetype_map)
+
+
+def _load_github_archetype_map() -> dict[str, str]:
+    """Load ``docs/summary_eval/_config/github_heldout_archetypes.yaml``.
+
+    Returns ``{}`` if the file is missing; the diversity check reports that
+    as "0 archetypes" and blocks, which is the correct default.
+    """
+    path = CONFIG_ROOT / "github_heldout_archetypes.yaml"
+    if not path.exists():
+        return {}
+    import yaml  # local import to avoid cost when the gate doesn't fire
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k).lower(): str(v) for k, v in raw.items() if v}
 
 
 def _rubric_path(source: str) -> Path:
@@ -383,6 +418,20 @@ def main() -> int:
             urls, held_out = _urls_for_iter(args.source, iter_num, args.url)
             if iter_num in (6, 7, 9):
                 held_out = True
+            try:
+                _enforce_diversity_gates(args.source, urls, held_out)
+            except EvalConfigInsufficientDiversity as exc:
+                print(json.dumps({
+                    "status": "config_insufficient_diversity",
+                    "source": args.source,
+                    "iter": iter_num,
+                    "detail": str(exc),
+                    "bypass_env": (
+                        "EVAL_SKIP_REDDIT_DIVERSITY" if args.source == "reddit"
+                        else "EVAL_SKIP_GH_DIVERSITY"
+                    ),
+                }, indent=2))
+                return 2
             payload = run_phase_a(
                 source=args.source,
                 iter_num=iter_num,
