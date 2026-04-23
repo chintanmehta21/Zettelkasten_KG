@@ -10,6 +10,12 @@ from typing_extensions import Annotated
 
 MiniTitle = Annotated[str, StringConstraints(max_length=50)]
 _TITLE_STOPWORDS = {"a", "an", "and", "for", "in", "of", "the", "to", "with"}
+_SPEAKER_PLACEHOLDERS = frozenset({
+    "narrator", "host", "speaker", "analyst", "commentator",
+    "voiceover", "voice over", "author of the source",
+    "the host", "the speaker", "the narrator", "author",
+    "presenter", "the presenter",
+})
 
 
 class ChapterBullet(BaseModel):
@@ -65,6 +71,23 @@ class YouTubeStructuredPayload(BaseModel):
             chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
             closing_takeaway=self.detailed_summary.closing_takeaway,
         )
+        return self
+
+    @model_validator(mode="after")
+    def _reject_placeholder_only_speakers(self) -> "YouTubeStructuredPayload":
+        real = [
+            s.strip()
+            for s in (self.speakers or [])
+            if isinstance(s, str)
+            and s.strip()
+            and s.strip().lower() not in _SPEAKER_PLACEHOLDERS
+        ]
+        if not real:
+            raise ValueError(
+                "speakers must contain at least one non-placeholder name; "
+                "got only placeholders or empty list"
+            )
+        self.speakers = real
         return self
 
 
