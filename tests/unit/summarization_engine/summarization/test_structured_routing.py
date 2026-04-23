@@ -161,9 +161,11 @@ async def test_extract_success_youtube_populates_structured_payload():
     assert result.tags[0] == "dmt"
     assert "_schema_fallback_" not in result.tags
     assert "zettelkasten" not in result.tags
-    # detailed_summary coerced to list
+    # detailed_summary coerced to list: chapters rendered as readable sections
     headings = {s.heading for s in result.detailed_summary}
-    assert "thesis" in headings
+    assert "Thesis" in headings
+    assert "Closing Takeaway" in headings
+    assert any("Chemistry" in h for h in headings)
 
 
 @pytest.mark.asyncio

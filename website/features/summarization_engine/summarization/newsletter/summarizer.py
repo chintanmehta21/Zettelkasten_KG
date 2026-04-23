@@ -91,7 +91,9 @@ class NewsletterSummarizer(BaseSummarizer):
         payload = _apply_ingest_guardrails(payload, ingest)
         latency_ms = int((time.perf_counter() - start) * 1000)
         return NewsletterSummaryResult(
-            mini_title=payload.mini_title[:60],
+            mini_title=payload.mini_title[
+                : self._engine_config.structured_extract.mini_title_max_chars
+            ],
             brief_summary=_trim_at_sentence_boundary(
                 payload.brief_summary,
                 self._engine_config.structured_extract.brief_summary_max_chars,

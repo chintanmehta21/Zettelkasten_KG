@@ -248,8 +248,11 @@ def _load_health() -> dict[str, str]:
 
 
 def _save_health(health: dict[str, str]) -> None:
-    _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
+    try:
+        _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
+    except OSError:
+        return
 
 
 def _is_healthy(instance: str, ttl_hours: int) -> bool:
@@ -470,41 +473,89 @@ def _first_available_key() -> str | None:
 
 
 async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
-    """Tier 6: yt-dlp metadata-only fallback."""
+    """Tier 6: yt-dlp metadata-only fallback, with oEmbed + HTML og-tags safety net.
+
+    yt-dlp is routinely blocked on datacenter IPs even for metadata-only
+    extraction. When that happens, fall back to YouTube's public oEmbed
+    endpoint (title + author, no auth required) and scrape the watch page
+    for ``og:title`` / ``og:description``. At least one of these almost
+    always returns enough text for the 50-char ingest floor.
+    """
     from yt_dlp import YoutubeDL
 
     start = time.monotonic()
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    title = ""
+    description = ""
+    channel = ""
+    duration = 0
+    ytdlp_err: str | None = None
+
     try:
         with YoutubeDL(
             {"quiet": True, "skip_download": True, "no_warnings": True}
         ) as ydl:
-            info = ydl.extract_info(
-                f"https://www.youtube.com/watch?v={video_id}",
-                download=False,
-            ) or {}
-        title = info.get("title", "")
-        description = info.get("description", "")
-        text = f"{title}\n\n{description}"
-        return TierResult(
-            tier=TierName.METADATA_ONLY,
-            transcript=text,
-            success=bool(title or description),
-            confidence="low",
-            latency_ms=int((time.monotonic() - start) * 1000),
-            extra={
-                "title": title,
-                "channel": info.get("channel", ""),
-                "duration": info.get("duration", 0),
-            },
-        )
+            info = ydl.extract_info(url, download=False) or {}
+        title = info.get("title", "") or ""
+        description = info.get("description", "") or ""
+        channel = info.get("channel", "") or ""
+        duration = info.get("duration", 0) or 0
     except Exception as exc:
-        return TierResult(
-            tier=TierName.METADATA_ONLY,
-            transcript="",
-            success=False,
-            error=str(exc),
-            latency_ms=int((time.monotonic() - start) * 1000),
-        )
+        ytdlp_err = str(exc)
+        logger.warning("[yt-tier6] yt-dlp failed, trying oEmbed/og: %s", exc)
+
+    if not title or not description:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                oembed = await client.get(
+                    "https://www.youtube.com/oembed",
+                    params={"url": url, "format": "json"},
+                )
+                if oembed.status_code == 200:
+                    data = oembed.json()
+                    title = title or data.get("title", "") or ""
+                    channel = channel or data.get("author_name", "") or ""
+        except Exception as exc:
+            logger.warning("[yt-tier6] oEmbed failed: %s", exc)
+
+    if not description:
+        try:
+            async with httpx.AsyncClient(
+                timeout=10.0,
+                follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; ZettelkastenBot/1.0)"},
+            ) as client:
+                page = await client.get(url)
+                if page.status_code == 200:
+                    og_title = re.search(
+                        r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"',
+                        page.text,
+                    )
+                    og_desc = re.search(
+                        r'<meta[^>]+property="og:description"[^>]+content="([^"]+)"',
+                        page.text,
+                    )
+                    if og_title and not title:
+                        title = og_title.group(1)
+                    if og_desc and not description:
+                        description = og_desc.group(1)
+        except Exception as exc:
+            logger.warning("[yt-tier6] og-scrape failed: %s", exc)
+
+    text = "\n\n".join(part for part in (title, description) if part)
+    return TierResult(
+        tier=TierName.METADATA_ONLY,
+        transcript=text,
+        success=bool(title or description),
+        confidence="low",
+        latency_ms=int((time.monotonic() - start) * 1000),
+        error=ytdlp_err if not (title or description) else None,
+        extra={
+            "title": title,
+            "channel": channel,
+            "duration": duration,
+        },
+    )
 
 
 def build_default_chain(config: dict) -> TranscriptChain:

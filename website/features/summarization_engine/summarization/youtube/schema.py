@@ -100,28 +100,88 @@ def _repair_brief_summary(
     chapter_titles: list[str],
     closing_takeaway: str,
 ) -> str:
+    """Accept the LLM brief as-is when it's a plausible natural paragraph.
+
+    Only rebuild from structured fields when the model output is empty or
+    clearly malformed (no terminal punctuation, fewer than 2 complete
+    sentences). The rebuilt brief uses whole source sentences — never
+    word-count truncation — so it never dies mid-clause.
+    """
     cleaned = re.sub(r"\s+", " ", brief or "").strip()
-    sentences = re.findall(r"[^.!?]+[.!?]", cleaned)
-    lower_brief = cleaned.lower()
-    has_format = format_name.lower() in lower_brief
-    has_speaker = any(speaker.lower() in lower_brief for speaker in speakers[:2])
-    if cleaned.endswith((".", "!", "?")) and len(sentences) >= 5 and has_format and has_speaker and len(cleaned) <= 400:
+    sentences = _split_sentences(cleaned)
+    looks_complete = (
+        cleaned
+        and cleaned[-1] in ".!?"
+        and len(sentences) >= 2
+        and len(cleaned) <= 500
+    )
+    if looks_complete:
         return cleaned
 
-    entity_text = _join_items(entities[:2]) or "its key compounds and research contexts"
-    chapter_text = _join_items(chapter_titles[:2]) or "its history and modern research"
-    figure_text = _join_items(_select_figures_for_brief(speakers, entities))
-    repaired = _fit_brief_sentences(
-        [
-            f"This {format_name} video explains {_trim_fragment(thesis, 18)}",
-            f"It moves through sections on {_trim_fragment(chapter_text, 12)}",
-            f"It also covers {_trim_fragment(entity_text, 8)}",
-            f"Key voices and figures include {_trim_fragment(figure_text, 8)}",
-            f"The main takeaway is {_trim_fragment(closing_takeaway, 18)}",
-        ],
-        max_chars=400,
-    )
-    return repaired or _as_sentence(_trim_fragment(thesis, 24))
+    speaker = _primary_speaker(speakers) or "The speaker"
+    parts: list[str] = []
+    thesis_sentence = _first_sentence(thesis)
+    if thesis_sentence:
+        parts.append(f"In this {format_name}, {speaker} argues that {thesis_sentence.lower().rstrip('.')}.")
+    else:
+        parts.append(f"This {format_name} is delivered by {speaker}.")
+
+    if chapter_titles:
+        titles = [t for t in chapter_titles if t.strip()][:3]
+        if titles:
+            parts.append(f"The video moves through {_join_series(titles)}.")
+
+    entity_text = [e for e in entities if e and e.strip()][:3]
+    if entity_text:
+        parts.append(f"It references {_join_series(entity_text)}.")
+
+    closing_sentence = _first_sentence(closing_takeaway)
+    if closing_sentence:
+        parts.append(f"The closing takeaway: {closing_sentence.rstrip('.')}.")
+
+    rebuilt = " ".join(parts).strip()
+    if len(rebuilt) <= 500 and rebuilt:
+        return rebuilt
+    # Rebuilt overshoots: drop middle entity sentence first, then chapters.
+    for drop_index in (2, 1):
+        if drop_index < len(parts):
+            trimmed = " ".join(parts[:drop_index] + parts[drop_index + 1 :]).strip()
+            if len(trimmed) <= 500:
+                return trimmed
+    # Last resort: thesis + closing only
+    fallback = " ".join([p for p in (parts[0], parts[-1]) if p])
+    return fallback[:500].rstrip()
+
+
+def _primary_speaker(speakers: list[str]) -> str:
+    for speaker in speakers or []:
+        name = re.sub(r"\s+", " ", (speaker or "")).strip()
+        if name and name.lower() not in {"narrator", "host", "speaker", "presenter"}:
+            return name
+    return ""
+
+
+def _split_sentences(text: str) -> list[str]:
+    return [s.strip() for s in re.findall(r"[^.!?]+[.!?]", text or "") if s.strip()]
+
+
+def _first_sentence(text: str) -> str:
+    sentences = _split_sentences(text)
+    if sentences:
+        return sentences[0]
+    cleaned = re.sub(r"\s+", " ", (text or "")).strip()
+    return cleaned
+
+
+def _join_series(items: list[str]) -> str:
+    vals = [re.sub(r"\s+", " ", i).strip() for i in items if i and i.strip()]
+    if not vals:
+        return ""
+    if len(vals) == 1:
+        return vals[0]
+    if len(vals) == 2:
+        return f"{vals[0]} and {vals[1]}"
+    return ", ".join(vals[:-1]) + f", and {vals[-1]}"
 
 
 def _normalize_format_name(

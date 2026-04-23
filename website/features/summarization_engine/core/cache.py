@@ -23,7 +23,6 @@ class FsContentCache:
 
     def __init__(self, root: Path, namespace: str) -> None:
         self._dir = Path(root) / namespace
-        self._dir.mkdir(parents=True, exist_ok=True)
 
     def key_hash(self, key_tuple: tuple) -> str:
         canonical = _canonical_json(list(key_tuple))
@@ -47,6 +46,10 @@ class FsContentCache:
 
     def put(self, key_tuple: tuple, payload: dict[str, Any]) -> None:
         if not self.enabled:
+            return
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
             return
         path = self._path(key_tuple)
         with path.open("w", encoding="utf-8") as handle:

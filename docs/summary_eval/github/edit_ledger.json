@@ -105,6 +105,21 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 62.333333333333336
+    },
+    {
+      "iter": 9,
+      "files": [
+        "ops/scripts/eval_loop.py",
+        "ops/scripts/lib/phases.py",
+        "ops/scripts/push_iter_summaries.py",
+        "tests/unit/summarization_engine/summarization/test_youtube_schema.py",
+        "website/features/summarization_engine/evaluator/prompts.py",
+        "website/features/summarization_engine/summarization/youtube/prompts.py",
+        "website/features/summarization_engine/summarization/youtube/schema.py"
+      ],
+      "targeted_criterion": "detailed.limitations_docs",
+      "criterion_delta": 0.0,
+      "composite_delta": 5.928666666666665
     }
   ]
 }

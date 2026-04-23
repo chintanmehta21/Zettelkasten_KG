@@ -42,9 +42,9 @@ self_check:
 structured_extract:
   validation_retries: 1
   mini_title_max_chars: 60
-  brief_summary_max_chars: 400
-  brief_summary_max_sentences: 7
-  brief_summary_min_sentences: 5
+  brief_summary_max_chars: 500
+  brief_summary_max_sentences: 6
+  brief_summary_min_sentences: 3
   detailed_summary_max_bullets_per_section: 8
   detailed_summary_min_bullets_per_section: 1
   tags_min: 7
@@ -99,8 +99,8 @@ sources:
     divergence_threshold_pct: 20
   youtube:
     transcript_languages: ["en", "en-US", "en-GB"]
-    ytdlp_player_clients: ["android_embedded", "ios", "tv_embedded", "mweb", "web"]
-    transcript_budget_ms: 90000
+    ytdlp_player_clients: ["android_embedded", "ios"]
+    transcript_budget_ms: 45000
     piped_instances:
       - pipedapi.kavin.rocks
       - pipedapi.adminforge.de
