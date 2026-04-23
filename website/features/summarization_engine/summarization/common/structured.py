@@ -13,6 +13,7 @@ import json
 import logging
 import re
 from datetime import datetime
+from typing import Callable, Optional
 
 from pydantic import BaseModel
 
@@ -49,10 +50,19 @@ class StructuredExtractor:
         client: TieredGeminiClient,
         config: EngineConfig,
         payload_class: type[BaseModel] = StructuredSummaryPayload,
+        *,
+        fallback_builder: Optional[
+            Callable[[IngestResult, str, EngineConfig], BaseModel]
+        ] = None,
+        prompt_builder: Optional[
+            Callable[[IngestResult, str, str], str]
+        ] = None,
     ):
         self._client = client
         self._config = config
         self._payload_class = payload_class
+        self._fallback_builder = fallback_builder
+        self._prompt_builder = prompt_builder
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -66,6 +76,8 @@ class StructuredExtractor:
 
     def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
         schema_json = self._schema_snippet()
+        if self._prompt_builder is not None:
+            return self._prompt_builder(ingest, summary_text, schema_json)
         return (
             f"{source_context(ingest.source_type)}\n\n"
             f"Return a JSON object that EXACTLY matches the following JSON schema "
@@ -129,6 +141,10 @@ class StructuredExtractor:
             try:
                 raw = parse_json_object(result.text)
                 raw = _apply_identifier_hints(raw, ingest)
+                coercer = getattr(self._payload_class, "coerce_raw", None)
+                if callable(coercer):
+                    hint = _mini_title_hint_for(ingest)
+                    raw = coercer(raw, mini_title_hint=hint)
                 payload = self._payload_class(**raw)
                 structured_payload = payload.model_dump(mode="json")
                 break
@@ -140,9 +156,27 @@ class StructuredExtractor:
                         type(exc).__name__,
                         (result.text or "")[:160].replace("\n", " "),
                     )
-                    payload = _fallback_payload(ingest, summary_text, self._config)
+                    if self._fallback_builder is not None:
+                        try:
+                            payload = self._fallback_builder(
+                                ingest, summary_text, self._config
+                            )
+                            # Prefer the source-specific payload; still flag as
+                            # fallback so eval/metrics can see degraded path.
+                            structured_payload = payload.model_dump(mode="json")
+                        except Exception as build_exc:  # noqa: BLE001
+                            _log.warning(
+                                "structured.extract custom_fallback_failed err=%s",
+                                type(build_exc).__name__,
+                            )
+                            payload = _fallback_payload(
+                                ingest, summary_text, self._config
+                            )
+                            structured_payload = None
+                    else:
+                        payload = _fallback_payload(ingest, summary_text, self._config)
+                        structured_payload = None
                     is_fallback = True
-                    structured_payload = None
                     break
                 _log.info(
                     "structured.extract retry payload_class=%s attempt=%d err=%s",
@@ -158,11 +192,16 @@ class StructuredExtractor:
                 )
 
         detailed_list = _coerce_detailed_summary(payload)
+        # When a source-specific fallback produced the payload, its tags are
+        # already curated (language, domain, archetype) — don't pad with
+        # generic boilerplate. Only the generic `_schema_fallback_` path needs
+        # padding to stay within tags_min.
+        used_custom_fallback = is_fallback and structured_payload is not None
         tags = _normalize_tags(
             getattr(payload, "tags", []) or [],
             self._config.structured_extract.tags_min,
             self._config.structured_extract.tags_max,
-            allow_boilerplate_pad=is_fallback,
+            allow_boilerplate_pad=is_fallback and not used_custom_fallback,
             source_type_value=ingest.source_type.value,
         )
 
@@ -276,6 +315,24 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
 
 
+def _mini_title_hint_for(ingest: IngestResult) -> str:
+    """Derive a canonical mini_title hint from ingest metadata / URL."""
+    st = ingest.source_type
+    meta = ingest.metadata or {}
+    if st == SourceType.GITHUB:
+        match = re.search(
+            r"github\.com/([^/\s]+)/([^/\s?#]+)",
+            str(ingest.url or ""),
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"[:60]
+        full_name = meta.get("full_name") or meta.get("repo_full_name")
+        if isinstance(full_name, str) and "/" in full_name:
+            return full_name[:60]
+    return ""
+
+
 def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     """Patch mini_title from deterministic ingest metadata before pydantic validation.
 
@@ -291,12 +348,13 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     st = ingest.source_type
     meta = ingest.metadata or {}
     if st == SourceType.GITHUB:
-        full_name = meta.get("full_name") or meta.get("repo_full_name")
-        if not isinstance(full_name, str) or "/" not in full_name:
-            url = str(ingest.url or "")
-            match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
-            if match:
-                full_name = f"{match.group(1)}/{match.group(2)}"
+        url = str(ingest.url or "")
+        match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
+        full_name = None
+        if match:
+            full_name = f"{match.group(1)}/{match.group(2)}"
+        if not full_name:
+            full_name = meta.get("full_name") or meta.get("repo_full_name")
         if isinstance(full_name, str) and "/" in full_name:
             raw["mini_title"] = full_name[:60]
     elif st == SourceType.REDDIT:
