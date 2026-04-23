@@ -157,26 +157,15 @@ class StructuredExtractor:
                         (result.text or "")[:160].replace("\n", " "),
                     )
                     if self._fallback_builder is not None:
-                        try:
-                            payload = self._fallback_builder(
-                                ingest, summary_text, self._config
-                            )
-                            # Prefer the source-specific payload; still flag as
-                            # fallback so eval/metrics can see degraded path.
-                            structured_payload = payload.model_dump(mode="json")
-                        except Exception as build_exc:  # noqa: BLE001
-                            _log.warning(
-                                "structured.extract custom_fallback_failed err=%s",
-                                type(build_exc).__name__,
-                            )
-                            payload = _fallback_payload(
-                                ingest, summary_text, self._config
-                            )
-                            structured_payload = None
+                        payload = self._fallback_builder(
+                            ingest, summary_text, self._config
+                        )
                     else:
-                        payload = _fallback_payload(ingest, summary_text, self._config)
-                        structured_payload = None
+                        payload = _fallback_payload(
+                            ingest, summary_text, self._config
+                        )
                     is_fallback = True
+                    structured_payload = None
                     break
                 _log.info(
                     "structured.extract retry payload_class=%s attempt=%d err=%s",
@@ -191,23 +180,23 @@ class StructuredExtractor:
                     exc,
                 )
 
-        detailed_list = _coerce_detailed_summary(payload)
-        # When a source-specific fallback produced the payload, its tags are
-        # already curated (language, domain, archetype) — don't pad with
-        # generic boilerplate. Only the generic `_schema_fallback_` path needs
-        # padding to stay within tags_min.
-        used_custom_fallback = is_fallback and structured_payload is not None
+        detailed_list = _coerce_detailed_summary(payload, ingest.source_type)
         tags = _normalize_tags(
             getattr(payload, "tags", []) or [],
             self._config.structured_extract.tags_min,
             self._config.structured_extract.tags_max,
-            allow_boilerplate_pad=is_fallback and not used_custom_fallback,
+            allow_boilerplate_pad=is_fallback,
             source_type_value=ingest.source_type.value,
         )
 
+        brief_max = self._config.structured_extract.brief_summary_max_chars
         return SummaryResult(
-            mini_title=str(getattr(payload, "mini_title", ""))[:60],
-            brief_summary=str(getattr(payload, "brief_summary", ""))[:400],
+            mini_title=str(getattr(payload, "mini_title", ""))[
+                : self._config.structured_extract.mini_title_max_chars
+            ],
+            brief_summary=_smart_truncate(
+                str(getattr(payload, "brief_summary", "")), brief_max
+            ),
             tags=tags,
             detailed_summary=detailed_list,
             metadata=SummaryMetadata(
@@ -232,11 +221,33 @@ class StructuredExtractor:
         )
 
 
-def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]:
+def _smart_truncate(text: str, max_chars: int) -> str:
+    """Truncate at a sentence boundary when possible, never mid-clause."""
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if len(cleaned) <= max_chars:
+        return cleaned
+    window = cleaned[:max_chars]
+    for stop in (".", "!", "?"):
+        idx = window.rfind(stop)
+        if idx >= max_chars // 2:
+            return window[: idx + 1].strip()
+    idx = window.rfind(" ")
+    if idx > 0:
+        return window[:idx].rstrip(",;:") + "."
+    return window
+
+
+def _coerce_detailed_summary(
+    payload: BaseModel,
+    source_type: SourceType | None = None,
+) -> list[DetailedSummarySection]:
     """Convert a source-specific or generic detailed_summary into a list of sections."""
     raw = getattr(payload, "detailed_summary", None)
     if raw is None:
         return [DetailedSummarySection(heading="Summary", bullets=[""])]
+
+    if source_type == SourceType.YOUTUBE and isinstance(raw, BaseModel):
+        return _coerce_youtube_detailed(raw)
 
     if isinstance(raw, list):
         out: list[DetailedSummarySection] = []
@@ -315,18 +326,66 @@ def _coerce_detailed_summary(payload: BaseModel) -> list[DetailedSummarySection]
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
 
 
+def _coerce_youtube_detailed(raw: BaseModel) -> list[DetailedSummarySection]:
+    """Render YouTubeDetailedPayload as readable chapter-by-chapter sections.
+
+    Produces: Thesis -> one section per chapter (heading = "timestamp - title",
+    bullets = chapter.bullets) -> optional Demonstrations -> Closing Takeaway.
+    Never emits raw JSON-serialized ChapterBullet objects.
+    """
+    data = raw.model_dump(mode="json")
+    sections: list[DetailedSummarySection] = []
+
+    thesis = str(data.get("thesis") or "").strip()
+    if thesis:
+        sections.append(DetailedSummarySection(heading="Thesis", bullets=[thesis]))
+
+    for chapter in data.get("chapters_or_segments") or []:
+        if not isinstance(chapter, dict):
+            continue
+        title = str(chapter.get("title") or "").strip() or "Segment"
+        timestamp = str(chapter.get("timestamp") or "").strip()
+        if timestamp and timestamp.lower() not in {"n/a", "none", ""}:
+            heading = f"{timestamp} — {title}"
+        else:
+            heading = title
+        bullets = [str(b).strip() for b in (chapter.get("bullets") or []) if b and str(b).strip()]
+        if not bullets:
+            bullets = [title]
+        sections.append(DetailedSummarySection(heading=heading, bullets=bullets))
+
+    demos = [str(d).strip() for d in (data.get("demonstrations") or []) if d and str(d).strip()]
+    if demos:
+        sections.append(DetailedSummarySection(heading="Demonstrations", bullets=demos))
+
+    takeaway = str(data.get("closing_takeaway") or "").strip()
+    if takeaway:
+        sections.append(
+            DetailedSummarySection(heading="Closing Takeaway", bullets=[takeaway])
+        )
+
+    return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+
+
 def _mini_title_hint_for(ingest: IngestResult) -> str:
-    """Derive a canonical mini_title hint from ingest metadata / URL."""
+    """Deterministic mini_title hint (URL-first for GitHub).
+
+    The evaluator compares the emitted ``mini_title`` against the INPUT URL, not
+    the repo's current ``full_name``. GitHub resolves redirects (e.g.
+    ``tiangolo/typer`` → ``fastapi/typer``), so preferring URL over metadata
+    keeps the label aligned with what the user queried.
+    """
     st = ingest.source_type
-    meta = ingest.metadata or {}
     if st == SourceType.GITHUB:
+        url = str(ingest.url or "")
         match = re.search(
             r"github\.com/([^/\s]+)/([^/\s?#]+)",
-            str(ingest.url or ""),
+            url,
             flags=re.IGNORECASE,
         )
         if match:
             return f"{match.group(1)}/{match.group(2)}"[:60]
+        meta = ingest.metadata or {}
         full_name = meta.get("full_name") or meta.get("repo_full_name")
         if isinstance(full_name, str) and "/" in full_name:
             return full_name[:60]
@@ -348,13 +407,18 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     st = ingest.source_type
     meta = ingest.metadata or {}
     if st == SourceType.GITHUB:
+        # URL-first: evaluator checks emitted label against the queried URL,
+        # and GitHub resolves redirects (e.g. tiangolo/typer → fastapi/typer)
+        # in metadata.full_name which would otherwise cause a label mismatch.
         url = str(ingest.url or "")
         match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
-        full_name = None
+        full_name: str | None = None
         if match:
             full_name = f"{match.group(1)}/{match.group(2)}"
-        if not full_name:
-            full_name = meta.get("full_name") or meta.get("repo_full_name")
+        else:
+            meta_name = meta.get("full_name") or meta.get("repo_full_name")
+            if isinstance(meta_name, str) and "/" in meta_name:
+                full_name = meta_name
         if isinstance(full_name, str) and "/" in full_name:
             raw["mini_title"] = full_name[:60]
     elif st == SourceType.REDDIT:

@@ -78,8 +78,8 @@ class RedditSummarizer(BaseSummarizer):
                 _build_minimum_safe_payload("", ingest), ingest
             )
             return SummaryResult(
-                mini_title=payload.mini_title[:60],
-                brief_summary=payload.brief_summary[:400],
+                mini_title=payload.mini_title[: self._engine_config.structured_extract.mini_title_max_chars],
+                brief_summary=payload.brief_summary[: self._engine_config.structured_extract.brief_summary_max_chars],
                 tags=payload.tags,
                 detailed_summary=_detailed_payload_to_sections(payload.detailed_summary),
                 metadata=SummaryMetadata(
@@ -157,8 +157,8 @@ class RedditSummarizer(BaseSummarizer):
         detailed_sections = _detailed_payload_to_sections(payload.detailed_summary)
 
         return SummaryResult(
-            mini_title=payload.mini_title[:60],
-            brief_summary=payload.brief_summary[:400],
+            mini_title=payload.mini_title[: self._engine_config.structured_extract.mini_title_max_chars],
+            brief_summary=payload.brief_summary[: self._engine_config.structured_extract.brief_summary_max_chars],
             tags=payload.tags,
             detailed_summary=detailed_sections,
             metadata=SummaryMetadata(

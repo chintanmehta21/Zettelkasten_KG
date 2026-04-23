@@ -47,14 +47,13 @@ def _gemini_client() -> Any:
 def _to_legacy_response(engine_result: Any, ingest_result: Any | None = None) -> dict:
     """Convert SummaryResult into the dict returned by the old web pipeline."""
     metadata = engine_result.metadata.model_dump(mode="json", exclude_none=True)
-    summary = (
-        _render_detailed_summary(engine_result.detailed_summary)
-        or engine_result.brief_summary
-    )
+    detailed_rendered = _render_detailed_summary(engine_result.detailed_summary)
+    summary = detailed_rendered or engine_result.brief_summary
     response = {
         "title": engine_result.mini_title,
         "summary": summary,
         "brief_summary": engine_result.brief_summary,
+        "detailed_summary": detailed_rendered or engine_result.brief_summary,
         "tags": list(engine_result.tags),
         "source_type": engine_result.metadata.source_type.value,
         "source_url": engine_result.metadata.url,

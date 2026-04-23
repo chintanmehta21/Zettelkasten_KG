@@ -102,6 +102,7 @@ class RedditIngestor(BaseIngestor):
             raw_text=join_sections(sections),
             sections=sections,
             metadata={
+                "title": (post.get("title") or _title_from_url_slug(url) or "Reddit Post"),
                 "subreddit": post.get("subreddit"),
                 "author": post.get("author"),
                 "score": post.get("score"),
@@ -147,7 +148,10 @@ class RedditIngestor(BaseIngestor):
                 original_url=url,
                 raw_text=f"Reddit post at {url}. Content could not be fetched (blocked by Reddit).",
                 sections={"Post": f"Reddit post URL: {url}"},
-                metadata={"title": "Reddit Post", "subreddit": _extract_subreddit(url)},
+                metadata={
+                    "title": _title_from_url_slug(url) or "Reddit Post",
+                    "subreddit": _extract_subreddit(url),
+                },
                 extraction_confidence="low",
                 confidence_reason="Reddit blocked all fetch attempts",
                 fetched_at=utc_now(),
@@ -155,6 +159,8 @@ class RedditIngestor(BaseIngestor):
 
         text, metadata = extract_html_text(html)
         title = metadata.get("title", "").replace(" : ", " — ").strip()
+        if not title:
+            title = _title_from_url_slug(url)
         sections = {"Post": text}
         return IngestResult(
             source_type=self.source_type,
@@ -177,6 +183,64 @@ def _extract_subreddit(url: str) -> str | None:
     import re
     match = re.search(r"/r/([^/]+)", url)
     return match.group(1) if match else None
+
+
+_ACRONYMS = {"cmv", "aita", "til", "eli5", "dae", "tifu", "yta", "nta", "ama", "iama", "psa"}
+_TAIL_STOPWORDS = {
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+    "to", "of", "for", "with", "from", "at", "on", "in", "by", "as",
+    "and", "or", "but", "so", "that", "this", "it", "its", "they", "them",
+    "when", "while", "if", "then", "than", "about", "into", "onto", "over",
+    "do", "does", "did", "you", "i", "we", "my", "your", "our",
+}
+
+
+def _title_from_url_slug(url: str, max_chars: int = 44) -> str:
+    """Derive a human-readable title from a Reddit URL slug when server-side
+    title extraction failed (anti-bot wall, 403s). The slug at
+    ``/r/<sub>/comments/<id>/<slug>/`` is the original thread title in
+    snake_case — the most accurate short label available without the HTML/API.
+
+    Returns a title-cased, acronym-preserving string truncated at a word
+    boundary to fit ``max_chars`` (default 44 leaves room for
+    ``"r/<subreddit> "`` inside the 60-char mini_title contract). Drops
+    trailing stopwords so the title never ends on ``"to"``/``"is"``/etc.
+    Returns empty string when no slug is present.
+    """
+    import re
+    match = re.search(r"/comments/[^/]+/([^/?#]+)", url)
+    if not match:
+        return ""
+    raw = match.group(1).strip("_-").replace("-", "_")
+    words = [w for w in raw.split("_") if w]
+    if not words:
+        return ""
+    formatted = [w.upper() if w.lower() in _ACRONYMS else w.capitalize() for w in words]
+    full = " ".join(formatted)
+    if len(full) <= max_chars:
+        return _strip_tail_stopwords(formatted)
+    # Word-boundary truncation: accumulate until adding the next word would
+    # overflow; never cut mid-word, never emit a fragment.
+    kept: list[str] = []
+    for w in formatted:
+        candidate_len = len(" ".join(kept + [w]))
+        if candidate_len > max_chars:
+            break
+        kept.append(w)
+    if not kept:
+        # Single first word longer than budget — truncate it hard as last resort.
+        return formatted[0][:max_chars]
+    return _strip_tail_stopwords(kept)
+
+
+def _strip_tail_stopwords(words: list[str]) -> str:
+    """Drop trailing low-content words (``"to"``, ``"is"``, ``"the"``, etc.)
+    so the derived title never ends on a preposition/article/auxiliary. Keeps
+    at least one word so we never return empty."""
+    out = list(words)
+    while len(out) > 1 and out[-1].lower() in _TAIL_STOPWORDS:
+        out.pop()
+    return " ".join(out)
 
 
 def _comment_texts(children: list[dict[str, Any]], limit: int) -> list[str]:

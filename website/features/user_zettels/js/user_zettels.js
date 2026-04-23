@@ -1029,7 +1029,10 @@
     summarySource.textContent = node.sourceLabel;
     summaryDate.textContent = node.date ? formatDate(node.date) : 'No capture date';
     summaryTitle.textContent = node.title;
-    summaryText.textContent = node.detailedSummary || node.briefSummary || 'No summary available for this zettel.';
+    renderDualSummary(summaryText, {
+      brief: node.briefSummary || '',
+      detailed: node.detailedSummary || ''
+    });
 
     summaryTags.innerHTML = '';
     (node.tags || []).forEach(function (tag) {
@@ -1267,6 +1270,101 @@
 
   function createLocalNodeId(seed) {
     return 'local-' + slugify(seed || 'zettel', 20) + '-' + String(Date.now()).slice(-6);
+  }
+
+  function renderDualSummary(container, parts) {
+    container.innerHTML = '';
+    var brief = (parts && parts.brief) ? String(parts.brief).trim() : '';
+    var detailed = (parts && parts.detailed) ? String(parts.detailed).trim() : '';
+    var hasBrief = brief && brief !== 'No summary available for this zettel.';
+    var hasDetailed = detailed && detailed !== brief && detailed !== 'No summary available for this zettel.';
+
+    if (!hasBrief && !hasDetailed) {
+      container.textContent = 'No summary available for this zettel.';
+      return;
+    }
+
+    if (hasBrief) {
+      var briefWrap = document.createElement('div');
+      briefWrap.className = 'zettels-summary-section zettels-summary-brief';
+      var briefHeading = document.createElement('h3');
+      briefHeading.className = 'zettels-summary-section-heading';
+      briefHeading.textContent = 'Brief';
+      var briefBody = document.createElement('p');
+      briefBody.className = 'zettels-summary-section-body';
+      briefBody.textContent = brief;
+      briefWrap.appendChild(briefHeading);
+      briefWrap.appendChild(briefBody);
+      container.appendChild(briefWrap);
+    }
+
+    if (hasDetailed) {
+      if (hasBrief) {
+        var divider = document.createElement('hr');
+        divider.className = 'zettels-summary-divider';
+        container.appendChild(divider);
+      }
+      var detailedWrap = document.createElement('div');
+      detailedWrap.className = 'zettels-summary-section zettels-summary-detailed';
+      var detailedHeading = document.createElement('h3');
+      detailedHeading.className = 'zettels-summary-section-heading';
+      detailedHeading.textContent = 'Detailed';
+      detailedWrap.appendChild(detailedHeading);
+      renderMarkdownLite(detailedWrap, detailed);
+      container.appendChild(detailedWrap);
+    }
+  }
+
+  function renderMarkdownLite(container, markdown) {
+    var lines = String(markdown || '').split(/\r?\n/);
+    var paraBuf = [];
+    var listStack = null;
+
+    function flushPara() {
+      if (!paraBuf.length) return;
+      var joined = paraBuf.join(' ').trim();
+      if (joined) {
+        var p = document.createElement('p');
+        p.className = 'zettels-summary-para';
+        p.textContent = joined;
+        container.appendChild(p);
+      }
+      paraBuf = [];
+    }
+    function closeList() { listStack = null; }
+
+    for (var i = 0; i < lines.length; i++) {
+      var trimmed = lines[i].replace(/\s+$/, '');
+      if (!trimmed.trim()) { flushPara(); closeList(); continue; }
+      var h3 = trimmed.match(/^###\s+(.*)$/);
+      var h2 = trimmed.match(/^##\s+(.*)$/);
+      var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
+      if (h2 || h3) {
+        flushPara(); closeList();
+        var heading = document.createElement(h2 ? 'h4' : 'h5');
+        heading.className = h2 ? 'zettels-summary-h2' : 'zettels-summary-h3';
+        heading.textContent = (h2 ? h2[1] : h3[1]).trim();
+        container.appendChild(heading);
+        continue;
+      }
+      if (bullet) {
+        flushPara();
+        if (!listStack) {
+          listStack = { el: document.createElement('ul') };
+          listStack.el.className = 'zettels-summary-list';
+          container.appendChild(listStack.el);
+        }
+        var li = document.createElement('li');
+        li.className = 'zettels-summary-list-item';
+        li.textContent = bullet[1].trim();
+        listStack.el.appendChild(li);
+        continue;
+      }
+      closeList();
+      paraBuf.push(trimmed.trim());
+    }
+    flushPara();
+    closeList();
   }
 
   function extractSummaryParts(rawSummary) {
