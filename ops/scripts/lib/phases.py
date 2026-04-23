@@ -462,7 +462,7 @@ def _infer_targeted_criterion(prev_dir: Path | None) -> str | None:
     return None
 
 
-def _infer_changed_files(repo_root: Path, source: str) -> list[str]:
+def _filter_editable_paths(paths: list[str], source: str) -> list[str]:
     allowed_prefixes = (
         "website/features/summarization_engine/",
         "ops/scripts/",
@@ -475,7 +475,7 @@ def _infer_changed_files(repo_root: Path, source: str) -> list[str]:
         "docs/summary_eval/_cache/",
     )
     changed = []
-    for path in git_helper.worktree_changed_paths(repo_root):
+    for path in paths:
         normalized = path.replace("\\", "/")
         if normalized == f"{source_prefix}edit_ledger.json":
             continue
@@ -484,6 +484,23 @@ def _infer_changed_files(repo_root: Path, source: str) -> list[str]:
         if normalized.startswith(allowed_prefixes):
             changed.append(normalized)
     return sorted(set(changed))
+
+
+def _infer_changed_files(repo_root: Path, source: str, iter_num: int) -> list[str]:
+    changed = _filter_editable_paths(
+        git_helper.worktree_changed_paths(repo_root), source
+    )
+    if changed:
+        return changed
+
+    if iter_num <= 1:
+        return []
+
+    marker = f"test: {source} iter-{iter_num - 1:02d} score"
+    base_sha = git_helper.last_commit_matching_subject(repo_root, marker)
+    if not base_sha:
+        return []
+    return _filter_editable_paths(git_helper.changed_paths_since(repo_root, base_sha), source)
 
 
 def run_phase_b(
@@ -563,7 +580,7 @@ def run_phase_b(
         composite_delta = (
             computed - prev_composite if prev_composite is not None else 0.0
         )
-        changed_files = _infer_changed_files(repo_root, source)
+        changed_files = _infer_changed_files(repo_root, source, iter_num)
         targeted_criterion = _infer_targeted_criterion(prev_dir)
         churn_ledger.record(
             source_dir,

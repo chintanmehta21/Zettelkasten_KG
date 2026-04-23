@@ -191,6 +191,30 @@ def test_divergence_stamp_ten_boundary_is_minor(diff):
     assert phases._divergence_stamp(diff) == "MINOR_DISAGREEMENT"
 
 
+def test_infer_changed_files_falls_back_to_commit_range(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(phases.git_helper, "worktree_changed_paths", lambda _: [])
+    monkeypatch.setattr(
+        phases.git_helper,
+        "last_commit_matching_subject",
+        lambda *_: "abc123",
+    )
+    monkeypatch.setattr(
+        phases.git_helper,
+        "changed_paths_since",
+        lambda *_: [
+            "website/features/summarization_engine/summarization/newsletter/prompts.py",
+            "docs/summary_eval/newsletter/iter-02/eval.json",
+            "docs/summary_eval/_cache/ingests/x.json",
+            "docs/summary_eval/newsletter/edit_ledger.json",
+        ],
+    )
+
+    changed = phases._infer_changed_files(tmp_path, "newsletter", 2)
+    assert changed == [
+        "website/features/summarization_engine/summarization/newsletter/prompts.py"
+    ]
+
+
 def test_divergence_stamp_handles_very_large_diff():
     assert phases._divergence_stamp(1e9) == "MAJOR_DISAGREEMENT"
 
