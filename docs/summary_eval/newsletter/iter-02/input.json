@@ -1,0 +1,28 @@
+{
+  "source": "newsletter",
+  "iter": 2,
+  "urls": [
+    "https://www.platformer.news/substack-nazi-push-notification/"
+  ],
+  "started_at": "2026-04-23T07:59:59.953289+00:00",
+  "ended_at": "2026-04-23T08:01:52.844895+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://www.platformer.news/substack-nazi-push-notification/",
+      "composite": 95.4,
+      "extraction_confidence": "high",
+      "latency_ms": 112832,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

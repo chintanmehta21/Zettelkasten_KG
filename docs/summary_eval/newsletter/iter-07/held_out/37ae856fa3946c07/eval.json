@@ -1,0 +1,115 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 3.9,
+    "reasoning": "The summary is well-structured, fluent, and consistent with the source content. It accurately captures the main topic and key advancements. However, the mini_title (label) fails to include the full branded publication name, impacting relevance."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 1.0,
+      "items": []
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 25.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 10.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": [
+          "label.branded_source_rule"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": 90
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "branded_source_missing_publication",
+        "source_region": "mini_title",
+        "auto_cap": 90
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 88.89,
+    "finesure": 100.0,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10843,
+    "total_tokens_out": 893,
+    "latency_ms": 53000
+  }
+}

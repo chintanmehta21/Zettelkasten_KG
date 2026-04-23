@@ -1,0 +1,238 @@
+{
+  "mini_title": "encode/httpx",
+  "brief_summary": "The library supports HTTP/1.1 and HTTP/2 (via the `httpx[http2]` extra) and can make requests directly to WSGI/ASGI applications using `WSGITransport` and `ASGITransport`. Its architecture is built upon the `httpcore` library, which manages the underlying transport. Core dependencies include `httpcore`, `h11` (for HTTP/1.1), `certifi`, `idna`, and `sniffio` (for async library detection). Optional ",
+  "tags": [
+    "python",
+    "api-framework",
+    "async",
+    "http-client",
+    "testing",
+    "asyncio",
+    "http2",
+    "cli"
+  ],
+  "detailed_summary": [
+    {
+      "heading": "Overview",
+      "bullets": [
+        "`httpx` is a Python 3 HTTP client providing both synchronous and asynchronous APIs, intended as a successor to `requests`.",
+        "It requires Python 3.9+ (support for 3.8 was dropped after v0.28.1).",
+        "The library supports HTTP/1.1 and HTTP/2 (via the `httpx[http2]` extra) and can make requests directly to WSGI/ASGI applications using `WSGITransport` and `ASGITransport`."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Architecture / Modules",
+      "bullets": [
+        "Its architecture is built upon the `httpcore` library, which manages the underlying transport.",
+        "Core dependencies include `httpcore`, `h11` (for HTTP/1.1), `certifi`, `idna`, and `sniffio` (for async library detection)."
+      ],
+      "sub_sections": {
+        "Optional Features": [
+          "`[http2]`: `h2`",
+          "`[cli]`: `rich`, `click` for a command-line client",
+          "`[socks]`: `socksio` for SOCKS proxy support",
+          "`[brotli]`: `brotli` or `brotlicffi`",
+          "`[zstd]`: `zstandard` (added in v0.27.1)"
+        ],
+        "Client Features": [
+          "connection pooling",
+          "sessions with cookie persistence",
+          "SSL verification",
+          "proxy support",
+          "automatic decompression (gzip, deflate, brotli, zstd)",
+          "strict default timeouts on all network operations"
+        ]
+      }
+    },
+    {
+      "heading": "Public API / Interfaces",
+      "bullets": [
+        "The API is designed for broad compatibility with `requests`, building on its usability.",
+        "The project is actively maintained (v0.28.1 released Dec 2024), fully type-annotated, and claims 100% test coverage."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Operational Guidance",
+      "bullets": [
+        "Requires Python 3.9+ for operation."
+      ],
+      "sub_sections": {}
+    },
+    {
+      "heading": "Notable Issues and Behavior",
+      "bullets": [
+        "Recent API evolution includes: `proxies` and `app` arguments removed after deprecation; simplified `proxy` argument added in v0.26.0; `cert` argument and string usage for `verify` deprecated in v0.28.0.",
+        "Since v0.28.0, JSON request bodies use a more compact representation by default, which may affect test suites that rely on specific whitespace formatting."
+      ],
+      "sub_sections": {
+        "URL Parameter Merging": [
+          "Recent fixes (#3761, #3766) address bugs where query parameters from a `base_url` were incorrectly merged with or replaced by those in a request's `params` argument, with behavior being refined for consistency with `requests`."
+        ],
+        "Redirects": [
+          "An open issue (#3783) requests an option to preserve the original HTTP method on 301/302 redirects. The current behavior follows browser convention by changing the method to `GET`, but some server applications expect the original method to be maintained."
+        ],
+        "Performance/Resource Management": [
+          "Active work includes refactoring hot paths to avoid slower patterns like `contextlib.contextmanager` (#3778) and splitting large streamed request bodies into 64KB chunks to prevent memory spikes (#3752)."
+        ],
+        "Async Correctness": [
+          "Recent fixes ensure robust async operation, such as correcting the `__aiter__` implementation to prevent garbage collection warnings in `trio` (#3777) and ensuring all mounted transports are closed correctly during exceptions (#3769)."
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "source_type": "github",
+    "url": "https://github.com/encode/httpx",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+    "total_tokens_used": 22174,
+    "gemini_pro_tokens": 18716,
+    "gemini_flash_tokens": 3458,
+    "total_latency_ms": 75034,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 3,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "encode/httpx",
+      "architecture_overview": "The library supports HTTP/1.1 and HTTP/2 (via the `httpx[http2]` extra) and can make requests directly to WSGI/ASGI applications using `WSGITransport` and `ASGITransport`. Its architecture is built upon the `httpcore` library, which manages the underlying transport. Core dependencies include `httpcore`, `h11` (for HTTP/1.1), `certifi`, `idna`, and `sniffio` (for async library detection). Optional features are enabled via extras: `[http2]`: `h2`, `[cli]`: `rich`, `click` for a command-line client",
+      "brief_summary": "The library supports HTTP/1.1 and HTTP/2 (via the `httpx[http2]` extra) and can make requests directly to WSGI/ASGI applications using `WSGITransport` and `ASGITransport`. Its architecture is built upon the `httpcore` library, which manages the underlying transport. Core dependencies include `httpcore`, `h11` (for HTTP/1.1), `certifi`, `idna`, and `sniffio` (for async library detection). Optional features are enabled via extras: `[http2]`: `h2`, `[cli]`: `rich`, `click` for a command-line client",
+      "tags": [
+        "python",
+        "api-framework",
+        "async",
+        "http-client",
+        "testing",
+        "asyncio",
+        "http2",
+        "cli"
+      ],
+      "benchmarks_tests_examples": null,
+      "detailed_summary": [
+        {
+          "heading": "Overview",
+          "bullets": [
+            "`httpx` is a Python 3 HTTP client providing both synchronous and asynchronous APIs, intended as a successor to `requests`.",
+            "It requires Python 3.9+ (support for 3.8 was dropped after v0.28.1).",
+            "The library supports HTTP/1.1 and HTTP/2 (via the `httpx[http2]` extra) and can make requests directly to WSGI/ASGI applications using `WSGITransport` and `ASGITransport`."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Overview",
+          "main_stack": [
+            "Python",
+            "Shell",
+            "asgi",
+            "click"
+          ],
+          "public_interfaces": [
+            "WSGITransport",
+            "ASGITransport"
+          ],
+          "usability_signals": [
+            "pip install httpx",
+            "pip install 'httpx[cli]'",
+            "pip install httpx[http2]"
+          ]
+        },
+        {
+          "heading": "Architecture / Modules",
+          "bullets": [
+            "Its architecture is built upon the `httpcore` library, which manages the underlying transport.",
+            "Core dependencies include `httpcore`, `h11` (for HTTP/1.1), `certifi`, `idna`, and `sniffio` (for async library detection)."
+          ],
+          "sub_sections": {
+            "Optional Features": [
+              "`[http2]`: `h2`",
+              "`[cli]`: `rich`, `click` for a command-line client",
+              "`[socks]`: `socksio` for SOCKS proxy support",
+              "`[brotli]`: `brotli` or `brotlicffi`",
+              "`[zstd]`: `zstandard` (added in v0.27.1)"
+            ],
+            "Client Features": [
+              "connection pooling",
+              "sessions with cookie persistence",
+              "SSL verification",
+              "proxy support",
+              "automatic decompression (gzip, deflate, brotli, zstd)",
+              "strict default timeouts on all network operations"
+            ]
+          },
+          "module_or_feature": "Architecture / Modules",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        },
+        {
+          "heading": "Public API / Interfaces",
+          "bullets": [
+            "The API is designed for broad compatibility with `requests`, building on its usability.",
+            "The project is actively maintained (v0.28.1 released Dec 2024), fully type-annotated, and claims 100% test coverage."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Public API / Interfaces",
+          "main_stack": [],
+          "public_interfaces": [
+            "proxies",
+            "app",
+            "proxy",
+            "cert",
+            "verify"
+          ],
+          "usability_signals": []
+        },
+        {
+          "heading": "Operational Guidance",
+          "bullets": [
+            "Requires Python 3.9+ for operation."
+          ],
+          "sub_sections": {},
+          "module_or_feature": "Operational Guidance",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": [
+            "pip install httpx",
+            "pip install 'httpx[cli]'",
+            "pip install httpx[http2]"
+          ]
+        },
+        {
+          "heading": "Notable Issues and Behavior",
+          "bullets": [
+            "Recent API evolution includes: `proxies` and `app` arguments removed after deprecation; simplified `proxy` argument added in v0.26.0; `cert` argument and string usage for `verify` deprecated in v0.28.0.",
+            "Since v0.28.0, JSON request bodies use a more compact representation by default, which may affect test suites that rely on specific whitespace formatting."
+          ],
+          "sub_sections": {
+            "URL Parameter Merging": [
+              "Recent fixes (#3761, #3766) address bugs where query parameters from a `base_url` were incorrectly merged with or replaced by those in a request's `params` argument, with behavior being refined for consistency with `requests`."
+            ],
+            "Redirects": [
+              "An open issue (#3783) requests an option to preserve the original HTTP method on 301/302 redirects. The current behavior follows browser convention by changing the method to `GET`, but some server applications expect the original method to be maintained."
+            ],
+            "Performance/Resource Management": [
+              "Active work includes refactoring hot paths to avoid slower patterns like `contextlib.contextmanager` (#3778) and splitting large streamed request bodies into 64KB chunks to prevent memory spikes (#3752)."
+            ],
+            "Async Correctness": [
+              "Recent fixes ensure robust async operation, such as correcting the `__aiter__` implementation to prevent garbage collection warnings in `trio` (#3777) and ensuring all mounted transports are closed correctly during exceptions (#3769)."
+            ]
+          },
+          "module_or_feature": "Notable Issues and Behavior",
+          "main_stack": [],
+          "public_interfaces": [],
+          "usability_signals": []
+        }
+      ],
+      "_github_archetype": {
+        "archetype": "cli_tool",
+        "confidence": 0.529,
+        "reasons": [
+          "cli_tokens=3"
+        ]
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

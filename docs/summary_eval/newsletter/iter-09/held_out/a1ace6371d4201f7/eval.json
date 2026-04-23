@@ -1,0 +1,118 @@
+{
+  "g_eval": {
+    "coherence": 4.9,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.9,
+    "reasoning": "The summary is highly coherent, consistent, fluent, and relevant. Minor deductions for the 'opinion' tag not being the most precise fit for a product announcement, and for the explicit call to action not being captured in the designated fields or as a direct action bullet, though the information is present."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.9571428571428572,
+      "items": [
+        {
+          "claim": "The explicit call to action 'Request Access to the beehiiv MCP' was not captured in the `cta` field or `conclusions_or_recommendations` list, nor as a direct action bullet.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 25.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed_summary",
+        "score": 42.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": [
+          "detailed.action_items"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": [
+          "tags.type_intent"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 97.87,
+    "finesure": 95.71,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 6026,
+    "total_tokens_out": 947,
+    "latency_ms": 45751
+  }
+}

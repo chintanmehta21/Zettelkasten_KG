@@ -1,0 +1,330 @@
+[
+  {
+    "url": "https://www.platformer.news/substack-nazi-push-notification/",
+    "eval": {
+      "g_eval": {
+        "coherence": 1.0,
+        "consistency": 1.0,
+        "fluency": 1.0,
+        "relevance": 2.0,
+        "reasoning": "The summary suffers from severe schema failure, truncation, and repetition, making it largely incoherent and incomplete. The stated stance also contradicts the source's clear critical position."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": "The summary states the author's stance is 'neutral'.",
+              "fact": null,
+              "sentence": "\"stance\": \"neutral\"",
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": "The summary fails to capture the full details of the incident, including the specific name of the Nazi newsletter ('NatSocToday') and its offensive claims.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The summary omits the author's personal connection to the issue, specifically Platformer's previous departure from Substack due to similar concerns about Nazi publications.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The summary does not include the counterarguments or criticisms mentioned in the source regarding Platformer's previous actions, such as accusations of overreacting or staging a stunt.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            },
+            {
+              "claim": "The summary does not fully explain Substack's response beyond stating it was an 'error', missing details about taking the relevant system offline and diagnosing the issue.",
+              "fact": null,
+              "sentence": null,
+              "span": null,
+              "importance": null
+            }
+          ]
+        },
+        "conciseness": {
+          "score": 0.0,
+          "items": [
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as",
+              "importance": null
+            },
+            {
+              "claim": null,
+              "fact": null,
+              "sentence": null,
+              "span": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality",
+              "importance": null
+            }
+          ]
+        }
+      },
+      "summac_lite": {
+        "score": 0.1,
+        "contradicted_sentences": [
+          {
+            "sentence": "\"stance\": \"neutral\"",
+            "reason": "The source article clearly expresses a critical stance against Substack's policies, not a neutral one."
+          }
+        ],
+        "neutral_sentences": [
+          {
+            "sentence": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as",
+            "reason": "This sentence is truncated and contains extraneous metadata, making it difficult to fully assess entailment."
+          },
+          {
+            "sentence": "On a Monday, Substack sent a",
+            "reason": "This sentence is truncated and incomplete, lacking crucial information."
+          },
+          {
+            "sentence": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as \"neutral infrastructure.\" **The Incident & Platform Response** On a Monday, Substack sent a",
+            "reason": "This sentence is a repetition of the brief summary, contains extraneous metadata, and is truncated, making it largely uninformative and redundant."
+          }
+        ]
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 0.0,
+            "max_points": 25,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "brief.main_topic_thesis",
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed",
+              "brief.stance_preserved",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "detailed_summary",
+            "score": 0.0,
+            "max_points": 45,
+            "criteria_fired": [],
+            "criteria_missed": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.action_items",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific",
+              "schema_failure"
+            ]
+          },
+          {
+            "id": "tags",
+            "score": 8.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.type_intent"
+            ],
+            "criteria_missed": [
+              "tags.key_concepts",
+              "tags.no_stance_misrepresentation"
+            ]
+          },
+          {
+            "id": "label",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.branded_source_rule",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": []
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": 60,
+          "omission_cap": null,
+          "generic_cap": null
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "schema_failure",
+            "source_region": "structured_payload",
+            "auto_cap": 60
+          },
+          {
+            "id": "stance_mismatch",
+            "source_region": "detailed_summary.stance",
+            "auto_cap": 60
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 44.68,
+        "finesure": 0.0,
+        "qafact": 0.0,
+        "summac": 0.0
+      },
+      "editorialization_flags": [
+        {
+          "sentence": "\"stance\": \"neutral\"",
+          "flag_type": "added_stance",
+          "explanation": "The source article is highly critical of Substack's policies and actions, making the 'neutral' stance a misrepresentation of the author's position."
+        }
+      ],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 4295,
+        "total_tokens_out": 1930,
+        "latency_ms": 45483,
+        "ragas_faithfulness": -1.0
+      }
+    }
+  },
+  {
+    "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "eval": {
+      "g_eval": {
+        "coherence": 5.0,
+        "consistency": 4.0,
+        "fluency": 5.0,
+        "relevance": 4.0,
+        "reasoning": "The summary is well-structured, fluent, and highly relevant to the source content. However, the mini_title contains a minor date typo ('March 18\u20132' instead of 'March 18\u201324') and omits the full publication brand name ('@ Beehiiv'), slightly impacting consistency and relevance."
+      },
+      "finesure": {
+        "faithfulness": {
+          "score": 0.95,
+          "items": [
+            {
+              "claim": "The mini_title states the date range as 'March 18\u20132'",
+              "fact": null,
+              "sentence": "Highlights in Organic Synthesis: Recent Advances (March 18\u20132",
+              "span": "March 18\u20132",
+              "importance": null
+            }
+          ]
+        },
+        "completeness": {
+          "score": 1.0,
+          "items": []
+        },
+        "conciseness": {
+          "score": 1.0,
+          "items": []
+        }
+      },
+      "summac_lite": {
+        "score": 1.0,
+        "contradicted_sentences": [],
+        "neutral_sentences": []
+      },
+      "rubric": {
+        "components": [
+          {
+            "id": "brief_summary",
+            "score": 25.0,
+            "max_points": 25,
+            "criteria_fired": [
+              "brief.main_topic_thesis",
+              "brief.argument_structure",
+              "brief.key_evidence",
+              "brief.conclusions_distinct",
+              "brief.caveats_addressed",
+              "brief.stance_preserved"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "detailed_summary",
+            "score": 45.0,
+            "max_points": 45,
+            "criteria_fired": [
+              "detailed.sections_ordered",
+              "detailed.claims_source_grounded",
+              "detailed.examples_captured",
+              "detailed.action_items",
+              "detailed.multiple_scenarios",
+              "detailed.no_footer_padding",
+              "detailed.bullets_specific"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "tags",
+            "score": 15.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "tags.count_7_to_10",
+              "tags.domain_subdomain",
+              "tags.key_concepts",
+              "tags.type_intent",
+              "tags.no_stance_misrepresentation"
+            ],
+            "criteria_missed": []
+          },
+          {
+            "id": "label",
+            "score": 10.0,
+            "max_points": 15,
+            "criteria_fired": [
+              "label.compact_declarative",
+              "label.informative_not_catchy"
+            ],
+            "criteria_missed": [
+              "label.branded_source_rule"
+            ]
+          }
+        ],
+        "caps_applied": {
+          "hallucination_cap": null,
+          "omission_cap": null,
+          "generic_cap": 90
+        },
+        "anti_patterns_triggered": [
+          {
+            "id": "branded_source_missing_publication",
+            "source_region": "mini_title",
+            "auto_cap": 90
+          }
+        ]
+      },
+      "maps_to_metric_summary": {
+        "g_eval": 88.89,
+        "finesure": 100.0,
+        "qafact": 100.0,
+        "summac": 100.0
+      },
+      "editorialization_flags": [],
+      "evaluator_metadata": {
+        "prompt_version": "evaluator.v3",
+        "rubric_version": "rubric_newsletter.v1",
+        "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+        "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+        "model_used": "gemini-2.5-flash",
+        "total_tokens_in": 10719,
+        "total_tokens_out": 1032,
+        "latency_ms": 44949
+      }
+    }
+  }
+]

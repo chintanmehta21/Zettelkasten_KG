@@ -1,0 +1,60 @@
+{
+  "source": "newsletter",
+  "iter": 6,
+  "urls": [
+    "https://www.platformer.news/substack-nazi-push-notification/",
+    "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "https://product.beehiiv.com/p/introducing-email-boosts",
+    "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+    "https://product.beehiiv.com/p/beehiiv-mcp"
+  ],
+  "started_at": "2026-04-23T11:15:45.142738+00:00",
+  "ended_at": "2026-04-23T11:28:21.767941+00:00",
+  "env": "dev",
+  "held_out": true,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://www.platformer.news/substack-nazi-push-notification/",
+      "composite": 60.0,
+      "extraction_confidence": "high",
+      "latency_ms": 121215,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+      "composite": 90.0,
+      "extraction_confidence": "high",
+      "latency_ms": 189445,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://product.beehiiv.com/p/introducing-email-boosts",
+      "composite": 100.0,
+      "extraction_confidence": "high",
+      "latency_ms": 129529,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+      "composite": 60.0,
+      "extraction_confidence": "high",
+      "latency_ms": 163718,
+      "ingestor_version": "2.0.0"
+    },
+    {
+      "url": "https://product.beehiiv.com/p/beehiiv-mcp",
+      "composite": 97.7,
+      "extraction_confidence": "high",
+      "latency_ms": 152603,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

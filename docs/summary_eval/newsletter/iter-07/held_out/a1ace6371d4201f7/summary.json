@@ -1,0 +1,135 @@
+{
+  "mini_title": "beehiiv MCP Integrates with AI Clients as a Business OS",
+  "brief_summary": "beehiiv introduces its Model Context Protocol (MCP), an open standard integrating user accounts directly with AI clients like ChatGPT. This positions beehiiv as a business operating system, enabling AI to act as an analyst and assistant. Version 1 offers read-only access for data querying and cross-platform automation.",
+  "tags": [
+    "beehiiv",
+    "model-context-protocol",
+    "ai-integration",
+    "newsletter-platform",
+    "business-automation",
+    "content-creation",
+    "data-analysis",
+    "product-announcement",
+    "api",
+    "llm-interface"
+  ],
+  "detailed_summary": {
+    "publication_identity": "beehiiv",
+    "issue_thesis": "beehiiv's Model Context Protocol (MCP) is an open standard designed to connect user accounts directly with AI clients, positioning beehiiv as an underlying 'operating system' for content businesses accessible via AI agents.",
+    "sections": [
+      {
+        "heading": "MCP Version 1 (v1) - Read-Only Access",
+        "bullets": [
+          "Users can query their data to identify engaged subscribers, audit their website for SEO improvements, find correlations between content and unsubscribes, or analyze subscriber data to build a media kit for sponsors.",
+          "v1 enables workflows that pull beehiiv data for use in other applications, such as posting weekly revenue summaries to Slack, updating HubSpot contacts based on subscriber engagement, or generating performance summaries and editorial briefs in Gmail with corresponding Google Calendar invites."
+        ]
+      },
+      {
+        "heading": "MCP Version 2 (v2) - Planned Write Access",
+        "bullets": [
+          "v2 is planned to allow AI to execute commands and create assets directly within a user's beehiiv account.",
+          "Examples include generating and saving content drafts (e.g., a 'greatest hits' post), building multi-day email sequences for customers, creating new landing pages with testimonials, and segmenting free subscribers for targeted discount offers."
+        ]
+      },
+      {
+        "heading": "Constraints & Implications",
+        "bullets": [
+          "The MCP is available only to users on paid plans.",
+          "Initial access is granted on a rolling basis to approved early adopters.",
+          "Early adopters are invited to a private Slack community to provide feedback and help shape the product roadmap.",
+          "The protocol was announced on March 24, 2026.",
+          "The MCP framework signals a shift from using application-specific dashboards to using LLMs as the primary workspace for complex analysis and cross-platform business automation."
+        ]
+      },
+      {
+        "heading": "Related Updates (Announced Concurrently)",
+        "bullets": [
+          "Signup Flows: A tool for creating multi-step, customizable subscriber onboarding funnels, allowing for different journeys based on acquisition source (requires beehiiv's v2 Website Builder).",
+          "Website Dashboard: A new dashboard providing a site overview, analytics, performance warnings, and a 'Recommended actions' section with suggestions to improve conversion and audience experience (requires beehiiv's v2 Website Builder)."
+        ]
+      }
+    ],
+    "conclusions_or_recommendations": [
+      "The MCP framework indicates a strategic shift towards utilizing Large Language Models (LLMs) as the primary interface for complex business analysis and cross-platform automation, moving beyond traditional application-specific dashboards.",
+      "Users on paid plans are encouraged to apply for early access to the MCP and join a private Slack community to contribute feedback and influence the product's future development."
+    ],
+    "stance": "optimistic",
+    "cta": "Users on paid plans are invited to apply for early access to the MCP and join a private Slack community to provide feedback and shape the product roadmap."
+  },
+  "metadata": {
+    "source_type": "newsletter",
+    "url": "https://product.beehiiv.com/p/beehiiv-mcp",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "HTML article text extracted via direct",
+    "total_tokens_used": 10209,
+    "gemini_pro_tokens": 8185,
+    "gemini_flash_tokens": 2024,
+    "total_latency_ms": 86907,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "beehiiv MCP Integrates with AI Clients as a Business OS",
+      "brief_summary": "beehiiv introduces its Model Context Protocol (MCP), an open standard integrating user accounts directly with AI clients like ChatGPT. This positions beehiiv as a business operating system, enabling AI to act as an analyst and assistant. Version 1 offers read-only access for data querying and cross-platform automation. Version 2, planned for future release, will add write access for content creation and campaign management. The protocol is available to paid users, with early adopters invited to a feedback community. This aims to shift business operations to LLM interfaces.",
+      "tags": [
+        "beehiiv",
+        "model-context-protocol",
+        "ai-integration",
+        "newsletter-platform",
+        "business-automation",
+        "content-creation",
+        "data-analysis",
+        "product-announcement",
+        "api",
+        "llm-interface"
+      ],
+      "detailed_summary": {
+        "publication_identity": "beehiiv",
+        "issue_thesis": "beehiiv's Model Context Protocol (MCP) is an open standard designed to connect user accounts directly with AI clients, positioning beehiiv as an underlying 'operating system' for content businesses accessible via AI agents.",
+        "sections": [
+          {
+            "heading": "MCP Version 1 (v1) - Read-Only Access",
+            "bullets": [
+              "Users can query their data to identify engaged subscribers, audit their website for SEO improvements, find correlations between content and unsubscribes, or analyze subscriber data to build a media kit for sponsors.",
+              "v1 enables workflows that pull beehiiv data for use in other applications, such as posting weekly revenue summaries to Slack, updating HubSpot contacts based on subscriber engagement, or generating performance summaries and editorial briefs in Gmail with corresponding Google Calendar invites."
+            ]
+          },
+          {
+            "heading": "MCP Version 2 (v2) - Planned Write Access",
+            "bullets": [
+              "v2 is planned to allow AI to execute commands and create assets directly within a user's beehiiv account.",
+              "Examples include generating and saving content drafts (e.g., a 'greatest hits' post), building multi-day email sequences for customers, creating new landing pages with testimonials, and segmenting free subscribers for targeted discount offers."
+            ]
+          },
+          {
+            "heading": "Constraints & Implications",
+            "bullets": [
+              "The MCP is available only to users on paid plans.",
+              "Initial access is granted on a rolling basis to approved early adopters.",
+              "Early adopters are invited to a private Slack community to provide feedback and help shape the product roadmap.",
+              "The protocol was announced on March 24, 2026.",
+              "The MCP framework signals a shift from using application-specific dashboards to using LLMs as the primary workspace for complex analysis and cross-platform business automation."
+            ]
+          },
+          {
+            "heading": "Related Updates (Announced Concurrently)",
+            "bullets": [
+              "Signup Flows: A tool for creating multi-step, customizable subscriber onboarding funnels, allowing for different journeys based on acquisition source (requires beehiiv's v2 Website Builder).",
+              "Website Dashboard: A new dashboard providing a site overview, analytics, performance warnings, and a 'Recommended actions' section with suggestions to improve conversion and audience experience (requires beehiiv's v2 Website Builder)."
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [
+          "The MCP framework indicates a strategic shift towards utilizing Large Language Models (LLMs) as the primary interface for complex business analysis and cross-platform automation, moving beyond traditional application-specific dashboards.",
+          "Users on paid plans are encouraged to apply for early access to the MCP and join a private Slack community to contribute feedback and influence the product's future development."
+        ],
+        "stance": "optimistic",
+        "cta": "Users on paid plans are invited to apply for early access to the MCP and join a private Slack community to provide feedback and shape the product roadmap."
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

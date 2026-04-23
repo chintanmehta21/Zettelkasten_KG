@@ -1,0 +1,124 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 5.0,
+    "reasoning": "The summary is coherent, consistent with the source, fluent, and highly relevant. No editorialization or factual errors were found."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Primary languages and major frameworks are mentioned.",
+          "fact": null,
+          "sentence": "The `requests` library provides a high-level functional API (e.g., `requests.get()`, `post()`) and a class-based `requests.Session` object for stateful operations like connection pooling and cookie persistence. Responses are encapsulated in a `Response` object, offering access to `status_code`, `headers`, and content via methods like `.text` and `.json()`. The library handles data encoding, authen",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "If benchmarks/tests/examples exist, what they demonstrate is summarized.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 21.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.usage_pattern",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.languages_and_frameworks"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 40.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.benchmarks_tests_examples"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 100.0,
+    "finesure": 93.33,
+    "qafact": 80.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "418ac484eee08c0a1056ec600bfc2554de75a32b1ca3b330c698bf5ac4ef7470",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 9357,
+    "total_tokens_out": 1039,
+    "latency_ms": 43831
+  }
+}

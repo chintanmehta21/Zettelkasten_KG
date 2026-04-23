@@ -1,0 +1,268 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.5,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is well-organized and coherent, following a logical structure. It accurately reflects the source material's main points and arguments. Fluency is excellent, with clear and natural language. Relevance is high, focusing on the core themes of the newsletter."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The summary does not explicitly mention the author's background at Microsoft, Facebook, Oculus, and Stripe, nor his current role at Temporal, which is detailed in the source.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The specific example of the 'PC Load Letter' error and its explanation is not included.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": null,
+          "fact": null,
+          "sentence": "The detailed breakdown of the five error categories (System, User's Invalid Argument, Precondition Not Met, Developer's Invalid Argument, Assertion) is somewhat condensed, losing some nuance.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.95,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.95,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief.main_topic_thesis",
+        "score": 6.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "brief.main_topic_thesis"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.argument_structure",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "brief.argument_structure"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.key_evidence",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "brief.key_evidence"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.conclusions_distinct",
+        "score": 3.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "brief.conclusions_distinct"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.caveats_addressed",
+        "score": 2.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "brief.caveats_addressed"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "brief.stance_preserved",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.sections_ordered",
+        "score": 7.0,
+        "max_points": 8,
+        "criteria_fired": [
+          "detailed.sections_ordered"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.claims_source_grounded",
+        "score": 7.0,
+        "max_points": 8,
+        "criteria_fired": [
+          "detailed.claims_source_grounded"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.examples_captured",
+        "score": 5.0,
+        "max_points": 7,
+        "criteria_fired": [
+          "detailed.examples_captured"
+        ],
+        "criteria_missed": [
+          "detailed.examples_captured"
+        ]
+      },
+      {
+        "id": "detailed.action_items",
+        "score": 5.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "detailed.action_items"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.multiple_scenarios",
+        "score": 5.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "detailed.multiple_scenarios"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.no_footer_padding",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.no_footer_padding"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "detailed.bullets_specific",
+        "score": 4.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.count_7_to_10",
+        "score": 2.0,
+        "max_points": 2,
+        "criteria_fired": [
+          "tags.count_7_to_10"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.domain_subdomain",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.domain_subdomain"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.key_concepts",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.key_concepts"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.type_intent",
+        "score": 3.0,
+        "max_points": 3,
+        "criteria_fired": [
+          "tags.type_intent"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags.no_stance_misrepresentation",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.compact_declarative",
+        "score": 5.0,
+        "max_points": 6,
+        "criteria_fired": [
+          "label.compact_declarative"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.branded_source_rule",
+        "score": 5.0,
+        "max_points": 5,
+        "criteria_fired": [
+          "label.branded_source_rule"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label.informative_not_catchy",
+        "score": 4.0,
+        "max_points": 4,
+        "criteria_fired": [
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 85.0,
+    "finesure": 88.33,
+    "qafact": 80.0,
+    "summac": 95.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash-lite",
+    "total_tokens_in": 11019,
+    "total_tokens_out": 2122,
+    "latency_ms": 69425
+  }
+}

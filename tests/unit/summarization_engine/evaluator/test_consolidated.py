@@ -129,3 +129,43 @@ async def test_consolidated_evaluator_parses_response():
         }
     )
     assert client.generate.await_args.kwargs["tier"] == "flash"
+
+
+@pytest.mark.asyncio
+async def test_consolidated_evaluator_retries_malformed_json():
+    client = MagicMock()
+    client._config = MagicMock()
+    client._config.gemini.phase_tiers = {"evaluator": "flash"}
+    client.generate = AsyncMock(
+        side_effect=[
+            MagicMock(
+                text='```json\n{"g_eval": {"reasoning": "bad "quote""}}\n```',
+                input_tokens=100,
+                output_tokens=50,
+                model_used="gemini-2.5-flash",
+            ),
+            MagicMock(
+                text=json.dumps(_GOOD_RESPONSE),
+                input_tokens=101,
+                output_tokens=51,
+                model_used="gemini-2.5-flash",
+            ),
+        ]
+    )
+
+    evaluator = ConsolidatedEvaluator(client)
+    result = await evaluator.evaluate(
+        rubric_yaml={
+            "version": "rubric_youtube.v1",
+            "composite_max_points": 100,
+            "source_type": "youtube",
+            "components": [],
+        },
+        atomic_facts=[{"claim": "x", "importance": 3}],
+        source_text="source",
+        summary_json={"mini_title": "t"},
+    )
+
+    assert isinstance(result, EvalResult)
+    assert client.generate.await_count == 2
+    assert result.evaluator_metadata["total_tokens_in"] == 101

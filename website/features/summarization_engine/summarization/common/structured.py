@@ -63,12 +63,14 @@ class StructuredExtractor:
         prompt_builder: Optional[
             Callable[[IngestResult, str, str], str]
         ] = None,
+        prompt_instruction: str | None = None,
     ):
         self._client = client
         self._config = config
         self._payload_class = payload_class
         self._fallback_builder = fallback_builder
         self._prompt_builder = prompt_builder
+        self._prompt_instruction = prompt_instruction
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -81,6 +83,19 @@ class StructuredExtractor:
         return json.dumps(schema, separators=(",", ":"))[:3000]
 
     def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
+        if self._prompt_instruction:
+            schema_json = self._schema_snippet()
+            try:
+                return self._prompt_instruction.format(
+                    summary_text=summary_text,
+                    schema_json=schema_json,
+                )
+            except (KeyError, IndexError):
+                return (
+                    f"{self._prompt_instruction}\n\n"
+                    f"SCHEMA:\n{schema_json}\n\n"
+                    f"SUMMARY:\n{summary_text}"
+                )
         schema_json = self._schema_snippet()
         if self._prompt_builder is not None:
             return self._prompt_builder(ingest, summary_text, schema_json)
@@ -591,10 +606,11 @@ def _fallback_payload(
         or meta.get("channel_name")
         or ""
     )
-    brief_text = " ".join((summary_text or "").split()) or "No summary text was available."
-    brief = brief_text[:500]
+    brief_max = config.structured_extract.brief_summary_max_chars
+    brief = _smart_truncate(summary_text, brief_max) or "No summary text was available."
 
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", brief_text) if s.strip()]
+    normalized_text = re.sub(r"\s+", " ", summary_text or "").strip()
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", normalized_text) if s.strip()]
     overview_bullets = [sentences[0]] if sentences else [brief]
     subs: dict[str, list[str]] = {}
     if channel:

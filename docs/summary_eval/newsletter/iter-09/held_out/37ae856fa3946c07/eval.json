@@ -1,0 +1,124 @@
+{
+  "g_eval": {
+    "coherence": 0.6154,
+    "consistency": 0.0,
+    "fluency": 0.0,
+    "relevance": 0.5217,
+    "reasoning": "The summary is mostly coherent, consistent, and fluent. However, the brief summary misrepresents the author's argument structure, and the mini-title/publication identity is truncated and incomplete for a branded source, impacting relevance."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "Brief summarizes how the author structures their argument.",
+          "fact": null,
+          "sentence": "It covers new methodologies and catalytic reactions, including alcohol-alcohol cross-coupling and chromoselective photocatalysis. A significant portion details enantioselective synthesis techniques for quaternary stereocenters and hydrofluorination.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 20.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.argument_structure"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 2.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": [
+          "label.compact_declarative",
+          "label.branded_source_rule"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "branded_source_missing_publication",
+        "source_region": "mini_title",
+        "auto_cap": 90
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 55.56,
+    "finesure": 93.9,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 9840,
+    "total_tokens_out": 1007,
+    "latency_ms": 51999
+  }
+}

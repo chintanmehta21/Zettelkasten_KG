@@ -25,6 +25,7 @@ from website.features.summarization_engine.core.router import detect_source_type
         ("https://stratechery.substack.com/p/some-post", SourceType.NEWSLETTER),
         ("https://medium.com/@author/some-post-abc123", SourceType.NEWSLETTER),
         ("https://author.substack.com/p/post", SourceType.NEWSLETTER),
+        ("https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer", SourceType.NEWSLETTER),
         ("https://podcasts.apple.com/us/podcast/foo/id123?i=456", SourceType.PODCAST),
         ("https://open.spotify.com/episode/abc123", SourceType.PODCAST),
         ("https://overcast.fm/+XYZ", SourceType.PODCAST),

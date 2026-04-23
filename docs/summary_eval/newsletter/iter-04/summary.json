@@ -1,0 +1,198 @@
+[
+  {
+    "url": "https://www.platformer.news/substack-nazi-push-notification/",
+    "summary": {
+      "mini_title": "Platformer: Substack promotes a Nazi",
+      "brief_summary": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as",
+      "tags": [
+        "newsletter",
+        "publication",
+        "analysis",
+        "issue",
+        "author",
+        "stance",
+        "cta"
+      ],
+      "detailed_summary": {
+        "publication_identity": "Platformer",
+        "issue_thesis": "Substack promotes a Nazi",
+        "sections": [
+          {
+            "heading": "Summary",
+            "bullets": [
+              "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as \"neutral infrastructure.\" **The Incident & Platform Response** On a Monday, Substack sent a"
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [],
+        "stance": "neutral",
+        "cta": "Subscribe (#/portal/signup)"
+      },
+      "metadata": {
+        "source_type": "newsletter",
+        "url": "https://www.platformer.news/substack-nazi-push-notification/",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "HTML article text extracted via direct",
+        "total_tokens_used": 6325,
+        "gemini_pro_tokens": 4760,
+        "gemini_flash_tokens": 1565,
+        "total_latency_ms": 82237,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 3,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "Platformer: Substack promotes a Nazi",
+          "brief_summary": "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as \"neutral infrastructure.\" **The Incident & Platform Response** On a Monday, Substack sent a",
+          "tags": [
+            "newsletter",
+            "publication",
+            "analysis",
+            "issue",
+            "author",
+            "stance",
+            "cta"
+          ],
+          "detailed_summary": {
+            "publication_identity": "Platformer",
+            "issue_thesis": "Substack promotes a Nazi",
+            "sections": [
+              {
+                "heading": "Summary",
+                "bullets": [
+                  "**ID:** 202405211035 **Title:** Substack's Promotional Tools Undermine Its Neutrality Claim **Tags:** #Substack, #ContentModeration, #PlatformPolicy, #Neutrality Casey Newton argues that Substack's accidental promotion of a pro-Nazi newsletter was an inevitable consequence of its platform policies, exposing the conflict between its active promotional features and its self-proclaimed status as \"neutral infrastructure.\" **The Incident & Platform Response** On a Monday, Substack sent a"
+                ]
+              }
+            ],
+            "conclusions_or_recommendations": [],
+            "stance": "neutral",
+            "cta": "Subscribe (#/portal/signup)"
+          }
+        },
+        "is_schema_fallback": true
+      }
+    }
+  },
+  {
+    "url": "https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv",
+    "summary": {
+      "mini_title": "Highlights in Organic Synthesis: Recent Advances (March 18\u20132",
+      "brief_summary": "Highlights in Organic Synthesis (March 18\u201324, 2024) presents a curated overview of recent breakthroughs in organic chemistry. This issue targets researchers and practitioners, detailing novel synthetic methodologies and complex total syntheses. Key sections include innovative alcohol cross-coupling, enantioselective aminations, and photocycloadditions.",
+      "tags": [
+        "organic-synthesis",
+        "chemical-methodologies",
+        "total-synthesis",
+        "catalysis",
+        "stereoselectivity",
+        "photochemistry",
+        "c-c-bond-formation",
+        "natural-products",
+        "reaction-development",
+        "research-summary"
+      ],
+      "detailed_summary": {
+        "publication_identity": "Highlights in Organic Synthesis (a weekly digest of recent publications in organic chemistry)",
+        "issue_thesis": "This issue provides a concise overview of significant advancements in organic synthesis, specifically focusing on novel methodologies and the total syntheses of complex natural products published between March 18 and March 24, 2024.",
+        "sections": [
+          {
+            "heading": "Methodologies",
+            "bullets": [
+              "**Alcohol-Alcohol Cross-Coupling:** A nickel radical sorting\u2013mediated method couples two different alcohol fragments via deoxygenation to form C(sp\u00b3)\u2013C(sp\u00b3) bonds in a single vessel, tolerant of air, leveraging alcohol availability (MacMillan, *Science*).",
+              "**Enantioselective Propargylic Amination:** A Cu(I)-catalysed asymmetric propargylic amination (ACPA) of ketone-derived propargylic carbonates, using a PYBOX ligand, synthesizes chiral \u03b1-tertiary ethynylamines, extended to O- and C-nucleophiles, and applied to \u03b2-secretase inhibitor synthesis (Zhou/Wang/Zhou, *Nat. Chem.*).",
+              "**Photocycloaddition of Bicyclo[1.1.0]butanes (BCBs):** A bifunctional chiral photosensitizer enables a highly enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between BCBs and vinylazaarenes, producing bicyclo[2.1.1]hexane (BCH) derivatives with all-carbon quaternary or adjacent tertiary stereocenters (Jiang, *JACS*).",
+              "**Chromoselective C\u2013X Bond Activation:** An organic helicenium photocatalyst allows wavelength-dependent activation of C(sp\u00b2)\u2013X bonds; red light activates C\u2013I bonds via halogen atom transfer (XAT), while blue light activates C\u2013Br bonds via consecutive photoinduced electron transfer (conPET), demonstrated in \u03b1-arylation of cyclic ketones (Gianetti, *JACS*).",
+              "**Quaternary Stereocenter Construction:** A cooperative photoredox/Fe/chiral primary amine triple catalysis system couples unactivated alkyl sources with tertiary alkyl moieties to construct all-carbon quaternary stereocenters under mild, base-free conditions, showing scalability and good functional-group tolerance (Yang, *JACS*).",
+              "**Regio- and Enantioselective Hydrofluorination:** NiH catalysis, using a tailored chiral Bn-BOx ligand, achieves hydrofluorination of unactivated terminal and internal alkenes, creating aliphatic C\u2013F stereogenic centers with high enantioselectivity and exhibiting a (+)-nonlinear effect (Hong, *JACS*).",
+              "**Enantioconvergent Radical N-Alkylation:** A copper-catalyzed method performs N-alkylation of diverse and sterically congested (hetero)aromatic amines with racemic secondary/tertiary alkyl halides via an outer-sphere nucleophilic attack mechanism, yielding over 110 examples of chiral amines (Liu/Yu/Li, *JACS*).",
+              "**Peptide Functionalization:** A mild photocatalytic hydroarylation using arylthianthrenium salts enables late-stage functionalization of dehydroalanine (Dha) residues in peptides, conjugating peptides with arenes and drug fragments to form unconventional phenylalanine derivatives (Noel, *Angew. Chem.*).",
+              "**Stereodivergent Alkene Isomerization:** A nickel-catalyzed platform performs a kinetically controlled, one-carbon transposition of terminal alkenes to selectively form either *E*- or *Z*-internal alkenes at room temperature, using commercially available reagents via a Ni\u2013H-mediated mechanism (Engle/Vantourout, *Angew. Chem.*).",
+              "**Difluoromethylation of Alkenes:** In situ-generated difluoromethyl nitrile oxide undergoes a (3+2) cycloaddition with various alkenes at room temperature, forming CF\u2082H-isoxazolines transformable into amines, amino acids, and amino alcohols, used for late-stage modification of finasteride and carbamazepine (Mykhailiuk, *Org. Lett.*).",
+              "**Photoredox Cross-Electrophile Coupling:** A metallaphotoredox reaction couples aryl bromides and benzyl bromides to form di(hetero)arylmethanes, with method development accelerated by High-Throughput Experimentation (HTE) and ChemBeads, and demonstrated scalability (Rauch, *Org. Lett.*).",
+              "**Oxepane Synthesis via Skeletal Remodeling:** A proposed Rh(I)-catalyzed cascade transforms cyclobutenol derivatives into substituted seven-membered oxepanes, involving C\u2013C bond formation to a fused [3.2.0] bicycle followed by C(sp\u00b3)\u2013C(sp\u00b3) bond cleavage via \u03b2-carbon elimination (Sarpong/Baik, *J. Org. Chem.*)."
+            ]
+          },
+          {
+            "heading": "Total Syntheses",
+            "bullets": [
+              "**Diterpenoid Pyrones:** An enantioselective, divergent synthesis of 10 diterpenoid pyrones was achieved in 14\u201316 steps from chiral pool enoxolone, featuring Echavarren C(sp\u00b3)\u2013H alkynylation, Toste Au-catalyzed allene hydroalkoxylation, and a biomimetic oxidative rearrangement. This work includes the first enantioselective syntheses of higginsianins A, B, D, E, and metarhizin C (Li, *JACS*).",
+              "**Pallamolides A\u2013E:** The first total synthesis of pallamolides A\u2013E was completed, with key steps including sequential Michael additions to form a bicyclo[2.2.2]octane core, a SmI\u2082-mediated cyclization, and an acid-mediated cascade to assemble the final tetracyclic skeletons. Asymmetry was introduced via a Corey-Bakshi-Shibata kinetic resolution (Jia, *Angew. Chem.*).",
+              "**Pepluacetal:** The first total synthesis of the *Euphorbia* diterpenoid pepluacetal was achieved in both racemic and chiral forms. The route features a photo-induced Wolff rearrangement/lactonization cascade (WRLC) and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion, achieving stereocontrol over a concave-face bond formation, and is scalable (She, *Angew. Chem.*)."
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [],
+        "stance": "neutral",
+        "cta": null
+      },
+      "metadata": {
+        "source_type": "newsletter",
+        "url": "https://www.synthesisspotlight.com/p/organic-synthesis-beehiiv",
+        "author": null,
+        "date": null,
+        "extraction_confidence": "high",
+        "confidence_reason": "HTML article text extracted via direct",
+        "total_tokens_used": 24051,
+        "gemini_pro_tokens": 20222,
+        "gemini_flash_tokens": 3829,
+        "total_latency_ms": 152163,
+        "cod_iterations_used": 2,
+        "self_check_missing_count": 6,
+        "patch_applied": true,
+        "engine_version": "2.0.0",
+        "structured_payload": {
+          "mini_title": "Highlights in Organic Synthesis: Recent Advances (March 18\u201324)",
+          "brief_summary": "Highlights in Organic Synthesis (March 18\u201324, 2024) presents a curated overview of recent breakthroughs in organic chemistry. This issue targets researchers and practitioners, detailing novel synthetic methodologies and complex total syntheses. Key sections include innovative alcohol cross-coupling, enantioselective aminations, and photocycloadditions. It also covers the total syntheses of diterpenoid pyrones, pallamolides A\u2013E, and pepluacetal. The newsletter provides concise summaries of cutting-edge research from leading journals.",
+          "tags": [
+            "organic-synthesis",
+            "chemical-methodologies",
+            "total-synthesis",
+            "catalysis",
+            "stereoselectivity",
+            "photochemistry",
+            "c-c-bond-formation",
+            "natural-products",
+            "reaction-development",
+            "research-summary"
+          ],
+          "detailed_summary": {
+            "publication_identity": "Highlights in Organic Synthesis (a weekly digest of recent publications in organic chemistry)",
+            "issue_thesis": "This issue provides a concise overview of significant advancements in organic synthesis, specifically focusing on novel methodologies and the total syntheses of complex natural products published between March 18 and March 24, 2024.",
+            "sections": [
+              {
+                "heading": "Methodologies",
+                "bullets": [
+                  "**Alcohol-Alcohol Cross-Coupling:** A nickel radical sorting\u2013mediated method couples two different alcohol fragments via deoxygenation to form C(sp\u00b3)\u2013C(sp\u00b3) bonds in a single vessel, tolerant of air, leveraging alcohol availability (MacMillan, *Science*).",
+                  "**Enantioselective Propargylic Amination:** A Cu(I)-catalysed asymmetric propargylic amination (ACPA) of ketone-derived propargylic carbonates, using a PYBOX ligand, synthesizes chiral \u03b1-tertiary ethynylamines, extended to O- and C-nucleophiles, and applied to \u03b2-secretase inhibitor synthesis (Zhou/Wang/Zhou, *Nat. Chem.*).",
+                  "**Photocycloaddition of Bicyclo[1.1.0]butanes (BCBs):** A bifunctional chiral photosensitizer enables a highly enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between BCBs and vinylazaarenes, producing bicyclo[2.1.1]hexane (BCH) derivatives with all-carbon quaternary or adjacent tertiary stereocenters (Jiang, *JACS*).",
+                  "**Chromoselective C\u2013X Bond Activation:** An organic helicenium photocatalyst allows wavelength-dependent activation of C(sp\u00b2)\u2013X bonds; red light activates C\u2013I bonds via halogen atom transfer (XAT), while blue light activates C\u2013Br bonds via consecutive photoinduced electron transfer (conPET), demonstrated in \u03b1-arylation of cyclic ketones (Gianetti, *JACS*).",
+                  "**Quaternary Stereocenter Construction:** A cooperative photoredox/Fe/chiral primary amine triple catalysis system couples unactivated alkyl sources with tertiary alkyl moieties to construct all-carbon quaternary stereocenters under mild, base-free conditions, showing scalability and good functional-group tolerance (Yang, *JACS*).",
+                  "**Regio- and Enantioselective Hydrofluorination:** NiH catalysis, using a tailored chiral Bn-BOx ligand, achieves hydrofluorination of unactivated terminal and internal alkenes, creating aliphatic C\u2013F stereogenic centers with high enantioselectivity and exhibiting a (+)-nonlinear effect (Hong, *JACS*).",
+                  "**Enantioconvergent Radical N-Alkylation:** A copper-catalyzed method performs N-alkylation of diverse and sterically congested (hetero)aromatic amines with racemic secondary/tertiary alkyl halides via an outer-sphere nucleophilic attack mechanism, yielding over 110 examples of chiral amines (Liu/Yu/Li, *JACS*).",
+                  "**Peptide Functionalization:** A mild photocatalytic hydroarylation using arylthianthrenium salts enables late-stage functionalization of dehydroalanine (Dha) residues in peptides, conjugating peptides with arenes and drug fragments to form unconventional phenylalanine derivatives (Noel, *Angew. Chem.*).",
+                  "**Stereodivergent Alkene Isomerization:** A nickel-catalyzed platform performs a kinetically controlled, one-carbon transposition of terminal alkenes to selectively form either *E*- or *Z*-internal alkenes at room temperature, using commercially available reagents via a Ni\u2013H-mediated mechanism (Engle/Vantourout, *Angew. Chem.*).",
+                  "**Difluoromethylation of Alkenes:** In situ-generated difluoromethyl nitrile oxide undergoes a (3+2) cycloaddition with various alkenes at room temperature, forming CF\u2082H-isoxazolines transformable into amines, amino acids, and amino alcohols, used for late-stage modification of finasteride and carbamazepine (Mykhailiuk, *Org. Lett.*).",
+                  "**Photoredox Cross-Electrophile Coupling:** A metallaphotoredox reaction couples aryl bromides and benzyl bromides to form di(hetero)arylmethanes, with method development accelerated by High-Throughput Experimentation (HTE) and ChemBeads, and demonstrated scalability (Rauch, *Org. Lett.*).",
+                  "**Oxepane Synthesis via Skeletal Remodeling:** A proposed Rh(I)-catalyzed cascade transforms cyclobutenol derivatives into substituted seven-membered oxepanes, involving C\u2013C bond formation to a fused [3.2.0] bicycle followed by C(sp\u00b3)\u2013C(sp\u00b3) bond cleavage via \u03b2-carbon elimination (Sarpong/Baik, *J. Org. Chem.*)."
+                ]
+              },
+              {
+                "heading": "Total Syntheses",
+                "bullets": [
+                  "**Diterpenoid Pyrones:** An enantioselective, divergent synthesis of 10 diterpenoid pyrones was achieved in 14\u201316 steps from chiral pool enoxolone, featuring Echavarren C(sp\u00b3)\u2013H alkynylation, Toste Au-catalyzed allene hydroalkoxylation, and a biomimetic oxidative rearrangement. This work includes the first enantioselective syntheses of higginsianins A, B, D, E, and metarhizin C (Li, *JACS*).",
+                  "**Pallamolides A\u2013E:** The first total synthesis of pallamolides A\u2013E was completed, with key steps including sequential Michael additions to form a bicyclo[2.2.2]octane core, a SmI\u2082-mediated cyclization, and an acid-mediated cascade to assemble the final tetracyclic skeletons. Asymmetry was introduced via a Corey-Bakshi-Shibata kinetic resolution (Jia, *Angew. Chem.*).",
+                  "**Pepluacetal:** The first total synthesis of the *Euphorbia* diterpenoid pepluacetal was achieved in both racemic and chiral forms. The route features a photo-induced Wolff rearrangement/lactonization cascade (WRLC) and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion, achieving stereocontrol over a concave-face bond formation, and is scalable (She, *Angew. Chem.*)."
+                ]
+              }
+            ],
+            "conclusions_or_recommendations": [],
+            "stance": "neutral",
+            "cta": null
+          }
+        },
+        "is_schema_fallback": false
+      }
+    }
+  }
+]
