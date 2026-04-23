@@ -15,6 +15,13 @@ import re
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 from typing_extensions import Annotated
 
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    as_sentence as _as_sentence,
+    normalize_whitespace as _normalize_whitespace,
+    sentence_split as _sentence_split,
+    trim_fragment as _trim_fragment,
+)
+
 
 RedditLabel = Annotated[str, StringConstraints(pattern=r"^r/[^ ]+ .+$", max_length=200)]
 
@@ -162,12 +169,8 @@ def _repair_brief_summary(
     unresolved_questions: list[str],
     moderation_context: str | None,
 ) -> str:
-    cleaned = re.sub(r"\s+", " ", (brief_summary or "").strip())
-    sentences = [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
-        if sentence.strip()
-    ]
+    cleaned = _normalize_whitespace(brief_summary)
+    sentences = _sentence_split(cleaned)
     if 5 <= len(sentences) <= 7 and len(cleaned) <= 400:
         return cleaned
 
@@ -204,23 +207,6 @@ def _cluster_phrase(reply_clusters: list[RedditCluster], index: int, *, fallback
         return fallback
     cluster = reply_clusters[index]
     return cluster.theme or cluster.reasoning or fallback
-
-
-def _trim_fragment(text: str, max_words: int) -> str:
-    cleaned = re.sub(r"\s+", " ", (text or "").strip()).rstrip(",;:")
-    words = re.findall(r"\S+", cleaned)
-    if len(words) <= max_words:
-        return " ".join(words)
-    return " ".join(words[:max_words]).rstrip(",;:")
-
-
-def _as_sentence(text: str) -> str:
-    cleaned = re.sub(r"\s+", " ", text).strip().rstrip(",;:")
-    if not cleaned:
-        return ""
-    if cleaned.endswith((".", "!", "?")):
-        return cleaned
-    return f"{cleaned}."
 
 
 def _fit_sentences(sentences: list[str], *, max_chars: int, min_sentences: int = 1) -> str:

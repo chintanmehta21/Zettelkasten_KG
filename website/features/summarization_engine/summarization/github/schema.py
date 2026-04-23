@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import re
 
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    as_sentence as _as_sentence,
+    clip_to_char_budget as _clip_to_char_budget,
+)
 from pydantic import BaseModel, Field, StringConstraints
 from pydantic import model_validator
 from typing_extensions import Annotated
@@ -335,19 +339,7 @@ def _repair_brief_summary(
     # Only rebuild when the brief is clearly unusable: very short, empty,
     # or grammatically truncated at a dangling connector.
     if len(cleaned) >= 80 and not _has_truncation_tail(cleaned) and len(cleaned) <= 550:
-        if len(cleaned) <= 500:
-            return cleaned
-        # Truncate at the last sentence boundary that fits in 500 chars
-        # rather than mid-word, which the evaluator flags as truncation.
-        truncated = cleaned[:500]
-        last_boundary = max(
-            truncated.rfind(". "),
-            truncated.rfind("! "),
-            truncated.rfind("? "),
-        )
-        if last_boundary >= 200:
-            return truncated[: last_boundary + 1]
-        return truncated
+        return _clip_to_char_budget(cleaned, max_chars=500)
 
     # Rebuild: use the LLM's architecture_overview verbatim (already a
     # 50-500 char prose paragraph) augmented by the purpose phrase rather
@@ -517,15 +509,6 @@ def _trim_fragment(text: str, max_words: int) -> str:
         else:
             break
     return " ".join(truncated).rstrip(",;:")
-
-
-def _as_sentence(text: str) -> str:
-    cleaned = re.sub(r"\s+", " ", (text or "").strip()).rstrip(",;:")
-    if not cleaned:
-        return ""
-    if cleaned.endswith((".", "!", "?")):
-        return cleaned
-    return f"{cleaned}."
 
 
 def _fit_sentences(sentences: list[str], *, max_chars: int, min_sentences: int = 1) -> str:
