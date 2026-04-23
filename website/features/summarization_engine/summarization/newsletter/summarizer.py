@@ -67,10 +67,12 @@ class NewsletterSummarizer(BaseSummarizer):
             system_instruction=SYSTEM_PROMPT,
         )
         flash_tokens = result.input_tokens + result.output_tokens
+        is_schema_fallback = False
         try:
             payload = NewsletterStructuredPayload(**parse_json_object(result.text))
         except Exception:
             payload = _fallback_payload(ingest, patched, self._engine_config)
+            is_schema_fallback = True
         latency_ms = int((time.perf_counter() - start) * 1000)
         return NewsletterSummaryResult(
             mini_title=payload.mini_title[:60],
@@ -100,6 +102,8 @@ class NewsletterSummarizer(BaseSummarizer):
                 cod_iterations_used=dense.iterations_used,
                 self_check_missing_count=check.missing_count,
                 patch_applied=patch_applied,
+                structured_payload=payload.model_dump(mode="json"),
+                is_schema_fallback=is_schema_fallback,
             ),
         )
 

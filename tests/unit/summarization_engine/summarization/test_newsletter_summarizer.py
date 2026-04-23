@@ -90,6 +90,12 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape(
 
     assert result.mini_title.startswith("Stratechery")
     assert result.detailed_summary.stance == "cautionary"
+    assert result.metadata.is_schema_fallback is False
+    assert result.metadata.structured_payload is not None
+    assert (
+        result.metadata.structured_payload["detailed_summary"]["publication_identity"]
+        == "Stratechery"
+    )
     # Contract: the summarizer invoked generate() with the Newsletter schema
     call = mock_gemini_client.generate.await_args
     assert call.kwargs["response_schema"] is NewsletterStructuredPayload
