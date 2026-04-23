@@ -28,9 +28,9 @@ https://github.com/pallets/flask
 https://www.platformer.news/substack-nazi-push-notification/
 https://organicsynthesis.beehiiv.com/p/organic-synthesis-beehiiv
 https://product.beehiiv.com/p/introducing-email-boosts
-https://stratechery.com/2024/an-interview-with-daniel-ek-about-spotify-and-the-music-industry/
-https://www.lennysnewsletter.com/p/how-to-hire-your-first-product-manager
-https://newsletter.pragmaticengineer.com/p/stages-of-hypergrowth
+https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer
+https://product.beehiiv.com/p/beehiiv-mcp
+https://product.beehiiv.com/p/new-dashboard
 
 # HackerNews
 # (auto-discovered in polish phase)

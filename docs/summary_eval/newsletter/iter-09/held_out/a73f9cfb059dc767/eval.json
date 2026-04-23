@@ -1,0 +1,156 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 4.0,
+    "fluency": 5.0,
+    "relevance": 4.0,
+    "reasoning": "The summary accurately reflects the source's reasoning, detailing the mechanics and benefits of Email Boosts. The detailed summary is well-structured and coherent, though the brief summary could better capture the argument structure and key evidence."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "Advertisers can use segmentation tools to analyze engagement and receive refunds for low-quality acquisitions.",
+          "fact": null,
+          "sentence": "Advertisers can use segmentation tools to analyze engagement and receive refunds for low-quality acquisitions.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Establishes a closed-loop paid acquisition network within beehiiv, competing with external channels.",
+          "fact": null,
+          "sentence": "Establishes a closed-loop paid acquisition network within beehiiv, competing with external channels.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Brief summarizes how the author structures their argument.",
+          "fact": null,
+          "sentence": "beehiiv announced \"Email Boosts,\" an extension of its recommendation network, enabling publishers to embed paid newsletter recommendations directly into emails. This creates a scalable, internal CPA-based acquisition channel within the beehiiv ecosystem.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Important evidence or examples are captured without invention.",
+          "fact": null,
+          "sentence": "beehiiv announced \"Email Boosts,\" an extension of its recommendation network, enabling publishers to embed paid newsletter recommendations directly into emails. This creates a scalable, internal CPA-based acquisition channel within the beehiiv ecosystem.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "If explicit caveats or counterarguments present, how author addresses them is summarized.",
+          "fact": null,
+          "sentence": "beehiiv announced \"Email Boosts,\" an extension of its recommendation network, enabling publishers to embed paid newsletter recommendations directly into emails. This creates a scalable, internal CPA-based acquisition channel within the beehiiv ecosystem.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.9285714285714286,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "Advertisers can use segmentation tools to analyze engagement and receive refunds for low-quality acquisitions.",
+        "reason": "The source states beehiiv *can tell you* about engagement using segmentation and that *you will be refunded* for non-verified subscribers. It does not explicitly state advertisers *use* segmentation tools to *receive refunds* directly for low-quality acquisitions based on their own segmentation analysis."
+      },
+      {
+        "sentence": "Establishes a closed-loop paid acquisition network within beehiiv, competing with external channels.",
+        "reason": "The phrase 'competing with external channels' is an inference made by the summary, not a direct statement from the source. The source implies it's a strong acquisition channel but doesn't frame it as direct competition."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 12.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 43.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": [
+          "detailed.claims_source_grounded"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 93.33,
+    "finesure": 74.68,
+    "qafact": 0.0,
+    "summac": 80.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 6573,
+    "total_tokens_out": 1603,
+    "latency_ms": 50138
+  }
+}

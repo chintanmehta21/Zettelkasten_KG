@@ -1,0 +1,117 @@
+{
+  "mini_title": "Organic Synthesis Research Digest: New Methodologies & Total",
+  "brief_summary": "This Organic Synthesis Research Digest highlights recent breakthroughs in synthetic organic chemistry. It targets researchers and practitioners in the field, presenting a curated overview of novel synthetic methodologies and complex total syntheses. The issue details advancements like alcohol-alcohol cross-coupling, enantioselective hydrofluorination, and diverse photocatalytic reactions.",
+  "tags": [
+    "organic-chemistry",
+    "synthetic-methodology",
+    "total-synthesis",
+    "catalysis",
+    "photochemistry",
+    "enantioselectivity",
+    "natural-products",
+    "reaction-development",
+    "research-summary",
+    "chemical-synthesis"
+  ],
+  "detailed_summary": {
+    "publication_identity": "Organic Synthesis Research Digest",
+    "issue_thesis": "This issue presents a curated selection of recent, significant advancements in synthetic organic chemistry, categorized into novel methodologies and complex total syntheses, highlighting innovative approaches to bond formation and molecular construction.",
+    "sections": [
+      {
+        "heading": "New Synthetic Methodologies",
+        "bullets": [
+          "Alcohol-Alcohol Cross-Coupling (MacMillan, *Science*): A nickel radical sorting-mediated process enables deoxygenative cross-coupling of two alcohols to form a C(sp\u00b3)\u2013C(sp\u00b3) bond in a single vessel, leveraging abundant feedstocks and operating open to air.",
+          "Enantioselective Propargylic Amination (Zhou/Wang, *Nat. Chem.*): A Cu(I)-catalyzed asymmetric propargylic amination (ACPA) of propargylic carbonates, using a PYBOX ligand, synthesizes multifunctional \u03b1-tertiary amines, including quaternary 2,5-dihydropyrroles and dihydroquinolines, and was applied to \u03b2-secretase inhibitor synthesis.",
+          "Photocycloaddition of Bicyclo[1.1.0]butanes (Jiang, *JACS*): An enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between bicyclo[1.1.0]butanes (BCBs) and vinylazaarenes is achieved via asymmetric photoredox catalysis using a bifunctional chiral photosensitizer, yielding bicyclo[2.1.1]hexane (BCH) derivatives with all-carbon quaternary or two adjacent tertiary stereocenters.",
+          "Chromoselective C\u2013X Bond Activation (Gianetti, *JACS*): A single organic helicenium photocatalyst selectively activates different carbon-halogen bonds in multi-halogenated aromatics using distinct wavelengths: red light for C(sp\u00b2)\u2013I (halogen atom transfer) and blue light for C(sp\u00b2)\u2013Br (consecutive photoinduced electron transfer).",
+          "Construction of Quaternary Stereocenters (Yang, *JACS*): A cooperative triple catalysis system (photoredox/Fe/chiral primary amine) enables enantioselective construction of all-carbon quaternary stereocenters by coupling unactivated and tertiary alkyl sources, proposed via an outer-sphere mechanism, scalable, base-free, and mild.",
+          "Regio- and Enantioselective Hydrofluorination (Hong, *JACS*): A method for catalytic hydrofluorination of terminal and internal unactivated alkenes forms aliphatic C\u2013F stereogenic centers, with regioselectivity controlled by NiH catalysis (coordination directing) and enantioselectivity by a chiral Bn-BOx ligand, observing a (+)-nonlinear effect.",
+          "Enantioconvergent Radical N-Alkylation (Liu/Yu/Li, *JACS*): A copper-catalyzed enantioconvergent radical N-alkylation couples diverse (hetero)aromatic amines with secondary or tertiary alkyl halides, accommodating sterically congested nucleophiles via a proposed outer-sphere nucleophilic attack.",
+          "Photocatalytic Peptide Functionalization (Noel, *Angew. Chem.*): Late-stage functionalization of peptides through photocatalytic hydroarylation of dehydroalanine (Dha) residues, using arylthianthrenium salts to integrate complex aryl groups, suitable for peptide conjugation and ligation in batch and flow.",
+          "Stereodivergent Alkene Isomerization (Engle/Vantourout, *Angew. Chem.*): A nickel-catalyzed platform performs kinetically controlled, one-carbon positional isomerization of terminal alkenes to either *E*- or *Z*-internal alkenes at room temperature, proceeding via a Ni\u2013H-mediated insertion/elimination mechanism.",
+          "Difluoromethylation of Alkenes (Mykhailiuk, *Org. Lett.*): A (3+2) cycloaddition of *in situ*-generated difluoromethyl nitrile oxide with various alkenes proceeds at room temperature with broad functional group tolerance, producing CF\u2082H-isoxazolines convertible to other CF\u2082H-containing building blocks, applied to late-stage modification.",
+          "Photoredox Cross-Electrophile Coupling (Rauch, *Org. Lett.*): A metallaphotoredox method couples aryl bromides and benzyl bromides to form di(hetero)arylmethanes, enabling efficient exploration of benzyl structure\u2013activity relationships (SAR), accelerated by high-throughput experimentation (HTE) and scalable.",
+          "Synthesis of Seven-Membered Oxacycles (Sarpong/Baik, *J. Org. Chem.*): A Rh(I)-catalyzed cascade reaction transforms cyclobutenol derivatives (from dialkyl squarates and acrylonitrile) into substituted oxepanes, with a proposed mechanism involving C\u2013C bond formation followed by C(sp\u00b3)\u2013C(sp\u00b3) bond cleavage."
+        ]
+      },
+      {
+        "heading": "Total Syntheses",
+        "bullets": [
+          "Diterpenoid Pyrones (Li, *JACS*): An enantioselective, divergent synthesis of 10 diterpenoid pyrones was achieved in 14\u201316 steps from chiral pool enoxolone, including the first enantioselective synthesis of higginsianins A, B, D, E, and metarhizin C, featuring late-stage C(sp\u00b3)\u2013H alkynylation, Au-catalyzed allene hydroalkoxylation, and biomimetic oxidative rearrangement.",
+          "Pallamolides A\u2013E (Jia, *Angew. Chem.*): The first total synthesis of pallamolides A\u2013E, containing tetracyclic skeletons formed via intramolecular transesterifications, was completed using a Corey-Bakshi-Shibata kinetic resolution, sequential Michael additions for a bicyclo[2.2.2]octane core, SmI\u2082-mediated cyclization/reduction, and an acid-mediated cascade.",
+          "Pepluacetal (She, *Angew. Chem.*): The first total synthesis of the *Euphorbia* diterpenoid pepluacetal was accomplished in racemic and chiral forms, featuring a photo-induced Wolff rearrangement/lactonization cascade, a ring-closing metathesis/cyclopropanation, and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion for stereocontrol."
+        ]
+      }
+    ],
+    "conclusions_or_recommendations": [],
+    "stance": "neutral",
+    "cta": null
+  },
+  "metadata": {
+    "source_type": "newsletter",
+    "url": "https://www.synthesisspotlight.com/p/organic-synthesis-beehiiv",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "HTML article text extracted via direct",
+    "total_tokens_used": 24283,
+    "gemini_pro_tokens": 20626,
+    "gemini_flash_tokens": 3657,
+    "total_latency_ms": 151133,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 9,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Organic Synthesis Research Digest: New Methodologies & Total Syntheses",
+      "brief_summary": "This Organic Synthesis Research Digest highlights recent breakthroughs in synthetic organic chemistry. It targets researchers and practitioners in the field, presenting a curated overview of novel synthetic methodologies and complex total syntheses. The issue details advancements like alcohol-alcohol cross-coupling, enantioselective hydrofluorination, and diverse photocatalytic reactions. It also covers the first total syntheses of natural products such as pallamolides A\u2013E and pepluacetal, showcasing innovative strategies for complex molecule construction. No explicit call to action is provided.",
+      "tags": [
+        "organic-chemistry",
+        "synthetic-methodology",
+        "total-synthesis",
+        "catalysis",
+        "photochemistry",
+        "enantioselectivity",
+        "natural-products",
+        "reaction-development",
+        "research-summary",
+        "chemical-synthesis"
+      ],
+      "detailed_summary": {
+        "publication_identity": "Organic Synthesis Research Digest",
+        "issue_thesis": "This issue presents a curated selection of recent, significant advancements in synthetic organic chemistry, categorized into novel methodologies and complex total syntheses, highlighting innovative approaches to bond formation and molecular construction.",
+        "sections": [
+          {
+            "heading": "New Synthetic Methodologies",
+            "bullets": [
+              "Alcohol-Alcohol Cross-Coupling (MacMillan, *Science*): A nickel radical sorting-mediated process enables deoxygenative cross-coupling of two alcohols to form a C(sp\u00b3)\u2013C(sp\u00b3) bond in a single vessel, leveraging abundant feedstocks and operating open to air.",
+              "Enantioselective Propargylic Amination (Zhou/Wang, *Nat. Chem.*): A Cu(I)-catalyzed asymmetric propargylic amination (ACPA) of propargylic carbonates, using a PYBOX ligand, synthesizes multifunctional \u03b1-tertiary amines, including quaternary 2,5-dihydropyrroles and dihydroquinolines, and was applied to \u03b2-secretase inhibitor synthesis.",
+              "Photocycloaddition of Bicyclo[1.1.0]butanes (Jiang, *JACS*): An enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between bicyclo[1.1.0]butanes (BCBs) and vinylazaarenes is achieved via asymmetric photoredox catalysis using a bifunctional chiral photosensitizer, yielding bicyclo[2.1.1]hexane (BCH) derivatives with all-carbon quaternary or two adjacent tertiary stereocenters.",
+              "Chromoselective C\u2013X Bond Activation (Gianetti, *JACS*): A single organic helicenium photocatalyst selectively activates different carbon-halogen bonds in multi-halogenated aromatics using distinct wavelengths: red light for C(sp\u00b2)\u2013I (halogen atom transfer) and blue light for C(sp\u00b2)\u2013Br (consecutive photoinduced electron transfer).",
+              "Construction of Quaternary Stereocenters (Yang, *JACS*): A cooperative triple catalysis system (photoredox/Fe/chiral primary amine) enables enantioselective construction of all-carbon quaternary stereocenters by coupling unactivated and tertiary alkyl sources, proposed via an outer-sphere mechanism, scalable, base-free, and mild.",
+              "Regio- and Enantioselective Hydrofluorination (Hong, *JACS*): A method for catalytic hydrofluorination of terminal and internal unactivated alkenes forms aliphatic C\u2013F stereogenic centers, with regioselectivity controlled by NiH catalysis (coordination directing) and enantioselectivity by a chiral Bn-BOx ligand, observing a (+)-nonlinear effect.",
+              "Enantioconvergent Radical N-Alkylation (Liu/Yu/Li, *JACS*): A copper-catalyzed enantioconvergent radical N-alkylation couples diverse (hetero)aromatic amines with secondary or tertiary alkyl halides, accommodating sterically congested nucleophiles via a proposed outer-sphere nucleophilic attack.",
+              "Photocatalytic Peptide Functionalization (Noel, *Angew. Chem.*): Late-stage functionalization of peptides through photocatalytic hydroarylation of dehydroalanine (Dha) residues, using arylthianthrenium salts to integrate complex aryl groups, suitable for peptide conjugation and ligation in batch and flow.",
+              "Stereodivergent Alkene Isomerization (Engle/Vantourout, *Angew. Chem.*): A nickel-catalyzed platform performs kinetically controlled, one-carbon positional isomerization of terminal alkenes to either *E*- or *Z*-internal alkenes at room temperature, proceeding via a Ni\u2013H-mediated insertion/elimination mechanism.",
+              "Difluoromethylation of Alkenes (Mykhailiuk, *Org. Lett.*): A (3+2) cycloaddition of *in situ*-generated difluoromethyl nitrile oxide with various alkenes proceeds at room temperature with broad functional group tolerance, producing CF\u2082H-isoxazolines convertible to other CF\u2082H-containing building blocks, applied to late-stage modification.",
+              "Photoredox Cross-Electrophile Coupling (Rauch, *Org. Lett.*): A metallaphotoredox method couples aryl bromides and benzyl bromides to form di(hetero)arylmethanes, enabling efficient exploration of benzyl structure\u2013activity relationships (SAR), accelerated by high-throughput experimentation (HTE) and scalable.",
+              "Synthesis of Seven-Membered Oxacycles (Sarpong/Baik, *J. Org. Chem.*): A Rh(I)-catalyzed cascade reaction transforms cyclobutenol derivatives (from dialkyl squarates and acrylonitrile) into substituted oxepanes, with a proposed mechanism involving C\u2013C bond formation followed by C(sp\u00b3)\u2013C(sp\u00b3) bond cleavage."
+            ]
+          },
+          {
+            "heading": "Total Syntheses",
+            "bullets": [
+              "Diterpenoid Pyrones (Li, *JACS*): An enantioselective, divergent synthesis of 10 diterpenoid pyrones was achieved in 14\u201316 steps from chiral pool enoxolone, including the first enantioselective synthesis of higginsianins A, B, D, E, and metarhizin C, featuring late-stage C(sp\u00b3)\u2013H alkynylation, Au-catalyzed allene hydroalkoxylation, and biomimetic oxidative rearrangement.",
+              "Pallamolides A\u2013E (Jia, *Angew. Chem.*): The first total synthesis of pallamolides A\u2013E, containing tetracyclic skeletons formed via intramolecular transesterifications, was completed using a Corey-Bakshi-Shibata kinetic resolution, sequential Michael additions for a bicyclo[2.2.2]octane core, SmI\u2082-mediated cyclization/reduction, and an acid-mediated cascade.",
+              "Pepluacetal (She, *Angew. Chem.*): The first total synthesis of the *Euphorbia* diterpenoid pepluacetal was accomplished in racemic and chiral forms, featuring a photo-induced Wolff rearrangement/lactonization cascade, a ring-closing metathesis/cyclopropanation, and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion for stereocontrol."
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [],
+        "stance": "neutral",
+        "cta": null
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

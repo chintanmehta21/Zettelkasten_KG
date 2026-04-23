@@ -16,6 +16,9 @@ from website.features.summarization_engine.summarization.newsletter.schema impor
 )
 from website.features.summarization_engine.summarization.newsletter.summarizer import (
     NewsletterSummarizer,
+    _apply_ingest_guardrails,
+    _parse_payload_with_ingest,
+    _trim_at_sentence_boundary,
 )
 
 
@@ -90,6 +93,188 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape(
 
     assert result.mini_title.startswith("Stratechery")
     assert result.detailed_summary.stance == "cautionary"
+    assert result.metadata.is_schema_fallback is False
+    assert result.metadata.structured_payload is not None
+    assert (
+        result.metadata.structured_payload["detailed_summary"]["publication_identity"]
+        == "Stratechery"
+    )
     # Contract: the summarizer invoked generate() with the Newsletter schema
     call = mock_gemini_client.generate.await_args
     assert call.kwargs["response_schema"] is NewsletterStructuredPayload
+
+
+def test_trim_at_sentence_boundary_avoids_mid_word_cutoff():
+    text = (
+        "Sentence one explains the publication and thesis. "
+        "Sentence two preserves the evidence and stance. "
+        "Sentence three is intentionally long enough that the raw character limit "
+        "would otherwise cut directly through a word and make the public brief look broken."
+    )
+
+    trimmed = _trim_at_sentence_boundary(text, 120)
+
+    assert len(trimmed) <= 120
+    assert trimmed.endswith(".")
+    assert not trimmed.endswith("oth")
+
+
+def test_parse_payload_with_ingest_prefixes_publication_label():
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        original_url="https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        raw_text="No numbers here.",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+    raw = {
+        "mini_title": "Product-Minded Engineering Diagnostics",
+        "brief_summary": "A concise brief.",
+        "tags": ["engineering", "product", "diagnostics", "analysis", "teams", "software", "craft"],
+        "detailed_summary": {
+            "publication_identity": "Unknown",
+            "issue_thesis": "Engineers should think about users.",
+            "sections": [{"heading": "Main", "bullets": ["Think about product impact."]}],
+            "conclusions_or_recommendations": [],
+            "stance": "neutral",
+            "cta": None,
+        },
+    }
+
+    payload = _parse_payload_with_ingest(json.dumps(raw), ingest)
+
+    assert payload.mini_title.startswith("Pragmatic Engineer:")
+    assert payload.detailed_summary.publication_identity == "Pragmatic Engineer"
+
+
+def test_apply_ingest_guardrails_removes_unsupported_numbers_without_source_numbers():
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://product.beehiiv.com/p/new-dashboard",
+        original_url="https://product.beehiiv.com/p/new-dashboard",
+        raw_text="The article describes a new dashboard and workflow changes.",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+    payload = NewsletterStructuredPayload(
+        mini_title="Dashboard Launch",
+        brief_summary="The dashboard launched. It reached 42 teams.",
+        tags=["dashboard", "product", "workflow", "newsletter", "tools", "launch", "updates"],
+        detailed_summary={
+            "publication_identity": "Unknown",
+            "issue_thesis": "The product workflow changed.",
+            "sections": [
+                {
+                    "heading": "Launch",
+                    "bullets": ["The dashboard changed workflows.", "It hit 42 teams."],
+                }
+            ],
+            "conclusions_or_recommendations": ["Adopt it by 2027.", "Review the workflow."],
+            "stance": "neutral",
+            "cta": None,
+        },
+    )
+
+    guarded = _apply_ingest_guardrails(payload, ingest)
+
+    assert "42" not in guarded.brief_summary
+    assert guarded.detailed_summary.sections[0].bullets == ["The dashboard changed workflows."]
+    assert guarded.detailed_summary.conclusions_or_recommendations == ["Review the workflow."]
+
+
+@pytest.mark.asyncio
+async def test_newsletter_summarizer_retries_on_template_artifacts(
+    mock_gemini_client, monkeypatch
+):
+    from website.features.summarization_engine.summarization.common import (
+        cod,
+        patch as p_mod,
+        self_check,
+    )
+
+    monkeypatch.setattr(
+        cod.ChainOfDensityDensifier,
+        "densify",
+        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
+    )
+    monkeypatch.setattr(
+        self_check.InvertedFactScoreSelfCheck,
+        "check",
+        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
+    )
+    monkeypatch.setattr(
+        p_mod.SummaryPatcher,
+        "patch",
+        AsyncMock(return_value=("dense", False, 0)),
+    )
+
+    contaminated = {
+        "mini_title": "Platformer: Substack promotes a Nazi",
+        "brief_summary": "**ID:** 202405211035 **Title:** metadata artifact",
+        "tags": ["newsletter", "analysis", "policy", "platform", "stance", "issue", "cta"],
+        "detailed_summary": {
+            "publication_identity": "Platformer",
+            "issue_thesis": "Substack promotes a Nazi",
+            "sections": [{"heading": "Summary", "bullets": ["**ID:** 202405211035"]}],
+            "conclusions_or_recommendations": [],
+            "stance": "cautionary",
+            "cta": None,
+        },
+    }
+    clean = {
+        "mini_title": "Platformer: Neutrality policy conflict",
+        "brief_summary": "A clean brief without metadata artifacts.",
+        "tags": [
+            "platform-governance",
+            "content-moderation",
+            "extremism",
+            "analysis",
+            "platform-policy",
+            "tech-ethics",
+            "case-study",
+        ],
+        "detailed_summary": {
+            "publication_identity": "Platformer",
+            "issue_thesis": "Policy and growth tooling conflict.",
+            "sections": [{"heading": "Incident", "bullets": ["Substack sent an alert."]}],
+            "conclusions_or_recommendations": ["Policy and promotion are inseparable."],
+            "stance": "cautionary",
+            "cta": None,
+        },
+    }
+
+    mock_gemini_client.generate = AsyncMock(
+        side_effect=[
+            GenerateResult(
+                text=json.dumps(contaminated),
+                model_used="flash",
+                input_tokens=10,
+                output_tokens=20,
+            ),
+            GenerateResult(
+                text=json.dumps(clean),
+                model_used="flash",
+                input_tokens=11,
+                output_tokens=21,
+            ),
+        ]
+    )
+
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://www.platformer.news/x",
+        original_url="https://www.platformer.news/x",
+        raw_text="hello",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+
+    result = await NewsletterSummarizer(mock_gemini_client, {}).summarize(ingest)
+
+    assert mock_gemini_client.generate.await_count == 2
+    assert result.metadata.is_schema_fallback is False
+    assert "**ID:**" not in result.brief_summary

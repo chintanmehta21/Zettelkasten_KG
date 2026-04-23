@@ -12,6 +12,20 @@ from website.features.summarization_engine.evaluator.models import (
 )
 
 
+def test_g_eval_scores_coerce_percent_scale():
+    scores = GEvalScores(
+        coherence=71.11,
+        consistency=100,
+        fluency=4.5,
+        relevance=65.21,
+    )
+
+    assert scores.coherence == 71.11 / 20
+    assert scores.consistency == 5.0
+    assert scores.fluency == 4.5
+    assert scores.relevance == 65.21 / 20
+
+
 def test_composite_score_hallucination_cap_overrides_high_scores():
     result = EvalResult(
         g_eval=GEvalScores(

@@ -14,6 +14,14 @@ class GEvalScores(BaseModel):
     relevance: float = Field(ge=0.0, le=5.0)
     reasoning: str = ""
 
+    @field_validator("coherence", "consistency", "fluency", "relevance", mode="before")
+    @classmethod
+    def _coerce_score_scale(cls, value):
+        numeric = float(value)
+        if numeric > 5.0:
+            numeric = numeric / 20.0
+        return max(0.0, min(5.0, numeric))
+
 
 class FineSurEItem(BaseModel):
     claim: str | None = None

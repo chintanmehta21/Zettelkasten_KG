@@ -1,0 +1,163 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 4.0,
+    "fluency": 5.0,
+    "relevance": 4.78,
+    "reasoning": "The summary accurately reflects the author's reasoning and argument structure, though there is a minor invented date and an inferred claim."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "Newton frames the incident as validation for *Platformer*'s 2024 departure from Substack due to the platform's refusal to remove or demonetize pro-Nazi publications.",
+          "fact": null,
+          "sentence": "Newton frames the incident as validation for *Platformer*'s 2024 departure from Substack due to the platform's refusal to remove or demonetize pro-Nazi publications.",
+          "span": "2024 departure",
+          "importance": null
+        },
+        {
+          "claim": "This links content moderation policy directly to product design.",
+          "fact": null,
+          "sentence": "This links content moderation policy directly to product design.",
+          "span": "This links content moderation policy directly to product design.",
+          "importance": null
+        },
+        {
+          "claim": "Platformer: Substack's Neutrality Claim vs. Content Promotio",
+          "fact": null,
+          "sentence": "Platformer: Substack's Neutrality Claim vs. Content Promotio",
+          "span": "Promotio",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.933,
+      "items": [
+        {
+          "claim": "Brief summarizes how the author addresses explicit caveats or counterarguments.",
+          "fact": null,
+          "sentence": "The issue targets readers interested in content moderation and platform governance, detailing the incident, Newton's prior departure from Substack over similar concerns, and the broader implications for platform design.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.857,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "Newton frames the incident as validation for *Platformer*'s 2024 departure from Substack due to the platform's refusal to remove or demonetize pro-Nazi publications.",
+        "reason": "The specific year '2024' is an invention, though 'last year' from a July 2025 article implies it. The core claim of validation is entailed, but the specific date is not directly stated."
+      },
+      {
+        "sentence": "This links content moderation policy directly to product design.",
+        "reason": "This statement is an inference or interpretation by the summary, not an explicit claim made in the source text."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 22.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.conclusions_distinct",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.caveats_addressed"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 43.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": [
+          "detailed.claims_source_grounded"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": [
+          "label.compact_declarative"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": 60,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "invented_number",
+        "source_region": "detailed_summary.sections[1].bullets[0]",
+        "auto_cap": 60
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 95.56,
+    "finesure": 93.33,
+    "qafact": 100.0,
+    "summac": 85.71
+  },
+  "editorialization_flags": [
+    {
+      "sentence": "This links content moderation policy directly to product design.",
+      "flag_type": "added_framing",
+      "explanation": "This sentence introduces a framing or interpretation that is not explicitly stated in the source text, although it is a reasonable inference."
+    }
+  ],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 4890,
+    "total_tokens_out": 1574,
+    "latency_ms": 41460,
+    "ragas_faithfulness": -1.0
+  }
+}

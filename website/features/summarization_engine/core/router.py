@@ -36,6 +36,7 @@ _NEWSLETTER_DOMAINS: tuple[str, ...] = (
     "dev.to",
     "stratechery.com",
     "platformer.news",
+    "pragmaticengineer.com",
 )
 _NEWSLETTER_CUSTOM_SUFFIXES: tuple[str, ...] = (".news",)
 

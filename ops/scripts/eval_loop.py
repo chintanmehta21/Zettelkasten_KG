@@ -19,16 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ops.scripts.lib.cost_ledger import CostLedger  # noqa: F401 — reserved
-from ops.scripts.lib.gemini_factory import make_client as make_gemini_client
 from ops.scripts.lib.links_parser import parse_links_file
-from ops.scripts.lib.phases import (
-    run_determinism_check,
-    run_phase_a,
-    run_phase_b,
-    run_replay,
-)
-from ops.scripts.lib.state_detector import IterationState, detect_iteration_state
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LINKS_TXT = REPO_ROOT / "docs" / "testing" / "links.txt"
@@ -232,6 +223,15 @@ def main() -> int:
     if args.phase == "0.5":
         print(json.dumps({"status": "phase_0_5", "note": "Phase 0.5 ingest tuning is manual per-source; re-run with --phase iter after Plan 2-5 completion."}))
         return 0
+
+    from ops.scripts.lib.gemini_factory import make_client as make_gemini_client
+    from ops.scripts.lib.phases import (
+        run_determinism_check,
+        run_phase_a,
+        run_phase_b,
+        run_replay,
+    )
+    from ops.scripts.lib.state_detector import IterationState, detect_iteration_state
 
     iter_num = args.iter
     iter_dir = _iter_dir(args.source, iter_num)

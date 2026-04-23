@@ -1,0 +1,98 @@
+{
+  "entries": [
+    {
+      "iter": 1,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 0.0
+    },
+    {
+      "iter": 2,
+      "files": [
+        "ops/scripts/lib/git_helper.py",
+        "ops/scripts/lib/phases.py",
+        "tests/eval/test_eval_loop_edge_cases.py",
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "website/features/summarization_engine/summarization/newsletter/prompts.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py"
+      ],
+      "targeted_criterion": "brief.key_evidence",
+      "criterion_delta": 0.0,
+      "composite_delta": 0.9000000000000057
+    },
+    {
+      "iter": 3,
+      "files": [
+        "website/features/summarization_engine/summarization/newsletter/prompts.py"
+      ],
+      "targeted_criterion": "brief.caveats_addressed",
+      "criterion_delta": 0.0,
+      "composite_delta": 4.599999999999994
+    },
+    {
+      "iter": 4,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": -46.85
+    },
+    {
+      "iter": 5,
+      "files": [
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "website/features/summarization_engine/summarization/newsletter/prompts.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py"
+      ],
+      "targeted_criterion": "brief.main_topic_thesis",
+      "criterion_delta": 0.0,
+      "composite_delta": 33.11666666666667
+    },
+    {
+      "iter": 6,
+      "files": [
+        "tests/unit/summarization_engine/evaluator/test_models.py",
+        "tests/unit/summarization_engine/summarization/test_json_utils.py",
+        "website/features/summarization_engine/evaluator/models.py",
+        "website/features/summarization_engine/summarization/common/json_utils.py"
+      ],
+      "targeted_criterion": "label.compact_declarative",
+      "criterion_delta": 0.0,
+      "composite_delta": -4.726666666666674
+    },
+    {
+      "iter": 7,
+      "files": [
+        "docs/summary_eval/_config/branded_newsletter_sources.yaml",
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "tests/unit/summarization_engine/summarization/test_self_check.py",
+        "website/features/summarization_engine/core/router.py",
+        "website/features/summarization_engine/summarization/common/self_check.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py",
+        "website/features/summarization_engine/tests/unit/test_router.py"
+      ],
+      "targeted_criterion": "brief.caveats_addressed",
+      "criterion_delta": 0.0,
+      "composite_delta": 13.602000000000018
+    },
+    {
+      "iter": 8,
+      "files": [],
+      "targeted_criterion": null,
+      "criterion_delta": 0.0,
+      "composite_delta": 92.45
+    },
+    {
+      "iter": 9,
+      "files": [
+        "tests/unit/summarization_engine/summarization/test_self_check.py",
+        "website/features/summarization_engine/core/router.py",
+        "website/features/summarization_engine/summarization/common/self_check.py",
+        "website/features/summarization_engine/tests/unit/test_router.py"
+      ],
+      "targeted_criterion": "brief.main_topic_thesis",
+      "criterion_delta": 0.0,
+      "composite_delta": -3.852000000000004
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "mini_title": "Recent Chemical Research Highlights: Advancements in Organic",
+  "brief_summary": "\u201cRecent Chemical Research Highlights\u201d presents a digest of cutting-edge organic chemistry advancements. It targets researchers, detailing new methodologies for C-C and C-heteroatom bond formation, innovative photocatalysis, and cycloaddition techniques. Breakthroughs in total synthesis and general synthetic methodology are also covered.",
+  "tags": [
+    "organic-chemistry",
+    "synthetic-chemistry",
+    "catalysis",
+    "photocatalysis",
+    "total-synthesis",
+    "bond-formation",
+    "methodology",
+    "chemical-research",
+    "reaction-mechanisms",
+    "research-summary"
+  ],
+  "detailed_summary": {
+    "publication_identity": "Organic Synthesis",
+    "issue_thesis": "This issue summarizes recent advancements in organic chemistry, focusing on novel methods for C-C and C-heteroatom bond formation, photocatalysis and cycloadditions, and breakthroughs in total synthesis and general synthetic methodology.",
+    "sections": [
+      {
+        "heading": "C\u2013C and C\u2013Heteroatom Bond Formation",
+        "bullets": [
+          "**Alcohol-Alcohol Cross-Coupling (MacMillan, *Science*)**: A nickel-mediated process forms C(sp\u00b3)\u2013C(sp\u00b3) bonds by deoxygenatively coupling two distinct alcohol fragments in a single vessel, open to air, via a proposed S H 2 radical sorting mechanism.",
+          "**Enantioconvergent Radical N-Alkylation (Liu/Yu/Li, *J. Am. Chem. Soc.*)**: A copper-catalyzed method couples diverse (hetero)aromatic amines with secondary or tertiary alkyl halides to produce chiral amines (>110 examples), exhibiting catalyst-controlled stereoselectivity and effectiveness for sterically congested amines, proposed via outer-sphere nucleophilic attack.",
+          "**Quaternary Stereocenter Construction (Yang, *J. Am. Chem. Soc.*)**: An enantioselective method couples an unactivated alkyl source with a tertiary alkyl moiety to form all-carbon quaternary stereocenters, using a cooperative photoredox/Fe/chiral primary amine triple catalysis system under mild, base-free conditions, showing scalability and good functional-group tolerance.",
+          "**Regio- and Enantioselective Hydrofluorination (Hong, *J. Am. Chem. Soc.*)**: A NiH-catalyzed hydrofluorination of unactivated alkenes forms C\u2013F bonds with high regio- and enantioselectivity, employing a coordination directing strategy with a tailored chiral Bn-BOx ligand, particularly for \u03b2,\u03b3-alkenyl substrates, and exhibiting a (+)-nonlinear effect."
+        ]
+      },
+      {
+        "heading": "Photocatalysis and Cycloadditions",
+        "bullets": [
+          "**Asymmetric [2\u03c0 + 2\u03c3] Photocycloaddition (Jiang, *J. Am. Chem. Soc.*)**: A bifunctional chiral photosensitizer (PAH-containing chiral phosphoric acid) catalyzes a highly enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between bicyclo[1.1.0]butanes (BCBs) and vinylazaarenes, yielding bicyclo[2.1.1]hexane (BCH) derivatives with high yield and diastereoselectivity.",
+          "**Chromoselective C\u2013X Bond Activation (Gianetti, *J. Am. Chem. Soc.*)**: An organic helicenium-based photoredox system enables wavelength-dependent activation of C(sp\u00b2)\u2013X bonds in multi-halogenated aromatics, with red light selectively activating C(sp\u00b2)\u2013I bonds (XAT) and blue light activating C(sp\u00b2)\u2013Br bonds (conPET).",
+          "**Peptide Functionalization (Noel, *Angew. Chem. Int. Ed.*)**: A photocatalytic hydroarylation enables late-stage functionalization of peptides containing the dehydroalanine (Dha) residue, coupling Dha with various arylthianthrenium salts under mild conditions to generate unconventional phenylalanine derivatives.",
+          "**Difluoromethyl Nitrile Oxide Cycloaddition (Mykhailiuk, *Org. Lett.*)**: A (3+2) cycloaddition of *in situ*-generated difluoromethyl nitrile oxide with diverse alkenes proceeds at room temperature, applied to late-stage modification of finasteride and carbamazepine, with resulting CF\u2082H-isoxazolines convertible to various CF\u2082H-containing compounds.",
+          "**Photoredox Cross-Electrophile Coupling (Rauch, *Org. Lett.*)**: A metallaphotoredox reaction was developed for the cross-electrophile coupling of aryl bromides with benzyl bromides to synthesize di(hetero)arylmethanes, optimized using High-Throughput Experimentation (HTE) and ChemBeads, and scalable for medicinal chemistry."
+        ]
+      },
+      {
+        "heading": "Total Synthesis and Methodology",
+        "bullets": [
+          "**Diterpenoid Pyrone Synthesis (Li, *J. Am. Chem. Soc.*)**: The enantioselective divergent synthesis of 10 diterpenoid pyrones, including the first enantioselective syntheses of higginsianins A, B, D, E, and metarhizin C, was achieved in 14\u201316 steps from chiral pool enoxolone, relying on a late-stage Echavarren C(sp\u00b3)\u2013H alkynylation and subsequent transition metal-catalyzed alkyne functionalizations.",
+          "**Pallamolide Synthesis (Jia, *Angew. Chem. Int. Ed.*)**: The first total synthesis of pallamolides A\u2013E was completed, with asymmetry introduced via kinetic resolution using Corey-Bakshi-Shibata reduction and key steps including a diastereoselective Michael addition and a one-pot SmI\u2082-mediated cyclization/reduction.",
+          "**Pepluacetal Synthesis (She, *Angew. Chem. Int. Ed.*)**: The first total synthesis of the diterpenoid pepluacetal was achieved in both racemic and chiral forms, scalable to 20 mg, employing a photo-induced Wolff rearrangement/lactonization cascade and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion for stereocontrol.",
+          "**Chiral Amine Synthesis (Zhou/Wang/Zhou, *Nat. Chem.*)**: An enantioselective Cu(I)-catalyzed propargylic substitution of ketone-derived propargylic carbonates using a PYBOX ligand produces \u03b1-tertiary ethynylamines, also effective with O- and C-centered nucleophiles, and applied to synthesize azacycles and a \u03b2-secretase inhibitor.",
+          "**Alkene Isomerization (Engle/Vantourout, *Angew. Chem. Int. Ed.*)**: A nickel-catalyzed platform enables the stereodivergent E/Z-selective synthesis of internal alkenes from terminal alkenes via a one-carbon transposition, occurring at room temperature with commercially available reagents and proposed to proceed through a Ni\u2013H-mediated insertion/elimination mechanism.",
+          "**Oxepane Synthesis (Sarpong/Baik, *J. Org. Chem.*)**: Substituted seven-membered oxacycles (oxepanes) were synthesized from 4-hydroxy-2-cyclobutenones via skeletal remodeling, with a proposed Rh(I)-catalyzed cascade involving C\u2013C bond formation and cleavage through an oxa-Michael addition, intramolecular conjugate addition, and subsequent \u03b2-carbon elimination."
+        ]
+      }
+    ],
+    "conclusions_or_recommendations": [],
+    "stance": "neutral",
+    "cta": null
+  },
+  "metadata": {
+    "source_type": "newsletter",
+    "url": "https://www.synthesisspotlight.com/p/organic-synthesis-beehiiv",
+    "author": null,
+    "date": null,
+    "extraction_confidence": "high",
+    "confidence_reason": "HTML article text extracted via direct",
+    "total_tokens_used": 23966,
+    "gemini_pro_tokens": 20133,
+    "gemini_flash_tokens": 3833,
+    "total_latency_ms": 150594,
+    "cod_iterations_used": 2,
+    "self_check_missing_count": 6,
+    "patch_applied": true,
+    "engine_version": "2.0.0",
+    "structured_payload": {
+      "mini_title": "Recent Chemical Research Highlights: Advancements in Organic Synthesis",
+      "brief_summary": "\u201cRecent Chemical Research Highlights\u201d presents a digest of cutting-edge organic chemistry advancements. It targets researchers, detailing new methodologies for C-C and C-heteroatom bond formation, innovative photocatalysis, and cycloaddition techniques. Breakthroughs in total synthesis and general synthetic methodology are also covered. The issue provides descriptive overviews of recent peer-reviewed publications, highlighting novel reactions and strategies. This informative summary aims to keep the chemistry community abreast of significant developments.",
+      "tags": [
+        "organic-chemistry",
+        "synthetic-chemistry",
+        "catalysis",
+        "photocatalysis",
+        "total-synthesis",
+        "bond-formation",
+        "methodology",
+        "chemical-research",
+        "reaction-mechanisms",
+        "research-summary"
+      ],
+      "detailed_summary": {
+        "publication_identity": "Organic Synthesis",
+        "issue_thesis": "This issue summarizes recent advancements in organic chemistry, focusing on novel methods for C-C and C-heteroatom bond formation, photocatalysis and cycloadditions, and breakthroughs in total synthesis and general synthetic methodology.",
+        "sections": [
+          {
+            "heading": "C\u2013C and C\u2013Heteroatom Bond Formation",
+            "bullets": [
+              "**Alcohol-Alcohol Cross-Coupling (MacMillan, *Science*)**: A nickel-mediated process forms C(sp\u00b3)\u2013C(sp\u00b3) bonds by deoxygenatively coupling two distinct alcohol fragments in a single vessel, open to air, via a proposed S H 2 radical sorting mechanism.",
+              "**Enantioconvergent Radical N-Alkylation (Liu/Yu/Li, *J. Am. Chem. Soc.*)**: A copper-catalyzed method couples diverse (hetero)aromatic amines with secondary or tertiary alkyl halides to produce chiral amines (>110 examples), exhibiting catalyst-controlled stereoselectivity and effectiveness for sterically congested amines, proposed via outer-sphere nucleophilic attack.",
+              "**Quaternary Stereocenter Construction (Yang, *J. Am. Chem. Soc.*)**: An enantioselective method couples an unactivated alkyl source with a tertiary alkyl moiety to form all-carbon quaternary stereocenters, using a cooperative photoredox/Fe/chiral primary amine triple catalysis system under mild, base-free conditions, showing scalability and good functional-group tolerance.",
+              "**Regio- and Enantioselective Hydrofluorination (Hong, *J. Am. Chem. Soc.*)**: A NiH-catalyzed hydrofluorination of unactivated alkenes forms C\u2013F bonds with high regio- and enantioselectivity, employing a coordination directing strategy with a tailored chiral Bn-BOx ligand, particularly for \u03b2,\u03b3-alkenyl substrates, and exhibiting a (+)-nonlinear effect."
+            ]
+          },
+          {
+            "heading": "Photocatalysis and Cycloadditions",
+            "bullets": [
+              "**Asymmetric [2\u03c0 + 2\u03c3] Photocycloaddition (Jiang, *J. Am. Chem. Soc.*)**: A bifunctional chiral photosensitizer (PAH-containing chiral phosphoric acid) catalyzes a highly enantioselective [2\u03c0 + 2\u03c3] photocycloaddition between bicyclo[1.1.0]butanes (BCBs) and vinylazaarenes, yielding bicyclo[2.1.1]hexane (BCH) derivatives with high yield and diastereoselectivity.",
+              "**Chromoselective C\u2013X Bond Activation (Gianetti, *J. Am. Chem. Soc.*)**: An organic helicenium-based photoredox system enables wavelength-dependent activation of C(sp\u00b2)\u2013X bonds in multi-halogenated aromatics, with red light selectively activating C(sp\u00b2)\u2013I bonds (XAT) and blue light activating C(sp\u00b2)\u2013Br bonds (conPET).",
+              "**Peptide Functionalization (Noel, *Angew. Chem. Int. Ed.*)**: A photocatalytic hydroarylation enables late-stage functionalization of peptides containing the dehydroalanine (Dha) residue, coupling Dha with various arylthianthrenium salts under mild conditions to generate unconventional phenylalanine derivatives.",
+              "**Difluoromethyl Nitrile Oxide Cycloaddition (Mykhailiuk, *Org. Lett.*)**: A (3+2) cycloaddition of *in situ*-generated difluoromethyl nitrile oxide with diverse alkenes proceeds at room temperature, applied to late-stage modification of finasteride and carbamazepine, with resulting CF\u2082H-isoxazolines convertible to various CF\u2082H-containing compounds.",
+              "**Photoredox Cross-Electrophile Coupling (Rauch, *Org. Lett.*)**: A metallaphotoredox reaction was developed for the cross-electrophile coupling of aryl bromides with benzyl bromides to synthesize di(hetero)arylmethanes, optimized using High-Throughput Experimentation (HTE) and ChemBeads, and scalable for medicinal chemistry."
+            ]
+          },
+          {
+            "heading": "Total Synthesis and Methodology",
+            "bullets": [
+              "**Diterpenoid Pyrone Synthesis (Li, *J. Am. Chem. Soc.*)**: The enantioselective divergent synthesis of 10 diterpenoid pyrones, including the first enantioselective syntheses of higginsianins A, B, D, E, and metarhizin C, was achieved in 14\u201316 steps from chiral pool enoxolone, relying on a late-stage Echavarren C(sp\u00b3)\u2013H alkynylation and subsequent transition metal-catalyzed alkyne functionalizations.",
+              "**Pallamolide Synthesis (Jia, *Angew. Chem. Int. Ed.*)**: The first total synthesis of pallamolides A\u2013E was completed, with asymmetry introduced via kinetic resolution using Corey-Bakshi-Shibata reduction and key steps including a diastereoselective Michael addition and a one-pot SmI\u2082-mediated cyclization/reduction.",
+              "**Pepluacetal Synthesis (She, *Angew. Chem. Int. Ed.*)**: The first total synthesis of the diterpenoid pepluacetal was achieved in both racemic and chiral forms, scalable to 20 mg, employing a photo-induced Wolff rearrangement/lactonization cascade and a late-stage Rh-catalyzed transannular C(sp\u00b3)\u2013H carbenoid insertion for stereocontrol.",
+              "**Chiral Amine Synthesis (Zhou/Wang/Zhou, *Nat. Chem.*)**: An enantioselective Cu(I)-catalyzed propargylic substitution of ketone-derived propargylic carbonates using a PYBOX ligand produces \u03b1-tertiary ethynylamines, also effective with O- and C-centered nucleophiles, and applied to synthesize azacycles and a \u03b2-secretase inhibitor.",
+              "**Alkene Isomerization (Engle/Vantourout, *Angew. Chem. Int. Ed.*)**: A nickel-catalyzed platform enables the stereodivergent E/Z-selective synthesis of internal alkenes from terminal alkenes via a one-carbon transposition, occurring at room temperature with commercially available reagents and proposed to proceed through a Ni\u2013H-mediated insertion/elimination mechanism.",
+              "**Oxepane Synthesis (Sarpong/Baik, *J. Org. Chem.*)**: Substituted seven-membered oxacycles (oxepanes) were synthesized from 4-hydroxy-2-cyclobutenones via skeletal remodeling, with a proposed Rh(I)-catalyzed cascade involving C\u2013C bond formation and cleavage through an oxa-Michael addition, intramolecular conjugate addition, and subsequent \u03b2-carbon elimination."
+            ]
+          }
+        ],
+        "conclusions_or_recommendations": [],
+        "stance": "neutral",
+        "cta": null
+      }
+    },
+    "is_schema_fallback": false
+  }
+}

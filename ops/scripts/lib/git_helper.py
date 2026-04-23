@@ -59,3 +59,27 @@ def worktree_changed_paths(repo_root: Path) -> list[str]:
         if path:
             paths.append(path)
     return paths
+
+
+def head_changed_paths(repo_root: Path) -> list[str]:
+    """Return paths changed by HEAD, used for pre-Phase-A tuning commits."""
+    output = _run(
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+        repo_root,
+    )
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
+def changed_paths_since(repo_root: Path, base_ref: str) -> list[str]:
+    """Return file paths changed between base_ref (exclusive) and HEAD."""
+    output = _run(["diff", "--name-only", f"{base_ref}..HEAD"], repo_root)
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
+def last_commit_matching_subject(repo_root: Path, subject_text: str) -> str | None:
+    """Return latest commit SHA whose subject contains subject_text."""
+    output = _run(
+        ["log", "--fixed-strings", "--grep", subject_text, "--format=%H", "-n", "1"],
+        repo_root,
+    ).strip()
+    return output or None

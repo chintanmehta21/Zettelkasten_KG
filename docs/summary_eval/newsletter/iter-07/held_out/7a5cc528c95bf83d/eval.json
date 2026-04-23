@@ -1,0 +1,151 @@
+{
+  "g_eval": {
+    "coherence": 4.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is generally coherent, consistent, and fluent. It captures the main topic and most relevant information. Minor issues include the brief summary not fully reflecting the article's structural emphasis on the diagnostics excerpt, and some details from the excerpt (like 'shift left' techniques and specific examples) being omitted or misplaced in the detailed summary."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "The book includes practical exercises.",
+          "fact": null,
+          "sentence": "The book originated from an O'Reilly outline on usable API design and includes practical exercises, citing John Carmack as an exemplar of technical and product focus.",
+          "span": "includes practical exercises",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.8,
+      "items": [
+        {
+          "claim": "The brief summary should reflect the prominence of the diagnostics excerpt.",
+          "fact": null,
+          "sentence": "The Pragmatic Engineer newsletter highlights the growing demand for \"product-minded engineers\" due to AI's automation of coding *how*. It summarizes Drew Hoskins's book, \"The Product-Minded Engineer,\" which offers a framework for developing this skill. The issue details advice for engineers and product managers, emphasizing asking \"why\" and understanding user perspectives.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The detailed summary should include the 'Diagnose Early (Shift Left)' section and its techniques from the excerpt.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The detailed summary should capture notable examples from the diagnostics excerpt.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary should address the author's explicit caveats.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.952,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "The book originated from an O'Reilly outline on usable API design and includes practical exercises, citing John Carmack as an exemplar of technical and product focus.",
+        "reason": "The source implies practical advice but does not explicitly state the book 'includes practical exercises' as a feature."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 18.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.main_topic_thesis",
+          "brief.conclusions_distinct",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.caveats_addressed"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 41.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.type_intent",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 90.83,
+    "finesure": 86.0,
+    "qafact": 60.0,
+    "summac": 92.85
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "d1bff1ed4fe0489ccf70c9fdafdd2b611ce61a0b5f34aef82d0283365f84f62f",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10953,
+    "total_tokens_out": 1470,
+    "latency_ms": 42497
+  }
+}

@@ -10,10 +10,26 @@ from pathlib import Path
 import httpx
 
 
+class _ExistingServer:
+    """No-op process shim for a server that was already healthy on the port."""
+
+    def terminate(self) -> None:
+        return None
+
+    def wait(self, timeout: int | None = None) -> int:
+        return 0
+
+    def kill(self) -> None:
+        return None
+
+
 def start_server(
     port: int = 10000,
     env_overrides: dict[str, str] | None = None,
-) -> subprocess.Popen:
+) -> subprocess.Popen | _ExistingServer:
+    if _is_healthy(port):
+        return _ExistingServer()
+
     env = {**os.environ, **(env_overrides or {})}
     repo_root = Path(__file__).resolve().parents[3]
     proc = subprocess.Popen(
@@ -23,11 +39,11 @@ def start_server(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    _wait_for_health(port)
+    _wait_for_health(port, proc=proc)
     return proc
 
 
-def stop_server(proc: subprocess.Popen) -> None:
+def stop_server(proc: subprocess.Popen | _ExistingServer) -> None:
     proc.terminate()
     try:
         proc.wait(timeout=5)
@@ -36,12 +52,33 @@ def stop_server(proc: subprocess.Popen) -> None:
         proc.wait(timeout=5)
 
 
-def _wait_for_health(port: int, timeout_sec: int = 30) -> None:
+def _is_healthy(port: int) -> bool:
+    url = f"http://127.0.0.1:{port}/api/health"
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            return client.get(url).status_code == 200
+    except Exception:
+        return False
+
+
+def _wait_for_health(
+    port: int,
+    timeout_sec: int = 30,
+    proc: subprocess.Popen | None = None,
+) -> None:
     deadline = time.monotonic() + timeout_sec
     url = f"http://127.0.0.1:{port}/api/health"
     last_exc = None
 
     while time.monotonic() < deadline:
+        if proc is not None and proc.poll() is not None:
+            output = ""
+            if proc.stdout is not None:
+                output = proc.stdout.read()[-1000:]
+            raise RuntimeError(
+                "Server process exited before becoming healthy: "
+                f"exit={proc.returncode}, output={output!r}"
+            )
         try:
             with httpx.Client(timeout=2.0) as client:
                 resp = client.get(url)
