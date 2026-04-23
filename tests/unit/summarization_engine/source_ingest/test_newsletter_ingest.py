@@ -57,6 +57,7 @@ async def test_ingest_adds_structural_signals(monkeypatch: pytest.MonkeyPatch, t
     result = await NewsletterIngestor().ingest(
         "https://example.substack.com/p/example",
         config={
+            "preflight_probe_enabled": False,
             "site_specific_selectors_enabled": True,
             "preheader_fallback_chars": 150,
             "cta_keyword_regex": "subscribe",

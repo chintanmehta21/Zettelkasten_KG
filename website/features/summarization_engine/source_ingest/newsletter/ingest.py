@@ -8,6 +8,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
+from website.features.summarization_engine.core.errors import NewsletterURLUnreachable
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
 from website.features.summarization_engine.source_ingest.newsletter.conclusions import (
@@ -53,11 +54,67 @@ _PROVIDER_ORDER = (
     "freedium",
 )
 
+_PREFLIGHT_TIMEOUT = 8.0
+_PREFLIGHT_GET_RANGE = "bytes=0-256"
+
+
+async def _preflight_probe(url: str) -> None:
+    """Probe a URL with HEAD-then-ranged-GET and raise if unreachable.
+
+    Raises ``NewsletterURLUnreachable`` for DNS failure, connection errors,
+    or any final HTTP status >= 400 (after redirects). Returns silently on
+    success. Bounded by ``_PREFLIGHT_TIMEOUT`` so very slow URLs are treated
+    as unreachable rather than hanging the pipeline.
+    """
+    if not url or not isinstance(url, str):
+        raise NewsletterURLUnreachable(url or "", None, "empty_url")
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise NewsletterURLUnreachable(url, None, "malformed_url")
+
+    headers = {"User-Agent": _DEFAULT_UA}
+    try:
+        async with httpx.AsyncClient(
+            timeout=_PREFLIGHT_TIMEOUT,
+            follow_redirects=True,
+            headers=headers,
+        ) as client:
+            try:
+                resp = await client.head(url)
+            except httpx.HTTPError:
+                resp = None
+            status = resp.status_code if resp is not None else None
+            if resp is None or status is None or status >= 400:
+                # Some servers disallow HEAD (403/405) or mis-report it;
+                # fall back to a ranged GET to confirm liveness.
+                get_resp = await client.get(
+                    url,
+                    headers={**headers, "Range": _PREFLIGHT_GET_RANGE},
+                )
+                status = get_resp.status_code
+                if status >= 400:
+                    raise NewsletterURLUnreachable(
+                        url,
+                        status,
+                        f"http_{status}",
+                    )
+    except NewsletterURLUnreachable:
+        raise
+    except httpx.TimeoutException as exc:
+        raise NewsletterURLUnreachable(url, None, f"timeout: {exc.__class__.__name__}") from exc
+    except httpx.ConnectError as exc:
+        raise NewsletterURLUnreachable(url, None, f"dns_or_connect: {exc}") from exc
+    except httpx.HTTPError as exc:
+        raise NewsletterURLUnreachable(url, None, f"http_error: {exc.__class__.__name__}") from exc
+
 
 class NewsletterIngestor(BaseIngestor):
     source_type = SourceType.NEWSLETTER
 
     async def ingest(self, url: str, *, config: dict[str, Any]) -> IngestResult:
+        if bool(config.get("preflight_probe_enabled", True)):
+            await _preflight_probe(url)
+
         min_len = int(config.get("min_text_length", 500))
         use_googlebot = bool(config.get("googlebot_ua", True))
         fallback_names: list[str] = list(

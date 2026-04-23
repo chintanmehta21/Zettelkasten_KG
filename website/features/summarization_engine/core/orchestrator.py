@@ -13,6 +13,7 @@ from website.features.summarization_engine.core.cache import FsContentCache
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.errors import (
     ExtractionConfidenceError,
+    NewsletterURLUnreachable,
     RoutingError,
 )
 from website.features.summarization_engine.core.models import (
@@ -100,7 +101,18 @@ async def summarize_url_bundle(
             **{key: value for key, value in cached.items() if not key.startswith("_")}
         )
     else:
-        ingest_result = await ingestor.ingest(url, config=source_config)
+        try:
+            ingest_result = await ingestor.ingest(url, config=source_config)
+        except NewsletterURLUnreachable as exc:
+            # Surface dead URL as a structured failure BEFORE calling Gemini.
+            # The exception already carries status/reason for callers/eval harness.
+            logger.warning(
+                "orchestrator.newsletter_unreachable url=%s status=%s reason=%s",
+                exc.url,
+                exc.status,
+                exc.reason,
+            )
+            raise
         _INGEST_CACHE.put(ingest_cache_key, ingest_result.model_dump(mode="json"))
 
     if ingest_result.extraction_confidence == "low":

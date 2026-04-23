@@ -33,6 +33,24 @@ class ExtractionConfidenceError(ExtractionError):
     """Raised when extraction confidence is low and caller rejects it."""
 
 
+class NewsletterURLUnreachable(ExtractionError):
+    """Raised when a newsletter URL is unreachable via preflight probe.
+
+    Surfaced BEFORE any Gemini/summarization call so the eval harness (and
+    API callers) can distinguish dead URLs from real extraction failures.
+    """
+
+    def __init__(self, url: str, status: int | None, reason: str):
+        message = f"Newsletter URL unreachable: {url} (status={status}, reason={reason})"
+        super().__init__(
+            message,
+            source_type="newsletter",
+            reason=reason or (f"http_{status}" if status else "network"),
+        )
+        self.url = url
+        self.status = status
+
+
 class SummarizationError(EngineError):
     """Raised when the LLM summarization pipeline fails."""
 
