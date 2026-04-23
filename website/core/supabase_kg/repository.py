@@ -65,6 +65,13 @@ def _missing_schema_cache_column(exc: Exception) -> str | None:
     return match.group(1) if match else None
 
 
+def _is_legacy_source_type_constraint(exc: Exception, payload: dict[str, Any]) -> bool:
+    return (
+        payload.get("source_type") == "newsletter"
+        and "kg_nodes_source_type_check" in str(exc)
+    )
+
+
 class KGRepository:
     """Manages KG data in Supabase.
 
@@ -264,6 +271,12 @@ class KGRepository:
             except Exception as exc:
                 missing = _missing_schema_cache_column(exc)
                 if not missing or missing not in pending or missing in dropped_columns:
+                    if _is_legacy_source_type_constraint(exc, pending):
+                        pending = {**pending, "source_type": "substack"}
+                        logger.warning(
+                            "Supabase kg_nodes lacks newsletter source_type; retrying as substack"
+                        )
+                        continue
                     raise
                 dropped_columns.add(missing)
                 pending = {key: value for key, value in pending.items() if key != missing}
