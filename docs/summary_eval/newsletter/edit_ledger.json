@@ -6,6 +6,20 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 0.0
+    },
+    {
+      "iter": 2,
+      "files": [
+        "ops/scripts/lib/git_helper.py",
+        "ops/scripts/lib/phases.py",
+        "tests/eval/test_eval_loop_edge_cases.py",
+        "tests/unit/summarization_engine/summarization/test_newsletter_summarizer.py",
+        "website/features/summarization_engine/summarization/newsletter/prompts.py",
+        "website/features/summarization_engine/summarization/newsletter/summarizer.py"
+      ],
+      "targeted_criterion": "brief.key_evidence",
+      "criterion_delta": 0.0,
+      "composite_delta": 0.9000000000000057
     }
   ]
 }
