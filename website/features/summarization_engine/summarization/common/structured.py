@@ -257,12 +257,12 @@ def _coerce_detailed_summary(
     source_type: SourceType | None = None,
 ) -> list[DetailedSummarySection]:
     """Convert a source-specific or generic detailed_summary into a list of sections."""
+    if source_type == SourceType.YOUTUBE:
+        return _coerce_youtube_detailed(payload)
+
     raw = getattr(payload, "detailed_summary", None)
     if raw is None:
         return [DetailedSummarySection(heading="Summary", bullets=[""])]
-
-    if source_type == SourceType.YOUTUBE and isinstance(raw, BaseModel):
-        return _coerce_youtube_detailed(raw)
 
     if isinstance(raw, list):
         out: list[DetailedSummarySection] = []
@@ -341,45 +341,27 @@ def _coerce_detailed_summary(
     return [DetailedSummarySection(heading="Summary", bullets=[str(raw)])]
 
 
-def _coerce_youtube_detailed(raw: BaseModel) -> list[DetailedSummarySection]:
-    """Render YouTubeDetailedPayload as readable chapter-by-chapter sections.
+def _coerce_youtube_detailed(payload: BaseModel) -> list[DetailedSummarySection]:
+    """Delegate YouTube detailed composition to the dedicated layout module.
 
-    Produces: Thesis -> one section per chapter (heading = "timestamp - title",
-    bullets = chapter.bullets) -> optional Demonstrations -> Closing Takeaway.
-    Never emits raw JSON-serialized ChapterBullet objects.
+    Accepts the OUTER YouTubeStructuredPayload so the composer can fold
+    speakers and brief_summary into the Overview section. Falls back to a
+    minimal Summary section only when validation fails.
     """
-    data = raw.model_dump(mode="json")
-    sections: list[DetailedSummarySection] = []
+    from website.features.summarization_engine.summarization.youtube.layout import (
+        compose_youtube_detailed,
+    )
+    from website.features.summarization_engine.summarization.youtube.schema import (
+        YouTubeStructuredPayload,
+    )
 
-    thesis = str(data.get("thesis") or "").strip()
-    if thesis:
-        sections.append(DetailedSummarySection(heading="Thesis", bullets=[thesis]))
-
-    for chapter in data.get("chapters_or_segments") or []:
-        if not isinstance(chapter, dict):
-            continue
-        title = str(chapter.get("title") or "").strip() or "Segment"
-        timestamp = str(chapter.get("timestamp") or "").strip()
-        if timestamp and timestamp.lower() not in {"n/a", "none", ""}:
-            heading = f"{timestamp} — {title}"
-        else:
-            heading = title
-        bullets = [str(b).strip() for b in (chapter.get("bullets") or []) if b and str(b).strip()]
-        if not bullets:
-            bullets = [title]
-        sections.append(DetailedSummarySection(heading=heading, bullets=bullets))
-
-    demos = [str(d).strip() for d in (data.get("demonstrations") or []) if d and str(d).strip()]
-    if demos:
-        sections.append(DetailedSummarySection(heading="Demonstrations", bullets=demos))
-
-    takeaway = str(data.get("closing_takeaway") or "").strip()
-    if takeaway:
-        sections.append(
-            DetailedSummarySection(heading="Closing Takeaway", bullets=[takeaway])
-        )
-
-    return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    if isinstance(payload, YouTubeStructuredPayload):
+        return compose_youtube_detailed(payload)
+    try:
+        validated = YouTubeStructuredPayload.model_validate(payload.model_dump(mode="json"))
+    except Exception:
+        return [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
+    return compose_youtube_detailed(validated)
 
 
 def _mini_title_hint_for(ingest: IngestResult) -> str:
