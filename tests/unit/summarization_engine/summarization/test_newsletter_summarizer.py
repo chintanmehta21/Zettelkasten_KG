@@ -16,6 +16,7 @@ from website.features.summarization_engine.summarization.newsletter.schema impor
 )
 from website.features.summarization_engine.summarization.newsletter.summarizer import (
     NewsletterSummarizer,
+    _trim_at_sentence_boundary,
 )
 
 
@@ -99,3 +100,18 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape(
     # Contract: the summarizer invoked generate() with the Newsletter schema
     call = mock_gemini_client.generate.await_args
     assert call.kwargs["response_schema"] is NewsletterStructuredPayload
+
+
+def test_trim_at_sentence_boundary_avoids_mid_word_cutoff():
+    text = (
+        "Sentence one explains the publication and thesis. "
+        "Sentence two preserves the evidence and stance. "
+        "Sentence three is intentionally long enough that the raw character limit "
+        "would otherwise cut directly through a word and make the public brief look broken."
+    )
+
+    trimmed = _trim_at_sentence_boundary(text, 120)
+
+    assert len(trimmed) <= 120
+    assert trimmed.endswith(".")
+    assert not trimmed.endswith("oth")

@@ -1,6 +1,7 @@
 """Newsletter per-source summarizer."""
 from __future__ import annotations
 
+import re
 import time
 
 from website.features.summarization_engine.core.models import SummaryMetadata
@@ -76,7 +77,10 @@ class NewsletterSummarizer(BaseSummarizer):
         latency_ms = int((time.perf_counter() - start) * 1000)
         return NewsletterSummaryResult(
             mini_title=payload.mini_title[:60],
-            brief_summary=payload.brief_summary[:400],
+            brief_summary=_trim_at_sentence_boundary(
+                payload.brief_summary,
+                self._engine_config.structured_extract.brief_summary_max_chars,
+            ),
             tags=_normalize_tags(
                 payload.tags,
                 self._engine_config.structured_extract.tags_min,
@@ -149,6 +153,25 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config) -> Newsle
         config.structured_extract.tags_max,
     )
     return payload
+
+
+def _trim_at_sentence_boundary(text: str, max_chars: int) -> str:
+    """Trim public brief text without cutting through words or sentences."""
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= max_chars:
+        return cleaned
+
+    candidate = cleaned[:max_chars].rstrip()
+    matches = list(re.finditer(r"[.!?](?=\s|$)", candidate))
+    if matches:
+        last = matches[-1].end()
+        if last >= max_chars * 0.55:
+            return candidate[:last].strip()
+
+    boundary = candidate.rfind(" ")
+    if boundary >= max_chars * 0.55:
+        return candidate[:boundary].rstrip(" ,;:")
+    return candidate.rstrip(" ,;:")
 
 
 def _fallback_title(*, title: str, publication: str) -> str:
