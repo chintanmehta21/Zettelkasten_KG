@@ -10,6 +10,7 @@ next phase automatically.  Override with --force-phase-a / --force-phase-b.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -83,6 +84,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-server", action="store_true")
     parser.add_argument("--no-commit", action="store_true")
     parser.add_argument("--skip-determinism", action="store_true")
+    parser.add_argument("--calibrate", action="store_true",
+                        help="Run held-out calibration gate and exit 0 (pass) or 2 (block)")
+    parser.add_argument("--calibration-scores", type=str,
+                        help="Path to JSON {url: composite_score} produced by external driver")
+    parser.add_argument("--baseline", type=float,
+                        help="Prior composite score to regress the held-out mean against")
+    parser.add_argument("--floor", type=float, default=85.0,
+                        help="Per-shape composite floor (default 85.0)")
+    parser.add_argument("--regression-tolerance", type=float, default=3.0,
+                        help="Max allowed mean regression below baseline (default 3.0)")
     return parser.parse_args()
 
 
@@ -203,6 +214,65 @@ def _apply_eval_key_pool_overrides(source: str | None) -> None:
     os.environ.setdefault("GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS", "1")
 
 
+def _run_calibration(args: argparse.Namespace) -> int:
+    from website.features.summarization_engine.summarization.common.calibration import (
+        CalibrationHarness, CalibrationShape, CalibrationVerdict,
+    )
+
+    shapes = [
+        CalibrationShape(name="lecture",   url=os.environ.get("CAL_LECTURE_URL", "")),
+        CalibrationShape(name="interview", url=os.environ.get("CAL_INTERVIEW_URL", "")),
+        CalibrationShape(name="tutorial",  url=os.environ.get("CAL_TUTORIAL_URL", "")),
+        CalibrationShape(name="review",    url=os.environ.get("CAL_REVIEW_URL", "")),
+        CalibrationShape(name="short",     url=os.environ.get("CAL_SHORT_URL", "")),
+    ]
+    if not all(s.url for s in shapes):
+        print(json.dumps({"status": "skipped", "reason": "CAL_*_URL env vars not all set"}))
+        return 0
+
+    if args.baseline is None:
+        print(json.dumps({"status": "error", "reason": "--baseline is required with --calibrate"}))
+        return 2
+    if not args.calibration_scores:
+        print(json.dumps({"status": "error", "reason": "--calibration-scores path is required with --calibrate"}))
+        return 2
+
+    scores_path = Path(args.calibration_scores)
+    if not scores_path.exists():
+        print(json.dumps({"status": "error", "reason": f"scores file not found: {scores_path}"}))
+        return 2
+    scores = json.loads(scores_path.read_text(encoding="utf-8"))
+
+    missing = [s.url for s in shapes if s.url not in scores]
+    if missing:
+        print(json.dumps({"status": "error", "reason": f"scores missing for URLs: {missing}"}))
+        return 2
+
+    class _JsonRunner:
+        def __init__(self, table: dict[str, float]):
+            self._table = table
+
+        async def score(self, url: str) -> float:
+            return float(self._table[url])
+
+    harness = CalibrationHarness(
+        shapes=shapes, floor=args.floor, regression_tolerance=args.regression_tolerance,
+    )
+    result = asyncio.run(harness.run(_JsonRunner(scores), baseline=args.baseline))
+
+    payload = {
+        "status": result.verdict.value,
+        "reason": result.reason,
+        "mean": result.mean,
+        "per_shape": result.per_shape,
+        "baseline": args.baseline,
+        "floor": args.floor,
+        "regression_tolerance": args.regression_tolerance,
+    }
+    print(json.dumps(payload, indent=2))
+    return 0 if result.verdict is CalibrationVerdict.PASS else 2
+
+
 def main() -> int:
     args = _parse_args()
     _apply_eval_key_pool_overrides(args.source)
@@ -222,6 +292,9 @@ def main() -> int:
     if HALT_FILE.exists():
         print(json.dumps({"status": "halted", "reason": str(HALT_FILE)}))
         return 0
+
+    if args.calibrate:
+        return _run_calibration(args)
 
     if not args.source:
         raise SystemExit("--source is required")
