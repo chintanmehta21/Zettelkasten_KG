@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
@@ -38,6 +39,65 @@ _SOURCE_PREFIXES: dict[str, str] = {
 
 # Source-type names to filter out (they duplicate the source_type column)
 _SOURCE_TYPE_NAMES = frozenset(_SOURCE_PREFIXES.keys())
+
+
+def _extract_display_brief(raw: Any) -> str:
+    """Return a user-facing plain-text brief from a stored summary cell.
+
+    Historical rows persist the summary as a JSON blob of the form
+    ``{"brief_summary": "...", "detailed_summary": "..."}``. The KG panel
+    renders whatever string we hand it, so the blob leaks as raw JSON if we
+    pass it through unchanged. This helper extracts the brief, strips
+    residual markdown scaffolding, and falls back to the raw string when
+    the cell is plain text.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    candidates: list[str] = [text]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(text[start : end + 1])
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(parsed, dict):
+            brief = parsed.get("brief_summary") or parsed.get("summary")
+            if isinstance(brief, str) and brief.strip():
+                return _sanitize_brief_text(brief)
+            detailed = parsed.get("detailed_summary")
+            if isinstance(detailed, str) and detailed.strip():
+                return _sanitize_brief_text(detailed)
+    # Row is not a JSON blob — fall back to direct sanitation.
+    return _sanitize_brief_text(text)
+
+
+_MD_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_MD_ITALIC = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+_MD_HEADING = re.compile(r"^#{1,6}\s+")
+_SCAFFOLD_PREFIXES = (
+    r"^the closing takeaway[:\-]\s*",
+    r"^closing takeaway[:\-]\s*",
+    r"^in conclusion[,:\-]\s*",
+    r"^to summarize[,:\-]\s*",
+)
+
+
+def _sanitize_brief_text(text: str) -> str:
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    cleaned = _MD_HEADING.sub("", cleaned).strip()
+    cleaned = _MD_BOLD.sub(r"\1", cleaned)
+    cleaned = _MD_ITALIC.sub(r"\1", cleaned)
+    for pattern in _SCAFFOLD_PREFIXES:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE).strip()
+    # Drop dangling mid-word or unterminated tail: keep only full sentences.
+    pieces = re.findall(r"[^.!?]+[.!?]", cleaned)
+    if pieces:
+        return " ".join(p.strip() for p in pieces)
+    return cleaned
 
 
 def _normalize_tag(raw: str) -> str:
@@ -620,7 +680,7 @@ class KGRepository:
                 id=row["id"],
                 name=row["name"],
                 group=_normalize_source_type(row["source_type"]),
-                summary=row.get("summary", ""),
+                summary=_extract_display_brief(row.get("summary", "")),
                 tags=row.get("tags", []),
                 url=row["url"],
                 date=row["node_date"] or "",
@@ -770,7 +830,7 @@ class KGRepository:
                 id=row["id"],
                 name=row["name"],
                 group=_normalize_source_type(row["source_type"]),
-                summary=row.get("summary", ""),
+                summary=_extract_display_brief(row.get("summary", "")),
                 tags=row.get("tags", []),
                 url=row["url"],
                 date=row.get("node_date") or "",
