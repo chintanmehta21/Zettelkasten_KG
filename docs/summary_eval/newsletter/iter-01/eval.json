@@ -1,29 +1,28 @@
 {
   "g_eval": {
-    "coherence": 4.5,
-    "consistency": 4.0,
-    "fluency": 5.0,
+    "coherence": 5.0,
+    "consistency": 4.5,
+    "fluency": 3.0,
     "relevance": 4.5,
-    "reasoning": "The summary is well-structured and logically coherent, accurately reflecting the source's main arguments and key details. There is a minor factual inconsistency regarding a specific date, which impacts consistency and faithfulness."
+    "reasoning": "The summary effectively captures the main arguments and details from the source, particularly in the detailed summary section. However, the brief summary is truncated mid-sentence, which significantly impacts its fluency and overall completeness. The tags are mostly relevant but miss the piece type."
   },
   "finesure": {
     "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
       "score": 0.9,
       "items": [
         {
-          "claim": null,
+          "claim": "The brief summary is truncated and incomplete, ending mid-sentence.",
           "fact": null,
-          "sentence": "On July 29, 2025 (inferred), Substack sent a push notification promoting a pro-Nazi newsletter, \"NatSocToday,\" to an undisclosed number of users.",
-          "span": null,
+          "sentence": "The newsletter details a late July 2025 push notific",
+          "span": "push notific",
           "importance": null
-        }
-      ]
-    },
-    "completeness": {
-      "score": 0.95,
-      "items": [
+        },
         {
-          "claim": null,
+          "claim": "The tags are missing the piece type (e.g., opinion, analysis).",
           "fact": null,
           "sentence": null,
           "span": null,
@@ -37,12 +36,12 @@
     }
   },
   "summac_lite": {
-    "score": 0.958,
+    "score": 0.941,
     "contradicted_sentences": [],
     "neutral_sentences": [
       {
-        "sentence": "On July 29, 2025 (inferred), Substack sent a push notification promoting a pro-Nazi newsletter, \"NatSocToday,\" to an undisclosed number of users.",
-        "reason": "The specific date 'July 29, 2025' is an incorrect inference based on the source's 'Monday' and 'Jul 31, 2025' (Thursday) dates. The correct date would be July 28, 2025."
+        "sentence": "The newsletter details a late July 2025 push notific",
+        "reason": "The sentence is truncated and incomplete, making it difficult to fully assess its entailment."
       }
     ]
   },
@@ -50,22 +49,22 @@
     "components": [
       {
         "id": "brief_summary",
-        "score": 19.0,
+        "score": 23.0,
         "max_points": 25,
         "criteria_fired": [
           "brief.main_topic_thesis",
           "brief.argument_structure",
-          "brief.key_evidence",
           "brief.conclusions_distinct",
+          "brief.caveats_addressed",
           "brief.stance_preserved"
         ],
         "criteria_missed": [
-          "brief.caveats_addressed"
+          "brief.key_evidence"
         ]
       },
       {
         "id": "detailed_summary",
-        "score": 43.0,
+        "score": 45.0,
         "max_points": 45,
         "criteria_fired": [
           "detailed.sections_ordered",
@@ -80,7 +79,7 @@
       },
       {
         "id": "tags",
-        "score": 13.0,
+        "score": 12.0,
         "max_points": 15,
         "criteria_fired": [
           "tags.count_7_to_10",
@@ -105,30 +104,27 @@
       }
     ],
     "caps_applied": {
-      "hallucination_cap": 60,
+      "hallucination_cap": null,
       "omission_cap": null,
       "generic_cap": null
     },
-    "anti_patterns_triggered": [
-      {
-        "id": "invented_number",
-        "source_region": "On July 29, 2025 (inferred), Substack sent a push notification promoting a pro-Nazi newsletter, \"NatSocToday,\" to an undisclosed number of users.",
-        "auto_cap": 60
-      }
-    ]
+    "anti_patterns_triggered": []
   },
   "maps_to_metric_summary": {
-    "g_eval": 91.11,
-    "finesure": 89.61,
-    "qafact": 100.0,
-    "summac": 80.0
+    "g_eval": 88.89,
+    "finesure": 94.0,
+    "qafact": 60.0,
+    "summac": 100.0
   },
   "editorialization_flags": [],
   "evaluator_metadata": {
-    "prompt_version": "evaluator.v2",
+    "prompt_version": "evaluator.v3",
     "rubric_version": "rubric_newsletter.v1",
-    "total_tokens_in": 4237,
-    "total_tokens_out": 1263,
-    "latency_ms": 107685
+    "implementation_fingerprint": "a5ebda9b5ca844382f5bd8de6cfd4778ba8414b5e2b746a2af32034f80702487",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 5233,
+    "total_tokens_out": 1025,
+    "latency_ms": 43129
   }
 }

@@ -4,17 +4,17 @@
   "urls": [
     "https://www.platformer.news/substack-nazi-push-notification/"
   ],
-  "started_at": "2026-04-22T07:34:39.046251+00:00",
-  "ended_at": "2026-04-22T07:37:52.536421+00:00",
+  "started_at": "2026-04-23T06:45:00.851115+00:00",
+  "ended_at": "2026-04-23T06:46:48.101968+00:00",
   "env": "dev",
   "held_out": false,
-  "prompt_version": "evaluator.v2",
+  "prompt_version": "evaluator.v3",
   "records": [
     {
       "url": "https://www.platformer.news/substack-nazi-push-notification/",
-      "composite": 60.0,
+      "composite": 94.5,
       "extraction_confidence": "high",
-      "latency_ms": 193440,
+      "latency_ms": 107134,
       "ingestor_version": "2.0.0"
     }
   ],

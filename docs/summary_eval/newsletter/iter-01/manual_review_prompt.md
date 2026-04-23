@@ -151,78 +151,69 @@ SUMMARY:
 
 ### SUMMARY
 ```yaml
-mini_title: 'Platformer: Substack''s ''Neutral Infrastructure'' Claim Underm'
-brief_summary: Casey Newton's *Platformer* newsletter argues that Substack's self-proclaimed
-  "neutral infrastructure" is a "fantasy," directly contradicted by its use of "social
-  media-style growth hacks." The issue details a specific incident where Substack's
-  algorithms promoted a pro-Nazi newsletter, "NatSocToday," via push notifications
-  and recommendations. This event, which Newton had previously predicted, va
+mini_title: 'Platformer: Substack''s ''Neutrality'' Leads to Extremist Promo'
+brief_summary: Platformer, a publication by Casey Newton, argues that Substack's self-described
+  status as "neutral infrastructure" is fundamentally challenged by its content moderation
+  policies and product design. The issue's thesis is that these factors inevitably
+  lead to the platform actively promoting extremist content, as demonstrated by a
+  recent incident. The newsletter details a late July 2025 push notific
 tags:
-- platformer
 - substack
 - content-moderation
-- platform-neutrality
-- algorithmic-promotion
+- platform-policy
 - extremism
-- nazi-content
 - push-notifications
+- algorithmic-amplification
+- free-speech
+- platformer
+- nazi-content
 - tech-ethics
-- newsletter-platforms
 detailed_summary:
-  publication_identity: Platformer, by Casey Newton
-  issue_thesis: Substack's claim of "neutral infrastructure" is a "fantasy" undermined
-    by its algorithmic promotion of extremist content, as demonstrated by a push notification
-    promoting a pro-Nazi newsletter.
+  publication_identity: Platformer, written by Casey Newton
+  issue_thesis: Substack's content moderation policies, particularly its refusal to
+    remove or demonetize pro-Nazi publications, combined with its product design and
+    "social media-style growth hacks" like push notifications, make the active promotion
+    of extremist content inevitable, thereby undermining its claims of being "neutral
+    infrastructure."
   sections:
-  - heading: Substack's 'Neutral Infrastructure' Claim Undermined
+  - heading: The Incident
     bullets:
-    - Casey Newton argues Substack's self-perception as "neutral infrastructure" is
-      a "fantasy."
-    - This claim is undermined by the platform's simultaneous use of "social media-style
-      growth hacks" like push notifications and recommendations.
-    - Newton specifically predicted that users of the Substack app would eventually
-      receive push notifications promoting publications with symbols like swastikas.
-    - He argued these systems would inevitably lead to active promotion of extremist
-      content, blurring the line between passive hosting and active promotion.
-  - heading: 'Evidence: Algorithmic Promotion of Extremism'
+    - In late July 2025, Substack sent a push alert to an undisclosed number of users
+      promoting the newsletter "NatSocToday."
+    - The incident was first reported by Taylor Lorenz in *User Mag*.
+    - '"NatSocToday" identifies as for the "National Socialist and White Nationalist
+      Community," describes Jewish people as a "sickness," and advocates for eradicating
+      minorities to establish a "White homeland."'
+    - The newsletter's profile page also recommended other white nationalist publications
+      on the platform.
+    - Substack called the alert a "serious error," apologized for the "distress,"
+      and took the system offline to diagnose the cause.
+  - heading: Argument & Framing
     bullets:
-    - On July 29, 2025 (inferred), Substack sent a push notification promoting a pro-Nazi
-      newsletter, "NatSocToday," to an undisclosed number of users.
-    - '"NatSocToday" identifies as serving the "National Socialist and White Nationalist
-      Community."'
-    - The newsletter has described Jewish people as a "sickness" and advocates for
-      eradicating minorities to establish a "White homeland."
-    - Clicking the newsletter's profile led to recommendations for other white nationalist
-      publications on the platform.
-  - heading: Substack's Response
+    - Newton argues the event was predictable and validates the decision by his publication,
+      *Platformer*, to leave Substack a year prior.
+    - '*Platformer* had left due to Substack''s refusal to remove or demonetize pro-Nazi
+      publications, which Newton specified as "literal 1930s German Nazis."'
+    - At the time, critics accused *Platformer* of overreacting, lacking sufficient
+      evidence of Nazi content, or performing a stunt for subscriptions; Glenn Greenwald
+      framed the move as a "pro-censorship crusade."
+    - Newton had predicted that by allowing extremists to monetize their content,
+      Substack's use of "social media-style growth hacks" like push notifications
+      would inevitably lead to the platform actively promoting that content.
+  - heading: Implications
     bullets:
-    - In response to reporting by Taylor Lorenz in *User Mag*, Substack called the
-      notification a "serious error."
-    - The company apologized for the "extremely offensive or disturbing" content.
-    - Substack stated it took the "relevant system offline" for diagnosis.
-  - heading: Framing & Implications
-    bullets:
-    - Newton frames this incident as a validation of *Platformer*'s 2024 decision
-      to leave Substack.
-    - '*Platformer* left Substack previously due to the platform''s refusal to remove
-      or demonetize pro-Nazi publications (described as "literal 1930s German Nazis").'
-    - Previous critics accused *Platformer* of overreacting, seeking subscriptions,
-      engaging in a "pro-censorship crusade," or not finding enough Nazi publications
-      to justify leaving.
-    - The "NatSocToday" push notification demonstrates that Substack's growth mechanisms
-      actively surface and promote hosted content.
-    - This contradicts Substack's claim of being a passive, neutral host.
-    - The incident represents a predicted failure of a platform to maintain neutrality
-      while actively engineering growth and discovery.
+    - The event demonstrates that a platform's content moderation policies are inseparable
+      from its product and growth features.
+    - A commitment to hosting extremist content, when combined with algorithmic amplification
+      tools, makes the active promotion of that content a near certainty, undermining
+      claims of neutrality.
   conclusions_or_recommendations:
-  - The incident validates *Platformer*'s prior decision to leave Substack due to
-    concerns about the platform's handling of extremist content.
-  - Platforms that employ growth and discovery algorithms cannot credibly claim to
-    be passive, neutral hosts, as these mechanisms inherently lead to active promotion
-    of content, including extremist material.
-  - The event highlights the inherent tension between platform growth strategies and
-    content moderation responsibilities.
-  stance: skeptical
+  - The event demonstrates that a platform's content moderation policies are inseparable
+    from its product and growth features.
+  - A commitment to hosting extremist content, when combined with algorithmic amplification
+    tools, makes the active promotion of that content a near certainty, undermining
+    claims of neutrality.
+  stance: cautionary
   cta: null
 metadata:
   source_type: newsletter
@@ -231,14 +222,87 @@ metadata:
   date: null
   extraction_confidence: high
   confidence_reason: HTML article text extracted via direct
-  total_tokens_used: 6564
-  gemini_pro_tokens: 4706
-  gemini_flash_tokens: 1858
-  total_latency_ms: 85683
+  total_tokens_used: 5175
+  gemini_pro_tokens: 3596
+  gemini_flash_tokens: 1579
+  total_latency_ms: 63770
   cod_iterations_used: 2
-  self_check_missing_count: 3
-  patch_applied: true
+  self_check_missing_count: 2
+  patch_applied: false
   engine_version: 2.0.0
+  structured_payload:
+    mini_title: 'Platformer: Substack''s ''Neutrality'' Leads to Extremist Promotion'
+    brief_summary: Platformer, a publication by Casey Newton, argues that Substack's
+      self-described status as "neutral infrastructure" is fundamentally challenged
+      by its content moderation policies and product design. The issue's thesis is
+      that these factors inevitably lead to the platform actively promoting extremist
+      content, as demonstrated by a recent incident. The newsletter details a late
+      July 2025 push notification from Substack promoting a pro-Nazi newsletter, "NatSocToday."
+      Newton frames this incident as a predictable outcome, validating Platformer's
+      earlier decision to leave Substack over its refusal to remove or demonetize
+      similar content. The summary covers the incident, Newton's argument, and the
+      broader implications for platform policy and algorithmic amplification, targeting
+      an audience interested in tech policy and platform governance. No explicit call
+      to action is present.
+    tags:
+    - substack
+    - content-moderation
+    - platform-policy
+    - extremism
+    - push-notifications
+    - algorithmic-amplification
+    - free-speech
+    - platformer
+    - nazi-content
+    - tech-ethics
+    detailed_summary:
+      publication_identity: Platformer, written by Casey Newton
+      issue_thesis: Substack's content moderation policies, particularly its refusal
+        to remove or demonetize pro-Nazi publications, combined with its product design
+        and "social media-style growth hacks" like push notifications, make the active
+        promotion of extremist content inevitable, thereby undermining its claims
+        of being "neutral infrastructure."
+      sections:
+      - heading: The Incident
+        bullets:
+        - In late July 2025, Substack sent a push alert to an undisclosed number of
+          users promoting the newsletter "NatSocToday."
+        - The incident was first reported by Taylor Lorenz in *User Mag*.
+        - '"NatSocToday" identifies as for the "National Socialist and White Nationalist
+          Community," describes Jewish people as a "sickness," and advocates for eradicating
+          minorities to establish a "White homeland."'
+        - The newsletter's profile page also recommended other white nationalist publications
+          on the platform.
+        - Substack called the alert a "serious error," apologized for the "distress,"
+          and took the system offline to diagnose the cause.
+      - heading: Argument & Framing
+        bullets:
+        - Newton argues the event was predictable and validates the decision by his
+          publication, *Platformer*, to leave Substack a year prior.
+        - '*Platformer* had left due to Substack''s refusal to remove or demonetize
+          pro-Nazi publications, which Newton specified as "literal 1930s German Nazis."'
+        - At the time, critics accused *Platformer* of overreacting, lacking sufficient
+          evidence of Nazi content, or performing a stunt for subscriptions; Glenn
+          Greenwald framed the move as a "pro-censorship crusade."
+        - Newton had predicted that by allowing extremists to monetize their content,
+          Substack's use of "social media-style growth hacks" like push notifications
+          would inevitably lead to the platform actively promoting that content.
+      - heading: Implications
+        bullets:
+        - The event demonstrates that a platform's content moderation policies are
+          inseparable from its product and growth features.
+        - A commitment to hosting extremist content, when combined with algorithmic
+          amplification tools, makes the active promotion of that content a near certainty,
+          undermining claims of neutrality.
+      conclusions_or_recommendations:
+      - The event demonstrates that a platform's content moderation policies are inseparable
+        from its product and growth features.
+      - A commitment to hosting extremist content, when combined with algorithmic
+        amplification tools, makes the active promotion of that content a near certainty,
+        undermining claims of neutrality.
+      stance: cautionary
+      cta: null
+  is_schema_fallback: false
 
 ```
 
@@ -277,4 +341,4 @@ Score each criterion. 5-15 sentences of prose per criterion, source-grounded. Ca
 Final line of the file must be `estimated_composite: NN.N`.
 
 Save the output at the path printed by the CLI. eval.json SHA256 of the already-computed standard evaluator run
-(for enforcement only, do NOT open that file): 58df0945a71b2c334e2c61ff0379edda783ee7c845033731a9dd148e0eb9f496
+(for enforcement only, do NOT open that file): e7bd7d6af9232ddebdeacb480917fdd615eb7827b1346dae13b6b2734de9df14
