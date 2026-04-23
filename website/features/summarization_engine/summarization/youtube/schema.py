@@ -66,6 +66,7 @@ class YouTubeStructuredPayload(BaseModel):
             brief=self.brief_summary,
             thesis=self.detailed_summary.thesis,
             chapter_titles=[item.title for item in self.detailed_summary.chapters_or_segments],
+            speakers=list(self.speakers or []),
         )
         self.mini_title = _normalize_mini_title(self.mini_title)
         self.tags = _ensure_format_tag(self.tags, self.detailed_summary.format)
@@ -468,33 +469,29 @@ def _normalize_format_name(
     brief: str,
     thesis: str,
     chapter_titles: list[str],
+    speakers: list[str] | None = None,
 ) -> str:
+    """Preserve any valid LLM-supplied label verbatim; otherwise defer
+    to the confidence-scored :func:`classify_format` heuristic so
+    downstream never sees ``"other"``.
+    """
     cleaned = (format_name or "").strip().lower()
     if cleaned and cleaned != "other":
         return cleaned
 
-    evidence = " ".join([brief or "", thesis or "", *chapter_titles]).lower()
-    lexical_hints = (
-        ("tutorial", "tutorial"),
-        ("walkthrough", "walkthrough"),
-        ("step-by-step", "tutorial"),
-        ("how to", "tutorial"),
-        ("interview", "interview"),
-        ("q&a", "interview"),
-        ("conversation", "interview"),
-        ("lecture", "lecture"),
-        ("seminar", "lecture"),
-        ("course", "lecture"),
-        ("review", "review"),
-        ("verdict", "review"),
-        ("reaction", "reaction"),
-        ("vlog", "vlog"),
-        ("debate", "debate"),
+    # Lazy import keeps the module import graph small and avoids a
+    # circular dependency if the classifier ever needs schema types.
+    from website.features.summarization_engine.summarization.youtube.format_classifier import (
+        classify_format,
     )
-    for needle, inferred in lexical_hints:
-        if needle in evidence:
-            return inferred
-    return "commentary"
+
+    label, _confidence = classify_format(
+        title=thesis or "",
+        description=brief or "",
+        chapter_titles=list(chapter_titles or []),
+        speakers=list(speakers or []),
+    )
+    return label
 
 
 def _join_items(items: list[str]) -> str:

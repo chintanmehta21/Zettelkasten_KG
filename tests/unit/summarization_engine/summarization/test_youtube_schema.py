@@ -119,8 +119,13 @@ def test_youtube_payload_upgrades_other_format_and_preserves_speaker_sentence():
         },
     )
 
-    assert payload.detailed_summary.format == "commentary"
-    assert "commentary" in payload.tags
+    # The confidence-scored classifier upgrades "other" to a concrete
+    # label. Three distinct speakers is a strong interview signal, so
+    # the classifier should land on "interview" here. The core guarantee
+    # is that the format is never left as "other".
+    assert payload.detailed_summary.format != "other"
+    assert payload.detailed_summary.format == "interview"
+    assert payload.detailed_summary.format in payload.tags
     assert "..." not in payload.brief_summary
     assert payload.brief_summary.endswith((".", "!", "?"))
     assert len(payload.brief_summary) <= 500
