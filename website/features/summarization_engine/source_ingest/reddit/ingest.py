@@ -102,6 +102,7 @@ class RedditIngestor(BaseIngestor):
             raw_text=join_sections(sections),
             sections=sections,
             metadata={
+                "title": (post.get("title") or _title_from_url_slug(url) or "Reddit Post"),
                 "subreddit": post.get("subreddit"),
                 "author": post.get("author"),
                 "score": post.get("score"),
@@ -147,7 +148,10 @@ class RedditIngestor(BaseIngestor):
                 original_url=url,
                 raw_text=f"Reddit post at {url}. Content could not be fetched (blocked by Reddit).",
                 sections={"Post": f"Reddit post URL: {url}"},
-                metadata={"title": "Reddit Post", "subreddit": _extract_subreddit(url)},
+                metadata={
+                    "title": _title_from_url_slug(url) or "Reddit Post",
+                    "subreddit": _extract_subreddit(url),
+                },
                 extraction_confidence="low",
                 confidence_reason="Reddit blocked all fetch attempts",
                 fetched_at=utc_now(),
@@ -155,6 +159,8 @@ class RedditIngestor(BaseIngestor):
 
         text, metadata = extract_html_text(html)
         title = metadata.get("title", "").replace(" : ", " — ").strip()
+        if not title:
+            title = _title_from_url_slug(url)
         sections = {"Post": text}
         return IngestResult(
             source_type=self.source_type,
@@ -177,6 +183,25 @@ def _extract_subreddit(url: str) -> str | None:
     import re
     match = re.search(r"/r/([^/]+)", url)
     return match.group(1) if match else None
+
+
+_ACRONYMS = {"cmv", "aita", "til", "eli5", "dae", "tifu", "yta", "nta", "ama", "iama", "psa"}
+
+
+def _title_from_url_slug(url: str, max_words: int = 5) -> str:
+    """Derive a short human title from a Reddit URL slug when server-side
+    title extraction failed (anti-bot wall, 403s). The slug lives at
+    ``/r/<sub>/comments/<id>/<slug>/`` and is the original thread title in
+    snake_case. Returns an empty string when no slug is present."""
+    import re
+    match = re.search(r"/comments/[^/]+/([^/?#]+)", url)
+    if not match:
+        return ""
+    raw = match.group(1).strip("_-").replace("-", "_")
+    if not raw:
+        return ""
+    words = [w for w in raw.split("_") if w][:max_words]
+    return " ".join(w.upper() if w.lower() in _ACRONYMS else w.capitalize() for w in words)
 
 
 def _comment_texts(children: list[dict[str, Any]], limit: int) -> list[str]:
