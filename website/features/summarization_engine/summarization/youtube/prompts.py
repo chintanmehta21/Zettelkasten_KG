@@ -28,10 +28,16 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '- "detailed_summary": object with keys "thesis" (1-2 sentences), "format" '
     '(enum tutorial|interview|commentary|lecture|review|debate|walkthrough|'
     'reaction|vlog|other), "chapters_or_segments" (array of {timestamp, title, '
-    'bullets}) — EACH chapter needs 3-6 bullets of concrete, grounded claims '
-    'from that segment (no verbatim quotes, no speculation). Chapter titles '
-    'must be short noun phrases. "demonstrations" (array of strings describing '
-    'any hands-on demos/examples), "closing_takeaway" (1-2 sentences).\n\n'
+    'bullets}). Emit 3-7 chapters for videos 15+ minutes, 2-4 for shorter '
+    'videos. EACH chapter needs 5-7 bullets of concrete, grounded claims from '
+    'that segment (no verbatim quotes, no speculation). If you cannot support '
+    '5 bullets for a chapter, drop the chapter entirely. Bullets are complete '
+    'sentences ending in terminal punctuation, no trailing fragments, no JSON. '
+    'Chapter titles must be short noun phrases. Prefer real timestamps from '
+    'the transcript (e.g. "04:12"). If no timestamp is known, set "timestamp" '
+    'to an empty string — NEVER emit "00:00" as filler. "demonstrations" '
+    '(array of strings describing any hands-on demos/examples), '
+    '"closing_takeaway" (1-2 sentences).\n\n'
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )
