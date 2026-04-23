@@ -54,7 +54,14 @@ class InvertedFactScoreSelfCheck:
             "important source claims absent from summary. Each item: claim, importance.\n\n"
             f"SOURCE:\n{source_text}\n\nSUMMARY:\n{summary_text}"
         )
-        result = await self._client.generate(prompt, tier="pro", system_instruction=SYSTEM_PROMPT)
+        try:
+            result = await self._client.generate(
+                prompt,
+                tier="pro",
+                system_instruction=SYSTEM_PROMPT,
+            )
+        except Exception:
+            return SelfCheckResult()
         tokens = result.input_tokens + result.output_tokens
         try:
             payload = parse_json_object(result.text)
