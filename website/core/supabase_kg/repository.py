@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from uuid import UUID
 
@@ -57,6 +58,11 @@ def _normalize_source_type(raw: str) -> str:
 
 def _coerce_uuid(user_id: UUID | str) -> UUID:
     return user_id if isinstance(user_id, UUID) else UUID(str(user_id))
+
+
+def _missing_schema_cache_column(exc: Exception) -> str | None:
+    match = re.search(r"Could not find the '([^']+)' column", str(exc))
+    return match.group(1) if match else None
 
 
 class KGRepository:
@@ -238,7 +244,7 @@ class KGRepository:
         payload["tags"] = clean_tags
         payload["source_type"] = _normalize_source_type(payload["source_type"])
 
-        resp = self._client.table("kg_nodes").insert(payload).execute()
+        resp = self._insert_node_with_schema_compat(payload)
         created = KGNode(**resp.data[0])
 
         # Auto-discover links
@@ -247,6 +253,24 @@ class KGRepository:
 
         logger.info("Added node %s for user %s", created.id, user_id)
         return created
+
+    def _insert_node_with_schema_compat(self, payload: dict[str, Any]):
+        """Insert while tolerating older Supabase schemas missing optional v2 columns."""
+        pending = dict(payload)
+        dropped_columns: set[str] = set()
+        while True:
+            try:
+                return self._client.table("kg_nodes").insert(pending).execute()
+            except Exception as exc:
+                missing = _missing_schema_cache_column(exc)
+                if not missing or missing not in pending or missing in dropped_columns:
+                    raise
+                dropped_columns.add(missing)
+                pending = {key: value for key, value in pending.items() if key != missing}
+                logger.warning(
+                    "Supabase kg_nodes column %s missing; retrying legacy-compatible insert",
+                    missing,
+                )
 
     def get_node(self, user_id: UUID, node_id: str) -> KGNode | None:
         """Get a single node by user + node ID."""
