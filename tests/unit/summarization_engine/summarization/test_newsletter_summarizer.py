@@ -115,3 +115,98 @@ def test_trim_at_sentence_boundary_avoids_mid_word_cutoff():
     assert len(trimmed) <= 120
     assert trimmed.endswith(".")
     assert not trimmed.endswith("oth")
+
+
+@pytest.mark.asyncio
+async def test_newsletter_summarizer_retries_on_template_artifacts(
+    mock_gemini_client, monkeypatch
+):
+    from website.features.summarization_engine.summarization.common import (
+        cod,
+        patch as p_mod,
+        self_check,
+    )
+
+    monkeypatch.setattr(
+        cod.ChainOfDensityDensifier,
+        "densify",
+        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
+    )
+    monkeypatch.setattr(
+        self_check.InvertedFactScoreSelfCheck,
+        "check",
+        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
+    )
+    monkeypatch.setattr(
+        p_mod.SummaryPatcher,
+        "patch",
+        AsyncMock(return_value=("dense", False, 0)),
+    )
+
+    contaminated = {
+        "mini_title": "Platformer: Substack promotes a Nazi",
+        "brief_summary": "**ID:** 202405211035 **Title:** metadata artifact",
+        "tags": ["newsletter", "analysis", "policy", "platform", "stance", "issue", "cta"],
+        "detailed_summary": {
+            "publication_identity": "Platformer",
+            "issue_thesis": "Substack promotes a Nazi",
+            "sections": [{"heading": "Summary", "bullets": ["**ID:** 202405211035"]}],
+            "conclusions_or_recommendations": [],
+            "stance": "cautionary",
+            "cta": None,
+        },
+    }
+    clean = {
+        "mini_title": "Platformer: Neutrality policy conflict",
+        "brief_summary": "A clean brief without metadata artifacts.",
+        "tags": [
+            "platform-governance",
+            "content-moderation",
+            "extremism",
+            "analysis",
+            "platform-policy",
+            "tech-ethics",
+            "case-study",
+        ],
+        "detailed_summary": {
+            "publication_identity": "Platformer",
+            "issue_thesis": "Policy and growth tooling conflict.",
+            "sections": [{"heading": "Incident", "bullets": ["Substack sent an alert."]}],
+            "conclusions_or_recommendations": ["Policy and promotion are inseparable."],
+            "stance": "cautionary",
+            "cta": None,
+        },
+    }
+
+    mock_gemini_client.generate = AsyncMock(
+        side_effect=[
+            GenerateResult(
+                text=json.dumps(contaminated),
+                model_used="flash",
+                input_tokens=10,
+                output_tokens=20,
+            ),
+            GenerateResult(
+                text=json.dumps(clean),
+                model_used="flash",
+                input_tokens=11,
+                output_tokens=21,
+            ),
+        ]
+    )
+
+    ingest = IngestResult(
+        source_type=SourceType.NEWSLETTER,
+        url="https://www.platformer.news/x",
+        original_url="https://www.platformer.news/x",
+        raw_text="hello",
+        extraction_confidence="high",
+        confidence_reason="ok",
+        fetched_at="2026-04-21T00:00:00+00:00",
+    )
+
+    result = await NewsletterSummarizer(mock_gemini_client, {}).summarize(ingest)
+
+    assert mock_gemini_client.generate.await_count == 2
+    assert result.metadata.is_schema_fallback is False
+    assert "**ID:**" not in result.brief_summary

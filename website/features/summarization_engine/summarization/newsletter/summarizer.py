@@ -71,6 +71,20 @@ class NewsletterSummarizer(BaseSummarizer):
         is_schema_fallback = False
         try:
             payload = NewsletterStructuredPayload(**parse_json_object(result.text))
+            if _payload_contains_template_artifacts(payload):
+                repair = await self._client.generate(
+                    prompt
+                    + "\n\nThe previous output contained metadata-template artifacts "
+                    "(such as **ID:**/**Title:** or hash-tag bundles). "
+                    "Regenerate clean JSON that follows the schema only.",
+                    tier="flash",
+                    response_schema=NewsletterStructuredPayload,
+                    system_instruction=SYSTEM_PROMPT,
+                )
+                flash_tokens += repair.input_tokens + repair.output_tokens
+                payload = NewsletterStructuredPayload(**parse_json_object(repair.text))
+                if _payload_contains_template_artifacts(payload):
+                    raise ValueError("newsletter payload still contains template artifacts")
         except Exception:
             payload = _fallback_payload(ingest, patched, self._engine_config)
             is_schema_fallback = True
@@ -123,7 +137,7 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config) -> Newsle
         or "Newsletter issue"
     )
     publication = str(ingest.metadata.get("publication_identity") or "").strip()
-    brief = " ".join(summary_text.split()[:60]) or "No summary text was available."
+    brief = _safe_fallback_brief(ingest, summary_text)
     conclusions_section = ingest.sections.get("Conclusions", "")
     conclusions = [
         line.lstrip("- ").strip()
@@ -134,6 +148,8 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config) -> Newsle
     cta = ""
     if cta_section:
         cta = cta_section.splitlines()[0].lstrip("- ").strip()
+    if cta and re.match(r"^(subscribe|sign up|sign in)\b", cta.lower()):
+        cta = ""
     payload = NewsletterStructuredPayload(
         mini_title=_fallback_title(title=str(title), publication=publication),
         brief_summary=brief,
@@ -153,6 +169,35 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config) -> Newsle
         config.structured_extract.tags_max,
     )
     return payload
+
+
+def _safe_fallback_brief(ingest: IngestResult, summary_text: str) -> str:
+    base_parts = [
+        str(ingest.sections.get("Title") or "").strip(),
+        str(ingest.sections.get("Subtitle") or "").strip(),
+        str(ingest.sections.get("Preheader") or "").strip(),
+    ]
+    prose = " ".join(part for part in base_parts if part)
+    if not prose:
+        prose = " ".join((summary_text or "").split())
+    prose = re.sub(r"\*\*[^*]+:\*\*\s*", "", prose)
+    prose = re.sub(r"\s*#\w[\w-]*", "", prose)
+    prose = prose.strip() or "No summary text was available."
+    return _trim_at_sentence_boundary(prose, 380)
+
+
+def _payload_contains_template_artifacts(payload: NewsletterStructuredPayload) -> bool:
+    snippets = [payload.mini_title, payload.brief_summary]
+    snippets.extend(section.heading for section in payload.detailed_summary.sections)
+    for section in payload.detailed_summary.sections:
+        snippets.extend(section.bullets)
+    joined = " ".join(snippets).lower()
+    return bool(
+        "**id:**" in joined
+        or "**title:**" in joined
+        or "**tags:**" in joined
+        or "#substack" in joined
+    )
 
 
 def _trim_at_sentence_boundary(text: str, max_chars: int) -> str:
