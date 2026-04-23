@@ -1,0 +1,148 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.58,
+    "reasoning": "The summary is generally coherent, consistent, and fluent. Relevance is high, though the brief summary could have been more complete regarding the 'typer' command-line tool."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.73,
+      "items": [
+        {
+          "claim": "mini_title: \"tiangolo/typer\"",
+          "fact": null,
+          "sentence": "tiangolo/typer",
+          "span": "tiangolo/typer",
+          "importance": null
+        },
+        {
+          "claim": "tag: \"pydantic\"",
+          "fact": null,
+          "sentence": "pydantic",
+          "span": "pydantic",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.84,
+      "items": [
+        {
+          "claim": "Brief summary of usage pattern",
+          "fact": null,
+          "sentence": "Typer is a Python library for building Command Line Interface (CLI) applications, designed as the \"FastAPI of CLIs\". It leverages standard Python type hints for defining CLI arguments and options, building on top of the Click framework. This approach enhances developer experience with editor autocompletion and type checking, abstracting away Click's complexities while providing robust CLI generati",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Summary of benchmarks/tests/examples",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 23.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.user_facing_purpose",
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 40.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": [
+          "detailed.benchmarks_tests_examples"
+        ]
+      },
+      {
+        "id": "tags",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": [
+          "tags.technical_concepts"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 5.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": [
+          "label.owner_slash_repo"
+        ]
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": 75
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "label_not_owner_repo",
+        "source_region": "mini_title",
+        "auto_cap": 75
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 94.12,
+    "finesure": 80.9,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "418ac484eee08c0a1056ec600bfc2554de75a32b1ca3b330c698bf5ac4ef7470",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 12530,
+    "total_tokens_out": 1286,
+    "latency_ms": 42418,
+    "ragas_faithfulness": -1.0
+  }
+}

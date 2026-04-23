@@ -1,0 +1,123 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.0,
+    "reasoning": "The summary accurately extracts and synthesizes information from the source, including technical details, architectural choices, and known limitations. The brief could have been more explicit about the primary user-facing purpose of the library."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.8679,
+      "items": [
+        {
+          "claim": "The brief summary does not clearly state the primary user-facing purpose of Pydantic, which is data validation using Python type hints to define how data should be and then validate it.",
+          "fact": null,
+          "sentence": "Pydantic V2 is a performance-focused rewrite with a hybrid implementation, approximately 83.1% Python and 16.6% Rust. Its performance-critical validation logic resides in Rust within the tightly coupled `pydantic-core` repository. The library requires Python 3.10+ and bundles the final Pydantic V1 version, accessible via `from pydantic import v1 as pydantic_v1`, to facilitate migration.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary does not describe the core usage pattern of defining data structures by inheriting from `pydantic.BaseModel`.",
+          "fact": null,
+          "sentence": "Pydantic V2 is a performance-focused rewrite with a hybrid implementation, approximately 83.1% Python and 16.6% Rust. Its performance-critical validation logic resides in Rust within the tightly coupled `pydantic-core` repository. The library requires Python 3.10+ and bundles the final Pydantic V1 version, accessible via `from pydantic import v1 as pydantic_v1`, to facilitate migration.",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 18.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.architecture_high_level",
+          "brief.languages_and_frameworks",
+          "brief.public_surface",
+          "brief.no_maturity_fabrication"
+        ],
+        "criteria_missed": [
+          "brief.user_facing_purpose",
+          "brief.usage_pattern"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.features_bullets",
+          "detailed.architecture_modules",
+          "detailed.interfaces_exact",
+          "detailed.operational",
+          "detailed.limitations_docs",
+          "detailed.benchmarks_tests_examples",
+          "detailed.bullets_focused"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_tag",
+          "tags.languages",
+          "tags.technical_concepts",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.owner_slash_repo",
+          "label.no_extra_descriptors"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 76.47,
+    "finesure": 92.78,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_github.v1",
+    "implementation_fingerprint": "418ac484eee08c0a1056ec600bfc2554de75a32b1ca3b330c698bf5ac4ef7470",
+    "rubric_sha256": "28a6c60323bbc43a39e3151a41848d5a97187d4cce6f5547a102508aa5107a00",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10561,
+    "total_tokens_out": 1141,
+    "latency_ms": 52045
+  }
+}
