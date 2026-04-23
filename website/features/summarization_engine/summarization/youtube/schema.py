@@ -87,7 +87,7 @@ class YouTubeStructuredPayload(BaseModel):
             for s in (self.speakers or [])
             if isinstance(s, str)
             and s.strip()
-            and s.strip().lower() not in _SPEAKER_PLACEHOLDERS
+            and not _is_placeholder_speaker(s.strip())
         ]
         if not real:
             raise ValueError(
@@ -96,6 +96,33 @@ class YouTubeStructuredPayload(BaseModel):
             )
         self.speakers = real
         return self
+
+
+_PLACEHOLDER_ADJECTIVES = frozenset({
+    "unidentified", "unknown", "anonymous", "unnamed", "generic",
+})
+
+
+def _is_placeholder_speaker(name: str) -> bool:
+    """Return True if ``name`` is a role noun, placeholder label, or empty."""
+    lowered = (name or "").strip().lower()
+    if not lowered or lowered in _SPEAKER_PLACEHOLDERS:
+        return True
+    tokens = lowered.split()
+    if tokens and tokens[0] in _PLACEHOLDER_ADJECTIVES:
+        return True
+    # "The <role>" pattern already covered by set; also catch bare role nouns
+    role_nouns = {
+        "narrator", "host", "speaker", "presenter", "commentator",
+        "interviewer", "interviewee", "guest", "participant", "creator",
+        "uploader", "channel", "youtuber", "author", "analyst", "source",
+        "lecturer", "instructor", "teacher",
+    }
+    if len(tokens) == 1 and tokens[0] in role_nouns:
+        return True
+    if len(tokens) == 2 and tokens[0] in {"the", "a", "an"} and tokens[1] in role_nouns:
+        return True
+    return False
 
 
 def _normalize_mini_title(title: str) -> str:
