@@ -15,10 +15,11 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     f"{SOURCE_CONTEXT}\n\n"
     "Return a JSON object with these exact keys:\n"
     '- "mini_title": 3-5 word content-first title (max 50 chars); NO clickbait\n'
-    '- "brief_summary": 3-5 COMPLETE sentences (<=450 chars). Natural prose. '
-    'MUST name the primary speaker/host. State what the video is, who delivers '
-    'it, the central thesis, and the closing takeaway. Every sentence must end '
-    'properly — never trail off mid-clause.\n'
+    '- "brief_summary": EXACTLY 5-7 COMPLETE sentences (<=490 chars). Natural prose. '
+    'MUST name the primary speaker/host. Cover: (1) what the video is + format, '
+    '(2) who delivers it, (3) the central thesis, (4) the main segments walked '
+    'through, (5) named tools/entities/demos, (6) the closing takeaway. Every '
+    'sentence must end properly — never trail off mid-clause.\n'
     '- "tags": 7-10 lowercase hyphenated tags (topic/domain, creator or channel, '
     'format, named tools/concepts, audience)\n'
     '- "speakers": array of strings (host/speaker names, NOT roles like '

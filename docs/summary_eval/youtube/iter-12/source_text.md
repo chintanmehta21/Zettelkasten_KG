@@ -1,0 +1,7 @@
+# URL: https://www.youtube.com/watch?v=1aA1WGON49E
+
+Video
+A one minute TEDx Talk for the digital age | Woody Roseland | TEDxMileHigh
+
+Transcript
+Kind: captions Language: en [00:00] Transcriber: Victor Borges Reviewer: David DeRuwe [00:11] Wow, [00:13] what an audience. [00:14] But if I'm being honest, I don't care what you think of my talk. [00:18] I don't. [00:19] I care what the internet thinks of my talk. [00:21] (Laughter) [00:22] Because they are the ones who get it seen and shared. [00:24] And I think that's where most people get it wrong. [00:26] They're talking to you, here, [00:28] instead of talking to you, random person scrolling Facebook. [00:34] Thanks for the click. [00:36] You see, back in 2009, [00:37] we all had these weird little things called attention spans. [00:41] (Laughter) [00:42] Yeah, they're gone. They're gone. We killed them. They're dead. [00:46] I'm trying to think of the last time I watched an 18-minute TED talk. [00:50] It's been years, literally years. [00:52] So if you're giving a TED talk, keep it quick. [00:55] I'm doing mine in under a minute. [00:57] I'm at 44 seconds right now; [00:59] that means we've got time for one final joke. [01:01] Why are balloons so expensive? [01:04] (Audience) "Why?" [01:05] Woody Roseland: Inflation. [01:06] (Laughter) [01:08] (Applause)
