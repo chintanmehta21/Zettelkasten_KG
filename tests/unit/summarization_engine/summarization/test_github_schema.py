@@ -101,17 +101,19 @@ def test_github_schema_normalizes_hash_tags_and_preserves_reserved_github_tags()
     assert "openapi" in payload.tags
 
 
-def test_github_schema_rebuilds_brief_when_broken():
+def test_github_schema_repairs_short_brief_using_architecture_overview():
+    base = _base_payload_kwargs()
     payload = GitHubStructuredPayload(
         **{
-            **_base_payload_kwargs(),
-            "brief_summary": "Short broken",
+            **base,
+            "brief_summary": "Tiny.",
         }
     )
 
-    assert payload.brief_summary.endswith((".", "!", "?"))
-    assert "..." not in payload.brief_summary
-    assert len(payload.brief_summary) <= 500
+    # Short briefs are replaced with the architecture_overview verbatim —
+    # the prior formulaic rebuild was found to invent public surfaces.
+    assert payload.brief_summary == base["architecture_overview"]
+    assert 80 <= len(payload.brief_summary) <= 500
     assert "Its." not in payload.brief_summary
 
 
@@ -145,9 +147,12 @@ def test_github_schema_derives_public_interfaces_and_usage_from_section_content(
         ],
     )
 
-    assert payload.brief_summary.endswith((".", "!", "?"))
-    assert len(payload.brief_summary) <= 500
-    assert "..." not in payload.brief_summary
+    # Short/broken brief is replaced with architecture_overview verbatim;
+    # section-level identifiers are intentionally NOT hoisted into the brief
+    # because that path caused the evaluator to flag invented public surfaces.
+    assert payload.brief_summary.startswith("FastAPI is an ASGI framework")
+    assert "Starlette" in payload.brief_summary
+    assert "Pydantic" in payload.brief_summary
 
 
 def test_github_schema_backfills_missing_module_or_feature():

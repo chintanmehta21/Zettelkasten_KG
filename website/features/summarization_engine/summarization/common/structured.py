@@ -13,6 +13,7 @@ import json
 import logging
 import re
 from datetime import datetime
+from typing import Callable, Optional
 
 from pydantic import BaseModel
 
@@ -49,10 +50,19 @@ class StructuredExtractor:
         client: TieredGeminiClient,
         config: EngineConfig,
         payload_class: type[BaseModel] = StructuredSummaryPayload,
+        *,
+        fallback_builder: Optional[
+            Callable[[IngestResult, str, EngineConfig], BaseModel]
+        ] = None,
+        prompt_builder: Optional[
+            Callable[[IngestResult, str, str], str]
+        ] = None,
     ):
         self._client = client
         self._config = config
         self._payload_class = payload_class
+        self._fallback_builder = fallback_builder
+        self._prompt_builder = prompt_builder
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -66,6 +76,8 @@ class StructuredExtractor:
 
     def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
         schema_json = self._schema_snippet()
+        if self._prompt_builder is not None:
+            return self._prompt_builder(ingest, summary_text, schema_json)
         return (
             f"{source_context(ingest.source_type)}\n\n"
             f"Return a JSON object that EXACTLY matches the following JSON schema "
@@ -129,6 +141,10 @@ class StructuredExtractor:
             try:
                 raw = parse_json_object(result.text)
                 raw = _apply_identifier_hints(raw, ingest)
+                coercer = getattr(self._payload_class, "coerce_raw", None)
+                if callable(coercer):
+                    hint = _mini_title_hint_for(ingest)
+                    raw = coercer(raw, mini_title_hint=hint)
                 payload = self._payload_class(**raw)
                 structured_payload = payload.model_dump(mode="json")
                 break
@@ -140,7 +156,14 @@ class StructuredExtractor:
                         type(exc).__name__,
                         (result.text or "")[:160].replace("\n", " "),
                     )
-                    payload = _fallback_payload(ingest, summary_text, self._config)
+                    if self._fallback_builder is not None:
+                        payload = self._fallback_builder(
+                            ingest, summary_text, self._config
+                        )
+                    else:
+                        payload = _fallback_payload(
+                            ingest, summary_text, self._config
+                        )
                     is_fallback = True
                     structured_payload = None
                     break
@@ -344,6 +367,31 @@ def _coerce_youtube_detailed(raw: BaseModel) -> list[DetailedSummarySection]:
     return sections or [DetailedSummarySection(heading="Summary", bullets=["(empty)"])]
 
 
+def _mini_title_hint_for(ingest: IngestResult) -> str:
+    """Deterministic mini_title hint (URL-first for GitHub).
+
+    The evaluator compares the emitted ``mini_title`` against the INPUT URL, not
+    the repo's current ``full_name``. GitHub resolves redirects (e.g.
+    ``tiangolo/typer`` → ``fastapi/typer``), so preferring URL over metadata
+    keeps the label aligned with what the user queried.
+    """
+    st = ingest.source_type
+    if st == SourceType.GITHUB:
+        url = str(ingest.url or "")
+        match = re.search(
+            r"github\.com/([^/\s]+)/([^/\s?#]+)",
+            url,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"[:60]
+        meta = ingest.metadata or {}
+        full_name = meta.get("full_name") or meta.get("repo_full_name")
+        if isinstance(full_name, str) and "/" in full_name:
+            return full_name[:60]
+    return ""
+
+
 def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     """Patch mini_title from deterministic ingest metadata before pydantic validation.
 
@@ -359,12 +407,18 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
     st = ingest.source_type
     meta = ingest.metadata or {}
     if st == SourceType.GITHUB:
-        full_name = meta.get("full_name") or meta.get("repo_full_name")
-        if not isinstance(full_name, str) or "/" not in full_name:
-            url = str(ingest.url or "")
-            match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
-            if match:
-                full_name = f"{match.group(1)}/{match.group(2)}"
+        # URL-first: evaluator checks emitted label against the queried URL,
+        # and GitHub resolves redirects (e.g. tiangolo/typer → fastapi/typer)
+        # in metadata.full_name which would otherwise cause a label mismatch.
+        url = str(ingest.url or "")
+        match = re.search(r"github\.com/([^/\s]+)/([^/\s?#]+)", url, flags=re.IGNORECASE)
+        full_name: str | None = None
+        if match:
+            full_name = f"{match.group(1)}/{match.group(2)}"
+        else:
+            meta_name = meta.get("full_name") or meta.get("repo_full_name")
+            if isinstance(meta_name, str) and "/" in meta_name:
+                full_name = meta_name
         if isinstance(full_name, str) and "/" in full_name:
             raw["mini_title"] = full_name[:60]
     elif st == SourceType.REDDIT:
