@@ -1,0 +1,7 @@
+{
+  "rho": 0.9787,
+  "n": 10,
+  "threshold": 0.6,
+  "below_threshold": false,
+  "used_scipy": true
+}

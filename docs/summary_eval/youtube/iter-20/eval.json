@@ -1,0 +1,183 @@
+{
+  "g_eval": {
+    "coherence": 4.5,
+    "consistency": 3.5,
+    "fluency": 4.0,
+    "relevance": 4.5,
+    "reasoning": "The summary effectively captures the video's central thesis and outlines its major segments in a coherent manner. The detailed summary is comprehensive and largely follows the chronological order of the video's arguments. However, the brief summary is too short and misses explicit takeaways. A significant factual error is present in the detailed summary's speaker identification, impacting consistency. The mini-title also contains a typo."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "Speakers: Strait of Hormuz.",
+          "fact": null,
+          "sentence": "Speakers: Strait of Hormuz.",
+          "span": "Strait of Hormuz",
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": "Brief names the host/channel.",
+          "fact": null,
+          "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U. S. Global dominance. An The speaker outlines a hypothetical scenario where geopolitical shifts and perceived U. S. Security failures lead Gulf States to challenge the dollar's role in oil trade. The presentation details the petrodollar's historical context, the Gulf States' economic diversification, and the leverage they hold through oil production.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief highlights 2-3 takeaways a viewer would remember after watching.",
+          "fact": null,
+          "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U. S. Global dominance. An The speaker outlines a hypothetical scenario where geopolitical shifts and perceived U. S. Security failures lead Gulf States to challenge the dollar's role in oil trade. The presentation details the petrodollar's historical context, the Gulf States' economic diversification, and the leverage they hold through oil production.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Brief is 5-7 sentences.",
+          "fact": null,
+          "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U. S. Global dominance. An The speaker outlines a hypothetical scenario where geopolitical shifts and perceived U. S. Security failures lead Gulf States to challenge the dollar's role in oil trade. The presentation details the petrodollar's historical context, the Gulf States' economic diversification, and the leverage they hold through oil production.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Warnings, caveats, limitations the speaker mentions are captured.",
+          "fact": null,
+          "sentence": null,
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 0.9,
+      "items": [
+        {
+          "claim": "The brief summary repeats the core argument from the detailed summary's core argument.",
+          "fact": null,
+          "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U. S. Global dominance.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "Incomplete sentence in detailed summary.",
+          "fact": null,
+          "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U.",
+          "span": "This lecture explores the potential decline of the petrodollar system and its implications for U.",
+          "importance": null
+        }
+      ]
+    }
+  },
+  "summac_lite": {
+    "score": 0.959,
+    "contradicted_sentences": [
+      {
+        "sentence": "Speakers: Strait of Hormuz.",
+        "reason": "The Strait of Hormuz is a geographical location, not a speaker in the video."
+      }
+    ],
+    "neutral_sentences": [
+      {
+        "sentence": "This lecture explores the potential decline of the petrodollar system and its implications for U.",
+        "reason": "The sentence is incomplete and ends abruptly, making it grammatically neutral."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 17.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.thesis_capture",
+          "brief.format_identified",
+          "brief.major_segments_outlined",
+          "brief.no_clickbait"
+        ],
+        "criteria_missed": [
+          "brief.speakers_captured",
+          "brief.takeaways_surfaced",
+          "brief.length_5_to_7_sentences"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 44.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.chronological_order",
+          "detailed.all_chapters_covered",
+          "detailed.demonstrations_preserved",
+          "detailed.caveats_preserved",
+          "detailed.examples_purpose_not_verbatim",
+          "detailed.entities_named",
+          "detailed.closing_takeaway",
+          "detailed.no_sponsor_padding"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.topical_specificity",
+          "tags.format_tag_present",
+          "tags.technologies_named",
+          "tags.no_unsupported_claims"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.content_first_3_to_5_words",
+          "label.reflects_primary_topic",
+          "label.no_clickbait_retention"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": 75
+    },
+    "anti_patterns_triggered": [
+      {
+        "id": "speakers_absent",
+        "source_region": "brief_summary, detailed_summary",
+        "auto_cap": 75
+      }
+    ]
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 87.8,
+    "finesure": 90.4,
+    "qafact": 78.9,
+    "summac": 88.9
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_youtube.v1",
+    "implementation_fingerprint": "6d8f6400b59fa46c4d9f2e04e16efa9bea48639ccbb872e0f0b9a4f203540f58",
+    "rubric_sha256": "67561998ec63cff49d76382555f2325ec6cc37464e3b41d0f55614ee1f5392be",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 15317,
+    "total_tokens_out": 1875,
+    "latency_ms": 45367,
+    "numeric_grounding_score": 0.96875,
+    "unsupported_numeric_claims": [
+      "79794"
+    ]
+  }
+}

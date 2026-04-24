@@ -93,6 +93,20 @@
       "targeted_criterion": "brief.main_topic_thesis",
       "criterion_delta": 0.0,
       "composite_delta": -3.852000000000004
+    },
+    {
+      "iter": 10,
+      "files": [
+        "ops/scripts/naruto_diag.py",
+        "ops/scripts/register_iter10_reddit_naruto.py",
+        "ops/scripts/register_iter20_naruto.py",
+        "ops/scripts/register_iter23_github_naruto.py",
+        "ops/scripts/update_yt_iter20_naruto.py",
+        "ops/scripts/verify_naruto_zettels.py"
+      ],
+      "targeted_criterion": "brief.caveats_addressed",
+      "criterion_delta": 0.0,
+      "composite_delta": -3.2180000000000035
     }
   ]
 }

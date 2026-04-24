@@ -1,0 +1,28 @@
+{
+  "source": "github",
+  "iter": 23,
+  "urls": [
+    "https://github.com/pydantic/pydantic"
+  ],
+  "started_at": "2026-04-24T10:21:17.490010+00:00",
+  "ended_at": "2026-04-24T10:23:06.799556+00:00",
+  "env": "dev",
+  "held_out": false,
+  "prompt_version": "evaluator.v3",
+  "records": [
+    {
+      "url": "https://github.com/pydantic/pydantic",
+      "composite": 83.0,
+      "extraction_confidence": "high",
+      "latency_ms": 109248,
+      "ingestor_version": "2.0.0"
+    }
+  ],
+  "gemini_calls": {
+    "role_breakdown": {
+      "billing_calls": 0,
+      "free_calls": 0
+    },
+    "quota_exhausted_events": []
+  }
+}

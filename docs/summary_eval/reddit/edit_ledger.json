@@ -64,6 +64,15 @@
       "targeted_criterion": null,
       "criterion_delta": 0.0,
       "composite_delta": 85.11666666666667
+    },
+    {
+      "iter": 10,
+      "files": [
+        "ops/scripts/register_iter20_naruto.py"
+      ],
+      "targeted_criterion": "brief.caveats_surfaced",
+      "criterion_delta": 0.0,
+      "composite_delta": 2.9799999999999898
     }
   ]
 }

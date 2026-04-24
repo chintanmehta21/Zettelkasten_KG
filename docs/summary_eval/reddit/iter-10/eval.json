@@ -1,0 +1,126 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 5.0,
+    "fluency": 5.0,
+    "relevance": 4.5,
+    "reasoning": "The summary is well-structured, coherent, and fluent. It accurately captures the main points of the OP and the diverse range of comments. The only minor deduction in relevance is due to the brief summary's slightly incomplete capture of the OP's full intent."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 1.0,
+      "items": []
+    },
+    "completeness": {
+      "score": 0.921,
+      "items": [
+        {
+          "claim": "OP's main point was To share a personal anecdote demonstrating how scientific inquiry led a lifelong atheist.",
+          "fact": null,
+          "sentence": "OP's main point was To share a personal anecdote demonstrating how scientific inquiry led a lifelong atheist.",
+          "span": "how scientific inquiry led a lifelong atheist",
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 0.8,
+    "contradicted_sentences": [],
+    "neutral_sentences": [
+      {
+        "sentence": "OP's main point was To share a personal anecdote demonstrating how scientific inquiry led a lifelong atheist.",
+        "reason": "This sentence is partially entailed but omits crucial information about the OP's intent (turning to Hindu spirituality and challenging the anti-science view of religion), making it neutral in its incompleteness."
+      }
+    ]
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 22.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.response_range",
+          "brief.consensus_signal",
+          "brief.caveats_surfaced",
+          "brief.neutral_tone",
+          "brief.length_5_to_7_sentences"
+        ],
+        "criteria_missed": [
+          "brief.op_intent_captured"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.reply_clusters",
+          "detailed.hedged_attribution",
+          "detailed.counterarguments_included",
+          "detailed.external_refs_captured",
+          "detailed.unresolved_questions",
+          "detailed.moderation_context",
+          "detailed.no_joke_chains"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.subreddit_present",
+          "tags.thread_type",
+          "tags.no_value_judgments",
+          "tags.topical_specificity"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.rsubreddit_prefix",
+          "label.central_issue",
+          "label.neutral"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 89.28,
+    "finesure": 95.58,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_reddit.v1",
+    "implementation_fingerprint": "6d8f6400b59fa46c4d9f2e04e16efa9bea48639ccbb872e0f0b9a4f203540f58",
+    "rubric_sha256": "6a91804359e9e031841040ddb9d4072fcf2ecca3b07706a2e65d559b403ce7d0",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 9330,
+    "total_tokens_out": 1069,
+    "latency_ms": 32659,
+    "numeric_grounding_score": 0.0,
+    "unsupported_numeric_claims": [
+      "65.79%"
+    ]
+  }
+}

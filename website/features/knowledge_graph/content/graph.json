@@ -358,6 +358,18 @@
       "tags": [],
       "url": "https://example.com",
       "date": "2026-03-29"
+    },
+    {
+      "id": "web-persist-meta-probe-17770",
+      "name": "persist-meta-probe-1777028264",
+      "group": "web",
+      "summary": "{\"brief_summary\": \"probe brief\", \"detailed_summary\": \"probe detailed body.\"}",
+      "tags": [
+        "probe",
+        "persist-meta"
+      ],
+      "url": "https://example.test/persist-meta-probe-1777028264",
+      "date": "2026-04-24"
     }
   ],
   "links": [

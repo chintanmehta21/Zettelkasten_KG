@@ -1,0 +1,150 @@
+{
+  "g_eval": {
+    "coherence": 5.0,
+    "consistency": 4.5,
+    "fluency": 5.0,
+    "relevance": 3.5,
+    "reasoning": "The summary is well-structured and logically organized, covering the key aspects of the source. The detailed summary provides comprehensive and accurate information. However, the brief summary does not state the main topic in a single sentence as required, nor does it explicitly distinguish conclusions or address caveats. Additionally, the 'stance' field in the detailed summary is slightly misaligned with the source's consistently positive and informative tone."
+  },
+  "finesure": {
+    "faithfulness": {
+      "score": 0.85,
+      "items": [
+        {
+          "claim": "The overall stance of the article is mixed.",
+          "fact": null,
+          "sentence": "stance: \"mixed\"",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "completeness": {
+      "score": 0.7777777777777778,
+      "items": [
+        {
+          "claim": "The brief summary states the main topic or thesis in one sentence.",
+          "fact": null,
+          "sentence": "The Pragmatic Engineer newsletter highlights the growing demand for 'product-minded engineers,' a trend significantly accelerated by AI tools. It introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer,' detailing his extensive background in software and product management. The issue features an excerpt from Chapter 3, focusing on designing effective error messages for both human users and AI agents.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary distinguishes the author's conclusions/recommendations from background.",
+          "fact": null,
+          "sentence": "The Pragmatic Engineer newsletter highlights the growing demand for 'product-minded engineers,' a trend significantly accelerated by AI tools. It introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer,' detailing his extensive background in software and product management. The issue features an excerpt from Chapter 3, focusing on designing effective error messages for both human users and AI agents.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The brief summary addresses explicit caveats or counterarguments.",
+          "fact": null,
+          "sentence": "The Pragmatic Engineer newsletter highlights the growing demand for 'product-minded engineers,' a trend significantly accelerated by AI tools. It introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer,' detailing his extensive background in software and product management. The issue features an excerpt from Chapter 3, focusing on designing effective error messages for both human users and AI agents.",
+          "span": null,
+          "importance": null
+        },
+        {
+          "claim": "The piece type is comprehensively tagged.",
+          "fact": null,
+          "sentence": "book-summary",
+          "span": null,
+          "importance": null
+        }
+      ]
+    },
+    "conciseness": {
+      "score": 1.0,
+      "items": []
+    }
+  },
+  "summac_lite": {
+    "score": 1.0,
+    "contradicted_sentences": [],
+    "neutral_sentences": []
+  },
+  "rubric": {
+    "components": [
+      {
+        "id": "brief_summary",
+        "score": 12.0,
+        "max_points": 25,
+        "criteria_fired": [
+          "brief.argument_structure",
+          "brief.key_evidence",
+          "brief.stance_preserved"
+        ],
+        "criteria_missed": [
+          "brief.main_topic_thesis",
+          "brief.conclusions_distinct",
+          "brief.caveats_addressed"
+        ]
+      },
+      {
+        "id": "detailed_summary",
+        "score": 45.0,
+        "max_points": 45,
+        "criteria_fired": [
+          "detailed.sections_ordered",
+          "detailed.claims_source_grounded",
+          "detailed.examples_captured",
+          "detailed.action_items",
+          "detailed.multiple_scenarios",
+          "detailed.no_footer_padding",
+          "detailed.bullets_specific"
+        ],
+        "criteria_missed": []
+      },
+      {
+        "id": "tags",
+        "score": 14.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "tags.count_7_to_10",
+          "tags.domain_subdomain",
+          "tags.key_concepts",
+          "tags.no_stance_misrepresentation"
+        ],
+        "criteria_missed": [
+          "tags.type_intent"
+        ]
+      },
+      {
+        "id": "label",
+        "score": 15.0,
+        "max_points": 15,
+        "criteria_fired": [
+          "label.compact_declarative",
+          "label.branded_source_rule",
+          "label.informative_not_catchy"
+        ],
+        "criteria_missed": []
+      }
+    ],
+    "caps_applied": {
+      "hallucination_cap": null,
+      "omission_cap": null,
+      "generic_cap": null
+    },
+    "anti_patterns_triggered": []
+  },
+  "maps_to_metric_summary": {
+    "g_eval": 78.26,
+    "finesure": 87.96,
+    "qafact": 100.0,
+    "summac": 100.0
+  },
+  "editorialization_flags": [],
+  "evaluator_metadata": {
+    "prompt_version": "evaluator.v3",
+    "rubric_version": "rubric_newsletter.v1",
+    "implementation_fingerprint": "6d8f6400b59fa46c4d9f2e04e16efa9bea48639ccbb872e0f0b9a4f203540f58",
+    "rubric_sha256": "7ee9f14bce4d9bd8853cec37a2e52e3b85f2e244d2c2b513e44d97fd1bfe8302",
+    "model_used": "gemini-2.5-flash",
+    "total_tokens_in": 10895,
+    "total_tokens_out": 1435,
+    "latency_ms": 48752,
+    "numeric_grounding_score": 1.0,
+    "unsupported_numeric_claims": [],
+    "ragas_faithfulness": -1.0
+  }
+}
