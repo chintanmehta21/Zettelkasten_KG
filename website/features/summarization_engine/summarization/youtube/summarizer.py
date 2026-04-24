@@ -1,4 +1,12 @@
-"""YouTube per-source summarizer."""
+"""YouTube per-source summarizer (3-call DenseVerify pipeline).
+
+Call budget (<=3 per zettel):
+  1. DenseVerifier (pro) — dense + verify + format classification signal.
+  2. StructuredExtractor (flash) — schema-shaped payload, guided by DV's
+     ``missing_facts`` via ``missing_facts_hint``.
+  3. Optional flash patch — only when the structured brief still omits a
+     DV-flagged fact (pragmatic substring probe).
+"""
 from __future__ import annotations
 
 import logging
@@ -14,12 +22,9 @@ from website.features.summarization_engine.core.models import (
 )
 from website.features.summarization_engine.summarization import register_summarizer
 from website.features.summarization_engine.summarization.base import BaseSummarizer
-from website.features.summarization_engine.summarization.common.cod import (
-    ChainOfDensityDensifier,
-)
-from website.features.summarization_engine.summarization.common.patch import SummaryPatcher
-from website.features.summarization_engine.summarization.common.self_check import (
-    InvertedFactScoreSelfCheck,
+from website.features.summarization_engine.summarization.common.dense_verify_runner import (
+    maybe_patch_structured_brief,
+    run_dense_verify,
 )
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
@@ -49,9 +54,6 @@ class YouTubeSummarizer(BaseSummarizer):
 
     async def summarize(self, ingest: IngestResult) -> SummaryResult:
         start = time.perf_counter()
-        densifier = ChainOfDensityDensifier(self._client, self._engine_config)
-        self_checker = InvertedFactScoreSelfCheck(self._client, self._engine_config)
-        patcher = SummaryPatcher(self._client, self._engine_config)
 
         meta = ingest.metadata or {}
         chapters_meta = meta.get("chapters") or []
@@ -77,38 +79,73 @@ class YouTubeSummarizer(BaseSummarizer):
             format_confidence,
         )
 
+        # Call 1 — DenseVerify (pro). If the ingest already carried a dense
+        # video-understanding transcript (metadata flag), we still run DV to
+        # gather missing_facts / format_label; the "dense" half is cheap
+        # because the content is already dense. Pre-computed dense is not
+        # currently surfaced from the ingestor; the hook is retained for the
+        # tiers.py "gemini_audio" path to wire in without schema churn.
+        precomputed_dense = None
+        if isinstance(meta.get("dense_text"), str) and meta.get("dense_text"):
+            precomputed_dense = str(meta["dense_text"])
+        dv = await run_dense_verify(
+            client=self._client,
+            ingest=ingest,
+            precomputed_dense=precomputed_dense,
+        )
+
         structured = StructuredExtractor(
             self._client,
             self._engine_config,
             payload_class=YouTubeStructuredPayload,
             prompt_instruction=select_youtube_prompt(format_label),
+            missing_facts_hint=list(dv.missing_facts),
         )
 
-        dense = await densifier.densify(ingest)
-        check = await self_checker.check(ingest.raw_text, dense.text)
-        patched_text, patch_applied, patch_tokens = await patcher.patch(
-            dense.text, check
-        )
         latency_ms = int((time.perf_counter() - start) * 1000)
 
+        # Call 2 — structured extraction (flash). Any internal schema-retry
+        # loops inside StructuredExtractor stay bounded by its own
+        # validation_retries config; the budget test asserts <=3 total.
         result = await structured.extract(
             ingest,
-            patched_text,
-            pro_tokens=dense.pro_tokens + check.pro_tokens + patch_tokens,
+            dv.dense_text or ingest.raw_text or "",
+            pro_tokens=0,  # DV pro tokens are attributed downstream if needed
             flash_tokens=0,
             latency_ms=latency_ms,
-            cod_iterations_used=dense.iterations_used,
-            self_check_missing_count=check.missing_count,
-            patch_applied=patch_applied,
+            cod_iterations_used=0,
+            self_check_missing_count=len(dv.missing_facts),
+            patch_applied=False,
         )
-        # Plumb the channel-slug / format reserved-tag set through the
-        # cross-source tag-normalization pipeline. The schema-layer
-        # ``model_validator`` cannot see ``ingest.metadata`` (channel lives
-        # there, not in the payload), so we re-normalize the already-cleaned
-        # tags here with ``reserved=`` to guarantee ``yt-<channel-slug>``
-        # survives truncation. Backward compat: when neither channel nor
-        # format is present, ``_yt_reserved`` returns ``[]`` and the call is
-        # byte-identical to today's behavior.
+
+        # Call 3 (optional) — flash patch when DV-flagged facts remain omitted
+        # from the structured payload. A no-op when DV had no missing_facts.
+        payload_json = ""
+        if result.metadata is not None and result.metadata.structured_payload:
+            try:
+                import json as _json
+
+                payload_json = _json.dumps(result.metadata.structured_payload)
+            except Exception:  # noqa: BLE001
+                payload_json = str(result.metadata.structured_payload)
+        new_brief, patch_applied, patch_tokens = await maybe_patch_structured_brief(
+            client=self._client,
+            current_brief=result.brief_summary,
+            dv=dv,
+            extracted_payload_json=payload_json,
+        )
+        if patch_applied:
+            result.brief_summary = new_brief
+            if result.metadata is not None:
+                result.metadata.patch_applied = True
+                result.metadata.gemini_flash_tokens = (
+                    int(result.metadata.gemini_flash_tokens or 0) + patch_tokens
+                )
+                result.metadata.total_tokens_used = (
+                    int(result.metadata.total_tokens_used or 0) + patch_tokens
+                )
+
+        # Cross-source reserved-tag normalization (channel slug + format).
         structured_payload_dict = (
             result.metadata.structured_payload
             if result.metadata is not None
@@ -133,6 +170,14 @@ class YouTubeSummarizer(BaseSummarizer):
                 "format": format_label,
                 "confidence": round(float(format_confidence), 3),
             })
+            # DV-reported format hint is informational; format_classifier is
+            # authoritative because it folds chapter/speaker signals the LLM
+            # cannot see from raw_text alone.
+            if dv.format_label:
+                extras.setdefault("_dense_verify", {
+                    "format_label": dv.format_label,
+                    "missing_fact_count": len(dv.missing_facts),
+                })
             result.metadata.structured_payload = extras
         return result
 

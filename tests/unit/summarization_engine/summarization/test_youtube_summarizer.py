@@ -23,27 +23,31 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
     mock_gemini_client, monkeypatch
 ):
     from website.features.summarization_engine.summarization.common import (
-        cod,
-        patch as p_mod,
-        self_check,
+        dense_verify,
+        dense_verify_runner,
         structured,
     )
 
-    monkeypatch.setattr(
-        cod.ChainOfDensityDensifier,
-        "densify",
-        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
-    )
-    monkeypatch.setattr(
-        self_check.InvertedFactScoreSelfCheck,
-        "check",
-        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
-    )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
+    # Stub run_dense_verify itself (wraps the DV call + cache). Patching
+    # at this seam is stable against sibling-test fixture interactions
+    # (test_dense_verify.py has autouse fixtures that patch
+    # ``dv_mod.asyncio.sleep``; class-attribute monkeypatches on
+    # DenseVerifier.run have shown cross-test flakiness under that).
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    from website.features.summarization_engine.summarization.youtube import summarizer as yt_mod
+
+    monkeypatch.setattr(yt_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
 
     captured = {}
     original_init = structured.StructuredExtractor.__init__
@@ -57,9 +61,11 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
         fallback_builder=None,
         prompt_builder=None,
         prompt_instruction=None,
+        missing_facts_hint=None,
     ):
         captured["payload_class"] = payload_class
         captured["prompt_instruction"] = prompt_instruction
+        captured["missing_facts_hint"] = missing_facts_hint
         original_init(
             self,
             client,
@@ -68,6 +74,7 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
             fallback_builder=fallback_builder,
             prompt_builder=prompt_builder,
             prompt_instruction=prompt_instruction,
+            missing_facts_hint=missing_facts_hint,
         )
 
     async def fake_extract(self, ingest, text, **kwargs):
@@ -110,3 +117,5 @@ async def test_youtube_summarizer_uses_youtube_payload_class(
 
     assert result.mini_title == "t"
     assert captured["payload_class"] is YouTubeStructuredPayload
+    # DV hint is always passed, even when empty — ensures the plumbing stays.
+    assert captured["missing_facts_hint"] == []

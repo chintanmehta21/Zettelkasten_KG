@@ -117,29 +117,57 @@ def _make_client(source_type: SourceType):
     return client
 
 
-def _stub_helpers(monkeypatch):
-    """No-op every helper so only direct client.generate calls are counted."""
+def _stub_dv_for(monkeypatch, source_type):
+    """Stub ``run_dense_verify`` at each summarizer's import seam so the
+    budget count reflects only the direct client.generate calls the
+    summarizer itself issues (structured extract + optional flash patch).
+
+    The 3-call contract is DV (pro) + structured (flash) + optional patch
+    (flash). Since DV is mocked to a no-op, the test asserts that the
+    structured + patch portion alone stays at <=2 raw generate() calls —
+    leaving exactly one budget slot for the real DV call in production.
+
+    Patching at the import seam (not the class attribute) is stable across
+    pytest sessions where sibling tests autouse-patch ``dv_mod.asyncio.sleep``;
+    class-attribute monkeypatches have shown cross-test flakiness under that
+    setup.
+    """
     from website.features.summarization_engine.summarization.common import (
-        cod,
-        patch as p_mod,
-        self_check,
+        dense_verify,
+        dense_verify_runner,
     )
 
-    monkeypatch.setattr(
-        cod.ChainOfDensityDensifier,
-        "densify",
-        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
-    )
-    monkeypatch.setattr(
-        self_check.InvertedFactScoreSelfCheck,
-        "check",
-        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
-    )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    # Stub at every summarizer's import seam (each imports run_dense_verify
+    # from the shared helper module). We patch the module-level binding
+    # so the summarizer sees our stub.
+    import importlib
+
+    summarizer_modules = {
+        "newsletter": "website.features.summarization_engine.summarization.newsletter.summarizer",
+        "reddit": "website.features.summarization_engine.summarization.reddit.summarizer",
+        "youtube": "website.features.summarization_engine.summarization.youtube.summarizer",
+        "github": "website.features.summarization_engine.summarization.github.summarizer",
+    }
+    for mod_path in summarizer_modules.values():
+        try:
+            mod = importlib.import_module(mod_path)
+        except Exception:
+            continue
+        if hasattr(mod, "run_dense_verify"):
+            monkeypatch.setattr(mod, "run_dense_verify", _fake_run_dense_verify)
+
+    dense_verify_runner._DV_CACHE.clear()
 
 
 @pytest.mark.asyncio
@@ -168,7 +196,7 @@ async def test_summarizer_stays_within_3call_budget(
     source_type, summarizer_import, monkeypatch
 ):
     """Invariant: after rewiring, every summarizer must issue <= 3 generate calls."""
-    _stub_helpers(monkeypatch)
+    _stub_dv_for(monkeypatch, source_type)
 
     module_path, cls_name = summarizer_import.split(":")
     mod = __import__(module_path, fromlist=[cls_name])
