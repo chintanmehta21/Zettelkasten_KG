@@ -16,7 +16,9 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -32,6 +34,7 @@ LINKS_TXT = REPO_ROOT / "docs" / "testing" / "links.txt"
 ARTIFACT_ROOT = REPO_ROOT / "docs" / "summary_eval"
 CACHE_ROOT = ARTIFACT_ROOT / "_cache"
 CONFIG_ROOT = ARTIFACT_ROOT / "_config"
+DEAD_URLS_ROOT = ARTIFACT_ROOT / "_dead_urls"
 HALT_FILE = ARTIFACT_ROOT / ".halt"
 LOGIN_DETAILS = REPO_ROOT / "docs" / "login_details.txt"
 
@@ -80,6 +83,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--stop-server", action="store_true")
     parser.add_argument("--no-commit", action="store_true")
     parser.add_argument("--skip-determinism", action="store_true")
+    parser.add_argument("--auto-eval", choices=SUPPORTED_SOURCES, default=None,
+                        help="Run rubric-only auto-eval over the most recent iteration's summaries for SOURCE")
+    parser.add_argument("--auto-eval-threshold", type=int, default=85,
+                        help="Composite score threshold for --auto-eval pass count (default 85)")
+    parser.add_argument("--auto-eval-summaries-glob", default="**/auto_eval_input.json",
+                        help="Glob (relative to the iter dir) to locate scored summary payloads")
     parser.add_argument("--calibrate", action="store_true",
                         help="Run held-out calibration gate and exit 0 (pass) or 2 (block)")
     parser.add_argument("--calibration-scores", type=str,
@@ -152,6 +161,75 @@ def _urls_for_iter(source: str, iter_num: int, override: list[str] | None) -> tu
         return all_urls[:3], False
     # default: first URL
     return all_urls[:1], False
+
+
+def _default_liveness_probe(urls: list[str]) -> dict[str, tuple[bool, str]]:
+    """Default cross-source liveness probe.
+
+    Wraps ``liveness_probe`` from ``summarization/newsletter/liveness.py``
+    (which is now generic — see that module's ``_DEAD_HTML_MARKERS``).
+    """
+    from website.features.summarization_engine.summarization.newsletter.liveness import (
+        liveness_probe,
+    )
+    return liveness_probe(urls)
+
+
+def _filter_live_urls(
+    urls: list[str], probe: Callable[[list[str]], dict[str, tuple[bool, str]]] | None = None
+) -> tuple[list[str], list[str]]:
+    """Pre-flight liveness check; partition input into (live, dead).
+
+    Skipped entirely (returns ``(urls, [])``) when ``EVAL_SKIP_LIVENESS=1`` is
+    set so CI can opt out without touching the network. The default probe is
+    the URL-pattern variant from the newsletter module — it does no network
+    I/O on its own; the eval loop does not currently pre-fetch HTML, so the
+    check is purely URL-shape based here. Callers that want HTML-marker
+    matching can pass a custom ``probe`` callable.
+    """
+    if not isinstance(urls, list):
+        raise TypeError(f"_filter_live_urls: urls must be list, got {type(urls).__name__}")
+    if os.environ.get("EVAL_SKIP_LIVENESS") == "1":
+        return list(urls), []
+    if probe is None:
+        probe = _default_liveness_probe
+    verdicts = probe(urls)
+    live: list[str] = []
+    dead: list[str] = []
+    for url in urls:
+        verdict = verdicts.get(url)
+        if verdict is None:
+            # Probe didn't return a verdict for this URL — fail loud rather
+            # than silently treating it as live.
+            raise RuntimeError(
+                f"_filter_live_urls: probe returned no verdict for url={url!r}"
+            )
+        is_live, _reason = verdict
+        if is_live:
+            live.append(url)
+        else:
+            dead.append(url)
+    return live, dead
+
+
+def _log_dead_urls(source: str, iter_num: int, dead: list[str]) -> Path | None:
+    """Persist dead URLs to ``docs/summary_eval/_dead_urls/<utc-ts>.json``.
+
+    Returns the written path, or ``None`` when ``dead`` is empty.
+    """
+    if not dead:
+        return None
+    DEAD_URLS_ROOT.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_path = DEAD_URLS_ROOT / f"{source}_iter{iter_num:02d}_{ts}.json"
+    payload = {
+        "source": source,
+        "iter": iter_num,
+        "captured_at_utc": ts,
+        "dead_urls": dead,
+    }
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return out_path
 
 
 def _enforce_diversity_gates(source: str, urls: list[str], held_out: bool) -> None:
@@ -240,6 +318,68 @@ def _apply_eval_key_pool_overrides(source: str | None) -> None:
     os.environ.setdefault("GEMINI_FAIL_FAST_ON_ALL_COOLDOWNS", "1")
 
 
+def _latest_iter_dir(source: str) -> Path | None:
+    source_dir = ARTIFACT_ROOT / source
+    if not source_dir.exists():
+        return None
+    iters = sorted(source_dir.glob("iter-*"))
+    return iters[-1] if iters else None
+
+
+def _run_auto_eval(args: argparse.Namespace) -> int:
+    """Score the most recent iteration's summaries against the source rubric.
+
+    Output: ``docs/summary_eval/auto_eval/<source>_<timestamp>.json``.
+    Exit 0 on success, 2 if no summaries are discoverable.
+    """
+    from datetime import datetime, timezone
+
+    from website.features.summarization_engine.evaluator.auto_eval_harness import (
+        AutoEvalConfig,
+        emit_scorecard_json,
+        run_auto_eval,
+    )
+
+    source = args.auto_eval
+    rubric_path = _rubric_path(source)
+    if not rubric_path.exists():
+        print(json.dumps({"status": "error", "reason": f"rubric not found: {rubric_path}"}))
+        return 2
+
+    iter_dir = _latest_iter_dir(source)
+    if iter_dir is None:
+        print(json.dumps({"status": "error", "reason": f"no iter dirs under {ARTIFACT_ROOT / source}"}))
+        return 2
+
+    summary_paths = sorted(iter_dir.glob(args.auto_eval_summaries_glob))
+    if not summary_paths:
+        print(json.dumps({
+            "status": "error",
+            "reason": f"no summaries matched {args.auto_eval_summaries_glob} under {iter_dir}",
+        }))
+        return 2
+
+    config = AutoEvalConfig(
+        source_type=source,
+        rubric_path=rubric_path,
+        summaries=summary_paths,
+        composite_max=100,
+        pass_threshold=int(args.auto_eval_threshold),
+    )
+    result = run_auto_eval(config)
+    result["iter_dir"] = str(iter_dir)
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_dir = ARTIFACT_ROOT / "auto_eval"
+    out_path = out_dir / f"{source}_{ts}.json"
+    emit_scorecard_json(result, out_path)
+
+    print(json.dumps({"status": "ok", "scorecard": str(out_path), **{
+        k: result[k] for k in ("summaries_scored", "mean_composite", "p50", "p10", "passed_threshold", "threshold")
+    }}, indent=2))
+    return 0
+
+
 def _run_calibration(args: argparse.Namespace) -> int:
     from website.features.summarization_engine.summarization.common.calibration import (
         CalibrationHarness, CalibrationShape, CalibrationVerdict,
@@ -318,6 +458,9 @@ def main() -> int:
     if HALT_FILE.exists():
         print(json.dumps({"status": "halted", "reason": str(HALT_FILE)}))
         return 0
+
+    if args.auto_eval:
+        return _run_auto_eval(args)
 
     if args.calibrate:
         return _run_calibration(args)
@@ -418,6 +561,27 @@ def main() -> int:
             urls, held_out = _urls_for_iter(args.source, iter_num, args.url)
             if iter_num in (6, 7, 9):
                 held_out = True
+            # Pre-flight liveness — drop dead URLs before spending Gemini calls.
+            live_urls, dead_urls = _filter_live_urls(urls)
+            if dead_urls:
+                dead_log = _log_dead_urls(args.source, iter_num, dead_urls)
+                print(json.dumps({
+                    "status": "liveness_filtered",
+                    "source": args.source,
+                    "iter": iter_num,
+                    "dead_count": len(dead_urls),
+                    "dead_urls": dead_urls,
+                    "log_path": str(dead_log) if dead_log else None,
+                }, indent=2))
+            urls = live_urls
+            if not urls:
+                print(json.dumps({
+                    "status": "no_live_urls",
+                    "source": args.source,
+                    "iter": iter_num,
+                    "note": "All planned URLs failed liveness pre-flight.",
+                }, indent=2))
+                return 2
             try:
                 _enforce_diversity_gates(args.source, urls, held_out)
             except EvalConfigInsufficientDiversity as exc:
