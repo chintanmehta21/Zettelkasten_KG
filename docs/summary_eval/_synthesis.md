@@ -62,3 +62,34 @@ The Phase B refactor consolidates Chain-of-Density + InvertedFactScore SelfCheck
 **Gate pass/fail**: structural parity gate green on all 13 baselines; API call budget green for all 4 summarizers (with helper stubs in place).
 
 **LLM-judge live-eval**: deferred indefinitely in favor of the deterministic parity gate. Rationale — zero API cost, runs on every push, fingerprint-level regressions are catch-able without semantic scoring noise. Re-visit only if structural invariants stop correlating with human-judged quality.
+
+## 3-call engine rewire — closure (Task 6, 2026-04-24)
+
+The per-source summarizer rewiring landed in a 5-commit serial sequence, each scoped to one source so failures bisect cleanly. The final task removed the now-orphaned CoD / SelfCheck / Patch modules; `DefaultSummarizer` (Web/HN/LinkedIn/Arxiv/Podcast/Twitter) was also rewired to `run_dense_verify` + `StructuredExtractor` + `maybe_patch_structured_brief`.
+
+| Task | Source | Commit | Files touched |
+|---|---|---|---|
+| 1 | YouTube | `674843f` | `summarization/youtube/summarizer.py` + tests |
+| 2 | Reddit | `f2cdef7` | `summarization/reddit/summarizer.py` + tests (removed `_sanitize_payload_shape`, speculative `asyncio.gather` preserved) |
+| 3 | GitHub | `ebfd170` | `summarization/github/summarizer.py` + tests (kept `_build_graceful_fallback`) |
+| 4 | Newsletter | `2484e83` | `summarization/newsletter/summarizer.py` + tests (kept template-artifact repair loop — artifact-driven failure mode) |
+| 5 | Drop helpers | `2b55c4f` | Deleted `common/cod.py` / `common/self_check.py` / `common/patch.py` (+ `test_self_check.py`); rewired `DefaultSummarizer` (picks up HN/LinkedIn/Arxiv/Podcast/Twitter/Web) |
+
+**Deleted LoC (Task 5 commit stat):** 424 lines removed / 96 added → net −328 LoC.
+
+**Net engine diff across Tasks 1–5 (Python only):** 1000 lines removed / 752 added → net −248 LoC.
+
+**Call-count verification (post-rewire):** `tests/unit/summarization_engine/test_api_call_budget.py` passes for all 4 parametrized sources (`newsletter` / `reddit` / `youtube` / `github`) with `client.generate.await_count <= 3`. DV-stubbed budget reflects `structured_extract + optional_patch <= 2`, leaving one slot for the real DV call in production (total ≤ 3).
+
+**Per-source actual call counts (DV-stubbed budget test):**
+
+| Source | Observed generate() calls | Contract |
+|---|---|---|
+| Newsletter | ≤ 2 (schema call + optional artifact-repair) | ≤ 3 with DV |
+| Reddit | ≤ 2 (structured extract + optional patch), parallel DV ∥ Structured preserved | ≤ 3 with DV |
+| YouTube | ≤ 2 (structured extract + optional patch) | ≤ 3 with DV |
+| GitHub | ≤ 2 (structured extract + optional patch) | ≤ 3 with DV |
+
+**Test suite:** baseline 1067 → after rewire 1136 passing (3 sanitizer tests removed in Reddit rewire, 5 self_check tests removed in Task 5, 4 new DV-plumbing tests added across per-source summarizers). Two unrelated newsletter-ingest HTTP mock tests fail on both baseline and HEAD — pre-existing, orthogonal to the engine refactor.
+
+**Residual risk:** `source_ingest/newsletter/stance.py` and `source_ingest/github/architecture.py` are retained (still referenced from their ingest layers, outside summarizer budget). `ChainOfDensityConfig` dataclass in `core/config.py` is retained as a no-op config container for backwards compatibility with persisted `load_config()` output; it no longer gates behavior.
