@@ -9,7 +9,7 @@ Pure-library summarization engine that ingests URLs from 9 content sources and p
 
 ## Integration
 - `/api/v2/summarize` and `/api/v2/batch*` endpoints alongside existing `/api/summarize`
-- Old `telegram_bot/` pipeline untouched
+- Replaces the legacy capture pipeline; the former `telegram_bot/` module is deleted
 - Reuses `website/features/api_key_switching/key_pool.py`
 
 See `docs/superpowers/specs/2026-04-10-summarization-engine-v2-design.md` for full design.

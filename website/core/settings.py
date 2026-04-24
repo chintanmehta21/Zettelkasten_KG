@@ -1,7 +1,9 @@
 """Website-native application settings.
 
-This mirrors the configuration layering used by the Telegram bot without
-pulling in telegram_bot-specific validation or dependencies.
+Pydantic BaseSettings layering (env > .env > ops/config.yaml) for the FastAPI
+app. Historical note: this module originated as a port of the legacy
+``telegram_bot`` configuration, which has since been deleted; the layering is
+retained here without any ``telegram_bot`` module dependency.
 """
 
 from __future__ import annotations
