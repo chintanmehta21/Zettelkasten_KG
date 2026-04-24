@@ -1355,23 +1355,193 @@
     if (typeof value !== 'string') return null;
     var trimmed = value.trim();
     if (!trimmed) return null;
-    if (trimmed.charAt(0) !== '[' && trimmed.charAt(0) !== '{') return null;
-    var attempts = [trimmed];
-    if (trimmed.indexOf("'") !== -1) attempts.push(trimmed.replace(/'/g, '"'));
-    for (var i = 0; i < attempts.length; i++) {
-      try {
-        var parsed = JSON.parse(attempts[i]);
-        if (isStructuredDetailed(parsed)) return parsed;
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          var wrappedParsed = [parsed];
-          if (isStructuredDetailed(wrappedParsed)) return wrappedParsed;
-        }
-      } catch (err) { void err; }
+    if (trimmed.charAt(0) === '[' || trimmed.charAt(0) === '{') {
+      var attempts = [trimmed];
+      if (trimmed.indexOf("'") !== -1) attempts.push(trimmed.replace(/'/g, '"'));
+      for (var i = 0; i < attempts.length; i++) {
+        try {
+          var parsed = JSON.parse(attempts[i]);
+          if (isStructuredDetailed(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            var wrappedParsed = [parsed];
+            if (isStructuredDetailed(wrappedParsed)) return wrappedParsed;
+          }
+        } catch (err) { void err; }
+      }
+    }
+    // Markdown-string fallback: parse "## heading\n- bullet" form into
+    // structured sections so the JSON-bullet expander + raw-schema heading
+    // renamer kick in. Without this, rows that stored detailed_summary as a
+    // plain markdown blob (older writer path, Steve Jobs row etc.) render as
+    // literal text with raw "thesis" headings and {timestamp, title, bullets}
+    // JSON leaking through as bullets.
+    if (trimmed.indexOf('## ') !== -1 || trimmed.indexOf('### ') !== -1) {
+      var sections = parseMarkdownToSections(trimmed);
+      if (sections && sections.length) return sections;
     }
     return null;
   }
 
+  function parseMarkdownToSections(markdown) {
+    var lines = String(markdown || '').split(/\r?\n/);
+    var sections = [];
+    var current = null;
+    var subHeading = null;
+    function ensureCurrent() {
+      if (!current) { current = { heading: 'Overview', bullets: [], sub_sections: {} }; sections.push(current); }
+      return current;
+    }
+    function pushBullet(text) {
+      var c = ensureCurrent();
+      if (subHeading) {
+        if (!c.sub_sections[subHeading]) c.sub_sections[subHeading] = [];
+        c.sub_sections[subHeading].push(text);
+      } else {
+        c.bullets.push(text);
+      }
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i];
+      var line = raw.replace(/\s+$/, '');
+      if (!line.trim()) continue;
+      var h2 = line.match(/^##\s+(.*)$/);
+      var h3 = line.match(/^###\s+(.*)$/);
+      var bullet = line.match(/^\s*[-*]\s+(.*)$/);
+      if (h2) {
+        current = { heading: h2[1].trim(), bullets: [], sub_sections: {} };
+        sections.push(current);
+        subHeading = null;
+        continue;
+      }
+      if (h3) {
+        subHeading = h3[1].trim();
+        ensureCurrent();
+        continue;
+      }
+      if (bullet) {
+        pushBullet(bullet[1].trim());
+        continue;
+      }
+      // Plain paragraph line → treat as a bullet in current section
+      pushBullet(line.trim());
+    }
+    return sections.length ? sections : null;
+  }
+
+  // Map raw pipeline schema keys (youtube/newsletter/github/reddit) to
+  // human-facing labels. Drop fields that should never render as their own
+  // section (``format`` becomes a bullet inside Overview, never standalone).
+  var RAW_HEADING_MAP = {
+    'thesis': 'Core argument',
+    'core_argument': 'Core argument',
+    'issue_thesis': 'Core argument',
+    'chapters_or_segments': 'Chapter walkthrough',
+    'chapter_walkthrough': 'Chapter walkthrough',
+    'demonstrations': 'Demonstrations',
+    'closing_takeaway': 'Closing remarks',
+    'closing_remarks': 'Closing remarks',
+    'publication_identity': 'Publication identity',
+    'sections': 'Sections',
+    'conclusions_or_recommendations': 'Conclusions & recommendations',
+    'cta': 'Call to action',
+    'stance': 'Stance',
+    'overview': 'Overview',
+    'format': 'Format',
+    'format_and_speakers': 'Format and speakers'
+  };
+
+  function prettyHeading(raw) {
+    if (!raw) return raw;
+    var key = String(raw).trim().toLowerCase();
+    if (RAW_HEADING_MAP.hasOwnProperty(key)) return RAW_HEADING_MAP[key];
+    // Title-case snake_case / lowercase fallbacks so "chapter_walkthrough"
+    // style keys never leak through to the UI as-is.
+    return String(raw)
+      .replace(/_+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
+
+  // Strip leading timestamp prefix ("00:00 — Title", "1h23m Title",
+  // "[12:34] Title") from chapter headings. Per product decision timestamps
+  // are never rendered in detailed summaries — too error-prone, low reward.
+  function stripTimestampPrefix(label) {
+    if (!label) return label;
+    return String(label)
+      .replace(/^\s*\[?\d{1,2}(?::\d{2}){1,2}\]?\s*[—\-:]\s*/, '')
+      .replace(/^\s*\[?\d{1,2}(?::\d{2}){1,2}\]?\s+/, '')
+      .replace(/^\s*\d{4}\s*[—\-]\s*/, '')  // year prefixes ("1852 — title")
+      .trim();
+  }
+
+  // Chapter bullets sometimes arrive as stringified JSON objects
+  // ({"timestamp":"...", "title":"...", "bullets":[...]}). Normalize them to
+  // proper sub-sections so the renderer never shows a JSON blob.
+  function expandChapterJsonBullets(section) {
+    var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+    if (!bullets.length) return section;
+    var subs = {};
+    var leftover = [];
+    bullets.forEach(function (b) {
+      if (typeof b !== 'string') { leftover.push(b); return; }
+      var t = b.trim();
+      if (t.charAt(0) !== '{') { leftover.push(b); return; }
+      try {
+        var parsed = JSON.parse(t);
+        if (parsed && typeof parsed === 'object') {
+          var title = stripTimestampPrefix(String(parsed.title || '').trim());
+          if (!title) { leftover.push(b); return; }
+          var sub = Array.isArray(parsed.bullets) ? parsed.bullets.filter(Boolean).map(String) : [];
+          if (!sub.length && parsed.summary) sub = [String(parsed.summary)];
+          var key = title;
+          var idx = 2;
+          while (Object.prototype.hasOwnProperty.call(subs, key)) { key = title + ' (' + idx + ')'; idx += 1; }
+          subs[key] = sub;
+          return;
+        }
+      } catch (e) { void e; }
+      leftover.push(b);
+    });
+    if (!Object.keys(subs).length) return section;
+    var merged = {};
+    if (section.sub_sections && typeof section.sub_sections === 'object') {
+      Object.keys(section.sub_sections).forEach(function (k) { merged[k] = section.sub_sections[k]; });
+    }
+    Object.keys(subs).forEach(function (k) { merged[k] = subs[k]; });
+    return {
+      heading: section.heading,
+      bullets: leftover,
+      sub_sections: merged
+    };
+  }
+
+  function normalizeRawSchemaSections(sections) {
+    if (!Array.isArray(sections)) return sections;
+    var out = [];
+    sections.forEach(function (section) {
+      if (!section || typeof section !== 'object') return;
+      // Skip sections that should collapse (format is a tag, not a section)
+      var rawKey = String(section.heading || '').trim().toLowerCase();
+      if (rawKey === 'format') return;
+      var working = expandChapterJsonBullets(section);
+      var prettySubs = {};
+      var subs = working.sub_sections && typeof working.sub_sections === 'object' ? working.sub_sections : {};
+      Object.keys(subs).forEach(function (sk) {
+        var cleanSk = stripTimestampPrefix(prettyHeading(sk));
+        prettySubs[cleanSk || sk] = subs[sk];
+      });
+      out.push({
+        heading: prettyHeading(working.heading || ''),
+        bullets: Array.isArray(working.bullets) ? working.bullets : [],
+        sub_sections: prettySubs
+      });
+    });
+    return out;
+  }
+
   function renderStructuredDetailed(container, sections) {
+    sections = normalizeRawSchemaSections(sections) || sections;
     sections.forEach(function (section) {
       if (!section || typeof section !== 'object') return;
       var heading = section.heading == null ? '' : String(section.heading).trim();

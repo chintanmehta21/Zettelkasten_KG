@@ -83,11 +83,10 @@ def _chapter_walkthrough_section(
     subs: dict[str, list[str]] = {}
     for chapter in payload.detailed_summary.chapters_or_segments or []:
         title = _clean(chapter.title) or "Segment"
-        timestamp = _clean(chapter.timestamp or "")
-        if timestamp and timestamp.lower() not in _TIMESTAMP_PLACEHOLDERS:
-            heading = f"{timestamp} — {title}"
-        else:
-            heading = title
+        # Product decision (2026-04-25): never render timestamps in detailed
+        # summaries. They are easy to hallucinate across sources and offer
+        # little reader value. Keep only the topic heading.
+        heading = title
         bullets = [_clean(b) for b in (chapter.bullets or []) if _clean(b)]
         if not bullets:
             continue
