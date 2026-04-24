@@ -95,8 +95,72 @@ def get_supabase_scope(user_id_override: str | None = None) -> tuple[KGRepositor
     return _supabase_repo, _supabase_user_id
 
 
+# Internal sentinel tokens that must never leak to persisted surfaces.
+# Mirrors summarization.common.structured._SENTINEL_TAG_RE but also covers
+# bracketed/angle forms the LLM sometimes emits mid-text (e.g. ``[RESERVED]``,
+# ``<SENTINEL:foo>``) that pollute Obsidian notes and KG node summaries.
+_SENTINEL_TEXT_RE = re.compile(
+    r"(\[(?:RESERVED|SENTINEL)[^\]]*\])|(<SENTINEL[^>]*>)|(\b_[a-z][a-z0-9_]*_\b)",
+    re.IGNORECASE,
+)
+# Mid-sentence truncation: a sentence ending abruptly mid-word before terminal
+# punctuation. When the last non-empty line has visible text but no terminal
+# punctuation, the LLM output is truncated and the downstream surface will show
+# a half-written sentence. We drop the dangling fragment rather than render it.
+_TERMINAL_PUNCT = (".", "!", "?", ":", ";", '"', "'", ")", "]")
+
+
+def _strip_sentinel_text(text: str) -> str:
+    """Remove sentinel tokens from a rendered summary body.
+
+    Returns the original text with sentinel markers deleted and any resulting
+    double-spaces collapsed. Leaves newlines intact so markdown structure is
+    preserved.
+    """
+    if not text:
+        return text
+    cleaned = _SENTINEL_TEXT_RE.sub("", text)
+    # Collapse 2+ spaces (but not newlines) introduced by the excision.
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    return cleaned
+
+
+def _drop_unterminated_tail(text: str) -> str:
+    """Strip a trailing unterminated sentence fragment from a multi-line body.
+
+    Walks lines from the end; while the last non-empty line doesn't end in
+    terminal punctuation AND isn't a markdown heading or list marker, drop it.
+    Stops as soon as a terminated sentence is found. Empty inputs pass through
+    untouched. Single-line inputs are returned as-is (callers decide whether
+    to reject them).
+    """
+    if not text or "\n" not in text:
+        return text
+    lines = text.split("\n")
+    while lines:
+        last = lines[-1].rstrip()
+        if not last:
+            lines.pop()
+            continue
+        # Preserve markdown headings and list markers even without terminal punct.
+        if last.lstrip().startswith(("#", "- ", "* ", "1.", "2.", "3.")):
+            break
+        if last.endswith(_TERMINAL_PUNCT):
+            break
+        lines.pop()
+    return "\n".join(lines).rstrip() + ("\n" if text.endswith("\n") else "")
+
+
 def _normalize_summary_text(value: str | None) -> str:
-    return (
+    """Normalize + sanitize a summary body for persistence.
+
+    Beyond whitespace/escape normalization, this strips internal sentinel
+    tokens (``[RESERVED]``, ``<SENTINEL...>``, ``_schema_fallback_``) that
+    must never reach user-facing surfaces, and collapses trailing mid-
+    sentence truncation so persisted summaries always end on a complete
+    sentence or a structural marker.
+    """
+    raw = (
         str(value or "")
         .replace("\r\n", "\n")
         .replace("\\n", "\n")
@@ -105,6 +169,9 @@ def _normalize_summary_text(value: str | None) -> str:
         .replace('\\"', '"')
         .strip()
     )
+    cleaned = _strip_sentinel_text(raw)
+    cleaned = _drop_unterminated_tail(cleaned)
+    return cleaned.strip()
 
 
 def _extract_summary_field_by_regex(text: str, field_name: str) -> str:
