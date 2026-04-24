@@ -116,13 +116,14 @@ BEGIN
             'nodes', COALESCE(
                 (SELECT jsonb_agg(
                     jsonb_build_object(
-                        'id',      pn.id,
-                        'name',    pn.name,
-                        'group',   pn.source_type,
-                        'summary', pn.summary,
-                        'tags',    pn.tags,
-                        'url',     pn.url,
-                        'date',    COALESCE(pn.node_date::text, '')
+                        'id',        pn.id,
+                        'name',      pn.name,
+                        'group',     pn.source_type,
+                        'summary',   pn.summary,
+                        'tags',      pn.tags,
+                        'url',       pn.url,
+                        'date',      COALESCE(pn.node_date::text, ''),
+                        'node_date', COALESCE(pn.node_date::text, '')
                     )
                 ) FROM page_nodes pn),
                 '[]'::jsonb

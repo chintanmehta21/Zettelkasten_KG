@@ -35,12 +35,19 @@ from website.features.summarization_engine.summarization.common.dense_verify_run
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
 )
+from website.features.summarization_engine.summarization.common.model_trace import (
+    aggregate_fallback_reason,
+    make_call_entry,
+)
 from website.features.summarization_engine.summarization.common.prompts import (
     SYSTEM_PROMPT,
 )
 from website.features.summarization_engine.summarization.common.structured import (
     _date_or_none,
     _normalize_tags,
+)
+from website.features.summarization_engine.summarization.newsletter.archetype import (
+    archetype_from_signals as _newsletter_archetype_impl,
 )
 from website.features.summarization_engine.summarization.newsletter.prompts import (
     STRUCTURED_EXTRACT_INSTRUCTION,
@@ -68,6 +75,12 @@ class NewsletterSummarizer(BaseSummarizer):
         # Call 1 — DenseVerify (pro).
         dv = await run_dense_verify(client=self._client, ingest=ingest)
         pro_tokens = 0  # DV tokens are tracked elsewhere; run_dense_verify has no accessor here
+        call_trace: list[dict] = [{
+            "role": "dense_verify",
+            "model": dv.model_used,
+            "starting_model": dv.starting_model,
+            "fallback_reason": dv.fallback_reason,
+        }]
 
         # Compose the structured prompt with DV hints. Newsletter retains its
         # bespoke template-artifact repair loop because the failure mode is
@@ -85,7 +98,9 @@ class NewsletterSummarizer(BaseSummarizer):
             tier="flash",
             response_schema=NewsletterStructuredPayload,
             system_instruction=SYSTEM_PROMPT,
+            role="summarizer",
         )
+        call_trace.append(make_call_entry(role="summarizer", result=result))
         flash_tokens = result.input_tokens + result.output_tokens
         is_schema_fallback = False
         try:
@@ -100,7 +115,9 @@ class NewsletterSummarizer(BaseSummarizer):
                     tier="flash",
                     response_schema=NewsletterStructuredPayload,
                     system_instruction=SYSTEM_PROMPT,
+                    role="repair",
                 )
+                call_trace.append(make_call_entry(role="repair", result=repair))
                 flash_tokens += repair.input_tokens + repair.output_tokens
                 payload = _parse_payload_with_ingest(repair.text, ingest)
                 if _payload_contains_template_artifacts(payload):
@@ -112,6 +129,23 @@ class NewsletterSummarizer(BaseSummarizer):
             is_schema_fallback = True
         payload = _apply_ingest_guardrails(payload, ingest)
         latency_ms = int((time.perf_counter() - start) * 1000)
+
+        # Compute a lightweight newsletter archetype label so the _dense_verify
+        # extras block reaches cross-source parity with YouTube (format_label)
+        # and GitHub (archetype). Heuristic (no extra LLM call) because the
+        # 3-call budget is already saturated. Falls back to "engineering_essay"
+        # as the dominant Substack/Beehiiv default.
+        archetype = _newsletter_archetype(
+            payload=payload,
+            ingest=ingest,
+        )
+        structured_payload_extras = payload.model_dump(mode="json")
+        structured_payload_extras["_dense_verify"] = {
+            "archetype": archetype,
+            "stance": dv.stance,
+            "missing_fact_count": len(dv.missing_facts),
+        }
+
         return NewsletterSummaryResult(
             mini_title=payload.mini_title[
                 : self._engine_config.structured_extract.mini_title_max_chars
@@ -143,8 +177,10 @@ class NewsletterSummarizer(BaseSummarizer):
                 cod_iterations_used=0,
                 self_check_missing_count=len(dv.missing_facts),
                 patch_applied=False,
-                structured_payload=payload.model_dump(mode="json"),
+                structured_payload=structured_payload_extras,
                 is_schema_fallback=is_schema_fallback,
+                model_used=call_trace,
+                fallback_reason=aggregate_fallback_reason(call_trace),
             ),
         )
 
@@ -366,6 +402,38 @@ def _trim_at_sentence_boundary(text: str, max_chars: int) -> str:
     if boundary >= max_chars * 0.55:
         return candidate[:boundary].rstrip(" ,;:")
     return candidate.rstrip(" ,;:")
+
+
+def _newsletter_archetype(
+    *,
+    payload: NewsletterStructuredPayload,
+    ingest: IngestResult,
+) -> str:
+    """Bridge ``archetype_from_signals`` to the summarizer call shape.
+
+    Pulls the title, brief, and detailed bullets out of the structured
+    payload (the surface the reviewer sees) plus the URL from the ingest
+    so URL-path heuristics can fire. Falls through to the archetype
+    module's default on anything it cannot classify.
+    """
+    bullets: list[str] = []
+    try:
+        for section in payload.detailed_summary.sections:
+            for b in section.bullets:
+                if b:
+                    bullets.append(str(b))
+        for item in payload.detailed_summary.conclusions_or_recommendations:
+            if item:
+                bullets.append(str(item))
+    except Exception:  # noqa: BLE001 — schema drift should not crash summarizer
+        bullets = []
+
+    return _newsletter_archetype_impl(
+        title=str(payload.mini_title or ""),
+        brief_summary=str(payload.brief_summary or ""),
+        detailed_bullets=bullets,
+        url=ingest.url or "",
+    )
 
 
 def _fallback_title(*, title: str, publication: str) -> str:
