@@ -138,11 +138,20 @@ jobs:
             | .[]
           ')
 
+          # REDDIT_OPTIONAL=1 opts out of the fail-fast Reddit OAuth gate in
+          # website/core/settings.py:validate_reddit_credentials. Until
+          # REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET are registered as GH
+          # Actions secrets, this flag prevents the container from aborting
+          # at startup when WEBHOOK_SECRET is set. If the static value is
+          # already defined via a secret with the same name, toJSON(secrets)
+          # will take precedence since STATIC_BODY is concatenated after
+          # SECRETS_BODY — set the secret to override.
           STATIC_BODY=$(printf '%s\n' \
             "WEBHOOK_MODE=true" \
             "WEBHOOK_PORT=10000" \
             "WEBHOOK_URL=https://${TARGET_HOST}" \
-            "NEXUS_ENABLED=true")
+            "NEXUS_ENABLED=true" \
+            "REDDIT_OPTIONAL=1")
 
           FULL_ENV="${SECRETS_BODY}"$'\n'"${STATIC_BODY}"
 
