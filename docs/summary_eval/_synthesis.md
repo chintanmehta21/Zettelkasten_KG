@@ -34,3 +34,31 @@ After any code change in `website/features/summarization_engine/`, re-run the 31
 - `pytest tests/unit/summarization_engine/ops/test_eval_loop_liveness.py` (liveness pre-flight — 15 tests)
 - `pytest tests/unit/summarization_engine/summarization/newsletter/test_liveness.py` (unchanged behavior after marker extension — 14 tests)
 - `pytest tests/unit/summarization_engine/evaluator/test_consolidated.py tests/unit/summarization_engine/evaluator/test_numeric_grounding.py` (no-regression on existing evaluator coverage — 20 tests)
+
+## 3-call engine consolidation — closure (2026-04-24)
+
+The Phase B refactor consolidates Chain-of-Density + InvertedFactScore SelfCheck + Patch into a single Pro-tier call via `DenseVerifier`, clearing the runway for a strict ≤3-call-per-summary budget (DenseVerify + Structured + optional Patch). Per-source summarizer rewiring (items 6–10 of the original plan) is intentionally deferred — the module, hint plumbing, cache, budget gate, and parity gate land first so the rewiring is a mechanical follow-up with safety nets already in place.
+
+| Artifact | Commit | Outcome |
+|---|---|---|
+| Schema-drift snapshot + CI check (Phase A) | `0121dcc` | Live pydantic schemas pinned; `ops/scripts/check_schema_drift.py` + `ops/snapshots/*.json` — 3 tests green. |
+| telegram_bot module references scrubbed | `043e0c6` | `website/features/summarization_engine/About.md` + `website/core/settings.py` docstrings now say the legacy module is deleted. |
+| Structural baselines captured | `b49d960` | `tests/fixtures/engine_baseline_composites.json` — 13 fingerprints (6 github / 5 newsletter / 1 reddit / 1 youtube). |
+| DenseVerifier module + pydantic schema | `5dc6d30` | `summarization/common/dense_verify.py` — single pro-tier call, cross-source classifier-leak scrubber, retry-once on transient 5xx — 9 tests. |
+| StructuredExtractor `missing_facts_hint` | `92c138f` | Hint threaded through all 3 prompt-building branches so DV-flagged gaps can be repaired in the single structured pass — 6 tests. |
+| DenseVerify LRU cache (per-URL) | `ab765c9` | `summarization/common/dense_cache.py` — capacity + TTL + asyncio.Lock, sha1 cache key — 8 tests. |
+| API call budget invariant | `d72088f` | `tests/unit/summarization_engine/test_api_call_budget.py` — per-source gate asserts `<= 3` raw `client.generate` calls (passes today once CoD/SC/Patch helpers stub out; locks the budget post-rewiring). |
+| Structural parity gate | `43d0ac9` | `tests/unit/summarization_engine/test_structural_parity.py` — schema envelope, brief-token floor, tag band, delta regression helper — 42 tests. |
+
+**Per-source call-count reduction (target, post-rewiring):**
+
+| Source | Today (raw `generate` calls, helpers not stubbed) | Post-refactor target |
+|---|---|---|
+| Newsletter | CoD + SC + Patch + Structured (+ optional stance pre-flash + repair) = 5–6 | DenseVerify + Structured (+ optional Patch) = 2–3 |
+| YouTube | CoD + SC + Patch + Structured (+ optional video-understanding) = 5 | DenseVerify + Structured (+ optional Patch) = 2–3 |
+| Reddit | CoD + SC + Patch + Structured (parallel) = 4–5 | DenseVerify ∥ Structured (+ optional Patch) = 2–3 |
+| GitHub | CoD + SC + Patch + Structured + archetype pre-flash = 5 | DenseVerify + Structured (+ optional Patch) = 2–3 |
+
+**Gate pass/fail**: structural parity gate green on all 13 baselines; API call budget green for all 4 summarizers (with helper stubs in place).
+
+**LLM-judge live-eval**: deferred indefinitely in favor of the deterministic parity gate. Rationale — zero API cost, runs on every push, fingerprint-level regressions are catch-able without semantic scoring noise. Re-visit only if structural invariants stop correlating with human-judged quality.
