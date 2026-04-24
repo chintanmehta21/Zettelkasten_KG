@@ -56,16 +56,23 @@ _PROVIDER_ORDER = (
 
 _PREFLIGHT_TIMEOUT = 8.0
 _PREFLIGHT_GET_RANGE = "bytes=0-256"
+# Exponential backoff delays (seconds) between preflight retry attempts.
+# 1-2-4 keeps total worst-case latency below the pipeline budget while still
+# tolerating transient transport failures. Surfaces as fail-open (raise) only
+# after all three tries exhaust.
+_PREFLIGHT_BACKOFFS = (1.0, 2.0, 4.0)
 
 
 async def _preflight_probe(url: str) -> None:
-    """Probe a URL with HEAD-then-ranged-GET and raise if unreachable.
+    """Probe a URL with HEAD-then-ranged-GET, retrying with exponential backoff.
 
-    Raises ``NewsletterURLUnreachable`` for DNS failure, connection errors,
-    or any final HTTP status >= 400 (after redirects). Returns silently on
-    success. Bounded by ``_PREFLIGHT_TIMEOUT`` so very slow URLs are treated
-    as unreachable rather than hanging the pipeline.
+    Raises ``NewsletterURLUnreachable`` only after all backoff attempts fail
+    for DNS failure, connection errors, timeouts, or any final HTTP status
+    >= 400. Returns silently on first success. Each attempt is bounded by
+    ``_PREFLIGHT_TIMEOUT`` so very slow URLs are treated as unreachable.
     """
+    import asyncio as _asyncio
+
     if not url or not isinstance(url, str):
         raise NewsletterURLUnreachable(url or "", None, "empty_url")
     parsed = urlparse(url)
@@ -73,39 +80,62 @@ async def _preflight_probe(url: str) -> None:
         raise NewsletterURLUnreachable(url, None, "malformed_url")
 
     headers = {"User-Agent": _DEFAULT_UA}
-    try:
-        async with httpx.AsyncClient(
-            timeout=_PREFLIGHT_TIMEOUT,
-            follow_redirects=True,
-            headers=headers,
-        ) as client:
-            try:
-                resp = await client.head(url)
-            except httpx.HTTPError:
-                resp = None
-            status = resp.status_code if resp is not None else None
-            if resp is None or status is None or status >= 400:
-                # Some servers disallow HEAD (403/405) or mis-report it;
-                # fall back to a ranged GET to confirm liveness.
-                get_resp = await client.get(
-                    url,
-                    headers={**headers, "Range": _PREFLIGHT_GET_RANGE},
-                )
-                status = get_resp.status_code
-                if status >= 400:
-                    raise NewsletterURLUnreachable(
+    last_error: NewsletterURLUnreachable | None = None
+    attempts = (0.0,) + _PREFLIGHT_BACKOFFS  # first try immediate, then backoffs
+    for idx, delay in enumerate(attempts):
+        if delay:
+            await _asyncio.sleep(delay)
+        try:
+            async with httpx.AsyncClient(
+                timeout=_PREFLIGHT_TIMEOUT,
+                follow_redirects=True,
+                headers=headers,
+            ) as client:
+                try:
+                    resp = await client.head(url)
+                except httpx.HTTPError:
+                    resp = None
+                status = resp.status_code if resp is not None else None
+                if resp is None or status is None or status >= 400:
+                    # Some servers disallow HEAD (403/405) or mis-report it;
+                    # fall back to a ranged GET to confirm liveness.
+                    get_resp = await client.get(
                         url,
-                        status,
-                        f"http_{status}",
+                        headers={**headers, "Range": _PREFLIGHT_GET_RANGE},
                     )
-    except NewsletterURLUnreachable:
-        raise
-    except httpx.TimeoutException as exc:
-        raise NewsletterURLUnreachable(url, None, f"timeout: {exc.__class__.__name__}") from exc
-    except httpx.ConnectError as exc:
-        raise NewsletterURLUnreachable(url, None, f"dns_or_connect: {exc}") from exc
-    except httpx.HTTPError as exc:
-        raise NewsletterURLUnreachable(url, None, f"http_error: {exc.__class__.__name__}") from exc
+                    status = get_resp.status_code
+                    if status >= 400:
+                        raise NewsletterURLUnreachable(
+                            url,
+                            status,
+                            f"http_{status}",
+                        )
+            # Success on this attempt.
+            if idx > 0:
+                logger.info(
+                    "Newsletter preflight recovered after %d retries for %s",
+                    idx, url,
+                )
+            return
+        except NewsletterURLUnreachable:
+            # HTTP-status failures are authoritative (4xx/5xx both). Do not
+            # retry — the server responded and told us the URL is unreachable
+            # for this request. Backoff only covers transport-level failures.
+            raise
+        except httpx.TimeoutException as exc:
+            last_error = NewsletterURLUnreachable(
+                url, None, f"timeout: {exc.__class__.__name__}"
+            )
+        except httpx.ConnectError as exc:
+            last_error = NewsletterURLUnreachable(
+                url, None, f"dns_or_connect: {exc}"
+            )
+        except httpx.HTTPError as exc:
+            last_error = NewsletterURLUnreachable(
+                url, None, f"http_error: {exc.__class__.__name__}"
+            )
+    if last_error is not None:
+        raise last_error
 
 
 class NewsletterIngestor(BaseIngestor):

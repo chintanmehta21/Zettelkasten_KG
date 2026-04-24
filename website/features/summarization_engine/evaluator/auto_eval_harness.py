@@ -239,6 +239,35 @@ def run_auto_eval(config: AutoEvalConfig) -> dict:
     p10 = _percentile(composites, 10.0)
     passed = sum(1 for c in composites if c >= config.pass_threshold)
 
+    # Aggregate optional provenance signals from the scored per-summary rows.
+    # These fields are emitted only when present in any scored summary; absent
+    # summaries do not zero-out the aggregate. Downstream JSON consumers should
+    # check for key presence, not truthiness.
+    provenance: dict[str, object] = {}
+    pullpush_counts = [
+        int(row.get("pullpush_fetched_count"))
+        for row in per_summary
+        if isinstance(row.get("pullpush_fetched_count"), int)
+    ]
+    if pullpush_counts:
+        provenance["pullpush_fetched_count_total"] = sum(pullpush_counts)
+    gh_quota = [
+        int(row.get("gh_api_quota_used"))
+        for row in per_summary
+        if isinstance(row.get("gh_api_quota_used"), int)
+    ]
+    if gh_quota:
+        provenance["gh_api_quota_used_total"] = sum(gh_quota)
+    agreements = [
+        float(row.get("inter_rater_agreement"))
+        for row in per_summary
+        if isinstance(row.get("inter_rater_agreement"), (int, float))
+    ]
+    if agreements:
+        provenance["inter_rater_agreement_mean"] = round(
+            statistics.fmean(agreements), 3
+        )
+
     return {
         "source_type": config.source_type,
         "rubric_path": str(config.rubric_path),
@@ -250,6 +279,7 @@ def run_auto_eval(config: AutoEvalConfig) -> dict:
         "threshold": int(config.pass_threshold),
         "composite_max": int(config.composite_max),
         "per_summary": per_summary,
+        **provenance,
     }
 
 
