@@ -1,4 +1,13 @@
-"""YouTube-specific prompt templates."""
+"""YouTube-specific prompt templates.
+
+The base ``STRUCTURED_EXTRACT_INSTRUCTION`` is format-agnostic. When upstream
+routing has classified the video format (documentary, commentary, lecture,
+explainer, interview), :func:`select_youtube_prompt` returns a prompt that
+prepends a short format-specific guidance block to the base instruction so the
+model emphasises the right structural beats (chapters for lectures, the
+guest's central claim for interviews, etc.) without changing the JSON schema
+the structured extractor expects.
+"""
 from __future__ import annotations
 
 SOURCE_CONTEXT = (
@@ -10,6 +19,40 @@ SOURCE_CONTEXT = (
     "closing takeaway. When examples or analogies are used, summarize their "
     "PURPOSE, not their verbatim content. Do not retain clickbait phrasing."
 )
+
+
+_FORMAT_GUIDANCE: dict[str, str] = {
+    "documentary": (
+        "FORMAT: documentary. Emphasize the narrative arc, the central "
+        "subject under investigation, named on-screen sources, and the "
+        "narrator's framing. Treat archival footage and interview clips as "
+        "supporting evidence; cite the on-camera speaker by name when given."
+    ),
+    "commentary": (
+        "FORMAT: commentary / review / reaction. Emphasize the host's "
+        "central opinion or verdict, the artefact being commented on, and "
+        "the strongest 2-3 supporting arguments. Do not present commentary "
+        "as factual reporting."
+    ),
+    "lecture": (
+        "FORMAT: lecture / talk. Emphasize the structural outline (sections, "
+        "chapters, slides), the lecturer's central thesis, and the named "
+        "concepts / definitions / theorems introduced. Preserve order — a "
+        "lecture's argument depends on it."
+    ),
+    "explainer": (
+        "FORMAT: explainer / tutorial / walkthrough. Emphasize the problem "
+        "being solved, the step-by-step procedure, and the named tools or "
+        "commands shown. The reader should be able to reproduce the gist of "
+        "the workflow from the summary alone."
+    ),
+    "interview": (
+        "FORMAT: interview / podcast / Q&A. Identify the host AND the "
+        "guest(s) by name in every relevant field. Emphasize the guest's "
+        "central claims, their named projects/companies/papers, and the "
+        "questions the host actually asked rather than the host's own views."
+    ),
+}
 
 STRUCTURED_EXTRACT_INSTRUCTION = (
     f"{SOURCE_CONTEXT}\n\n"
@@ -42,3 +85,17 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )
+
+
+def select_youtube_prompt(format_label: str | None) -> str:
+    """Return a structured-extract prompt tuned for ``format_label``.
+
+    ``format_label`` is one of the labels emitted by
+    :func:`...youtube.format_classifier.classify_format`. Unknown / empty
+    labels fall through to the base format-agnostic prompt so behaviour is
+    backward-compatible with call sites that do not yet route by format.
+    """
+    guidance = _FORMAT_GUIDANCE.get((format_label or "").strip().lower())
+    if not guidance:
+        return STRUCTURED_EXTRACT_INSTRUCTION
+    return f"{guidance}\n\n{STRUCTURED_EXTRACT_INSTRUCTION}"
