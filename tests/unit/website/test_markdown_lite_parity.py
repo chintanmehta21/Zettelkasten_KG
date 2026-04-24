@@ -138,7 +138,7 @@ def test_frontend_parser_preserves_bullet_text_intact():
     # The 5 chapter bullets should appear verbatim.
     for expected in ["A.", "B.", "C.", "D.", "E."]:
         assert expected in bullets, f"missing chapter bullet: {expected!r}"
-    # The closing takeaway bullet.
-    assert "DMT needs more study." in bullets
+    # The closing takeaway bullet — layout prefixes YouTube closings with "Recap: ".
+    assert "Recap: DMT needs more study." in bullets
     # The demo bullet.
     assert "Live demo." in bullets

@@ -245,7 +245,7 @@ def _closing_remarks_section(
         takeaway = "Repository is documented and ready for developer adoption."
     return DetailedSummarySection(
         heading="Closing remarks",
-        bullets=[_ensure_sentence(takeaway)],
+        bullets=[_ensure_sentence(f"Roadmap: {takeaway.rstrip('.!?')}")],
     )
 
 

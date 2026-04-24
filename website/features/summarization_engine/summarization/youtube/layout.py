@@ -109,10 +109,16 @@ def _demonstrations_section(
 def _closing_remarks_section(
     payload: YouTubeStructuredPayload,
 ) -> DetailedSummarySection | None:
+    """YouTube closing remarks are framed as a video recap.
+
+    The bullet is labelled ``Recap: ...`` so the reader immediately orients to
+    "this is the takeaway after watching" rather than a generic closing line.
+    """
     takeaway = _clean(payload.detailed_summary.closing_takeaway or "")
     if not takeaway:
         return None
-    return DetailedSummarySection(heading="Closing remarks", bullets=[takeaway])
+    bullet = takeaway if takeaway.lower().startswith("recap") else f"Recap: {takeaway}"
+    return DetailedSummarySection(heading="Closing remarks", bullets=[bullet])
 
 
 def compose_youtube_detailed(

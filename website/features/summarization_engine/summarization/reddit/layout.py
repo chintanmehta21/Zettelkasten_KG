@@ -191,14 +191,14 @@ def _closing_remarks_section(
 
     if questions:
         takeaway = _ensure_sentence(
-            f"Open question still active in the thread: {questions[0].rstrip('.?!')}"
+            f"Resolution: open question still active — {questions[0].rstrip('.?!')}"
         )
     elif counters:
         takeaway = _ensure_sentence(
-            f"Main counterpoint to watch: {counters[0].rstrip('.?!')}"
+            f"Resolution: main counterpoint to watch — {counters[0].rstrip('.?!')}"
         )
     else:
-        takeaway = "The thread reached rough consensus with no major unresolved questions."
+        takeaway = "Resolution: the thread reached rough consensus with no major unresolved questions."
 
     return DetailedSummarySection(heading="Closing remarks", bullets=[takeaway])
 

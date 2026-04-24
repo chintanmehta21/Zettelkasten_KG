@@ -130,7 +130,7 @@ def _closing_remarks_section(
     if cta:
         return DetailedSummarySection(
             heading="Closing remarks",
-            bullets=[_ensure_sentence(cta)],
+            bullets=[_ensure_sentence(f"Call to action: {cta.rstrip('.!?')}")],
         )
     conclusions = [
         _drop_placeholder(c)
@@ -140,17 +140,17 @@ def _closing_remarks_section(
     if conclusions:
         return DetailedSummarySection(
             heading="Closing remarks",
-            bullets=[_ensure_sentence(conclusions[-1])],
+            bullets=[_ensure_sentence(f"Call to action: {conclusions[-1].rstrip('.!?')}")],
         )
     sentences = _split_sentences(payload.brief_summary)
     if sentences:
         return DetailedSummarySection(
             heading="Closing remarks",
-            bullets=[_ensure_sentence(sentences[-1])],
+            bullets=[_ensure_sentence(f"Call to action: {sentences[-1].rstrip('.!?')}")],
         )
     return DetailedSummarySection(
         heading="Closing remarks",
-        bullets=["The issue stands on its stated thesis without an explicit call to action."],
+        bullets=["Call to action: the issue stands on its stated thesis without an explicit next step."],
     )
 
 
