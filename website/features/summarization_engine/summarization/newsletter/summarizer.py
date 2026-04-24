@@ -10,6 +10,10 @@ from website.features.summarization_engine.core.models import (
     IngestResult,
     SourceType,
 )
+from website.features.summarization_engine.evaluator.numeric_grounding import (
+    extract_numeric_tokens,
+    ground_numeric_claims,
+)
 from website.features.summarization_engine.summarization import register_summarizer
 from website.features.summarization_engine.summarization.base import BaseSummarizer
 from website.features.summarization_engine.summarization.common.cod import (
@@ -102,6 +106,7 @@ class NewsletterSummarizer(BaseSummarizer):
                 payload.tags,
                 self._engine_config.structured_extract.tags_min,
                 self._engine_config.structured_extract.tags_max,
+                reserved=_brand_reserved(payload),
             ),
             detailed_summary=payload.detailed_summary,
             metadata=SummaryMetadata(
@@ -182,6 +187,7 @@ def _fallback_payload(ingest: IngestResult, summary_text: str, config) -> Newsle
         payload.tags,
         config.structured_extract.tags_min,
         config.structured_extract.tags_max,
+        reserved=_brand_reserved(payload),
     )
     return payload
 
@@ -214,6 +220,17 @@ def _apply_ingest_guardrails(
     return payload
 
 
+def _brand_reserved(payload: NewsletterStructuredPayload) -> list[str]:
+    """Build the reserved-tag list for a newsletter payload from the
+    publication identity. Returns ``[]`` when no publication is set so the
+    caller falls back to legacy normalization (no forced reservation)."""
+    publication = (payload.detailed_summary.publication_identity or "").strip()
+    if not publication:
+        return []
+    slug = re.sub(r"[^a-z0-9+-]+", "-", publication.lower()).strip("-")
+    return [slug] if slug else []
+
+
 def _publication_identity_hint(ingest: IngestResult) -> str:
     url = ingest.url.lower()
     title = str(ingest.sections.get("Title") or ingest.metadata.get("title") or "")
@@ -230,53 +247,77 @@ def _publication_identity_hint(ingest: IngestResult) -> str:
     return str(ingest.metadata.get("publication_identity") or "").strip()
 
 
+# Newsletter uses the stricter (all-integer) bare-integer mode so small
+# fabricated counts like "42 teams" are also flagged as unsupported. The
+# evaluator default (3-digit minimum) is deliberately looser to avoid
+# flagging incidental small counts in cross-source scoring.
+_NL_MIN_BARE_INT_DIGITS = 1
+
+
 def _remove_unsupported_numeric_claims(
     payload: NewsletterStructuredPayload,
     source_text: str,
 ) -> None:
-    source_numbers = set(_numeric_claims(source_text))
+    """Strip any numeric claim in the structured payload that is not
+    grounded in ``source_text``. Delegates token extraction / grounding
+    to the shared evaluator module so production stripping and
+    post-hoc grounding scoring cannot drift apart.
+
+    Behavior contract (preserved from the pre-delegation implementation):
+      - No-op when ``source_text`` is empty / whitespace-only.
+      - brief_summary: drop each sentence that contains any ungrounded
+        token; fall back to the original brief if every sentence gets
+        dropped (never return an empty brief).
+      - section.bullets: drop ungrounded bullets; if that empties the
+        section, keep one number-free bullet as a placeholder.
+      - conclusions_or_recommendations: drop any item with an
+        ungrounded token.
+    """
     if not source_text.strip():
         return
 
     payload.brief_summary = _filter_unsupported_number_sentences(
-        payload.brief_summary,
-        source_numbers,
+        payload.brief_summary, source_text
     )
     for section in payload.detailed_summary.sections:
         filtered = [
             bullet
             for bullet in section.bullets
-            if not _has_unsupported_number(bullet, source_numbers)
+            if not _has_unsupported_number(bullet, source_text)
         ]
-        section.bullets = filtered or [
-            bullet for bullet in section.bullets if not _numeric_claims(bullet)
-        ][:1]
+        if filtered:
+            section.bullets = filtered
+        else:
+            number_free = [
+                bullet
+                for bullet in section.bullets
+                if not extract_numeric_tokens(
+                    bullet, min_bare_integer_digits=_NL_MIN_BARE_INT_DIGITS
+                )
+            ]
+            section.bullets = number_free[:1]
     payload.detailed_summary.conclusions_or_recommendations = [
         item
         for item in payload.detailed_summary.conclusions_or_recommendations
-        if not _has_unsupported_number(item, source_numbers)
+        if not _has_unsupported_number(item, source_text)
     ]
 
 
-def _filter_unsupported_number_sentences(text: str, source_numbers: set[str]) -> str:
+def _filter_unsupported_number_sentences(text: str, source_text: str) -> str:
     sentences = re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
     kept = [
         sentence
         for sentence in sentences
-        if sentence and not _has_unsupported_number(sentence, source_numbers)
+        if sentence and not _has_unsupported_number(sentence, source_text)
     ]
     return " ".join(kept) or text
 
 
-def _has_unsupported_number(text: str, source_numbers: set[str]) -> bool:
-    return any(number not in source_numbers for number in _numeric_claims(text))
-
-
-def _numeric_claims(text: str) -> list[str]:
-    return [
-        match.group(0).replace(",", "")
-        for match in re.finditer(r"(?<![A-Za-z])(?:\d{4}|\d+(?:,\d{3})*(?:\.\d+)?%?)(?![A-Za-z])", text)
-    ]
+def _has_unsupported_number(text: str, source_text: str) -> bool:
+    _, ungrounded = ground_numeric_claims(
+        text, source_text, min_bare_integer_digits=_NL_MIN_BARE_INT_DIGITS
+    )
+    return bool(ungrounded)
 
 
 def _payload_contains_template_artifacts(payload: NewsletterStructuredPayload) -> bool:
