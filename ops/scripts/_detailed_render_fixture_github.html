@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zettel detailed_summary renderer — GitHub fixture</title>
+  <style>
+    :root {
+      --text-primary: #1f2937;
+      --text-secondary: #374151;
+      --accent-gold: #D4A024;
+      --accent-teal: #14b8a6;
+      --bg: #0b0b0c;
+      --panel: #111215;
+      --panel-border: rgba(212, 160, 36, 0.18);
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem 1rem;
+    }
+    main { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; margin: 0 0 0.25rem; color: var(--accent-gold); }
+    p.note { color: #9ca3af; font-size: 0.85rem; margin: 0 0 1.5rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    .panel h2.label {
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin: 0 0 0.85rem;
+    }
+    .zettels-summary-section { color: #e5e7eb; }
+    .zettels-summary-section-heading {
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-teal);
+      margin: 0 0 0.6rem;
+    }
+    .zettels-summary-h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f3f4f6;
+      margin: 1rem 0 0.45rem 0;
+    }
+    .zettels-summary-h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e5e7eb;
+      margin: 0.75rem 0 0.35rem 0;
+    }
+    .zettels-summary-list { list-style: disc; padding-left: 1.2rem; margin: 0 0 0.6rem 0; }
+    .zettels-summary-list-item {
+      color: #cbd5e1;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin-bottom: 0.3rem;
+    }
+    .zettels-summary-para { color: #cbd5e1; font-size: 0.92rem; line-height: 1.6; margin: 0 0 0.6rem 0; }
+    pre {
+      background: #0a0a0a;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      color: #9ca3af;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      max-height: 180px;
+    }
+    .banner-ok { color: #10b981; font-size: 0.82rem; margin-top: 0.4rem; }
+    .banner-bad { color: #ef4444; font-size: 0.82rem; margin-top: 0.4rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Zettel modal — Detailed summary renderer fixture (GitHub)</h1>
+    <p class="note">
+      Covers the three possible shapes for a persisted github zettel's
+      <code>detailed_summary</code>: (A) proper JSON list-of-dict (current happy
+      path), (B) legacy Python-repr with single quotes (iter-23 regression — must
+      be recovered by the frontend fallback), and (C) markdown string from the
+      summarization engine's composed layout.
+    </p>
+
+    <section class="panel">
+      <h2 class="label">A. JSON list-of-dict (happy path, pydantic repo)</h2>
+      <div id="mount-a"></div>
+      <div id="status-a"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">B. Python-repr recovery (stale Supabase row)</h2>
+      <div id="mount-b"></div>
+      <div id="status-b"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">C. Pre-rendered markdown (composed layout)</h2>
+      <div id="mount-c"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">Parsed structured DOM (A + B)</h2>
+      <pre id="dom-dump"></pre>
+    </section>
+  </main>
+
+  <script>
+    // ── Vendored subset of user_zettels.js (the renderer and the recovery
+    //    path). Keep in sync with the shipping file; this fixture exists so a
+    //    reviewer can sanity-check the rendering without running the server.
+
+    function isStructuredDetailed(value) {
+      if (!Array.isArray(value) || value.length === 0) return false;
+      for (var i = 0; i < value.length; i++) {
+        var section = value[i];
+        if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
+        if (!('heading' in section || 'bullets' in section || 'sub_sections' in section || 'subSections' in section)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function renderStructuredDetailed(container, sections) {
+      sections.forEach(function (section) {
+        if (!section || typeof section !== 'object') return;
+        var heading = section.heading == null ? '' : String(section.heading).trim();
+        if (heading) {
+          var h4 = document.createElement('h4');
+          h4.className = 'zettels-summary-h2';
+          h4.textContent = heading;
+          container.appendChild(h4);
+        }
+        var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+        if (bullets.length) {
+          var ul = document.createElement('ul');
+          ul.className = 'zettels-summary-list';
+          bullets.forEach(function (bullet) {
+            var text = bullet == null ? '' : String(bullet).trim();
+            if (!text) return;
+            var li = document.createElement('li');
+            li.className = 'zettels-summary-list-item';
+            li.textContent = text;
+            ul.appendChild(li);
+          });
+          if (ul.childNodes.length) container.appendChild(ul);
+        }
+        var subs = section.sub_sections || section.subSections;
+        if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
+          Object.keys(subs).forEach(function (subHeading) {
+            var subBullets = subs[subHeading];
+            if (!Array.isArray(subBullets) || !subBullets.length) return;
+            var h5 = document.createElement('h5');
+            h5.className = 'zettels-summary-h3';
+            h5.textContent = String(subHeading || '').trim();
+            container.appendChild(h5);
+            var subUl = document.createElement('ul');
+            subUl.className = 'zettels-summary-list';
+            subBullets.forEach(function (bullet) {
+              var text = bullet == null ? '' : String(bullet).trim();
+              if (!text) return;
+              var li = document.createElement('li');
+              li.className = 'zettels-summary-list-item';
+              li.textContent = text;
+              subUl.appendChild(li);
+            });
+            if (subUl.childNodes.length) container.appendChild(subUl);
+          });
+        }
+      });
+    }
+
+    function renderMarkdownLite(container, markdown) {
+      var lines = String(markdown || '').split(/\r?\n/);
+      var paraBuf = [];
+      var listStack = null;
+      function flushPara() {
+        if (!paraBuf.length) return;
+        var joined = paraBuf.join(' ').trim();
+        if (joined) {
+          var p = document.createElement('p');
+          p.className = 'zettels-summary-para';
+          p.textContent = joined;
+          container.appendChild(p);
+        }
+        paraBuf = [];
+      }
+      function closeList() { listStack = null; }
+      for (var i = 0; i < lines.length; i++) {
+        var trimmed = lines[i].replace(/\s+$/, '');
+        if (!trimmed.trim()) { flushPara(); closeList(); continue; }
+        var h3 = trimmed.match(/^###\s+(.*)$/);
+        var h2 = trimmed.match(/^##\s+(.*)$/);
+        var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
+        if (h2 || h3) {
+          flushPara(); closeList();
+          var heading = document.createElement(h2 ? 'h4' : 'h5');
+          heading.className = h2 ? 'zettels-summary-h2' : 'zettels-summary-h3';
+          heading.textContent = (h2 ? h2[1] : h3[1]).trim();
+          container.appendChild(heading);
+          continue;
+        }
+        if (bullet) {
+          flushPara();
+          if (!listStack) {
+            listStack = { el: document.createElement('ul') };
+            listStack.el.className = 'zettels-summary-list';
+            container.appendChild(listStack.el);
+          }
+          var li = document.createElement('li');
+          li.className = 'zettels-summary-list-item';
+          li.textContent = bullet[1].trim();
+          listStack.el.appendChild(li);
+          continue;
+        }
+        closeList();
+        paraBuf.push(trimmed.trim());
+      }
+      flushPara();
+      closeList();
+    }
+
+    // ── The defensive recovery path mirrored from extractSummaryParts.
+    function coerceDetailed(rawDetailed) {
+      if (isStructuredDetailed(rawDetailed)) return rawDetailed;
+      if (typeof rawDetailed !== 'string') return null;
+      var trimmed = rawDetailed.trim();
+      if (trimmed.charAt(0) !== '[') return null;
+      try {
+        var parsed = JSON.parse(trimmed);
+        if (isStructuredDetailed(parsed)) return parsed;
+      } catch (err) { void err; }
+      if (trimmed.indexOf("[{'") === 0 || trimmed.indexOf("'") !== -1) {
+        try {
+          var swapped = trimmed.replace(/'/g, '"');
+          var recovered = JSON.parse(swapped);
+          if (isStructuredDetailed(recovered)) return recovered;
+        } catch (err2) { void err2; }
+      }
+      return null;
+    }
+
+    // ── (A) JSON happy path: what the post-fix pipeline writes.
+    var detailedA = [
+      {
+        heading: "Overview",
+        bullets: ["Pydantic is a data validation library for Python 3.10+ that leverages type hints."],
+        sub_sections: {
+          "Core argument": ["Type hints define data structures via BaseModel."],
+          "Architecture": ["Core rewritten in Rust for V2 (pydantic-core)."],
+          "Stack": ["Python, Rust."]
+        }
+      },
+      {
+        heading: "Features and modules",
+        bullets: [],
+        sub_sections: {
+          "Validation": ["Runtime validation via `BaseModel`.", "Custom validators via `@field_validator`."],
+          "Serialization": ["JSON-compatible serialization with `model_dump_json`."]
+        }
+      }
+    ];
+
+    var mountA = document.getElementById('mount-a');
+    var coercedA = coerceDetailed(detailedA);
+    if (coercedA) {
+      renderStructuredDetailed(mountA, coercedA);
+      document.getElementById('status-a').className = 'banner-ok';
+      document.getElementById('status-a').textContent = 'OK — rendered from JSON list-of-dict directly.';
+    } else {
+      document.getElementById('status-a').className = 'banner-bad';
+      document.getElementById('status-a').textContent = 'FAIL — JSON array rejected.';
+    }
+
+    // ── (B) Legacy Python-repr form: what a stale Supabase row looks like.
+    //        Must be recovered by the defensive single-to-double quote swap.
+    var detailedB = "[{'heading': 'Overview', 'bullets': ['Pydantic is a data validation library."
+      + " It uses type hints to define data structures."
+      + "'], 'sub_sections': {'Core argument': ['BaseModel is the foundation.'], 'Stack': ['Python, Rust.']}},"
+      + " {'heading': 'Features and modules', 'bullets': [], 'sub_sections': {'Validation': ['Runtime validation.']}}]";
+
+    var mountB = document.getElementById('mount-b');
+    var coercedB = coerceDetailed(detailedB);
+    if (coercedB) {
+      renderStructuredDetailed(mountB, coercedB);
+      document.getElementById('status-b').className = 'banner-ok';
+      document.getElementById('status-b').textContent = 'OK — recovered from Python-repr via single-to-double quote swap.';
+    } else {
+      // Fall back to the markdown renderer so the text is at least readable.
+      renderMarkdownLite(mountB, detailedB);
+      document.getElementById('status-b').className = 'banner-bad';
+      document.getElementById('status-b').textContent = 'RECOVERY FAILED — fell through to markdown renderer (text still shows but unstyled).';
+    }
+
+    // ── (C) Markdown string from a composed-layout engine run.
+    var detailedC = [
+      "## Overview",
+      "- FastAPI is a modern, high-performance web framework for building APIs with Python 3.8+.",
+      "",
+      "### Stack",
+      "- Built on Starlette (ASGI) and Pydantic.",
+      "",
+      "## Features",
+      "- Automatic OpenAPI + Swagger UI.",
+      "- Async/await first-class support."
+    ].join("\n");
+    renderMarkdownLite(document.getElementById('mount-c'), detailedC);
+
+    // Dump the DOM for A + B so it can be diffed from the fixture output.
+    document.getElementById('dom-dump').textContent =
+      '--- A ---\n' + mountA.innerHTML + '\n\n--- B ---\n' + mountB.innerHTML;
+  </script>
+</body>
+</html>

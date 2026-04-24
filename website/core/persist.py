@@ -161,7 +161,64 @@ def _drop_unterminated_tail(text: str) -> str:
     return "\n".join(lines).rstrip() + ("\n" if text.endswith("\n") else "")
 
 
-def _normalize_summary_text(value: str | None) -> str:
+def _coerce_detailed_to_markdown(value: Any) -> str:
+    """Convert a structured detailed_summary (list-of-dicts or pydantic
+    section models) into markdown that ``renderMarkdownLite`` on the
+    frontend can parse.
+
+    Returns an empty string for non-list/dict inputs. String inputs pass
+    through untouched. This is the single point where a Python ``list`` /
+    ``dict`` (shape emitted by the summarization engine and some eval
+    register scripts) is rendered to a stable textual surface. Without
+    this, callers that forward the raw Python object fall back to
+    ``str(list_of_dicts)`` which produces a Python repr with single quotes
+    — the exact bug we are fixing.
+    """
+    if value is None or isinstance(value, str):
+        return value or ""
+    sections: list[Any]
+    if isinstance(value, list):
+        sections = value
+    elif isinstance(value, dict):
+        sections = [value]
+    else:
+        return ""
+
+    lines: list[str] = []
+    for section in sections:
+        if hasattr(section, "model_dump"):
+            try:
+                section = section.model_dump()
+            except Exception:
+                section = None
+        if not isinstance(section, dict):
+            continue
+        heading = str(section.get("heading") or "").strip()
+        if lines:
+            lines.append("")
+        if heading:
+            lines.append(f"## {heading}")
+        bullets = section.get("bullets") or []
+        if isinstance(bullets, list):
+            for bullet in bullets:
+                text = str(bullet).strip()
+                if text:
+                    lines.append(f"- {text}")
+        sub_sections = section.get("sub_sections") or section.get("subSections") or {}
+        if isinstance(sub_sections, dict):
+            for sub_heading, sub_bullets in sub_sections.items():
+                if not isinstance(sub_bullets, list) or not sub_bullets:
+                    continue
+                lines.append("")
+                lines.append(f"### {str(sub_heading).strip()}")
+                for bullet in sub_bullets:
+                    text = str(bullet).strip()
+                    if text:
+                        lines.append(f"- {text}")
+    return "\n".join(lines).strip()
+
+
+def _normalize_summary_text(value: Any) -> str:
     """Normalize + sanitize a summary body for persistence.
 
     Beyond whitespace/escape normalization, this strips internal sentinel
@@ -169,9 +226,21 @@ def _normalize_summary_text(value: str | None) -> str:
     must never reach user-facing surfaces, and collapses trailing mid-
     sentence truncation so persisted summaries always end on a complete
     sentence or a structural marker.
+
+    Non-string inputs (list-of-dict section payloads from the engine's
+    structured summaries, or a single-dict section) are coerced to
+    markdown via :func:`_coerce_detailed_to_markdown` rather than running
+    through ``str()`` — which would emit a Python repr with single quotes
+    (the iter-23 github regression).
     """
+    if value is None:
+        raw_text = ""
+    elif isinstance(value, (list, dict)):
+        raw_text = _coerce_detailed_to_markdown(value)
+    else:
+        raw_text = str(value)
     raw = (
-        str(value or "")
+        raw_text
         .replace("\r\n", "\n")
         .replace("\\n", "\n")
         .replace("\\r", "\r")

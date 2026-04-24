@@ -34,10 +34,12 @@ def main() -> int:
     mini_title = summary.get("mini_title") or sp.get("mini_title") or "pydantic/pydantic"
     brief = summary.get("brief_summary") or sp.get("brief_summary") or ""
     detailed_raw = summary.get("detailed_summary") or sp.get("detailed_summary") or []
-    if isinstance(detailed_raw, list):
-        detailed = "\n".join(f"- {item}" for item in detailed_raw)
-    else:
-        detailed = str(detailed_raw)
+    # Pass structured detailed_summary straight through; persist's
+    # _normalize_summary_text handles list/dict -> markdown conversion
+    # via _coerce_detailed_to_markdown. Stringifying here with f"- {item}"
+    # produced a Python repr (single-quoted dict keys), which broke the
+    # frontend renderer for gh-pydantic-pydantic on prod (iter-23 regression).
+    detailed = detailed_raw
     tags = summary.get("tags") or sp.get("tags") or []
 
     url = meta.get("url") or "https://github.com/pydantic/pydantic"

@@ -1458,6 +1458,38 @@
       var rawDetailed = parsed.detailed_summary != null ? parsed.detailed_summary : parsed.detailedSummary;
       var structuredDetailed = isStructuredDetailed(rawDetailed) ? rawDetailed : null;
 
+      // Defensive recovery: legacy Supabase rows may carry a string form of
+      // detailed_summary that starts with `[{` — either a valid JSON array
+      // (standard path) or a Python repr with single quotes (iter-23
+      // regression). We try JSON.parse first; if it fails and the input
+      // looks like Python repr, we attempt a conservative single-to-double
+      // quote swap and re-parse. Any failure falls back silently to the
+      // markdown renderer so no bad data ever reaches the DOM.
+      if (!structuredDetailed && typeof rawDetailed === 'string') {
+        var trimmedDetailed = rawDetailed.trim();
+        if (trimmedDetailed.charAt(0) === '[') {
+          var recovered = null;
+          try {
+            recovered = JSON.parse(trimmedDetailed);
+          } catch (parseErr) {
+            void parseErr;
+            // Python repr recovery: only attempt if it clearly looks like one.
+            if (trimmedDetailed.indexOf("[{'") === 0 || trimmedDetailed.indexOf("'") !== -1) {
+              try {
+                var swapped = trimmedDetailed.replace(/'/g, '"');
+                recovered = JSON.parse(swapped);
+              } catch (swapErr) {
+                void swapErr;
+                recovered = null;
+              }
+            }
+          }
+          if (isStructuredDetailed(recovered)) {
+            structuredDetailed = recovered;
+          }
+        }
+      }
+
       var briefFromParsed = normalizeSummaryText(
         parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
       );
