@@ -1,4 +1,4 @@
-"""Tests for default summarizer pipeline."""
+"""Tests for default summarizer pipeline (3-call DenseVerify)."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -11,14 +11,36 @@ from website.features.summarization_engine.summarization import get_summarizer, 
 from website.features.summarization_engine.summarization.default.summarizer import DefaultSummarizer
 
 
+def _stub_run_dense_verify(monkeypatch):
+    from website.features.summarization_engine.summarization.common import (
+        dense_verify,
+        dense_verify_runner,
+    )
+    from website.features.summarization_engine.summarization.default import (
+        summarizer as default_mod,
+    )
+
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense one",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    monkeypatch.setattr(default_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
+
+
 @pytest.mark.asyncio
-async def test_default_summarizer_runs_four_phase_pipeline():
+async def test_default_summarizer_runs_three_phase_pipeline(monkeypatch):
+    _stub_run_dense_verify(monkeypatch)
+
     client = AsyncMock()
     client.generate.side_effect = [
-        _gen("dense one", 10, 5),
-        _gen("dense two", 10, 5),
-        _gen('{"missing": [{"claim": "missing a", "importance": 4}, {"claim": "missing b", "importance": 3}, {"claim": "missing c", "importance": 3}]}', 10, 5),
-        _gen("patched dense", 10, 5),
         _gen(
             '{"mini_title": "Good note", "brief_summary": "A useful summary.", '
             '"tags": ["one","two","three","four","five","six","seven","eight"], '
@@ -40,10 +62,9 @@ async def test_default_summarizer_runs_four_phase_pipeline():
     result = await DefaultSummarizer(client, {}).summarize(ingest)
 
     assert result.mini_title == "Good note"
-    assert result.metadata.cod_iterations_used == 2
-    assert result.metadata.self_check_missing_count == 3
-    assert result.metadata.patch_applied is True
-    assert result.metadata.total_tokens_used == 75
+    # DV was mocked, so the summarizer's own client.generate is called once
+    # (structured extraction). No patch call because missing_facts is empty.
+    assert client.generate.await_count == 1
 
 
 def test_source_summarizers_are_registered():
