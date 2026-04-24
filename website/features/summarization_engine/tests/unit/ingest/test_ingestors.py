@@ -218,9 +218,19 @@ async def test_newsletter_direct_fetch_succeeds_without_fallback(httpx_mock: HTT
         + "<p>" + ("Substantial content about the topic. " * 80) + "</p>"
         + "</article></body></html>"
     )
+    # Preflight HEAD probe (runs before the direct fetch).
+    httpx_mock.add_response(
+        method="HEAD",
+        url="https://example.substack.com/p/post",
+        status_code=200,
+    )
     # Only the direct fetch is mocked — if the ingestor tries a bypass provider
     # pytest_httpx will raise because there is no matching response.
-    httpx_mock.add_response(url="https://example.substack.com/p/post", html=long_article)
+    httpx_mock.add_response(
+        method="GET",
+        url="https://example.substack.com/p/post",
+        html=long_article,
+    )
 
     result = await NewsletterIngestor().ingest(
         "https://example.substack.com/p/post",
@@ -245,8 +255,15 @@ async def test_newsletter_wayback_fallback_recovers_paywalled_article(
         + "</article></body></html>"
     )
 
+    # Preflight HEAD probe (runs before the direct fetch).
+    httpx_mock.add_response(
+        method="HEAD",
+        url="https://example.substack.com/p/paywalled",
+        status_code=200,
+    )
     # Direct fetch — short (< min_text_length)
     httpx_mock.add_response(
+        method="GET",
         url="https://example.substack.com/p/paywalled",
         html=paywalled,
     )
@@ -287,8 +304,15 @@ async def test_newsletter_all_providers_fail_returns_low_confidence(
     httpx_mock: HTTPXMock,
 ):
     """Every provider 500s → empty body and low confidence, no exception."""
+    # Preflight HEAD probe — succeeds so the ingestor reaches the direct fetch.
+    httpx_mock.add_response(
+        method="HEAD",
+        url="https://example.medium.com/p/dead",
+        status_code=200,
+    )
     # Direct fetch fails
     httpx_mock.add_response(
+        method="GET",
         url="https://example.medium.com/p/dead",
         status_code=500,
     )
