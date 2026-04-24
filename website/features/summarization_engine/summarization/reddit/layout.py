@@ -106,7 +106,7 @@ def _overview_section(payload: RedditStructuredPayload) -> DetailedSummarySectio
     # nested sub-sections, mirroring YouTube's _overview_section pattern.
     thesis = _extract_thesis_from_detailed(payload)
     if thesis:
-        subs["Thesis"] = [thesis]
+        subs["Core argument"] = [thesis]
 
     op_intent = _drop_placeholder(payload.detailed_summary.op_intent)
     if op_intent:

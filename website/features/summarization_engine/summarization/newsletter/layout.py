@@ -68,7 +68,7 @@ def _overview_section(payload: NewsletterStructuredPayload) -> DetailedSummarySe
 
     thesis = _drop_placeholder(detailed.issue_thesis)
     if thesis and thesis != primary:
-        subs["Thesis"] = [_ensure_sentence(thesis)]
+        subs["Core argument"] = [_ensure_sentence(thesis)]
 
     return DetailedSummarySection(
         heading="Overview",

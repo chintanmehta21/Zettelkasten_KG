@@ -4,7 +4,7 @@
 Guarantees the output of _render_detailed_summary (consumed by the frontend's
 renderMarkdownLite) contains:
   - `## Overview` h2
-  - `### Format and speakers` and `### Thesis` h3 nested under Overview
+  - `### Format and speakers` and `### Core argument` h3 nested under Overview
   - `## Chapter walkthrough` h2 with per-chapter `### <title>` h3
   - `## Closing remarks` h2 (NOT `## Closing Takeaway`)
   - Only string bullets, never JSON-stringified dicts
@@ -61,7 +61,7 @@ def test_markdown_round_trip_has_overview_h2():
 def test_markdown_round_trip_has_format_and_thesis_h3():
     md = _render_detailed_summary(compose_youtube_detailed(_payload()))
     assert "### Format and speakers" in md
-    assert "### Thesis" in md
+    assert "### Core argument" in md
 
 
 def test_markdown_round_trip_has_chapter_walkthrough_h2_and_chapter_h3():

@@ -30,15 +30,15 @@ def _assert_thesis_shape(thesis: str) -> None:
         assert terminator not in interior, f"Thesis must be a single sentence: {thesis!r}"
 
 
-def _assert_overview_has_thesis(sections, *, expected_first_key: str = "Thesis") -> str:
+def _assert_overview_has_thesis(sections, *, expected_first_key: str = "Core argument") -> str:
     overview = next(s for s in sections if s.heading == "Overview")
-    assert "Thesis" in overview.sub_sections, "Overview.sub_sections must contain 'Thesis'"
-    thesis_bullets = overview.sub_sections["Thesis"]
+    assert "Core argument" in overview.sub_sections, "Overview.sub_sections must contain 'Core argument'"
+    thesis_bullets = overview.sub_sections["Core argument"]
     assert len(thesis_bullets) == 1
-    # Confirm Thesis is the first sub-section (Python 3.7+ dicts are ordered).
+    # Confirm Core argument is the first sub-section (Python 3.7+ dicts are ordered).
     first_key = next(iter(overview.sub_sections.keys()))
     assert first_key == expected_first_key, (
-        f"Thesis must be the first sub-section, got: {first_key!r}"
+        f"Core argument must be the first sub-section, got: {first_key!r}"
     )
     _assert_thesis_shape(thesis_bullets[0])
     return thesis_bullets[0]

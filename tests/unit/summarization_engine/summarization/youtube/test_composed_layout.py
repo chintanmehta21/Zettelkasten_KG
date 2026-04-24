@@ -64,7 +64,7 @@ def test_overview_section_is_first_and_folds_thesis_format_speakers():
     assert sections[0].heading == "Overview"
     assert sections[0].sub_sections, "Overview must carry sub_sections"
     assert "Format and speakers" in sections[0].sub_sections
-    assert "Thesis" in sections[0].sub_sections
+    assert "Core argument" in sections[0].sub_sections
     fmt_lines = " ".join(sections[0].sub_sections["Format and speakers"])
     assert "lecture" in fmt_lines.lower()
     assert "Joe Rogan" in fmt_lines

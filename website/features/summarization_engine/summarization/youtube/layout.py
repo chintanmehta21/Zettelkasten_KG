@@ -60,7 +60,7 @@ def _overview_section(payload: YouTubeStructuredPayload) -> DetailedSummarySecti
         sub_sections["Format and speakers"] = fmt_bullets
     thesis = _clean(payload.detailed_summary.thesis or "")
     if thesis:
-        sub_sections["Thesis"] = [thesis]
+        sub_sections["Core argument"] = [thesis]
     return DetailedSummarySection(
         heading="Overview",
         bullets=[primary],

@@ -140,7 +140,7 @@ def _overview_section(payload: GitHubStructuredPayload) -> DetailedSummarySectio
     # nested sub-sections, matching YouTube's _overview_section pattern.
     thesis = _extract_thesis_from_detailed(payload)
     if thesis:
-        subs["Thesis"] = [thesis]
+        subs["Core argument"] = [thesis]
 
     if len(arch_sentences) > 1:
         subs["Architecture"] = arch_sentences[1:4]

@@ -108,7 +108,7 @@ def test_frontend_parser_sees_overview_and_chapter_and_closing():
     assert "Demonstrations" in h2_texts
     assert "Closing remarks" in h2_texts
     assert "Format and speakers" in h3_texts
-    assert "Thesis" in h3_texts
+    assert "Core argument" in h3_texts
     assert "00:15 — Intro" in h3_texts
 
 

@@ -32,12 +32,12 @@ def _assert_thesis_shape(thesis: str) -> None:
 
 def _assert_overview_has_thesis(sections) -> str:
     overview = next(s for s in sections if s.heading == "Overview")
-    assert "Thesis" in overview.sub_sections, "Overview.sub_sections must contain 'Thesis'"
-    thesis_bullets = overview.sub_sections["Thesis"]
+    assert "Core argument" in overview.sub_sections, "Overview.sub_sections must contain 'Core argument'"
+    thesis_bullets = overview.sub_sections["Core argument"]
     assert len(thesis_bullets) == 1
     first_key = next(iter(overview.sub_sections.keys()))
-    assert first_key == "Thesis", (
-        f"Thesis must be the first sub-section, got: {first_key!r}"
+    assert first_key == "Core argument", (
+        f"Core argument must be the first sub-section, got: {first_key!r}"
     )
     _assert_thesis_shape(thesis_bullets[0])
     return thesis_bullets[0]
