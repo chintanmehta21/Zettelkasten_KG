@@ -1,0 +1,93 @@
+"""One-shot: register newsletter iter-10 zettel under Naruto via the canonical
+``persist_summarized_result`` fanout (Supabase + file graph + entity extraction)."""
+from __future__ import annotations
+
+import asyncio
+import json
+import sys
+from datetime import date
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+MAIN_ROOT = Path(r"C:\Users\LENOVO\Documents\Claude_Code\Projects\Obsidian_Vault")
+load_dotenv(MAIN_ROOT / "supabase" / ".env", override=False)
+
+WORKTREE = Path(r"C:\Users\LENOVO\Documents\Claude_Code\Projects\Obsidian_Vault\.worktrees\eval-summary-engine-v2-scoring")
+sys.path.insert(0, str(WORKTREE))
+
+from website.core.persist import persist_summarized_result  # noqa: E402
+
+NARUTO_RENDER_UUID = "f2105544-b73d-4946-8329-096d82f070d3"
+ITER_DIR = WORKTREE / "docs" / "summary_eval" / "newsletter" / "iter-10"
+ITER_NUM = 10
+ITER_SOURCE = "newsletter"
+
+
+def main() -> int:
+    summary = json.loads((ITER_DIR / "summary.json").read_text(encoding="utf-8"))
+    eval_data = json.loads((ITER_DIR / "eval.json").read_text(encoding="utf-8"))
+
+    meta = summary.get("metadata", {})
+    sp = meta.get("structured_payload", {}) or {}
+    mini_title = summary.get("mini_title") or sp.get("mini_title") or "untitled"
+    brief = summary.get("brief_summary") or sp.get("brief_summary") or ""
+    detailed = summary.get("detailed_summary") or sp.get("detailed_summary") or ""
+    tags = summary.get("tags") or sp.get("tags") or []
+    url = meta.get("url") or ""
+    source_type = meta.get("source_type") or ITER_SOURCE
+
+    composite = 0.0
+    try:
+        comps = eval_data.get("rubric", {}).get("components", [])
+        composite = sum(c.get("score", 0) for c in comps)
+        caps = eval_data.get("rubric", {}).get("caps_applied", {}) or {}
+        applied = [v for v in caps.values() if isinstance(v, (int, float))]
+        if applied:
+            composite = min(composite, min(applied))
+    except Exception:
+        pass
+
+    result = {
+        "source_url": url,
+        "source_type": source_type,
+        "title": mini_title,
+        "brief_summary": brief,
+        "detailed_summary": detailed,
+        "tags": tags,
+        "metadata": {
+            "eval_iter": ITER_NUM,
+            "eval_source": ITER_SOURCE,
+            "composite": composite,
+            "eval_branch": "codex/summarization-engine-execution",
+        },
+    }
+
+    outcome = asyncio.run(
+        persist_summarized_result(
+            result,
+            user_sub=NARUTO_RENDER_UUID,
+            captured_on=date.today(),
+        )
+    )
+
+    if outcome.supabase_saved:
+        status = "created"
+    elif outcome.supabase_duplicate:
+        status = "duplicate"
+    else:
+        status = "file_only"
+
+    print(json.dumps({
+        "status": status,
+        "file_node_id": outcome.file_node_id,
+        "supabase_node_id": outcome.supabase_node_id,
+        "kg_user_id": outcome.kg_user_id,
+        "render_user_id": NARUTO_RENDER_UUID,
+        "composite": composite,
+    }))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

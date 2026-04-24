@@ -684,6 +684,7 @@ class KGRepository:
                 tags=row.get("tags", []),
                 url=row["url"],
                 date=row["node_date"] or "",
+                node_date=row["node_date"] or "",
             )
             for row in nodes_resp.data
         ]
@@ -834,6 +835,7 @@ class KGRepository:
                 tags=row.get("tags", []),
                 url=row["url"],
                 date=row.get("node_date") or "",
+                node_date=row.get("node_date") or "",
             )
             for row in best_nodes.values()
         ]

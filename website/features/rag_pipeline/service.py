@@ -24,7 +24,7 @@ from website.features.rag_pipeline.query.transformer import QueryTransformer
 from website.features.rag_pipeline.rerank.cascade import CascadeReranker
 from website.features.rag_pipeline.retrieval.graph_score import LocalizedPageRankScorer
 from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever
-from website.experimental_features.nexus.service.persist import get_supabase_scope
+from website.core.persist import get_supabase_scope
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _EXAMPLE_QUERIES = (

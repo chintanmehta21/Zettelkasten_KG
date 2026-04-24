@@ -112,7 +112,9 @@ class KGGraphNode(BaseModel):
     summary: str = ""
     tags: list[str] = Field(default_factory=list)
     url: str
-    date: str = ""      # ISO date string
+    date: str = ""      # ISO date string (primary key the frontend reads)
+    node_date: str = ""  # alias of ``date`` — belt-and-suspenders for JS lookup
+                         # ``node.date || node.node_date || node.captured_at || node.created_at``
     owner: str | None = None          # display_name of the node creator (global view)
     contributors: int | None = None   # how many users captured this (global view)
 

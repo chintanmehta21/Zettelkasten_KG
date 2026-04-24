@@ -16,7 +16,7 @@ from website.core.pipeline import summarize_url
 from website.features.summarization_engine.core.errors import ExtractionConfidenceError
 from website.core.graph_store import get_graph, delete_node as delete_graph_node
 from website.core.supabase_kg import KGGraph
-from website.experimental_features.nexus.service.persist import (
+from website.core.persist import (
     get_supabase_scope as _get_supabase,
     persist_summarized_result,
 )

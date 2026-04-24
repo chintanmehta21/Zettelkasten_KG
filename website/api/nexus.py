@@ -25,7 +25,7 @@ from website.experimental_features.nexus.service.bulk_import import (
     run_provider_import,
     upsert_provider_account,
 )
-from website.experimental_features.nexus.service.persist import get_supabase_scope
+from website.core.persist import get_supabase_scope
 from website.experimental_features.nexus.source_ingest.common.models import (
     ImportRequest,
     NexusProvider,

@@ -12,7 +12,7 @@ from uuid import UUID
 
 from website.core.pipeline import summarize_url
 from website.core.supabase_kg import get_supabase_client, is_supabase_configured
-from website.experimental_features.nexus.service.persist import (
+from website.core.persist import (
     PersistenceOutcome,
     get_supabase_scope,
     persist_summarized_result,
