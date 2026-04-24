@@ -70,13 +70,20 @@ def test_overview_section_is_first_and_folds_thesis_format_speakers():
     assert "Joe Rogan" in fmt_lines
 
 
-def test_chapter_walkthrough_section_emits_nested_timestamp_headings():
+def test_chapter_walkthrough_section_emits_nested_topic_headings():
+    # Product decision (2026-04-25): timestamps are never surfaced in rendered
+    # detailed summaries because they're easy to hallucinate and offer little
+    # reader value. Chapter headings carry topic title only.
     sections = compose_youtube_detailed(_payload())
     walkthrough = [s for s in sections if s.heading == "Chapter walkthrough"]
     assert walkthrough, "must have a Chapter walkthrough section"
     subs = walkthrough[0].sub_sections
     assert any("Introduction and Pharmacology" in h for h in subs)
-    assert any(h.startswith("00:15") for h in subs)
+    assert any("Intro" in h for h in subs)
+    # Guard against regression: no sub-section heading should begin with a
+    # timestamp token.
+    for h in subs:
+        assert not h.strip().startswith(("00:", "01:", "02:", "[0"))
 
 
 def test_chapter_bullets_are_strings_not_json():

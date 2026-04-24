@@ -65,9 +65,11 @@ def test_markdown_round_trip_has_format_and_thesis_h3():
 
 
 def test_markdown_round_trip_has_chapter_walkthrough_h2_and_chapter_h3():
+    # Product decision (2026-04-25): timestamps stripped from chapter headings.
     md = _render_detailed_summary(compose_youtube_detailed(_payload()))
     assert "## Chapter walkthrough" in md
-    assert "### 00:15 — Intro" in md
+    assert "### Intro" in md
+    assert "### 00:15" not in md
 
 
 def test_markdown_round_trip_uses_closing_remarks_not_closing_takeaway():

@@ -109,7 +109,9 @@ def test_frontend_parser_sees_overview_and_chapter_and_closing():
     assert "Closing remarks" in h2_texts
     assert "Format and speakers" in h3_texts
     assert "Core argument" in h3_texts
-    assert "00:15 — Intro" in h3_texts
+    # Product decision (2026-04-25): timestamps stripped from chapter headings.
+    assert "Intro" in h3_texts
+    assert not any(h.startswith("00:") for h in h3_texts)
 
 
 def test_frontend_parser_finds_all_chapter_bullets():
