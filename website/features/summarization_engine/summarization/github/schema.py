@@ -110,7 +110,11 @@ class GitHubStructuredPayload(BaseModel):
     def _normalize_note_facing_fields(self) -> "GitHubStructuredPayload":
         repo_name = _repo_name_from_label(self.mini_title)
         _scrub_sections(self.detailed_summary, repo_name)
-        self.tags = _normalize_tags(self.tags, self.detailed_summary)
+        self.tags = _normalize_tags(
+            self.tags,
+            self.detailed_summary,
+            mini_title=self.mini_title,
+        )
         self.brief_summary = _repair_brief_summary(
             self.brief_summary,
             architecture_overview=self.architecture_overview,
@@ -206,24 +210,40 @@ def _scrub_sections(
             ]
 
 
+def _github_tag_cleaner(tag: object) -> str:
+    return re.sub(r"[^a-z0-9+-]+", "-", str(tag).strip().lower()).strip("-")
+
+
 def _normalize_tags(
     tags: list[str],
     detailed_summary: list[GitHubDetailedSection],
+    *,
+    mini_title: str = "",
 ) -> list[str]:
-    normalized: list[str] = []
-    for tag in tags:
-        cleaned = re.sub(r"[^a-z0-9+-]+", "-", str(tag).strip().lower()).strip("-")
-        if cleaned and cleaned not in normalized:
-            normalized.append(cleaned)
+    from website.features.summarization_engine.summarization.common.structured import (
+        _normalize_tags as _common_normalize_tags,
+    )
 
     inferred = _infer_tags(detailed_summary)
-    reserved = []
+    # Build the reserved set: gh-<owner>-<repo> identifier first (when
+    # parseable from the ``owner/repo`` mini_title), then the archetype
+    # signals inferred from the detailed payload (language, framework type,
+    # technical concepts).
+    reserved: list[str] = []
+    owner_repo = _owner_repo_slug(mini_title)
+    if owner_repo:
+        reserved.append(owner_repo)
     for tag in inferred:
         if tag not in reserved:
             reserved.append(tag)
 
-    topical = [tag for tag in normalized if tag not in reserved]
-    final_tags = reserved + topical[: max(0, 10 - len(reserved))]
+    final_tags = _common_normalize_tags(
+        tags,
+        tags_min=0,
+        tags_max=10,
+        reserved=reserved,
+        tag_cleaner=_github_tag_cleaner,
+    )
     while len(final_tags) < 7:
         filler = "open-source"
         if filler not in final_tags:
@@ -231,6 +251,22 @@ def _normalize_tags(
         else:
             break
     return final_tags[:10]
+
+
+def _owner_repo_slug(mini_title: str) -> str:
+    """Parse ``owner/repo`` from the mini_title and produce a deterministic
+    ``gh-<owner>-<repo>`` slug. Returns "" when the mini_title doesn't match
+    the schema-enforced ``[^/]+/[^/]+`` shape."""
+    if "/" not in mini_title:
+        return ""
+    parts = mini_title.split("/", 1)
+    if len(parts) != 2:
+        return ""
+    owner = re.sub(r"[^a-z0-9+-]+", "-", parts[0].strip().lower()).strip("-")
+    repo = re.sub(r"[^a-z0-9+-]+", "-", parts[1].strip().lower()).strip("-")
+    if not owner or not repo:
+        return ""
+    return f"gh-{owner}-{repo}"
 
 
 _LANG_MARKERS = (

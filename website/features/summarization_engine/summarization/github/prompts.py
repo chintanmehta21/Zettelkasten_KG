@@ -138,6 +138,72 @@ def source_context_for(archetype: RepoArchetype, signals: ReadmeSignals | None =
     return f"{_BASE_CONTEXT}\n\n{guidance}{_signals_slot(signals)}"
 
 
+# Archetype-tuned focus blocks. Prepended to STRUCTURED_EXTRACT_INSTRUCTION so
+# they shape how the model interprets the schema instruction that follows
+# (front-loaded prompt steering). Each block references only fields that exist
+# on `GitHubStructuredPayload` / `GitHubDetailedSection` — no schema redefinition,
+# no new instruction primitives. Stays under 80 words per block.
+_ARCHETYPE_FOCUS: dict[str, str] = {
+    "library_thin": (
+        "FOCUS (library_thin): Highlight the small public API surface — 1-2 "
+        "key top-level functions or classes the README documents. Place the "
+        "canonical install command in usability_signals and the documented "
+        "import or call site in public_interfaces. Keep architecture_overview "
+        "minimal: a thin library has few modules, not a subsystem."
+    ),
+    "framework_api": (
+        "FOCUS (framework_api): Emphasize the architecture in "
+        "architecture_overview — request lifecycle, middleware, routing layer "
+        "— and list documented extension points (decorators, base classes, "
+        "router objects) in public_interfaces. Record the underlying ASGI/WSGI "
+        "or HTTP stack in main_stack only when the README names it."
+    ),
+    "cli_tool": (
+        "FOCUS (cli_tool): Emphasize the entry-point command, documented "
+        "subcommands, and flags in public_interfaces. Place install commands "
+        "and a representative invocation in usability_signals. Name the CLI "
+        "framework (argparse, click, typer) in main_stack only when the README "
+        "shows it. Do not list HTTP routes — this is a CLI, not a service."
+    ),
+    "docs_heavy": (
+        "FOCUS (docs_heavy): Treat the README as an index. In "
+        "architecture_overview, describe the docs/ tree organization and the "
+        "canonical documentation site when mentioned. Use detailed_summary "
+        "sections to mirror the documented topical structure. List documented "
+        "module entry points in public_interfaces, never source-tree guesses."
+    ),
+    "app_example": (
+        "FOCUS (app_example): Emphasize what is deployable and the combined "
+        "tech stack in main_stack. Place run/deploy commands and required "
+        "environment setup in usability_signals. Keep public_interfaces "
+        "limited to user-facing endpoints or scripts the README documents. "
+        "Do not oversell the example as a reusable library or framework."
+    ),
+}
+
+
+def select_github_prompt(archetype: str | None) -> str:
+    """Return the structured-extract instruction tuned for a GitHub archetype.
+
+    The archetype-specific focus block (see :data:`_ARCHETYPE_FOCUS`) is
+    prepended to :data:`STRUCTURED_EXTRACT_INSTRUCTION` so it shapes how the
+    model interprets the schema instructions that follow. Unknown archetypes
+    (including ``"unknown"``, ``None``, empty strings, or labels not in the
+    map) fall through to the base instruction unchanged.
+    """
+    # Validate the input belongs to the enum to surface typos early; unknown
+    # values fall through to the default prompt rather than raising.
+    label = (archetype or "").strip().lower()
+    try:
+        RepoArchetype(label)
+    except ValueError:
+        pass
+    focus = _ARCHETYPE_FOCUS.get(label, "")
+    if not focus:
+        return STRUCTURED_EXTRACT_INSTRUCTION
+    return f"{focus}\n\n{STRUCTURED_EXTRACT_INSTRUCTION}".strip()
+
+
 # Backward-compatible generic context used by any legacy call sites.
 SOURCE_CONTEXT = _BASE_CONTEXT
 

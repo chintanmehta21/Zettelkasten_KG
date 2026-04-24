@@ -12,6 +12,9 @@ import re
 from typing import Iterable
 
 from website.features.summarization_engine.core.models import DetailedSummarySection
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    as_sentence as _as_sentence,
+)
 from website.features.summarization_engine.summarization.github.schema import (
     GitHubDetailedSection,
     GitHubStructuredPayload,
@@ -60,6 +63,71 @@ def _dedupe(items: Iterable[str]) -> list[str]:
     return out
 
 
+def _repo_name_from_label(mini_title: str) -> str:
+    """Extract repo name from `org/repo` mini_title; lowercase."""
+    cleaned = _clean(mini_title or "")
+    if "/" in cleaned:
+        return cleaned.split("/", 1)[1].strip().lower()
+    return cleaned.lower()
+
+
+def _archetype_from_payload(payload: GitHubStructuredPayload) -> str:
+    """Best-effort archetype label inferred from sections/tags."""
+    text_parts: list[str] = list(payload.tags or [])
+    for section in payload.detailed_summary or []:
+        text_parts.append(section.heading or "")
+        text_parts.extend(section.main_stack or [])
+        text_parts.extend(section.bullets or [])
+    blob = " ".join(text_parts).lower()
+    if any(tok in blob for tok in ("framework", "asgi", "wsgi", "middleware")):
+        return "framework"
+    if any(tok in blob for tok in ("cli", "command-line", "command line")):
+        return "command-line tool"
+    if any(tok in blob for tok in ("library", "sdk", "toolkit", "client for", "bindings")):
+        return "library"
+    return "software project"
+
+
+def _extract_thesis_from_detailed(payload: GitHubStructuredPayload) -> str:
+    """Cornerstone one-liner derived deterministically from the validated payload.
+
+    Order of preference:
+      1. First sentence of ``architecture_overview`` (closest to a "purpose"
+         field in the GitHub schema).
+      2. First bullet of the first ``detailed_summary`` section (key feature).
+      3. ``"<repo_name> is a <archetype> for <use_case>"`` synthesized from
+         existing payload fields.
+      4. Deterministic skeleton from repo name only.
+    """
+    # 1. architecture_overview first sentence
+    arch_sentences = _split_sentences(payload.architecture_overview)
+    if arch_sentences:
+        return _as_sentence(arch_sentences[0])
+
+    # 2. first bullet of first detailed_summary section
+    for section in payload.detailed_summary or []:
+        for bullet in section.bullets or []:
+            cleaned = _drop_placeholder(bullet)
+            if cleaned:
+                return _as_sentence(_first_sentence(cleaned) or cleaned)
+
+    # 3. archetype-based synthesis from repo + inferred archetype + use case
+    repo_name = _repo_name_from_label(payload.mini_title)
+    if repo_name:
+        archetype = _archetype_from_payload(payload)
+        use_case = ""
+        # use_case derives from brief_summary first sentence if available
+        brief_first = _first_sentence(payload.brief_summary)
+        if brief_first:
+            use_case = brief_first.rstrip(".!?").lower()
+        if use_case:
+            return _as_sentence(f"{repo_name} is a {archetype} for {use_case}")
+        return _as_sentence(f"{repo_name} is a {archetype}")
+
+    # 4. final deterministic skeleton — never invents facts beyond schema shape
+    return "Documented software repository with an explicit public surface."
+
+
 def _overview_section(payload: GitHubStructuredPayload) -> DetailedSummarySection:
     arch_sentences = _split_sentences(payload.architecture_overview)
     primary = arch_sentences[0] if arch_sentences else _first_sentence(payload.brief_summary)
@@ -67,6 +135,12 @@ def _overview_section(payload: GitHubStructuredPayload) -> DetailedSummarySectio
         primary = "Documented software repository with an explicit public surface."
 
     subs: dict[str, list[str]] = {}
+
+    # Thesis cornerstone — placed first so it renders at the top of Overview's
+    # nested sub-sections, matching YouTube's _overview_section pattern.
+    thesis = _extract_thesis_from_detailed(payload)
+    if thesis:
+        subs["Thesis"] = [thesis]
 
     if len(arch_sentences) > 1:
         subs["Architecture"] = arch_sentences[1:4]

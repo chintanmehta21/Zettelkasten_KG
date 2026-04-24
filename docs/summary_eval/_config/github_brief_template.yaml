@@ -1,0 +1,196 @@
+# GitHub deterministic 4-part brief template (GH #3).
+# Enforces archetype-specific section requirements and exact-name rules
+# for the brief field of GitHub summaries. Pairs with rubric_github.yaml
+# (brief_summary component) and github_symbol_evaluator.yaml (symbol checks).
+version: "github_brief_template.v1"
+archetype: "github"
+composite_max_points: 100
+
+# Map repo archetype -> ordered list of brief sections required.
+# All 4 sections must be present in this order; the deterministic template
+# emits them as separate sentences with exact section markers in detailed.
+archetype_routes:
+  library:
+    required_sections: ["purpose", "stack", "usage", "public_surfaces"]
+    detection_signals: ["setup.py", "pyproject.toml", "package.json", "Cargo.toml without [[bin]]"]
+  framework:
+    required_sections: ["purpose", "stack", "usage", "public_surfaces"]
+    detection_signals: ["asgi entry", "wsgi entry", "framework keyword in description", "decorators-based routing"]
+  cli_tool:
+    required_sections: ["purpose", "stack", "usage", "public_surfaces"]
+    detection_signals: ["console_scripts entry", "[[bin]] in Cargo.toml", "bin/ folder", "argparse/click/typer import"]
+  spec:
+    required_sections: ["purpose", "stack", "usage", "public_surfaces"]
+    detection_signals: ["spec/ directory", "RFC-style README", "schema-only repo", "no runnable entry point"]
+  microframework:
+    required_sections: ["purpose", "stack", "usage", "public_surfaces"]
+    detection_signals: ["single-file framework", "<2k LOC core", "minimal dependency graph", "explicit minimalist claim"]
+
+# Per-archetype contract for what each section must contain.
+# `exact_name_lists` enumerate the kinds of identifiers that must appear
+# verbatim and backtick-wrapped when present.
+required_sections:
+  library:
+    purpose:
+      description: "One sentence: what problem the library solves for callers."
+      forbidden_phrases: ["a powerful", "easy to use", "blazing fast"]
+    stack:
+      description: "Primary language + 1-3 core runtime dependencies."
+      exact_name_lists: ["language", "top_level_imports"]
+    usage:
+      description: "Canonical install + import + minimal call example."
+      exact_name_lists: ["install_command", "module_import_path"]
+    public_surfaces:
+      description: "Top-level exported classes / functions / constants."
+      exact_name_lists: ["exported_classes", "exported_functions", "exported_constants"]
+
+  framework:
+    purpose:
+      description: "What kind of application the framework helps build."
+      forbidden_phrases: ["modern", "next-generation"]
+    stack:
+      description: "Language, runtime model (sync/async/wsgi/asgi), key deps."
+      exact_name_lists: ["language", "runtime_model", "core_dependencies"]
+    usage:
+      description: "Minimal app definition with the canonical decorator/route pattern."
+      exact_name_lists: ["entry_decorator", "app_class"]
+    public_surfaces:
+      description: "App class, decorators, request/response objects, lifecycle hooks."
+      exact_name_lists: ["app_class", "decorators", "request_object", "response_object", "lifecycle_hooks"]
+
+  cli_tool:
+    purpose:
+      description: "What end-user task the CLI automates."
+      forbidden_phrases: ["powerful CLI", "swiss-army"]
+    stack:
+      description: "Language + CLI framework (argparse/click/typer/clap/cobra)."
+      exact_name_lists: ["language", "cli_framework"]
+    usage:
+      description: "Install command + most common invocation."
+      exact_name_lists: ["install_command", "binary_name", "primary_subcommand"]
+    public_surfaces:
+      description: "Top-level subcommands and their one-line purpose."
+      exact_name_lists: ["subcommands", "global_flags"]
+
+  spec:
+    purpose:
+      description: "What the spec/standard defines and who consumes it."
+      forbidden_phrases: ["comprehensive", "industry-standard"]
+    stack:
+      description: "Format (JSON Schema / OpenAPI / RFC / protobuf) + version."
+      exact_name_lists: ["spec_format", "spec_version"]
+    usage:
+      description: "How an implementer or validator consumes the spec."
+      exact_name_lists: ["validator_command", "schema_file_path"]
+    public_surfaces:
+      description: "Top-level types, namespaces, or schema roots defined."
+      exact_name_lists: ["root_types", "namespaces"]
+
+  microframework:
+    purpose:
+      description: "What minimalist niche the microframework occupies."
+      forbidden_phrases: ["lightweight", "tiny", "minimal"]
+    stack:
+      description: "Language, single-file vs few-file, dependency count."
+      exact_name_lists: ["language", "core_dependencies"]
+    usage:
+      description: "Hello-world example using the canonical decorator/route."
+      exact_name_lists: ["app_class", "entry_decorator"]
+    public_surfaces:
+      description: "All public symbols (microframeworks expose few — list all)."
+      exact_name_lists: ["all_public_symbols"]
+
+# Global rules applied across every archetype.
+exact_name_rules:
+  backtick_required: true
+  paraphrase_forbidden: true
+  description: "All public symbols (classes, functions, decorators, CLI commands, env vars, file paths) must be backtick-wrapped and copied verbatim from source. Paraphrase or aliasing is forbidden — `requests.get` may not become 'the get function in requests'."
+  case_sensitive: true
+  exception_categories: ["natural_language_purpose_sentence"]
+
+# One canonical brief output per archetype. These are evaluator anchors:
+# the harness diff-scores generated briefs against the structural shape,
+# not the literal text.
+example_archetypes:
+  library:
+    repo: "psf/requests"
+    canonical_brief: |
+      Purpose: HTTP client library for Python that abstracts urllib's complexity behind a session-oriented API.
+      Stack: Python 3.8+; depends on `urllib3`, `charset-normalizer`, `idna`, `certifi`.
+      Usage: Install with `pip install requests`; import with `import requests`; call `requests.get(url)` or use `requests.Session()` for connection reuse.
+      Public surfaces: `Session`, `Request`, `Response`, `PreparedRequest`, `HTTPAdapter`, plus module-level `get`, `post`, `put`, `delete`, `patch`, `head`, `options`.
+
+  framework:
+    repo: "tiangolo/fastapi"
+    canonical_brief: |
+      Purpose: ASGI web framework for building HTTP APIs with automatic OpenAPI schema generation from Python type hints.
+      Stack: Python 3.8+, async-first ASGI; built on `Starlette` for routing and `Pydantic` for validation.
+      Usage: Install with `pip install fastapi uvicorn`; instantiate `app = FastAPI()`; declare routes with `@app.get("/path")`; run with `uvicorn module:app`.
+      Public surfaces: `FastAPI` app class; `@app.get`, `@app.post`, `@app.put`, `@app.delete`, `@app.patch` decorators; `Request`, `Response`, `Depends`, `BackgroundTasks`; lifecycle hooks `startup` and `shutdown`.
+
+  cli_tool:
+    repo: "tiangolo/typer"
+    canonical_brief: |
+      Purpose: Library for building command-line applications from type-hinted Python functions, modeled after FastAPI's ergonomics.
+      Stack: Python 3.7+; CLI framework built on top of `Click`.
+      Usage: Install with `pip install typer`; decorate functions with `@app.command()`; expose `app = typer.Typer()` as console entry point.
+      Public surfaces: `Typer` class, `@app.command`, `@app.callback`, `Argument`, `Option`, `Context`, `Exit`, `Abort`; global flags `--help`, `--install-completion`.
+
+  spec:
+    repo: "pydantic/pydantic"
+    canonical_brief: |
+      Purpose: Data-validation specification (and reference implementation) using Python type annotations to define schema-bound models.
+      Stack: JSON Schema 2020-12 compatible; reference impl in Python 3.8+ with `pydantic-core` (Rust) backend.
+      Usage: Validators consume `BaseModel` subclasses; schema is exported via `model.model_json_schema()`; spec docs live under `docs/concepts/`.
+      Public surfaces: Root types `BaseModel`, `RootModel`, `TypeAdapter`, `ConfigDict`; namespaces `pydantic.fields`, `pydantic.types`, `pydantic.validators`.
+
+  microframework:
+    repo: "pallets/flask"
+    canonical_brief: |
+      Purpose: WSGI microframework providing routing, request/response handling, and Jinja templating without prescribing project structure.
+      Stack: Python 3.8+; depends on `Werkzeug`, `Jinja2`, `itsdangerous`, `click` — small, explicit core.
+      Usage: Install with `pip install flask`; instantiate `app = Flask(__name__)`; register routes with `@app.route("/")`; run via `flask run`.
+      Public surfaces: `Flask`, `Blueprint`, `request`, `session`, `g`, `current_app`, `url_for`, `render_template`, `jsonify`, `redirect`, `abort`; decorators `@app.route`, `@app.errorhandler`, `@app.before_request`, `@app.teardown_request`.
+
+# Scoring rubric for the brief field. Maps onto rubric_github.yaml::brief_summary.
+scoring_rubric:
+  section_coverage:
+    max_points: 8
+    description: "All 4 required sections (purpose, stack, usage, public_surfaces) present and in order."
+    deduction_per_missing_section: 2
+    deduction_per_out_of_order: 1
+  exact_name_density:
+    max_points: 6
+    description: "Ratio of backtick-wrapped exact symbols to expected exact symbols for archetype."
+    formula: "6 * (matched_symbols / expected_symbols), clamped to [0, 6]"
+    minimum_pass_ratio: 0.6
+  canonical_label_format:
+    max_points: 4
+    description: "Label exactly matches `owner/repo` (lowercase, hyphenated/underscored as canonical)."
+    auto_zero_on_mismatch: true
+  forbidden_phrase_avoidance:
+    max_points: 3
+    description: "No archetype-specific forbidden marketing phrases present."
+    deduction_per_phrase: 1
+  paraphrase_penalty:
+    max_points: 4
+    description: "Public symbols are not paraphrased — they appear verbatim and backticked."
+    deduction_per_paraphrase: 1
+
+anti_patterns:
+  - id: "missing_required_section"
+    description: "Any of the 4 required sections is omitted."
+    auto_cap: 60
+  - id: "wrong_archetype_routed"
+    description: "Brief uses framework template for a CLI tool, etc."
+    auto_cap: 55
+  - id: "paraphrased_public_symbol"
+    description: "Public symbol mentioned by description rather than its exact backtick name."
+    auto_cap: 70
+  - id: "forbidden_marketing_phrase"
+    description: "Brief contains banned phrases like 'blazing fast' or 'powerful'."
+    auto_cap: 75
+
+global_rules:
+  enforce_section_order: true
+  archetype_must_be_resolved_before_scoring: true

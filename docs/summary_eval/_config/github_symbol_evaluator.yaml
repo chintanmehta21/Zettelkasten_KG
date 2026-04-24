@@ -1,0 +1,161 @@
+# GitHub exact-symbol evaluation tool config (GH #4).
+# Drives the symbol-recall + faithfulness checks against detailed.interfaces_exact
+# in GitHub summaries. Pairs with rubric_github.yaml (detailed.interfaces_exact
+# criterion) and github_brief_template.yaml (exact_name_rules).
+version: "github_symbol_evaluator.v1"
+archetype: "github"
+composite_max_points: 100
+
+# Regex patterns for identifying public symbols in source / README / docs.
+# Patterns are compiled with re.MULTILINE; ^ and $ anchor to line boundaries.
+symbol_patterns:
+  decorators:
+    pattern: '@(?:[a-z_][a-z0-9_]*\.)*[a-z_][a-z0-9_]*(?:\([^)]*\))?'
+    examples_match: ["@app.get", "@app.post(\"/users\")", "@router.middleware"]
+    examples_skip: ["@property"]   # filtered by category below
+    framework_specific:
+      fastapi: '@app\.(get|post|put|delete|patch|head|options|websocket)'
+      flask: '@app\.(route|errorhandler|before_request|teardown_request)'
+      typer: '@app\.(command|callback)'
+  classes:
+    pattern: '\b[A-Z][A-Za-z0-9]*(?:Client|Session|Manager|Handler|Adapter|Engine|Pool|Router|App|Model|Schema|Config|Settings|Builder|Factory)\b'
+    fallback_pattern: '\bclass\s+([A-Z][A-Za-z0-9_]+)\s*[(:]'
+    examples_match: ["HTTPClient", "SessionManager", "UserModel", "FastAPI"]
+  functions:
+    pattern: '\b([a-z_][a-z_0-9]*)\s*\('
+    exclude_keywords: ["if", "for", "while", "return", "print", "len", "isinstance", "type"]
+    require_definition_or_doc: true
+  modules:
+    pattern: '\b([a-z_][a-z0-9_]*)\.([A-Z][A-Za-z0-9]+)\b'
+    examples_match: ["httpx.AsyncClient", "pydantic.BaseModel", "typing.Optional"]
+    namespace_examples: ["httpx", "requests", "pydantic", "fastapi", "starlette"]
+  cli_commands:
+    pattern: '^\s*\$\s*([a-z][a-z0-9_-]*)\s+([a-z][a-z0-9_-]*)'
+    description: "Captures `$ tool subcommand` patterns from README code blocks."
+  env_vars:
+    pattern: '\b([A-Z][A-Z0-9_]{2,})\b\s*=\s*'
+    description: "ALL_CAPS env-var-shaped identifiers in docs and config samples."
+
+# Minimum recall threshold per archetype. Recall = symbols-in-detailed.interfaces_exact /
+# symbols-extracted-from-source-with-confidence>=0.8. Below this, the detailed.interfaces_exact
+# criterion is auto-zeroed.
+required_recall_per_archetype:
+  library:
+    min_recall_pct: 80
+    weight_classes: 0.40
+    weight_functions: 0.40
+    weight_modules: 0.20
+    rationale: "Libraries are consumed by import; missing public functions/classes degrades usefulness most."
+  framework:
+    min_recall_pct: 75
+    weight_classes: 0.30
+    weight_decorators: 0.40
+    weight_functions: 0.20
+    weight_modules: 0.10
+    rationale: "Frameworks expose decorators as the primary surface; recall on decorators dominates."
+  cli_tool:
+    min_recall_pct: 90
+    weight_cli_commands: 0.70
+    weight_env_vars: 0.20
+    weight_functions: 0.10
+    rationale: "CLI tools have a small, finite subcommand set; missing one is highly visible."
+  spec:
+    min_recall_pct: 85
+    weight_classes: 0.50
+    weight_modules: 0.30
+    weight_env_vars: 0.20
+    rationale: "Specs define a closed set of types/namespaces; partial coverage is misleading."
+  microframework:
+    min_recall_pct: 95
+    weight_classes: 0.30
+    weight_decorators: 0.40
+    weight_functions: 0.30
+    rationale: "Microframeworks expose few symbols by design — near-total recall is required."
+
+# Canonical label regex. The label field MUST match. Mirrors GitHub's owner/repo
+# slug rules: lowercase recommended; allowed: a-z 0-9 _ - and `.` in repo only.
+canonical_label_regex: '^[a-z0-9_-]+/[a-z0-9._-]+$'
+canonical_label_examples_match:
+  - "psf/requests"
+  - "tiangolo/fastapi"
+  - "pallets/flask"
+  - "pydantic/pydantic"
+canonical_label_examples_reject:
+  - "PSF/Requests"            # uppercase
+  - "tiangolo / fastapi"      # whitespace
+  - "fastapi"                 # missing owner
+  - "psf/requests (v2.31)"    # extra descriptor
+
+# How to extract the language signal. Evaluated in order; first non-null wins.
+language_signal_rules:
+  fallback_order:
+    - source: "github_api.language"
+      description: "Top-level `language` field from the GitHub repo metadata API."
+      confidence: "high"
+    - source: "github_api.languages_breakdown"
+      description: "Pick the language with highest byte share from /repos/{owner}/{repo}/languages."
+      confidence: "high"
+      tie_breaker: "alphabetical"
+    - source: "manifest_files"
+      description: "Detect via manifest presence."
+      confidence: "medium"
+      mapping:
+        "pyproject.toml": "Python"
+        "setup.py": "Python"
+        "requirements.txt": "Python"
+        "package.json": "JavaScript"
+        "tsconfig.json": "TypeScript"
+        "Cargo.toml": "Rust"
+        "go.mod": "Go"
+        "pom.xml": "Java"
+        "build.gradle": "Java"
+        "Gemfile": "Ruby"
+        "composer.json": "PHP"
+        "mix.exs": "Elixir"
+    - source: "readme_codeblock_majority"
+      description: "Majority language across fenced code blocks in README."
+      confidence: "low"
+    - source: "default"
+      value: "unknown"
+      confidence: "none"
+  multi_language_threshold_pct: 15
+  description_multi_language: "If second language exceeds this byte share, emit both languages."
+
+# Faithfulness penalty: any symbol in detailed.interfaces_exact that cannot be
+# grounded in source costs the listed points off the detailed.interfaces_exact
+# subscore (which has max 8 in rubric_github.yaml).
+faithfulness_penalty:
+  per_ungrounded_symbol: 1.5
+  ungrounded_symbol_definition: "Symbol not found via any symbol_pattern match in repo source, README, or docs/ directory."
+  cap_total_penalty: 8
+  hard_fail_threshold: 4
+  hard_fail_action: "auto_cap_composite_at_55"
+
+# How recall and faithfulness combine into the detailed.interfaces_exact subscore.
+scoring_rubric:
+  recall_component:
+    max_points: 5
+    formula: "5 * min(recall_pct / required_recall_pct, 1.0)"
+  faithfulness_component:
+    max_points: 3
+    formula: "max(3 - per_ungrounded_symbol * ungrounded_count, 0)"
+  combined_max: 8
+
+anti_patterns:
+  - id: "fabricated_symbol"
+    description: "Symbol named in summary not present in any source artifact."
+    auto_cap: 55
+  - id: "case_mismatch"
+    description: "Symbol case differs from source (e.g., `FastApi` vs `FastAPI`)."
+    auto_cap: 80
+  - id: "label_format_violation"
+    description: "Label fails canonical_label_regex."
+    auto_cap: 75
+  - id: "missing_language_signal"
+    description: "Language field empty when github_api.language was available."
+    auto_cap: 80
+
+global_rules:
+  evaluate_only_against_default_branch: true
+  exclude_paths: ["tests/", "test/", "__tests__/", "node_modules/", "vendor/", ".venv/"]
+  include_paths: ["src/", "lib/", "README.md", "docs/", "examples/"]
