@@ -37,8 +37,8 @@ from website.features.summarization_engine.summarization.common.dense_verify_run
     maybe_patch_structured_brief,
     run_dense_verify,
 )
-from website.features.summarization_engine.summarization.common.json_utils import (
-    parse_json_object,
+from website.features.summarization_engine.summarization.common.model_trace import (
+    aggregate_fallback_reason,
 )
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
@@ -127,6 +127,10 @@ class RedditSummarizer(BaseSummarizer):
             missing_facts_hint=None,
         )
 
+        # Separate sinks because DV and extract race concurrently; merging
+        # after gather in logical order (DV -> extract -> patch) keeps the
+        # trace readable even though wall-clock ordering would interleave.
+        extract_sink: list[dict] = []
         dv_task = asyncio.create_task(
             run_dense_verify(client=self._client, ingest=ingest)
         )
@@ -140,9 +144,17 @@ class RedditSummarizer(BaseSummarizer):
                 cod_iterations_used=0,
                 self_check_missing_count=0,
                 patch_applied=False,
+                telemetry_sink=extract_sink,
             )
         )
         dv, result = await asyncio.gather(dv_task, extract_task)
+        call_trace: list[dict] = [{
+            "role": "dense_verify",
+            "model": dv.model_used,
+            "starting_model": dv.starting_model,
+            "fallback_reason": dv.fallback_reason,
+        }]
+        call_trace.extend(extract_sink)
 
         # Ingest-time enrichments (subreddit tag + moderation context note)
         # replicate the iter-09 behavior — they inject signals the LLM can't
@@ -189,6 +201,7 @@ class RedditSummarizer(BaseSummarizer):
             current_brief=result.brief_summary,
             dv=dv,
             extracted_payload_json=payload_json,
+            telemetry_sink=call_trace,
         )
         if patch_applied:
             result.brief_summary = new_brief
@@ -205,6 +218,21 @@ class RedditSummarizer(BaseSummarizer):
         if result.metadata is not None:
             result.metadata.self_check_missing_count = len(dv.missing_facts)
             result.metadata.total_latency_ms = int((time.perf_counter() - start) * 1000)
+            # Populate _dense_verify extras for cross-source parity with
+            # YouTube (format_label) and GitHub (archetype). Reddit has no
+            # per-source hint — we surface stance when DV classified it as
+            # newsletter-adjacent (rare) plus missing_fact_count so eval
+            # tooling can scan one key path across all sources.
+            extras = dict(result.metadata.structured_payload or {}) if result.metadata.structured_payload else {}
+            dv_extras: dict = {"missing_fact_count": len(dv.missing_facts)}
+            if dv.stance:
+                dv_extras["stance"] = dv.stance
+            extras.setdefault("_dense_verify", dv_extras)
+            result.metadata.structured_payload = extras
+            # Surface the call trace + aggregate fallback reason so silent
+            # pro->flash-lite downgrades are visible in summary.json.
+            result.metadata.model_used = call_trace
+            result.metadata.fallback_reason = aggregate_fallback_reason(call_trace)
 
         return result
 

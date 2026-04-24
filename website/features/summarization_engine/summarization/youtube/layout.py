@@ -27,8 +27,17 @@ def _first_sentence(text: str) -> str:
     cleaned = _clean(text)
     if not cleaned:
         return ""
-    match = re.match(r".+?[.!?]", cleaned)
-    return match.group(0).strip() if match else cleaned
+    # Use the abbreviation-aware sentence splitter so the overview bullet
+    # never truncates inside an abbreviation like ``U.S.`` (iter-20
+    # regression: ``"...implications for U."`` on the Petrodollar
+    # lecture).
+    from website.features.summarization_engine.summarization.common.text_guards import (
+        split_sentences,
+    )
+    sentences = split_sentences(cleaned)
+    if sentences:
+        return sentences[0]
+    return cleaned
 
 
 def _speaker_line(speakers: Iterable[str]) -> str:

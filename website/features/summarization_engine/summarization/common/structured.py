@@ -35,11 +35,8 @@ from website.features.summarization_engine.summarization.common.prompts import (
 )
 from website.features.summarization_engine.summarization.common.text_guards import (
     _DANGLING_TAIL_WORDS,
-    ends_with_dangling_word,
     ensure_terminator,
-    repair_or_drop,
     sanitize_bullets,
-    sanitize_sub_sections,
     split_sentences,
 )
 
@@ -170,6 +167,7 @@ class StructuredExtractor:
         cod_iterations_used: int,
         self_check_missing_count: int,
         patch_applied: bool,
+        telemetry_sink: list | None = None,
     ) -> SummaryResult:
         is_fallback = False
         structured_payload: dict | None = None
@@ -180,12 +178,19 @@ class StructuredExtractor:
         payload: BaseModel
 
         for attempt in range(max_attempts):
+            _role = "summarizer" if attempt == 0 else "repair"
             result = await self._client.generate(
                 prompt,
                 tier="flash",
                 response_schema=self._payload_class,
                 system_instruction=SYSTEM_PROMPT,
+                role=_role,
             )
+            if telemetry_sink is not None:
+                from website.features.summarization_engine.summarization.common.model_trace import (
+                    make_call_entry,
+                )
+                telemetry_sink.append(make_call_entry(role=_role, result=result))
             flash_tokens += result.input_tokens + result.output_tokens
 
             try:

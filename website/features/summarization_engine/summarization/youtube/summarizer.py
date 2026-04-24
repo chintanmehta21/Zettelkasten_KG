@@ -26,6 +26,9 @@ from website.features.summarization_engine.summarization.common.dense_verify_run
     maybe_patch_structured_brief,
     run_dense_verify,
 )
+from website.features.summarization_engine.summarization.common.model_trace import (
+    aggregate_fallback_reason,
+)
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
     _normalize_tags,
@@ -94,6 +97,18 @@ class YouTubeSummarizer(BaseSummarizer):
             precomputed_dense=precomputed_dense,
         )
 
+        # Seed the call trace with the DV entry. DV carries its model_used /
+        # fallback_reason from dense_verify.run() -> TieredGeminiClient so a
+        # silent pro->flash-lite downgrade is visible in summary.json without
+        # scraping run.log. Cache-hit DVs contribute a synthetic entry with
+        # model=None — caller sees "no new Gemini call" instead of missing DV.
+        call_trace: list[dict[str, Any]] = [{
+            "role": "dense_verify",
+            "model": dv.model_used,
+            "starting_model": dv.starting_model,
+            "fallback_reason": dv.fallback_reason,
+        }]
+
         structured = StructuredExtractor(
             self._client,
             self._engine_config,
@@ -116,6 +131,7 @@ class YouTubeSummarizer(BaseSummarizer):
             cod_iterations_used=0,
             self_check_missing_count=len(dv.missing_facts),
             patch_applied=False,
+            telemetry_sink=call_trace,
         )
 
         # Call 3 (optional) — flash patch when DV-flagged facts remain omitted
@@ -133,6 +149,7 @@ class YouTubeSummarizer(BaseSummarizer):
             current_brief=result.brief_summary,
             dv=dv,
             extracted_payload_json=payload_json,
+            telemetry_sink=call_trace,
         )
         if patch_applied:
             result.brief_summary = new_brief
@@ -179,6 +196,11 @@ class YouTubeSummarizer(BaseSummarizer):
                     "missing_fact_count": len(dv.missing_facts),
                 })
             result.metadata.structured_payload = extras
+            # Surface the call trace + aggregate fallback reason so eval
+            # tooling can detect silent pro->flash-lite downgrades without
+            # scraping run.log.
+            result.metadata.model_used = call_trace
+            result.metadata.fallback_reason = aggregate_fallback_reason(call_trace)
         return result
 
 

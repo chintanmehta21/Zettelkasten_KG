@@ -84,6 +84,13 @@ class DenseVerifyResult(BaseModel):
         default="",
         description="One-sentence payoff for the Closing Remarks block.",
     )
+    # Per-call Gemini telemetry so the summarizer can surface
+    # ``SummaryMetadata.model_used[..role=dense_verify]``. None on cache hits
+    # (we only collect on the compute path — a cached DV result is not a new
+    # Gemini call).
+    model_used: str | None = Field(default=None)
+    starting_model: str | None = Field(default=None)
+    fallback_reason: str | None = Field(default=None)
 
 
 _VALID_STANCES = {"optimistic", "skeptical", "cautionary", "neutral", "mixed"}
@@ -224,6 +231,11 @@ class DenseVerifier:
             ) from exc
 
         parsed = _coerce_raw(parsed, source_type)
+        # Stash call telemetry so the summarizer can surface the DV call's
+        # model_used/fallback_reason in SummaryMetadata.model_used.
+        parsed["model_used"] = getattr(result, "model_used", None)
+        parsed["starting_model"] = getattr(result, "starting_model", None)
+        parsed["fallback_reason"] = getattr(result, "fallback_reason", None)
         try:
             return DenseVerifyResult(**parsed)
         except ValidationError as exc:

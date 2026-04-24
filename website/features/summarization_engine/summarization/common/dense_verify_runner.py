@@ -14,7 +14,6 @@ with the unincluded facts appended; it is NOT the old Pro-tier SummaryPatcher.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.core.models import IngestResult
@@ -71,6 +70,7 @@ async def maybe_patch_structured_brief(
     current_brief: str,
     dv: DenseVerifyResult,
     extracted_payload_json: str | None,
+    telemetry_sink: list | None = None,
 ) -> tuple[str, bool, int]:
     """Emit a single flash repair call ONLY when the structured payload omits
     DV-flagged facts.
@@ -107,12 +107,18 @@ async def maybe_patch_structured_brief(
             prompt,
             tier="flash",
             system_instruction=SYSTEM_PROMPT,
+            role="patch",
         )
     except Exception as exc:  # noqa: BLE001 — fail-open on patch, never 500
         _log.info(
             "dense_verify_runner.patch_fail_open err_class=%s", exc.__class__.__name__
         )
         return current_brief, False, 0
+    if telemetry_sink is not None:
+        from website.features.summarization_engine.summarization.common.model_trace import (
+            make_call_entry,
+        )
+        telemetry_sink.append(make_call_entry(role="patch", result=result))
     new_brief = (result.text or "").strip() or current_brief
     tokens = int(result.input_tokens) + int(result.output_tokens)
     return new_brief, True, tokens

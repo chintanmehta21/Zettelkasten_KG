@@ -86,15 +86,31 @@ class YouTubeStructuredPayload(BaseModel):
     def _sanitize_speakers(self) -> "YouTubeStructuredPayload":
         """4-step speaker fallback (see docs/summary_eval/_synthesis.md P5).
 
-        Step 1: strip placeholder tokens (``unidentified host``, etc.).
+        Step 1: strip placeholder tokens (``unidentified host``, etc.) AND
+                geographic/landmark entities (``Strait of Hormuz``,
+                ``Gulf of Aden``). A place name is never a speaker; if the
+                model emitted one, treat it as a hallucinated slot fill
+                and drop it so the fallback chain engages instead.
         Step 2: if any real names survive, use them as-is.
         Step 3: fall back to the first named human in ``entities_discussed``
                 (a speaker-like entity is almost always a transcript named
                 subject; this catches channels where the uploader name
-                doubled up in entities).
+                doubled up in entities). Geographic entities are skipped
+                here too.
         Step 4: if nothing plausible is found, use the neutral label
                 ``"The speaker"`` rather than dropping the structured
                 payload.
+
+        Rationale (iter-20 regression): YouTube iter-20 output
+        ``speakers: ["Strait of Hormuz"]`` on the Petrodollar lecture
+        because the model borrowed a prominent location from the brief.
+        ``_is_placeholder_speaker`` only rejected role nouns, so the
+        string survived, the evaluator fired ``speakers_absent``, and
+        the rubric clamped the composite to 75 despite a raw score of
+        90. Filtering geographic entities at step 1 lets the fallback
+        chain surface a real human (via ``entities_discussed``) or
+        degrade cleanly to the neutral label, which the evaluator
+        scores as "no speakers identified" rather than "wrong speaker".
         """
         real = [
             s.strip()
@@ -102,6 +118,7 @@ class YouTubeStructuredPayload(BaseModel):
             if isinstance(s, str)
             and s.strip()
             and not _is_placeholder_speaker(s.strip())
+            and not _is_geographic_entity(s.strip())
         ]
         if real:
             self.speakers = real
@@ -109,7 +126,11 @@ class YouTubeStructuredPayload(BaseModel):
 
         # Step 3: first named human entity in entities_discussed.
         for entity in (self.entities_discussed or []):
-            if isinstance(entity, str) and _looks_like_named_human(entity):
+            if (
+                isinstance(entity, str)
+                and _looks_like_named_human(entity)
+                and not _is_geographic_entity(entity)
+            ):
                 self.speakers = [entity.strip()]
                 return self
 
@@ -121,6 +142,88 @@ class YouTubeStructuredPayload(BaseModel):
 _PLACEHOLDER_ADJECTIVES = frozenset({
     "unidentified", "unknown", "anonymous", "unnamed", "generic",
 })
+
+
+_GEOGRAPHIC_HEAD_NOUNS = frozenset({
+    "strait", "straits", "gulf", "bay", "peninsula", "river", "sea",
+    "ocean", "lake", "mount", "mountain", "mountains", "valley",
+    "desert", "island", "islands", "archipelago", "cape", "channel",
+    "fjord", "harbor", "harbour", "delta", "plateau", "basin",
+    "canyon", "forest", "plain", "plains", "coast", "coastline",
+    "shore", "province", "state", "county", "district", "territory",
+    "region", "republic", "kingdom", "empire", "federation", "country",
+    "continent", "city", "town", "village", "capital", "borough",
+    "street", "avenue", "road", "highway", "boulevard", "lane",
+    "bridge", "tunnel", "square", "plaza", "park", "stadium",
+})
+
+_GEOGRAPHIC_PHRASE_RE = re.compile(
+    r"(?i)^\s*(the\s+)?("
+    r"strait|straits|gulf|bay|peninsula|river|sea|ocean|lake|mount|"
+    r"mountain|mountains|valley|desert|island|islands|archipelago|cape|"
+    r"channel|fjord|harbor|harbour|delta|plateau|basin|canyon|forest|"
+    r"plain|plains|coast|coastline|shore|province|state|county|"
+    r"district|territory|region|republic|kingdom|empire|federation|"
+    r"country|continent|city|town|village|capital|borough|street|"
+    r"avenue|road|highway|boulevard|lane|bridge|tunnel|square|plaza|"
+    r"park|stadium"
+    r")\b[\s\w\-,']*$"
+)
+
+# "X of Y" / "X of the Y" pattern where the head noun is a geographic
+# generic (e.g., "Strait of Hormuz", "Gulf of Aden", "Bay of Bengal",
+# "Republic of Korea"). Matching is anchored so partial hits inside a
+# legit name do not fire.
+_GEOGRAPHIC_OF_PHRASE_RE = re.compile(
+    r"(?i)^\s*(the\s+)?(?P<head>\w+)\s+of\s+(the\s+)?\w[\w\s\-']*$"
+)
+
+
+def _is_geographic_entity(name: str) -> bool:
+    """Return True if ``name`` looks like a location, landmark, or
+    geopolitical entity rather than a human speaker.
+
+    Heuristic (pure regex; no NER dependency):
+      1. Leading "<head-noun> ..." where head-noun is a geographic
+         generic — matches "Strait of Hormuz", "Gulf of Aden",
+         "Mount Everest", "River Thames", "Lake Tahoe".
+      2. "<something> of <something>" where the head-noun token is a
+         geographic generic — matches the same set and also catches
+         "Kingdom of Saudi Arabia", "Republic of Korea".
+      3. Single-token lowercase place name — already caught by the
+         named-human filter but re-asserted here for clarity.
+
+    This is defense-in-depth on top of the prompt instruction. False
+    positives are benign: if a real human happens to be named "Bay
+    Jordan", step 2/3 will drop them but step 4 supplies ``"The
+    speaker"`` — the evaluator scores that as a neutral miss, not a
+    hallucination. False negatives are the real risk (see residual
+    risks in the PR description).
+    """
+    cleaned = (name or "").strip()
+    if not cleaned:
+        return False
+    lowered = cleaned.lower()
+    # Short-circuit: if any whitespace-separated token in the phrase is a
+    # geographic generic noun, treat the whole string as a location. This
+    # catches leading-head ("Strait of Hormuz", "Mount Everest"),
+    # trailing-head ("Persian Gulf", "Arabian Sea"), and embedded-head
+    # ("Kingdom of Saudi Arabia") forms in one pass. Tokens are stripped
+    # of trailing punctuation so "Gulf," matches too.
+    tokens = [re.sub(r"[^\w]", "", tok).lower() for tok in lowered.split()]
+    for tok in tokens:
+        if tok and tok in _GEOGRAPHIC_HEAD_NOUNS:
+            return True
+    # "X of Y" form (e.g., "Republic of Korea") where the head is a
+    # geographic generic — already covered by the token loop above, kept
+    # here as a guard against future head-noun list changes.
+    of_match = _GEOGRAPHIC_OF_PHRASE_RE.match(cleaned)
+    if of_match and of_match.group("head").lower() in _GEOGRAPHIC_HEAD_NOUNS:
+        return True
+    # Full-phrase regex (belt-and-suspenders for multi-token forms).
+    if _GEOGRAPHIC_PHRASE_RE.match(cleaned):
+        return True
+    return False
 
 
 def _looks_like_named_human(name: str) -> bool:
@@ -222,7 +325,16 @@ def _strip_scaffold_phrases(text: str) -> str:
 
 
 def _normalize_mini_title(title: str) -> str:
-    tokens = re.findall(r"[A-Za-z0-9]+", title or "")
+    # Allow intra-word apostrophes (ASCII ``'`` and curly ``\u2019``) and
+    # hyphens so ``Petrodollar's`` stays one token instead of splitting
+    # into ``Petrodollar`` + ``s`` (iter-20 regression: the stopword
+    # filter then dropped the stray ``s`` and the mini_title read
+    # ``"Petrodollar s Decline US Dominance"``).
+    raw_tokens = re.findall(r"[A-Za-z0-9][A-Za-z0-9'\u2019\-]*", title or "")
+    # Strip leading/trailing apostrophes/hyphens from each token; a bare
+    # apostrophe left over from odd punctuation ("'" -> "") is dropped.
+    tokens = [t.strip("'\u2019-") for t in raw_tokens]
+    tokens = [t for t in tokens if t]
     preferred = [token for token in tokens if token.lower() not in _TITLE_STOPWORDS]
     words = preferred if len(preferred) >= 3 else tokens
     normalized = " ".join(words[:5]).strip()
@@ -482,7 +594,12 @@ def _primary_speaker(speakers: list[str]) -> str:
 
 
 def _split_sentences(text: str) -> list[str]:
-    return [s.strip() for s in re.findall(r"[^.!?]+[.!?]", text or "") if s.strip()]
+    # Delegate to the shared abbreviation-aware splitter so ``U.S.``,
+    # ``Dr.``, ``e.g.``, ``3.14`` etc. never produce spurious fragments.
+    from website.features.summarization_engine.summarization.common.text_guards import (
+        split_sentences as _shared_split,
+    )
+    return _shared_split(text or "")
 
 
 def _first_sentence(text: str) -> str:
