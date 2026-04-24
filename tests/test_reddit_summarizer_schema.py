@@ -12,9 +12,6 @@ from website.features.summarization_engine.summarization.reddit.schema import (
     RedditDetailedPayload,
     RedditStructuredPayload,
 )
-from website.features.summarization_engine.summarization.reddit.summarizer import (
-    _sanitize_payload_shape,
-)
 
 
 def _detailed(op_intent: str = "OP asks whether Roman roads still influence modern infrastructure.") -> RedditDetailedPayload:
@@ -104,87 +101,6 @@ def test_schema_enforces_8_to_10_tag_range_with_reserved_slots():
     # Subreddit canonical tag must be reserved at position 0.
     assert payload.tags[0] == "r-tiny"
     assert 8 <= len(payload.tags) <= 10
-
-
-def test_sanitize_payload_shape_rescues_collapsed_cluster_key():
-    """Gemini occasionally emits a single cluster as a one-key dict where the
-    key is the joined field list (``{"theme, reasoning, examples": "..."}``).
-    The sanitizer must rescue it into a valid cluster object so Pydantic
-    never sees a bad shape and the request never 500s."""
-    raw = {
-        "mini_title": "r/test example",
-        "brief_summary": "",
-        "tags": ["a", "b", "c", "d", "e", "f", "g", "h"],
-        "detailed_summary": {
-            "op_intent": "OP asks a question.",
-            "reply_clusters": [
-                {"theme, reasoning, examples": "Most commenters agree on X."}
-            ],
-            "counterarguments": [],
-            "unresolved_questions": [],
-            "moderation_context": None,
-        },
-    }
-    sanitized = _sanitize_payload_shape(raw)
-    clusters = sanitized["detailed_summary"]["reply_clusters"]
-    assert len(clusters) == 1
-    assert "theme" in clusters[0] and "reasoning" in clusters[0]
-    # The full original value is preserved as reasoning so no facts are lost.
-    assert "Most commenters agree on X." in clusters[0]["reasoning"]
-    # Must pass full validation after sanitizing.
-    payload = RedditStructuredPayload(**sanitized)
-    assert payload.detailed_summary.reply_clusters[0].theme
-
-
-def test_sanitize_payload_shape_rescues_dict_of_clusters():
-    """If the LLM wraps clusters in an outer object keyed by theme name, the
-    sanitizer flattens it into the expected list."""
-    raw = {
-        "mini_title": "r/test example",
-        "brief_summary": "",
-        "tags": ["a", "b", "c", "d", "e", "f", "g", "h"],
-        "detailed_summary": {
-            "op_intent": "OP asks a question.",
-            "reply_clusters": {
-                "agreement": {"reasoning": "Most agree.", "examples": []},
-                "dissent": {"reasoning": "A minority push back.", "examples": []},
-            },
-            "counterarguments": [],
-            "unresolved_questions": [],
-            "moderation_context": None,
-        },
-    }
-    sanitized = _sanitize_payload_shape(raw)
-    clusters = sanitized["detailed_summary"]["reply_clusters"]
-    assert len(clusters) == 2
-    themes = {c["theme"] for c in clusters}
-    assert themes == {"agreement", "dissent"}
-    payload = RedditStructuredPayload(**sanitized)
-    assert len(payload.detailed_summary.reply_clusters) == 2
-
-
-def test_sanitize_payload_shape_strips_quoted_keys():
-    """LLM sometimes double-escapes and emits keys like ``'"theme"'`` with
-    literal surrounding quotes. The sanitizer must strip them before Pydantic
-    rejects the shape."""
-    raw = {
-        '"mini_title"': "r/test example",
-        '"brief_summary"': "",
-        '"tags"': ["a", "b", "c", "d", "e", "f", "g", "h"],
-        '"detailed_summary"': {
-            '"op_intent"': "OP asks a question.",
-            '"reply_clusters"': [
-                {'"theme"': "agreement", '"reasoning"': "Most agree.", '"examples"': []}
-            ],
-            '"counterarguments"': [],
-            '"unresolved_questions"': [],
-            '"moderation_context"': None,
-        },
-    }
-    sanitized = _sanitize_payload_shape(raw)
-    payload = RedditStructuredPayload(**sanitized)
-    assert payload.detailed_summary.reply_clusters[0].theme == "agreement"
-    assert payload.detailed_summary.op_intent == "OP asks a question."
 
 
 def test_schema_infers_thread_type_tag_for_experience_report():

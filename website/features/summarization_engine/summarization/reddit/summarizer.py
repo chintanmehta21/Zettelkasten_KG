@@ -1,4 +1,20 @@
-"""Reddit per-source summarizer (iter-09 contract ported to master)."""
+"""Reddit per-source summarizer (3-call DenseVerify pipeline).
+
+Call budget (<=3 per zettel):
+  1. DenseVerifier (pro) — dense + verify, yields ``missing_facts`` for patch
+     detection. Runs CONCURRENTLY with the structured extract below so the
+     user-visible latency is max(DV, structured) rather than DV+structured.
+  2. StructuredExtractor (flash) — schema-shaped Reddit payload.
+  3. Optional flash patch — only when the structured brief still omits a
+     DV-flagged fact (pragmatic substring probe in the helper).
+
+Rationale for preserving ``asyncio.gather``: Reddit's CoD phase was the
+latency bottleneck in iter-09. DenseVerifier keeps a pro call, but by
+speculatively running the structured-extract flash concurrently we keep
+the happy-path user latency at max(pro, flash) instead of pro+flash.
+Quality is preserved because the patch helper catches any DV-flagged
+fact that the structured payload dropped.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -6,8 +22,6 @@ import json
 import logging
 import time
 from copy import deepcopy
-
-from pydantic import ValidationError
 
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.core.models import (
@@ -19,19 +33,16 @@ from website.features.summarization_engine.core.models import (
 )
 from website.features.summarization_engine.summarization import register_summarizer
 from website.features.summarization_engine.summarization.base import BaseSummarizer
-from website.features.summarization_engine.summarization.common.cod import (
-    ChainOfDensityDensifier,
+from website.features.summarization_engine.summarization.common.dense_verify_runner import (
+    maybe_patch_structured_brief,
+    run_dense_verify,
 )
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
 )
-from website.features.summarization_engine.summarization.common.patch import SummaryPatcher
-from website.features.summarization_engine.summarization.common.prompts import SYSTEM_PROMPT
-from website.features.summarization_engine.summarization.common.self_check import (
-    InvertedFactScoreSelfCheck,
-)
-from website.features.summarization_engine.summarization.reddit.prompts import (
-    STRUCTURED_EXTRACT_INSTRUCTION,
+from website.features.summarization_engine.summarization.common.structured import (
+    StructuredExtractor,
+    _normalize_tags,
 )
 from website.features.summarization_engine.summarization.reddit.schema import (
     RedditCluster,
@@ -43,16 +54,14 @@ _log = logging.getLogger(__name__)
 
 
 class RedditSummarizer(BaseSummarizer):
-    """Reddit summarizer enforcing the iter-09 rubric contract.
+    """Reddit summarizer on the 3-call DenseVerify pipeline.
 
+    Contract preserved from iter-09:
     - label format ``r/<subreddit> ...`` via schema validator.
     - 8-10 tags reserving subreddit + thread_type slots.
-    - 5-7 sentence neutral brief, rebuilt deterministically if the model
-      under-delivers the contract.
     - Rich detailed payload (op_intent, reply_clusters, counterarguments,
       unresolved_questions, moderation_context) preserved in
-      ``metadata`` as the source of truth and back-filled into the
-      SummaryResult ``detailed_summary`` section surface.
+      ``metadata`` as the source of truth.
     """
 
     source_type = SourceType.REDDIT
@@ -78,8 +87,12 @@ class RedditSummarizer(BaseSummarizer):
                 _build_minimum_safe_payload("", ingest), ingest
             )
             return SummaryResult(
-                mini_title=payload.mini_title[: self._engine_config.structured_extract.mini_title_max_chars],
-                brief_summary=payload.brief_summary[: self._engine_config.structured_extract.brief_summary_max_chars],
+                mini_title=payload.mini_title[
+                    : self._engine_config.structured_extract.mini_title_max_chars
+                ],
+                brief_summary=payload.brief_summary[
+                    : self._engine_config.structured_extract.brief_summary_max_chars
+                ],
                 tags=payload.tags,
                 detailed_summary=_detailed_payload_to_sections(payload.detailed_summary),
                 metadata=SummaryMetadata(
@@ -102,116 +115,101 @@ class RedditSummarizer(BaseSummarizer):
 
     async def _summarize_inner(self, ingest: IngestResult) -> SummaryResult:
         start = time.perf_counter()
-        # Full multi-iteration CoD preserved — quality is non-negotiable.
-        dense = await ChainOfDensityDensifier(
-            self._client, self._engine_config
-        ).densify(ingest)
 
-        # Speculative parallelism: run self-check and the flash structured-
-        # extraction concurrently against the CoD output. On the common no-
-        # patch path (missing_count < threshold, ~majority of Reddit threads)
-        # the speculative extraction is the final answer — we save the whole
-        # flash round-trip of user-visible latency. When patching IS needed,
-        # we discard the speculative result and re-run extraction against the
-        # patched text; quality is identical to the sequential pipeline.
-        self_check = InvertedFactScoreSelfCheck(self._client, self._engine_config)
-        spec_prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=dense.text)
-        check, spec_gen = await asyncio.gather(
-            self_check.check(ingest.raw_text, dense.text),
-            self._client.generate(
-                spec_prompt,
-                tier="flash",
-                response_schema=RedditStructuredPayload,
-                system_instruction=SYSTEM_PROMPT,
-            ),
+        # Calls 1 + 2 in parallel — DenseVerify (pro) races with the
+        # structured extract (flash). The structured call can't see DV's
+        # ``missing_facts`` on the speculative path, but the optional patch
+        # (call 3) covers any DV-flagged fact the payload dropped.
+        extractor = StructuredExtractor(
+            self._client,
+            self._engine_config,
+            payload_class=RedditStructuredPayload,
+            missing_facts_hint=None,
         )
 
-        patcher = SummaryPatcher(self._client, self._engine_config)
-        needs_patch = check.missing_count >= self._engine_config.self_check.patch_threshold
-
-        pro_tokens = dense.pro_tokens + check.pro_tokens
-        flash_tokens = spec_gen.input_tokens + spec_gen.output_tokens
-
-        if needs_patch:
-            patched, patch_applied, patch_tokens = await patcher.patch(dense.text, check)
-            pro_tokens += patch_tokens
-            prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=patched)
-            gen = await self._client.generate(
-                prompt,
-                tier="flash",
-                response_schema=RedditStructuredPayload,
-                system_instruction=SYSTEM_PROMPT,
+        dv_task = asyncio.create_task(
+            run_dense_verify(client=self._client, ingest=ingest)
+        )
+        extract_task = asyncio.create_task(
+            extractor.extract(
+                ingest,
+                ingest.raw_text or "",
+                pro_tokens=0,
+                flash_tokens=0,
+                latency_ms=0,
+                cod_iterations_used=0,
+                self_check_missing_count=0,
+                patch_applied=False,
             )
-            flash_tokens += gen.input_tokens + gen.output_tokens
-            gen_text = gen.text
-        else:
-            patched = dense.text
-            patch_applied = False
-            gen_text = spec_gen.text
-
-        payload = _parse_payload(gen_text, patched, ingest)
-        payload = _apply_ingest_enrichments(payload, ingest)
-
-        latency_ms = int((time.perf_counter() - start) * 1000)
-
-        detailed_sections = _detailed_payload_to_sections(payload.detailed_summary)
-
-        return SummaryResult(
-            mini_title=payload.mini_title[: self._engine_config.structured_extract.mini_title_max_chars],
-            brief_summary=payload.brief_summary[: self._engine_config.structured_extract.brief_summary_max_chars],
-            tags=payload.tags,
-            detailed_summary=detailed_sections,
-            metadata=SummaryMetadata(
-                source_type=ingest.source_type,
-                url=ingest.url,
-                author=ingest.metadata.get("author"),
-                date=None,
-                extraction_confidence=ingest.extraction_confidence,
-                confidence_reason=ingest.confidence_reason,
-                total_tokens_used=pro_tokens + flash_tokens,
-                gemini_pro_tokens=pro_tokens,
-                gemini_flash_tokens=flash_tokens,
-                total_latency_ms=latency_ms,
-                cod_iterations_used=dense.iterations_used,
-                self_check_missing_count=check.missing_count,
-                patch_applied=patch_applied,
-                structured_payload=payload.model_dump(mode="json"),
-            ),
         )
+        dv, result = await asyncio.gather(dv_task, extract_task)
+
+        # Ingest-time enrichments (subreddit tag + moderation context note)
+        # replicate the iter-09 behavior — they inject signals the LLM can't
+        # see from the summary alone. Applied on top of StructuredExtractor's
+        # output.
+        structured_payload_dict = (
+            result.metadata.structured_payload if result.metadata is not None else None
+        )
+        if isinstance(structured_payload_dict, dict):
+            try:
+                validated = RedditStructuredPayload.model_validate(
+                    structured_payload_dict
+                )
+                enriched = _apply_ingest_enrichments(validated, ingest)
+                if result.metadata is not None:
+                    result.metadata.structured_payload = enriched.model_dump(mode="json")
+                    # Propagate enriched tags back to the user-visible surface.
+                    result.tags = _normalize_tags(
+                        enriched.tags,
+                        self._engine_config.structured_extract.tags_min,
+                        self._engine_config.structured_extract.tags_max,
+                    )
+                    # Refresh detailed_summary bullets from the enriched payload
+                    # so moderation_context surfaces on the rendered note.
+                    result.detailed_summary = _detailed_payload_to_sections(
+                        enriched.detailed_summary
+                    )
+            except Exception as exc:  # noqa: BLE001 — enrichment must never 500
+                _log.info(
+                    "reddit.enrichment_skipped type=%s err=%s",
+                    type(exc).__name__,
+                    exc,
+                )
+
+        # Call 3 (optional) — flash patch when DV-flagged facts remain omitted.
+        payload_json = ""
+        if result.metadata is not None and result.metadata.structured_payload:
+            try:
+                payload_json = json.dumps(result.metadata.structured_payload)
+            except Exception:  # noqa: BLE001
+                payload_json = str(result.metadata.structured_payload)
+        new_brief, patch_applied, patch_tokens = await maybe_patch_structured_brief(
+            client=self._client,
+            current_brief=result.brief_summary,
+            dv=dv,
+            extracted_payload_json=payload_json,
+        )
+        if patch_applied:
+            result.brief_summary = new_brief
+            if result.metadata is not None:
+                result.metadata.patch_applied = True
+                result.metadata.gemini_flash_tokens = (
+                    int(result.metadata.gemini_flash_tokens or 0) + patch_tokens
+                )
+                result.metadata.total_tokens_used = (
+                    int(result.metadata.total_tokens_used or 0) + patch_tokens
+                )
+
+        # Annotate DV's self_check_missing_count for downstream eval.
+        if result.metadata is not None:
+            result.metadata.self_check_missing_count = len(dv.missing_facts)
+            result.metadata.total_latency_ms = int((time.perf_counter() - start) * 1000)
+
+        return result
 
 
 register_summarizer(RedditSummarizer)
-
-
-def _parse_payload(
-    raw_text: str, summary_text: str, ingest: IngestResult
-) -> RedditStructuredPayload:
-    """Parse Gemini JSON into the Reddit schema, falling back to a synthesized
-    payload if the model drifts off-schema. The schema's validators enforce the
-    brief/label/tag contracts even on the fallback."""
-    try:
-        data = parse_json_object(raw_text)
-        sanitized = _sanitize_payload_shape(data) if isinstance(data, dict) else data
-        return RedditStructuredPayload(**sanitized)
-    except Exception as exc:  # noqa: BLE001 — any drift must fall back, never 500
-        _log.warning(
-            "reddit.structured_parse_failed type=%s err=%s raw_full=%r",
-            type(exc).__name__,
-            exc,
-            (raw_text or "")[:4096],
-        )
-        try:
-            return _synthesize_fallback_payload(summary_text, ingest)
-        except Exception as fb_exc:  # noqa: BLE001
-            _log.error(
-                "reddit.fallback_synthesis_failed type=%s err=%s",
-                type(fb_exc).__name__,
-                fb_exc,
-                exc_info=True,
-            )
-            # Last-ditch: build a guaranteed-valid payload bypassing validators.
-            # The pipeline MUST never 500 on Reddit — a minimal zettel beats an error.
-            return _build_minimum_safe_payload(summary_text, ingest)
 
 
 def _normalize_keys(obj):
@@ -228,114 +226,14 @@ def _normalize_keys(obj):
     return obj
 
 
-def _sanitize_payload_shape(data: dict) -> dict:
-    """Coerce common LLM drifts in ``detailed_summary.reply_clusters`` into the
-    expected list-of-cluster-objects shape before Pydantic validation.
-
-    The flash model occasionally emits a single cluster as a dict with a joined
-    key (e.g. ``{"theme, reasoning, examples": "..."}``) or wraps clusters in
-    an outer map. Rather than 500, rescue those shapes into a best-effort list
-    so the schema can then enforce the contract. Unknown shapes are passed
-    through untouched for Pydantic to reject and the ``except`` above to
-    catch."""
-    data = _normalize_keys(data)
-    detailed = data.get("detailed_summary")
-    if not isinstance(detailed, dict):
-        return data
-    clusters = detailed.get("reply_clusters")
-    if isinstance(clusters, list):
-        repaired: list[dict] = []
-        for entry in clusters:
-            if isinstance(entry, dict) and {"theme", "reasoning"}.issubset(entry.keys()):
-                repaired.append(entry)
-                continue
-            if isinstance(entry, dict) and len(entry) == 1:
-                # {"theme, reasoning, examples": "..."} or similar collapsed key
-                only_val = next(iter(entry.values()))
-                repaired.append(
-                    {"theme": "summary", "reasoning": str(only_val), "examples": []}
-                )
-                continue
-            if isinstance(entry, str):
-                repaired.append({"theme": "summary", "reasoning": entry, "examples": []})
-                continue
-            if isinstance(entry, dict):
-                repaired.append(
-                    {
-                        "theme": str(entry.get("theme") or entry.get("name") or "summary"),
-                        "reasoning": str(
-                            entry.get("reasoning") or entry.get("description") or ""
-                        ),
-                        "examples": list(entry.get("examples") or []),
-                    }
-                )
-        detailed["reply_clusters"] = repaired or [
-            {"theme": "general discussion", "reasoning": "No discrete clusters detected.", "examples": []}
-        ]
-    elif isinstance(clusters, dict):
-        repaired = []
-        for theme_key, body in clusters.items():
-            if isinstance(body, dict):
-                repaired.append(
-                    {
-                        "theme": str(body.get("theme") or theme_key),
-                        "reasoning": str(body.get("reasoning") or body.get("description") or ""),
-                        "examples": list(body.get("examples") or []),
-                    }
-                )
-            else:
-                repaired.append({"theme": str(theme_key), "reasoning": str(body), "examples": []})
-        detailed["reply_clusters"] = repaired or [
-            {"theme": "general discussion", "reasoning": "No discrete clusters detected.", "examples": []}
-        ]
-    data["detailed_summary"] = detailed
-    return data
-
-
-def _synthesize_fallback_payload(
-    summary_text: str, ingest: IngestResult
-) -> RedditStructuredPayload:
-    subreddit = str(ingest.metadata.get("subreddit") or "reddit").strip() or "reddit"
-    title = str(ingest.metadata.get("title") or "thread").strip()
-    op_intent = (summary_text or title)[:240]
-    detailed = RedditDetailedPayload(
-        op_intent=op_intent or f"OP posted in r/{subreddit}.",
-        reply_clusters=[
-            {
-                "theme": "general discussion",
-                "reasoning": "Replies covered a mix of opinions on the original post.",
-                "examples": [],
-            }
-        ],
-        counterarguments=[],
-        unresolved_questions=[],
-        moderation_context=None,
-    )
-    return RedditStructuredPayload(
-        mini_title=f"r/{subreddit} {title}"[:60] or f"r/{subreddit} thread",
-        brief_summary="",  # schema validator rebuilds from detailed
-        tags=[
-            f"r-{subreddit.lower().replace('_', '-')}",
-            "discussion",
-            "reddit-thread",
-            "community-discussion",
-            "user-replies",
-            "reddit",
-            "thread",
-            "capture",
-        ],
-        detailed_summary=detailed,
-    )
-
-
 def _build_minimum_safe_payload(
     summary_text: str, ingest: IngestResult
 ) -> RedditStructuredPayload:
     """Bypass validators and build a minimally-valid payload from ingest metadata.
 
-    Used only when both ``_sanitize_payload_shape`` and
-    ``_synthesize_fallback_payload`` have failed. Never raises — the user always
-    gets a zettel, even when the LLM drift is catastrophic."""
+    Used only when the summarizer hits an unrecoverable exception. Never
+    raises — the user always gets a zettel, even when the LLM drift is
+    catastrophic."""
     subreddit = str(ingest.metadata.get("subreddit") or "reddit").strip() or "reddit"
     title = str(ingest.metadata.get("title") or "thread").strip() or "thread"
     subreddit_tag = f"r-{subreddit.lower().replace('_', '-')}"
