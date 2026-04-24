@@ -1,4 +1,17 @@
-"""Newsletter per-source summarizer."""
+"""Newsletter per-source summarizer (3-call DenseVerify pipeline).
+
+Call budget (<=3 per zettel):
+  1. DenseVerifier (pro) — dense + verify + stance signal (from DV's
+     ``stance`` hint field; the source-ingest ``detect_stance`` heuristic
+     remains authoritative because it reads substack/beehiiv tone cues
+     the LLM misses).
+  2. StructuredExtractor via direct flash generate — schema-shaped payload.
+  3. Optional flash template-artifact repair — when the first payload
+     leaks ``**ID:**`` / ``**Title:**`` / ``#substack`` scaffolding, one
+     repair call rewrites it cleanly. The DV-brief patch path is NOT
+     used here because newsletter failures are artifact-driven, not
+     omission-driven.
+"""
 from __future__ import annotations
 
 import re
@@ -16,12 +29,8 @@ from website.features.summarization_engine.evaluator.numeric_grounding import (
 )
 from website.features.summarization_engine.summarization import register_summarizer
 from website.features.summarization_engine.summarization.base import BaseSummarizer
-from website.features.summarization_engine.summarization.common.cod import (
-    ChainOfDensityDensifier,
-)
-from website.features.summarization_engine.summarization.common.patch import SummaryPatcher
-from website.features.summarization_engine.summarization.common.self_check import (
-    InvertedFactScoreSelfCheck,
+from website.features.summarization_engine.summarization.common.dense_verify_runner import (
+    run_dense_verify,
 )
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
@@ -55,16 +64,22 @@ class NewsletterSummarizer(BaseSummarizer):
 
     async def summarize(self, ingest: IngestResult) -> NewsletterSummaryResult:
         start = time.perf_counter()
-        dense = await ChainOfDensityDensifier(
-            self._client, self._engine_config
-        ).densify(ingest)
-        check = await InvertedFactScoreSelfCheck(
-            self._client, self._engine_config
-        ).check(ingest.raw_text, dense.text)
-        patched, patch_applied, patch_tokens = await SummaryPatcher(
-            self._client, self._engine_config
-        ).patch(dense.text, check)
-        prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=patched)
+
+        # Call 1 — DenseVerify (pro).
+        dv = await run_dense_verify(client=self._client, ingest=ingest)
+        pro_tokens = 0  # DV tokens are tracked elsewhere; run_dense_verify has no accessor here
+
+        # Compose the structured prompt with DV hints. Newsletter retains its
+        # bespoke template-artifact repair loop because the failure mode is
+        # leaked Substack/beehiiv scaffolding, which the generic DV patch
+        # substring probe cannot detect.
+        prompt = STRUCTURED_EXTRACT_INSTRUCTION.format(summary_text=dv.dense_text or ingest.raw_text or "")
+        if dv.missing_facts:
+            joined = "; ".join(f.strip() for f in dv.missing_facts if f.strip())
+            if joined:
+                prompt = f"{prompt}\n\nEnsure these facts are covered: {joined}"
+
+        # Call 2 — structured extraction (flash).
         result = await self._client.generate(
             prompt,
             tier="flash",
@@ -75,6 +90,7 @@ class NewsletterSummarizer(BaseSummarizer):
         is_schema_fallback = False
         try:
             payload = _parse_payload_with_ingest(result.text, ingest)
+            # Call 3 (optional) — flash template-artifact repair.
             if _payload_contains_template_artifacts(payload):
                 repair = await self._client.generate(
                     prompt
@@ -88,9 +104,11 @@ class NewsletterSummarizer(BaseSummarizer):
                 flash_tokens += repair.input_tokens + repair.output_tokens
                 payload = _parse_payload_with_ingest(repair.text, ingest)
                 if _payload_contains_template_artifacts(payload):
-                    raise ValueError("newsletter payload still contains template artifacts")
+                    raise ValueError(
+                        "newsletter payload still contains template artifacts"
+                    )
         except Exception:
-            payload = _fallback_payload(ingest, patched, self._engine_config)
+            payload = _fallback_payload(ingest, dv.dense_text or ingest.raw_text or "", self._engine_config)
             is_schema_fallback = True
         payload = _apply_ingest_guardrails(payload, ingest)
         latency_ms = int((time.perf_counter() - start) * 1000)
@@ -118,16 +136,13 @@ class NewsletterSummarizer(BaseSummarizer):
                 ),
                 extraction_confidence=ingest.extraction_confidence,
                 confidence_reason=ingest.confidence_reason,
-                total_tokens_used=dense.pro_tokens
-                + check.pro_tokens
-                + patch_tokens
-                + flash_tokens,
-                gemini_pro_tokens=dense.pro_tokens + check.pro_tokens + patch_tokens,
+                total_tokens_used=pro_tokens + flash_tokens,
+                gemini_pro_tokens=pro_tokens,
                 gemini_flash_tokens=flash_tokens,
                 total_latency_ms=latency_ms,
-                cod_iterations_used=dense.iterations_used,
-                self_check_missing_count=check.missing_count,
-                patch_applied=patch_applied,
+                cod_iterations_used=0,
+                self_check_missing_count=len(dv.missing_facts),
+                patch_applied=False,
                 structured_payload=payload.model_dump(mode="json"),
                 is_schema_fallback=is_schema_fallback,
             ),

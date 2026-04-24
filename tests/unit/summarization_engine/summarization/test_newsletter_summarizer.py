@@ -30,31 +30,35 @@ def mock_gemini_client():
     return Client()
 
 
+def _stub_run_dense_verify(monkeypatch):
+    from website.features.summarization_engine.summarization.common import (
+        dense_verify,
+        dense_verify_runner,
+    )
+    from website.features.summarization_engine.summarization.newsletter import (
+        summarizer as nl_mod,
+    )
+
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    monkeypatch.setattr(nl_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
+
+
 @pytest.mark.asyncio
 async def test_newsletter_summarizer_returns_newsletter_payload_shape(
     mock_gemini_client, monkeypatch
 ):
-    from website.features.summarization_engine.summarization.common import (
-        cod,
-        patch as p_mod,
-        self_check,
-    )
-
-    monkeypatch.setattr(
-        cod.ChainOfDensityDensifier,
-        "densify",
-        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
-    )
-    monkeypatch.setattr(
-        self_check.InvertedFactScoreSelfCheck,
-        "check",
-        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
-    )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
+    _stub_run_dense_verify(monkeypatch)
 
     structured_payload = {
         "mini_title": "Stratechery AI Outlook",
@@ -189,27 +193,7 @@ def test_apply_ingest_guardrails_removes_unsupported_numbers_without_source_numb
 async def test_newsletter_summarizer_retries_on_template_artifacts(
     mock_gemini_client, monkeypatch
 ):
-    from website.features.summarization_engine.summarization.common import (
-        cod,
-        patch as p_mod,
-        self_check,
-    )
-
-    monkeypatch.setattr(
-        cod.ChainOfDensityDensifier,
-        "densify",
-        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
-    )
-    monkeypatch.setattr(
-        self_check.InvertedFactScoreSelfCheck,
-        "check",
-        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
-    )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
+    _stub_run_dense_verify(monkeypatch)
 
     contaminated = {
         "mini_title": "Platformer: Substack promotes a Nazi",

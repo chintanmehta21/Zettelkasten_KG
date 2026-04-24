@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -10,7 +10,29 @@ from website.features.summarization_engine.summarization.newsletter.summarizer i
 
 
 @pytest.mark.asyncio
-async def test_newsletter_summarizer_returns_newsletter_payload_shape():
+async def test_newsletter_summarizer_returns_newsletter_payload_shape(monkeypatch):
+    from website.features.summarization_engine.summarization.common import (
+        dense_verify,
+        dense_verify_runner,
+    )
+    from website.features.summarization_engine.summarization.newsletter import (
+        summarizer as nl_mod,
+    )
+
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense summary",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    monkeypatch.setattr(nl_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
+
     ingest = IngestResult(
         source_type=SourceType.NEWSLETTER,
         url="https://www.platformer.news/substack-nazi-push-notification/",
@@ -30,9 +52,6 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape():
         fetched_at=datetime.now(timezone.utc),
     )
 
-    dense = AsyncMock(return_value=type("Dense", (), {"text": "dense summary", "pro_tokens": 11, "iterations_used": 2})())
-    check = AsyncMock(return_value=type("Check", (), {"pro_tokens": 7, "missing_count": 0})())
-    patcher = AsyncMock(return_value=("patched summary", False, 5))
     generate_result = type(
         "Result",
         (),
@@ -52,17 +71,7 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape():
 
     client = type("Client", (), {"generate": AsyncMock(return_value=generate_result)})()
 
-    with patch(
-        "website.features.summarization_engine.summarization.newsletter.summarizer.ChainOfDensityDensifier.densify",
-        dense,
-    ), patch(
-        "website.features.summarization_engine.summarization.newsletter.summarizer.InvertedFactScoreSelfCheck.check",
-        check,
-    ), patch(
-        "website.features.summarization_engine.summarization.newsletter.summarizer.SummaryPatcher.patch",
-        patcher,
-    ):
-        result = await NewsletterSummarizer(client, {}).summarize(ingest)
+    result = await NewsletterSummarizer(client, {}).summarize(ingest)
 
     assert result.metadata.source_type == SourceType.NEWSLETTER
     assert result.detailed_summary.publication_identity == "Platformer"
