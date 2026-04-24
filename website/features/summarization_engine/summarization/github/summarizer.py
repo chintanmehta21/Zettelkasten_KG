@@ -37,6 +37,9 @@ from website.features.summarization_engine.summarization.common.dense_verify_run
     maybe_patch_structured_brief,
     run_dense_verify,
 )
+from website.features.summarization_engine.summarization.common.model_trace import (
+    aggregate_fallback_reason,
+)
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
 )
@@ -91,6 +94,18 @@ class GitHubSummarizer(BaseSummarizer):
         # input to StructuredExtractor so it extracts from a higher-fidelity
         # surface than the raw README.
         dv = await run_dense_verify(client=self._client, ingest=ingest)
+        # Start building the per-role Gemini call trace that will land in
+        # SummaryMetadata.model_used. DV may be a cache hit in which case the
+        # telemetry fields are None — we still record the role so reviewers
+        # can see whether the pipeline intentionally skipped a call.
+        call_trace: list[dict] = [
+            {
+                "role": "dense_verify",
+                "model": dv.model_used,
+                "starting_model": dv.starting_model,
+                "fallback_reason": dv.fallback_reason,
+            }
+        ]
 
         def _prompt_builder(
             ingest_inner: IngestResult, summary_text: str, schema_json: str
@@ -135,6 +150,7 @@ class GitHubSummarizer(BaseSummarizer):
             cod_iterations_used=0,
             self_check_missing_count=len(dv.missing_facts),
             patch_applied=False,
+            telemetry_sink=call_trace,
         )
 
         # Call 3 (optional) — flash patch when DV-flagged facts remain omitted
@@ -150,6 +166,7 @@ class GitHubSummarizer(BaseSummarizer):
             current_brief=result.brief_summary,
             dv=dv,
             extracted_payload_json=payload_json,
+            telemetry_sink=call_trace,
         )
         if patch_applied:
             result.brief_summary = new_brief
@@ -177,6 +194,12 @@ class GitHubSummarizer(BaseSummarizer):
                     "missing_fact_count": len(dv.missing_facts),
                 })
             result.metadata.structured_payload = extras
+            # Surface the call trace + aggregate fallback reason so eval tooling
+            # can detect silent pro→flash-lite downgrades without scraping
+            # run.log. The iter-23 GitHub regression that motivated this
+            # plumbing would now appear directly in summary.json.metadata.
+            result.metadata.model_used = call_trace
+            result.metadata.fallback_reason = aggregate_fallback_reason(call_trace)
         return result
 
 

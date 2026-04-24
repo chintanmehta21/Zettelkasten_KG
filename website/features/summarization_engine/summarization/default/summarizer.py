@@ -24,6 +24,9 @@ from website.features.summarization_engine.summarization.common.dense_verify_run
     maybe_patch_structured_brief,
     run_dense_verify,
 )
+from website.features.summarization_engine.summarization.common.model_trace import (
+    aggregate_fallback_reason,
+)
 from website.features.summarization_engine.summarization.common.structured import StructuredExtractor
 
 
@@ -45,6 +48,17 @@ class DefaultSummarizer(BaseSummarizer):
         # the downstream extractor to absorb.
         dv = await run_dense_verify(client=self._client, ingest=ingest)
 
+        # Seed the call trace so default-path sources (HN/LinkedIn/arXiv/etc.)
+        # reach parity with YouTube/Reddit/GitHub/Newsletter on
+        # ``SummaryMetadata.model_used`` + ``fallback_reason``. DV carries its
+        # own model_used; the extractor appends via the telemetry_sink below.
+        call_trace: list[dict] = [{
+            "role": "dense_verify",
+            "model": dv.model_used,
+            "starting_model": dv.starting_model,
+            "fallback_reason": dv.fallback_reason,
+        }]
+
         structured = StructuredExtractor(
             self._client,
             self._engine_config,
@@ -63,6 +77,7 @@ class DefaultSummarizer(BaseSummarizer):
             cod_iterations_used=0,
             self_check_missing_count=len(dv.missing_facts),
             patch_applied=False,
+            telemetry_sink=call_trace,
         )
 
         # Call 3 (optional) — flash patch when DV-flagged facts remain omitted
@@ -78,6 +93,7 @@ class DefaultSummarizer(BaseSummarizer):
             current_brief=result.brief_summary,
             dv=dv,
             extracted_payload_json=payload_json,
+            telemetry_sink=call_trace,
         )
         if patch_applied:
             result.brief_summary = new_brief
@@ -89,6 +105,14 @@ class DefaultSummarizer(BaseSummarizer):
                 result.metadata.total_tokens_used = (
                     int(result.metadata.total_tokens_used or 0) + patch_tokens
                 )
+
+        # Surface the per-role trace + top-level fallback_reason so eval/manual-
+        # review tooling can diff silent pro→flash-lite downgrades without
+        # re-reading run.log. Cache-hit DV entries have ``model=None`` — they
+        # pass through harmlessly because aggregate_fallback_reason skips Nones.
+        if result.metadata is not None:
+            result.metadata.model_used = call_trace
+            result.metadata.fallback_reason = aggregate_fallback_reason(call_trace)
 
         return result
 

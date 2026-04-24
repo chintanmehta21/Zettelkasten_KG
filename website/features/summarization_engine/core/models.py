@@ -69,6 +69,16 @@ class SummaryMetadata(BaseModel):
     engine_version: str = "2.0.0"
     structured_payload: dict[str, Any] | None = None
     is_schema_fallback: bool = False
+    # Per-role Gemini call trace so downstream consumers (eval harness,
+    # manual review) can see silent pro→flash-lite downgrades. Each entry:
+    # ``{"role": "summarizer"|"patch"|"cod_refine"|"dense_verify", "model": str,
+    #   "starting_model": str, "fallback_reason": str | None}``. None when the
+    #  summarizer did not opt in to telemetry collection.
+    model_used: list[dict[str, Any]] | None = None
+    # Convenience top-level fallback reason: non-None when ANY call on the
+    # critical path (summarizer or patch) incurred a downgrade. Set to the
+    # first non-None call reason so regressions are visible at a glance.
+    fallback_reason: str | None = None
 
 
 class SummaryResult(BaseModel):

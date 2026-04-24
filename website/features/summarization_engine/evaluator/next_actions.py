@@ -22,6 +22,8 @@ async def synthesize_next_actions(
         manual_review_md=manual_review_md,
         diff_md=diff_md,
     )
-    result = await client.generate(prompt, tier="flash")
+    # Tagged as ``next_actions`` so the prod/eval telemetry split attributes
+    # this synthesis call to the eval bucket.
+    result = await client.generate(prompt, tier="flash", role="next_actions")
     body = f"status: {status}\n\n" + result.text.strip()
     out_path.write_text(body, encoding="utf-8")

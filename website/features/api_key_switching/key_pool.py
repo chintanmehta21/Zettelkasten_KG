@@ -303,12 +303,27 @@ class GeminiKeyPool:
         config: dict | None = None,
         starting_model: str | None = None,
         label: str = "",
+        telemetry_sink: list | None = None,
     ):
+        """Call Gemini with key+model rotation.
+
+        ``telemetry_sink`` is an optional mutable list that callers pass in when
+        they want per-call attempt trace. On success, one dict is appended:
+        ``{"label": ..., "model_used": m, "starting_model": s,
+           "fallback_reason": r, "failed_attempts": [...]}``. ``fallback_reason``
+        is ``None`` when the first-tier model succeeded; otherwise a short
+        string like ``"gemini-2.5-flash-timeout"`` or ``"gemini-2.5-pro-rate-limited"``
+        synthesized from the first failed attempt. This is the plumbing that
+        lets ``summary.json.metadata.model_used`` surface silent pro→flash-lite
+        downgrades without re-reading run.log.
+        """
         chain = self._build_attempt_chain(starting_model=starting_model)
         last_exc: Exception | None = None
         retries = 0
         max_retries = _max_retries()
         cooldown_secs = _rate_limit_cooldown_secs()
+        attempts: list[dict] = []
+        effective_starting = starting_model or (chain[0][1] if chain else None)
 
         if not chain:
             raise RuntimeError("All configured Gemini key/model slots are on cooldown")
@@ -322,6 +337,19 @@ class GeminiKeyPool:
                     config=config or {},
                 )
                 self._next_gen_key = (key_index + 1) % len(self._keys)
+                if telemetry_sink is not None:
+                    fallback_reason: str | None = None
+                    if attempts:
+                        first = attempts[0]
+                        fallback_reason = f"{first['model']}-{first['reason']}"
+                    telemetry_sink.append({
+                        "label": label,
+                        "model_used": model,
+                        "starting_model": effective_starting,
+                        "key_index": key_index,
+                        "fallback_reason": fallback_reason,
+                        "failed_attempts": list(attempts),
+                    })
                 return response, model, key_index
             except Exception as exc:
                 last_exc = exc
@@ -342,6 +370,7 @@ class GeminiKeyPool:
                         reason = "unavailable"
                     else:
                         reason = "timeout"
+                    attempts.append({"model": model, "key_index": key_index, "reason": reason})
                     logger.warning(
                         "%s %s on key[%d]/%s; retry %d/%d, cooldown %ds",
                         label or "Gemini",

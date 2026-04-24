@@ -30,7 +30,11 @@ async def extract_atomic_facts(
         return hit["facts"]
 
     prompt = ATOMIC_FACTS_PROMPT.format(source_text=source_text[:30000])
-    result = await client.generate(prompt, tier="flash")
+    # ``role="atomic_facts"`` tags this call as an evaluator-side
+    # (atomic-fact extraction) call in the telemetry split. Without the tag
+    # it defaults to the tier ("flash") which the prod/eval classifier would
+    # misattribute to the summarizer bucket.
+    result = await client.generate(prompt, tier="flash", role="atomic_facts")
 
     try:
         if result.text.strip().startswith("{"):

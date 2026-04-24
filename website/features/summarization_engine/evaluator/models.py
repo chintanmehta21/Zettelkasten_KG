@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from statistics import mean
-from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 

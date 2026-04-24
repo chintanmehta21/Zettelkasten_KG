@@ -138,6 +138,7 @@ class ConsolidatedEvaluator:
                     system_instruction=CONSOLIDATED_SYSTEM,
                     temperature=0.0,
                     max_output_tokens=32768,
+                    role="rubric_evaluator",
                 )
                 last_text = (result.text or "").strip()
                 if last_text:

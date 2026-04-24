@@ -10,7 +10,7 @@ graceful-fallback brief builder when structured extraction fails.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 _CODE_FENCE = re.compile(r"```(?:\w+)?\s*(.*?)```", re.DOTALL)

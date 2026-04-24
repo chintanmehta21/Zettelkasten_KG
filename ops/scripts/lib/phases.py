@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import logging
 import statistics
 import time
@@ -26,7 +25,7 @@ from ops.scripts.lib.artifacts import (
 )
 from ops.scripts.lib import churn_ledger, git_helper
 from website.features.summarization_engine.core.orchestrator import summarize_url_bundle
-from website.features.summarization_engine.evaluator import evaluate, composite_score
+from website.features.summarization_engine.evaluator import composite_score
 from website.features.summarization_engine.evaluator.manual_review_writer import (
     verify_manual_review,
 )
@@ -173,6 +172,18 @@ def run_phase_a(
         }
 
     client = gemini_client_factory()
+
+    # Enable the client-level call journal so we can split prod vs eval
+    # Gemini usage into ``telemetry.json``. The journal is opt-in and free
+    # (one list allocation); eval sources that don't want it can skip the
+    # drain at the end. ``enable_call_journal`` is idempotent so re-running
+    # phase-A on the same client does not clobber an outer subscriber.
+    try:
+        client.enable_call_journal()
+    except AttributeError:
+        # Older client stub (e.g. a mock in tests) — telemetry emission
+        # is best-effort. Silently degrade rather than break phase-A.
+        pass
 
     async def _run_all() -> list[dict]:
         return [
@@ -335,6 +346,25 @@ def run_phase_a(
         },
     }
     write_json(paths["input"], input_payload)
+
+    # telemetry.json — split every Gemini call into prod vs eval buckets
+    # with by-model breakdown. Built from the client-level journal we
+    # enabled at phase-A start. When the journal was never populated
+    # (e.g. a stubbed client in tests) we still emit an empty-shell
+    # telemetry.json so downstream tooling can rely on the file's
+    # presence.
+    try:
+        from website.features.summarization_engine.core.telemetry import (
+            build_telemetry,
+        )
+
+        journal: list[dict] = []
+        drain = getattr(client, "drain_call_journal", None)
+        if callable(drain):
+            journal = drain()
+        write_json(iter_dir / "telemetry.json", build_telemetry(journal))
+    except Exception as exc:  # noqa: BLE001 — telemetry emission must never break phase-A
+        logger.warning("telemetry emission skipped: %s", exc)
 
     # manual_review_prompt.md — hash is over the actual eval.json file we wrote
     rubric_yaml = records[0]["rubric_yaml"]
@@ -499,7 +529,7 @@ def _write_diff(
         f"# {iter_dir.name} — diff",
         "",
         f"- computed_composite: {computed_composite:.2f}",
-        f"- estimated_composite: "
+        "- estimated_composite: "
         + (f"{estimated_composite:.2f}" if estimated_composite is not None else "n/a"),
         f"- divergence: {stamp}",
         f"- score_delta_vs_prev: {delta_vs_prev if delta_vs_prev is not None else 'n/a'}",
