@@ -1341,6 +1341,36 @@
     return true;
   }
 
+  // Coerce any shape (array / single dict / stringified JSON / Python repr) into
+  // a normalized structured-sections array, or null if nothing usable. Central
+  // funnel used by extractSummaryParts so every render path gets the same
+  // defensive recovery regardless of how the summary was persisted.
+  function coerceStructuredDetailed(value) {
+    if (value == null) return null;
+    if (isStructuredDetailed(value)) return value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      var wrapped = [value];
+      if (isStructuredDetailed(wrapped)) return wrapped;
+    }
+    if (typeof value !== 'string') return null;
+    var trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.charAt(0) !== '[' && trimmed.charAt(0) !== '{') return null;
+    var attempts = [trimmed];
+    if (trimmed.indexOf("'") !== -1) attempts.push(trimmed.replace(/'/g, '"'));
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        var parsed = JSON.parse(attempts[i]);
+        if (isStructuredDetailed(parsed)) return parsed;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          var wrappedParsed = [parsed];
+          if (isStructuredDetailed(wrappedParsed)) return wrappedParsed;
+        }
+      } catch (err) { void err; }
+    }
+    return null;
+  }
+
   function renderStructuredDetailed(container, sections) {
     sections.forEach(function (section) {
       if (!section || typeof section !== 'object') return;
@@ -1456,39 +1486,11 @@
 
     if (parsed) {
       var rawDetailed = parsed.detailed_summary != null ? parsed.detailed_summary : parsed.detailedSummary;
-      var structuredDetailed = isStructuredDetailed(rawDetailed) ? rawDetailed : null;
-
-      // Defensive recovery: legacy Supabase rows may carry a string form of
-      // detailed_summary that starts with `[{` — either a valid JSON array
-      // (standard path) or a Python repr with single quotes (iter-23
-      // regression). We try JSON.parse first; if it fails and the input
-      // looks like Python repr, we attempt a conservative single-to-double
-      // quote swap and re-parse. Any failure falls back silently to the
-      // markdown renderer so no bad data ever reaches the DOM.
-      if (!structuredDetailed && typeof rawDetailed === 'string') {
-        var trimmedDetailed = rawDetailed.trim();
-        if (trimmedDetailed.charAt(0) === '[') {
-          var recovered = null;
-          try {
-            recovered = JSON.parse(trimmedDetailed);
-          } catch (parseErr) {
-            void parseErr;
-            // Python repr recovery: only attempt if it clearly looks like one.
-            if (trimmedDetailed.indexOf("[{'") === 0 || trimmedDetailed.indexOf("'") !== -1) {
-              try {
-                var swapped = trimmedDetailed.replace(/'/g, '"');
-                recovered = JSON.parse(swapped);
-              } catch (swapErr) {
-                void swapErr;
-                recovered = null;
-              }
-            }
-          }
-          if (isStructuredDetailed(recovered)) {
-            structuredDetailed = recovered;
-          }
-        }
-      }
+      // coerceStructuredDetailed centralizes every recovery path: native array,
+      // single dict (wrap → array), stringified JSON, Python repr (single→double
+      // quote swap). Anything that can't be salvaged falls through as a flat
+      // string for the markdown renderer — no bad data ever reaches the DOM.
+      var structuredDetailed = coerceStructuredDetailed(rawDetailed);
 
       var briefFromParsed = normalizeSummaryText(
         parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
@@ -1567,6 +1569,11 @@
 
   function normalizeSummaryText(value, options) {
     var opts = options || {};
+    // Non-string inputs (array / plain object) must never fall through to
+    // String(value) — that yields "[object Object],[object Object]" garbage
+    // which renders as a literal paragraph. Coerce them to empty so the
+    // caller's fallback chain (brief or placeholder) kicks in.
+    if (value != null && typeof value === 'object') return '';
     var text = String(value || '')
       .replace(/\r\n/g, '\n')
       .replace(/\\n/g, '\n')
@@ -1576,6 +1583,10 @@
     if (!opts.preserveEscapedQuotes) {
       text = text.replace(/\\"/g, '"');
     }
+    // Defensive: if anything upstream slipped past and produced an
+    // "[object Object]" string (JS's default Array/Object toString), strip
+    // it rather than render it as user-facing text.
+    if (/^(\[object Object\](,\s*)?)+$/.test(text)) return '';
     return text;
   }
 
