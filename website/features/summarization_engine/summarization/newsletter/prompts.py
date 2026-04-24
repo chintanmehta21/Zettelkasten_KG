@@ -19,6 +19,10 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '- "brief_summary": 5-7 complete sentences, <=380 characters, covering publication identity, issue thesis, audience, major sections, CTA\n'
     '- "tags": array of 7-10 lowercase hyphenated tags; include one type/intent tag such as opinion, analysis, how-to, case-study, research-summary, interview, or announcement\n'
     '- "detailed_summary": object with keys "publication_identity", "issue_thesis", "sections" (array of objects like {{"heading": "...", "bullets": ["..."]}}), "conclusions_or_recommendations" (array with concrete recommendations/action items when present), "stance" (enum optimistic|skeptical|cautionary|neutral|mixed), "cta" (string OR null)\n\n'
+    "Each sections[*].bullets[] array should contain 5-7 complete sentences covering "
+    "the section's main claim, supporting evidence, and any caveat or counterpoint. "
+    "Fewer than 5 loses nuance; more than 7 dilutes the issue. Terminate each bullet "
+    "with a period.\n\n"
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )

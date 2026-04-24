@@ -27,6 +27,10 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '{{"theme": "...", "reasoning": "...", "examples": ["...", "..."]}}. '
     "Never collapse those three keys into a single key, never wrap them in another object, "
     "never output the literal placeholder text.\n\n"
+    "Each cluster's examples[] array should contain 5-7 representative bullets that "
+    "capture distinct perspectives within the theme — fewer than 5 loses nuance, "
+    "more than 7 bloats the summary. Bullets must be single complete sentences "
+    "ending in terminal punctuation.\n\n"
     "For high-divergence or experiential threads, emit at least 2 materially different reply_clusters when the discussion contains major warnings, minority dissent, or contrasting lived experience.\n"
     "Keep labels and briefs neutral. Do not simply compress the OP framing if the comments clearly debate or reject it.\n\n"
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"

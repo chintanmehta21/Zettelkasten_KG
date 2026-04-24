@@ -217,6 +217,10 @@ STRUCTURED_EXTRACT_INSTRUCTION = (
     '- "tags": array of 7-10 lowercase hyphenated tags; include language(s), framework(s), domain, interface type\n'
     '- "benchmarks_tests_examples": array of strings describing what they demonstrate, OR null if no such directory exists\n'
     '- "detailed_summary": array of section objects, each with "heading", "bullets", "module_or_feature", "main_stack", "public_interfaces", "usability_signals"\n\n'
+    "Each section's bullets[] should contain 5-7 complete sentences that explain the "
+    "module's purpose, inputs/outputs, and how it connects to the rest of the repo. "
+    "Fewer than 5 loses context; more than 7 becomes a code walkthrough. Terminate "
+    "each bullet with a period.\n\n"
     "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
     "SUMMARY:\n{summary_text}"
 )
