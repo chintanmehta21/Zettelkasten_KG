@@ -1,0 +1,352 @@
+{
+  "baselines": [
+    {
+      "brief_token_count": 51,
+      "bullet_counts_per_section": [
+        3,
+        4,
+        6,
+        1,
+        15
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Features",
+        "Operational Guidance",
+        "Notable Issues & Caveats"
+      ],
+      "fixture_id": "0d1a89c543bad402",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/0d1a89c543bad402/summary.json",
+      "tag_count": 8,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 57,
+      "bullet_counts_per_section": [
+        5,
+        5,
+        5,
+        5,
+        6
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Public API / Interfaces",
+        "Operational Guidance",
+        "Notable Issues & Fixes"
+      ],
+      "fixture_id": "5544a04aa704402c",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/5544a04aa704402c/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 52,
+      "bullet_counts_per_section": [
+        7,
+        4,
+        2,
+        5
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Maturity & Ecosystem",
+        "Notable Issues & Caveats"
+      ],
+      "fixture_id": "6249314697cb9c14",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/6249314697cb9c14/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 53,
+      "bullet_counts_per_section": [
+        6,
+        3,
+        3,
+        2,
+        2,
+        2
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Public API / Interfaces",
+        "Operational Guidance",
+        "Tests / Benchmarks / Examples",
+        "Notable Issues"
+      ],
+      "fixture_id": "bb69cc12b4b06266",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/bb69cc12b4b06266/summary.json",
+      "tag_count": 8,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 51,
+      "bullet_counts_per_section": [
+        3,
+        13,
+        2,
+        1,
+        6
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Public API / Interfaces",
+        "Operational Guidance",
+        "Notable Issues and Behavior"
+      ],
+      "fixture_id": "c9226c2ff37adc6e",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/c9226c2ff37adc6e/summary.json",
+      "tag_count": 8,
+      "unterminated_bullets": 9
+    },
+    {
+      "brief_token_count": 56,
+      "bullet_counts_per_section": [
+        2,
+        9,
+        2,
+        2,
+        3
+      ],
+      "detailed_headings": [
+        "Overview",
+        "Architecture / Modules",
+        "Public API / Interfaces",
+        "Operational guidance",
+        "Tests / Benchmarks / Examples"
+      ],
+      "fixture_id": "f9ecc9a5597baab2",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "github",
+      "summary_relpath": "docs/summary_eval/github/iter-22/held_out/f9ecc9a5597baab2/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 49,
+      "bullet_counts_per_section": [],
+      "detailed_headings": [],
+      "fixture_id": "0647b1085240c3c9",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "newsletter",
+      "summary_relpath": "docs/summary_eval/newsletter/iter-09/held_out/0647b1085240c3c9/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 42,
+      "bullet_counts_per_section": [],
+      "detailed_headings": [],
+      "fixture_id": "37ae856fa3946c07",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "newsletter",
+      "summary_relpath": "docs/summary_eval/newsletter/iter-09/held_out/37ae856fa3946c07/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 36,
+      "bullet_counts_per_section": [],
+      "detailed_headings": [],
+      "fixture_id": "7a5cc528c95bf83d",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "newsletter",
+      "summary_relpath": "docs/summary_eval/newsletter/iter-09/held_out/7a5cc528c95bf83d/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 57,
+      "bullet_counts_per_section": [],
+      "detailed_headings": [],
+      "fixture_id": "a1ace6371d4201f7",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "newsletter",
+      "summary_relpath": "docs/summary_eval/newsletter/iter-09/held_out/a1ace6371d4201f7/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 32,
+      "bullet_counts_per_section": [],
+      "detailed_headings": [],
+      "fixture_id": "a73f9cfb059dc767",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "newsletter",
+      "summary_relpath": "docs/summary_eval/newsletter/iter-09/held_out/a73f9cfb059dc767/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 0
+    },
+    {
+      "brief_token_count": 57,
+      "bullet_counts_per_section": [
+        1,
+        5,
+        4,
+        1,
+        1
+      ],
+      "detailed_headings": [
+        "op_intent",
+        "reply_clusters",
+        "counterarguments",
+        "unresolved_questions",
+        "moderation_context"
+      ],
+      "fixture_id": "cab54dd841fd3c7d",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": false,
+      "source_type": "reddit",
+      "summary_relpath": "docs/summary_eval/reddit/iter-09/held_out/cab54dd841fd3c7d/summary.json",
+      "tag_count": 10,
+      "unterminated_bullets": 5
+    },
+    {
+      "brief_token_count": 53,
+      "bullet_counts_per_section": [
+        1
+      ],
+      "detailed_headings": [
+        "Summary"
+      ],
+      "fixture_id": "iter-19",
+      "has_closing_remarks": false,
+      "has_core_argument_or_thesis": false,
+      "schema_keys": [
+        "brief_summary",
+        "detailed_summary",
+        "metadata",
+        "mini_title",
+        "tags"
+      ],
+      "sentinel_tag_present": true,
+      "source_type": "youtube",
+      "summary_relpath": "docs/summary_eval/youtube/iter-19/summary.json",
+      "tag_count": 7,
+      "unterminated_bullets": 0
+    }
+  ]
+}
