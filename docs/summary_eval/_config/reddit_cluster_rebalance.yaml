@@ -1,0 +1,82 @@
+# Reddit cluster-rebalancing eval config (Reddit #3).
+# Drives the multi-cluster requirement when a thread shows divergence,
+# heavy reply volume, or strong first-person framing in the OP.
+# Consumed by the Reddit summarizer eval harness; plain YAML edit, no code change.
+version: "reddit_cluster_rebalance.v1"
+archetype: "reddit"
+composite_max_points: 100
+
+# Conditions that force the summarizer into multi-cluster mode.
+# Evaluated as OR — any single trigger flips required_clusters into effect.
+trigger_rules:
+  - id: "moderation_divergence"
+    description: "Removed/missing comments diverge meaningfully from rendered comments."
+    expression: "moderation_divergence_pct > 30"
+  - id: "high_reply_volume"
+    description: "Threads above this size almost always contain a dissenting cluster."
+    expression: "reply_count > 100"
+  - id: "first_person_op"
+    description: "OP frames as personal experience; minority/contradictory replies are evaluatively important."
+    expression: "op_intent_tokens contains_any ['experience', 'first-time', 'my journey', 'just got', 'finally']"
+  - id: "controversial_score_ratio"
+    description: "Top comment upvote ratio below 0.7 signals contested thread."
+    expression: "top_comment_upvote_ratio < 0.7"
+  - id: "explicit_contested_flair"
+    description: "Subreddit flair / link_flair_text marks the thread contested or debate."
+    expression: "link_flair_text in ['Discussion', 'Debate', 'Controversial', 'Serious']"
+
+min_clusters: 2
+max_clusters: 4
+
+required_clusters:
+  - id: "dominant_pattern"
+    description: "The plurality opinion / most-upvoted argument cluster."
+    min_replies_represented: 5
+  - id: "dissent_or_minority"
+    description: "Substantively different counter-position with non-trivial support."
+    min_replies_represented: 3
+  - id: "consensus_signal"
+    description: "Where commenters explicitly agree or converge across clusters."
+    min_replies_represented: 2
+
+# How cluster-count failures degrade the composite score.
+# Applied multiplicatively after the per-component rubric score is computed.
+scoring_weights:
+  cluster_count_correct: 1.00
+  one_required_cluster_missing: 0.85
+  two_required_clusters_missing: 0.65
+  all_clusters_collapsed_to_one: 0.40
+  unhedged_dominant_cluster_penalty: 0.90
+  spurious_extra_cluster_penalty: 0.95
+
+# Hard caps applied before scoring_weights — match anti_patterns convention from rubric_reddit.yaml.
+anti_patterns:
+  - id: "single_cluster_when_triggered"
+    description: "Trigger fired but summary collapses to one cluster."
+    auto_cap: 55
+  - id: "fabricated_dissent_cluster"
+    description: "Dissent cluster contains claims not present in source comments."
+    auto_cap: 50
+  - id: "moderation_divergence_unmentioned"
+    description: "moderation_divergence_pct > 30 but caveat sentence omitted."
+    auto_cap: 65
+
+# Regression URL patterns. Use placeholders (subreddit + slug shape only) so the
+# harness can swap in cached fixtures without depending on live Reddit availability.
+test_urls:
+  - id: "ask_historians_first_person"
+    pattern: "https://www.reddit.com/r/AskHistorians/comments/<id>/<first_person_question_slug>/"
+    expected_triggers: ["first_person_op", "high_reply_volume"]
+    expected_clusters_min: 3
+  - id: "personal_finance_contested_advice"
+    pattern: "https://www.reddit.com/r/personalfinance/comments/<id>/<contested_advice_slug>/"
+    expected_triggers: ["controversial_score_ratio", "high_reply_volume"]
+    expected_clusters_min: 2
+  - id: "changemyview_high_divergence"
+    pattern: "https://www.reddit.com/r/changemyview/comments/<id>/<cmv_topic_slug>/"
+    expected_triggers: ["moderation_divergence", "explicit_contested_flair"]
+    expected_clusters_min: 3
+
+global_rules:
+  rebalance_when_any_trigger: true
+  emit_cluster_metadata_in_detailed: true
