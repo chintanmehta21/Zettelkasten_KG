@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "GitHubDetailedSection": {
+      "properties": {
+        "bullets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Bullets",
+          "type": "array"
+        },
+        "heading": {
+          "title": "Heading",
+          "type": "string"
+        },
+        "main_stack": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Main Stack",
+          "type": "array"
+        },
+        "module_or_feature": {
+          "default": "",
+          "title": "Module Or Feature",
+          "type": "string"
+        },
+        "public_interfaces": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Public Interfaces",
+          "type": "array"
+        },
+        "sub_sections": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Sub Sections",
+          "type": "object"
+        },
+        "usability_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Usability Signals",
+          "type": "array"
+        }
+      },
+      "required": [
+        "heading",
+        "bullets"
+      ],
+      "title": "GitHubDetailedSection",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "architecture_overview": {
+      "maxLength": 500,
+      "minLength": 50,
+      "title": "Architecture Overview",
+      "type": "string"
+    },
+    "benchmarks_tests_examples": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Benchmarks Tests Examples"
+    },
+    "brief_summary": {
+      "title": "Brief Summary",
+      "type": "string"
+    },
+    "detailed_summary": {
+      "items": {
+        "$ref": "#/$defs/GitHubDetailedSection"
+      },
+      "minItems": 1,
+      "title": "Detailed Summary",
+      "type": "array"
+    },
+    "mini_title": {
+      "maxLength": 60,
+      "pattern": "^[^/]+/[^/]+$",
+      "title": "Mini Title",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 7,
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mini_title",
+    "architecture_overview",
+    "brief_summary",
+    "tags",
+    "detailed_summary"
+  ],
+  "title": "GitHubStructuredPayload",
+  "type": "object"
+}

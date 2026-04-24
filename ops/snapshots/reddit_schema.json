@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "RedditCluster": {
+      "properties": {
+        "examples": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Examples",
+          "type": "array"
+        },
+        "reasoning": {
+          "title": "Reasoning",
+          "type": "string"
+        },
+        "theme": {
+          "title": "Theme",
+          "type": "string"
+        }
+      },
+      "required": [
+        "theme",
+        "reasoning"
+      ],
+      "title": "RedditCluster",
+      "type": "object"
+    },
+    "RedditDetailedPayload": {
+      "properties": {
+        "counterarguments": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Counterarguments",
+          "type": "array"
+        },
+        "moderation_context": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Moderation Context"
+        },
+        "op_intent": {
+          "title": "Op Intent",
+          "type": "string"
+        },
+        "reply_clusters": {
+          "items": {
+            "$ref": "#/$defs/RedditCluster"
+          },
+          "minItems": 1,
+          "title": "Reply Clusters",
+          "type": "array"
+        },
+        "unresolved_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unresolved Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op_intent",
+        "reply_clusters"
+      ],
+      "title": "RedditDetailedPayload",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "brief_summary": {
+      "title": "Brief Summary",
+      "type": "string"
+    },
+    "detailed_summary": {
+      "$ref": "#/$defs/RedditDetailedPayload"
+    },
+    "mini_title": {
+      "maxLength": 200,
+      "pattern": "^r/[^ ]+ .+$",
+      "title": "Mini Title",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mini_title",
+    "brief_summary",
+    "tags",
+    "detailed_summary"
+  ],
+  "title": "RedditStructuredPayload",
+  "type": "object"
+}

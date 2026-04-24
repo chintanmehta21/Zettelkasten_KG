@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "ChapterBullet": {
+      "properties": {
+        "bullets": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Bullets",
+          "type": "array"
+        },
+        "timestamp": {
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "title",
+        "bullets"
+      ],
+      "title": "ChapterBullet",
+      "type": "object"
+    },
+    "YouTubeDetailedPayload": {
+      "properties": {
+        "chapters_or_segments": {
+          "items": {
+            "$ref": "#/$defs/ChapterBullet"
+          },
+          "minItems": 1,
+          "title": "Chapters Or Segments",
+          "type": "array"
+        },
+        "closing_takeaway": {
+          "title": "Closing Takeaway",
+          "type": "string"
+        },
+        "demonstrations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Demonstrations",
+          "type": "array"
+        },
+        "format": {
+          "enum": [
+            "tutorial",
+            "interview",
+            "commentary",
+            "lecture",
+            "review",
+            "debate",
+            "walkthrough",
+            "reaction",
+            "vlog",
+            "other"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "thesis": {
+          "title": "Thesis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "thesis",
+        "format",
+        "chapters_or_segments",
+        "closing_takeaway"
+      ],
+      "title": "YouTubeDetailedPayload",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "brief_summary": {
+      "title": "Brief Summary",
+      "type": "string"
+    },
+    "detailed_summary": {
+      "$ref": "#/$defs/YouTubeDetailedPayload"
+    },
+    "entities_discussed": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Entities Discussed",
+      "type": "array"
+    },
+    "guests": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Guests"
+    },
+    "mini_title": {
+      "maxLength": 50,
+      "title": "Mini Title",
+      "type": "string"
+    },
+    "speakers": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Speakers",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 7,
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mini_title",
+    "brief_summary",
+    "tags",
+    "speakers",
+    "detailed_summary"
+  ],
+  "title": "YouTubeStructuredPayload",
+  "type": "object"
+}

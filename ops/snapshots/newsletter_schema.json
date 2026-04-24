@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "NewsletterDetailedPayload": {
+      "properties": {
+        "conclusions_or_recommendations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conclusions Or Recommendations",
+          "type": "array"
+        },
+        "cta": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cta"
+        },
+        "issue_thesis": {
+          "title": "Issue Thesis",
+          "type": "string"
+        },
+        "publication_identity": {
+          "title": "Publication Identity",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/NewsletterSection"
+          },
+          "minItems": 1,
+          "title": "Sections",
+          "type": "array"
+        },
+        "stance": {
+          "enum": [
+            "optimistic",
+            "skeptical",
+            "cautionary",
+            "neutral",
+            "mixed"
+          ],
+          "title": "Stance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publication_identity",
+        "issue_thesis",
+        "sections",
+        "stance"
+      ],
+      "title": "NewsletterDetailedPayload",
+      "type": "object"
+    },
+    "NewsletterSection": {
+      "properties": {
+        "bullets": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Bullets",
+          "type": "array"
+        },
+        "heading": {
+          "title": "Heading",
+          "type": "string"
+        }
+      },
+      "required": [
+        "heading",
+        "bullets"
+      ],
+      "title": "NewsletterSection",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "brief_summary": {
+      "title": "Brief Summary",
+      "type": "string"
+    },
+    "detailed_summary": {
+      "$ref": "#/$defs/NewsletterDetailedPayload"
+    },
+    "mini_title": {
+      "title": "Mini Title",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 7,
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mini_title",
+    "brief_summary",
+    "tags",
+    "detailed_summary"
+  ],
+  "title": "NewsletterStructuredPayload",
+  "type": "object"
+}
