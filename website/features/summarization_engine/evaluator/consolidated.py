@@ -10,6 +10,10 @@ from typing import Any
 import yaml
 
 from website.features.summarization_engine.evaluator.models import EvalResult
+from website.features.summarization_engine.evaluator.numeric_grounding import (
+    extract_numeric_tokens,
+    numeric_validator,
+)
 from website.features.summarization_engine.evaluator.prompts import (
     CONSOLIDATED_SYSTEM,
     CONSOLIDATED_USER_TEMPLATE,
@@ -18,6 +22,81 @@ from website.features.summarization_engine.evaluator.prompts import (
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
 )
+
+# Cap on number of unsupported numeric tokens reported, to keep the evaluator
+# payload compact in eval-loop artifacts.
+_UNSUPPORTED_NUMERIC_CAP = 5
+
+
+def compute_numeric_grounding_signal(
+    summary_json: dict | None, source_text: str | None
+) -> dict:
+    """Faithfulness sub-signal: ratio of grounded numeric tokens to extracted ones.
+
+    Returns a dict with two stable keys:
+      - ``numeric_grounding_score`` (float in [0.0, 1.0]); 1.0 when summary has
+        zero numeric tokens (vacuously grounded).
+      - ``unsupported_numeric_claims`` (list[str]) capped at
+        ``_UNSUPPORTED_NUMERIC_CAP`` entries.
+
+    Raises ``TypeError`` for malformed input, with the offending key surfaced,
+    so callers fail loudly instead of silently falling back to a default.
+    """
+    if summary_json is None:
+        raise TypeError(
+            "compute_numeric_grounding_signal: summary_json must not be None"
+        )
+    if not isinstance(summary_json, dict):
+        raise TypeError(
+            "compute_numeric_grounding_signal: summary_json must be dict, "
+            f"got {type(summary_json).__name__}"
+        )
+    if source_text is None:
+        raise TypeError(
+            "compute_numeric_grounding_signal: source_text must not be None"
+        )
+    if not isinstance(source_text, str):
+        raise TypeError(
+            "compute_numeric_grounding_signal: source_text must be str, "
+            f"got {type(source_text).__name__}"
+        )
+
+    summary_text = _flatten_summary_text(summary_json)
+    tokens = extract_numeric_tokens(summary_text)
+    if not tokens:
+        return {
+            "numeric_grounding_score": 1.0,
+            "unsupported_numeric_claims": [],
+        }
+    result = numeric_validator(summary_text, source_text)
+    ungrounded: list[str] = list(result.get("ungrounded", []))
+    return {
+        "numeric_grounding_score": float(result.get("ratio", 0.0)),
+        "unsupported_numeric_claims": ungrounded[:_UNSUPPORTED_NUMERIC_CAP],
+    }
+
+
+def _flatten_summary_text(summary_json: dict) -> str:
+    """Concatenate every string leaf in the summary payload.
+
+    The summarizer's JSON shape varies per archetype (mini_title / brief /
+    detailed / sections / tags / etc.). Rather than hard-code keys, we walk
+    the structure and collect every string for grounding inspection.
+    """
+    parts: list[str] = []
+
+    def _walk(node) -> None:
+        if isinstance(node, str):
+            parts.append(node)
+        elif isinstance(node, dict):
+            for v in node.values():
+                _walk(v)
+        elif isinstance(node, (list, tuple)):
+            for v in node:
+                _walk(v)
+
+    _walk(summary_json)
+    return "\n".join(parts)
 
 
 class ConsolidatedEvaluator:
@@ -112,6 +191,17 @@ class ConsolidatedEvaluator:
             result, "output_tokens", 0
         )
         payload["evaluator_metadata"]["latency_ms"] = latency_ms
+
+        # Faithfulness sub-signal: deterministic numeric grounding check
+        # against the source text. Surfaced inside ``evaluator_metadata`` to
+        # preserve the existing ``EvalResult`` schema (backward compatible).
+        numeric_signal = compute_numeric_grounding_signal(summary_json, source_text)
+        payload["evaluator_metadata"]["numeric_grounding_score"] = numeric_signal[
+            "numeric_grounding_score"
+        ]
+        payload["evaluator_metadata"]["unsupported_numeric_claims"] = numeric_signal[
+            "unsupported_numeric_claims"
+        ]
         return EvalResult(**payload)
 
 
