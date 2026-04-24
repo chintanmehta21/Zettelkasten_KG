@@ -228,6 +228,13 @@ class RedditSummarizer(BaseSummarizer):
             if dv.stance:
                 dv_extras["stance"] = dv.stance
             extras.setdefault("_dense_verify", dv_extras)
+            # Reddit personalization: OP is the authoritative "author" of a
+            # thread. Pulled from Reddit API ingest metadata so we never rely
+            # on LLM inference for identity.
+            op_author = str(ingest.metadata.get("author") or "").strip()
+            if op_author and op_author.lower() not in {"[deleted]", "automoderator"}:
+                extras["op_author"] = f"u/{op_author}"
+                result.metadata.author = op_author
             result.metadata.structured_payload = extras
             # Surface the call trace + aggregate fallback reason so silent
             # pro->flash-lite downgrades are visible in summary.json.

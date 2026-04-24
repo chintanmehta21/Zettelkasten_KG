@@ -193,6 +193,18 @@ class GitHubSummarizer(BaseSummarizer):
                     "archetype": dv.archetype,
                     "missing_fact_count": len(dv.missing_facts),
                 })
+            # GitHub personalization: Creator is repo owner (from GitHub API
+            # ingest metadata — never LLM-inferred). Owner type distinguishes
+            # org vs user so the UI can word it correctly ("Maintained by org"
+            # vs "Created by @user").
+            meta = ingest.metadata or {}
+            owner_login = str(meta.get("owner") or "").strip()
+            owner_type = str(meta.get("owner_type") or "").strip()
+            if owner_login:
+                extras["owner_login"] = owner_login
+                if owner_type:
+                    extras["owner_type"] = owner_type
+                result.metadata.author = owner_login
             result.metadata.structured_payload = extras
             # Surface the call trace + aggregate fallback reason so eval tooling
             # can detect silent pro→flash-lite downgrades without scraping

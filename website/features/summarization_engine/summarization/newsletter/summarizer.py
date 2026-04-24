@@ -145,6 +145,13 @@ class NewsletterSummarizer(BaseSummarizer):
             "stance": dv.stance,
             "missing_fact_count": len(dv.missing_facts),
         }
+        # Newsletter personalization: byline author comes from the ingest
+        # metadata (extractor parsed the Substack/beehiiv author field — not
+        # LLM-inferred). Surface it on the payload so the frontend can render
+        # a consistent "Written by <author>" line across sources.
+        byline = str(ingest.metadata.get("author") or "").strip()
+        if byline:
+            structured_payload_extras["byline_author"] = byline
 
         return NewsletterSummaryResult(
             mini_title=payload.mini_title[

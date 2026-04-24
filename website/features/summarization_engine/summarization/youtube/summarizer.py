@@ -162,6 +162,32 @@ class YouTubeSummarizer(BaseSummarizer):
                     int(result.metadata.total_tokens_used or 0) + patch_tokens
                 )
 
+        # Positive-evidence speaker detection. Runs on transcript + title +
+        # uploader (all already in hand — no new API call). If the detector
+        # confirms ≥1 real speaker from ≥2 independent signals, override the
+        # LLM-proposed speaker list. Prevents "Strait of Hormuz"-class
+        # hallucinations from surviving even when the model echoes a
+        # prominent phrase from the transcript.
+        try:
+            from website.features.summarization_engine.summarization.common.speaker_detector import (
+                detect_youtube_speakers,
+            )
+            detected = detect_youtube_speakers(
+                title=str(getattr(meta, "title", "") or meta.get("title") if isinstance(meta, dict) else "") if meta else "",
+                uploader=(
+                    str(getattr(meta, "uploader", "") or meta.get("uploader") if isinstance(meta, dict) else "")
+                    if meta else ""
+                ),
+                transcript=str(ingest.raw_text or ""),
+            )
+            if detected and detected != ["The speaker"]:
+                if result.metadata is not None and result.metadata.structured_payload:
+                    sp = dict(result.metadata.structured_payload)
+                    sp["speakers"] = detected
+                    result.metadata.structured_payload = sp
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("speaker_detector failed (non-fatal): %s", exc)
+
         # Cross-source reserved-tag normalization (channel slug + format).
         structured_payload_dict = (
             result.metadata.structured_payload

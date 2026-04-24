@@ -1178,18 +1178,46 @@ body {
     margin: 1.1rem 0;
 }
 
+/* H1 — primary section ("Chapter walkthrough", "Overview", "Closing remarks").
+   Set apart with a short teal accent bar on the left, slightly larger size,
+   and generous top margin so the eye locks onto it as a first-level anchor. */
 .zettels-summary-h2 {
-    font-size: 0.95rem;
-    font-weight: 600;
+    position: relative;
+    font-size: 1.05rem;
+    font-weight: 700;
     color: var(--text-primary);
-    margin: 1rem 0 0.45rem 0;
+    margin: 1.5rem 0 0.65rem 0;
+    padding-left: 0.7rem;
+    letter-spacing: 0.005em;
+}
+.zettels-summary-h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    bottom: 0.3rem;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent, #14b8a6);
+    opacity: 0.85;
+}
+.zettels-summary-h2:first-child {
+    margin-top: 0.25rem;
 }
 
+/* H2 — sub-heading under an H1 ("Introduction to Zero-Days" under
+   "Chapter walkthrough"). Smaller, slightly muted, italic accent color,
+   and a subtle bottom hairline so groups of sub-sections feel distinct
+   from their parent without competing with it visually. */
 .zettels-summary-h3 {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-primary);
-    margin: 0.75rem 0 0.35rem 0;
+    color: var(--accent, #14b8a6);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    margin: 1rem 0 0.35rem 0;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(20, 184, 166, 0.18);
 }
 
 .zettels-summary-para {

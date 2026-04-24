@@ -36,7 +36,13 @@ _graph_cache_ts: float = 0
 _GRAPH_CACHE_TTL = 30  # seconds
 
 def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
-    """Add PageRank, community, and centrality metrics to graph nodes."""
+    """Add PageRank, community, and centrality metrics to graph nodes.
+
+    Also normalizes every node's ``summary`` into the canonical JSON envelope
+    so the frontend never has to defend against mixed historical shapes.
+    """
+    from website.core.summary_normalizer import normalize_graph_nodes
+    normalize_graph_nodes(graph_dict)
     try:
         from website.features.kg_features.analytics import compute_graph_metrics
         kg_graph = KGGraph(**graph_dict)
