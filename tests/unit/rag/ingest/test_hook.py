@@ -272,7 +272,7 @@ async def test_ingest_node_chunks_swallows_upsert_failures(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_persist_supabase_node_invokes_ingest_when_flag_enabled(monkeypatch) -> None:
-    from website.experimental_features.nexus.service import persist
+    from website.core import persist
     from website.features.rag_pipeline.ingest import hook as rag_hook
 
     class _Repo:
@@ -339,7 +339,7 @@ async def test_persist_supabase_node_invokes_ingest_when_flag_enabled(monkeypatc
 
 @pytest.mark.asyncio
 async def test_persist_supabase_node_skips_ingest_when_flag_disabled(monkeypatch) -> None:
-    from website.experimental_features.nexus.service import persist
+    from website.core import persist
     from website.features.rag_pipeline.ingest import hook as rag_hook
 
     class _Repo:

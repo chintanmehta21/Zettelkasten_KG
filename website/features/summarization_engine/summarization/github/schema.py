@@ -364,11 +364,6 @@ def _repair_brief_summary(
     repo_name: str = "",
 ) -> str:
     cleaned = re.sub(r"\s+", " ", (brief_summary or "").strip())
-    sentences = [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
-        if sentence.strip()
-    ]
     # Strongly prefer the LLM's brief. Formulaic rebuilds are stilted
     # ("At a high level, ...", "The main stack includes ...") and tend to
     # surface section-level identifiers the evaluator flags as invented.
