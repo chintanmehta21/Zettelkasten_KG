@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Zettel detailed_summary renderer fixture</title>
+  <style>
+    :root {
+      --text-primary: #1f2937;
+      --text-secondary: #374151;
+      --accent-gold: #D4A024;
+      --accent-teal: #14b8a6;
+      --bg: #0b0b0c;
+      --panel: #111215;
+      --panel-border: rgba(212, 160, 36, 0.18);
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem 1rem;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.1rem;
+      margin: 0 0 0.25rem;
+      color: var(--accent-gold);
+    }
+    p.note {
+      color: #9ca3af;
+      font-size: 0.85rem;
+      margin: 0 0 1.5rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    .panel h2.label {
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin: 0 0 0.85rem;
+    }
+    /* Mirror the key user_zettels.css tokens so the fixture looks faithful. */
+    .zettels-summary-section { color: #e5e7eb; }
+    .zettels-summary-section-heading {
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-teal);
+      margin: 0 0 0.6rem;
+    }
+    .zettels-summary-section-body {
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      margin: 0 0 0.8rem;
+    }
+    .zettels-summary-divider {
+      border: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(20, 184, 166, 0.35), transparent);
+      margin: 1.1rem 0;
+    }
+    .zettels-summary-h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f3f4f6;
+      margin: 1rem 0 0.45rem 0;
+    }
+    .zettels-summary-h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e5e7eb;
+      margin: 0.75rem 0 0.35rem 0;
+    }
+    .zettels-summary-list {
+      list-style: disc;
+      padding-left: 1.2rem;
+      margin: 0 0 0.6rem 0;
+    }
+    .zettels-summary-list-item {
+      color: #cbd5e1;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin-bottom: 0.3rem;
+    }
+    pre {
+      background: #0a0a0a;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      color: #9ca3af;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      max-height: 240px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Zettel modal — Detailed summary renderer fixture</h1>
+    <p class="note">
+      Renders the iter-20 YouTube <code>detailed_summary</code> array (same shape as the
+      Naruto petrodollar zettel) using the new <code>renderStructuredDetailed</code>
+      pathway. Opens standalone; no server required.
+    </p>
+
+    <section class="panel" id="structured-panel">
+      <h2 class="label">Structured list (iter-20 YouTube — Petrodollar)</h2>
+      <div id="structured-mount"></div>
+    </section>
+
+    <section class="panel" id="string-panel">
+      <h2 class="label">Plain-string fallback (legacy Reddit-style)</h2>
+      <div id="string-mount"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="label">Rendered DOM (structured)</h2>
+      <pre id="dom-dump"></pre>
+    </section>
+  </main>
+
+  <script>
+    // Real iter-20 youtube detailed_summary payload (trimmed for fixture — same shape).
+    var detailedStructured = [
+      {
+        heading: "Overview",
+        bullets: [
+          "This lecture explores the potential decline of the petrodollar system and its implications for U."
+        ],
+        sub_sections: {
+          "Format and speakers": [
+            "Format: lecture.",
+            "Speakers: Strait of Hormuz."
+          ],
+          "Core argument": [
+            "The petrodollar system, a 50-year-old agreement underpinning U.S. economic dominance, is vulnerable to a \"slow bleed\" due to shifting geopolitical alliances and perceived U.S. security failures, potentially ending American global financial supremacy."
+          ]
+        }
+      },
+      {
+        heading: "Chapter walkthrough",
+        bullets: [],
+        sub_sections: {
+          "Challenging the Petrodollar System": [
+            "A hypothetical scenario on March 15, 2026, depicts a Pakistani tanker, the Karachi, trading oil in Chinese yuan through the Strait of Hormuz.",
+            "This scenario directly challenges the petrodollar system, a 50-year agreement where six Gulf States sell oil in U.S. dollars.",
+            "In exchange for dollar-denominated oil sales, the U.S. provides military protection to these Gulf States.",
+            "This arrangement has historically underpinned the U.S. economy and its global financial leverage.",
+            "The hypothetical conflict involves the U.S. and Israel eliminating Iran's supreme leader, leading to regional attacks.",
+            "These attacks cause Gulf States to perceive the U.S. security guarantees as failing, undermining the petrodollar bargain.",
+            "The potential end of the petrodollar is presented as a \"slow bleed\" rather than an immediate collapse, threatening U.S. global dominance."
+          ],
+          "Gulf States' Oil Leverage and Dollar's Reserve Status": [
+            "Gulf States control nearly one-third of global oil output and over half of the world's reserves, providing leverage to pressure the U.S. by cutting production.",
+            "The 1973 oil embargo (in response to Western support for Israel) serves as a historical precedent, causing oil prices to rise from $3 to $10 per barrel and U.S. inflation to peak at over 13%.",
+            "The dollar's reserve status is almost entirely backed by the petrodollar agreement."
+          ]
+        }
+      },
+      {
+        heading: "Closing remarks",
+        bullets: [
+          "Recap: The petrodollar's erosion is a \"slow bleed\" with profound consequences for American financial supremacy."
+        ],
+        sub_sections: {}
+      }
+    ];
+
+    // ── Vendored renderers (copied verbatim from user_zettels.js so the
+    //    fixture exercises exactly the shipping code without a module loader).
+
+    function isStructuredDetailed(value) {
+      if (!Array.isArray(value) || value.length === 0) return false;
+      for (var i = 0; i < value.length; i++) {
+        var section = value[i];
+        if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
+        if (!('heading' in section || 'bullets' in section || 'sub_sections' in section || 'subSections' in section)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function renderStructuredDetailed(container, sections) {
+      sections.forEach(function (section) {
+        if (!section || typeof section !== 'object') return;
+        var heading = section.heading == null ? '' : String(section.heading).trim();
+        if (heading) {
+          var h4 = document.createElement('h4');
+          h4.className = 'zettels-summary-h2';
+          h4.textContent = heading;
+          container.appendChild(h4);
+        }
+
+        var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+        if (bullets.length) {
+          var ul = document.createElement('ul');
+          ul.className = 'zettels-summary-list';
+          bullets.forEach(function (bullet) {
+            var text = bullet == null ? '' : String(bullet).trim();
+            if (!text) return;
+            var li = document.createElement('li');
+            li.className = 'zettels-summary-list-item';
+            li.textContent = text;
+            ul.appendChild(li);
+          });
+          if (ul.childNodes.length) container.appendChild(ul);
+        }
+
+        var subs = section.sub_sections || section.subSections;
+        if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
+          Object.keys(subs).forEach(function (subHeading) {
+            var subBullets = subs[subHeading];
+            if (!Array.isArray(subBullets) || !subBullets.length) return;
+            var h5 = document.createElement('h5');
+            h5.className = 'zettels-summary-h3';
+            h5.textContent = String(subHeading || '').trim();
+            container.appendChild(h5);
+
+            var subUl = document.createElement('ul');
+            subUl.className = 'zettels-summary-list';
+            subBullets.forEach(function (bullet) {
+              var text = bullet == null ? '' : String(bullet).trim();
+              if (!text) return;
+              var li = document.createElement('li');
+              li.className = 'zettels-summary-list-item';
+              li.textContent = text;
+              subUl.appendChild(li);
+            });
+            if (subUl.childNodes.length) container.appendChild(subUl);
+          });
+        }
+      });
+    }
+
+    function renderMarkdownLite(container, markdown) {
+      var lines = String(markdown || '').split(/\r?\n/);
+      var paraBuf = [];
+      var listStack = null;
+      function flushPara() {
+        if (!paraBuf.length) return;
+        var joined = paraBuf.join(' ').trim();
+        if (joined) {
+          var p = document.createElement('p');
+          p.className = 'zettels-summary-section-body';
+          p.textContent = joined;
+          container.appendChild(p);
+        }
+        paraBuf = [];
+      }
+      function closeList() { listStack = null; }
+      for (var i = 0; i < lines.length; i++) {
+        var trimmed = lines[i].replace(/\s+$/, '');
+        if (!trimmed.trim()) { flushPara(); closeList(); continue; }
+        var h3 = trimmed.match(/^###\s+(.*)$/);
+        var h2 = trimmed.match(/^##\s+(.*)$/);
+        var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
+        if (h2 || h3) {
+          flushPara(); closeList();
+          var heading = document.createElement(h2 ? 'h4' : 'h5');
+          heading.className = h2 ? 'zettels-summary-h2' : 'zettels-summary-h3';
+          heading.textContent = (h2 ? h2[1] : h3[1]).trim();
+          container.appendChild(heading);
+          continue;
+        }
+        if (bullet) {
+          flushPara();
+          if (!listStack) {
+            listStack = { el: document.createElement('ul') };
+            listStack.el.className = 'zettels-summary-list';
+            container.appendChild(listStack.el);
+          }
+          var li = document.createElement('li');
+          li.className = 'zettels-summary-list-item';
+          li.textContent = bullet[1].trim();
+          listStack.el.appendChild(li);
+          continue;
+        }
+        closeList();
+        paraBuf.push(trimmed.trim());
+      }
+      flushPara();
+      closeList();
+    }
+
+    // Mount structured payload.
+    var structuredMount = document.getElementById('structured-mount');
+    if (isStructuredDetailed(detailedStructured)) {
+      renderStructuredDetailed(structuredMount, detailedStructured);
+    } else {
+      structuredMount.textContent = 'isStructuredDetailed() rejected the fixture payload.';
+    }
+
+    // Mount a legacy plain-string detailed summary (Reddit/GitHub/Newsletter shape).
+    renderMarkdownLite(
+      document.getElementById('string-mount'),
+      "## Summary\n- Legacy Reddit/GitHub/Newsletter detailed summaries arrive as a\n  markdown string and still render via renderMarkdownLite.\n\n### Why this matters\n- Backward compatibility: the string path is untouched.\n- The renderer only routes to the nested renderer when the payload is an\n  array of section objects."
+    );
+
+    document.getElementById('dom-dump').textContent = structuredMount.innerHTML;
+  </script>
+</body>
+</html>

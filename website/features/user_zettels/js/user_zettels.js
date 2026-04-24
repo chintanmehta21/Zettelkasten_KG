@@ -235,6 +235,9 @@
       if (!summaryParts.detailed || summaryParts.detailed === summaryParts.brief) {
         summaryParts.detailed = descriptionParts.detailed || summaryParts.detailed;
       }
+      if (!summaryParts.detailedStructured && descriptionParts.detailedStructured) {
+        summaryParts.detailedStructured = descriptionParts.detailedStructured;
+      }
     }
     var cleanTags = (Array.isArray(node.tags) ? node.tags : [])
       .map(normalizeTag)
@@ -246,6 +249,7 @@
       summary: summaryParts.brief,
       briefSummary: summaryParts.brief,
       detailedSummary: summaryParts.detailed,
+      detailedStructured: summaryParts.detailedStructured || null,
       tags: uniqueStrings(cleanTags),
       normalizedTags: uniqueStrings(cleanTags.map(function (tag) { return tag.toLowerCase(); })),
       url: (node.url || '').trim(),
@@ -1031,7 +1035,8 @@
     summaryTitle.textContent = node.title;
     renderDualSummary(summaryText, {
       brief: node.briefSummary || '',
-      detailed: node.detailedSummary || ''
+      detailed: node.detailedSummary || '',
+      detailedStructured: node.detailedStructured || null
     });
 
     summaryTags.innerHTML = '';
@@ -1276,8 +1281,13 @@
     container.innerHTML = '';
     var brief = (parts && parts.brief) ? String(parts.brief).trim() : '';
     var detailed = (parts && parts.detailed) ? String(parts.detailed).trim() : '';
+    var structured = (parts && isStructuredDetailed(parts.detailedStructured))
+      ? parts.detailedStructured
+      : null;
     var hasBrief = brief && brief !== 'No summary available for this zettel.';
-    var hasDetailed = detailed && detailed !== brief && detailed !== 'No summary available for this zettel.';
+    var hasDetailed = structured
+      ? true
+      : (detailed && detailed !== brief && detailed !== 'No summary available for this zettel.');
 
     if (!hasBrief && !hasDetailed) {
       container.textContent = 'No summary available for this zettel.';
@@ -1310,9 +1320,77 @@
       detailedHeading.className = 'zettels-summary-section-heading';
       detailedHeading.textContent = 'Detailed';
       detailedWrap.appendChild(detailedHeading);
-      renderMarkdownLite(detailedWrap, detailed);
+      if (structured) {
+        renderStructuredDetailed(detailedWrap, structured);
+      } else {
+        renderMarkdownLite(detailedWrap, detailed);
+      }
       container.appendChild(detailedWrap);
     }
+  }
+
+  function isStructuredDetailed(value) {
+    if (!Array.isArray(value) || value.length === 0) return false;
+    for (var i = 0; i < value.length; i++) {
+      var section = value[i];
+      if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
+      if (!('heading' in section || 'bullets' in section || 'sub_sections' in section || 'subSections' in section)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function renderStructuredDetailed(container, sections) {
+    sections.forEach(function (section) {
+      if (!section || typeof section !== 'object') return;
+      var heading = section.heading == null ? '' : String(section.heading).trim();
+      if (heading) {
+        var h4 = document.createElement('h4');
+        h4.className = 'zettels-summary-h2';
+        h4.textContent = heading;
+        container.appendChild(h4);
+      }
+
+      var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+      if (bullets.length) {
+        var ul = document.createElement('ul');
+        ul.className = 'zettels-summary-list';
+        bullets.forEach(function (bullet) {
+          var text = bullet == null ? '' : String(bullet).trim();
+          if (!text) return;
+          var li = document.createElement('li');
+          li.className = 'zettels-summary-list-item';
+          li.textContent = text;
+          ul.appendChild(li);
+        });
+        if (ul.childNodes.length) container.appendChild(ul);
+      }
+
+      var subs = section.sub_sections || section.subSections;
+      if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
+        Object.keys(subs).forEach(function (subHeading) {
+          var subBullets = subs[subHeading];
+          if (!Array.isArray(subBullets) || !subBullets.length) return;
+          var h5 = document.createElement('h5');
+          h5.className = 'zettels-summary-h3';
+          h5.textContent = String(subHeading || '').trim();
+          container.appendChild(h5);
+
+          var subUl = document.createElement('ul');
+          subUl.className = 'zettels-summary-list';
+          subBullets.forEach(function (bullet) {
+            var text = bullet == null ? '' : String(bullet).trim();
+            if (!text) return;
+            var li = document.createElement('li');
+            li.className = 'zettels-summary-list-item';
+            li.textContent = text;
+            subUl.appendChild(li);
+          });
+          if (subUl.childNodes.length) container.appendChild(subUl);
+        });
+      }
+    });
   }
 
   function renderMarkdownLite(container, markdown) {
@@ -1368,30 +1446,38 @@
   }
 
   function extractSummaryParts(rawSummary) {
-    var rawInput = rawSummary == null ? '' : String(rawSummary);
+    // Accept already-parsed objects in case the caller hands us the node
+    // payload directly (defensive — today the API stringifies everything,
+    // but this keeps the renderer correct if that ever changes).
+    var isPlainObject = rawSummary && typeof rawSummary === 'object' && !Array.isArray(rawSummary);
+    var rawInput = rawSummary == null ? '' : (typeof rawSummary === 'string' ? rawSummary : '');
     var rawText = normalizeSummaryText(rawInput);
-    var parsed = tryParseSummaryObject(rawInput);
+    var parsed = isPlainObject ? rawSummary : tryParseSummaryObject(rawInput);
 
     if (parsed) {
+      var rawDetailed = parsed.detailed_summary != null ? parsed.detailed_summary : parsed.detailedSummary;
+      var structuredDetailed = isStructuredDetailed(rawDetailed) ? rawDetailed : null;
+
       var briefFromParsed = normalizeSummaryText(
         parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
       );
-      var detailedFromParsed = normalizeSummaryText(
-        parsed.detailed_summary || parsed.detailedSummary || parsed.summary || ''
-      );
+      var detailedFromParsed = structuredDetailed
+        ? ''
+        : normalizeSummaryText(rawDetailed || parsed.summary || '');
 
       var resolvedBrief = briefFromParsed || detailedFromParsed;
       var resolvedDetailed = detailedFromParsed || briefFromParsed;
-      if (resolvedBrief || resolvedDetailed) {
+      if (resolvedBrief || resolvedDetailed || structuredDetailed) {
         return {
           brief: resolvedBrief || 'No summary available for this zettel.',
-          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.'
+          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.',
+          detailedStructured: structuredDetailed
         };
       }
     }
 
     var fallback = rawText || 'No summary available for this zettel.';
-    return { brief: fallback, detailed: fallback };
+    return { brief: fallback, detailed: fallback, detailedStructured: null };
   }
 
   function tryParseSummaryObject(rawText) {
