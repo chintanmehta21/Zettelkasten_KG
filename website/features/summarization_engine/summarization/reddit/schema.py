@@ -81,6 +81,30 @@ class RedditStructuredPayload(BaseModel):
             unresolved_questions=self.detailed_summary.unresolved_questions,
             moderation_context=self.detailed_summary.moderation_context,
         )
+        # Cluster rebalance — deferred import to avoid the schema <-> rebalance
+        # circular import (cluster_rebalance imports RedditCluster /
+        # RedditDetailedPayload from this module).
+        from website.features.summarization_engine.summarization.reddit.cluster_rebalance import (
+            load_rebalance_config,
+            rebalance_clusters,
+            should_rebalance,
+        )
+
+        rebalance_cfg = load_rebalance_config()
+        if should_rebalance(self.detailed_summary, rebalance_cfg):
+            self.detailed_summary = rebalance_clusters(
+                self.detailed_summary, rebalance_cfg
+            )
+            # Re-run brief repair so the rebuilt sentences reflect the new
+            # 2-cluster shape; force the rebuild path by zeroing the brief.
+            self.brief_summary = _repair_brief_summary(
+                "",
+                op_intent=self.detailed_summary.op_intent,
+                reply_clusters=self.detailed_summary.reply_clusters,
+                counterarguments=self.detailed_summary.counterarguments,
+                unresolved_questions=self.detailed_summary.unresolved_questions,
+                moderation_context=self.detailed_summary.moderation_context,
+            )
         return self
 
 
@@ -110,20 +134,28 @@ def _normalize_mini_title(mini_title: str, *, subreddit: str, op_intent: str) ->
     return f"{prefix} {compact}"[:60].rstrip()
 
 
+def _reddit_tag_cleaner(tag: object) -> str:
+    return re.sub(r"[^a-z0-9+-]+", "-", str(tag).strip().lower()).strip("-")
+
+
 def _normalize_tags(tags: list[str], *, subreddit: str, thread_type: str) -> list[str]:
-    normalized: list[str] = []
-    for tag in tags:
-        cleaned = re.sub(r"[^a-z0-9+-]+", "-", str(tag).strip().lower()).strip("-")
-        if cleaned and cleaned not in normalized:
-            normalized.append(cleaned)
+    from website.features.summarization_engine.summarization.common.structured import (
+        _normalize_tags as _common_normalize_tags,
+    )
 
     canonical = f"r-{subreddit.lower().replace('_', '-')}"
-    topical = [tag for tag in normalized if tag not in {canonical, thread_type}]
     reserved = [canonical]
     if thread_type != canonical:
         reserved.append(thread_type)
 
-    final_tags = reserved + topical[: max(0, 10 - len(reserved))]
+    final_tags = _common_normalize_tags(
+        tags,
+        tags_min=0,
+        tags_max=10,
+        reserved=reserved,
+        tag_cleaner=_reddit_tag_cleaner,
+    )
+
     for filler in ("reddit-thread", "community-discussion", "user-replies", "reddit"):
         if len(final_tags) >= 8:
             break

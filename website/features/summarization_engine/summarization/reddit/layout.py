@@ -12,6 +12,9 @@ import re
 from typing import Iterable
 
 from website.features.summarization_engine.core.models import DetailedSummarySection
+from website.features.summarization_engine.summarization.common.brief_repair import (
+    as_sentence as _as_sentence,
+)
 from website.features.summarization_engine.summarization.reddit.schema import (
     RedditCluster,
     RedditStructuredPayload,
@@ -47,9 +50,63 @@ def _drop_placeholder(text: str) -> str:
     return "" if cleaned.lower() in _PLACEHOLDER_TOKENS else cleaned
 
 
+def _subreddit_from_label(mini_title: str) -> str:
+    """Pull the subreddit slug from a ``r/<sub> ...`` mini_title."""
+    match = re.match(r"^r/([^\s]+)", _clean(mini_title or ""))
+    return (match.group(1) if match else "").strip()
+
+
+def _extract_thesis_from_detailed(payload: RedditStructuredPayload) -> str:
+    """Cornerstone one-liner derived deterministically from the validated payload.
+
+    Order of preference:
+      1. First sentence of ``op_intent``.
+      2. ``"OP asked <short_question>"`` synthesized from the first
+         ``unresolved_questions`` entry.
+      3. ``"r/<subreddit> thread on <first_cluster_theme>"`` skeleton.
+
+    All branches route through ``as_sentence`` so the output always carries a
+    terminal ``.``/``!``/``?``.
+    """
+    detailed = payload.detailed_summary
+
+    # 1. op_intent first sentence
+    op_intent = _drop_placeholder(detailed.op_intent or "")
+    if op_intent:
+        first = _first_sentence(op_intent) or op_intent
+        return _as_sentence(first)
+
+    # 2. unresolved questions → "OP asked ..."
+    for question in detailed.unresolved_questions or []:
+        cleaned = _drop_placeholder(question)
+        if cleaned:
+            short_question = cleaned.rstrip(".?!")
+            return _as_sentence(f"OP asked {short_question}")
+
+    # 3. skeleton from subreddit + first reply cluster theme
+    subreddit = _subreddit_from_label(payload.mini_title)
+    first_theme = ""
+    for cluster in detailed.reply_clusters or []:
+        theme = _drop_placeholder(cluster.theme)
+        if theme:
+            first_theme = theme
+            break
+    if subreddit and first_theme:
+        return _as_sentence(f"r/{subreddit} thread on {first_theme}")
+    if subreddit:
+        return _as_sentence(f"r/{subreddit} community discussion")
+    return _as_sentence("Reddit thread captured in the Zettelkasten")
+
+
 def _overview_section(payload: RedditStructuredPayload) -> DetailedSummarySection:
     primary = _first_sentence(payload.brief_summary) or "Reddit thread captured in the Zettelkasten."
     subs: dict[str, list[str]] = {}
+
+    # Thesis cornerstone — added first so it renders at the top of Overview's
+    # nested sub-sections, mirroring YouTube's _overview_section pattern.
+    thesis = _extract_thesis_from_detailed(payload)
+    if thesis:
+        subs["Thesis"] = [thesis]
 
     op_intent = _drop_placeholder(payload.detailed_summary.op_intent)
     if op_intent:
