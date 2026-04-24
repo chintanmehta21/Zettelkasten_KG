@@ -67,6 +67,7 @@ class StructuredExtractor:
             Callable[[IngestResult, str, str], str]
         ] = None,
         prompt_instruction: str | None = None,
+        missing_facts_hint: list[str] | None = None,
     ):
         self._client = client
         self._config = config
@@ -74,6 +75,14 @@ class StructuredExtractor:
         self._fallback_builder = fallback_builder
         self._prompt_builder = prompt_builder
         self._prompt_instruction = prompt_instruction
+        # Optional coverage hint threaded from the DenseVerify phase. When
+        # non-empty, each entry is a source claim the density phase flagged
+        # as important-but-not-yet-covered; the extractor appends these to
+        # the prompt so the structured payload is guided to cover them. The
+        # hint never alters schema or retry behavior — it is purely additive
+        # prompt material. Default ``None`` keeps the call byte-identical to
+        # pre-refactor callers.
+        self._missing_facts_hint = list(missing_facts_hint or [])
 
     def _schema_snippet(self) -> str:
         """Compact JSON-schema hint included in the prompt.
@@ -85,23 +94,39 @@ class StructuredExtractor:
         schema = self._payload_class.model_json_schema()
         return json.dumps(schema, separators=(",", ":"))[:3000]
 
+    def _missing_facts_suffix(self) -> str:
+        """Return a prompt suffix instructing the model to cover hinted facts.
+
+        Empty when no hint was provided; otherwise a single explicit line
+        listing each flagged fact so the model is guided — but never forced —
+        to cover it in the structured payload.
+        """
+        if not self._missing_facts_hint:
+            return ""
+        joined = "; ".join(f.strip() for f in self._missing_facts_hint if f.strip())
+        if not joined:
+            return ""
+        return f"\n\nEnsure these facts are covered: {joined}"
+
     def _build_prompt(self, ingest: IngestResult, summary_text: str) -> str:
+        hint_suffix = self._missing_facts_suffix()
         if self._prompt_instruction:
             schema_json = self._schema_snippet()
             try:
-                return self._prompt_instruction.format(
+                base = self._prompt_instruction.format(
                     summary_text=summary_text,
                     schema_json=schema_json,
                 )
             except (KeyError, IndexError):
-                return (
+                base = (
                     f"{self._prompt_instruction}\n\n"
                     f"SCHEMA:\n{schema_json}\n\n"
                     f"SUMMARY:\n{summary_text}"
                 )
+            return base + hint_suffix
         schema_json = self._schema_snippet()
         if self._prompt_builder is not None:
-            return self._prompt_builder(ingest, summary_text, schema_json)
+            return self._prompt_builder(ingest, summary_text, schema_json) + hint_suffix
         return (
             f"{source_context(ingest.source_type)}\n\n"
             f"Return a JSON object that EXACTLY matches the following JSON schema "
@@ -110,6 +135,7 @@ class StructuredExtractor:
             f"SCHEMA:\n{schema_json}\n\n"
             "Do NOT wrap in markdown code blocks. Return raw JSON only.\n\n"
             f"SUMMARY:\n{summary_text}"
+            + hint_suffix
         )
 
     def _build_repair_prompt(
