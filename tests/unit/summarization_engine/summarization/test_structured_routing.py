@@ -270,7 +270,9 @@ async def test_extract_schema_fallback_marks_metadata_and_tag():
 
     assert result.metadata.is_schema_fallback is True
     assert result.metadata.structured_payload is None
-    assert "_schema_fallback_" in result.tags
+    # Sentinel tag is stripped from the user-facing list (never reaches Obsidian
+    # notes / KG nodes); fallback is detectable via metadata.is_schema_fallback.
+    assert "_schema_fallback_" not in result.tags
     # Boilerplate padding is allowed on fallback path to keep tags within min/max.
     assert len(result.tags) >= cfg.structured_extract.tags_min
 

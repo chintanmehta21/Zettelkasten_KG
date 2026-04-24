@@ -735,6 +735,23 @@ _BOILERPLATE_TAGS = frozenset(
     {"zettelkasten", "summary", "capture", "research", "source", "notes", "ai", "knowledge"}
 )
 
+# Internal sentinel tags (e.g. ``_schema_fallback_``) flow through the structured
+# payload so evaluators can detect routing failures, but they must never reach
+# user-facing surfaces (Obsidian notes, KG nodes). The pattern matches
+# single-leading-underscore + single-trailing-underscore identifiers like
+# ``_schema_fallback_`` while leaving real tags (``python``, ``__double__``,
+# ``trailing_``) untouched.
+_SENTINEL_TAG_RE = re.compile(r"^_[a-z][a-z0-9_]*_$")
+
+
+def _strip_sentinel_tags(tags: list[str]) -> list[str]:
+    """Return ``tags`` with internal sentinel markers removed.
+
+    Order is preserved and the input list is not mutated. Non-string entries are
+    coerced to ``str`` for the regex check so callers don't need to pre-clean.
+    """
+    return [tag for tag in tags if not _SENTINEL_TAG_RE.match(str(tag))]
+
 
 def _normalize_tags(
     tags: list[str],
@@ -743,17 +760,63 @@ def _normalize_tags(
     *,
     allow_boilerplate_pad: bool = False,
     source_type_value: str | None = None,
+    reserved: list[str] | None = None,
+    tag_cleaner=None,
 ) -> list[str]:
     """Normalize tags. Does NOT pad with boilerplate unless explicitly allowed
     (schema-fallback path only). Boilerplate tags ('zettelkasten', 'summary',
     'capture', ...) are masking real routing bugs when they appear on a
     supposedly-successful summary.
+
+    When ``reserved`` is provided, those tags are cleaned with the same rule,
+    placed FIRST in the output (in the order given, deduped), and topical tags
+    follow up to the cap. This guarantees source-identifying tags (subreddit,
+    channel, owner/repo, brand) survive truncation regardless of how many
+    topical tags the LLM emits.
+
+    ``tag_cleaner`` lets a caller override the default ``str.lower + spaces ->
+    dashes`` rule (used by Reddit, which strips arbitrary punctuation via
+    regex). It must be a callable ``(str) -> str`` returning the canonical
+    form. When ``None`` the default cleaner is applied.
+
+    Default behavior (no ``reserved=`` and no ``tag_cleaner=``) is byte-
+    identical to the prior implementation.
     """
+    if tag_cleaner is None:
+        def _default_clean(t: object) -> str:
+            return str(t).strip().lower().replace(" ", "-")
+        tag_cleaner = _default_clean
+
     normalized: list[str] = []
     for tag in tags:
-        cleaned = str(tag).strip().lower().replace(" ", "-")
+        cleaned = tag_cleaner(tag)
         if cleaned and cleaned not in normalized:
             normalized.append(cleaned)
+    # Strip internal sentinels (e.g. ``_schema_fallback_``) AFTER normalization
+    # so they never leak into user-facing tag lists, but BEFORE the boilerplate
+    # pad loop so a fallback payload still triggers padding to ``tags_min``.
+    normalized = _strip_sentinel_tags(normalized)
+
+    if reserved:
+        cleaned_reserved: list[str] = []
+        for r in reserved:
+            cr = tag_cleaner(r)
+            if cr and cr not in cleaned_reserved:
+                cleaned_reserved.append(cr)
+        # Topical = normalized tags excluding any that match a reserved entry.
+        topical = [t for t in normalized if t not in cleaned_reserved]
+        # Truncate reserved at cap so it never alone exceeds tags_max.
+        cleaned_reserved = cleaned_reserved[:tags_max]
+        room = max(0, tags_max - len(cleaned_reserved))
+        merged = cleaned_reserved + topical[:room]
+        if allow_boilerplate_pad and source_type_value:
+            for fallback in (source_type_value, *_BOILERPLATE_TAGS):
+                if len(merged) >= tags_min:
+                    break
+                if fallback not in merged:
+                    merged.append(fallback)
+        return merged[:tags_max]
+
     if allow_boilerplate_pad and source_type_value:
         for fallback in (source_type_value, *_BOILERPLATE_TAGS):
             if len(normalized) >= tags_min:
