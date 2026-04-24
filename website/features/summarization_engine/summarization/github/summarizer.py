@@ -1,16 +1,23 @@
-"""GitHub per-source summarizer.
+"""GitHub per-source summarizer (3-call DenseVerify pipeline).
 
-Classifies the repository archetype before prompting so framework, CLI, thin
-library, docs-heavy, and example-app repos each get a prompt matched to their
-README shape. Extracts deterministic README signals (install commands, public
-surfaces, stack) that are threaded into the prompt as a must-preserve slot
-AND used by the graceful-fallback brief builder. On schema failure the
-summarizer emits a minimal but faithful `GitHubStructuredPayload` built from
-signals instead of the generic zeroed fallback that collapsed held-out
-evaluation in prior loops.
+Call budget (<=3 per zettel):
+  1. DenseVerifier (pro) — dense + verify + archetype signal (from DV's
+     ``archetype`` hint field, informational; ``classify_archetype`` is
+     authoritative because it folds README signals the LLM cannot see).
+  2. StructuredExtractor (flash) — schema-shaped GitHub payload, guided by
+     DV's ``missing_facts`` via ``missing_facts_hint``.
+  3. Optional flash patch — only when the structured brief still omits a
+     DV-flagged fact (pragmatic substring probe).
+
+README signals (install commands, public surfaces, stack) are extracted
+deterministically before the LLM ever runs; they feed both the prompt
+(must-preserve slots) and the graceful-fallback builder so held-out URLs
+(`psf/requests`, `tiangolo/typer`) retain faithfulness even when the flash
+call emits a schema-invalid payload.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -26,12 +33,9 @@ from website.features.summarization_engine.core.models import (
 )
 from website.features.summarization_engine.summarization import register_summarizer
 from website.features.summarization_engine.summarization.base import BaseSummarizer
-from website.features.summarization_engine.summarization.common.cod import (
-    ChainOfDensityDensifier,
-)
-from website.features.summarization_engine.summarization.common.patch import SummaryPatcher
-from website.features.summarization_engine.summarization.common.self_check import (
-    InvertedFactScoreSelfCheck,
+from website.features.summarization_engine.summarization.common.dense_verify_runner import (
+    maybe_patch_structured_brief,
+    run_dense_verify,
 )
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
@@ -82,15 +86,11 @@ class GitHubSummarizer(BaseSummarizer):
             ",".join(verdict.reasons),
         )
 
-        dense = await ChainOfDensityDensifier(
-            self._client, self._engine_config
-        ).densify(ingest)
-        check = await InvertedFactScoreSelfCheck(
-            self._client, self._engine_config
-        ).check(ingest.raw_text, dense.text)
-        patched, patch_applied, patch_tokens = await SummaryPatcher(
-            self._client, self._engine_config
-        ).patch(dense.text, check)
+        # Call 1 — DenseVerify (pro). DV returns a dense verified summary plus
+        # ``missing_facts``/``archetype`` hints. We use the dense text as the
+        # input to StructuredExtractor so it extracts from a higher-fidelity
+        # surface than the raw README.
+        dv = await run_dense_verify(client=self._client, ingest=ingest)
 
         def _prompt_builder(
             ingest_inner: IngestResult, summary_text: str, schema_json: str
@@ -121,20 +121,49 @@ class GitHubSummarizer(BaseSummarizer):
             payload_class=GitHubStructuredPayload,
             fallback_builder=_fallback_builder,
             prompt_builder=_prompt_builder,
+            missing_facts_hint=list(dv.missing_facts),
         )
         latency_ms = int((time.perf_counter() - start) * 1000)
+
+        # Call 2 — structured extraction (flash).
         result = await extractor.extract(
             ingest,
-            patched,
-            pro_tokens=dense.pro_tokens + check.pro_tokens + patch_tokens,
+            dv.dense_text or ingest.raw_text or "",
+            pro_tokens=0,
             flash_tokens=0,
             latency_ms=latency_ms,
-            cod_iterations_used=dense.iterations_used,
-            self_check_missing_count=check.missing_count,
-            patch_applied=patch_applied,
+            cod_iterations_used=0,
+            self_check_missing_count=len(dv.missing_facts),
+            patch_applied=False,
         )
-        # Stash archetype verdict in metadata so eval/debug can see routing
-        # decisions even when the fallback path engaged.
+
+        # Call 3 (optional) — flash patch when DV-flagged facts remain omitted
+        # from the structured payload. No-op when DV had no missing_facts.
+        payload_json = ""
+        if result.metadata is not None and result.metadata.structured_payload:
+            try:
+                payload_json = json.dumps(result.metadata.structured_payload)
+            except Exception:  # noqa: BLE001
+                payload_json = str(result.metadata.structured_payload)
+        new_brief, patch_applied, patch_tokens = await maybe_patch_structured_brief(
+            client=self._client,
+            current_brief=result.brief_summary,
+            dv=dv,
+            extracted_payload_json=payload_json,
+        )
+        if patch_applied:
+            result.brief_summary = new_brief
+            if result.metadata is not None:
+                result.metadata.patch_applied = True
+                result.metadata.gemini_flash_tokens = (
+                    int(result.metadata.gemini_flash_tokens or 0) + patch_tokens
+                )
+                result.metadata.total_tokens_used = (
+                    int(result.metadata.total_tokens_used or 0) + patch_tokens
+                )
+
+        # Stash archetype verdict + DV signals in metadata so eval/debug can see
+        # routing decisions even when the fallback path engaged.
         if result.metadata is not None:
             extras = dict(result.metadata.structured_payload or {}) if result.metadata.structured_payload else {}
             extras.setdefault("_github_archetype", {
@@ -142,6 +171,11 @@ class GitHubSummarizer(BaseSummarizer):
                 "confidence": verdict.confidence,
                 "reasons": list(verdict.reasons),
             })
+            if dv.archetype:
+                extras.setdefault("_dense_verify", {
+                    "archetype": dv.archetype,
+                    "missing_fact_count": len(dv.missing_facts),
+                })
             result.metadata.structured_payload = extras
         return result
 

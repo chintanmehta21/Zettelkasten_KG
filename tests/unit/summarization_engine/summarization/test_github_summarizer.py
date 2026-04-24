@@ -27,27 +27,27 @@ async def test_github_summarizer_uses_github_payload_class(
     mock_gemini_client, monkeypatch
 ):
     from website.features.summarization_engine.summarization.common import (
-        cod,
-        patch as p_mod,
-        self_check,
+        dense_verify,
+        dense_verify_runner,
         structured,
     )
+    from website.features.summarization_engine.summarization.github import (
+        summarizer as gh_mod,
+    )
 
-    monkeypatch.setattr(
-        cod.ChainOfDensityDensifier,
-        "densify",
-        AsyncMock(return_value=cod.DensifyResult("dense", 2, 100)),
-    )
-    monkeypatch.setattr(
-        self_check.InvertedFactScoreSelfCheck,
-        "check",
-        AsyncMock(return_value=self_check.SelfCheckResult(missing=[])),
-    )
-    monkeypatch.setattr(
-        p_mod.SummaryPatcher,
-        "patch",
-        AsyncMock(return_value=("dense", False, 0)),
-    )
+    async def _fake_run_dense_verify(*, client, ingest, precomputed_dense=None, cache=None):  # noqa: ARG001
+        return dense_verify.DenseVerifyResult(
+            dense_text="dense",
+            missing_facts=[],
+            stance=None,
+            archetype=None,
+            format_label=None,
+            core_argument="x",
+            closing_hook="y",
+        )
+
+    monkeypatch.setattr(gh_mod, "run_dense_verify", _fake_run_dense_verify)
+    dense_verify_runner._DV_CACHE.clear()
 
     captured = {}
     original_init = structured.StructuredExtractor.__init__
@@ -61,11 +61,13 @@ async def test_github_summarizer_uses_github_payload_class(
         fallback_builder=None,
         prompt_builder=None,
         prompt_instruction=None,
+        missing_facts_hint=None,
     ):
         captured["payload_class"] = payload_class
         captured["fallback_builder"] = fallback_builder
         captured["prompt_builder"] = prompt_builder
         captured["prompt_instruction"] = prompt_instruction
+        captured["missing_facts_hint"] = missing_facts_hint
         original_init(
             self,
             client,
@@ -74,6 +76,7 @@ async def test_github_summarizer_uses_github_payload_class(
             fallback_builder=fallback_builder,
             prompt_builder=prompt_builder,
             prompt_instruction=prompt_instruction,
+            missing_facts_hint=missing_facts_hint,
         )
 
     async def fake_extract(self, ingest, text, **kwargs):
@@ -115,6 +118,8 @@ async def test_github_summarizer_uses_github_payload_class(
 
     assert result.mini_title == "openai/gym"
     assert captured["payload_class"] is GitHubStructuredPayload
+    # DV hint is always passed, even when empty — ensures the plumbing stays.
+    assert captured["missing_facts_hint"] == []
 
 
 def test_apply_identifier_hints_derives_github_repo_from_url_without_metadata():
