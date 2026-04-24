@@ -62,7 +62,11 @@ _TIMESTAMP_PATTERNS = [
     re.compile(r"^\s*\d{4}\s*[—\-]\s*"),  # "1852 — Title"
 ]
 
-_DROP_HEADING_LOWER = {"format"}  # format is surfaced as a bullet, never a section
+_DROP_HEADING_LOWER = {
+    "format",              # surfaced as a bullet, never a section
+    "moderation context",  # internal ingest signal — users don't need to see it
+    "moderation_context",
+}
 
 
 def _pretty_heading(raw: str | None) -> str:

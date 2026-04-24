@@ -37,6 +37,24 @@
     return el.innerHTML;
   }
 
+  // The /api/graph endpoint now ships the canonical JSON envelope so the
+  // zettel modal can render brief + detailed structured sections. The 3D
+  // viewer only needs the brief — parse it out here so tooltips never leak
+  // raw JSON. Legacy plain-string rows fall through unchanged.
+  function extractBriefFromSummary(raw) {
+    const text = String(raw == null ? '' : raw).trim();
+    if (!text) return '';
+    if (text.charAt(0) !== '{') return text;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        const brief = parsed.brief_summary || parsed.briefSummary || parsed.summary;
+        if (typeof brief === 'string' && brief.trim()) return brief.trim();
+      }
+    } catch (_err) { /* not JSON — fall through */ }
+    return text;
+  }
+
   function toSafeHttpUrl(rawUrl) {
     const value = String(rawUrl || '').trim();
     if (!value) return '';
@@ -597,7 +615,7 @@
     badge.className = 'kg-panel-badge ' + nodeGroup;
     title.textContent = node.name;
     date.textContent = formatDate(node.date);
-    summary.textContent = node.summary || '';
+    summary.textContent = extractBriefFromSummary(node.summary);
     const safeLink = toSafeHttpUrl(node.url);
     link.href = safeLink || '#';
     link.setAttribute('aria-disabled', safeLink ? 'false' : 'true');
@@ -662,7 +680,7 @@
       if (query.length > 0) {
         graphData.nodes.forEach(node => {
           const nodeTags = Array.isArray(node.tags) ? node.tags : [];
-          const nodeSummary = String(node.summary || '');
+          const nodeSummary = extractBriefFromSummary(node.summary);
           const match = node.name.toLowerCase().includes(query) ||
                         nodeTags.some(t => String(t).toLowerCase().includes(query)) ||
                         nodeSummary.toLowerCase().includes(query);
