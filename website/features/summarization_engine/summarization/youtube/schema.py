@@ -84,6 +84,18 @@ class YouTubeStructuredPayload(BaseModel):
 
     @model_validator(mode="after")
     def _sanitize_speakers(self) -> "YouTubeStructuredPayload":
+        """4-step speaker fallback (see docs/summary_eval/_synthesis.md P5).
+
+        Step 1: strip placeholder tokens (``unidentified host``, etc.).
+        Step 2: if any real names survive, use them as-is.
+        Step 3: fall back to the first named human in ``entities_discussed``
+                (a speaker-like entity is almost always a transcript named
+                subject; this catches channels where the uploader name
+                doubled up in entities).
+        Step 4: if nothing plausible is found, use the neutral label
+                ``"The speaker"`` rather than dropping the structured
+                payload.
+        """
         real = [
             s.strip()
             for s in (self.speakers or [])
@@ -94,9 +106,14 @@ class YouTubeStructuredPayload(BaseModel):
         if real:
             self.speakers = real
             return self
-        # No real speaker extracted; keep a neutral label instead of raising
-        # a ValidationError (raising drops the entire structured payload to a
-        # raw-text schema_fallback, which collapses summary quality).
+
+        # Step 3: first named human entity in entities_discussed.
+        for entity in (self.entities_discussed or []):
+            if isinstance(entity, str) and _looks_like_named_human(entity):
+                self.speakers = [entity.strip()]
+                return self
+
+        # Step 4: deterministic neutral label.
         self.speakers = ["The speaker"]
         return self
 
@@ -104,6 +121,30 @@ class YouTubeStructuredPayload(BaseModel):
 _PLACEHOLDER_ADJECTIVES = frozenset({
     "unidentified", "unknown", "anonymous", "unnamed", "generic",
 })
+
+
+def _looks_like_named_human(name: str) -> bool:
+    """Heuristic check: does ``name`` look like a real person's name?
+
+    Used as step 3 of the speaker fallback in ``_sanitize_speakers``. A
+    named human usually has two or more whitespace-separated tokens with
+    leading capitals, and must not trip the placeholder-speaker detector.
+    Organization names ("MAPS", "Google") are filtered by requiring at
+    least one token longer than 2 characters that is NOT fully uppercase.
+    """
+    cleaned = (name or "").strip()
+    if not cleaned or _is_placeholder_speaker(cleaned):
+        return False
+    tokens = cleaned.split()
+    if len(tokens) < 2:
+        return False
+    capitalized = [t for t in tokens if t[:1].isupper()]
+    if len(capitalized) < 2:
+        return False
+    # Reject all-caps acronyms like "MAPS" or "NIH" even in a pair.
+    if all(t.isupper() for t in tokens):
+        return False
+    return True
 
 
 def _is_placeholder_speaker(name: str) -> bool:

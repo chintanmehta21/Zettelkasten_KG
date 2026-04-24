@@ -117,21 +117,40 @@ class Settings(BaseSettings):
 
 
 def validate_reddit_credentials(settings: Settings) -> None:
-    """Emit a one-shot startup warning when Reddit OAuth creds are missing
-    in a production-like environment.
+    """Validate Reddit OAuth credentials for production-like startup.
 
-    "Production-like" is inferred from ``settings.webhook_mode`` because that
-    is the existing prod/dev split in this codebase (polling=dev, webhook=prod).
-    The warning fires at most once per process via a module-level latch; it
-    never raises or exits, because Reddit capture is optional — the ingestor
-    still works via the public JSON endpoint, just with thinner content.
+    Behavior matrix:
+      - ``webhook_secret`` set AND Reddit creds missing → ``RuntimeError``
+        (hard fail-fast: this signals a webhook-driven production deploy
+        where Reddit ingestion must use OAuth to avoid anti-bot walls).
+      - ``webhook_mode=True`` AND Reddit creds missing → one-shot warning
+        (legacy path; kept for backward compatibility with existing
+        non-webhook-secret deployments).
+      - Otherwise → no-op (polling/dev mode or creds present).
+
+    The warning fires at most once per process via a module-level latch.
+    To opt out of the hard-fail (e.g. a webhook deploy that intentionally
+    does not capture Reddit), set ``REDDIT_OPTIONAL=1`` in the environment.
     """
     global _reddit_warning_emitted
+
+    if settings.reddit_oauth_configured:
+        return
+
+    # Hard fail when a webhook_secret is configured (production signal) and
+    # the opt-out flag is not set. Always raise, even if the warning latch
+    # has already fired, because this is a correctness gate on startup.
+    import os
+    if settings.webhook_secret.strip() and os.environ.get("REDDIT_OPTIONAL", "").strip() not in {"1", "true", "True", "yes"}:
+        raise RuntimeError(
+            "Reddit OAuth credentials are required when WEBHOOK_SECRET is set. "
+            "Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET, or set "
+            "REDDIT_OPTIONAL=1 to opt out."
+        )
+
     if _reddit_warning_emitted:
         return
     if not settings.webhook_mode:
-        return
-    if settings.reddit_oauth_configured:
         return
     logger.warning(
         "Reddit OAuth credentials missing (REDDIT_CLIENT_ID and/or "
