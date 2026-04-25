@@ -22,14 +22,12 @@
         </svg>
       </a>
       <svg class="kg-logo-icon" width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Connections — diamond lattice -->
         <line x1="16" y1="5" x2="6" y2="16" stroke="#D4A024" stroke-width="1.2" opacity="0.35"/>
         <line x1="16" y1="5" x2="26" y2="16" stroke="#D4A024" stroke-width="1.2" opacity="0.35"/>
         <line x1="6" y1="16" x2="16" y2="27" stroke="#D4A024" stroke-width="1.2" opacity="0.3"/>
         <line x1="26" y1="16" x2="16" y2="27" stroke="#D4A024" stroke-width="1.2" opacity="0.3"/>
         <line x1="6" y1="16" x2="26" y2="16" stroke="#D4A024" stroke-width="1.2" opacity="0.2"/>
         <line x1="16" y1="5" x2="16" y2="27" stroke="#D4A024" stroke-width="1.2" opacity="0.2"/>
-        <!-- Nodes — central hub + cardinal points -->
         <circle cx="16" cy="5" r="3" fill="#D4A024"/>
         <circle cx="6" cy="16" r="2.5" fill="#D4A024" opacity="0.8"/>
         <circle cx="26" cy="16" r="2.5" fill="#D4A024" opacity="0.8"/>
@@ -42,10 +40,23 @@
       </div>
     </div>
     <div class="kg-header-right">
-      <!-- View toggle — hidden by default, shown via JS when user is logged in -->
-      <div class="kg-view-toggle hidden" id="view-toggle">
-        <button class="kg-view-btn active" data-view="global" type="button">Global</button>
-        <button class="kg-view-btn" data-view="my" type="button">My Graph</button>
+      <!-- View toggle: always visible. Personal segment greys out when logged out. -->
+      <div class="kg-view-toggle" id="view-toggle" role="tablist" aria-label="Graph scope">
+        <button class="kg-view-btn active" data-view="global" type="button" role="tab" aria-selected="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span>Global</span>
+        </button>
+        <button class="kg-view-btn" data-view="my" type="button" role="tab" aria-selected="false" aria-disabled="true" title="Sign in to switch to Personal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Personal</span>
+        </button>
       </div>
       <div class="kg-search-wrapper">
         <svg class="kg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -53,102 +64,129 @@
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <input type="text" class="kg-search" id="search-input" placeholder="Search notes..." autocomplete="off" aria-label="Search notes">
+        <span class="kg-search-count hidden" id="search-count" aria-live="polite"></span>
+        <button class="kg-search-clear hidden" id="search-clear" type="button" aria-label="Clear search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <button class="kg-filter-btn" id="filter-btn" type="button" title="Filter by source" aria-label="Filter by source">
+      <button class="kg-filter-btn" id="filter-btn" type="button" title="Filter notes" aria-label="Filter notes">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+      </button>
+      <button class="kg-reset-btn" id="reset-view-btn" type="button" title="Reset view" aria-label="Reset view">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
         </svg>
       </button>
     </div>
   </header>
 
-  <!-- Filter dropdown -->
-  <div class="kg-filter-dropdown hidden" id="filter-dropdown">
-    <label class="kg-filter-item">
-      <input type="checkbox" value="youtube" checked>
-      <span class="kg-filter-dot" style="background: var(--node-youtube)"></span>
-      YouTube
-    </label>
-    <label class="kg-filter-item">
-      <input type="checkbox" value="reddit" checked>
-      <span class="kg-filter-dot" style="background: var(--node-reddit)"></span>
-      Reddit
-    </label>
-    <label class="kg-filter-item">
-      <input type="checkbox" value="github" checked>
-      <span class="kg-filter-dot" style="background: var(--node-github)"></span>
-      GitHub
-    </label>
-    <label class="kg-filter-item">
-      <input type="checkbox" value="substack" checked>
-      <span class="kg-filter-dot" style="background: var(--node-substack)"></span>
-      Substack
-    </label>
-    <label class="kg-filter-item">
-      <input type="checkbox" value="medium" checked>
-      <span class="kg-filter-dot" style="background: var(--node-medium)"></span>
-      Medium
-    </label>
-    <label class="kg-filter-item">
-      <input type="checkbox" value="web" checked>
-      <span class="kg-filter-dot" style="background: var(--node-web)"></span>
-      Web
-    </label>
+  <!-- Filter dropdown — rendered dynamically by app.js -->
+  <div class="kg-filter-dropdown hidden" id="filter-dropdown" role="dialog" aria-label="Filters">
+    <section class="kg-filter-section" data-section="source">
+      <header class="kg-filter-section-header">
+        <span>Source</span>
+        <svg class="kg-filter-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </header>
+      <div class="kg-filter-section-body" id="filter-source-body"></div>
+    </section>
+    <section class="kg-filter-section" data-section="kastens">
+      <header class="kg-filter-section-header">
+        <span>Kastens</span>
+        <svg class="kg-filter-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </header>
+      <div class="kg-filter-section-body" id="filter-kastens-body">
+        <p class="kg-filter-empty" id="filter-kastens-empty">Loading…</p>
+      </div>
+    </section>
   </div>
 
   <!-- Graph container -->
   <div id="graph-container"></div>
 
   <!-- Side panel -->
-  <div class="kg-panel hidden" id="side-panel">
-    <button class="kg-panel-close" id="panel-close" type="button" title="Close" aria-label="Close details panel">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
-    <div class="kg-panel-content">
-      <span class="kg-panel-badge" id="panel-badge">source</span>
+  <aside class="kg-panel hidden" id="side-panel" data-node-id="" aria-label="Note details">
+    <div class="kg-panel-content" id="panel-content">
+      <header class="kg-panel-meta-row">
+        <span class="kg-panel-date hidden" id="panel-date"></span>
+        <span class="kg-panel-badge" id="panel-badge">source</span>
+        <a class="kg-panel-icon-btn" id="panel-link" href="#" target="_blank" rel="noopener" title="View original source" aria-label="View original source">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+        <button class="kg-panel-icon-btn" id="panel-add-kasten" type="button" title="Add to a Kasten" aria-label="Add to a Kasten">
+          <span class="kg-panel-icon-mask" style="--mask-url: url(/artifacts/logo-kastens.svg)"></span>
+        </button>
+        <button class="kg-panel-close" id="panel-close" type="button" title="Close" aria-label="Close details panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
       <h2 class="kg-panel-title" id="panel-title">Note Title</h2>
-      <p class="kg-panel-date" id="panel-date">2026-03-28</p>
       <p class="kg-panel-summary" id="panel-summary">Summary goes here...</p>
       <div class="kg-panel-tags" id="panel-tags"></div>
       <div class="kg-panel-section">
         <h3 class="kg-panel-section-title">Connected Notes</h3>
         <div class="kg-panel-connections" id="panel-connections"></div>
       </div>
-      <div class="kg-panel-actions">
-        <a class="kg-panel-link" id="panel-link" href="#" target="_blank" rel="noopener">
-          View Original Source
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-        </a>
-        <a class="kg-panel-link secondary" id="panel-ask-link" href="/home/rag">
-          Ask About This Note
-        </a>
-        <a class="kg-panel-link secondary" id="panel-kasten-link" href="/home/kastens">
-          Add To A Kasten
-        </a>
-      </div>
     </div>
+  </aside>
+
+  <!-- Loading / empty / error overlays -->
+  <div class="kg-overlay hidden" id="overlay-loading" aria-live="polite">
+    <div class="kg-overlay-skeleton">
+      <span></span><span></span><span></span>
+    </div>
+    <p class="kg-overlay-text">Loading graph…</p>
+  </div>
+  <div class="kg-overlay hidden" id="overlay-empty" aria-live="polite">
+    <p class="kg-overlay-text">No notes match these filters.</p>
+    <button class="kg-overlay-btn" id="overlay-empty-reset" type="button">Reset filters</button>
+  </div>
+  <div class="kg-overlay hidden" id="overlay-error" aria-live="assertive">
+    <p class="kg-overlay-text" id="overlay-error-text">Could not load graph data.</p>
+    <button class="kg-overlay-btn" id="overlay-error-retry" type="button">Retry</button>
   </div>
 
-  <!-- Legend -->
-  <div class="kg-legend" id="legend">
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-youtube)"></span>YouTube</div>
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-reddit)"></span>Reddit</div>
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-github)"></span>GitHub</div>
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-substack)"></span>Substack</div>
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-medium)"></span>Medium</div>
-    <div class="kg-legend-item"><span class="kg-legend-dot" style="background: var(--node-web)"></span>Web</div>
+  <!-- Add to Kasten modal -->
+  <div class="kg-kasten-modal hidden" id="kasten-modal" role="dialog" aria-modal="true" aria-labelledby="kasten-modal-title">
+    <div class="kg-kasten-modal-backdrop" id="kasten-modal-backdrop"></div>
+    <div class="kg-kasten-modal-card">
+      <header class="kg-kasten-modal-header">
+        <h2 id="kasten-modal-title">Add to a Kasten</h2>
+        <button class="kg-kasten-modal-close" id="kasten-modal-close" type="button" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <p class="kg-kasten-modal-subtitle" id="kasten-modal-note-name"></p>
+      <ul class="kg-kasten-modal-list" id="kasten-modal-list" role="listbox" aria-label="Your kastens"></ul>
+      <div class="kg-kasten-modal-error hidden" id="kasten-modal-error"></div>
+      <footer class="kg-kasten-modal-footer">
+        <button class="kg-kasten-modal-cancel" id="kasten-modal-cancel" type="button">Cancel</button>
+        <button class="kg-kasten-modal-add" id="kasten-modal-add" type="button" disabled>Add</button>
+      </footer>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
+  <script src="/kg/js/kasten_modal.js?v=20260425a"></script>
   <script src="/kg/js/app.js?v=20260425a"></script>
 </body>
 </html>
