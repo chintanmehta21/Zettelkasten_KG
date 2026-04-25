@@ -1,0 +1,49 @@
+{
+  "composite": {
+    "previous": 78.62,
+    "current": 85.44454982325942,
+    "absolute": 6.824549823259417,
+    "relative_pct": 8.680424603484377
+  },
+  "components": {
+    "chunking": {
+      "previous": 54.0,
+      "current": 54.0,
+      "absolute": 0.0
+    },
+    "retrieval": {
+      "previous": 100.0,
+      "current": 100.0,
+      "absolute": 0.0
+    },
+    "reranking": {
+      "previous": 80.0,
+      "current": 76.72774911629708,
+      "absolute": -3.272250883702924
+    },
+    "synthesis": {
+      "previous": 71.6,
+      "current": 88.22000000000001,
+      "absolute": 16.62000000000002
+    }
+  },
+  "graph_lift": {
+    "previous": {
+      "composite": -0.32251087545699875,
+      "retrieval": 0.0,
+      "reranking": 28.807445622715008
+    },
+    "current": {
+      "composite": -6.5318333333333385,
+      "retrieval": 0.0,
+      "reranking": -11.666666666666671
+    },
+    "delta": {
+      "composite": -6.20932245787634,
+      "retrieval": 0.0,
+      "reranking": -40.47411228938168
+    }
+  },
+  "review_estimate": 87.0,
+  "review_divergence_band": "AGREEMENT"
+}
