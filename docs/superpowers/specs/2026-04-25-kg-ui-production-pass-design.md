@@ -128,6 +128,7 @@ Filter button unchanged structurally. Dropdown becomes two collapsible sections:
 ```
 
 - Both sections start expanded; arrow rotates to collapse.
+- **Kastens section is greyed out when view = Global** (Kastens are personal scope; can't filter another user's zettels by your Kasten). Greyed = section header dim + body shows a single CTA "Switch to Personal to filter by Kasten" that, when clicked, switches the view toggle to Personal (logged-in) or opens the login modal (logged-out). When view = Personal AND user has kastens, the section is fully active.
 - Filter checkbox visual upgrade: unchecked items get **strikethrough + dot opacity 0.25 + label opacity 0.45**. Currently dot stays full opacity → bumping the contrast makes off-state unmistakable.
 - Combine semantics: **AND between sections, OR within**. SQL-equivalent:
   - `node.group IN selectedSources AND (selectedKastens IS EMPTY OR node.id IN any(selectedKastens.members))`
@@ -307,4 +308,5 @@ This spec captures user-confirmed decisions:
 - ✅ Action buttons (View original, Add to Kasten) circular icon-buttons in top row beside date/badge
 - ✅ Toggle order: `[Toggle] [Search] [Filter]`
 - ✅ Greyed Personal segment opens login modal (same UX as global Login)
+- ✅ Kastens filter section greyed when view = Global (CTA "Switch to Personal to filter by Kasten")
 - ✅ Controls hint overlay text: NOT adopted
