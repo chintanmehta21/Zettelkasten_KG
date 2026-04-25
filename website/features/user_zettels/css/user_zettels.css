@@ -733,7 +733,10 @@ body {
     display: block;
 }
 
-/* KG button — amber/gold accent (matches the /knowledge-graph page). */
+/* KG button — amber/gold accent (matches the /knowledge-graph page).
+   The inner icon is a white SVG asset recolored via CSS mask so we can
+   drive the icon color via ``background-color`` (and animate it to a
+   bright amber/yellow glow on hover). */
 .home-card-kg-btn {
     border: 1px solid hsla(42, 65%, 52%, 0.45);
     background: hsla(42, 65%, 52%, 0.1);
@@ -746,10 +749,20 @@ body {
     box-shadow: 0 0 10px hsla(42, 65%, 52%, 0.3);
     transform: scale(1.08);
 }
-.home-card-kg-btn svg {
+.home-card-kg-icon {
     width: 14px;
     height: 14px;
     pointer-events: none;
+    /* Use the SVG as a mask so we can recolor via background-color and
+       animate the hover glow on the icon itself. */
+    background-color: hsl(42, 60%, 65%);
+    -webkit-mask: url('/artifacts/icon-knowledge-graph.svg') center / contain no-repeat;
+            mask: url('/artifacts/icon-knowledge-graph.svg') center / contain no-repeat;
+    transition: background-color 0.2s ease, filter 0.2s ease;
+}
+.home-card-kg-btn:hover .home-card-kg-icon {
+    background-color: hsl(48, 100%, 64%);
+    filter: drop-shadow(0 0 6px hsla(48, 100%, 64%, 0.6));
 }
 
 .home-card-summary-btn:focus-visible,

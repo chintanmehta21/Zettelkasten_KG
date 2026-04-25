@@ -527,13 +527,7 @@
       : '';
 
     var kgBtnHtml = '<a class="home-card-kg-btn" href="/knowledge-graph?node=' + safeKgId + '" aria-label="View in Knowledge Graph">' +
-        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-          '<circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
-          '<circle cx="18" cy="7.5" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
-          '<circle cx="12" cy="17.5" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
-          '<path d="M7.8 7.5L10.6 15.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>' +
-          '<path d="M16 9.4L13.4 15.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>' +
-        '</svg>' +
+        '<img class="home-card-kg-icon" src="/artifacts/icon-knowledge-graph.svg" alt="" aria-hidden="true" />' +
         '<span class="tooltip">View in Knowledge Graph</span>' +
       '</a>';
 
