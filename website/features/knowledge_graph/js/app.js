@@ -611,8 +611,8 @@
 
     // ---- Camera ----
     const controls = graph.controls();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.3;
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0.1;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 80;
