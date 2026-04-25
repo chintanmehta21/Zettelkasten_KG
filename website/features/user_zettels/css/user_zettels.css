@@ -744,14 +744,25 @@ body {
 }
 .home-card-kg-btn:hover {
     background: hsla(48, 80%, 55%, 0.22);
-    border-color: hsl(48, 80%, 60%);
-    box-shadow: 0 0 10px hsla(48, 80%, 55%, 0.3);
+    border-color: hsl(48, 85%, 62%);
+    color: hsl(50, 100%, 68%);
+    box-shadow: 0 0 10px hsla(48, 85%, 60%, 0.35);
     transform: scale(1.08);
 }
 .home-card-kg-btn svg {
     width: 14px;
     height: 14px;
     pointer-events: none;
+    transition: filter 0.2s ease;
+}
+.home-card-kg-btn:hover svg {
+    filter: drop-shadow(0 0 4px hsla(48, 100%, 65%, 0.55));
+}
+/* Override the global teal focus outline (set elsewhere on
+   *-btn:focus-visible) so keyboard / post-click focus stays yellow. */
+.home-card-kg-btn:focus-visible {
+    outline: 2px solid hsl(48, 90%, 60%) !important;
+    outline-offset: 2px;
 }
 
 .home-card-summary-btn:focus-visible,

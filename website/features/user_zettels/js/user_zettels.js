@@ -528,12 +528,16 @@
 
     var kgBtnHtml = '<a class="home-card-kg-btn" href="/knowledge-graph?node=' + safeKgId + '" aria-label="View in Knowledge Graph">' +
         '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-          '<circle cx="12" cy="5" r="2.4" stroke="currentColor" stroke-width="2"></circle>' +
-          '<circle cx="5" cy="18.5" r="2.4" stroke="currentColor" stroke-width="2"></circle>' +
-          '<circle cx="19" cy="18.5" r="2.4" stroke="currentColor" stroke-width="2"></circle>' +
-          '<line x1="10.9" y1="7.2" x2="6.1" y2="16.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
-          '<line x1="13.1" y1="7.2" x2="17.9" y2="16.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
-          '<line x1="7.6" y1="18.5" x2="16.4" y2="18.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
+          // Three outer nodes
+          '<circle cx="12" cy="4.8" r="2.2" stroke="currentColor" stroke-width="2"></circle>' +
+          '<circle cx="5.2" cy="18.4" r="2.2" stroke="currentColor" stroke-width="2"></circle>' +
+          '<circle cx="18.8" cy="18.4" r="2.2" stroke="currentColor" stroke-width="2"></circle>' +
+          // Central hub
+          '<circle cx="12" cy="12" r="1.4" stroke="currentColor" stroke-width="2"></circle>' +
+          // Spokes from hub to each outer node
+          '<line x1="12" y1="10.6" x2="12" y2="7"  stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
+          '<line x1="10.9" y1="13"  x2="6.7" y2="16.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
+          '<line x1="13.1" y1="13"  x2="17.3" y2="16.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
         '</svg>' +
         '<span class="tooltip">View in Knowledge Graph</span>' +
       '</a>';
