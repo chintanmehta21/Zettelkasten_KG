@@ -52,6 +52,25 @@ class ContextAssembler:
 
         budget = _BUDGET_BY_QUALITY[quality]
         candidates = [c for c in candidates if not _is_stub_passage(c.content)]
+        # iter-03 retune: drop low-confidence candidates BEFORE assembly. iter-02
+        # showed off-topic Zettels (yt-effective-public-speakin, yt-zero-day) leaking
+        # into top-5 cited contexts on AI/ML queries because they had non-zero rrf
+        # but weak final_score. We require either final_score >= 0.30 or
+        # rerank_score >= 0.30 — the cascade reranker's score is the most informed
+        # signal. This raises context_precision without hurting recall on strong
+        # gold candidates (which always score >> 0.30 in iter-01/02).
+        _CONTEXT_FLOOR = 0.30
+        def _passes_floor(c):
+            score = c.final_score if c.final_score is not None else (c.rerank_score or 0.0)
+            return score >= _CONTEXT_FLOOR
+        floored = [c for c in candidates if _passes_floor(c)]
+        # Safety: never empty the context due to the floor — if nothing passes,
+        # keep the top-1 candidate so the LLM has something to ground on rather
+        # than refusing.
+        if floored:
+            candidates = floored
+        elif candidates:
+            candidates = candidates[:1]
         if not candidates:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
         grouped = self._group_by_node(candidates)

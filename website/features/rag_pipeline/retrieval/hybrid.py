@@ -35,12 +35,12 @@ _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
 
-# iter-02 retune: drop per-node chunk cap from 3 → 2. iter-01 showed
-# context_precision of only 0.26 — too many redundant chunks from the same
-# verbose Zettel were polluting the assembly. Cutting to 2 forces diversity
-# at the candidate stage and lets context_precision climb without hurting
-# the per-query Hit@5 (gold Zettels surfaced via the very first chunk).
-_MAX_CHUNKS_PER_NODE = 2
+# iter-03 retune: revert per-node chunk cap from 2 -> 3. iter-02 showed that
+# cap=2 starved the synthesis stage (faithfulness 1.0 -> 0.5, hallucination
+# 0 -> 0.2) because the LLM extrapolated past shrunken contexts.
+# Restoring breadth at the chunk level; precision is now policed at the
+# context-assembly stage via a similarity floor (see context/assembler.py).
+_MAX_CHUNKS_PER_NODE = 3
 
 
 class HybridRetriever:
