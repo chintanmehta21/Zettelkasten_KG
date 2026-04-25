@@ -491,12 +491,14 @@
         if (isActive) {
           child.color = '#ffffff';
           child.fontWeight = '700';
-          child.backgroundColor = 'rgba(8, 12, 24, 0.85)';
-          child.strokeColor = '#000';
-          child.strokeWidth = 0.4;
-          child.padding = 1.6;
-          child.borderWidth = 0.12;
-          child.borderColor = 'rgba(255, 255, 255, 0.14)';
+          child.fontSize = 120;
+          child.textHeight = 2.4;
+          child.backgroundColor = 'rgba(8, 12, 24, 0.92)';
+          child.strokeColor = 'rgba(0, 0, 0, 0.6)';
+          child.strokeWidth = 0.04;
+          child.padding = 1.4;
+          child.borderWidth = 0.08;
+          child.borderColor = 'rgba(255, 255, 255, 0.18)';
           child.borderRadius = 0.8;
         } else {
           child.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
@@ -562,24 +564,27 @@
           group.add(ring);
         }
 
-        // Text label — shorter, smaller, tighter to node
+        // Text label — high-DPI canvas (fontSize 120 px) scaled down to
+        // textHeight world-units gives crisp edges at any zoom. strokeWidth
+        // is a fraction of fontSize in SpriteText — keep it ≤ 0.06 or
+        // adjacent letters' strokes merge and the title looks garbled.
         const label = isActive ? _wrapTitle(node.name || '', 32) : getShortLabel(node);
         const sprite = new SpriteText(label);
         sprite.fontFace = 'Inter, -apple-system, sans-serif';
         sprite.fontWeight = '600';
-        sprite.fontSize = 90;
-        sprite.textHeight = 1.8;
+        sprite.fontSize = isActive ? 120 : 90;
+        sprite.textHeight = isActive ? 2.4 : 1.8;
         sprite.__isLabel = true;
 
         if (isActive) {
           sprite.color = '#ffffff';
           sprite.fontWeight = '700';
-          sprite.backgroundColor = 'rgba(8, 12, 24, 0.85)';
-          sprite.strokeColor = '#000';
-          sprite.strokeWidth = 0.4;
-          sprite.padding = 1.6;
-          sprite.borderWidth = 0.12;
-          sprite.borderColor = 'rgba(255, 255, 255, 0.14)';
+          sprite.backgroundColor = 'rgba(8, 12, 24, 0.92)';
+          sprite.strokeColor = 'rgba(0, 0, 0, 0.6)';
+          sprite.strokeWidth = 0.04;
+          sprite.padding = 1.4;
+          sprite.borderWidth = 0.08;
+          sprite.borderColor = 'rgba(255, 255, 255, 0.18)';
           sprite.borderRadius = 0.8;
         } else {
           sprite.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
