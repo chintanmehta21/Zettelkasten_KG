@@ -221,6 +221,7 @@
       .then(() => {
         isLoggedIn = true;
         setPersonalEnabled(true);
+        loadKastens();
         if (savedView === 'my') {
           currentView = 'my';
           setViewBtns('my');
@@ -1006,6 +1007,119 @@
     return normalized || 'web';
   }
 
+  // ---- Kastens filter section ----
+  function renderKastensSection() {
+    const body = document.getElementById('filter-kastens-body');
+    if (!body) return;
+    body.innerHTML = '';
+    const sectionEl = body.closest('.kg-filter-section');
+    // Greyed when view is Global (Kastens are personal scope).
+    // Whole section is hover-greyed with the tooltip "Sign in to switch"
+    // (mirrors the greyed Personal segment in the toggle).
+    if (currentView === 'global') {
+      if (sectionEl) {
+        sectionEl.classList.add('disabled-scope');
+        sectionEl.setAttribute('title', 'Sign in to switch');
+        sectionEl.setAttribute('aria-disabled', 'true');
+        // Capture-phase click handler: any click anywhere in the section
+        // opens login (logged-out) or switches view to Personal (logged-in).
+        sectionEl.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isLoggedIn) { openLoginModalFromKG(); return; }
+          currentView = 'my';
+          localStorage.setItem(STORAGE_KEY_VIEW, 'my');
+          setViewBtns('my');
+          loadGraphData();
+          setTimeout(renderKastensSection, 0);
+        };
+      }
+      // Body content: a single non-interactive hint (the section's onclick
+      // captures the gesture for both logged-in and logged-out users).
+      const hint = document.createElement('p');
+      hint.className = 'kg-filter-empty';
+      hint.textContent = 'Sign in to switch';
+      body.appendChild(hint);
+      return;
+    }
+    if (sectionEl) {
+      sectionEl.classList.remove('disabled-scope');
+      sectionEl.removeAttribute('title');
+      sectionEl.removeAttribute('aria-disabled');
+      sectionEl.onclick = null;
+    }
+    if (!isLoggedIn) {
+      const link = document.createElement('a');
+      link.className = 'kg-filter-cta-link';
+      link.textContent = 'Sign in to filter by Kasten';
+      link.href = '#';
+      link.addEventListener('click', (e) => { e.preventDefault(); openLoginModalFromKG(); });
+      body.appendChild(link);
+      return;
+    }
+    if (kastenList.length === 0) {
+      const link = document.createElement('a');
+      link.className = 'kg-filter-cta-link';
+      link.textContent = 'No Kastens yet — Create one →';
+      link.href = '/home/kastens';
+      body.appendChild(link);
+      return;
+    }
+    kastenList.forEach(k => {
+      const id = 'flt-kst-' + k.id;
+      const lbl = document.createElement('label');
+      lbl.className = 'kg-filter-item';
+      const checked = activeKastens.has(k.id);
+      if (!checked) lbl.classList.add('unchecked');
+      lbl.innerHTML =
+        '<input type="checkbox" id="' + id + '" value="' + k.id + '"' + (checked ? ' checked' : '') + '>' +
+        '<span class="kg-filter-dot" style="background:' + (k.color || '#14b8a6') + '"></span>' +
+        '<span>' + escapeHtml(k.name) + '</span>';
+      lbl.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (activeKastens.has(k.id)) {
+          activeKastens.delete(k.id);
+        } else {
+          activeKastens.add(k.id);
+          // Lazy-load membership on first selection.
+          if (!kastenMembership.has(k.id)) {
+            try {
+              const resp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(k.id) + '/members?limit=1000', { headers: authHeaders() });
+              if (resp.ok) {
+                const data = await resp.json();
+                const ids = new Set((data.members || []).map(m => m.node_id));
+                kastenMembership.set(k.id, ids);
+              } else {
+                kastenMembership.set(k.id, new Set());
+              }
+            } catch (_e) {
+              kastenMembership.set(k.id, new Set());
+            }
+          }
+        }
+        lbl.classList.toggle('unchecked', !activeKastens.has(k.id));
+        const cb = lbl.querySelector('input');
+        if (cb) cb.checked = activeKastens.has(k.id);
+        applyFilters();
+      });
+      body.appendChild(lbl);
+    });
+  }
+
+  function loadKastens() {
+    if (!isLoggedIn) { renderKastensSection(); return; }
+    fetch('/api/rag/sandboxes', { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : Promise.reject('not ok'))
+      .then(data => {
+        kastenList = (data.sandboxes || []).map(s => ({ id: s.id, name: s.name, color: s.color, member_count: s.member_count }));
+        renderKastensSection();
+      })
+      .catch(() => {
+        kastenList = [];
+        renderKastensSection();
+      });
+  }
+
   const overlayEmptyReset = document.getElementById('overlay-empty-reset');
   if (overlayEmptyReset) {
     overlayEmptyReset.addEventListener('click', () => {
@@ -1016,5 +1130,7 @@
       applyFilters();
     });
   }
+
+  renderKastensSection();
 
 })();
