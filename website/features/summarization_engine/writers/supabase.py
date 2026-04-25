@@ -28,7 +28,7 @@ from uuid import UUID
 
 from website.core.supabase_kg.models import KGNodeCreate
 from website.core.supabase_kg.repository import KGRepository
-from website.core.text_polish import polish_envelope, rewrite_tags
+from website.core.text_polish import polish, polish_envelope, rewrite_tags
 from website.features.summarization_engine.core.errors import WriterError
 from website.features.summarization_engine.core.models import SummaryResult
 from website.features.summarization_engine.writers.base import BaseWriter
@@ -62,7 +62,7 @@ class SupabaseWriter(BaseWriter):
         structured_mirror = result.model_dump(mode="json")
         node = KGNodeCreate(
             id=node_id,
-            name=result.mini_title,
+            name=polish(result.mini_title or ""),
             source_type=result.metadata.source_type.value,
             summary=_encode_summary_blob(result),
             tags=list(rewrite_tags(result.tags or [])),

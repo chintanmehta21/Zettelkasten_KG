@@ -69,7 +69,7 @@ def fetch_all_nodes() -> list[dict]:
     while True:
         url = (
             f"{SUPABASE_URL}/rest/v1/kg_nodes"
-            f"?select=id,user_id,summary,tags"
+            f"?select=id,user_id,name,summary,tags"
             f"&order=created_at.asc"
             f"&limit={page_size}"
             f"&offset={offset}"
@@ -140,12 +140,23 @@ def _polish_tags(raw_tags: list | None) -> list | None:
     return rewritten
 
 
-def update_row(row_id: str, *, summary: str | None, tags: list | None) -> None:
+def _polish_name(raw_name: str | None) -> str | None:
+    if not isinstance(raw_name, str) or not raw_name:
+        return None
+    polished = polish(raw_name)
+    if polished == raw_name:
+        return None
+    return polished
+
+
+def update_row(row_id: str, *, summary: str | None, tags: list | None, name: str | None = None) -> None:
     payload: dict = {}
     if summary is not None:
         payload["summary"] = summary
     if tags is not None:
         payload["tags"] = tags
+    if name is not None:
+        payload["name"] = name
     if not payload:
         return
     url = f"{SUPABASE_URL}/rest/v1/kg_nodes?id=eq.{row_id}"
@@ -167,41 +178,50 @@ def main() -> int:
 
     summary_changes = 0
     tag_changes = 0
+    name_changes = 0
     rows_to_update = 0
 
     for row in rows:
         rid = row["id"]
         new_summary = _polish_envelope_or_string(row.get("summary"))
         new_tags = _polish_tags(row.get("tags"))
-        if new_summary is None and new_tags is None:
+        new_name = _polish_name(row.get("name"))
+        if new_summary is None and new_tags is None and new_name is None:
             continue
         rows_to_update += 1
         if new_summary is not None:
             summary_changes += 1
         if new_tags is not None:
             tag_changes += 1
+        if new_name is not None:
+            name_changes += 1
         if args.apply:
             try:
-                update_row(rid, summary=new_summary, tags=new_tags)
-                logger.info("Updated row %s (summary=%s, tags=%s)", rid, new_summary is not None, new_tags is not None)
+                update_row(rid, summary=new_summary, tags=new_tags, name=new_name)
+                logger.info(
+                    "Updated row %s (summary=%s, tags=%s, name=%s)",
+                    rid, new_summary is not None, new_tags is not None, new_name is not None,
+                )
             except Exception as exc:
                 logger.warning("Failed to update %s: %s", rid, exc)
         else:
             logger.info(
-                "[dry-run] Would update %s (summary_changed=%s, tags_changed=%s)",
+                "[dry-run] Would update %s (summary_changed=%s, tags_changed=%s, name_changed=%s)",
                 rid,
                 new_summary is not None,
                 new_tags is not None,
+                new_name is not None,
             )
 
     mode = "APPLIED" if args.apply else "DRY-RUN"
     logger.info(
-        "%s | rows scanned=%d | rows needing update=%d | summary deltas=%d | tag deltas=%d",
+        "%s | rows scanned=%d | rows needing update=%d | summary deltas=%d | tag deltas=%d | name deltas=%d",
         mode,
         len(rows),
         rows_to_update,
         summary_changes,
         tag_changes,
+        name_changes,
     )
     return 0
 

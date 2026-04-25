@@ -33,7 +33,7 @@ import json
 import re
 from typing import Any
 
-from website.core.text_polish import polish_envelope, rewrite_tags
+from website.core.text_polish import polish, polish_envelope, rewrite_tags
 
 
 # Raw pipeline schema keys → human-facing labels rendered in the zettel modal.
@@ -1345,5 +1345,10 @@ def normalize_graph_nodes(graph_dict: dict[str, Any]) -> dict[str, Any]:
             try:
                 node["tags"] = rewrite_tags(node.get("tags"))
             except Exception:
-                continue
+                pass
+        if isinstance(node.get("name"), str) and node["name"]:
+            try:
+                node["name"] = polish(node["name"])
+            except Exception:
+                pass
     return graph_dict

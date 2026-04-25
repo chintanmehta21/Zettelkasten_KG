@@ -643,3 +643,19 @@ def test_normalize_graph_nodes_rewrites_reddit_tag():
     out = normalize_graph_nodes(g)
     assert out["nodes"][0]["tags"] == ["r/hinduism", "discussion"]
     assert out["nodes"][1]["tags"] == ["ml"]
+
+
+def test_normalize_graph_nodes_polishes_node_name():
+    from website.core.summary_normalizer import normalize_graph_nodes
+    g = {
+        "nodes": [
+            {"id": "yt-1", "summary": "{}", "name": "Andrej Karpathy s LLM Introduction", "source_type": "youtube"},
+            {"id": "yt-2", "summary": "{}", "name": "LeCun s Vision Human Level", "source_type": "youtube"},
+            {"id": "yt-3", "summary": "{}", "name": "Already Polished's Title", "source_type": "youtube"},
+        ]
+    }
+    out = normalize_graph_nodes(g)
+    assert out["nodes"][0]["name"] == "Andrej Karpathy's LLM Introduction"
+    assert out["nodes"][1]["name"] == "LeCun's Vision Human Level"
+    # Idempotent — already-polished name is unchanged.
+    assert out["nodes"][2]["name"] == "Already Polished's Title"

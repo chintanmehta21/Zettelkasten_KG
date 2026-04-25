@@ -1317,6 +1317,25 @@ body {
 .zettels-summary-h2:hover .zettels-summary-h2-chevron {
     color: var(--accent, #14b8a6);
 }
+/* UI-7: when an H1 is collapsed, tighten its vertical rhythm and add a
+   subtle hairline shadow under the row so adjacent collapsed sections
+   don't float in dead space. Expanded h2s keep their generous margin. */
+.zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.55rem;
+    margin-bottom: 0;
+    padding-top: 0.32rem;
+    padding-bottom: 0.42rem;
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    transition: margin 200ms ease, padding 200ms ease, box-shadow 200ms ease;
+}
+.zettels-summary-h2[aria-expanded="false"]:first-child {
+    margin-top: 0.25rem;
+}
+.zettels-summary-h2[aria-expanded="false"]::before {
+    top: 0.42rem;
+    bottom: 0.42rem;
+    opacity: 0.7;
+}
 
 /* Collapsible content panel that follows each H1. JS toggles
    ``data-collapsed`` on the panel; CSS animates a smooth height/opacity

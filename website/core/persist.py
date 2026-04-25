@@ -512,7 +512,7 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
         return None
     try:
         return add_node(
-            title=str(payload["title"]),
+            title=polish(str(payload["title"])),
             source_type=str(payload["source_type"]),
             source_url=str(payload["source_url"]),
             summary=_encode_summary_payload(payload),
@@ -672,7 +672,7 @@ def _build_supabase_node_payload(
         node_metadata = {**caller_metadata, **node_metadata}
     return KGNodeCreate(
         id=node_id,
-        name=str(payload["title"]),
+        name=polish(str(payload["title"])),
         source_type=str(payload["source_type"]),
         tags=list(rewrite_tags(payload.get("tags", []) or [])),
         url=str(payload["source_url"]),

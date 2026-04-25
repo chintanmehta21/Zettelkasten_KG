@@ -317,6 +317,8 @@ class KGRepository:
         payload["user_id"] = str(user_id)
         payload["tags"] = clean_tags
         payload["source_type"] = _normalize_source_type(payload["source_type"])
+        if isinstance(payload.get("name"), str) and payload["name"]:
+            payload["name"] = polish(payload["name"])
 
         resp = self._insert_node_with_schema_compat(payload)
         created = KGNode(**resp.data[0])

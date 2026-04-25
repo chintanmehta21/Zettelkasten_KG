@@ -113,6 +113,8 @@ def add_node(
 
     Automatically discovers links to existing nodes based on shared tags.
     """
+    from website.core.text_polish import polish
+    title = polish(title) if isinstance(title, str) else title
     graph = _load()
     normalized_source = _normalize_source_type(source_type)
     prefix = _SOURCE_PREFIX.get(normalized_source, "web")
