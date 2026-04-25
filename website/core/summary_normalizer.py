@@ -75,7 +75,13 @@ def _pretty_heading(raw: str | None) -> str:
     key = str(raw).strip().lower()
     if key in _RAW_HEADING_MAP:
         return _RAW_HEADING_MAP[key]
-    return re.sub(r"_+", " ", str(raw)).strip().capitalize()
+    # Preserve original casing for human-authored headings (e.g. proper nouns,
+    # book titles, ALLCAPS acronyms). Only desnake when the raw heading is
+    # purely lowercase + underscores (i.e. came from the schema, not the LLM).
+    text = re.sub(r"_+", " ", str(raw)).strip()
+    if text and text == text.lower() and ("_" in str(raw) or " " not in str(raw).strip()):
+        return text[:1].upper() + text[1:]
+    return text
 
 
 def _strip_timestamp(label: str | None) -> str:
@@ -174,12 +180,22 @@ def _normalize_section(section: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _from_list(detailed: list) -> list[dict[str, Any]]:
-    """Canonical list shape — just normalize each section."""
+    """Canonical list shape — normalize each section, then promote a leading
+    "Core argument"/"Thesis" section into a proper Overview wrapper so every
+    detailed summary opens on the same anchor regardless of upstream shape."""
     out: list[dict[str, Any]] = []
     for s in detailed:
         ns = _normalize_section(s) if isinstance(s, dict) else None
         if ns is not None:
             out.append(ns)
+    if out and out[0].get("heading") == "Core argument":
+        first = out[0]
+        bullets = first.get("bullets") or []
+        out[0] = {
+            "heading": "Overview",
+            "bullets": list(bullets),
+            "sub_sections": dict(first.get("sub_sections") or {}),
+        }
     return out
 
 
@@ -194,12 +210,13 @@ def _from_newsletter_dict(d: dict[str, Any]) -> list[dict[str, Any]]:
     """
     out: list[dict[str, Any]] = []
     overview_subs: dict[str, list[str]] = {}
+    overview_bullets: list[str] = []
+    if d.get("issue_thesis"):
+        overview_bullets.append(str(d["issue_thesis"]).strip())
     if d.get("publication_identity"):
         overview_subs["Publication"] = [str(d["publication_identity"]).strip()]
-    if d.get("issue_thesis"):
-        overview_subs["Core argument"] = [str(d["issue_thesis"]).strip()]
-    if overview_subs:
-        out.append({"heading": "Overview", "bullets": [], "sub_sections": overview_subs})
+    if overview_bullets or overview_subs:
+        out.append({"heading": "Overview", "bullets": overview_bullets, "sub_sections": overview_subs})
     for s in d.get("sections") or []:
         if not isinstance(s, dict):
             continue
@@ -226,11 +243,11 @@ def _from_youtube_dict(d: dict[str, Any]) -> list[dict[str, Any]]:
     per product decision.
     """
     out: list[dict[str, Any]] = []
-    overview_subs: dict[str, list[str]] = {}
+    overview_bullets: list[str] = []
     if d.get("thesis"):
-        overview_subs["Core argument"] = [str(d["thesis"]).strip()]
-    if overview_subs:
-        out.append({"heading": "Overview", "bullets": [], "sub_sections": overview_subs})
+        overview_bullets.append(str(d["thesis"]).strip())
+    if overview_bullets:
+        out.append({"heading": "Overview", "bullets": overview_bullets, "sub_sections": {}})
     chapter_subs: dict[str, list[str]] = {}
     for chap in d.get("chapters_or_segments") or []:
         if not isinstance(chap, dict):
@@ -340,6 +357,19 @@ def _from_markdown(md: str) -> list[dict[str, Any]]:
     return normalized
 
 
+def _promote_core_argument_to_overview(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """If the first section is a bare "Core argument" / "Thesis", relabel it
+    "Overview" so the modal always opens on the same anchor heading. Idempotent."""
+    if sections and sections[0].get("heading") == "Core argument":
+        first = sections[0]
+        sections[0] = {
+            "heading": "Overview",
+            "bullets": list(first.get("bullets") or []),
+            "sub_sections": dict(first.get("sub_sections") or {}),
+        }
+    return sections
+
+
 def _detect_detailed_shape(detailed: Any) -> str:
     if isinstance(detailed, list):
         return "list"
@@ -365,10 +395,27 @@ def _detect_detailed_shape(detailed: Any) -> str:
     return "unknown"
 
 
+def _from_plain_string(text: str) -> list[dict[str, Any]]:
+    """Plain (non-markdown, non-JSON) detailed_summary — wrap as a single
+    Overview section split into one bullet per sentence. Guarantees the modal
+    always shows substantive top-level content for legacy rows where the
+    pipeline only produced a single prose paragraph."""
+    cleaned = text.strip()
+    if not cleaned:
+        return []
+    # Split on sentence boundaries; fall back to the whole string if there
+    # are no terminators (so we never lose content).
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", cleaned)
+    bullets = [p.strip() for p in parts if p.strip()]
+    if not bullets:
+        bullets = [cleaned]
+    return [{"heading": "Overview", "bullets": bullets, "sub_sections": {}}]
+
+
 def _normalize_detailed(detailed: Any) -> list[dict[str, Any]]:
     shape = _detect_detailed_shape(detailed)
     if shape == "list":
-        return _from_list(detailed)
+        return _promote_core_argument_to_overview(_from_list(detailed))
     if shape == "newsletter_dict":
         return _from_newsletter_dict(detailed)
     if shape == "youtube_dict":
@@ -376,7 +423,9 @@ def _normalize_detailed(detailed: Any) -> list[dict[str, Any]]:
     if shape == "generic_dict":
         return _from_generic_dict(detailed)
     if shape == "markdown":
-        return _from_markdown(detailed)
+        return _promote_core_argument_to_overview(_from_markdown(detailed))
+    if shape == "plain_string":
+        return _from_plain_string(detailed)
     if shape.startswith("json_"):
         # detailed is a JSON string of a known shape — parse and recurse
         try:
@@ -430,6 +479,38 @@ def normalize_summary_for_wire(raw: Any, source_type: str | None = None) -> str:
     envelope["closing_remarks"] = str(source.get("closing_remarks") or source.get("closing_takeaway") or "").strip()
     detailed_raw = source.get("detailed_summary")
     envelope["detailed_summary"] = _normalize_detailed(detailed_raw) if detailed_raw is not None else []
+
+    # Lift a closing-remark equivalent from inside the detailed dict when the
+    # top-level envelope didn't carry one. Newsletter writers stash CTA inside
+    # ``detailed_summary``, YouTube writers stash ``closing_takeaway`` there.
+    # Without this lift the modal renders an empty closing-remarks section.
+    if not envelope["closing_remarks"] and isinstance(detailed_raw, dict):
+        nested_close = (
+            detailed_raw.get("closing_remarks")
+            or detailed_raw.get("closing_takeaway")
+            or detailed_raw.get("cta")
+            or ""
+        )
+        if isinstance(nested_close, str) and nested_close.strip():
+            envelope["closing_remarks"] = nested_close.strip()
+
+    # Defensive: if the detailed list is non-empty but has no Overview anchor,
+    # synthesize one from brief_summary so the modal opens on a stable heading.
+    detailed_list = envelope["detailed_summary"]
+    if detailed_list and isinstance(detailed_list, list):
+        has_overview = any(
+            isinstance(s, dict) and s.get("heading") == "Overview" for s in detailed_list
+        )
+        if not has_overview and envelope["brief_summary"]:
+            detailed_list.insert(
+                0,
+                {
+                    "heading": "Overview",
+                    "bullets": [envelope["brief_summary"]],
+                    "sub_sections": {},
+                },
+            )
+
     return json.dumps(envelope, ensure_ascii=False)
 
 
