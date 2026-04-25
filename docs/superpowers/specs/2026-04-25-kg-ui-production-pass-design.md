@@ -310,3 +310,16 @@ This spec captures user-confirmed decisions:
 - ✅ Greyed Personal segment opens login modal (same UX as global Login)
 - ✅ Kastens filter section greyed when view = Global; unified "Sign in to switch" tooltip (same as greyed Personal toggle); click → login modal (logged-out) or switch to Personal (logged-in)
 - ✅ Controls hint overlay text: NOT adopted
+
+## 9 — Phase-0 discovery findings
+
+- `_render_with_shell(path)` confirmed in `website/app.py:50-65`; replaces `<!--ZK_HEADER-->` and `<!--ZK_FOOTER-->`. Used by `/`, `/home`, `/home/zettels`, `/home/kastens`.
+- **Deviation from plan assumption:** `id="login-modal"` lives ONLY in `website/static/index.html` (the landing page), NOT in `website/features/header/header.html`. Other shell-rendered pages (`/home`, etc.) currently have no in-page login affordance — they redirect to `/` for auth. `auth.js` is also only loaded by `static/index.html`.
+- **Implication:** the test in Plan Task 1.1 was written expecting `id="login-modal"` after shell injection. Adapted: the test now asserts the header partial DOM (`data-zk-header`) is injected (i.e. the shell ran). The `openLoginModalFromKG()` JS helper falls back to navigating to `/?return=/knowledge-graph` when no in-page login button is found, which preserves the spirit (logged-out users can sign in) without forcing a cross-page architectural change.
+- Sandbox API contracts confirmed in `website/api/sandbox_routes.py`:
+  - `GET /api/rag/sandboxes` → `{"sandboxes": [...]}` with id/name/color/member_count fields. Member node IDs not included.
+  - `GET /api/rag/sandboxes/{id}/members?limit=N` → `{"members": [{"node_id": ..., "node": {...}}]}`.
+  - `POST /api/rag/sandboxes/{id}/members` body `{"node_ids": [...]}` → `{"status": "ok", "added_count": N, "members": [...]}`.
+  - `POST /api/rag/sandboxes` body `{"name": "..."}` → `{"sandbox": {...}}`.
+- Three.js `RingGeometry(innerR, outerR, segments)` and `mesh.lookAt(camera.position)` are part of the Three.js core (`three@0.160.1` already loaded by KG); no new dependency needed.
+- Baseline test count (`pytest tests/ --collect-only`): **1214 tests collected**. New tests added in this plan must keep this ≥ 1214.
