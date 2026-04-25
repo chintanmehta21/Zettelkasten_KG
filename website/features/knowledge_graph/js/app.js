@@ -349,6 +349,7 @@
   }
 
   let nodeDegrees = {};
+  const _activeNodeIds = new Set();
   let _maxPagerank = 0;
 
   // ---- Load data ----
@@ -499,20 +500,18 @@
         mesh.scale.setScalar(radius);
         group.add(mesh);
 
-        // Spotlight ring
+        // Spotlight ring (billboarded mesh — never picks up scale-stuck bug)
         if (isSpotlight) {
-          const ringKey = 'ringSpr_' + color;
-          if (!_matCache[ringKey]) {
-            _matCache[ringKey] = new THREE.SpriteMaterial({
-              map: _matCache['_ringTex'],
-              color: new THREE.Color(color).multiplyScalar(0.65),
-              transparent: true,
-              opacity: 0.8,
-              depthWrite: false
-            });
-          }
-          const ring = new THREE.Sprite(_matCache[ringKey]);
-          ring.scale.set(radius * 3, radius * 3, 1);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.5,
+            depthWrite: false,
+            side: THREE.DoubleSide
+          });
+          const ring = new THREE.Mesh(new THREE.RingGeometry(radius * 1.4, radius * 1.7, 48), ringMat);
+          ring.__isRing = true;
+          ring.__nodeRadius = radius;
           group.add(ring);
         }
 
@@ -580,9 +579,13 @@
         const prevHover = hoverNode;
         hoverNode = node || null;
         container.style.cursor = node ? 'pointer' : 'default';
-        // Only update the two affected nodes in-place (not a full rebuild)
         if (prevHover && prevHover !== node) _updateNodeVisual(prevHover);
-        if (node) _updateNodeVisual(node);
+        if (node) {
+          _activeNodeIds.add(node.id);
+          _updateNodeVisual(node);
+        } else if (prevHover) {
+          _activeNodeIds.delete(prevHover.id);
+        }
       })
 
       // ---- Physics — fast convergence ----
@@ -650,6 +653,9 @@
         if (!obj || !obj.children) return;
         for (var i = 0; i < obj.children.length; i++) {
           var child = obj.children[i];
+          if (child.__isRing) {
+            child.lookAt(cam.position);
+          }
           if (!child.__isLabel) continue;
           if (child.__origSy === undefined) {
             child.__origSy = child.scale.y;
@@ -674,6 +680,8 @@
   let _panelOpenTimer = null;
 
   function handleNodeClick(node) {
+    _activeNodeIds.clear();
+    if (node) _activeNodeIds.add(node.id);
     const prevSelected = selectedNode;
     selectedNode = node;
     graph.controls().autoRotate = false;
@@ -710,6 +718,7 @@
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
     closePanel();
     selectedNode = null;
+    _activeNodeIds.clear();
     highlightNodes.clear();
     _refreshAllNodeVisuals();
   }
