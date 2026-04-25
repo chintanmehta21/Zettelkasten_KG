@@ -778,24 +778,72 @@
   }
 
   // ---- Search ----
+  const searchClear = document.getElementById('search-clear');
+  const searchCount = document.getElementById('search-count');
+  let _searchDebounce = null;
+
+  function _applySearch(query) {
+    highlightNodes.clear();
+    selectedNode = null;
+    let matchCount = 0;
+    if (query.length > 0) {
+      graphData.nodes.forEach(node => {
+        const nodeTags = Array.isArray(node.tags) ? node.tags : [];
+        const nodeSummary = extractBriefFromSummary(node.summary);
+        const match = (node.name || '').toLowerCase().includes(query) ||
+                      nodeTags.some(t => String(t).toLowerCase().includes(query)) ||
+                      nodeSummary.toLowerCase().includes(query);
+        if (match) { highlightNodes.add(node.id); matchCount++; }
+      });
+    }
+    // Count badge.
+    if (searchCount) {
+      if (query.length === 0) {
+        searchCount.classList.add('hidden');
+        searchCount.textContent = '';
+      } else {
+        searchCount.classList.remove('hidden');
+        searchCount.textContent = matchCount === 0 ? '0' : String(matchCount);
+      }
+    }
+    // Clear button.
+    if (searchClear) {
+      searchClear.classList.toggle('hidden', query.length === 0);
+    }
+    _refreshAllNodeVisuals();
+    // Auto-frame matched nodes.
+    if (matchCount === 1) {
+      const only = graphData.nodes.find(n => highlightNodes.has(n.id));
+      if (only) {
+        const cam = graph.camera();
+        const nx = only.x || 0, ny = only.y || 0, nz = only.z || 0;
+        const dx = cam.position.x - nx, dy = cam.position.y - ny, dz = cam.position.z - nz;
+        const len = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
+        const targetDist = 100;
+        graph.cameraPosition({
+          x: nx + (dx/len)*targetDist,
+          y: ny + (dy/len)*targetDist,
+          z: nz + (dz/len)*targetDist
+        }, only, 800);
+      }
+    } else if (matchCount > 1) {
+      graph.zoomToFit(800, 80, n => highlightNodes.has(n.id));
+    }
+  }
+
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.toLowerCase().trim();
-      highlightNodes.clear();
-      selectedNode = null;
-
-      if (query.length > 0) {
-        graphData.nodes.forEach(node => {
-          const nodeTags = Array.isArray(node.tags) ? node.tags : [];
-          const nodeSummary = extractBriefFromSummary(node.summary);
-          const match = node.name.toLowerCase().includes(query) ||
-                        nodeTags.some(t => String(t).toLowerCase().includes(query)) ||
-                        nodeSummary.toLowerCase().includes(query);
-          if (match) highlightNodes.add(node.id);
-        });
-      }
-
-      _refreshAllNodeVisuals();
+      if (_searchDebounce) clearTimeout(_searchDebounce);
+      _searchDebounce = setTimeout(() => _applySearch(query), 250);
+    });
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      if (!searchInput) return;
+      searchInput.value = '';
+      _applySearch('');
+      searchInput.focus();
     });
   }
 
