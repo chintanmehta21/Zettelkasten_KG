@@ -1,0 +1,69 @@
+# YouTube held-out queries for rag_eval iter-05 generalization test.
+# SEALED via .heldout_sealed sentinel until the final iter unseals.
+# Target Zettel (NOT in seed Kasten):
+#   yt-zero-day-market-covert-exploits — covert zero-day market commentary
+
+queries:
+  - id: h1
+    question: "What ethical and legal tiers does the zero-day vulnerability market operate across, and what types of buyers participate in each tier?"
+    gold_node_ids:
+      - yt-zero-day-market-covert-exploits
+    gold_ranking:
+      - yt-zero-day-market-covert-exploits
+    reference_answer: |
+      The zero-day market spans a spectrum of legal and ethical tiers. At the white-hat end, vendor bug
+      bounty programs and platforms like Bugtraq pay researchers for responsible disclosure that helps
+      patch vulnerabilities. In the gray middle sit commercial brokers (e.g., Zerodium and Operation Zero)
+      that buy exploits and resell them — primarily to government and law enforcement agencies for
+      surveillance, lawful interception, and offensive cyber operations — under contractual restrictions
+      that vary by jurisdiction. At the black-hat end, criminal markets (LockBit-style ransomware groups
+      and unregulated forums) buy and use exploits for purely illegal purposes. The same vulnerability
+      can move between tiers depending on who finds it and what they choose to do with it, which is what
+      makes the ecosystem covert and ethically blurred.
+    atomic_facts:
+      - "The zero-day market operates across blurred legal and ethical tiers."
+      - "Commercial brokers like Zerodium and Operation Zero buy exploits and sell to governments."
+      - "Criminal groups like LockBit also operate in the unregulated black-market tier."
+
+  - id: h2
+    question: "What role do brokers like Zerodium play in the zero-day ecosystem, and how do prices vary across exploit types?"
+    gold_node_ids:
+      - yt-zero-day-market-covert-exploits
+    gold_ranking:
+      - yt-zero-day-market-covert-exploits
+    reference_answer: |
+      Brokers like Zerodium serve as commercial intermediaries: they advertise standing buy-prices for
+      specific exploit categories (typically against widely deployed targets like Windows, macOS, iOS,
+      Android, and major browsers), purchase working exploits from researchers, and resell access to
+      government and law-enforcement clients. Prices are tiered by the exploit's reach and reliability.
+      Remote, zero-click, full-chain exploits against current mobile operating systems command the highest
+      payouts (often well into seven figures), because they are difficult to develop and provide silent
+      compromise. Local privilege-escalation bugs, browser sandbox escapes, and exploits against older or
+      less-deployed software pay substantially less. Reliability, persistence, and the lack of public
+      disclosure all increase the price.
+    atomic_facts:
+      - "Zerodium is a commercial broker buying and reselling zero-day exploits."
+      - "Remote zero-click full-chain mobile exploits command the highest prices."
+      - "Local privilege escalation and older-platform exploits pay much less."
+
+  - id: h3
+    question: "How does the existence of a covert zero-day market shape both nation-state cyber warfare and law-enforcement investigations?"
+    gold_node_ids:
+      - yt-zero-day-market-covert-exploits
+    gold_ranking:
+      - yt-zero-day-market-covert-exploits
+    reference_answer: |
+      The covert zero-day market materially shapes both offensive cyber warfare and law-enforcement
+      operations. For nation-states, the market provides a quiet supply chain of pre-built capabilities:
+      governments and intelligence services can buy reliable exploits rather than develop every capability
+      in-house, which compresses the timeline from intent to operational impact and underwrites silent
+      compromise of adversary infrastructure. For law enforcement, brokered zero-days enable lawful
+      surveillance of locked devices belonging to suspects in serious cases (terrorism, child exploitation,
+      organized crime) when no legal process can compel access through the vendor. The geopolitical effect
+      is that countries with funding and contracting reach gain disproportionate offensive capability, and
+      the same exploits often end up serving both intelligence collection and criminal investigations,
+      blurring the line between cyber warfare and policing.
+    atomic_facts:
+      - "Nation-states use the zero-day market as a supply chain for cyber-warfare capabilities."
+      - "Law enforcement uses brokered zero-days to surveil locked devices in serious investigations."
+      - "Wealthy or well-contracted countries gain disproportionate offensive capability through the market."

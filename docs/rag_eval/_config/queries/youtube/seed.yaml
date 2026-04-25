@@ -1,0 +1,123 @@
+# YouTube seed queries for rag_eval
+# Frozen across iters 01-04 (per spec §2). Gold node IDs reference Naruto's KG.
+# Theme: AI/ML lectures and commentary (5-Zettel coherent Kasten).
+#
+# Seed Kasten (iters 01-04):
+#   yt-andrej-karpathy-s-llm-in   — Karpathy "Intro to LLMs"
+#   yt-software-1-0-vs-software   — Karpathy "Software 2.0"
+#   yt-transformer-architecture   — Transformer architecture explainer
+#   yt-lecun-s-vision-human-lev   — LeCun's human-level AI vision (JEPA)
+#   yt-programming-workflow-is    — "Programming is debugging" workflow
+#
+# Probe Zettel added at iter-04 (cosine ~0.65 to Kasten centroid):
+#   yt-effective-public-speakin   — Patrick Winston (MIT) on effective speaking
+#
+# Held-out Zettel introduced at iter-05 with fresh queries (heldout.yaml):
+#   yt-zero-day-market-covert-exploits — Zero-day market commentary
+
+queries:
+  - id: q1
+    question: "According to Andrej Karpathy, what are the two main stages in the development of a large language model, and what does each stage accomplish?"
+    gold_node_ids:
+      - yt-andrej-karpathy-s-llm-in
+    gold_ranking:
+      - yt-andrej-karpathy-s-llm-in
+      - yt-software-1-0-vs-software
+    reference_answer: |
+      Karpathy describes a two-stage development process for large language models. First, pre-training takes
+      a transformer-based model and trains it on massive corpora of internet-scale text using next-token
+      prediction; this stage instills broad text understanding, world knowledge, and language fluency, but
+      yields a "base model" that does not naturally follow instructions. Second, fine-tuning (including
+      instruction tuning and reinforcement learning from human feedback) shapes the base model into an
+      assistant that follows instructions, refuses harmful requests, and aligns with human preferences.
+      Pre-training builds the underlying capability; fine-tuning makes that capability usable as a chat
+      assistant.
+    atomic_facts:
+      - "Large language models are fundamentally next-token predictors built on the transformer architecture."
+      - "Pre-training trains on massive text corpora to instill broad text understanding."
+      - "Fine-tuning (including instruction tuning) shapes the model to follow instructions."
+      - "The two stages produce, in order, a base model and an instruction-following assistant."
+
+  - id: q2
+    question: "What architectural change in the transformer enabled it to scale far beyond previous sequence models like RNNs and LSTMs?"
+    gold_node_ids:
+      - yt-transformer-architecture
+    gold_ranking:
+      - yt-transformer-architecture
+      - yt-andrej-karpathy-s-llm-in
+    reference_answer: |
+      The transformer replaced the sequential recurrence used by RNNs and LSTMs with a parallelizable
+      self-attention mechanism. In recurrent architectures, each position must be processed after the
+      previous one, which creates an inherent training-time bottleneck and limits how much hardware
+      parallelism can be exploited. Self-attention computes relationships between all positions in a
+      sequence simultaneously, making the forward and backward passes parallelizable across sequence
+      length. This shift removed the sequential bottleneck and enabled the training of vastly larger models
+      on much larger datasets, which became foundational for modern NLP and generative AI.
+    atomic_facts:
+      - "Transformers replace sequential recurrence with self-attention."
+      - "Self-attention is parallelizable across all positions in a sequence."
+      - "This parallelism enabled unprecedented scaling of neural networks for sequential data."
+
+  - id: q3
+    question: "How does Karpathy distinguish Software 2.0 from Software 1.0, and how does the development cycle change between them?"
+    gold_node_ids:
+      - yt-software-1-0-vs-software
+    gold_ranking:
+      - yt-software-1-0-vs-software
+      - yt-andrej-karpathy-s-llm-in
+    reference_answer: |
+      Software 1.0 is traditional explicit programming where humans write rules in languages like Python and
+      C++; the program is the source code itself. Software 2.0 is a paradigm shift where the program is a
+      neural network whose weights are learned from data via optimization (gradient descent) against an
+      objective. The development cycle changes accordingly: instead of writing code and testing it, the
+      Software 2.0 developer curates training datasets, designs neural architectures, defines loss functions,
+      and runs training jobs. The technology stack is reshaped — frameworks, accelerators (GPUs/TPUs), and
+      data tooling become central, while traditional debugging gives way to data inspection, eval-driven
+      iteration, and architecture search. Karpathy cites AlphaGo as a flagship Software 2.0 system.
+    atomic_facts:
+      - "Software 1.0 is explicit programming in languages like Python or C++."
+      - "Software 2.0 uses neural networks whose weights are learned from data."
+      - "The Software 2.0 development cycle centers on data curation and optimization rather than handwritten code."
+      - "AlphaGo is referenced as an example of the Software 2.0 paradigm."
+
+  - id: q4
+    question: "What is Yann LeCun's main critique of auto-regressive large language models, and what alternative architecture does he propose?"
+    gold_node_ids:
+      - yt-lecun-s-vision-human-lev
+    gold_ranking:
+      - yt-lecun-s-vision-human-lev
+      - yt-andrej-karpathy-s-llm-in
+    reference_answer: |
+      LeCun argues that auto-regressive large language models are fundamentally limited in achieving
+      human-level intelligence because their training objective — predicting the next token — is too narrow
+      to support the world models, planning, and reasoning that human-level cognition requires.
+      He proposes JEPA (Joint Embedding Predictive Architecture) and a broader "objective-driven AI"
+      paradigm: the system learns a predictive world model in a latent embedding space, then uses
+      energy-based reasoning and planning over that latent space to act. He sees AI's ultimate role as an
+      amplifier of human intelligence — smart assistants augmenting human creativity and problem-solving —
+      not as autonomous super-agents that replace humans.
+    atomic_facts:
+      - "Auto-regressive LLMs are limited by their next-token-prediction objective."
+      - "LeCun proposes JEPA (Joint Embedding Predictive Architecture) as an alternative."
+      - "Objective-driven AI learns predictive world models in latent embedding space."
+      - "LeCun envisions AI as an amplifier of human intelligence, not a replacement."
+
+  - id: q5
+    question: "Why does the popular perception of programming get it wrong, and what skill is most important in the actual programming workflow?"
+    gold_node_ids:
+      - yt-programming-workflow-is
+    gold_ranking:
+      - yt-programming-workflow-is
+    reference_answer: |
+      The video argues that the popular image of programming as rapid, flawless typing — the way it appears
+      in films and television — is inaccurate. In reality, the programming workflow is an iterative cycle:
+      a developer writes a small piece of code, runs it, hits an error, searches Google or Stack Overflow,
+      adjusts the code, and repeats. Most of a programmer's time is therefore spent in this debug-fix loop
+      rather than on producing new lines of code. Consequently, the most important skill is not typing speed
+      or memorizing syntax but debugging effectiveness — reading error messages carefully, isolating root
+      causes, and methodically fixing them. Productivity is dominated by how well a programmer navigates
+      the debugging cycle, not by how fast they can type.
+    atomic_facts:
+      - "The popular perception of programming as fast, flawless typing is inaccurate."
+      - "The actual workflow is an iterative debug-fix cycle involving Google and Stack Overflow."
+      - "Debugging skill is the core productivity driver, not typing speed."
