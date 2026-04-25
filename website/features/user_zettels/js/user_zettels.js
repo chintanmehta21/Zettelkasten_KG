@@ -1671,13 +1671,13 @@
 
       attachToggle(h4, panel);
       // Default state: first section expanded, all others collapsed.
+      // Apply collapse SYNCHRONOUSLY at render time — setting aria-expanded
+      // and data-collapsed directly avoids the rAF race where the modal
+      // opens with measurements still pending and sections appear expanded.
       if (firstSectionRendered) {
-        // Defer so the panel has measured layout before we collapse.
-        (function (hh, pp) {
-          requestAnimationFrame(function () {
-            setSectionExpanded(hh, pp, false);
-          });
-        })(h4, panel);
+        h4.setAttribute('aria-expanded', 'false');
+        panel.setAttribute('data-collapsed', 'true');
+        panel.style.maxHeight = '0px';
       }
       firstSectionRendered = true;
     });
