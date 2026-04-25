@@ -194,6 +194,77 @@ def _try_parse_list_of_dicts(text: str) -> list[dict] | None:
     return None
 
 
+_CHAPTER_DICT_REGEX = re.compile(
+    r'(?is)["\']?\s*title["\']?\s*:\s*["\']([^"\']+?)["\']\s*,'
+    r'\s*["\']?\s*bullets["\']?\s*:\s*\[([^\]]*?)\]'
+)
+
+
+def _split_concatenated_dicts(text: str) -> list[str]:
+    """Split a string that may contain multiple back-to-back dict literals
+    (``"{...}{...}"`` or ``"{...}, {...}"``) into individual dict candidates.
+
+    Walks the string with brace balance tracking — does not naively split on
+    ``}{`` because that breaks when bullets contain nested braces.
+    """
+    s = text.strip()
+    if not s:
+        return []
+    out: list[str] = []
+    depth = 0
+    start = -1
+    in_str = False
+    quote_ch = ""
+    escape = False
+    for i, ch in enumerate(s):
+        if in_str:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == quote_ch:
+                in_str = False
+            continue
+        if ch in ('"', "'"):
+            in_str = True
+            quote_ch = ch
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start != -1:
+                    out.append(s[start:i + 1])
+                    start = -1
+    return out
+
+
+def _regex_extract_chapter(text: str) -> dict | None:
+    """Last-ditch chapter extraction: regex out ``"title": "..."`` and
+    ``"bullets": [...]`` when JSON / literal_eval both fail (typically
+    because of unescaped quotes in the bullet bodies, e.g. ``print("hello")``).
+
+    Returns a synthetic dict with ``title`` and ``bullets`` fields so the
+    caller can ingest it identically to a parsed dict.
+    """
+    m = _CHAPTER_DICT_REGEX.search(text)
+    if not m:
+        return None
+    title = m.group(1).strip()
+    bullets_blob = m.group(2)
+    # Split bullet items on quote-comma-quote boundaries, then strip quotes.
+    raw_items = re.findall(r'["\']((?:\\.|[^"\\\'])+)["\']', bullets_blob)
+    bullets = [b.strip() for b in raw_items if b.strip()]
+    if not title:
+        return None
+    return {"title": title, "bullets": bullets}
+
+
 def _expand_json_string_bullets(section: dict[str, Any]) -> dict[str, Any]:
     """Chapter bullets sometimes arrive as JSON strings of
     ``{"timestamp": "...", "title": "...", "bullets": [...]}``. Expand each
@@ -203,15 +274,20 @@ def _expand_json_string_bullets(section: dict[str, Any]) -> dict[str, Any]:
       * Python-repr (single-quoted) dict bullets via ``ast.literal_eval``.
       * A single-element list whose only entry is a JSON string carrying
         multiple chapter dicts (``"[{...}, {...}]"``).
+      * A single bullet string carrying multiple back-to-back dicts
+        (``"{...}{...}"``).
+      * Sub-section values whose entries are dict-shaped JSON strings — the
+        function recurses into ``sub_sections`` and rebuilds them too, so a
+        ``Chapter walkthrough`` sub whose value is a list of stringified
+        dicts gets unwrapped into a proper ``{title: bullets}`` mapping.
       * Surrounding whitespace / wrapping quotes around the blob.
+      * Last-ditch regex extraction of ``title``/``bullets`` when JSON +
+        ``ast.literal_eval`` both fail (broken-quote payloads).
     """
-    bullets = section.get("bullets") or []
-    if not bullets:
-        return section
-    subs: dict[str, list[str]] = {}
+    subs_acc: dict[str, list[str]] = {}
     leftover: list[str] = []
 
-    def _ingest(parsed: dict) -> bool:
+    def _ingest_into(target: dict[str, list[str]], parsed: dict) -> bool:
         title = _strip_timestamp(str(parsed.get("title") or "").strip())
         if not title:
             return False
@@ -222,56 +298,142 @@ def _expand_json_string_bullets(section: dict[str, Any]) -> dict[str, Any]:
         if not sub_list and parsed.get("summary"):
             sub_list = [str(parsed["summary"]).strip()]
         key, idx = title, 2
-        while key in subs:
+        while key in target:
             key = f"{title} ({idx})"
             idx += 1
-        subs[key] = sub_list
+        target[key] = sub_list
         return True
 
+    def _try_expand_one(bullet_text: str, target: dict[str, list[str]]) -> bool:
+        """Attempt to parse ``bullet_text`` as one or more dict literals and
+        ingest into ``target``. Returns True if any ingest succeeded."""
+        t = bullet_text.strip()
+        # Strip surrounding quotes that sometimes wrap the blob.
+        if len(t) >= 2 and t[0] == t[-1] and t[0] in ("'", '"'):
+            t = t[1:-1].strip()
+        if not (t.startswith("{") or t.startswith("[")):
+            return False
+        ok_any = False
+        # Try list-of-dicts first.
+        if t.startswith("["):
+            lst = _try_parse_list_of_dicts(t)
+            if lst:
+                for item in lst:
+                    if _ingest_into(target, item):
+                        ok_any = True
+                if ok_any:
+                    return True
+        # Try single dict.
+        parsed = _try_parse_dict(t)
+        if parsed and _ingest_into(target, parsed):
+            return True
+        # Try splitting concatenated dicts.
+        chunks = _split_concatenated_dicts(t)
+        if len(chunks) > 1:
+            for chunk in chunks:
+                p = _try_parse_dict(chunk)
+                if p and _ingest_into(target, p):
+                    ok_any = True
+                else:
+                    rx = _regex_extract_chapter(chunk)
+                    if rx and _ingest_into(target, rx):
+                        ok_any = True
+            if ok_any:
+                return True
+        # Last-ditch regex.
+        rx = _regex_extract_chapter(t)
+        if rx and _ingest_into(target, rx):
+            return True
+        return False
+
+    bullets = section.get("bullets") or []
     for b in bullets:
         if not isinstance(b, str):
             leftover.append(str(b))
             continue
         t = b.strip()
+        # Quick-reject: only attempt parse on bullets that look dict-shaped.
         if not (t.startswith("{") or t.startswith("[")
                 or t.startswith("'{") or t.startswith('"{')
                 or t.startswith("'[") or t.startswith('"[')):
             leftover.append(b)
             continue
-        # Try list-of-dicts crammed into one bullet first.
-        if t.lstrip("'\" ").startswith("["):
-            lst = _try_parse_list_of_dicts(t.strip("'\" "))
-            if lst:
-                ok_any = False
-                for item in lst:
-                    if _ingest(item):
-                        ok_any = True
-                if ok_any:
-                    continue
-        parsed = _try_parse_dict(t)
-        if parsed is None or not _ingest(parsed):
+        if not _try_expand_one(t, subs_acc):
             leftover.append(b)
-    if not subs:
-        return section
-    merged: dict[str, list[str]] = {}
+
+    # Recurse into sub_sections — convert any dict-shaped string entries into
+    # proper sub-sections, replacing the original key with the unwrapped
+    # chapter titles when at least one entry expanded.
     existing = section.get("sub_sections") or {}
+    rebuilt_subs: dict[str, list[str]] = {}
     if isinstance(existing, dict):
         for k, v in existing.items():
-            merged[str(k)] = list(v) if isinstance(v, list) else [str(v)]
-    for k, v in subs.items():
-        merged[k] = v
+            values = list(v) if isinstance(v, list) else [str(v)]
+            inner_subs: dict[str, list[str]] = {}
+            kept_values: list[str] = []
+            for item in values:
+                if not isinstance(item, str):
+                    kept_values.append(str(item))
+                    continue
+                t = item.strip()
+                if (t.startswith("{") or t.startswith("[")
+                        or t.startswith("'{") or t.startswith('"{')
+                        or t.startswith("'[") or t.startswith('"[')):
+                    if _try_expand_one(t, inner_subs):
+                        continue
+                kept_values.append(item)
+            if inner_subs:
+                # Drop the original key entirely if it was a chapter-walkthrough
+                # placeholder (its content was structured chapter dicts, not
+                # narrative bullets). Inject the expanded chapter titles as
+                # peer sub-sections.
+                if kept_values:
+                    rebuilt_subs[str(k)] = kept_values
+                for ck, cv in inner_subs.items():
+                    target_key, idx = ck, 2
+                    while target_key in rebuilt_subs:
+                        target_key = f"{ck} ({idx})"
+                        idx += 1
+                    rebuilt_subs[target_key] = cv
+            else:
+                rebuilt_subs[str(k)] = values
+
+    # Merge top-level chapter expansions into the rebuilt sub-sections map.
+    for k, v in subs_acc.items():
+        target_key, idx = k, 2
+        while target_key in rebuilt_subs:
+            target_key = f"{k} ({idx})"
+            idx += 1
+        rebuilt_subs[target_key] = v
+
+    if not subs_acc and rebuilt_subs == existing:
+        # No-op fast path: nothing changed.
+        return section
+
     return {
         "heading": section.get("heading"),
         "bullets": leftover,
-        "sub_sections": merged,
+        "sub_sections": rebuilt_subs,
     }
 
 
 def _strip_lead_in(text: str) -> str:
-    """Remove a "In this <format>, <speaker> argues that " preface."""
+    """Remove a "In this <format>, <speaker> argues that " preface.
+
+    After stripping, re-capitalize the first letter so the residual sentence
+    reads as a proper sentence (e.g. ``"the market for zero-day..."`` ->
+    ``"The market for zero-day..."``). Idempotent on already-capitalized
+    text.
+    """
     if not text:
         return ""
-    return _LEAD_IN_RE.sub("", text, count=1).strip()
+    out = _LEAD_IN_RE.sub("", text, count=1).strip()
+    if not out:
+        return ""
+    # Only re-capitalize if the strip actually fired (output != input).
+    if out != text.strip() and out[0].isalpha() and out[0].islower():
+        out = out[0].upper() + out[1:]
+    return out
 
 
 def _norm_compare(text: str) -> str:
@@ -418,6 +580,163 @@ def _sentence_looks_complete(sentence: str) -> bool:
     return True
 
 
+_UA_INLINE_LIST_RE = re.compile(
+    r"(?i)("
+    r"mac\s*os\s*x?|os\s*x|windows\s+(?:nt|xp|vista)|"
+    r"iphone\s*os|android\s+\d+(?:\.\d+)*|chrome\s*os|user[\s\-]agent|"
+    r"webkit|gecko|chromium"
+    r")"
+)
+
+
+def _is_ua_list_item(item: str) -> bool:
+    """True when the candidate list item is a UA / OS leak rather than a
+    legitimate platform reference. Conservative: full-string match only —
+    "Windows 10" alone is allowed (it's a real OS users may discuss), but
+    "Mac OS X" is always a UA-string artifact in our pipeline and so are
+    "WebKit"/"Gecko"/"Mozilla"/"Chrome OS" / browser engine names.
+    """
+    cleaned = (item or "").strip().rstrip(".!?")
+    if not cleaned:
+        return False
+    return bool(_UA_INLINE_LIST_RE.fullmatch(cleaned))
+
+
+def _scrub_ua_inline_list(sentence: str) -> str:
+    """Remove UA / OS / browser entries from a comma-separated list inside a
+    sentence, e.g. ``"references Windows 10, Mac OS X, and Bugtraq."`` ->
+    ``"references Windows 10 and Bugtraq."``.
+
+    Conservative algorithm:
+      1. Identify the list region: the longest tail of the sentence formed by
+         comma-separated items joined with a final " and " or ", and ".
+      2. Each item in the list is independently checked against
+         ``_NON_HUMAN_SPEAKER_PHRASE_RE``. Items containing a UA phrase are
+         dropped; others are preserved verbatim (including any lead-in
+         words on the first item, e.g. ``"references Windows 10"``).
+      3. The lead-in / preface (everything BEFORE the list region) is never
+         modified — that's where the verb of the sentence lives.
+
+    The list region is detected by walking commas from the end of the
+    sentence. We start with the final clause (after the last " and " /
+    "; and " / ", and ") plus any preceding comma-joined siblings as long as
+    each sibling is short (<=12 words) — that's the heuristic for a list
+    rather than a clause. If the heuristic fails we leave the sentence alone.
+    """
+    if not sentence:
+        return sentence
+    # Only scan when the sentence contains a strict UA artifact — a full
+    # "Mac OS X" / "WebKit" / "Chrome OS" style token, not a casual mention
+    # of "Windows 10" which a user may legitimately discuss.
+    if not _UA_INLINE_LIST_RE.search(sentence):
+        return sentence
+    # Strip trailing punctuation; we'll re-attach it.
+    s = sentence.rstrip()
+    trailing = ""
+    if s and s[-1] in ".!?":
+        trailing = s[-1]
+        s = s[:-1]
+    # Find ", and " or " and " as the final-list connector.
+    m = re.search(r"(?:,\s+and\s+|\s+and\s+)([^,]+)$", s)
+    if not m:
+        return sentence  # no detectable list — bail
+    last_item = m.group(1).strip()
+    head_region = s[:m.start()]  # everything up to ", and " / " and "
+    # Split the head region by commas into possible siblings.
+    head_parts = [p.strip() for p in head_region.split(",")]
+    list_verb_re_top = re.compile(
+        r"\b(references?|mentions?|cites?|includes?|lists?|names?|"
+        r"covers?|discusses?|features?)\s+",
+        re.IGNORECASE,
+    )
+    if len(head_parts) < 2:
+        # Only "X and Y" with no commas — split on a list-introducing verb
+        # if present so the lead-in clause is preserved as ``prefix``.
+        first = head_parts[0]
+        vb0 = list_verb_re_top.search(first)
+        if vb0:
+            prefix = first[:vb0.end()]
+            item1 = first[vb0.end():].strip()
+            items = [item1, last_item]
+        else:
+            if len(first.split()) > 12:
+                return sentence
+            items = [first, last_item]
+            prefix = ""
+    else:
+        # The first comma-split chunk contains the lead-in + first list item.
+        # Detect a list-introducing verb (references, mentions, includes,
+        # cites, lists, names, covers, discusses, features) — when present,
+        # split the chunk at the verb boundary so the lead-in is preserved as
+        # ``prefix`` and only the trailing item participates in UA filtering.
+        first = head_parts[0]
+        list_verb_re = re.compile(
+            r"\b(references?|mentions?|cites?|includes?|lists?|names?|"
+            r"covers?|discusses?|features?)\s+",
+            re.IGNORECASE,
+        )
+        vb_top = list_verb_re.search(first)
+        if vb_top:
+            prefix = first[:vb_top.end()]
+            item1 = first[vb_top.end():].strip()
+            items = [item1] + head_parts[1:] + [last_item]
+        elif len(first.split()) > 12:
+            # First chunk is a clause containing the lead-in. We split off
+            # the trailing list item by walking back to the verb boundary —
+            # heuristic: if first chunk ends with a UA phrase or a known
+            # list entry style (capitalized phrase), keep it as item;
+            # otherwise treat full chunk as prefix and list begins at chunk 2.
+            # Simplest: if first chunk doesn't itself contain a UA phrase
+            # AND has >12 words, treat it entirely as prefix.
+            if not _UA_INLINE_LIST_RE.search(first):
+                prefix = first + ", "
+                items = head_parts[1:] + [last_item]
+            else:
+                # Split first chunk into "lead-in" + "first list item" by
+                # scanning for the UA phrase position.
+                ua_match = _UA_INLINE_LIST_RE.search(first)
+                # Walk back from ua_match.start() to find a space — anything
+                # from that space to end-of-chunk is item #1.
+                start = ua_match.start()
+                space_idx = first.rfind(" ", 0, start)
+                # Look for a verb-like token before that. Conservative:
+                # treat everything up to the LAST capitalized word that
+                # starts a phrase as prefix.
+                # Simpler still: use a known set of words to detect the
+                # boundary. Verbs that introduce lists: references, mentions,
+                # cites, includes, lists, names, covers, discusses.
+                vb = re.search(
+                    r"\b(references?|mentions?|cites?|includes?|lists?|names?|covers?|discusses?|features?)\s+",
+                    first,
+                    re.IGNORECASE,
+                )
+                if vb:
+                    prefix = first[:vb.end()]
+                    item1 = first[vb.end():].strip()
+                    items = [item1] + head_parts[1:] + [last_item]
+                else:
+                    prefix = first[:space_idx + 1] if space_idx >= 0 else ""
+                    item1 = first[space_idx + 1:] if space_idx >= 0 else first
+                    items = [item1] + head_parts[1:] + [last_item]
+        else:
+            items = head_parts + [last_item]
+            prefix = ""
+    items = [it.strip() for it in items if it.strip()]
+    kept = [it for it in items if not _is_ua_list_item(it)]
+    if not kept:
+        return sentence  # don't zero out — caller decides
+    if len(kept) == len(items):
+        return sentence  # nothing removed
+    if len(kept) == 1:
+        rebuilt = prefix + kept[0]
+    elif len(kept) == 2:
+        rebuilt = prefix + f"{kept[0]} and {kept[1]}"
+    else:
+        rebuilt = prefix + ", ".join(kept[:-1]) + ", and " + kept[-1]
+    rebuilt = re.sub(r"\s{2,}", " ", rebuilt).strip()
+    return rebuilt + trailing
+
+
 def _sanitize_brief(text: str) -> str:
     """Drop trailing incomplete-sentence fragments from a brief summary.
 
@@ -429,6 +748,11 @@ def _sanitize_brief(text: str) -> str:
     Also removes obvious company names from a "Key voices and figures
     include X and Y." sentence when at least one human-looking entity
     survives. If all candidates are companies, the sentence is dropped.
+
+    Additionally scrubs mid-sentence UA / OS / browser leaks from each
+    sentence (e.g. ``"references Windows 10, Mac OS X, and Bugtraq"`` ->
+    ``"references Windows 10 and Bugtraq"``) and re-stitches the surrounding
+    list cleanly.
     """
     if not text:
         return ""
@@ -440,6 +764,10 @@ def _sanitize_brief(text: str) -> str:
     sentences = [s.strip() for s in sentences if s.strip()]
     if not sentences:
         return cleaned
+    # Scrub mid-sentence UA / OS / browser leaks (e.g. "Mac OS X" sandwiched
+    # in a comma list) before any further processing.
+    sentences = [_scrub_ua_inline_list(s) for s in sentences]
+    sentences = [s for s in sentences if s.strip()]
     # Filter "Key voices and figures include ..." sentences.
     filtered: list[str] = []
     for s in sentences:
@@ -500,8 +828,9 @@ def _wrap_chapter_like_h2s(sections: list[dict[str, Any]]) -> list[dict[str, Any
     if has_walkthrough:
         return sections
     anchor_headings = {
-        "overview", "core argument", "closing remarks", "demonstrations",
-        "conclusions & recommendations", "call to action", "stance",
+        "overview", "core argument", "closing remarks", "closing takeaway",
+        "demonstrations", "conclusions & recommendations", "conclusions",
+        "conclusion", "recommendations", "call to action", "stance",
         "publication identity", "format and speakers", "format",
         "op thesis", "dissent", "agreement", "summary",
     }
@@ -512,14 +841,16 @@ def _wrap_chapter_like_h2s(sections: list[dict[str, Any]]) -> list[dict[str, Any
             continue
         if h.lower() in anchor_headings:
             continue
-        if len(h.split()) > 8:
+        # Allow chapter-style titles up to 12 words — talk titles like
+        # "Common Pitfalls and How to Avoid Them" easily exceed 8.
+        if len(h.split()) > 12:
             continue
         # Must have content (bullets or sub_sections) so we don't wrap
         # empty/divider headings.
         if not (s.get("bullets") or s.get("sub_sections")):
             continue
         chapter_like_idx.append(i)
-    if len(chapter_like_idx) < 6:
+    if len(chapter_like_idx) < 4:
         return sections
     # Build the wrapped section, preserving order.
     chapter_subs: dict[str, list[str]] = {}
@@ -617,13 +948,23 @@ def _normalize_section(section: dict[str, Any]) -> dict[str, Any] | None:
     # sub. Applies to any sub key, but in practice catches "Core argument"
     # and "Thesis" subs that the source layouts still emit alongside the
     # promoted top-level Overview bullet.
+    #
+    # IMPORTANT: strip lead-in from every sub-section's bullets BEFORE the
+    # redundancy compare. Without this, a top bullet that was already
+    # lead-in-stripped will not match a sub bullet that still carries the
+    # ``"In this lecture, Andrej Karpathy argues that ..."`` preface — the
+    # containment check fails because the preface dominates the prefix.
     if bullets and pretty_subs:
         top_bullet = bullets[0]
         survivors: dict[str, list[str]] = {}
         for k, v in pretty_subs.items():
-            if _bullet_is_redundant(top_bullet, v):
+            stripped_sub = [_strip_lead_in(x) or x for x in v]
+            if _bullet_is_redundant(top_bullet, stripped_sub):
                 continue
-            survivors[k] = v
+            # Preserve the lead-in-stripped form for the surviving sub so the
+            # rendered text matches the dedupe-time text (otherwise users see
+            # the preface in the sub but not in the top bullet).
+            survivors[k] = stripped_sub if parent_key == "overview" else v
         pretty_subs = survivors
 
     return {

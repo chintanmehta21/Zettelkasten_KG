@@ -1540,57 +1540,154 @@
     return out;
   }
 
+  // Build a chevron SVG used in the collapsible H1 button.
+  function buildChevronSpan() {
+    var span = document.createElement('span');
+    span.className = 'zettels-summary-h2-chevron';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = '<svg viewBox="0 0 24 24" fill="none">' +
+      '<path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+    return span;
+  }
+
+  // Toggle a collapsible H1 section. Reads/writes ``aria-expanded`` on the
+  // heading and ``data-collapsed`` on the paired panel. Sets max-height on
+  // expansion to the panel's natural scrollHeight so the CSS transition
+  // animates from 0 -> measured-height -> auto.
+  function setSectionExpanded(headingEl, panelEl, expanded) {
+    headingEl.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    if (expanded) {
+      panelEl.removeAttribute('data-collapsed');
+      // Measure target height, then animate. Using requestAnimationFrame
+      // so the browser registers the starting 0px state before changing.
+      panelEl.style.maxHeight = '0px';
+      requestAnimationFrame(function () {
+        var target = panelEl.scrollHeight;
+        panelEl.style.maxHeight = target + 'px';
+      });
+      // After the transition completes, drop the inline max-height so
+      // dynamic content (image loads, etc.) reflows naturally.
+      var clearMax = function () {
+        panelEl.style.maxHeight = '';
+        panelEl.removeEventListener('transitionend', clearMax);
+      };
+      panelEl.addEventListener('transitionend', clearMax);
+    } else {
+      // Capture current height, then transition to 0.
+      var current = panelEl.scrollHeight;
+      panelEl.style.maxHeight = current + 'px';
+      requestAnimationFrame(function () {
+        panelEl.setAttribute('data-collapsed', 'true');
+        panelEl.style.maxHeight = '0px';
+      });
+    }
+  }
+
+  function attachToggle(headingEl, panelEl) {
+    headingEl.setAttribute('role', 'button');
+    headingEl.setAttribute('tabindex', '0');
+    headingEl.setAttribute('aria-expanded', 'true');
+    var sectionId = 'zk-sec-' + Math.random().toString(36).slice(2, 9);
+    panelEl.id = sectionId;
+    headingEl.setAttribute('aria-controls', sectionId);
+
+    var handler = function (event) {
+      var expanded = headingEl.getAttribute('aria-expanded') === 'true';
+      setSectionExpanded(headingEl, panelEl, !expanded);
+      event.preventDefault();
+    };
+    headingEl.addEventListener('click', handler);
+    headingEl.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+        handler(event);
+      }
+    });
+  }
+
   function renderStructuredDetailed(container, sections) {
     sections = normalizeRawSchemaSections(sections) || sections;
+    var firstSectionRendered = false;
     sections.forEach(function (section) {
       if (!section || typeof section !== 'object') return;
       var heading = section.heading == null ? '' : String(section.heading).trim();
-      if (heading) {
-        var h4 = document.createElement('h4');
-        h4.className = 'zettels-summary-h2';
-        h4.textContent = heading;
-        container.appendChild(h4);
-      }
 
       var bullets = Array.isArray(section.bullets) ? section.bullets : [];
-      if (bullets.length) {
-        var ul = document.createElement('ul');
-        ul.className = 'zettels-summary-list';
-        bullets.forEach(function (bullet) {
+      var subs = section.sub_sections || section.subSections;
+      var hasSubs = subs && typeof subs === 'object' && !Array.isArray(subs)
+        && Object.keys(subs).length > 0;
+
+      // If there is no heading, render bullets+subs flat (legacy content
+      // without an anchor heading — never collapsible).
+      if (!heading) {
+        appendSectionBody(container, bullets, subs, hasSubs);
+        return;
+      }
+
+      var h4 = document.createElement('h4');
+      h4.className = 'zettels-summary-h2';
+      var labelSpan = document.createElement('span');
+      labelSpan.className = 'zettels-summary-h2-label';
+      labelSpan.textContent = heading;
+      h4.appendChild(labelSpan);
+      h4.appendChild(buildChevronSpan());
+      container.appendChild(h4);
+
+      var panel = document.createElement('div');
+      panel.className = 'zettels-summary-panel';
+      appendSectionBody(panel, bullets, subs, hasSubs);
+      container.appendChild(panel);
+
+      attachToggle(h4, panel);
+      // Default state: first section expanded, all others collapsed.
+      if (firstSectionRendered) {
+        // Defer so the panel has measured layout before we collapse.
+        (function (hh, pp) {
+          requestAnimationFrame(function () {
+            setSectionExpanded(hh, pp, false);
+          });
+        })(h4, panel);
+      }
+      firstSectionRendered = true;
+    });
+  }
+
+  function appendSectionBody(parent, bullets, subs, hasSubs) {
+    if (bullets && bullets.length) {
+      var ul = document.createElement('ul');
+      ul.className = 'zettels-summary-list';
+      bullets.forEach(function (bullet) {
+        var text = bullet == null ? '' : String(bullet).trim();
+        if (!text) return;
+        var li = document.createElement('li');
+        li.className = 'zettels-summary-list-item';
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+      if (ul.childNodes.length) parent.appendChild(ul);
+    }
+    if (hasSubs) {
+      Object.keys(subs).forEach(function (subHeading) {
+        var subBullets = subs[subHeading];
+        if (!Array.isArray(subBullets) || !subBullets.length) return;
+        var h5 = document.createElement('h5');
+        h5.className = 'zettels-summary-h3';
+        h5.textContent = String(subHeading || '').trim();
+        parent.appendChild(h5);
+
+        var subUl = document.createElement('ul');
+        subUl.className = 'zettels-summary-list';
+        subBullets.forEach(function (bullet) {
           var text = bullet == null ? '' : String(bullet).trim();
           if (!text) return;
           var li = document.createElement('li');
           li.className = 'zettels-summary-list-item';
           li.textContent = text;
-          ul.appendChild(li);
+          subUl.appendChild(li);
         });
-        if (ul.childNodes.length) container.appendChild(ul);
-      }
-
-      var subs = section.sub_sections || section.subSections;
-      if (subs && typeof subs === 'object' && !Array.isArray(subs)) {
-        Object.keys(subs).forEach(function (subHeading) {
-          var subBullets = subs[subHeading];
-          if (!Array.isArray(subBullets) || !subBullets.length) return;
-          var h5 = document.createElement('h5');
-          h5.className = 'zettels-summary-h3';
-          h5.textContent = String(subHeading || '').trim();
-          container.appendChild(h5);
-
-          var subUl = document.createElement('ul');
-          subUl.className = 'zettels-summary-list';
-          subBullets.forEach(function (bullet) {
-            var text = bullet == null ? '' : String(bullet).trim();
-            if (!text) return;
-            var li = document.createElement('li');
-            li.className = 'zettels-summary-list-item';
-            li.textContent = text;
-            subUl.appendChild(li);
-          });
-          if (subUl.childNodes.length) container.appendChild(subUl);
-        });
-      }
-    });
+        if (subUl.childNodes.length) parent.appendChild(subUl);
+      });
+    }
   }
 
   function renderMarkdownLite(container, markdown) {

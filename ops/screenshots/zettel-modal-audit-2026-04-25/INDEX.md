@@ -1,0 +1,76 @@
+# Zettel Modal Capture Index
+
+Total nodes: 24
+
+- `00-youtube-zero-day-market-covert-exploits-top.png` — **Zero-Day Market Covert Exploits** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `00-youtube-zero-day-market-covert-exploits-middle.png` — **Zero-Day Market Covert Exploits** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `00-youtube-zero-day-market-covert-exploits-bottom.png` — **Zero-Day Market Covert Exploits** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `01-newsletter-the-pragmatic-engineer-the-product-minde-top.png` — **The Pragmatic Engineer: The Product-Minded Engineer** · source=`newsletter` · pos=`top` · audit_pass=8/8
+- `01-newsletter-the-pragmatic-engineer-the-product-minde-middle.png` — **The Pragmatic Engineer: The Product-Minded Engineer** · source=`newsletter` · pos=`middle` · audit_pass=8/8
+- `01-newsletter-the-pragmatic-engineer-the-product-minde-bottom.png` — **The Pragmatic Engineer: The Product-Minded Engineer** · source=`newsletter` · pos=`bottom` · audit_pass=8/8
+- `02-github-pydantic-pydantic-top.png` — **pydantic/pydantic** · source=`github` · pos=`top` · audit_pass=8/8
+- `02-github-pydantic-pydantic-middle.png` — **pydantic/pydantic** · source=`github` · pos=`middle` · audit_pass=8/8
+- `02-github-pydantic-pydantic-bottom.png` — **pydantic/pydantic** · source=`github` · pos=`bottom` · audit_pass=8/8
+- `03-reddit-r-hinduism-share-personal-anecdote-demon-top.png` — **r/hinduism share personal anecdote demonstrating scientific** · source=`reddit` · pos=`top` · audit_pass=8/8
+- `03-reddit-r-hinduism-share-personal-anecdote-demon-middle.png` — **r/hinduism share personal anecdote demonstrating scientific** · source=`reddit` · pos=`middle` · audit_pass=8/8
+- `03-reddit-r-hinduism-share-personal-anecdote-demon-bottom.png` — **r/hinduism share personal anecdote demonstrating scientific** · source=`reddit` · pos=`bottom` · audit_pass=8/8
+- `04-youtube-andrej-karpathy-s-llm-introduction-top.png` — **Andrej Karpathy s LLM Introduction** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `04-youtube-andrej-karpathy-s-llm-introduction-middle.png` — **Andrej Karpathy s LLM Introduction** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `04-youtube-andrej-karpathy-s-llm-introduction-bottom.png` — **Andrej Karpathy s LLM Introduction** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `05-youtube-transformer-architecture-explained-top.png` — **Transformer Architecture Explained** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `05-youtube-transformer-architecture-explained-middle.png` — **Transformer Architecture Explained** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `05-youtube-transformer-architecture-explained-bottom.png` — **Transformer Architecture Explained** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `06-youtube-lecun-s-vision-human-level-top.png` — **LeCun s Vision Human Level** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `06-youtube-lecun-s-vision-human-level-middle.png` — **LeCun s Vision Human Level** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `06-youtube-lecun-s-vision-human-level-bottom.png` — **LeCun s Vision Human Level** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `07-substack-beehiiv-email-boosts-enable-in-newslette-top.png` — **beehiiv: Email Boosts Enable In-Newsletter Paid Recommendati** · source=`substack` · pos=`top` · audit_pass=8/8
+- `07-substack-beehiiv-email-boosts-enable-in-newslette-middle.png` — **beehiiv: Email Boosts Enable In-Newsletter Paid Recommendati** · source=`substack` · pos=`middle` · audit_pass=8/8
+- `07-substack-beehiiv-email-boosts-enable-in-newslette-bottom.png` — **beehiiv: Email Boosts Enable In-Newsletter Paid Recommendati** · source=`substack` · pos=`bottom` · audit_pass=8/8
+- `08-substack-beehiiv-mcp-integrates-with-ai-clients-a-top.png` — **beehiiv MCP Integrates with AI Clients as a Business OS** · source=`substack` · pos=`top` · audit_pass=8/8
+- `08-substack-beehiiv-mcp-integrates-with-ai-clients-a-middle.png` — **beehiiv MCP Integrates with AI Clients as a Business OS** · source=`substack` · pos=`middle` · audit_pass=8/8
+- `08-substack-beehiiv-mcp-integrates-with-ai-clients-a-bottom.png` — **beehiiv MCP Integrates with AI Clients as a Business OS** · source=`substack` · pos=`bottom` · audit_pass=8/8
+- `09-substack-the-pragmatic-engineer-the-product-minde-top.png` — **The Pragmatic Engineer: The Product-Minded Engineer in the A** · source=`substack` · pos=`top` · audit_pass=8/8
+- `09-substack-the-pragmatic-engineer-the-product-minde-middle.png` — **The Pragmatic Engineer: The Product-Minded Engineer in the A** · source=`substack` · pos=`middle` · audit_pass=8/8
+- `09-substack-the-pragmatic-engineer-the-product-minde-bottom.png` — **The Pragmatic Engineer: The Product-Minded Engineer in the A** · source=`substack` · pos=`bottom` · audit_pass=8/8
+- `10-substack-recent-chemical-research-highlights-adva-top.png` — **Recent Chemical Research Highlights: Advancements in Organic** · source=`substack` · pos=`top` · audit_pass=8/8
+- `10-substack-recent-chemical-research-highlights-adva-middle.png` — **Recent Chemical Research Highlights: Advancements in Organic** · source=`substack` · pos=`middle` · audit_pass=8/8
+- `10-substack-recent-chemical-research-highlights-adva-bottom.png` — **Recent Chemical Research Highlights: Advancements in Organic** · source=`substack` · pos=`bottom` · audit_pass=8/8
+- `11-substack-platformer-substack-s-algorithmic-promot-top.png` — **Platformer: Substack's Algorithmic Promotion of Extremist Co** · source=`substack` · pos=`top` · audit_pass=8/8
+- `11-substack-platformer-substack-s-algorithmic-promot-middle.png` — **Platformer: Substack's Algorithmic Promotion of Extremist Co** · source=`substack` · pos=`middle` · audit_pass=8/8
+- `11-substack-platformer-substack-s-algorithmic-promot-bottom.png` — **Platformer: Substack's Algorithmic Promotion of Extremist Co** · source=`substack` · pos=`bottom` · audit_pass=8/8
+- `12-youtube-effective-public-speaking-strategies-top.png` — **Effective Public Speaking Strategies** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `12-youtube-effective-public-speaking-strategies-middle.png` — **Effective Public Speaking Strategies** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `12-youtube-effective-public-speaking-strategies-bottom.png` — **Effective Public Speaking Strategies** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `13-github-psf-requests-top.png` — **psf/requests** · source=`github` · pos=`top` · audit_pass=8/8
+- `13-github-psf-requests-middle.png` — **psf/requests** · source=`github` · pos=`middle` · audit_pass=8/8
+- `13-github-psf-requests-bottom.png` — **psf/requests** · source=`github` · pos=`bottom` · audit_pass=8/8
+- `14-youtube-steve-jobs-2005-stanford-address-top.png` — **Steve Jobs 2005 Stanford Address** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `14-youtube-steve-jobs-2005-stanford-address-middle.png` — **Steve Jobs 2005 Stanford Address** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `14-youtube-steve-jobs-2005-stanford-address-bottom.png` — **Steve Jobs 2005 Stanford Address** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `15-youtube-programming-workflow-is-debugging-cycle-top.png` — **Programming Workflow Is Debugging Cycle** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `15-youtube-programming-workflow-is-debugging-cycle-middle.png` — **Programming Workflow Is Debugging Cycle** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `15-youtube-programming-workflow-is-debugging-cycle-bottom.png` — **Programming Workflow Is Debugging Cycle** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `16-github-fastapi-fastapi-top.png` — **fastapi/fastapi** · source=`github` · pos=`top` · audit_pass=8/8
+- `16-github-fastapi-fastapi-middle.png` — **fastapi/fastapi** · source=`github` · pos=`middle` · audit_pass=8/8
+- `16-github-fastapi-fastapi-bottom.png` — **fastapi/fastapi** · source=`github` · pos=`bottom` · audit_pass=8/8
+- `17-github-anthropics-claude-cookbooks-top.png` — **anthropics/claude-cookbooks** · source=`github` · pos=`top` · audit_pass=8/8
+- `17-github-anthropics-claude-cookbooks-middle.png` — **anthropics/claude-cookbooks** · source=`github` · pos=`middle` · audit_pass=8/8
+- `17-github-anthropics-claude-cookbooks-bottom.png` — **anthropics/claude-cookbooks** · source=`github` · pos=`bottom` · audit_pass=8/8
+- `18-youtube-matt-walker-sleep-deprivation-s-broad-im-top.png` — **Matt Walker: Sleep Deprivation's Broad Impacts** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `18-youtube-matt-walker-sleep-deprivation-s-broad-im-middle.png` — **Matt Walker: Sleep Deprivation's Broad Impacts** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `18-youtube-matt-walker-sleep-deprivation-s-broad-im-bottom.png` — **Matt Walker: Sleep Deprivation's Broad Impacts** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `19-youtube-ross-ulbricht-silk-road-saga-top.png` — **Ross Ulbricht Silk Road Saga** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `19-youtube-ross-ulbricht-silk-road-saga-middle.png` — **Ross Ulbricht Silk Road Saga** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `19-youtube-ross-ulbricht-silk-road-saga-bottom.png` — **Ross Ulbricht Silk Road Saga** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `20-youtube-dmt-history-neuroscience-entity-encounte-top.png` — **DMT History Neuroscience Entity Encounters** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `20-youtube-dmt-history-neuroscience-entity-encounte-middle.png` — **DMT History Neuroscience Entity Encounters** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `20-youtube-dmt-history-neuroscience-entity-encounte-bottom.png` — **DMT History Neuroscience Entity Encounters** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `21-youtube-infinite-complexity-chess-top.png` — **Infinite Complexity Chess** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `21-youtube-infinite-complexity-chess-middle.png` — **Infinite Complexity Chess** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `21-youtube-infinite-complexity-chess-bottom.png` — **Infinite Complexity Chess** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `22-youtube-petrodollar-s-decline-us-dominance-top.png` — **Petrodollar's Decline US Dominance** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `22-youtube-petrodollar-s-decline-us-dominance-middle.png` — **Petrodollar's Decline US Dominance** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `22-youtube-petrodollar-s-decline-us-dominance-bottom.png` — **Petrodollar's Decline US Dominance** · source=`youtube` · pos=`bottom` · audit_pass=8/8
+- `23-youtube-cannabis-use-disorder-impact-on-top.png` — **Cannabis Use Disorder Impact on** · source=`youtube` · pos=`top` · audit_pass=8/8
+- `23-youtube-cannabis-use-disorder-impact-on-middle.png` — **Cannabis Use Disorder Impact on** · source=`youtube` · pos=`middle` · audit_pass=8/8
+- `23-youtube-cannabis-use-disorder-impact-on-bottom.png` — **Cannabis Use Disorder Impact on** · source=`youtube` · pos=`bottom` · audit_pass=8/8
