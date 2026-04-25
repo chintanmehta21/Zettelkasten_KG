@@ -684,3 +684,46 @@ body {
   pointer-events: none;
 }
 .kg-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ============================================
+   Overlays — loading / empty / error
+   ============================================ */
+.kg-overlay {
+  position: fixed;
+  inset: 64px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 50;
+}
+.kg-overlay.hidden { display: none; }
+.kg-overlay-text { color: rgba(220, 228, 240, 0.65); font-size: 0.92rem; margin: 0; }
+.kg-overlay-btn {
+  pointer-events: auto;
+  padding: 8px 16px;
+  background: rgba(20,184,166,0.15);
+  border: 1px solid rgba(20,184,166,0.45);
+  border-radius: 10px;
+  color: #2dd4bf;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.kg-overlay-btn:hover { background: rgba(20,184,166,0.25); }
+.kg-overlay-skeleton {
+  display: flex; gap: 12px; align-items: center;
+}
+.kg-overlay-skeleton span {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(20,184,166,0.4);
+  animation: kgPulse 1.2s infinite ease-in-out both;
+}
+.kg-overlay-skeleton span:nth-child(2) { animation-delay: 0.15s; }
+.kg-overlay-skeleton span:nth-child(3) { animation-delay: 0.30s; }
+@keyframes kgPulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.7); }
+  40%           { opacity: 1;    transform: scale(1.1); }
+}
