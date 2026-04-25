@@ -438,6 +438,110 @@ git add website/features/rag_pipeline/evaluation/types.py tests/unit/rag_pipelin
 git commit -m "feat: rag_eval pydantic types"
 ```
 
+### Task 0.3b: Naruto KG drift guard
+
+**Files:**
+- Create: `ops/scripts/lib/rag_eval_naruto_drift.py`
+- Create: `tests/unit/rag_pipeline/ops/test_rag_eval_naruto_drift.py`
+
+Implements spec §11 Risk row: "halt CLI if mid-loop snapshot diverges by >10% node count or >20% edge count without an applied recommendation explaining it."
+
+- [ ] **Step 1: Write failing test**
+
+```python
+# tests/unit/rag_pipeline/ops/test_rag_eval_naruto_drift.py
+import pytest
+from ops.scripts.lib.rag_eval_naruto_drift import (
+    check_naruto_drift,
+    NarutoDriftError,
+)
+
+
+def test_within_tolerance_passes():
+    check_naruto_drift(baseline={"node_count": 100, "link_count": 200},
+                       current={"node_count": 105, "link_count": 220},
+                       applied_mutation_count=0)
+
+
+def test_node_drift_over_10_pct_blocks():
+    with pytest.raises(NarutoDriftError, match="node"):
+        check_naruto_drift(baseline={"node_count": 100, "link_count": 200},
+                           current={"node_count": 115, "link_count": 220},
+                           applied_mutation_count=0)
+
+
+def test_drift_explained_by_applied_mutations_passes():
+    # 10 applied mutations explain up to ~10 node/edge additions
+    check_naruto_drift(baseline={"node_count": 100, "link_count": 200},
+                       current={"node_count": 115, "link_count": 220},
+                       applied_mutation_count=20)
+
+
+def test_edge_drift_over_20_pct_blocks():
+    with pytest.raises(NarutoDriftError, match="edge"):
+        check_naruto_drift(baseline={"node_count": 100, "link_count": 200},
+                           current={"node_count": 100, "link_count": 250},
+                           applied_mutation_count=0)
+```
+
+- [ ] **Step 2: Run test, confirm FAIL.**
+
+- [ ] **Step 3: Implement drift guard**
+
+```python
+# ops/scripts/lib/rag_eval_naruto_drift.py
+"""Halt the rag_eval CLI on unexplained Naruto KG drift (spec §11)."""
+from __future__ import annotations
+
+
+class NarutoDriftError(Exception):
+    pass
+
+
+def check_naruto_drift(
+    *,
+    baseline: dict,
+    current: dict,
+    applied_mutation_count: int,
+    node_tolerance_pct: float = 10.0,
+    edge_tolerance_pct: float = 20.0,
+) -> None:
+    """Raise if KG drifted beyond tolerance unexplained by applied mutations.
+
+    Each applied mutation accounts for ~1 node or edge change; we subtract that
+    from the observed delta before comparing against tolerance.
+    """
+    base_nodes = baseline.get("node_count", 0)
+    base_edges = baseline.get("link_count", 0)
+    cur_nodes = current.get("node_count", 0)
+    cur_edges = current.get("link_count", 0)
+
+    raw_node_delta = abs(cur_nodes - base_nodes)
+    raw_edge_delta = abs(cur_edges - base_edges)
+    explained_node_delta = max(raw_node_delta - applied_mutation_count, 0)
+    explained_edge_delta = max(raw_edge_delta - applied_mutation_count, 0)
+
+    if base_nodes:
+        node_pct = (explained_node_delta / base_nodes) * 100.0
+        if node_pct > node_tolerance_pct:
+            raise NarutoDriftError(
+                f"Naruto KG node count drifted {explained_node_delta} (unexplained) "
+                f"= {node_pct:.1f}% > {node_tolerance_pct}% tolerance. Halting."
+            )
+    if base_edges:
+        edge_pct = (explained_edge_delta / base_edges) * 100.0
+        if edge_pct > edge_tolerance_pct:
+            raise NarutoDriftError(
+                f"Naruto KG edge count drifted {explained_edge_delta} (unexplained) "
+                f"= {edge_pct:.1f}% > {edge_tolerance_pct}% tolerance. Halting."
+            )
+```
+
+- [ ] **Step 4: Run test, confirm PASS.**
+- [ ] **Step 5: Commit `feat: naruto kg drift guard`**
+
+The CLI in Task 3.7 calls `check_naruto_drift` at the start of every Phase A (after loading current Naruto KG state, comparing against `_naruto_baseline.json`).
+
 ### Task 0.4: Write YAML config schemas (validation only, no actual configs yet)
 
 **Files:**
@@ -3227,25 +3331,15 @@ Verify: `ls docs/rag_eval/_config/queries/youtube/.heldout_sealed` exists.
 
 - [ ] **Step 4: Commit `docs: youtube heldout queries sealed`**
 
-### Task 4.4: Reddit/GitHub/Newsletter seed.yaml + heldout.yaml STUBS
+### Task 4.4: Reddit/GitHub/Newsletter — DEFER
 
-For Phase 6a we only need YouTube; the other source files exist as scaffolding but the actual queries are filled in during Phase 6b.
+For Phase 6a we only need YouTube. Stub files for non-youtube sources are NOT created — they'd fail `SeedQueryFile` validation (which requires exactly 5 queries). Instead, the directories `docs/rag_eval/_config/queries/{reddit,github,newsletter}/` are created lazily during Phase 6b's first iter for that source.
 
-- [ ] **Step 1: Create stub seed.yaml + heldout.yaml for each non-youtube source**
+- [ ] **Step 1: Verify `gold_loader.load_seed_queries` raises a clear error for missing files**
 
-For each source in `[reddit, github, newsletter]`, create:
-- `docs/rag_eval/_config/queries/<source>/seed.yaml`:
-```yaml
-# STUB — populated in Phase 6b before iter-01 of this source
-queries: []
-```
-- `docs/rag_eval/_config/queries/<source>/heldout.yaml`:
-```yaml
-# STUB — populated in Phase 6b before iter-01 of this source
-queries: []
-```
+The existing `GoldLoaderError` raised when `_load_yaml(path)` fails on `not path.exists()` is sufficient. Phase 6b's iter-01 invocation for a non-youtube source will surface this clearly, prompting query authoring at that time.
 
-- [ ] **Step 2: Commit `docs: stub seed and heldout for non-youtube sources`**
+- [ ] **Step 2: No commit — this task documents the deferral.**
 
 ---
 
