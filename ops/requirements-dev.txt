@@ -8,4 +8,6 @@ pytest>=9.0
 pytest-asyncio>=0.23
 pytest-httpx>=0.30
 ragas==0.4.3
+deepeval==3.9.7
+datasets>=2.20.0
 respx>=0.21
