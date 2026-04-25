@@ -1,0 +1,49 @@
+{
+  "composite": {
+    "previous": 83.33992210439517,
+    "current": 73.56539682539682,
+    "absolute": -9.774525278998354,
+    "relative_pct": -11.728503017742641
+  },
+  "components": {
+    "chunking": {
+      "previous": 55.0,
+      "current": 53.80952380952381,
+      "absolute": -1.1904761904761898
+    },
+    "retrieval": {
+      "previous": 100.0,
+      "current": 100.0,
+      "absolute": 0.0
+    },
+    "reranking": {
+      "previous": 83.92961052197583,
+      "current": 72.22222222222221,
+      "absolute": -11.707388299753617
+    },
+    "synthesis": {
+      "previous": 80.12,
+      "current": 63.86666666666666,
+      "absolute": -16.253333333333345
+    }
+  },
+  "graph_lift": {
+    "previous": {
+      "composite": -8.677666666666667,
+      "retrieval": 0.0,
+      "reranking": -8.333333333333329
+    },
+    "current": {
+      "composite": -8.390555555555565,
+      "retrieval": 0.0,
+      "reranking": -27.777777777777786
+    },
+    "delta": {
+      "composite": 0.287111111111102,
+      "retrieval": 0.0,
+      "reranking": -19.444444444444457
+    }
+  },
+  "review_estimate": 86.0,
+  "review_divergence_band": "MAJOR_DISAGREEMENT"
+}

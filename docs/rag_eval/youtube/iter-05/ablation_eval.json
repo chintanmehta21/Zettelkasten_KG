@@ -1,0 +1,109 @@
+{
+  "iter_id": "youtube/iter-05_ablated",
+  "component_scores": {
+    "chunking": 53.80952380952381,
+    "retrieval": 100.0,
+    "reranking": 100.0,
+    "synthesis": 70.16666666666667
+  },
+  "composite": 81.95595238095238,
+  "weights": {
+    "chunking": 0.1,
+    "retrieval": 0.25,
+    "reranking": 0.2,
+    "synthesis": 0.45
+  },
+  "weights_hash": "422403f9d47a3c2add30687b68fb6bc6fb5676cf18934e0e2b6abda9e9f2c710",
+  "graph_lift": {
+    "composite": 0.0,
+    "retrieval": 0.0,
+    "reranking": 0.0
+  },
+  "per_query": [
+    {
+      "query_id": "h1",
+      "retrieved_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "reranked_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "cited_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "ragas": {
+        "faithfulness": 0.39999999999999997,
+        "answer_correctness": 0.6333333333333333,
+        "context_precision": 1.0,
+        "context_recall": 0.26666666666666666,
+        "answer_relevancy": 1.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.7000000000000001,
+        "hallucination": 0.5833333333333334,
+        "contextual_relevance": 0.7666666666666666
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    },
+    {
+      "query_id": "h2",
+      "retrieved_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "reranked_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "cited_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "ragas": {
+        "faithfulness": 0.39999999999999997,
+        "answer_correctness": 0.6333333333333333,
+        "context_precision": 1.0,
+        "context_recall": 0.26666666666666666,
+        "answer_relevancy": 1.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.7000000000000001,
+        "hallucination": 0.5833333333333334,
+        "contextual_relevance": 0.7666666666666666
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    },
+    {
+      "query_id": "h3",
+      "retrieved_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "reranked_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "cited_node_ids": [
+        "yt-zero-day-market-covert-exploits"
+      ],
+      "ragas": {
+        "faithfulness": 0.39999999999999997,
+        "answer_correctness": 0.6333333333333333,
+        "context_precision": 1.0,
+        "context_recall": 0.26666666666666666,
+        "answer_relevancy": 1.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.7000000000000001,
+        "hallucination": 0.5833333333333334,
+        "contextual_relevance": 0.7666666666666666
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    }
+  ],
+  "eval_divergence": false
+}

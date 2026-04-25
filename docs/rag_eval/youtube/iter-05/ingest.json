@@ -1,0 +1,49 @@
+{
+  "per_zettel": [
+    {
+      "node_id": "yt-andrej-karpathy-s-llm-in",
+      "chunk_count": 4,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-software-1-0-vs-software",
+      "chunk_count": 2,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-transformer-architecture",
+      "chunk_count": 4,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-lecun-s-vision-human-lev",
+      "chunk_count": 3,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-programming-workflow-is",
+      "chunk_count": 2,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-effective-public-speakin",
+      "chunk_count": 3,
+      "ok": true,
+      "source": "existing"
+    },
+    {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "chunk_count": 3,
+      "ok": true,
+      "source": "freshly_ingested"
+    }
+  ],
+  "total_chunks": 21,
+  "failures": [],
+  "skipped_existing": 6
+}

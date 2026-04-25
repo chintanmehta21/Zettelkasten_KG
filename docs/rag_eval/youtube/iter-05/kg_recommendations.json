@@ -1,0 +1,80 @@
+[
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "commercial",
+      "evidence_atomic_fact": "Commercial brokers like Zerodium and Operation Zero buy exploits and sell to governments."
+    },
+    "evidence_query_ids": [
+      "h1"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "criminal",
+      "evidence_atomic_fact": "Criminal groups like LockBit also operate in the unregulated black-market tier."
+    },
+    "evidence_query_ids": [
+      "h1"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "remote",
+      "evidence_atomic_fact": "Remote zero-click full-chain mobile exploits command the highest prices."
+    },
+    "evidence_query_ids": [
+      "h2"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "local",
+      "evidence_atomic_fact": "Local privilege escalation and older-platform exploits pay much less."
+    },
+    "evidence_query_ids": [
+      "h2"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "nation-states",
+      "evidence_atomic_fact": "Nation-states use the zero-day market as a supply chain for cyber-warfare capabilities."
+    },
+    "evidence_query_ids": [
+      "h3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-zero-day-market-covert-exploits",
+      "suggested_tag": "wealthy",
+      "evidence_atomic_fact": "Wealthy or well-contracted countries gain disproportionate offensive capability through the market."
+    },
+    "evidence_query_ids": [
+      "h3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  }
+]

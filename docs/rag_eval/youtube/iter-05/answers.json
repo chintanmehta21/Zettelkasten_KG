@@ -1,0 +1,129 @@
+[
+  {
+    "query_id": "h1",
+    "answer": "The zero-day vulnerability market operates across three broad ethical and legal tiers: white, gray, and black [id=\"yt-zero-day-market-covert-exploits\"].\n\nThe **white tier** involves legal bug bounties, where companies typically offer rewards for the discovery of vulnerabilities [id=\"yt-zero-day-market-covert-exploits\"]. The **gray tier** encompasses unregulated government acquisition of zero-days [id=\"yt-zero-day-market-covert-exploits\"]. For example, a US hacker selling to the NSA would be considered part of this tier [id=\"yt-zero-day-market-covert-exploits\"]. The **black tier** is characterized by criminal use [id=\"yt-zero-day-market-covert-exploits\"]. An example of this would be a US hacker selling to Russia's Operation Zero [id=\"yt-zero-day-market-covert-exploits\"]. Geopolitical factors can blur these distinctions, as selling to Operation Zero might be gray for a Russian hacker, while selling to the NSA via Zerodium would be black for them [id=\"yt-zero-day-market-covert-exploits\"].",
+    "citations": [
+      {
+        "id": "yt-zero-day-market-covert-exploits",
+        "node_id": "yt-zero-day-market-covert-exploits",
+        "title": "Zero-Day Market Covert Exploits",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=TLPHmHPaCiQ",
+        "snippet": "{\"mini_title\": \"Zero-Day Market Covert Exploits\", \"brief_summary\": \"In this commentary, The speaker argues that the market for zero-day vulnerabilities is a complex, covert ecosystem operating across blurred legal and ethical tiers, enabling both sophisticated cyber warfare and critical law enforcement efforts. The commentary moves through Introduction to Zero-Days, The Commercial Zero-Day Market,",
+        "timestamp": null,
+        "rerank_score": 0.9944027066230774
+      },
+      {
+        "id": "yt-cannabis-use-disorder-impact-on",
+        "node_id": "yt-cannabis-use-disorder-impact-on",
+        "title": "Cannabis Use Disorder Impact on",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=Brm71uCWr-I",
+        "snippet": "{\"mini_title\": \"Problematic Cannabis Use Adulthood\", \"brief_summary\": \"This commentary video explains Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences. It moves through sections on Prevalence and Nature of Cannabis Use Disorder (CUD) and Compounding. It also covers Cannabis Use Disorder and Cannabis. Featured voices include A",
+        "timestamp": null,
+        "rerank_score": 3.6035897210240364e-05
+      },
+      {
+        "id": "yt-dmt-history-neuroscience-entity-encounters",
+        "node_id": "yt-dmt-history-neuroscience-entity-encounters",
+        "title": "DMT History Neuroscience Entity Encounters",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+        "snippet": "{\"mini_title\": \"DMT N N dimethyltryptamine Overview\", \"brief_summary\": \"This commentary video explains DMT is a potent psychedelic with a rich history, complex neurological effects, and profound subjective experiences, including entity encounters, offering potential therapeutic applications while necessitating careful consideration of risks and 'set and setting'. It moves through sections on Histo",
+        "timestamp": null,
+        "rerank_score": 1.9457796952337958e-05
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-cannabis-use-disorder-impact-on",
+      "yt-dmt-history-neuroscience-entity-encounters"
+    ],
+    "reranked_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-cannabis-use-disorder-impact-on",
+      "yt-dmt-history-neuroscience-entity-encounters"
+    ],
+    "contexts": [
+      "{\"mini_title\": \"Zero-Day Market Covert Exploits\", \"brief_summary\": \"In this commentary, The speaker argues that the market for zero-day vulnerabilities is a complex, covert ecosystem operating across blurred legal and ethical tiers, enabling both sophisticated cyber warfare and critical law enforcement efforts. The commentary moves through Introduction to Zero-Days, The Commercial Zero-Day Market,",
+      "{\"mini_title\": \"Problematic Cannabis Use Adulthood\", \"brief_summary\": \"This commentary video explains Problematic cannabis use, while affecting a minority of users, leads to significant and compounding negative consequences. It moves through sections on Prevalence and Nature of Cannabis Use Disorder (CUD) and Compounding. It also covers Cannabis Use Disorder and Cannabis. Featured voices include A",
+      "{\"mini_title\": \"DMT N N dimethyltryptamine Overview\", \"brief_summary\": \"This commentary video explains DMT is a potent psychedelic with a rich history, complex neurological effects, and profound subjective experiences, including entity encounters, offering potential therapeutic applications while necessitating careful consideration of risks and 'set and setting'. It moves through sections on Histo"
+    ]
+  },
+  {
+    "query_id": "h2",
+    "answer": "Brokers like Zerodium play a role in the commercial zero-day market by publishing price lists for high-value exploits [id=\"yt-zero-day-market-covert-exploits\"]. These exploits can fetch millions of dollars [id=\"yt-zero-day-market-covert-exploits\"]. Prices for exploit types vary, ranging from $100,000 for passcode bypasses to $2-2.5 million for zero-click full phone takeovers [id=\"yt-zero-day-market-covert-exploits\"]. Another broker, Operation Zero, offered a record $20 million for an attack chain [id=\"yt-zero-day-market-covert-exploits\"].",
+    "citations": [
+      {
+        "id": "yt-zero-day-market-covert-exploits",
+        "node_id": "yt-zero-day-market-covert-exploits",
+        "title": "Zero-Day Market Covert Exploits",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=TLPHmHPaCiQ",
+        "snippet": ".\", \"Brokers like Zerodium publish price lists, with high-value exploits fetching millions of dollars.\", \"Prices range from $100,000 for passcode bypasses to $2-2.5 million for zero-click full phone takeovers.\", \"Operation Zero, another broker, recently offered a record $20 million for an attack chain.\"], \"Impact and Real-World Examples\": [\"Stuxnet famously used four zero-days to disrupt an Irania",
+        "timestamp": null,
+        "rerank_score": 0.9796833395957947
+      },
+      {
+        "id": "yt-software-1-0-vs-software",
+        "node_id": "yt-software-1-0-vs-software",
+        "title": "Software 1 0 vs Software",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+        "snippet": "re 2.0 paradigm. ### New Development Cycle\\n- The development process for Software 2.0 differs fundamentally from traditional software engineering.\\n- The role of the programmer shifts from writing and debugging code to that of a \\\"teacher\\\" or \\\"data curator.\\\".\\n- Core tasks now involve collecting, cleaning, and meticulously labeling massive datasets.\\n- When a Software 2.0 system produces an er",
+        "timestamp": null,
+        "rerank_score": 2.556007711973507e-05
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-software-1-0-vs-software"
+    ],
+    "reranked_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-software-1-0-vs-software"
+    ],
+    "contexts": [
+      ".\", \"Brokers like Zerodium publish price lists, with high-value exploits fetching millions of dollars.\", \"Prices range from $100,000 for passcode bypasses to $2-2.5 million for zero-click full phone takeovers.\", \"Operation Zero, another broker, recently offered a record $20 million for an attack chain.\"], \"Impact and Real-World Examples\": [\"Stuxnet famously used four zero-days to disrupt an Irania",
+      "re 2.0 paradigm. ### New Development Cycle\\n- The development process for Software 2.0 differs fundamentally from traditional software engineering.\\n- The role of the programmer shifts from writing and debugging code to that of a \\\"teacher\\\" or \\\"data curator.\\\".\\n- Core tasks now involve collecting, cleaning, and meticulously labeling massive datasets.\\n- When a Software 2.0 system produces an er"
+    ]
+  },
+  {
+    "query_id": "h3",
+    "answer": "The covert zero-day market is a complex ecosystem that enables both sophisticated cyber warfare and critical law enforcement efforts [id=\"yt-zero-day-market-covert-exploits\"].\n\nFor nation-state cyber warfare, these unpatched software flaws are highly valued and traded by various actors, including nation-states [id=\"yt-zero-day-market-covert-exploits\"]. Examples include Stuxnet, which used four zero-days to disrupt an Iranian nuclear facility, and NotPetya, which used one zero-day to paralyze Ukraine [id=\"yt-zero-day-market-covert-exploits\"]. Zero-days were also reportedly used by the Saudi government to track journalist Jamal Khashoggi, and \"Operation Triangulation\" involved a chain of four zero-days to infect iPhones via iMessage, granting full control [id=\"yt-zero-day-market-covert-exploits\"]. The market is categorized into gray (unregulated government acquisition) and black (criminal use) tiers, with geopolitical factors blurring these distinctions [id=\"yt-zero-day-market-covert-exploits\"].\n\nDespite their dangers, zero-days are crucial tools for law enforcement agencies [id=\"yt-zero-day-market-covert-exploits\"]. In early 2024, an 11-country task force used a likely zero-day in PHP to dismantle the infrastructure of the LockBit ransomware gang, which had controlled nearly half of the global ransomware market [id=\"yt-zero-day-market-covert-exploits\"]. This demonstrates the dual-use nature of zero-day exploits, enabling both harm and protection [id=\"yt-zero-day-market-covert-exploits\"].",
+    "citations": [
+      {
+        "id": "yt-zero-day-market-covert-exploits",
+        "node_id": "yt-zero-day-market-covert-exploits",
+        "title": "Zero-Day Market Covert Exploits",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=TLPHmHPaCiQ",
+        "snippet": "{\"mini_title\": \"Zero-Day Market Covert Exploits\", \"brief_summary\": \"In this commentary, The speaker argues that the market for zero-day vulnerabilities is a complex, covert ecosystem operating across blurred legal and ethical tiers, enabling both sophisticated cyber warfare and critical law enforcement efforts. The commentary moves through Introduction to Zero-Days, The Commercial Zero-Day Market,",
+        "timestamp": null,
+        "rerank_score": 0.9871610999107361
+      },
+      {
+        "id": "yt-dan-shapiro-overcoming-t",
+        "node_id": "yt-dan-shapiro-overcoming-t",
+        "title": "Dan Shapiro Overcoming Tribal Conflict",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=IDj1OBG5Tpw",
+        "snippet": "{\"brief_summary\": \"In this lecture, Dan Shapiro argues that harvard negotiator dan shapiro argues that the \\\"tribes effect\\\", characterized by an \\\"us versus them\\\" mentality, is the fundamental barrier to resolving conflicts. The closing point is that by recognizing the \\\"tribes effect\\\" and the psychological lures that fuel conflict, individuals can employ strategies like \\\"going to the balcony\\",
+        "timestamp": null,
+        "rerank_score": 1.8498078134143725e-05
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-dan-shapiro-overcoming-t"
+    ],
+    "reranked_node_ids": [
+      "yt-zero-day-market-covert-exploits",
+      "yt-dan-shapiro-overcoming-t"
+    ],
+    "contexts": [
+      "{\"mini_title\": \"Zero-Day Market Covert Exploits\", \"brief_summary\": \"In this commentary, The speaker argues that the market for zero-day vulnerabilities is a complex, covert ecosystem operating across blurred legal and ethical tiers, enabling both sophisticated cyber warfare and critical law enforcement efforts. The commentary moves through Introduction to Zero-Days, The Commercial Zero-Day Market,",
+      "{\"brief_summary\": \"In this lecture, Dan Shapiro argues that harvard negotiator dan shapiro argues that the \\\"tribes effect\\\", characterized by an \\\"us versus them\\\" mentality, is the fundamental barrier to resolving conflicts. The closing point is that by recognizing the \\\"tribes effect\\\" and the psychological lures that fuel conflict, individuals can employ strategies like \\\"going to the balcony\\"
+    ]
+  }
+]
