@@ -734,9 +734,8 @@ body {
 }
 
 /* KG button — yellow/amber accent. Mirrors the Go-to button's pattern
-   exactly (idle / hover / box-shadow), just in yellow instead of teal,
-   so the two buttons read as a matched pair. Hollow stroked icon at
-   stroke-width 1.8 — slightly thinner than the Go-to button's 2px. */
+   exactly (idle / hover / box-shadow / icon stroke-width), just in
+   yellow instead of teal so the two buttons read as a matched pair. */
 .home-card-kg-btn {
     border: 1px solid hsla(48, 80%, 55%, 0.45);
     background: hsla(48, 80%, 55%, 0.1);
