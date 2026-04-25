@@ -47,6 +47,17 @@
     return el.innerHTML;
   }
 
+  function showOverlay(id, text) {
+    const o = document.getElementById(id);
+    if (!o) return;
+    if (text) {
+      const t = o.querySelector('.kg-overlay-text');
+      if (t) t.textContent = text;
+    }
+    o.classList.remove('hidden');
+  }
+  function hideOverlay(id) { const o = document.getElementById(id); if (o) o.classList.add('hidden'); }
+
   // Defensive brief-summary extractor.
   //
   // Production data ships `node.summary` as a JSON-stringified envelope:
@@ -354,6 +365,9 @@
 
   // ---- Load data ----
   function loadGraphData() {
+    showOverlay('overlay-loading');
+    hideOverlay('overlay-empty');
+    hideOverlay('overlay-error');
     const viewParam = currentView === 'my' ? '?view=my' : '';
     fetch('/api/graph' + viewParam, { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
@@ -386,6 +400,7 @@
           initGraph();
           updateStats();
         }
+        hideOverlay('overlay-loading');
         // Deep-link: ?node=<id> focuses + opens a node after init.
         try {
           const params = new URLSearchParams(window.location.search);
@@ -402,7 +417,9 @@
       })
       .catch(err => {
         console.error('Failed to load graph data:', err);
-        statsEl.textContent = 'Failed to load data';
+        hideOverlay('overlay-loading');
+        showOverlay('overlay-error', 'Could not load graph data.');
+        if (statsEl) statsEl.textContent = 'Failed to load data';
       });
   }
 
@@ -1159,5 +1176,8 @@
   }
 
   renderKastensSection();
+
+  const overlayRetry = document.getElementById('overlay-error-retry');
+  if (overlayRetry) overlayRetry.addEventListener('click', loadGraphData);
 
 })();
