@@ -8,6 +8,8 @@ import re
 from typing import Any
 from uuid import UUID
 
+from website.core.text_polish import polish, rewrite_reddit_tag, strip_caveats
+
 from .client import get_supabase_client
 from .models import (
     KGGraph,
@@ -104,9 +106,14 @@ def _normalize_tag(raw: str) -> str:
     """Strip category prefix from pipeline tags (domain/ml -> ml).
 
     Mirrors graph_store._normalize_tag: generic ``split("/", 1)`` so any
-    ``prefix/value`` tag is reduced to ``value``.
+    ``prefix/value`` tag is reduced to ``value``. Reddit subreddit tags
+    (``r-foo``) are rewritten to ``r/foo`` so storage and display agree.
     """
-    return raw.strip().split("/", 1)[-1].lower()
+    cleaned = raw.strip().lower()
+    rewritten = rewrite_reddit_tag(cleaned)
+    if rewritten != cleaned:
+        return rewritten
+    return cleaned.split("/", 1)[-1]
 
 
 def _normalize_source_type(raw: str) -> str:

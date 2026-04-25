@@ -68,8 +68,18 @@ def _slugify(text: str, max_len: int = 24) -> str:
 
 
 def _normalize_tag(tag: str) -> str:
-    """Strip category prefix from pipeline tags (domain/ml -> ml)."""
-    return tag.split("/", 1)[-1].lower()
+    """Strip category prefix from pipeline tags (domain/ml -> ml).
+
+    Reddit ``r-foo`` slugs are rewritten to ``r/foo`` at this layer so the
+    file-store and Supabase store agree on tag spelling.
+    """
+    from website.core.text_polish import rewrite_reddit_tag
+
+    cleaned = tag.lower()
+    rewritten = rewrite_reddit_tag(cleaned)
+    if rewritten != cleaned:
+        return rewritten
+    return cleaned.split("/", 1)[-1]
 
 
 def _find_links(node_id: str, tags: set[str], graph: dict) -> list[dict]:

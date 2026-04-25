@@ -25,6 +25,7 @@ from uuid import UUID
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
 from website.core.settings import get_settings
 from website.core.supabase_kg import KGNodeCreate, KGRepository, is_supabase_configured
+from website.core.text_polish import polish, rewrite_tags, strip_caveats
 
 logger = logging.getLogger("website.core.persist")
 
@@ -484,13 +485,24 @@ async def persist_summarized_result(
 
 
 def _encode_summary_payload(payload: dict[str, Any]) -> str:
-    """Serialize brief + detailed summaries as JSON so both survive persistence."""
+    """Serialize brief + detailed summaries as JSON so both survive persistence.
+
+    Applies the deterministic polish + caveat-strip stack at the WRITE
+    boundary so every persisted row is born clean. Idempotent — re-encoding
+    an already-polished payload is a no-op. This complements the read-time
+    polish in ``summary_normalizer.normalize_summary_for_wire`` so non-API
+    consumers (Telegram bot, Obsidian export, GitHub writer) see the same
+    cleaned text.
+    """
     brief = _normalize_summary_text(payload.get("brief_summary"))
     detailed = _normalize_summary_text(payload.get("detailed_summary") or payload.get("summary"))
     if not brief and not detailed:
         return ""
+    cleaned_brief = polish(strip_caveats(brief))
+    detailed_value = detailed or brief
+    cleaned_detailed = polish(strip_caveats(detailed_value)) if detailed_value else cleaned_brief
     return json.dumps(
-        {"brief_summary": brief, "detailed_summary": detailed or brief},
+        {"brief_summary": cleaned_brief, "detailed_summary": cleaned_detailed},
         ensure_ascii=False,
     )
 
@@ -504,7 +516,7 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
             source_type=str(payload["source_type"]),
             source_url=str(payload["source_url"]),
             summary=_encode_summary_payload(payload),
-            tags=list(payload.get("tags", [])),
+            tags=list(rewrite_tags(payload.get("tags", []) or [])),
         )
     except Exception as exc:
         logger.warning("Failed to add node to file KG: %s", exc)
@@ -662,7 +674,7 @@ def _build_supabase_node_payload(
         id=node_id,
         name=str(payload["title"]),
         source_type=str(payload["source_type"]),
-        tags=list(payload.get("tags", [])),
+        tags=list(rewrite_tags(payload.get("tags", []) or [])),
         url=str(payload["source_url"]),
         summary=_encode_summary_payload(payload),
         node_date=captured_on,

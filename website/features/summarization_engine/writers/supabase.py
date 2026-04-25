@@ -28,13 +28,18 @@ from uuid import UUID
 
 from website.core.supabase_kg.models import KGNodeCreate
 from website.core.supabase_kg.repository import KGRepository
+from website.core.text_polish import polish_envelope, rewrite_tags
 from website.features.summarization_engine.core.errors import WriterError
 from website.features.summarization_engine.core.models import SummaryResult
 from website.features.summarization_engine.writers.base import BaseWriter
 
 
 def _encode_summary_blob(result: SummaryResult) -> str:
-    """Serialize the full structured summary into the canonical JSON envelope."""
+    """Serialize the full structured summary into the canonical JSON envelope.
+
+    Applies the deterministic polish + caveat-strip pass at the WRITE
+    boundary so every persisted Supabase row is born clean. Idempotent.
+    """
     dump = result.model_dump(mode="json")
     payload = {
         "mini_title": dump.get("mini_title") or "",
@@ -42,6 +47,7 @@ def _encode_summary_blob(result: SummaryResult) -> str:
         "detailed_summary": dump.get("detailed_summary") or [],
         "closing_remarks": dump.get("closing_remarks") or "",
     }
+    payload = polish_envelope(payload)
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -59,7 +65,7 @@ class SupabaseWriter(BaseWriter):
             name=result.mini_title,
             source_type=result.metadata.source_type.value,
             summary=_encode_summary_blob(result),
-            tags=result.tags,
+            tags=list(rewrite_tags(result.tags or [])),
             url=result.metadata.url,
             extraction_confidence=result.metadata.extraction_confidence,
             engine_version=result.metadata.engine_version,
