@@ -33,6 +33,8 @@ import json
 import re
 from typing import Any
 
+from website.core.text_polish import polish_envelope, rewrite_tags
+
 
 # Raw pipeline schema keys → human-facing labels rendered in the zettel modal.
 _RAW_HEADING_MAP: dict[str, str] = {
@@ -756,7 +758,11 @@ def _sanitize_brief(text: str) -> str:
     """
     if not text:
         return ""
-    cleaned = re.sub(r"\s+", " ", text).strip()
+    # Strip pipeline caveats / "Note to ingester:" leaks before any further
+    # processing — these are internal metadata, not user-facing prose.
+    from website.core.text_polish import strip_caveats as _strip_caveats
+    cleaned = _strip_caveats(text)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if not cleaned:
         return ""
     # Split into sentences preserving terminator.
@@ -1315,11 +1321,18 @@ def normalize_summary_for_wire(raw: Any, source_type: str | None = None) -> str:
                 },
             )
 
+    # Final wire-boundary polish: deterministic grammar/typography pass
+    # plus caveat stripping. Idempotent — safe on already-polished rows.
+    envelope = polish_envelope(envelope)
+
     return json.dumps(envelope, ensure_ascii=False)
 
 
 def normalize_graph_nodes(graph_dict: dict[str, Any]) -> dict[str, Any]:
-    """Mutate each node's ``summary`` to the canonical envelope string."""
+    """Mutate each node's ``summary`` to the canonical envelope string.
+
+    Also rewrites Reddit ``r-foo`` tags to ``r/foo`` for display parity.
+    """
     for node in graph_dict.get("nodes") or []:
         raw = node.get("summary")
         source_type = node.get("source_type")
@@ -1328,4 +1341,9 @@ def normalize_graph_nodes(graph_dict: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             # Never fail graph fetch because of one bad row — keep raw form
             continue
+        if "tags" in node:
+            try:
+                node["tags"] = rewrite_tags(node.get("tags"))
+            except Exception:
+                continue
     return graph_dict

@@ -594,3 +594,52 @@ def test_legitimate_os_mention_in_chapter_body_is_preserved():
     body = " ".join(chap["sub_sections"]["Introduction"])
     assert "Mac OS X" in body
     assert "Windows 10" in body
+
+
+# ---- Caveat stripping + Reddit tag rewrite (post-polish hooks) -----
+
+
+def test_caveat_stripped_from_brief():
+    raw = {
+        "brief_summary": "OP raised concerns. Caveat: Rendered comments covered only part of the thread (13/38 visible; divergence 65.",
+        "detailed_summary": [],
+    }
+    env = json.loads(normalize_summary_for_wire(raw, "reddit"))
+    assert "Caveat" not in env["brief_summary"]
+    assert "OP raised concerns" in env["brief_summary"]
+
+
+def test_caveat_stripped_from_bullets():
+    raw = {
+        "brief_summary": "B.",
+        "detailed_summary": [
+            {"heading": "Overview", "bullets": ["Real bullet.", "Caveat: pipeline note."]}
+        ],
+    }
+    detailed = _detailed(normalize_summary_for_wire(raw, "reddit"))
+    bullets = _section(detailed, "Overview")["bullets"]
+    assert all("Caveat" not in b for b in bullets)
+    assert any("Real bullet" in b for b in bullets)
+
+
+def test_polish_runs_on_envelope():
+    raw = {
+        "brief_summary": "Along the way The speaker spoke. Karpathy s view stuck.",
+        "detailed_summary": [],
+    }
+    env = json.loads(normalize_summary_for_wire(raw, "youtube"))
+    assert "Along the way, The speaker" in env["brief_summary"]
+    assert "Karpathy's view" in env["brief_summary"]
+
+
+def test_normalize_graph_nodes_rewrites_reddit_tag():
+    from website.core.summary_normalizer import normalize_graph_nodes
+    g = {
+        "nodes": [
+            {"id": "rd-x", "summary": "{}", "tags": ["r-hinduism", "discussion"], "source_type": "reddit"},
+            {"id": "yt-x", "summary": "{}", "tags": ["ml"], "source_type": "youtube"},
+        ]
+    }
+    out = normalize_graph_nodes(g)
+    assert out["nodes"][0]["tags"] == ["r/hinduism", "discussion"]
+    assert out["nodes"][1]["tags"] == ["ml"]

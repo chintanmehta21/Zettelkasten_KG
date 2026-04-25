@@ -842,6 +842,7 @@
     title.textContent = node.name || 'Untitled';
 
     var sourceClass = (node.group || 'web').toLowerCase();
+    // Card-parity layout: date pill (mono) THEN source pill.
     meta.innerHTML =
       (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
       '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';

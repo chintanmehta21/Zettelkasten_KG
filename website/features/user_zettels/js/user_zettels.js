@@ -514,6 +514,29 @@
       ? '<span class="home-card-date">' + escapeHtml(formatDate(node.date)) + '</span>'
       : '';
 
+    var safeKgId = encodeURIComponent(node.id || '');
+    var goToBtnHtml = safeUrl
+      ? '<a class="home-card-goto-btn" href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer" aria-label="Open original source">' +
+          '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+            '<path d="M20 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+            '<path d="M19 13.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+          '</svg>' +
+          '<span class="tooltip">Open original source</span>' +
+        '</a>'
+      : '';
+
+    var kgBtnHtml = '<a class="home-card-kg-btn" href="/knowledge-graph?node=' + safeKgId + '" aria-label="View in Knowledge Graph">' +
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
+          '<circle cx="18" cy="7.5" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
+          '<circle cx="12" cy="17.5" r="2.4" stroke="currentColor" stroke-width="1.6"></circle>' +
+          '<path d="M7.8 7.5L10.6 15.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>' +
+          '<path d="M16 9.4L13.4 15.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>' +
+        '</svg>' +
+        '<span class="tooltip">View in Knowledge Graph</span>' +
+      '</a>';
+
     card.innerHTML =
       '<h2 class="zettels-card-title">' + escapeHtml(node.title) + '</h2>' +
       '<p class="zettels-card-summary">' + escapeHtml(truncate(node.briefSummary, 240)) + '</p>' +
@@ -521,10 +544,8 @@
         dateBadge +
         '<span class="home-card-source ' + node.source + '">' + escapeHtml(node.sourceLabel) + '</span>' +
         '<div class="zettels-card-actions">' +
-          '<button class="home-card-summary-btn" type="button" aria-label="View summary">' +
-            '<img src="/artifacts/icon-summary.svg" alt="" aria-hidden="true" />' +
-            '<span class="tooltip">Summary</span>' +
-          '</button>' +
+          goToBtnHtml +
+          kgBtnHtml +
           '<button class="zettels-delete-btn" type="button" aria-label="Delete zettel">' +
             '<img class="icon-trash icon-trash-img" src="/artifacts/icon-trash-bootstrap.svg" alt="" aria-hidden="true" />' +
             '<svg class="icon-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -537,11 +558,16 @@
       '</div>';
 
     card.addEventListener('click', function (e) {
-      var summaryBtn = e.target.closest('.home-card-summary-btn');
-      if (summaryBtn) {
-        e.preventDefault();
+      // Buttons stop propagation themselves — but defensively short-circuit.
+      var goToBtn = e.target.closest('.home-card-goto-btn');
+      if (goToBtn) {
         e.stopPropagation();
-        openSummary(node);
+        return; // anchor handles navigation natively
+      }
+
+      var kgBtn = e.target.closest('.home-card-kg-btn');
+      if (kgBtn) {
+        e.stopPropagation();
         return;
       }
 
@@ -553,16 +579,17 @@
         return;
       }
 
-      if (safeUrl) {
-        window.open(safeUrl, '_blank', 'noopener');
-      }
+      // Card body click → open summary modal (reversed from prior behavior).
+      e.preventDefault();
+      openSummary(node);
     });
 
     card.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      if (!safeUrl) return;
+      // Don't trigger when focus is on a child button/link.
+      if (e.target !== card) return;
       e.preventDefault();
-      window.open(safeUrl, '_blank', 'noopener');
+      openSummary(node);
     });
 
     return card;
@@ -1029,9 +1056,13 @@
   function openSummary(node) {
     if (!summaryOverlay || !summarySource || !summaryDate || !summaryTitle || !summaryText || !summaryTags) return;
 
-    summarySource.className = 'zettels-source-badge ' + node.source;
+    // Match card visual pattern exactly: date pill (mono) THEN source pill.
+    summarySource.className = 'home-card-source ' + node.source;
     summarySource.textContent = node.sourceLabel;
-    summaryDate.textContent = node.date ? formatDate(node.date) : 'No capture date';
+    summaryDate.className = 'home-card-date';
+    summaryDate.textContent = node.date ? formatDate(node.date) : '';
+    if (!node.date) summaryDate.style.display = 'none';
+    else summaryDate.style.display = '';
     summaryTitle.textContent = node.title;
     renderDualSummary(summaryText, {
       brief: node.briefSummary || '',

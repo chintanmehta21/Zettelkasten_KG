@@ -283,6 +283,19 @@
           initGraph();
           updateStats();
         }
+        // Deep-link: ?node=<id> focuses + opens a node after init.
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const focusId = params.get('node');
+          if (focusId) {
+            // Allow the force-graph layout to settle before focusing so the
+            // camera fly-to has a meaningful target position.
+            setTimeout(function () {
+              const target = (graphData.nodes || []).find(n => n.id === focusId);
+              if (target) handleNodeClick(target);
+            }, 1200);
+          }
+        } catch (e) { /* non-fatal */ }
       })
       .catch(err => {
         console.error('Failed to load graph data:', err);
