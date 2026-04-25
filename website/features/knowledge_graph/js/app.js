@@ -12,23 +12,33 @@
 (function () {
   'use strict';
 
-  // ---- Node colors by source (refined palette — higher saturation, dark-bg optimised) ----
+  // ---- Node colours by source. Adding a new source = add one row here. ----
   const COLORS = {
-    youtube:  '#E05565',
-    reddit:   '#E09040',
-    github:   '#56C8D8',
-    substack: '#60A5FA',
-    medium:   '#4ADE80',
-    web:      '#94A3B8'
+    youtube:    '#E05565',
+    reddit:     '#E09040',
+    github:     '#56C8D8',
+    substack:   '#60A5FA',
+    newsletter: '#60A5FA',  // matches .zettels-source-badge.newsletter HSL(205,40,68)
+    medium:     '#4ADE80',
+    web:        '#94A3B8'
   };
-
   const COLORS_INT = {
-    youtube:  0xE05565,
-    reddit:   0xE09040,
-    github:   0x56C8D8,
-    substack: 0x60A5FA,
-    medium:   0x4ADE80,
-    web:      0x94A3B8
+    youtube:    0xE05565,
+    reddit:     0xE09040,
+    github:     0x56C8D8,
+    substack:   0x60A5FA,
+    newsletter: 0x60A5FA,
+    medium:     0x4ADE80,
+    web:        0x94A3B8
+  };
+  const SOURCE_LABEL = {
+    youtube: 'YouTube',
+    reddit: 'Reddit',
+    github: 'GitHub',
+    substack: 'Substack',
+    newsletter: 'Newsletter',
+    medium: 'Medium',
+    web: 'Web'
   };
 
   function escapeHtml(str) {
@@ -130,7 +140,11 @@
   let panelHideTimer = null;
   let highlightNodes = new Set();
   let hoverNode = null;
-  let activeFilters = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
+  let activeSources = new Set();      // populated after first /api/graph response
+  let activeKastens = new Set();      // populated when user picks any
+  let kastenMembership = new Map();   // sandboxId -> Set<nodeId>; lazy-loaded
+  let kastenList = [];                // [{id, name, member_count}, ...]
+  let knownSources = new Set();       // union of COLORS keys + groups present in data
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
   let authToken = null;
@@ -370,6 +384,14 @@
         });
         nodeDegrees = computeDegrees(fullData);
         _maxPagerank = Math.max(...(fullData.nodes || []).map(n => n.pagerank || 0), 0.001);
+        // Seed source filter from union of known + observed groups.
+        const observed = new Set((fullData.nodes || []).map(n => normalizeGroup(n.group)));
+        knownSources = new Set([...Object.keys(COLORS), ...observed]);
+        // First load: enable all sources by default.
+        if (activeSources.size === 0) {
+          knownSources.forEach(s => activeSources.add(s));
+        }
+        renderSourceSection();
         if (graph) {
           // Re-apply active filters
           applyFilters();
@@ -879,37 +901,72 @@
     }
   });
 
-  if (filterDropdown) {
-    filterDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.addEventListener('change', () => {
-        activeFilters.clear();
-        filterDropdown.querySelectorAll('input:checked').forEach(
-          checked => activeFilters.add(checked.value)
-        );
+  function renderSourceSection() {
+    const body = document.getElementById('filter-source-body');
+    if (!body) return;
+    body.innerHTML = '';
+    [...knownSources].sort().forEach(src => {
+      const id = 'flt-src-' + src;
+      const lbl = document.createElement('label');
+      lbl.className = 'kg-filter-item';
+      const checked = activeSources.has(src);
+      if (!checked) lbl.classList.add('unchecked');
+      lbl.innerHTML =
+        '<input type="checkbox" id="' + id + '" value="' + src + '"' + (checked ? ' checked' : '') + '>' +
+        '<span class="kg-filter-dot" style="background:' + (COLORS[src] || '#888') + '"></span>' +
+        '<span>' + (SOURCE_LABEL[src] || src) + '</span>';
+      lbl.addEventListener('click', (e) => {
+        // Click anywhere on the label toggles the checkbox; we manage state ourselves.
+        e.preventDefault();
+        if (activeSources.has(src)) activeSources.delete(src); else activeSources.add(src);
+        lbl.classList.toggle('unchecked', !activeSources.has(src));
+        const cb = lbl.querySelector('input');
+        if (cb) cb.checked = activeSources.has(src);
         applyFilters();
       });
+      body.appendChild(lbl);
     });
   }
 
+  document.querySelectorAll('.kg-filter-section-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+  });
+
   function applyFilters() {
-    const filteredNodes = fullData.nodes.filter(n => activeFilters.has(n.group));
+    // Build the set of node IDs allowed by the Kastens axis.
+    let kastenAllowedIds = null; // null = no kasten filter active = allow all
+    if (activeKastens.size > 0) {
+      kastenAllowedIds = new Set();
+      activeKastens.forEach(kid => {
+        const memb = kastenMembership.get(kid);
+        if (memb) memb.forEach(nid => kastenAllowedIds.add(nid));
+      });
+    }
+    const filteredNodes = fullData.nodes.filter(n => {
+      const src = normalizeGroup(n.group);
+      if (!activeSources.has(src)) return false;
+      if (kastenAllowedIds && !kastenAllowedIds.has(n.id)) return false;
+      return true;
+    });
     const nodeIds = new Set(filteredNodes.map(n => n.id));
     const filteredLinks = fullData.links.filter(l => {
       const src = typeof l.source === 'object' ? l.source.id : l.source;
       const tgt = typeof l.target === 'object' ? l.target.id : l.target;
       return nodeIds.has(src) && nodeIds.has(tgt);
     });
-
     graphData = { nodes: filteredNodes, links: filteredLinks };
     nodeDegrees = computeDegrees(graphData);
-    graph.graphData(graphData);
+    if (graph) graph.graphData(graphData);
     updateStats();
-
     closePanel();
     selectedNode = null;
     highlightNodes.clear();
 
-    setTimeout(() => graph.zoomToFit(800, 60), 800);
+    // Empty-state overlay (P1 #14).
+    const emptyOverlay = document.getElementById('overlay-empty');
+    if (emptyOverlay) emptyOverlay.classList.toggle('hidden', filteredNodes.length > 0);
+
+    if (filteredNodes.length > 0) setTimeout(() => graph && graph.zoomToFit(800, 60), 800);
   }
 
   // ---- Stats ----
@@ -945,7 +1002,19 @@
 
   function normalizeGroup(group) {
     var normalized = (group || '').toString().trim().toLowerCase();
-    return normalized === 'generic' ? 'web' : (normalized || 'web');
+    if (normalized === 'generic') return 'web';
+    return normalized || 'web';
+  }
+
+  const overlayEmptyReset = document.getElementById('overlay-empty-reset');
+  if (overlayEmptyReset) {
+    overlayEmptyReset.addEventListener('click', () => {
+      activeSources = new Set([...knownSources]);
+      activeKastens.clear();
+      renderSourceSection();
+      renderKastensSection(); // safe — defined in Task 7.2; defaults to empty if not yet loaded
+      applyFilters();
+    });
   }
 
 })();
