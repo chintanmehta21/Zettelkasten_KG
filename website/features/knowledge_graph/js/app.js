@@ -1034,15 +1034,28 @@
 
   // ---- Keyboard: Escape ----
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
-      closePanel();
-      selectedNode = null;
-      highlightNodes.clear();
-      hoverNode = null;
-      if (searchInput) searchInput.value = '';
-      _refreshAllNodeVisuals();
+    if (e.key !== 'Escape') return;
+    // 1) Close kasten modal first if open.
+    const km = document.getElementById('kasten-modal');
+    if (km && !km.classList.contains('hidden')) {
+      window.kgKastenModal && window.kgKastenModal.close();
+      return;
     }
+    // 2) Close filter dropdown if open.
+    if (filterDropdown && !filterDropdown.classList.contains('hidden')) {
+      filterDropdown.classList.add('hidden');
+      filterBtn && filterBtn.classList.remove('active');
+      return;
+    }
+    // 3) Otherwise close panel + clear search/highlights (existing behaviour).
+    if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
+    closePanel();
+    selectedNode = null;
+    _activeNodeIds.clear();
+    highlightNodes.clear();
+    hoverNode = null;
+    if (searchInput) { searchInput.value = ''; _applySearch(''); }
+    _refreshAllNodeVisuals();
   });
 
   function normalizeGroup(group) {
