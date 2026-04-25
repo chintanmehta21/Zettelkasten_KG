@@ -876,9 +876,14 @@ Find the current `.kg-filter-dropdown` rules and replace with:
 }
 .kg-filter-cta-link:hover { text-decoration: underline; }
 
-/* Section greyed out when current view scope cannot use this filter. */
-.kg-filter-section.disabled-scope .kg-filter-section-header { color: rgba(180,192,210,0.3); }
-.kg-filter-section.disabled-scope .kg-filter-cta-link { color: rgba(180,192,210,0.55); }
+/* Section greyed out when current view scope cannot use this filter
+   (Kastens on Global). Whole surface acts as a single greyed click target
+   with a "Sign in to switch" tooltip (matches greyed Personal segment). */
+.kg-filter-section.disabled-scope { cursor: pointer; opacity: 0.55; }
+.kg-filter-section.disabled-scope .kg-filter-section-header { color: rgba(180,192,210,0.3); cursor: pointer; }
+.kg-filter-section.disabled-scope .kg-filter-section-body { pointer-events: none; }
+.kg-filter-section.disabled-scope .kg-filter-empty { color: rgba(180,192,210,0.5); font-style: italic; }
+.kg-filter-section.disabled-scope:hover { opacity: 0.75; }
 ```
 
 - [ ] **Step 2: Commit**
@@ -1335,27 +1340,40 @@ Append to the IIFE:
     body.innerHTML = '';
     const sectionEl = body.closest('.kg-filter-section');
     // Greyed when view is Global (Kastens are personal scope).
+    // Whole section is hover-greyed with the tooltip "Sign in to switch"
+    // (mirrors the greyed Personal segment in the toggle).
     if (currentView === 'global') {
-      if (sectionEl) sectionEl.classList.add('disabled-scope');
-      const link = document.createElement('a');
-      link.className = 'kg-filter-cta-link';
-      link.textContent = 'Switch to Personal to filter by Kasten';
-      link.href = '#';
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (!isLoggedIn) { openLoginModalFromKG(); return; }
-        // Programmatic toggle to Personal.
-        currentView = 'my';
-        localStorage.setItem(STORAGE_KEY_VIEW, 'my');
-        setViewBtns('my');
-        loadGraphData();
-        // Re-render so the section unlocks.
-        setTimeout(renderKastensSection, 0);
-      });
-      body.appendChild(link);
+      if (sectionEl) {
+        sectionEl.classList.add('disabled-scope');
+        sectionEl.setAttribute('title', 'Sign in to switch');
+        sectionEl.setAttribute('aria-disabled', 'true');
+        // Capture-phase click handler: any click anywhere in the section
+        // opens login (logged-out) or switches view to Personal (logged-in).
+        sectionEl.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isLoggedIn) { openLoginModalFromKG(); return; }
+          currentView = 'my';
+          localStorage.setItem(STORAGE_KEY_VIEW, 'my');
+          setViewBtns('my');
+          loadGraphData();
+          setTimeout(renderKastensSection, 0);
+        };
+      }
+      // Body content: a single non-interactive hint (the section's onclick
+      // captures the gesture for both logged-in and logged-out users).
+      const hint = document.createElement('p');
+      hint.className = 'kg-filter-empty';
+      hint.textContent = 'Sign in to switch';
+      body.appendChild(hint);
       return;
     }
-    if (sectionEl) sectionEl.classList.remove('disabled-scope');
+    if (sectionEl) {
+      sectionEl.classList.remove('disabled-scope');
+      sectionEl.removeAttribute('title');
+      sectionEl.removeAttribute('aria-disabled');
+      sectionEl.onclick = null;
+    }
     if (!isLoggedIn) {
       const link = document.createElement('a');
       link.className = 'kg-filter-cta-link';
@@ -2583,7 +2601,7 @@ For each row in the table below, take a screenshot, save to disk, and tick the b
 - [ ] Note 1 — Action buttons live on the meta row beside date+badge, not at the bottom of the panel
 - [ ] Note 2 — Toggle order: `Toggle | Search | Filter | Reset`
 - [ ] Q3 — Logged-out greyed Personal click opens the login modal (same modal you'd get from the global Login button)
-- [ ] Note 3 — On Global view, the Kastens filter section is greyed and shows "Switch to Personal to filter by Kasten"; clicking it switches view to Personal (logged in) or opens login (logged out); switching back to Global clears any kasten selections
+- [ ] Note 3 — On Global view, the Kastens filter section is greyed; hovering anywhere in the section shows the native tooltip "Sign in to switch" (identical wording to the greyed Personal segment); clicking anywhere in the section opens the login modal (logged out) or switches view to Personal (logged in); switching back to Global clears any kasten selections
 
 Artifacts saved as `docs/research/kg_ui_pass/iter1/<P0-1>.png` etc.
 

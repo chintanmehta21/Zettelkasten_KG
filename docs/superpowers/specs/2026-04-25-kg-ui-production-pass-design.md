@@ -128,7 +128,7 @@ Filter button unchanged structurally. Dropdown becomes two collapsible sections:
 ```
 
 - Both sections start expanded; arrow rotates to collapse.
-- **Kastens section is greyed out when view = Global** (Kastens are personal scope; can't filter another user's zettels by your Kasten). Greyed = section header dim + body shows a single CTA "Switch to Personal to filter by Kasten" that, when clicked, switches the view toggle to Personal (logged-in) or opens the login modal (logged-out). When view = Personal AND user has kastens, the section is fully active.
+- **Kastens section is greyed out when view = Global** (Kastens are personal scope). The entire section becomes a single greyed click target with native `title` tooltip "Sign in to switch" — the **same tooltip text used on the greyed Personal segment of the view toggle**, for visual + interaction consistency. Body shows a muted hint "Sign in to switch". Click anywhere in the section: opens login modal (logged-out) OR switches view toggle to Personal (logged-in). When view = Personal AND user has kastens, the section is fully active and individual rows are independently clickable.
 - Filter checkbox visual upgrade: unchecked items get **strikethrough + dot opacity 0.25 + label opacity 0.45**. Currently dot stays full opacity → bumping the contrast makes off-state unmistakable.
 - Combine semantics: **AND between sections, OR within**. SQL-equivalent:
   - `node.group IN selectedSources AND (selectedKastens IS EMPTY OR node.id IN any(selectedKastens.members))`
@@ -308,5 +308,5 @@ This spec captures user-confirmed decisions:
 - ✅ Action buttons (View original, Add to Kasten) circular icon-buttons in top row beside date/badge
 - ✅ Toggle order: `[Toggle] [Search] [Filter]`
 - ✅ Greyed Personal segment opens login modal (same UX as global Login)
-- ✅ Kastens filter section greyed when view = Global (CTA "Switch to Personal to filter by Kasten")
+- ✅ Kastens filter section greyed when view = Global; unified "Sign in to switch" tooltip (same as greyed Personal toggle); click → login modal (logged-out) or switch to Personal (logged-in)
 - ✅ Controls hint overlay text: NOT adopted
