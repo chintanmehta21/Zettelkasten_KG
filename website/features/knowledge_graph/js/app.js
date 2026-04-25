@@ -167,6 +167,17 @@
 
   // ---- Auth helpers ----
   function getStoredAuthToken() {
+    // Production stores the JWT under `zk-auth-token` (set by user_auth feature).
+    // The Supabase-style `sb-<projectRef>-auth-token` keys are checked as a
+    // fallback for any future migration. Without the `zk-auth-token` branch
+    // logged-in users would see Personal greyed and Add-to-Kasten as a no-op.
+    try {
+      const direct = localStorage.getItem('zk-auth-token');
+      if (direct) {
+        const parsed = JSON.parse(direct);
+        if (parsed && parsed.access_token) return parsed.access_token;
+      }
+    } catch (e) { /* ignore */ }
     try {
       const keys = Object.keys(localStorage);
       const sbKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
