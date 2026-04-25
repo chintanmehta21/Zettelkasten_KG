@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/kg/css/style.css?v=20260425b">
+  <link rel="stylesheet" href="/kg/css/style.css?v=20260425c">
 </head>
 <body>
   <!--ZK_HEADER-->
@@ -78,11 +78,9 @@
         </svg>
       </button>
       <button class="kg-reset-btn" id="reset-view-btn" type="button" title="Reset view" aria-label="Reset view">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <polyline points="9 21 3 21 3 15"></polyline>
-          <line x1="21" y1="3" x2="14" y2="10"></line>
-          <line x1="3" y1="21" x2="10" y2="14"></line>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
       </button>
     </div>
@@ -91,14 +89,23 @@
   <!-- Filter dropdown — rendered dynamically by app.js -->
   <div class="kg-filter-dropdown hidden" id="filter-dropdown" role="dialog" aria-label="Filters">
     <section class="kg-filter-section" data-section="source">
-      <header class="kg-filter-section-header">
+      <header class="kg-filter-section-header" role="button" tabindex="0" aria-expanded="true">
         <span>Source</span>
         <svg class="kg-filter-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </header>
       <div class="kg-filter-section-body" id="filter-source-body"></div>
     </section>
+    <section class="kg-filter-section" data-section="tags">
+      <header class="kg-filter-section-header" role="button" tabindex="0" aria-expanded="true">
+        <span>Tags</span>
+        <svg class="kg-filter-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </header>
+      <div class="kg-filter-section-body" id="filter-tags-body">
+        <p class="kg-filter-empty">Loading…</p>
+      </div>
+    </section>
     <section class="kg-filter-section" data-section="kastens">
-      <header class="kg-filter-section-header">
+      <header class="kg-filter-section-header" role="button" tabindex="0" aria-expanded="true">
         <span>Kastens</span>
         <svg class="kg-filter-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </header>
@@ -135,12 +142,33 @@
         </button>
       </header>
       <h2 class="kg-panel-title" id="panel-title">Note Title</h2>
-      <p class="kg-panel-summary" id="panel-summary">Summary goes here...</p>
-      <div class="kg-panel-tags" id="panel-tags"></div>
-      <div class="kg-panel-section">
-        <h3 class="kg-panel-section-title">Connected Notes</h3>
-        <div class="kg-panel-connections" id="panel-connections"></div>
-      </div>
+      <section class="kg-panel-section" data-panel-section="summary">
+        <header class="kg-panel-section-header" role="button" tabindex="0" aria-expanded="true">
+          <span class="kg-panel-section-title">Summary</span>
+          <svg class="kg-panel-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </header>
+        <div class="kg-panel-section-body">
+          <p class="kg-panel-summary" id="panel-summary">Summary goes here...</p>
+        </div>
+      </section>
+      <section class="kg-panel-section" data-panel-section="tags">
+        <header class="kg-panel-section-header" role="button" tabindex="0" aria-expanded="true">
+          <span class="kg-panel-section-title">Tags</span>
+          <svg class="kg-panel-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </header>
+        <div class="kg-panel-section-body">
+          <div class="kg-panel-tags" id="panel-tags"></div>
+        </div>
+      </section>
+      <section class="kg-panel-section" data-panel-section="connections">
+        <header class="kg-panel-section-header" role="button" tabindex="0" aria-expanded="true">
+          <span class="kg-panel-section-title">Connected Notes</span>
+          <svg class="kg-panel-section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </header>
+        <div class="kg-panel-section-body">
+          <div class="kg-panel-connections" id="panel-connections"></div>
+        </div>
+      </section>
     </div>
   </aside>
 
@@ -186,7 +214,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
-  <script src="/kg/js/kasten_modal.js?v=20260425b"></script>
-  <script src="/kg/js/app.js?v=20260425b"></script>
+  <script src="/kg/js/kasten_modal.js?v=20260425c"></script>
+  <script src="/kg/js/app.js?v=20260425c"></script>
 </body>
 </html>

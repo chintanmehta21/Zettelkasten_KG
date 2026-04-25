@@ -153,6 +153,7 @@
   let hoverNode = null;
   let activeSources = new Set();      // populated after first /api/graph response
   let activeKastens = new Set();      // populated when user picks any
+  let activeTags = new Set();         // populated when user picks any tag
   let kastenMembership = new Map();   // sandboxId -> Set<nodeId>; lazy-loaded
   let kastenList = [];                // [{id, name, member_count}, ...]
   let knownSources = new Set();       // union of COLORS keys + groups present in data
@@ -294,9 +295,15 @@
 
   function _wrapTitle(name, softMax) {
     if (name.length <= softMax) return name;
-    const breakAt = name.indexOf(' ', softMax);
-    if (breakAt === -1) return name;
-    return name.slice(0, breakAt) + '\n' + name.slice(breakAt + 1);
+    // Prefer breaking at the LAST whitespace BEFORE softMax (avoids overlong first line).
+    const beforeIdx = name.lastIndexOf(' ', softMax);
+    if (beforeIdx > 0) {
+      return name.slice(0, beforeIdx) + '\n' + name.slice(beforeIdx + 1);
+    }
+    // Fallback: first whitespace AFTER softMax — never break mid-word.
+    const afterIdx = name.indexOf(' ', softMax);
+    if (afterIdx === -1) return name;
+    return name.slice(0, afterIdx) + '\n' + name.slice(afterIdx + 1);
   }
 
   function getShortLabel(node) {
@@ -410,6 +417,7 @@
           knownSources.forEach(s => activeSources.add(s));
         }
         renderSourceSection();
+        renderTagsSection();
         if (graph) {
           // Re-apply active filters
           applyFilters();
@@ -482,14 +490,19 @@
 
         if (isActive) {
           child.color = '#ffffff';
-          child.backgroundColor = 'rgba(8, 12, 24, 0.92)';
-          child.padding = 1.0;
+          child.fontWeight = '700';
+          child.backgroundColor = 'rgba(8, 12, 24, 0.85)';
+          child.strokeColor = '#000';
+          child.strokeWidth = 0.4;
+          child.padding = 1.6;
           child.borderWidth = 0.12;
           child.borderColor = 'rgba(255, 255, 255, 0.14)';
           child.borderRadius = 0.8;
         } else {
           child.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
+          child.fontWeight = '600';
           child.backgroundColor = false;
+          child.strokeWidth = 0;
           child.padding = 0;
           child.borderWidth = 0;
         }
@@ -560,8 +573,11 @@
 
         if (isActive) {
           sprite.color = '#ffffff';
-          sprite.backgroundColor = 'rgba(8, 12, 24, 0.92)';
-          sprite.padding = 1.0;
+          sprite.fontWeight = '700';
+          sprite.backgroundColor = 'rgba(8, 12, 24, 0.85)';
+          sprite.strokeColor = '#000';
+          sprite.strokeWidth = 0.4;
+          sprite.padding = 1.6;
           sprite.borderWidth = 0.12;
           sprite.borderColor = 'rgba(255, 255, 255, 0.14)';
           sprite.borderRadius = 0.8;
@@ -990,9 +1006,98 @@
     });
   }
 
+  function renderTagsSection() {
+    const body = document.getElementById('filter-tags-body');
+    if (!body) return;
+    body.innerHTML = '';
+    const allTags = new Set();
+    (fullData.nodes || []).forEach(n => {
+      (Array.isArray(n.tags) ? n.tags : []).forEach(t => {
+        if (t && typeof t === 'string') allTags.add(t);
+      });
+    });
+    const tags = [...allTags].sort((a, b) => a.localeCompare(b));
+    if (tags.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'kg-filter-empty';
+      p.textContent = 'No tags available.';
+      body.appendChild(p);
+      return;
+    }
+    tags.forEach(tag => {
+      const id = 'flt-tag-' + tag.replace(/[^a-z0-9_-]/gi, '_');
+      const lbl = document.createElement('label');
+      lbl.className = 'kg-filter-item';
+      const checked = activeTags.has(tag);
+      // Default = no tag filter (size 0). Visual treatment: when activeTags is empty,
+      // every tag is "in scope" so don't strikethrough; once user picks any, the
+      // unselected ones get the line-through-when-unchecked treatment.
+      if (activeTags.size > 0 && !checked) lbl.classList.add('unchecked');
+      lbl.innerHTML =
+        '<input type="checkbox" id="' + id + '" value="' + escapeHtml(tag) + '"' + (checked ? ' checked' : '') + '>' +
+        '<span class="kg-filter-dot" style="background:#14b8a6"></span>' +
+        '<span>' + escapeHtml(tag) + '</span>';
+      lbl.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (activeTags.has(tag)) activeTags.delete(tag); else activeTags.add(tag);
+        // Re-render to refresh strikethrough across siblings (since "no filter
+        // active" → "filter active" flips the visual treatment of all items).
+        renderTagsSection();
+        applyFilters();
+      });
+      body.appendChild(lbl);
+    });
+  }
+
   document.querySelectorAll('.kg-filter-section-header').forEach(h => {
-    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+    const toggle = () => {
+      const section = h.parentElement;
+      section.classList.toggle('collapsed');
+      h.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+    };
+    h.addEventListener('click', toggle);
+    h.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
   });
+
+  // ---- Side-panel collapsible sections (Summary / Tags / Connected Notes) ----
+  (function wirePanelSections() {
+    const STORAGE_PREFIX = 'kg.panel.collapsed.';
+    document.querySelectorAll('.kg-panel-section[data-panel-section]').forEach(section => {
+      const key = section.dataset.panelSection;
+      const header = section.querySelector('.kg-panel-section-header');
+      if (!header) return;
+      const storageKey = STORAGE_PREFIX + key;
+      // Restore persisted state (default expanded).
+      try {
+        if (localStorage.getItem(storageKey) === '1') {
+          section.classList.add('collapsed');
+          header.setAttribute('aria-expanded', 'false');
+        } else {
+          header.setAttribute('aria-expanded', 'true');
+        }
+      } catch (_e) {
+        header.setAttribute('aria-expanded', 'true');
+      }
+      const toggle = () => {
+        section.classList.toggle('collapsed');
+        const collapsed = section.classList.contains('collapsed');
+        header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        try { localStorage.setItem(storageKey, collapsed ? '1' : '0'); } catch (_e) { /* ignore */ }
+      };
+      header.addEventListener('click', toggle);
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
+  })();
 
   function applyFilters() {
     // Build the set of node IDs allowed by the Kastens axis.
@@ -1008,6 +1113,11 @@
       const src = normalizeGroup(n.group);
       if (!activeSources.has(src)) return false;
       if (kastenAllowedIds && !kastenAllowedIds.has(n.id)) return false;
+      if (activeTags.size > 0) {
+        const tags = Array.isArray(n.tags) ? n.tags : [];
+        const hit = tags.some(t => activeTags.has(t));
+        if (!hit) return false;
+      }
       return true;
     });
     const nodeIds = new Set(filteredNodes.map(n => n.id));
@@ -1199,7 +1309,9 @@
     overlayEmptyReset.addEventListener('click', () => {
       activeSources = new Set([...knownSources]);
       activeKastens.clear();
+      activeTags.clear();
       renderSourceSection();
+      renderTagsSection();
       renderKastensSection(); // safe — defined in Task 7.2; defaults to empty if not yet loaded
       applyFilters();
     });

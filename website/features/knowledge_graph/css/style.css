@@ -375,14 +375,16 @@ body {
 }
 .kg-panel-date.hidden { display: none; }
 
-/* Source badge — pixel-match .zettels-source-badge.<group> */
+/* Source badge — pixel-match .zettels-source-badge (My-Zettels token parity) */
 .kg-panel-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  padding: 0.2rem 0.55rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   border: 1px solid;
   border-radius: 999px;
@@ -397,21 +399,33 @@ body {
 .kg-panel-badge.medium     { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.1); }
 .kg-panel-badge.web        { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.1); }
 
-/* Circular icon buttons (view original, add to kasten) */
+/* Circular icon buttons (view original, add to kasten).
+   Teal palette + hover/focus tokens mirror My-Zettels' .home-card-goto-btn
+   (user_zettels.css) so the two surfaces read as a matched pair. */
 .kg-panel-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px; height: 32px;
-  background: rgba(8,12,24,0.6);
-  border: 1px solid rgba(20, 184, 166, 0.4);
+  background: hsla(174, 60%, 45%, 0.1);
+  border: 1px solid hsla(174, 60%, 45%, 0.45);
   border-radius: 50%;
-  color: rgba(180, 192, 210, 0.85);
+  color: hsl(174, 55%, 65%);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   flex-shrink: 0;
 }
-.kg-panel-icon-btn:hover { color: #2dd4bf; border-color: rgba(20,184,166,0.7); background: rgba(20,184,166,0.08); box-shadow: 0 0 0 4px rgba(20,184,166,0.08); }
+.kg-panel-icon-btn:hover {
+  background: hsla(174, 60%, 45%, 0.22);
+  border-color: hsl(174, 60%, 55%);
+  box-shadow: 0 0 10px hsla(174, 60%, 45%, 0.3);
+  transform: scale(1.08);
+}
+.kg-panel-icon-btn:focus-visible {
+  outline: 2px solid hsl(174, 60%, 55%);
+  outline-offset: 2px;
+}
 .kg-panel-icon-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
 .kg-panel-icon-mask {
   width: 16px; height: 16px;
@@ -449,6 +463,24 @@ body {
   font-size: 0.7rem;
 }
 .kg-panel-section { display: flex; flex-direction: column; gap: 8px; }
+.kg-panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+}
+.kg-panel-section-header:focus-visible {
+  outline: 2px solid hsl(174, 60%, 55%);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .kg-panel-section-title {
   margin: 0;
   font-size: 0.7rem;
@@ -456,6 +488,22 @@ body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(180,192,210,0.55);
+}
+.kg-panel-section-chevron {
+  color: rgba(180,192,210,0.55);
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+.kg-panel-section.collapsed .kg-panel-section-chevron { transform: rotate(-90deg); }
+.kg-panel-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  transition: max-height 0.18s ease, opacity 0.18s ease;
+}
+.kg-panel-section.collapsed .kg-panel-section-body {
+  display: none;
 }
 .kg-panel-connections { display: flex; flex-direction: column; gap: 4px; }
 .kg-connection {
