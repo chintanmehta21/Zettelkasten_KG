@@ -434,7 +434,23 @@ body {
   outline: 2px solid hsl(174, 60%, 55%);
   outline-offset: 2px;
 }
-.kg-panel-icon-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+/* Greyed-but-clickable state: still receives clicks so the handler can
+   show a sign-in prompt or "connect to your zettels first" hint, but it
+   reads as inactive (desaturated + dimmed border + no teal glow on hover). */
+.kg-panel-icon-btn.disabled-soft {
+  background: rgba(140, 150, 165, 0.08);
+  border-color: rgba(140, 150, 165, 0.35);
+  color: rgba(180, 192, 210, 0.55);
+  cursor: pointer;
+}
+.kg-panel-icon-btn.disabled-soft:hover {
+  background: rgba(140, 150, 165, 0.14);
+  border-color: rgba(140, 150, 165, 0.55);
+  box-shadow: none;
+  transform: none;
+  color: rgba(220, 228, 240, 0.8);
+}
+.kg-panel-icon-btn[aria-disabled="true"] { opacity: 0.55; }
 .kg-panel-icon-mask {
   width: 16px; height: 16px;
   background: currentColor;

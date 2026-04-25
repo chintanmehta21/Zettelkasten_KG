@@ -157,6 +157,7 @@
   let kastenMembership = new Map();   // sandboxId -> Set<nodeId>; lazy-loaded
   let kastenList = [];                // [{id, name, member_count}, ...]
   let knownSources = new Set();       // union of COLORS keys + groups present in data
+  let userOwnedIds = new Set();       // node IDs owned by logged-in user (Personal scope)
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
   let authToken = null;
@@ -251,6 +252,7 @@
         isLoggedIn = true;
         setPersonalEnabled(true);
         loadKastens();
+        loadUserOwnedIds();
         if (savedView === 'my') {
           currentView = 'my';
           setViewBtns('my');
@@ -260,6 +262,49 @@
       .catch(() => { isLoggedIn = false; authToken = null; setPersonalEnabled(false); });
   } else {
     setPersonalEnabled(false);
+  }
+
+  // Fetch the set of node IDs the user owns (their Personal scope).
+  // Used in Global view to gate the Add-to-Kasten button: a node is only
+  // addable when it itself is user-owned OR shares a link with a user-owned
+  // node — i.e. the user has earned visibility into it through their graph.
+  function loadUserOwnedIds() {
+    fetch('/api/graph?view=my', { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
+      .then(data => {
+        userOwnedIds = new Set((data.nodes || []).map(n => n.id));
+      })
+      .catch(() => { /* leave empty; gating will treat all nodes as not-addable */ });
+  }
+
+  // Decide whether the Add-to-Kasten button is enabled / disabled / login.
+  // Called from openPanel() each time a node is selected.
+  function computeAddBtnState(node) {
+    if (!isLoggedIn) return 'login';
+    if (currentView === 'my') return 'enabled';
+    if (userOwnedIds.has(node.id)) return 'enabled';
+    // Global view: addable iff at least one link of node touches a user-owned node.
+    const links = (fullData && fullData.links) ? fullData.links : [];
+    for (let i = 0; i < links.length; i++) {
+      const l = links[i];
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (s === node.id && userOwnedIds.has(t)) return 'enabled';
+      if (t === node.id && userOwnedIds.has(s)) return 'enabled';
+    }
+    return 'unlinked';
+  }
+
+  // Lightweight transient toast — used for the "Connect this to your zettels"
+  // hint when Add-to-Kasten is blocked by the connection gate. Mirrors the
+  // toast shape kasten_modal.js uses on success so styling is consistent.
+  function showToast(text) {
+    let t = document.querySelector('.kg-toast');
+    if (!t) { t = document.createElement('div'); t.className = 'kg-toast'; document.body.appendChild(t); }
+    t.textContent = text;
+    requestAnimationFrame(() => t.classList.add('visible'));
+    setTimeout(() => t.classList.remove('visible'), 2400);
+    setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 2900);
   }
 
   if (viewToggle) {
@@ -823,10 +868,32 @@
       link.target = '';
     }
 
-    // Add-to-Kasten button — open modal (or login if logged out).
+    // Add-to-Kasten button — three states:
+    //   1. Logged out → greyed; click opens login modal directly.
+    //   2. Logged in + node addable → enabled; click opens Kasten modal.
+    //   3. Logged in + node NOT addable (Global scope, no link to any
+    //      user-owned node) → greyed; click shows a transient hint toast.
+    //
+    // "Addable" means: the user owns the node OR at least one link of the
+    // node connects to a node the user owns. This implements the rule
+    // "If a single Node connected to their own Zettel, then the user can
+    // add that particular Kasten from Global to their own Kasten."
     if (addBtn) {
+      const state = computeAddBtnState(node);
+      addBtn.classList.toggle('disabled-soft', state !== 'enabled');
+      if (state === 'login') {
+        addBtn.setAttribute('aria-disabled', 'true');
+        addBtn.title = 'Sign in to add to a Kasten';
+      } else if (state === 'unlinked') {
+        addBtn.setAttribute('aria-disabled', 'true');
+        addBtn.title = 'Connect this to one of your zettels to add it to a Kasten';
+      } else {
+        addBtn.removeAttribute('aria-disabled');
+        addBtn.title = 'Add to a Kasten';
+      }
       addBtn.onclick = () => {
-        if (!isLoggedIn) { openLoginModalFromKG(); return; }
+        if (state === 'login') { openLoginModalFromKG(); return; }
+        if (state === 'unlinked') { showToast(addBtn.title); return; }
         if (window.kgKastenModal) {
           window.kgKastenModal.open(node, kastenList, authHeaders, () => loadKastens());
         }
