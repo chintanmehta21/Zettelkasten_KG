@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -96,15 +97,48 @@ def _serialize_turn(turn, query) -> dict:
     }
 
 
-def _build_chunks_map(ingest_report: dict) -> dict[str, list[dict]]:
-    """Chunks-per-node map for chunking_score; ingest_report carries chunk counts only,
-    so we synthesise a stub list of length chunk_count where each chunk has empty
-    text. Real chunk text would require a Supabase round-trip.
+def _build_chunks_map(ingest_report: dict, *, user_id: str | None = None) -> dict[str, list[dict]]:
+    """Chunks-per-node map for chunking_score.
+
+    iter-02 fix: fetch real chunk text + token_count from kg_node_chunks so
+    chunking_score can compute boundary integrity, dedup, and budget
+    compliance against actual content. Falls back to stubs if Supabase is
+    not configured (offline tests).
     """
     out: dict[str, list[dict]] = {}
-    for entry in ingest_report.get("per_zettel", []):
-        if entry.get("ok"):
-            out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
+    if user_id is None:
+        # Offline / test path: stub by count.
+        for entry in ingest_report.get("per_zettel", []):
+            if entry.get("ok"):
+                out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
+        return out
+
+    try:
+        from website.core.supabase_kg.client import get_supabase_client
+        sb = get_supabase_client()
+        if sb is None:
+            raise RuntimeError("supabase not configured")
+        for entry in ingest_report.get("per_zettel", []):
+            if not entry.get("ok"):
+                continue
+            node_id = entry["node_id"]
+            response = sb.table("kg_node_chunks").select(
+                "chunk_idx, content, token_count"
+            ).eq("user_id", user_id).eq("node_id", node_id).order("chunk_idx").execute()
+            rows = response.data or []
+            out[node_id] = [
+                {
+                    "text": r.get("content") or "",
+                    "token_count": r.get("token_count") or 0,
+                }
+                for r in rows
+            ]
+    except Exception as exc:  # noqa: BLE001
+        # Safety: surface the failure but don't break the eval — fall back to stubs.
+        logging.getLogger(__name__).warning("chunks_map: real fetch failed (%s); using stubs", exc)
+        for entry in ingest_report.get("per_zettel", []):
+            if entry.get("ok"):
+                out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
     return out
 
 
@@ -365,7 +399,7 @@ async def _run_phase_a(args: argparse.Namespace) -> dict:
     from website.features.rag_pipeline.evaluation.ablation import compute_graph_lift
     from website.features.rag_pipeline.evaluation.eval_runner import EvalRunner
 
-    chunks_per_node = _build_chunks_map(ingest_report)
+    chunks_per_node = _build_chunks_map(ingest_report, user_id=str(naruto_id))
     weights = _read_weights(weights_path)
     runner = EvalRunner(weights=weights, weights_hash=weights_hash)
     result_with = runner.evaluate(

@@ -20,10 +20,13 @@ from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
 # Query-class-aware (rerank, graph, rrf) fusion weights — different signals
 # matter for different query intents. Weights per class sum to 1.0 so score
 # magnitudes stay comparable across classes for downstream logic.
+# iter-02 retune: iter-01 showed THEMATIC rerank graph_lift +14.4pt (very strong
+# KG signal at the rerank stage). Boosting THEMATIC graph weight from 0.30 → 0.35
+# to capitalize on that signal. Slight rerank trim 0.55 → 0.50 to keep sum ≈ 1.0.
 _FUSION_WEIGHTS: dict[QueryClass, tuple[float, float, float]] = {
     QueryClass.LOOKUP: (0.70, 0.15, 0.15),
     QueryClass.VAGUE: (0.55, 0.25, 0.20),
-    QueryClass.THEMATIC: (0.55, 0.30, 0.15),
+    QueryClass.THEMATIC: (0.50, 0.35, 0.15),  # iter-02: lift graph from 0.30
     QueryClass.MULTI_HOP: (0.40, 0.45, 0.15),
     QueryClass.STEP_BACK: (0.45, 0.40, 0.15),
 }
@@ -60,13 +63,13 @@ class _ScoredCandidate:
     score: float
 
 
-# Per-node diversity penalty applied greedily after scoring. A candidate whose
-# node is already represented in the selected set pays this much against its
-# final_score before competing for the next slot. Keeps top_k from being
-# dominated by one chatty node while still letting clearly-stronger siblings
-# win — a sibling only loses out if a different node is within _MMR_LAMBDA of
-# its score.
-_MMR_LAMBDA = 0.10
+# iter-02 retune: drop MMR lambda from 0.10 → 0.05 to reduce diversity penalty.
+# iter-01 reranking P@3 was 0.83 — the gold Zettel was always rank #1 but #2/#3
+# slots sometimes carried distractors that beat near-tied gold-cluster siblings
+# only because of the diversity push. Cutting the penalty in half lets stronger
+# in-cluster candidates retain their slots; precision should rise without
+# sacrificing the per-query Hit@5 (still 1.0 on iter-01).
+_MMR_LAMBDA = 0.05
 
 
 class CascadeReranker:

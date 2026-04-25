@@ -22,20 +22,25 @@ _DEPTH_BY_CLASS = {
 # benefit from stronger lexical match on proper nouns and titles, MULTI_HOP
 # and STEP_BACK queries benefit from graph expansion, THEMATIC leans semantic.
 # Weights sum to ~1.0 per class to keep RRF score magnitudes comparable.
+# iter-02 retune: the rag_eval YouTube baseline showed THEMATIC queries dominate
+# this corpus (5/5 seed Qs classify as THEMATIC), graph_score lift on rerank
+# was +14.4pt while retrieval lift was 0. Boosting graph in retrieval to claw
+# back some of that lift while keeping semantic dominant.
 _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
     QueryClass.LOOKUP: (0.35, 0.50, 0.15),
     QueryClass.VAGUE: (0.55, 0.25, 0.20),
     QueryClass.MULTI_HOP: (0.40, 0.25, 0.35),
-    QueryClass.THEMATIC: (0.60, 0.20, 0.20),
+    QueryClass.THEMATIC: (0.55, 0.20, 0.25),  # iter-02: +0.05 graph at retrieval
     QueryClass.STEP_BACK: (0.50, 0.20, 0.30),
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
 
-# Cap the number of chunks we keep per node after fusion. A single verbose
-# node (e.g. a 40-minute YouTube transcript) can otherwise saturate the top-K
-# and starve the reranker of diverse candidates. Summaries are counted
-# separately from chunks so both kinds can coexist for the same node.
-_MAX_CHUNKS_PER_NODE = 3
+# iter-02 retune: drop per-node chunk cap from 3 → 2. iter-01 showed
+# context_precision of only 0.26 — too many redundant chunks from the same
+# verbose Zettel were polluting the assembly. Cutting to 2 forces diversity
+# at the candidate stage and lets context_precision climb without hurting
+# the per-query Hit@5 (gold Zettels surfaced via the very first chunk).
+_MAX_CHUNKS_PER_NODE = 2
 
 
 class HybridRetriever:

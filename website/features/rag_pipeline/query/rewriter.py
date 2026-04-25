@@ -21,13 +21,19 @@ class QueryRewriter:
             f"{row['role'].capitalize()}: {row['content']}"
             for row in history[-5:]
         )
+        # iter-02 retune: extend the rewriter prompt to preserve named entities
+        # and technical terms from the original query verbatim, since these are
+        # often the strongest lexical-match signals for hybrid retrieval. The
+        # bot's iter-01 q5 ("debugging cycle") had a thin answer partly because
+        # the rewriter dropped the concrete "debugging cycle" phrase.
         prompt = (
             "Given this conversation:\n"
             f"{transcript}\n\n"
             f"User's latest question: {query}\n\n"
             "Rewrite the latest question as a standalone query that includes any necessary context "
-            "from the conversation. Keep it concise. If it is already standalone, return it unchanged. "
-            "Return only the rewritten query."
+            "from the conversation. Keep it concise. PRESERVE named entities, proper nouns, and "
+            "technical terms from the latest question verbatim — they are the strongest retrieval "
+            "signals. If it is already standalone, return it unchanged. Return only the rewritten query."
         )
         try:
             response = await self._pool.generate_content(
