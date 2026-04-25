@@ -123,6 +123,11 @@ class HybridRetriever:
         for variant_results in multi_variant:
             seen_in_variant = set()
             for row in variant_results:
+                if not row.get("node_id"):
+                    # Defensive: rag_hybrid_search occasionally returns aggregate
+                    # rows with null node_id (e.g. when summary-mode rolls up a
+                    # group). These can't be cited, so drop them at the edge.
+                    continue
                 key = (row["kind"], row["node_id"], row.get("chunk_id"))
                 seen_in_variant.add(key)
                 if key not in by_key:

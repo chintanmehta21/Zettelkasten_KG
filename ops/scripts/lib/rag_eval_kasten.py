@@ -108,21 +108,47 @@ async def ingest_kasten(
     *,
     zettels: list[dict],
     user_id: UUID,
-    runtime: Any,  # RAGRuntime from website.features.rag_pipeline.service
+    runtime: Any = None,  # accepted for plan compatibility; not used
+    supabase: Any = None,
 ) -> dict:
-    """Drive ingestion via existing rag_pipeline.service. Returns ingest report."""
-    chunker = runtime.orchestrator._ingest_chunker  # access via stable attr; document with ADR if private
-    embedder = runtime.orchestrator._ingest_embedder
-    upserter = runtime.orchestrator._ingest_upserter
-    report = {"per_zettel": [], "total_chunks": 0, "failures": []}
+    """Ensure each Kasten Zettel has chunks in kg_node_chunks.
+
+    Naruto's Zettels were captured via the bot pipeline which writes to kg_nodes
+    only — RAG chunks are populated lazily by the ingest hook. This driver checks
+    each Zettel and calls ingest_node_chunks for any that lack chunks. Idempotent.
+    """
+    from website.features.rag_pipeline.ingest.hook import ingest_node_chunks
+    from website.core.supabase_kg.client import get_supabase_client
+
+    sb = supabase if supabase is not None else get_supabase_client()
+    report: dict = {"per_zettel": [], "total_chunks": 0, "failures": [], "skipped_existing": 0}
     for z in zettels:
+        node_id = z["id"]
         try:
-            chunks = await chunker.chunk_node(node_id=z["id"], text=z.get("summary") or "", source_type=z["source_type"])
-            embedded = await embedder.embed_chunks(chunks)
-            await upserter.upsert(user_id=user_id, node_id=z["id"], chunks=embedded)
-            report["per_zettel"].append({"node_id": z["id"], "chunk_count": len(embedded), "ok": True})
-            report["total_chunks"] += len(embedded)
+            existing = sb.table("kg_node_chunks").select("chunk_idx", count="exact").eq(
+                "user_id", str(user_id)
+            ).eq("node_id", node_id).limit(1).execute()
+            existing_count = existing.count or 0
+            if existing_count > 0:
+                report["per_zettel"].append({"node_id": node_id, "chunk_count": existing_count, "ok": True, "source": "existing"})
+                report["total_chunks"] += existing_count
+                report["skipped_existing"] += 1
+                continue
+
+            payload = {
+                "raw_text": z.get("summary") or "",
+                "summary": z.get("summary") or "",
+                "title": z.get("name") or node_id,
+                "tags": z.get("tags") or [],
+                "source_type": z.get("source_type") or "web",
+                "raw_metadata": z.get("metadata") or {},
+            }
+            written = await ingest_node_chunks(payload=payload, user_uuid=user_id, node_id=node_id)
+            report["per_zettel"].append({"node_id": node_id, "chunk_count": written, "ok": written > 0, "source": "freshly_ingested"})
+            report["total_chunks"] += written
+            if written == 0:
+                report["failures"].append({"node_id": node_id, "error": "ingest returned 0 chunks"})
         except Exception as exc:
-            report["failures"].append({"node_id": z["id"], "error": str(exc)})
-            report["per_zettel"].append({"node_id": z["id"], "ok": False, "error": str(exc)})
+            report["failures"].append({"node_id": node_id, "error": str(exc)})
+            report["per_zettel"].append({"node_id": node_id, "ok": False, "error": str(exc)})
     return report
