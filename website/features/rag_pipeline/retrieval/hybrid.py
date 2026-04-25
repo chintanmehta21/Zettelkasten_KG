@@ -22,15 +22,17 @@ _DEPTH_BY_CLASS = {
 # benefit from stronger lexical match on proper nouns and titles, MULTI_HOP
 # and STEP_BACK queries benefit from graph expansion, THEMATIC leans semantic.
 # Weights sum to ~1.0 per class to keep RRF score magnitudes comparable.
-# iter-02 retune: the rag_eval YouTube baseline showed THEMATIC queries dominate
-# this corpus (5/5 seed Qs classify as THEMATIC), graph_score lift on rerank
-# was +14.4pt while retrieval lift was 0. Boosting graph in retrieval to claw
-# back some of that lift while keeping semantic dominant.
+# iter-04 retune: lift fulltext share for THEMATIC queries with the probe
+# Zettel in the corpus. yt-effective-public-speakin's tag overlap with the
+# AI/ML cluster (shares 'lecture') would amplify graph score; raising fulltext
+# from 0.20 -> 0.25 lets exact-name lexical hits anchor retrieval on the
+# right domain (e.g. queries with "Karpathy" / "Transformer" / "LeCun"
+# match those zettels' content directly via FTS).
 _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
     QueryClass.LOOKUP: (0.35, 0.50, 0.15),
     QueryClass.VAGUE: (0.55, 0.25, 0.20),
     QueryClass.MULTI_HOP: (0.40, 0.25, 0.35),
-    QueryClass.THEMATIC: (0.55, 0.20, 0.25),  # iter-02: +0.05 graph at retrieval
+    QueryClass.THEMATIC: (0.50, 0.25, 0.25),  # iter-04: rebalance for probe
     QueryClass.STEP_BACK: (0.50, 0.20, 0.30),
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)

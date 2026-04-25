@@ -52,14 +52,14 @@ class ContextAssembler:
 
         budget = _BUDGET_BY_QUALITY[quality]
         candidates = [c for c in candidates if not _is_stub_passage(c.content)]
-        # iter-03 retune: drop low-confidence candidates BEFORE assembly. iter-02
-        # showed off-topic Zettels (yt-effective-public-speakin, yt-zero-day) leaking
-        # into top-5 cited contexts on AI/ML queries because they had non-zero rrf
-        # but weak final_score. We require either final_score >= 0.30 or
-        # rerank_score >= 0.30 — the cascade reranker's score is the most informed
-        # signal. This raises context_precision without hurting recall on strong
-        # gold candidates (which always score >> 0.30 in iter-01/02).
-        _CONTEXT_FLOOR = 0.30
+        # iter-04 retune: soften the floor 0.30 -> 0.22. iter-03 showed
+        # context_precision doubled (0.33 -> 0.67) but graph_lift_rerank flipped
+        # +28.81 -> -11.67 because the floor was preferentially cutting
+        # graph-boosted candidates whose rrf+rerank were modest but graph_score
+        # was strong. The composite-floor 0.30 was a hammer; 0.22 keeps the
+        # precision win while letting the KG signal shine through.
+        # See iter-03/improvement_delta.json for the trade-off curve.
+        _CONTEXT_FLOOR = 0.22
         def _passes_floor(c):
             score = c.final_score if c.final_score is not None else (c.rerank_score or 0.0)
             return score >= _CONTEXT_FLOOR
