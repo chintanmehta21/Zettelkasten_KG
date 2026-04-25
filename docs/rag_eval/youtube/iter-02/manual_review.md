@@ -1,0 +1,20 @@
+# iter-02 manual review — youtube — 2026-04-25
+
+eval_json_hash_at_review: "NOT_CONSULTED"
+estimated_composite: 84
+estimated_retrieval: 88
+estimated_synthesis: 86
+
+## Per-query observations
+- Q1: Gold node `yt-andrej-karpathy-s-llm-in` is retrieved, reranked, and cited at rank-1. Answer correctly identifies pre-training and fine-tuning, with concrete detail (Llama 2 2T tokens, SFT, RLHF) and is faithful to the reference. Slight retrieval noise at rank-4 (`yt-effective-public-speakin`) but it is not used substantively in synthesis. Iter-02 trims the iter-01 "blurry JPEG of the web" tangent — cleaner and tighter without sacrificing the two atomic facts. No hallucinations spotted. ~88.
+- Q2: Gold `yt-transformer-architecture` is rank-1 across retrieved/reranked/cited. Answer covers self-attention vs sequential recurrence, parallelism, and scaling — all three reference atomic facts present. Iter-02 adds one extra fact about RNNs compressing context into a hidden-state vector, which is a faithful enrichment over iter-01. Tight, no hallucinations. ~92.
+- Q3: Gold `yt-software-1-0-vs-software` rank-1; Software 1.0/2.0 contrast, AlphaGo example, and "data curator" development cycle all present. Off-topic citation `yt-zero-day-market-covert-exploits` survives the reranker — harmless to the answer but a real reranker miss. Synthesis covers all four reference atomic facts. ~85.
+- Q4: Gold `yt-lecun-s-vision-human-lev` rank-1. Iter-02 substantially expands over iter-01: explicitly names Perception, World Model, Cost, Actor, and Optimizer/Planner modules, and explains JEPA as predicting abstract latent representations rather than generative pixels. All four reference atomic facts covered, plus extra faithful detail. The "amplifier of human intelligence" framing from the reference is missing, but not contradicted. ~88.
+- Q5: Gold `yt-programming-workflow-is` rank-1. Answer captures iterative debug-fix cycle, Google/Stack Overflow reliance, and the "debugging > typing speed" point. Two reference facts solid; the third ("debugging skill is the *core* productivity driver") is implied via "methodical problem-solving" rather than stated as crisply as the reference. Retrieved tail (`yt-effective-public-speakin`, `yt-lecun-s-vision-human-lev`) is irrelevant noise that the reranker did not filter. ~78.
+
+## Per-stage observations
+- Chunking: Each gold zettel is recovered as a single coherent unit and contains enough context for full answers — chunk size and zettel boundaries appear well-calibrated for these mid-grain conceptual questions. No evidence of split-citation behavior where the answer needed two chunks of the same zettel.
+- Retrieval: Recall@1 looks like 5/5 on gold node (excellent). Recall is conservative — it pulls 3–5 candidates per query, which is appropriate for this small kasten. Precision tail is the weakness: q1 surfaces `yt-effective-public-speakin`, q3 surfaces `yt-zero-day-market-covert-exploits`, q5 surfaces both. These are topically unrelated and suggest the embedding space is conflating "video about a workflow/process" or generic narrative phrasing across domains.
+- Reranking: Reranker preserves correct rank-1 in every query, which is the most important property. However, the reranked list is identical to retrieved in all five queries — the reranker is not pruning the off-topic tail (q1, q3, q5). Either the reranker threshold is too loose or it is acting as identity on small candidate sets. This is the cheapest place to add a precision gain.
+- Synthesis: Faithful, well-structured, and properly grounded with `[id="..."]` citations on every claim. Iter-02 noticeably expanded q4 with architectural specifics and tightened q1 by removing the "blurry JPEG" digression — both are net-positive changes. Recurring weakness: when off-topic citations appear in the cited list (q3, q5), the synthesizer correctly ignores them in prose but still emits them as citations, which inflates the cited set without adding evidence. Consider a "cite only what you used" pass.
+- KG signal (graph_lift): unknown without evaluator scores - leave blank

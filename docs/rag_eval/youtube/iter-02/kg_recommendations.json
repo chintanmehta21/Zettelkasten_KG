@@ -1,0 +1,197 @@
+[
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-andrej-karpathy-s-llm-in",
+      "suggested_tag": "large",
+      "evidence_atomic_fact": "Large language models are fundamentally next-token predictors built on the transformer architecture."
+    },
+    "evidence_query_ids": [
+      "q1"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-andrej-karpathy-s-llm-in",
+      "suggested_tag": "pre-training",
+      "evidence_atomic_fact": "Pre-training trains on massive text corpora to instill broad text understanding."
+    },
+    "evidence_query_ids": [
+      "q1"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-andrej-karpathy-s-llm-in",
+      "suggested_tag": "fine-tuning",
+      "evidence_atomic_fact": "Fine-tuning (including instruction tuning) shapes the model to follow instructions."
+    },
+    "evidence_query_ids": [
+      "q1"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-transformer-architecture",
+      "suggested_tag": "transformers",
+      "evidence_atomic_fact": "Transformers replace sequential recurrence with self-attention."
+    },
+    "evidence_query_ids": [
+      "q2"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-transformer-architecture",
+      "suggested_tag": "self-attention",
+      "evidence_atomic_fact": "Self-attention is parallelizable across all positions in a sequence."
+    },
+    "evidence_query_ids": [
+      "q2"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-transformer-architecture",
+      "suggested_tag": "this",
+      "evidence_atomic_fact": "This parallelism enabled unprecedented scaling of neural networks for sequential data."
+    },
+    "evidence_query_ids": [
+      "q2"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-software-1-0-vs-software",
+      "suggested_tag": "software",
+      "evidence_atomic_fact": "Software 1.0 is explicit programming in languages like Python or C++."
+    },
+    "evidence_query_ids": [
+      "q3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-software-1-0-vs-software",
+      "suggested_tag": "software",
+      "evidence_atomic_fact": "Software 2.0 uses neural networks whose weights are learned from data."
+    },
+    "evidence_query_ids": [
+      "q3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-software-1-0-vs-software",
+      "suggested_tag": "software",
+      "evidence_atomic_fact": "The Software 2.0 development cycle centers on data curation and optimization rather than handwritten code."
+    },
+    "evidence_query_ids": [
+      "q3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-software-1-0-vs-software",
+      "suggested_tag": "alphago",
+      "evidence_atomic_fact": "AlphaGo is referenced as an example of the Software 2.0 paradigm."
+    },
+    "evidence_query_ids": [
+      "q3"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-lecun-s-vision-human-lev",
+      "suggested_tag": "auto-regressive",
+      "evidence_atomic_fact": "Auto-regressive LLMs are limited by their next-token-prediction objective."
+    },
+    "evidence_query_ids": [
+      "q4"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-lecun-s-vision-human-lev",
+      "suggested_tag": "lecun",
+      "evidence_atomic_fact": "LeCun proposes JEPA (Joint Embedding Predictive Architecture) as an alternative."
+    },
+    "evidence_query_ids": [
+      "q4"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-lecun-s-vision-human-lev",
+      "suggested_tag": "objective-driven",
+      "evidence_atomic_fact": "Objective-driven AI learns predictive world models in latent embedding space."
+    },
+    "evidence_query_ids": [
+      "q4"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-lecun-s-vision-human-lev",
+      "suggested_tag": "lecun",
+      "evidence_atomic_fact": "LeCun envisions AI as an amplifier of human intelligence, not a replacement."
+    },
+    "evidence_query_ids": [
+      "q4"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  },
+  {
+    "type": "add_tag",
+    "payload": {
+      "node_id": "yt-programming-workflow-is",
+      "suggested_tag": "google",
+      "evidence_atomic_fact": "The actual workflow is an iterative debug-fix cycle involving Google and Stack Overflow."
+    },
+    "evidence_query_ids": [
+      "q5"
+    ],
+    "confidence": 0.5,
+    "status": "quarantined"
+  }
+]
