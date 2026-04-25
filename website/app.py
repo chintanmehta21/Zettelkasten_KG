@@ -249,7 +249,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def knowledge_graph(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/knowledge-graph", status_code=302)
-        return FileResponse(str(KG_DIR / "index.html"))
+        return _render_with_shell(KG_DIR / "index.html")
 
     @app.get("/auth/callback")
     async def auth_callback():
