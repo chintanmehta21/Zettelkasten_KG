@@ -80,6 +80,7 @@ RIGHT : [ Toggle ]   [ Search ]   [ Filter ]   [ Reset view ]
 - Right cluster order is fixed: `Toggle → Search → Filter → Reset view`.
 - When **logged out**, Toggle is shown but the Personal segment is greyed and clicking it opens the global login modal (same UX as clicking "Login" in the main header). When **logged in**, Toggle is fully active.
 - Header background gains a subtle dark-translucent backing (`rgba(8,12,24,0.55)` + 6px backdrop blur) so it sits cleanly over the canvas at any zoom.
+- **Header dead-band fix**: keeping the toggle visible in both logged-in and logged-out states (with greyed Personal in the latter) eliminates the ~540 px empty band today's logged-out header has between title and search. No further conditional widening of the search bar is needed — the four right-cluster controls (~520 px combined) plus the left cluster fully populate the bar at all viewport widths ≥ 1024 px.
 
 #### 3.1.1 Personal/Global toggle (segmented pill)
 
@@ -230,6 +231,16 @@ Bottom-left `#legend` removed. Filter dropdown is the sole source of truth for s
 - Header buttons (`.kg-back`, `.kg-search`, `.kg-filter-btn`, `.kg-view-btn`, `.kg-reset-btn`) gain visible focus rings: `outline: 2px solid rgba(20,184,166,0.55); outline-offset: 2px;`.
 - `Esc` keypress while filter dropdown is open → closes it (in addition to existing panel-close).
 - All icon-only buttons have `aria-label`.
+- **Tab order** through header is left-to-right, top-to-bottom: back → logo (skipped, non-interactive) → toggle (Global, then Personal) → search → filter → reset-view → side-panel close (when open). Each receives focus once. No `tabindex` higher than `0`. Verified by manual Tab-walk on each iteration of the verification loop.
+
+### 3.8 Side-panel "Connected Notes" click → refresh panel (was missing)
+
+Issue: clicking a row in the panel's Connected Notes list calls `handleNodeClick(targetNode)`, which flies the camera to the new node, but `openPanel()` is **only** called on a delay inside `handleNodeClick`. Verified via inspection: the panel does eventually re-populate for the clicked connection, BUT only after the 700 ms `_panelOpenTimer`. During the 700 ms window the panel still shows the previous node's content, which feels broken.
+
+Fix:
+- Inside `handleNodeClick`, when the panel is already open (`sidePanel.classList.contains('visible')`), call `openPanel(node)` synchronously **before** the camera fly so content swaps instantly. The camera animation continues independently.
+- When the panel is closed, keep the existing 700 ms delay (lets camera centre first, then panel slides in).
+- Add a `data-node-id` attribute to `.kg-panel` and update it inside `openPanel(node)`. Each connected-note click handler short-circuits if `targetNode.id === currentPanelNodeId` (no flicker).
 
 ---
 
@@ -254,7 +265,16 @@ No new endpoints. Client-side joins:
 
 ### 5.2 Manual verification (Claude in Chrome)
 
-After deploy, take a screenshot for each of the 25 numbered changes and diff against this spec. Re-iterate up to 3 times if any miss (per user's `/loop` requirement). Each iteration commits + redeploys; verification artifacts saved under `docs/research/kg_ui_pass/`.
+After deploy, take a screenshot for each of the 26 numbered changes and diff against this spec. Re-iterate up to 3 times if any miss (per user's `/loop` requirement). Each iteration commits + redeploys; verification artifacts saved under `docs/research/kg_ui_pass/`.
+
+### 5.3 Deploy + cache verification (P0 #1 root cause)
+
+Before declaring the brief-summary fix done, the verification loop must explicitly confirm the new `app.js` is what the browser is actually executing. Procedure:
+
+1. After GitHub Actions completes, hit `https://zettelkasten.in/kg/js/app.js` directly via `curl -s | grep -c "extractBriefFromSummary"` and confirm count > 0.
+2. If the live JS still lacks the function, investigate cache (Caddy, CDN if any) — do NOT mark the bug fixed.
+3. In Chrome, hard-reload (`Ctrl+Shift+R`) and re-verify panel content for a known-bad node (`yt-infinite-complexity-chess`). Panel summary must start with a letter, not `{`.
+4. The `<script src="/kg/js/app.js?v=…">` tag in `index.html` should append a build-sha cache-bust query string so future deploys cannot serve stale JS even if a cache-control header is misconfigured. Add this in the same change.
 
 ---
 
