@@ -107,9 +107,14 @@ class RAGOrchestrator:
         self._sessions = sessions
 
     @observe(name="rag.answer")
-    async def answer(self, *, query, user_id):
+    async def answer(self, *, query, user_id, graph_weight_override: float | None = None):
         prepared = await self._prepare_query(query=query, user_id=user_id)
-        result = await self._run_nonstream(query=query, user_id=user_id, prepared=prepared)
+        result = await self._run_nonstream(
+            query=query,
+            user_id=user_id,
+            prepared=prepared,
+            graph_weight_override=graph_weight_override,
+        )
         return result.turn
 
     @observe(name="rag.answer_stream")
@@ -195,12 +200,20 @@ class RAGOrchestrator:
             variants=variants,
         )
 
-    async def _run_nonstream(self, *, query, user_id, prepared: _PreparedQuery) -> _PipelineResult:
+    async def _run_nonstream(
+        self,
+        *,
+        query,
+        user_id,
+        prepared: _PreparedQuery,
+        graph_weight_override: float | None = None,
+    ) -> _PipelineResult:
         context = await self._retrieve_context(
             query=query,
             user_id=user_id,
             query_variants=prepared.variants,
             query_class=prepared.query_class,
+            graph_weight_override=graph_weight_override,
         )
         generation = await self._generate_once(query=query, context_xml=context.context_xml)
         return await self._finalize_answer(
@@ -219,6 +232,7 @@ class RAGOrchestrator:
         user_id,
         query_variants,
         query_class: QueryClass,
+        graph_weight_override: float | None = None,
     ) -> _RetrievedContext:
         async with track_latency("retrieve_context"):
             candidates = await self._retriever.retrieve(
@@ -235,6 +249,7 @@ class RAGOrchestrator:
                 candidates,
                 top_k=8 if query.quality == "fast" else 12,
                 query_class=query_class,
+                graph_weight_override=graph_weight_override,
             )
             context_xml, used_candidates = await self._assembler.build(
                 candidates=ranked,

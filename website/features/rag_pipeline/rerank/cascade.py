@@ -30,6 +30,30 @@ _FUSION_WEIGHTS: dict[QueryClass, tuple[float, float, float]] = {
 _DEFAULT_FUSION_WEIGHTS: tuple[float, float, float] = (0.60, 0.25, 0.15)
 
 
+def _resolve_fusion_weights(
+    query_class: QueryClass | None,
+    graph_weight_override: float | None = None,
+) -> tuple[float, float, float]:
+    """Resolve (rerank_w, graph_w, rrf_w) for a query class with optional graph override.
+
+    When graph_weight_override is set (e.g. 0.0 for KG ablation), the graph weight
+    is replaced and the remaining (1 - graph_w) is redistributed across rerank/rrf
+    while preserving their original ratio.
+    """
+    rerank_w, graph_w, rrf_w = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
+    if graph_weight_override is not None:
+        graph_w = graph_weight_override
+        denom = (rerank_w + rrf_w) if hasattr(_FUSION_WEIGHTS, "get") else 0
+        # Use original (rerank_w, rrf_w) ratio from the class table to redistribute.
+        orig_rerank, _, orig_rrf = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
+        denom = orig_rerank + orig_rrf
+        if denom > 0:
+            scale = (1.0 - graph_w) / denom
+            return orig_rerank * scale, graph_w, orig_rrf * scale
+        return rerank_w, graph_w, rrf_w
+    return rerank_w, graph_w, rrf_w
+
+
 @dataclass(slots=True)
 class _ScoredCandidate:
     candidate: RetrievalCandidate
@@ -65,6 +89,7 @@ class CascadeReranker:
         candidates: list[RetrievalCandidate],
         top_k: int = 8,
         query_class: QueryClass | None = None,
+        graph_weight_override: float | None = None,
     ) -> list[RetrievalCandidate]:
         if not candidates:
             return []
@@ -83,13 +108,23 @@ class CascadeReranker:
             stage2_scores = await self._stage2_rank(query, shortlisted)
         except Exception as exc:
             self._log_degradation(query, shortlisted, "stage2", exc)
-            return self._apply_scores(stage1_ranked[: self._stage1_k], top_k, query_class)
+            return self._apply_scores(
+                stage1_ranked[: self._stage1_k],
+                top_k,
+                query_class,
+                graph_weight_override=graph_weight_override,
+            )
 
         scored_candidates = [
             _ScoredCandidate(candidate=candidate, score=float(score))
             for candidate, score in zip(shortlisted, stage2_scores, strict=False)
         ]
-        return self._apply_scores(scored_candidates, top_k, query_class)
+        return self._apply_scores(
+            scored_candidates,
+            top_k,
+            query_class,
+            graph_weight_override=graph_weight_override,
+        )
 
     async def _stage1_rank(
         self,
@@ -126,10 +161,13 @@ class CascadeReranker:
         scored_candidates: list[_ScoredCandidate],
         top_k: int,
         query_class: QueryClass | None = None,
+        graph_weight_override: float | None = None,
     ) -> list[RetrievalCandidate]:
         for item in scored_candidates:
             item.candidate.rerank_score = item.score
-            item.candidate.final_score = self._fused_score(item.candidate, item.score, query_class)
+            item.candidate.final_score = self._fused_score(
+                item.candidate, item.score, query_class, graph_weight_override
+            )
 
         ranked = sorted(
             [item.candidate for item in scored_candidates],
@@ -153,9 +191,10 @@ class CascadeReranker:
         candidate: RetrievalCandidate,
         rerank_score: float,
         query_class: QueryClass | None = None,
+        graph_weight_override: float | None = None,
     ) -> float:
         quality = _content_quality_factor(candidate.content or "")
-        rerank_w, graph_w, rrf_w = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
+        rerank_w, graph_w, rrf_w = _resolve_fusion_weights(query_class, graph_weight_override)
         return (
             rerank_w * rerank_score * quality
             + graph_w * (candidate.graph_score or 0.0)
