@@ -22,17 +22,15 @@ _DEPTH_BY_CLASS = {
 # benefit from stronger lexical match on proper nouns and titles, MULTI_HOP
 # and STEP_BACK queries benefit from graph expansion, THEMATIC leans semantic.
 # Weights sum to ~1.0 per class to keep RRF score magnitudes comparable.
-# iter-04 retune: lift fulltext share for THEMATIC queries with the probe
-# Zettel in the corpus. yt-effective-public-speakin's tag overlap with the
-# AI/ML cluster (shares 'lecture') would amplify graph score; raising fulltext
-# from 0.20 -> 0.25 lets exact-name lexical hits anchor retrieval on the
-# right domain (e.g. queries with "Karpathy" / "Transformer" / "LeCun"
-# match those zettels' content directly via FTS).
+# iter-06 best-of: restore iter-03 THEMATIC weights (0.55, 0.20, 0.25). iter-03
+# delivered synthesis 88.22 with these weights; iter-04's softer fulltext
+# rebalance was probe-specific and slightly hurt synthesis because broader
+# fulltext recall pulled in tag-only matches. Pair with cascade fusion below.
 _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
     QueryClass.LOOKUP: (0.35, 0.50, 0.15),
     QueryClass.VAGUE: (0.55, 0.25, 0.20),
     QueryClass.MULTI_HOP: (0.40, 0.25, 0.35),
-    QueryClass.THEMATIC: (0.50, 0.25, 0.25),  # iter-04: rebalance for probe
+    QueryClass.THEMATIC: (0.55, 0.20, 0.25),  # iter-06: revert to iter-03 best-of
     QueryClass.STEP_BACK: (0.50, 0.20, 0.30),
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)

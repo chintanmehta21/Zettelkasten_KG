@@ -52,14 +52,13 @@ class ContextAssembler:
 
         budget = _BUDGET_BY_QUALITY[quality]
         candidates = [c for c in candidates if not _is_stub_passage(c.content)]
-        # iter-04 retune: soften the floor 0.30 -> 0.22. iter-03 showed
-        # context_precision doubled (0.33 -> 0.67) but graph_lift_rerank flipped
-        # +28.81 -> -11.67 because the floor was preferentially cutting
-        # graph-boosted candidates whose rrf+rerank were modest but graph_score
-        # was strong. The composite-floor 0.30 was a hammer; 0.22 keeps the
-        # precision win while letting the KG signal shine through.
-        # See iter-03/improvement_delta.json for the trade-off curve.
-        _CONTEXT_FLOOR = 0.22
+        # iter-06 best-of: restore the iter-03 floor of 0.30. The iter-04 0.22
+        # softening was meant to recover graph_lift but synthesis faithfulness
+        # dropped 0.84 -> 0.56. iter-03's 0.30 floor delivered the highest
+        # synthesis score (88.22) by hard-cutting marginal contexts. Combine
+        # with iter-04's cascade fusion weights (0.55, 0.30, 0.15) below for
+        # best-of-both: precision floor + strong rerank.
+        _CONTEXT_FLOOR = 0.30
         def _passes_floor(c):
             score = c.final_score if c.final_score is not None else (c.rerank_score or 0.0)
             return score >= _CONTEXT_FLOOR
