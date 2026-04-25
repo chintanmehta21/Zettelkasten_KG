@@ -150,6 +150,38 @@ def _expand_json_string_bullets(section: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _norm_compare(text: str) -> str:
+    """Lowercase + collapse whitespace + strip trailing punctuation for fuzzy
+    containment comparisons. Pure helper, no side effects."""
+    out = re.sub(r"\s+", " ", str(text or "").strip().lower())
+    return out.rstrip(".!? ").strip()
+
+
+def _bullet_is_redundant(top_bullet: str, sub_bullets: list[str]) -> bool:
+    """True if the sub-section's content is effectively a duplicate of the
+    top-level bullet (substring containment in either direction). Used to drop
+    a "Core argument" sub whose single bullet repeats the Overview thesis."""
+    if not top_bullet or not sub_bullets:
+        return False
+    top = _norm_compare(top_bullet)
+    if not top:
+        return False
+    joined = _norm_compare(" ".join(sub_bullets))
+    if not joined:
+        return False
+    if top == joined:
+        return True
+    # Treat as redundant when one fully contains the other; a lifted thesis
+    # rarely diverges meaningfully from the same thesis re-emitted as a sub.
+    if top in joined or joined in top:
+        return True
+    # Fallback: same first 60 chars (handles trailing-period / minor edits).
+    prefix = min(60, len(top), len(joined))
+    if prefix >= 30 and top[:prefix] == joined[:prefix]:
+        return True
+    return False
+
+
 def _normalize_section(section: dict[str, Any]) -> dict[str, Any] | None:
     """One pipeline-shape section → one pretty section. Returns None to drop."""
     if not isinstance(section, dict):
@@ -172,6 +204,30 @@ def _normalize_section(section: dict[str, Any]) -> dict[str, Any] | None:
     bullets = [str(x).strip() for x in bullets if str(x).strip()]
     pretty_heading = _strip_timestamp(raw_heading) or raw_heading
     pretty_heading = _pretty_heading(pretty_heading) or pretty_heading
+
+    # Drop a sub-section whose key (case-insensitive) duplicates the parent
+    # heading — guards against a layout path that injects e.g. an "Overview"
+    # sub inside the Overview parent. Idempotent.
+    parent_key = pretty_heading.strip().lower()
+    if parent_key:
+        pretty_subs = {
+            k: v for k, v in pretty_subs.items() if k.strip().lower() != parent_key
+        }
+
+    # Dedupe pass: when the top-level bullet (typically the lifted thesis on
+    # Overview) is effectively repeated by a sub-section's content, drop the
+    # sub. Applies to any sub key, but in practice catches "Core argument"
+    # and "Thesis" subs that the source layouts still emit alongside the
+    # promoted top-level Overview bullet.
+    if bullets and pretty_subs:
+        top_bullet = bullets[0]
+        survivors: dict[str, list[str]] = {}
+        for k, v in pretty_subs.items():
+            if _bullet_is_redundant(top_bullet, v):
+                continue
+            survivors[k] = v
+        pretty_subs = survivors
+
     return {
         "heading": pretty_heading,
         "bullets": bullets,
