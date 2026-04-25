@@ -212,9 +212,15 @@
     // The header partial owns the login button; clicking it opens the modal.
     const btn = document.querySelector('.home-login-btn, [data-open-login], #header-login-btn');
     if (btn) { btn.click(); return; }
-    // Fallback: directly mutate the modal class if the button can't be found.
+    // Direct modal toggle if it's already in the DOM.
     const modal = document.getElementById('login-modal');
-    if (modal) modal.classList.add('open');
+    if (modal) { modal.classList.add('open'); return; }
+    // Last-resort: bounce to landing page (where the modal lives) with a
+    // return-to so the user lands back on KG after sign-in. The KG header
+    // partial does NOT carry the login modal, so without this fallback the
+    // greyed Personal/Kastens click would silently no-op.
+    const ret = encodeURIComponent(location.pathname + location.search + location.hash);
+    location.href = '/?auth=login&return=' + ret;
   }
 
   // Restore persisted view (only auto-restore "my" if we end up confirming login).
