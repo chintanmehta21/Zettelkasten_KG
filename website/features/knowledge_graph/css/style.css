@@ -375,11 +375,15 @@ body {
 }
 .kg-panel-date.hidden { display: none; }
 
-/* Source badge — pixel-match .zettels-source-badge (My-Zettels token parity) */
+/* Source badge — height-aligned with .kg-panel-date pill (same vertical
+   padding + border + box-sizing) so date and badge sit on the same baseline
+   and have identical heights in the panel meta row. */
 .kg-panel-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.55rem;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 12px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.64rem;
   font-weight: 600;
@@ -390,6 +394,10 @@ body {
   border-radius: 999px;
   background: transparent;
   white-space: nowrap;
+}
+.kg-panel-date {
+  box-sizing: border-box;
+  height: 28px;
 }
 .kg-panel-badge.youtube    { color: hsl(355, 45%, 68%); border-color: hsla(355, 45%, 68%, 0.25); background: hsla(355, 45%, 68%, 0.1); }
 .kg-panel-badge.github     { color: hsl(192, 35%, 62%); border-color: hsla(192, 35%, 62%, 0.25); background: hsla(192, 35%, 62%, 0.1); }
