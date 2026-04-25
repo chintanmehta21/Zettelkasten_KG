@@ -102,3 +102,27 @@ async def build_kasten(
         "creation_rationale": rationale,
         "billing_concern": billing_concern,
     }
+
+
+async def ingest_kasten(
+    *,
+    zettels: list[dict],
+    user_id: UUID,
+    runtime: Any,  # RAGRuntime from website.features.rag_pipeline.service
+) -> dict:
+    """Drive ingestion via existing rag_pipeline.service. Returns ingest report."""
+    chunker = runtime.orchestrator._ingest_chunker  # access via stable attr; document with ADR if private
+    embedder = runtime.orchestrator._ingest_embedder
+    upserter = runtime.orchestrator._ingest_upserter
+    report = {"per_zettel": [], "total_chunks": 0, "failures": []}
+    for z in zettels:
+        try:
+            chunks = await chunker.chunk_node(node_id=z["id"], text=z.get("summary") or "", source_type=z["source_type"])
+            embedded = await embedder.embed_chunks(chunks)
+            await upserter.upsert(user_id=user_id, node_id=z["id"], chunks=embedded)
+            report["per_zettel"].append({"node_id": z["id"], "chunk_count": len(embedded), "ok": True})
+            report["total_chunks"] += len(embedded)
+        except Exception as exc:
+            report["failures"].append({"node_id": z["id"], "error": str(exc)})
+            report["per_zettel"].append({"node_id": z["id"], "ok": False, "error": str(exc)})
+    return report
