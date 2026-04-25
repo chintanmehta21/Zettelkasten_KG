@@ -219,69 +219,88 @@ body {
   outline-offset: 2px;
 }
 
+/* Filter dropdown — multi-section */
 .kg-filter-dropdown {
   position: fixed;
-  top: 64px;
-  right: 28px;
-  z-index: 200;
-  background: rgba(10, 12, 24, 0.92);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  top: 70px;
+  right: 80px;
+  width: 240px;
+  background: rgba(12, 16, 28, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius);
+  border-radius: 12px;
   padding: 8px;
-  box-shadow: var(--shadow-lg), 0 0 40px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 170px;
-  animation: dropdownIn 0.2s ease;
+  gap: 4px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
-
-@keyframes dropdownIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+.kg-filter-section { display: flex; flex-direction: column; }
+.kg-filter-section + .kg-filter-section { border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px; padding-top: 6px; }
+.kg-filter-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(180,192,210,0.55);
+  cursor: pointer;
+  user-select: none;
 }
+.kg-filter-section-chevron { transition: transform 0.18s; }
+.kg-filter-section.collapsed .kg-filter-section-chevron { transform: rotate(-90deg); }
+.kg-filter-section.collapsed .kg-filter-section-body { display: none; }
+.kg-filter-section-body { display: flex; flex-direction: column; padding: 2px 4px; gap: 2px; }
 
 .kg-filter-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--kg-text-secondary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: rgba(220, 228, 240, 0.9);
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
 }
+.kg-filter-item:hover { background: rgba(255,255,255,0.04); }
+.kg-filter-item input[type="checkbox"] { display: none; }
+.kg-filter-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: opacity 0.15s; }
 
-.kg-filter-item:hover {
-  background: var(--kg-bg-hover);
-  color: var(--kg-text);
-}
+/* Bolder unchecked feedback (P2 #21) */
+.kg-filter-item.unchecked { color: rgba(180,192,210,0.45); text-decoration: line-through; }
+.kg-filter-item.unchecked .kg-filter-dot { opacity: 0.25; }
 
-.kg-filter-item input[type="checkbox"] {
-  display: none;
+.kg-filter-empty {
+  padding: 10px;
+  font-size: 0.8rem;
+  color: rgba(180,192,210,0.5);
+  text-align: center;
+  margin: 0;
 }
+.kg-filter-cta-link {
+  display: block;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: #2dd4bf;
+  text-align: center;
+  cursor: pointer;
+}
+.kg-filter-cta-link:hover { text-decoration: underline; }
 
-.kg-filter-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: all var(--transition);
-  box-shadow: 0 0 6px currentColor;
-}
-
-.kg-filter-item:has(input:not(:checked)) .kg-filter-dot {
-  opacity: 0.25;
-  box-shadow: none;
-}
-
-.kg-filter-item:has(input:not(:checked)) {
-  color: var(--kg-text-muted);
-  text-decoration: line-through;
-}
+/* Section greyed out when current view scope cannot use this filter
+   (Kastens on Global). Whole surface acts as a single greyed click target
+   with a "Sign in to switch" tooltip (matches greyed Personal segment). */
+.kg-filter-section.disabled-scope { cursor: pointer; opacity: 0.55; }
+.kg-filter-section.disabled-scope .kg-filter-section-header { color: rgba(180,192,210,0.3); cursor: pointer; }
+.kg-filter-section.disabled-scope .kg-filter-section-body { pointer-events: none; }
+.kg-filter-section.disabled-scope .kg-filter-empty { color: rgba(180,192,210,0.5); font-style: italic; }
+.kg-filter-section.disabled-scope:hover { opacity: 0.75; }
 
 .hidden {
   display: none !important;
