@@ -528,12 +528,12 @@
 
     var kgBtnHtml = '<a class="home-card-kg-btn" href="/knowledge-graph?node=' + safeKgId + '" aria-label="View in Knowledge Graph">' +
         '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-          '<circle cx="12" cy="5" r="2.6" fill="currentColor" stroke="currentColor" stroke-width="2"></circle>' +
-          '<circle cx="5" cy="18.5" r="2.6" fill="currentColor" stroke="currentColor" stroke-width="2"></circle>' +
-          '<circle cx="19" cy="18.5" r="2.6" fill="currentColor" stroke="currentColor" stroke-width="2"></circle>' +
-          '<line x1="11" y1="7.4" x2="6" y2="16.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
-          '<line x1="13" y1="7.4" x2="18" y2="16.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
-          '<line x1="7.4" y1="18.5" x2="16.6" y2="18.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>' +
+          '<circle cx="12" cy="5" r="2.4" stroke="currentColor" stroke-width="1.8"></circle>' +
+          '<circle cx="5" cy="18.5" r="2.4" stroke="currentColor" stroke-width="1.8"></circle>' +
+          '<circle cx="19" cy="18.5" r="2.4" stroke="currentColor" stroke-width="1.8"></circle>' +
+          '<line x1="10.9" y1="7.2" x2="6.1" y2="16.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line>' +
+          '<line x1="13.1" y1="7.2" x2="17.9" y2="16.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line>' +
+          '<line x1="7.6" y1="18.5" x2="16.4" y2="18.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></line>' +
         '</svg>' +
         '<span class="tooltip">View in Knowledge Graph</span>' +
       '</a>';

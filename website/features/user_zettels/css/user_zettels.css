@@ -733,31 +733,26 @@ body {
     display: block;
 }
 
-/* KG button — yellow/amber accent. Inline SVG uses currentColor so the
-   icon follows the button's text color (driven by ``color`` here). On
-   hover, color shifts to a brighter yellow with a soft drop-shadow glow.
-   Same pattern as the Go-to button beside it for visual parity. */
+/* KG button — yellow/amber accent. Mirrors the Go-to button's pattern
+   exactly (idle / hover / box-shadow), just in yellow instead of teal,
+   so the two buttons read as a matched pair. Hollow stroked icon at
+   stroke-width 1.8 — slightly thinner than the Go-to button's 2px. */
 .home-card-kg-btn {
-    border: 1px solid hsla(48, 90%, 55%, 0.55);
-    background: hsla(48, 90%, 55%, 0.12);
-    color: hsl(48, 95%, 65%);
+    border: 1px solid hsla(48, 80%, 55%, 0.45);
+    background: hsla(48, 80%, 55%, 0.1);
+    color: hsl(48, 85%, 65%);
     position: relative;
 }
 .home-card-kg-btn:hover {
-    background: hsla(48, 95%, 60%, 0.25);
-    border-color: hsl(48, 95%, 62%);
-    color: hsl(50, 100%, 70%);
-    box-shadow: 0 0 12px hsla(48, 95%, 60%, 0.45);
+    background: hsla(48, 80%, 55%, 0.22);
+    border-color: hsl(48, 80%, 60%);
+    box-shadow: 0 0 10px hsla(48, 80%, 55%, 0.3);
     transform: scale(1.08);
 }
 .home-card-kg-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     pointer-events: none;
-    transition: filter 0.2s ease;
-}
-.home-card-kg-btn:hover svg {
-    filter: drop-shadow(0 0 5px hsla(48, 100%, 65%, 0.8));
 }
 
 .home-card-summary-btn:focus-visible,
