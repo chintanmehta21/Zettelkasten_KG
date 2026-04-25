@@ -219,23 +219,28 @@ docs/rag_eval/
     iter-01/
       kasten.json                   # zettel list, source URLs, ingestion status
       ingest.json                   # chunk count per zettel, embedding model, latency
-      queries.json                  # the queries + gold answers
-      answers.json                  # pipeline outputs
+      queries.json                  # the queries + gold answers (machine-readable)
+      answers.json                  # pipeline outputs (machine-readable)
+      qa_pairs.md                   # HUMAN-READABLE: pairs each Q with system answer, gold answer, citations, per-query scores side-by-side
       eval.json                     # RAGAS + DeepEval + per-stage component scores + graph_lift
+      scores.md                     # HUMAN-READABLE scorecard: per-stage scores, composite, deltas vs prior iter
       ablation_eval.json            # eval re-run with graph_weight=0
       atomic_facts.json
       kg_snapshot.json              # pre-iter KG slice (Kasten + 1-hop neighbors)
       kg_health_delta.json          # vs iter-(NN-1)
       kg_recommendations.json       # advisory + auto-applied mutations
+      kg_changes.md                 # HUMAN-READABLE: KG mutations applied this iter
+      pipeline_changes.md           # HUMAN-READABLE: code changes made before this iter (the "wide-net" change manifest)
       manual_review_prompt.md
       manual_review.md
+      _review_subagent_transcript.json  # audit trail for cross-LLM blind review
       diff.md
       next_actions.md
       improvement_delta.json
       run.log
       input.json                    # config snapshot for replay
     iter-02/ ...
-    iter-NN/ (held-out)             # contains held_out/ subdir like summary_eval
+    iter-05/ (or 03)                # held-out final iter, contains held_out/ subdir like summary_eval
   _synthesis.md                     # cross-source closure (manually written after final iter)
 
 ops/scripts/
@@ -282,6 +287,18 @@ Phases ship behind tests; each phase commits independently with `feat:` / `test:
 **Decision: Phase 6 splits into 6a (YouTube only, autonomous) and 6b (other sources, gated on user review).**
 Why: user direction — run all YouTube iters end-to-end, stop, let user review, then continue. Limits blast radius of any pipeline-edit regression and lets the user catch systemic issues before three more loops compound them.
 How to apply: after iter-05 commits and `_synthesis.md` is written for YouTube, the CLI emits `RAG_EVAL_HALT_FOR_REVIEW` to stdout, writes `docs/rag_eval/.youtube_complete` sentinel file, and exits 0. Reddit/GitHub/Newsletter loops will not start until the user explicitly removes the sentinel or invokes `--source reddit --iter 1` directly.
+
+**Decision: each tuning iter REQUIRES wide-net multi-component changes; single-line tweaks are blocked.**
+Why: user direction — "robust, wide-net changes across each iteration", "do not proceed with minimal adjustments". Phase B's `improvement_delta.json` captures a `change_breadth` metric and the CLI rejects iters that don't meet the threshold.
+How to apply (the change-breadth gate):
+- Each tuning iter (YouTube 02/03/04, Reddit/GitHub/Newsletter 02) MUST modify ≥3 of these 6 RAG components: `ingest/chunker.py`, `ingest/embedder.py`, `retrieval/hybrid.py`, `rerank/cascade.py`, `query/rewriter.py`/`query/router.py`, `generation/prompts.py`.
+- Each tuning iter MUST also touch ≥1 config or weight surface (composite_weights.yaml, fusion_weights in cascade.py, depth_by_class in hybrid.py, top_k limits, MMR lambda).
+- The CLI runs `git diff iter-(n-1)..HEAD --stat` at the start of Phase B and writes `pipeline_changes.md`. If <3 components touched OR no config/weight change, Phase B refuses to commit and emits `CHANGE_BREADTH_INSUFFICIENT`; the human must either expand the change or document a `decision` rationale for the narrow scope.
+- `qa_pairs.md` and `scores.md` are AUTO-GENERATED (not committed by hand) — they're rendered from `answers.json` + `eval.json` + `queries.json` for human review.
+
+**Decision: each tuning iter targets specific known weaknesses surfaced by the prior iter's `next_actions.md`.**
+Why: wide-net changes without direction become churn. Each iter's `pipeline_changes.md` MUST cite which `next_actions.md` items it addresses.
+How to apply: `next_actions.md` items are tagged with IDs (`NA-iter02-01`, `NA-iter02-02`, ...); `pipeline_changes.md` references them in its commit body and Phase B verifies coverage.
 
 ---
 
