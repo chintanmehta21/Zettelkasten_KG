@@ -1,0 +1,27 @@
+version: rubric_synthesis.v1
+formula: |
+  0.30*ragas.faithfulness
+  + 0.20*ragas.answer_correctness
+  + 0.20*ragas.context_precision
+  + 0.15*ragas.answer_relevancy
+  + 0.15*deepeval.semantic_similarity
+ragas_metrics:
+  faithfulness:
+    weight: 0.30
+    description: "RAGAS faithfulness — answer grounded in retrieved context."
+  answer_correctness:
+    weight: 0.20
+    description: "RAGAS answer correctness vs reference_answer."
+  context_precision:
+    weight: 0.20
+    description: "RAGAS context precision — fraction of retrieved context that is relevant."
+  answer_relevancy:
+    weight: 0.15
+    description: "RAGAS answer relevancy to the question."
+deepeval_metrics:
+  semantic_similarity:
+    weight: 0.15
+    description: "DeepEval semantic similarity between answer and reference_answer."
+divergence_check:
+  description: "Flag eval_divergence when |faithfulness - (1 - hallucination)| > 0.20."
+  threshold: 0.20

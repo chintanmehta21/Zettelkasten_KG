@@ -1,0 +1,16 @@
+version: rubric_chunking.v1
+formula: "0.4*budget + 0.3*boundary + 0.2*coherence + 0.1*dedup"
+target_token_count: 512
+budget_compliance:
+  description: "Chunk token_count must fall in (0.5*target, 1.5*target). Strict lower bound."
+  weight: 0.4
+boundary_integrity:
+  description: "Chunk text must end at a sentence boundary."
+  regex: "[.!?\\n]\\s*$"
+  weight: 0.3
+coherence:
+  description: "Cosine similarity of adjacent chunk embeddings (mean across pairs). Neutral 0.5 when embeddings unavailable."
+  weight: 0.2
+dedup:
+  description: "Unique-text rate across chunks (1 - duplicate_rate)."
+  weight: 0.1

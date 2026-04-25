@@ -1,0 +1,13 @@
+version: rubric_retrieval.v1
+formula: "0.4*Recall@10 + 0.3*MRR + 0.3*Hit@5"
+gold_source: "docs/rag_eval/_config/queries/<source>/seed.yaml :: gold_node_ids"
+recall:
+  k: 10
+  weight: 0.4
+mrr:
+  description: "Mean reciprocal rank of the FIRST gold node in the retrieved list."
+  weight: 0.3
+hit:
+  k: 5
+  description: "1.0 if any gold node appears in retrieved[:5], else 0."
+  weight: 0.3
