@@ -264,58 +264,43 @@
     'and', 'or', 'to', 'by', 'on', 'as', 'after', 'before', 'from'
   ]);
 
-  function getShortLabel(node) {
-    const name = node.name;
-    const sepIdx = name.indexOf(SEP);
-
-    // GitHub: show owner/repo only
-    if (node.group === 'github') {
-      return sepIdx > -1 ? name.slice(0, sepIdx) : name.split(' ').slice(0, 2).join(' ');
-    }
-
-    // Reddit: strip r/SubName prefix, use topic part
-    if (node.group === 'reddit' && sepIdx > -1) {
-      const topic = name.slice(sepIdx + SEP.length);
-      return _truncate(topic, 2);
-    }
-
-    // Substack/Medium: topic after separator
-    if ((node.group === 'substack' || node.group === 'medium') && sepIdx > -1) {
-      const topic = name.slice(sepIdx + SEP.length);
-      return _truncate(topic, 2);
-    }
-
-    // YouTube & others: topic before separator
-    const topicPart = sepIdx > -1 ? name.slice(0, sepIdx) : name;
-    return _truncate(topicPart, 2);
+  function _wrapTitle(name, softMax) {
+    if (name.length <= softMax) return name;
+    const breakAt = name.indexOf(' ', softMax);
+    if (breakAt === -1) return name;
+    return name.slice(0, breakAt) + '\n' + name.slice(breakAt + 1);
   }
 
-  function _truncate(str, maxWords) {
-    const words = str.trim().split(/\s+/);
-    if (words.length <= maxWords) return str.trim();
-
-    // Strip leading filler
-    while (words.length > 1 && LEAD_FILLER.has(words[0].toLowerCase())) {
-      words.shift();
+  function getShortLabel(node) {
+    const name = node.name || '';
+    const sepIdx = name.indexOf(SEP);
+    if (node.group === 'github') {
+      return sepIdx > -1 ? name.slice(0, sepIdx) : _smartTruncate(name, 28);
     }
-
-    // Take first N words, trim trailing filler
-    let label = words.slice(0, maxWords);
-    while (label.length > 1 && TAIL_FILLER.has(label[label.length - 1].toLowerCase())) {
-      label.pop();
+    if ((node.group === 'reddit' || node.group === 'substack' || node.group === 'medium' || node.group === 'newsletter') && sepIdx > -1) {
+      return _smartTruncate(name.slice(sepIdx + SEP.length), 28);
     }
+    const topicPart = sepIdx > -1 ? name.slice(0, sepIdx) : name;
+    return _smartTruncate(topicPart, 28);
+  }
 
-    // If only 1 word left, grab next non-filler
-    if (label.length === 1 && words.length > 1) {
-      for (let i = 1; i < Math.min(words.length, 4); i++) {
-        if (!TAIL_FILLER.has(words[i].toLowerCase())) {
-          label.push(words[i]);
-          break;
-        }
-      }
+  function _smartTruncate(str, maxChars) {
+    const s = (str || '').trim();
+    if (s.length <= maxChars) return s;
+    // Strip leading filler.
+    const words = s.split(/\s+/);
+    while (words.length > 1 && LEAD_FILLER.has(words[0].toLowerCase())) words.shift();
+    // Build word-by-word until we'd exceed maxChars.
+    let out = '';
+    for (const w of words) {
+      if ((out + ' ' + w).trim().length > maxChars) break;
+      out = (out + ' ' + w).trim();
     }
-
-    return label.join(' ');
+    if (!out) out = words[0].slice(0, Math.max(8, maxChars - 1));
+    // Drop trailing filler.
+    const parts = out.split(' ');
+    while (parts.length > 1 && TAIL_FILLER.has(parts[parts.length - 1].toLowerCase())) parts.pop();
+    return parts.join(' ') + (parts.join(' ').length < s.length ? '…' : '');
   }
 
   // ---- Node degree (connection count) for sizing ----
@@ -456,7 +441,7 @@
 
       // Update text label
       if (child.__isLabel) {
-        const label = isActive ? node.name : getShortLabel(node);
+        const label = isActive ? _wrapTitle(node.name || '', 32) : getShortLabel(node);
         if (child.text !== label) child.text = label;
         child.position.set(0, -(radius + 3), 0);
 
@@ -532,10 +517,10 @@
         }
 
         // Text label — shorter, smaller, tighter to node
-        const label = isActive ? node.name : getShortLabel(node);
+        const label = isActive ? _wrapTitle(node.name || '', 32) : getShortLabel(node);
         const sprite = new SpriteText(label);
         sprite.fontFace = 'Inter, -apple-system, sans-serif';
-        sprite.fontWeight = '500';
+        sprite.fontWeight = '600';
         sprite.fontSize = 90;
         sprite.textHeight = 1.8;
         sprite.__isLabel = true;
