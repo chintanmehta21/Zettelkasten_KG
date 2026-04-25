@@ -692,32 +692,33 @@
     const prevSelected = selectedNode;
     selectedNode = node;
     graph.controls().autoRotate = false;
-    // Update only the affected nodes
     if (prevSelected && prevSelected !== node) _updateNodeVisual(prevSelected);
     _updateNodeVisual(node);
 
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
 
-    // Fly camera to fixed distance from node, keeping current viewing angle
+    // If panel is already open, swap content INSTANTLY so connection-clicks feel snappy.
+    const panelAlreadyOpen = sidePanel.classList.contains('visible');
+    if (panelAlreadyOpen) openPanel(node);
+
+    // Fly camera.
     const cam = graph.camera();
     const nx = node.x || 0, ny = node.y || 0, nz = node.z || 0;
     const dx = cam.position.x - nx;
     const dy = cam.position.y - ny;
     const dz = cam.position.z - nz;
-    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const len = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
     const targetDist = 90;
-
     graph.cameraPosition({
-      x: nx + (dx / len) * targetDist,
-      y: ny + (dy / len) * targetDist,
-      z: nz + (dz / len) * targetDist
+      x: nx + (dx/len)*targetDist,
+      y: ny + (dy/len)*targetDist,
+      z: nz + (dz/len)*targetDist
     }, node, 1000);
 
-    // Show panel after camera centres on node
-    _panelOpenTimer = setTimeout(function () {
-      openPanel(node);
-      _panelOpenTimer = null;
-    }, 700);
+    // Open panel after camera centres (only if not already open).
+    if (!panelAlreadyOpen) {
+      _panelOpenTimer = setTimeout(() => { openPanel(node); _panelOpenTimer = null; }, 700);
+    }
   }
 
   function handleBackgroundClick() {
@@ -729,6 +730,8 @@
   }
 
   // ---- Side Panel ----
+  let _currentPanelNodeId = null;
+
   function openPanel(node) {
     const badge = document.getElementById('panel-badge');
     const title = document.getElementById('panel-title');
@@ -737,26 +740,52 @@
     const tags = document.getElementById('panel-tags');
     const connections = document.getElementById('panel-connections');
     const link = document.getElementById('panel-link');
-    const askLink = document.getElementById('panel-ask-link');
-    const kastenLink = document.getElementById('panel-kasten-link');
+    const addBtn = document.getElementById('panel-add-kasten');
 
     const nodeGroup = normalizeGroup(node.group);
-    badge.textContent = nodeGroup;
+    badge.textContent = (SOURCE_LABEL[nodeGroup] || nodeGroup).toUpperCase();
     badge.className = 'kg-panel-badge ' + nodeGroup;
-    title.textContent = node.name;
-    date.textContent = formatDate(node.date);
+    title.textContent = node.name || '';
+
+    // Empty-date hide (P0 #3).
+    const formatted = formatDate(node.date);
+    if (formatted && formatted !== 'Invalid Date' && formatted !== '') {
+      date.textContent = formatted;
+      date.classList.remove('hidden');
+    } else {
+      date.textContent = '';
+      date.classList.add('hidden');
+    }
+
     summary.textContent = extractBriefFromSummary(node.summary);
+
     const safeLink = toSafeHttpUrl(node.url);
-    link.href = safeLink || '#';
-    link.setAttribute('aria-disabled', safeLink ? 'false' : 'true');
-    link.tabIndex = safeLink ? 0 : -1;
-    link.rel = safeLink ? 'noopener noreferrer' : '';
-    link.target = safeLink ? '_blank' : '';
-    askLink.href = '/home/rag?focus_node=' + encodeURIComponent(node.id) + '&focus_title=' + encodeURIComponent(node.name || '');
-    kastenLink.href = '/home/kastens?focus_node=' + encodeURIComponent(node.id) + '&focus_title=' + encodeURIComponent(node.name || '');
+    if (safeLink) {
+      link.href = safeLink;
+      link.removeAttribute('aria-disabled');
+      link.tabIndex = 0;
+      link.rel = 'noopener noreferrer';
+      link.target = '_blank';
+    } else {
+      link.href = '#';
+      link.setAttribute('aria-disabled', 'true');
+      link.tabIndex = -1;
+      link.rel = '';
+      link.target = '';
+    }
+
+    // Add-to-Kasten button — open modal (or login if logged out).
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (!isLoggedIn) { openLoginModalFromKG(); return; }
+        if (window.kgKastenModal) {
+          window.kgKastenModal.open(node, kastenList, authHeaders, () => loadKastens());
+        }
+      };
+    }
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(
-      t => `<span class="kg-tag">${escapeHtml(t)}</span>`
+      t => '<span class="kg-tag">' + escapeHtml(t) + '</span>'
     ).join('');
 
     const nodeLinks = graphData.links.filter(
@@ -772,17 +801,19 @@
       <div class="kg-connection" data-id="${escapeHtml(c.node.id || c.node)}">
         <span class="kg-connection-dot" style="background: ${COLORS[c.node.group] || '#888'}"></span>
         <span class="kg-connection-name">${escapeHtml(c.node.name || c.node)}</span>
-        <span class="kg-connection-relation">${escapeHtml(c.relation)}</span>
+        <span class="kg-connection-relation">${escapeHtml(c.relation || '')}</span>
       </div>
     `).join('');
-
     connections.querySelectorAll('.kg-connection').forEach(el => {
       el.addEventListener('click', () => {
         const targetId = el.dataset.id;
         const targetNode = graphData.nodes.find(n => n.id === targetId);
-        if (targetNode) handleNodeClick(targetNode);
+        if (targetNode && targetNode.id !== _currentPanelNodeId) handleNodeClick(targetNode);
       });
     });
+
+    _currentPanelNodeId = node.id;
+    sidePanel.dataset.nodeId = node.id;
 
     if (panelHideTimer) { clearTimeout(panelHideTimer); panelHideTimer = null; }
     sidePanel.classList.remove('hidden');
@@ -792,6 +823,8 @@
   function closePanel() {
     sidePanel.classList.remove('visible');
     if (panelHideTimer) clearTimeout(panelHideTimer);
+    _currentPanelNodeId = null;
+    sidePanel.dataset.nodeId = '';
     panelHideTimer = setTimeout(() => { sidePanel.classList.add('hidden'); panelHideTimer = null; }, 350);
   }
 
