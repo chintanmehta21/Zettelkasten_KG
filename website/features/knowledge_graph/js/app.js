@@ -847,6 +847,22 @@
     });
   }
 
+  // ---- Reset view ----
+  const resetViewBtn = document.getElementById('reset-view-btn');
+  if (resetViewBtn) {
+    resetViewBtn.addEventListener('click', () => {
+      if (!graph) return;
+      // Clear highlights so all nodes are visible during the fit.
+      if (searchInput) searchInput.value = '';
+      _applySearch('');
+      selectedNode = null;
+      highlightNodes.clear();
+      _refreshAllNodeVisuals();
+      closePanel();
+      graph.zoomToFit(800, 60);
+    });
+  }
+
   // ---- Filter ----
   if (filterBtn && filterDropdown) {
     filterBtn.addEventListener('click', (e) => {
