@@ -1,0 +1,42 @@
+{
+  "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+  "node_count": 21,
+  "link_count": 39,
+  "by_source": {
+    "youtube": 15,
+    "newsletter": 1,
+    "github": 4,
+    "reddit": 1
+  },
+  "node_ids_by_source": {
+    "youtube": [
+      "yt-dan-shapiro-overcoming-t",
+      "yt-software-1-0-vs-software",
+      "yt-zero-day-market-covert-exploits",
+      "yt-petrodollar-system-mechanism-benefits-v",
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-transformer-architecture",
+      "yt-lecun-s-vision-human-lev",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-programming-workflow-is",
+      "yt-matt-walker-sleep-depriv",
+      "yt-ross-ulbricht-silk-road-saga",
+      "yt-dmt-history-neuroscience-entity-encounters",
+      "yt-infinite-complexity-chess",
+      "yt-cannabis-use-disorder-impact-on"
+    ],
+    "newsletter": [
+      "nl-the-pragmatic-engineer-t"
+    ],
+    "github": [
+      "gh-pydantic-pydantic",
+      "gh-psf-requests",
+      "gh-fastapi-fastapi",
+      "gh-anthropics-claude-cookbo"
+    ],
+    "reddit": [
+      "rd-r-hinduism-share-persona"
+    ]
+  }
+}
