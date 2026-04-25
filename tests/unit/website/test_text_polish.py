@@ -117,6 +117,26 @@ class TestCommaOutsideQuote:
         out = comma_outside_quote("trailing,'unmatched")
         assert out == "trailing,'unmatched"
 
+    def test_flip_when_possessive_apostrophes_precede(self):
+        # Real-world Pragmatic Engineer brief — possessives "Hoskins'" and
+        # "O'Reilly" must NOT throw off parity counting; the inner quoted
+        # phrase 'The Product-Minded Engineer' should still get its comma
+        # flipped outside the closing quote.
+        text = (
+            "It introduces Drew Hoskins' new O'Reilly book, "
+            "'The Product-Minded Engineer,' detailing his extensive "
+            "background."
+        )
+        out = comma_outside_quote(text)
+        assert "'The Product-Minded Engineer'," in out
+        assert "'The Product-Minded Engineer,'" not in out
+
+    def test_flip_with_multiple_possessives_and_double_quote(self):
+        text = "Don't worry — 'go ahead,' he said about Sam's plan."
+        out = comma_outside_quote(text)
+        assert "'go ahead'," in out
+        assert "'go ahead,'" not in out
+
 
 # ---- sentence-final punctuation -------------------------------------------
 

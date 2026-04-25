@@ -208,16 +208,18 @@ def comma_outside_quote(text: str) -> str:
             if sentence_start < 0:
                 sentence_start = 0
             window = text[sentence_start:i]
-            # Count only standalone (non-possessive) instances of the quote
-            # in the window. A ``'`` between two letters is an apostrophe,
-            # not a quote delimiter — skip it.
+            # Count only standalone instances of the quote in the window.
+            # A ``'`` whose previous char is a letter (e.g. ``Hoskins'``,
+            # ``don't``, ``O'Reilly``) is a possessive / contraction, not a
+            # quote delimiter — skip it regardless of what follows. Opening
+            # quotes are always preceded by whitespace / start-of-string /
+            # punctuation, never by a letter.
             qcount = 0
             for k in range(len(window)):
                 if window[k] != quote:
                     continue
                 prev_c = window[k - 1] if k - 1 >= 0 else ""
-                next_c = window[k + 1] if k + 1 < len(window) else ""
-                if quote == "'" and prev_c.isalpha() and next_c.isalpha():
+                if quote == "'" and prev_c.isalpha():
                     continue
                 qcount += 1
             if qcount % 2 == 1 and i > 0 and text[i - 1].isalnum():
