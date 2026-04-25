@@ -750,19 +750,19 @@ body {
     transform: scale(1.08);
 }
 .home-card-kg-icon {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     pointer-events: none;
     /* Use the SVG as a mask so we can recolor via background-color and
        animate the hover glow on the icon itself. */
-    background-color: hsl(42, 60%, 65%);
+    background-color: hsl(42, 70%, 60%);
     -webkit-mask: url('/artifacts/icon-knowledge-graph.svg') center / contain no-repeat;
             mask: url('/artifacts/icon-knowledge-graph.svg') center / contain no-repeat;
     transition: background-color 0.2s ease, filter 0.2s ease;
 }
 .home-card-kg-btn:hover .home-card-kg-icon {
-    background-color: hsl(48, 100%, 64%);
-    filter: drop-shadow(0 0 6px hsla(48, 100%, 64%, 0.6));
+    background-color: hsl(48, 100%, 60%);
+    filter: drop-shadow(0 0 6px hsla(48, 100%, 60%, 0.7));
 }
 
 .home-card-summary-btn:focus-visible,
