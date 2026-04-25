@@ -37,22 +37,62 @@
     return el.innerHTML;
   }
 
-  // The /api/graph endpoint now ships the canonical JSON envelope so the
-  // zettel modal can render brief + detailed structured sections. The 3D
-  // viewer only needs the brief — parse it out here so tooltips never leak
-  // raw JSON. Legacy plain-string rows fall through unchanged.
+  // Defensive brief-summary extractor.
+  //
+  // Production data ships `node.summary` as a JSON-stringified envelope:
+  //   { "mini_title": "", "brief_summary": "…", "detailed_summary": [...], "closing_remarks": "…" }
+  // but several legacy rows ship plain strings, and a small fraction of the
+  // envelope is malformed. This function NEVER returns a value that starts
+  // with "{" — it always degrades to a human-readable string.
   function extractBriefFromSummary(raw) {
     const text = String(raw == null ? '' : raw).trim();
     if (!text) return '';
-    if (text.charAt(0) !== '{') return text;
+
+    // Plain string (legacy) — return as-is, capped to 800 chars to keep panel tidy.
+    if (text.charAt(0) !== '{') {
+      return text.length > 800 ? text.slice(0, 800).trimEnd() + '…' : text;
+    }
+
+    // Try to parse the envelope. If it fails OR yields no usable text,
+    // fall back to a stripped-of-braces best-effort excerpt.
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === 'object') {
-        const brief = parsed.brief_summary || parsed.briefSummary || parsed.summary;
-        if (typeof brief === 'string' && brief.trim()) return brief.trim();
+        const candidates = [
+          parsed.brief_summary,
+          parsed.briefSummary,
+          parsed.summary,
+        ];
+        for (const c of candidates) {
+          if (typeof c === 'string' && c.trim()) return c.trim();
+        }
+        // Try first non-empty bullet of detailed_summary[0].bullets.
+        const detailed = Array.isArray(parsed.detailed_summary) ? parsed.detailed_summary : [];
+        for (const section of detailed) {
+          const bullets = Array.isArray(section?.bullets) ? section.bullets : [];
+          for (const b of bullets) {
+            if (typeof b === 'string' && b.trim()) return b.trim();
+          }
+        }
+        // Last resort: closing_remarks.
+        if (typeof parsed.closing_remarks === 'string' && parsed.closing_remarks.trim()) {
+          return parsed.closing_remarks.trim();
+        }
       }
-    } catch (_err) { /* not JSON — fall through */ }
-    return text;
+    } catch (_err) { /* fall through */ }
+
+    // Could not parse and could not find a clean field — strip braces+keys
+    // from the raw text and return the first 240 chars so the user sees
+    // SOMETHING readable instead of a JSON dump.
+    const stripped = text
+      .replace(/[{}\[\]"]/g, ' ')
+      .replace(/\b\w+_summary\b\s*:?/g, ' ')
+      .replace(/\bmini_title\b\s*:?/g, ' ')
+      .replace(/\bdetailed_summary\b\s*:?/g, ' ')
+      .replace(/\bclosing_remarks\b\s*:?/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return stripped.length > 240 ? stripped.slice(0, 240).trimEnd() + '…' : stripped;
   }
 
   function toSafeHttpUrl(rawUrl) {
@@ -118,19 +158,64 @@
     return token ? { 'Authorization': 'Bearer ' + token } : {};
   }
 
-  // ---- View toggle (shown only when logged in) ----
+  // ---- View toggle (always visible; Personal greys out when logged out) ----
   const viewToggle = document.getElementById('view-toggle');
+  const STORAGE_KEY_VIEW = 'kg.view';
 
-  // Check auth status via API
+  function setViewBtns(view) {
+    if (!viewToggle) return;
+    viewToggle.querySelectorAll('.kg-view-btn').forEach(b => {
+      const isActive = b.dataset.view === view;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+
+  function setPersonalEnabled(enabled) {
+    const personalBtn = viewToggle?.querySelector('[data-view="my"]');
+    if (!personalBtn) return;
+    if (enabled) {
+      personalBtn.removeAttribute('aria-disabled');
+      personalBtn.removeAttribute('title');
+    } else {
+      personalBtn.setAttribute('aria-disabled', 'true');
+      personalBtn.setAttribute('title', 'Sign in to switch to Personal');
+    }
+  }
+
+  function openLoginModalFromKG() {
+    // The header partial owns the login button; clicking it opens the modal.
+    const btn = document.querySelector('.home-login-btn, [data-open-login], #header-login-btn');
+    if (btn) { btn.click(); return; }
+    // Fallback: directly mutate the modal class if the button can't be found.
+    const modal = document.getElementById('login-modal');
+    if (modal) modal.classList.add('open');
+  }
+
+  // Restore persisted view (only auto-restore "my" if we end up confirming login).
+  const savedView = localStorage.getItem(STORAGE_KEY_VIEW);
+  if (savedView === 'my' || savedView === 'global') {
+    currentView = savedView === 'my' ? 'global' : savedView; // tentatively global; flip after login confirm
+  }
+  setViewBtns(currentView);
+
+  // Check auth status via API.
   authToken = getStoredAuthToken();
   if (authToken) {
     fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
       .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
       .then(() => {
         isLoggedIn = true;
-        if (viewToggle) viewToggle.classList.remove('hidden');
+        setPersonalEnabled(true);
+        if (savedView === 'my') {
+          currentView = 'my';
+          setViewBtns('my');
+          loadGraphData();
+        }
       })
-      .catch(() => { isLoggedIn = false; authToken = null; });
+      .catch(() => { isLoggedIn = false; authToken = null; setPersonalEnabled(false); });
+  } else {
+    setPersonalEnabled(false);
   }
 
   if (viewToggle) {
@@ -138,11 +223,20 @@
       const btn = e.target.closest('.kg-view-btn');
       if (!btn) return;
       const newView = btn.dataset.view;
+      // Greyed Personal → open login modal.
+      if (newView === 'my' && !isLoggedIn) {
+        openLoginModalFromKG();
+        return;
+      }
       if (newView === currentView) return;
-
       currentView = newView;
-      viewToggle.querySelectorAll('.kg-view-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      localStorage.setItem(STORAGE_KEY_VIEW, newView);
+      setViewBtns(newView);
+      // Clear any kasten selections when leaving Personal — they no longer make sense in Global.
+      if (newView === 'global') {
+        activeKastens.clear();
+      }
+      renderKastensSection();
       loadGraphData();
     });
   }
