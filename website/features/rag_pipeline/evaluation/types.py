@@ -84,3 +84,74 @@ class RunReport(BaseModel):
         if not scored:
             return 0.0
         return sum(r.judge.scores.total for r in scored) / len(scored)
+
+
+# ── rag_eval framework types ────────────────────────────────────────────────
+
+
+class GoldQuery(BaseModel):
+    id: str
+    question: str
+    gold_node_ids: list[str] = Field(min_length=1)
+    gold_ranking: list[str] = Field(min_length=1)
+    reference_answer: str
+    atomic_facts: list[str] = Field(min_length=1)
+
+
+class ComponentScores(BaseModel):
+    chunking: float = Field(ge=0.0, le=100.0)
+    retrieval: float = Field(ge=0.0, le=100.0)
+    reranking: float = Field(ge=0.0, le=100.0)
+    synthesis: float = Field(ge=0.0, le=100.0)
+
+
+class PerQueryScore(BaseModel):
+    query_id: str
+    retrieved_node_ids: list[str]
+    reranked_node_ids: list[str]
+    cited_node_ids: list[str]
+    ragas: dict[str, float]
+    deepeval: dict[str, float]
+    component_breakdown: dict[str, float]
+
+
+class GraphLift(BaseModel):
+    composite: float
+    retrieval: float
+    reranking: float
+
+
+class EvalResult(BaseModel):
+    iter_id: str
+    component_scores: ComponentScores
+    composite: float
+    weights: dict[str, float]
+    weights_hash: str
+    graph_lift: GraphLift | dict[str, float]
+    per_query: list[PerQueryScore]
+    eval_divergence: bool = False
+
+
+class KGSnapshot(BaseModel):
+    kasten_node_ids: list[str]
+    neighborhood_node_ids: list[str]
+    node_count: int
+    edge_count: int
+    mean_degree: float
+    orphan_count: int
+    tag_count: int
+    tag_histogram: dict[str, int] = Field(default_factory=dict)
+
+
+KGRecommendationType = Literal[
+    "add_link", "add_tag", "merge_nodes", "reingest_node", "orphan_warning"
+]
+KGRecommendationStatus = Literal["auto_apply", "applied", "quarantined", "rejected"]
+
+
+class KGRecommendation(BaseModel):
+    type: KGRecommendationType
+    payload: dict
+    evidence_query_ids: list[str]
+    confidence: float = Field(ge=0.0, le=1.0)
+    status: KGRecommendationStatus
