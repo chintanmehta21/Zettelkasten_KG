@@ -1,0 +1,179 @@
+[
+  {
+    "query_id": "q1",
+    "answer": "According to Andrej Karpathy, the development of a large language model (LLM) involves a two-stage process: pre-training and fine-tuning [id=\"yt-andrej-karpathy-s-llm-in\"].\n\nThe first stage, **pre-training**, involves learning a comprehensive model of text by predicting the next token across a massive dataset, which Karpathy likens to creating a \"blurry JPEG of the web\" [id=\"yt-andrej-karpathy-s-llm-in\"]. This computationally intensive process ingrains grammar, facts, and reasoning abilities, resulting in a \"document completer\" base model that continues text statistically but does not inherently follow instructions [id=\"yt-andrej-karpathy-s-llm-in\"].\n\nThe second stage, **fine-tuning**, creates an assistant model by aligning the base model with human intent to be a helpful and harmless agent [id=\"yt-andrej-karpathy-s-llm-in\"]. This stage uses a smaller, high-quality dataset of prompt-response pairs for Supervised Fine-Tuning (SFT) and often includes Reinforcement Learning from Human Feedback (RLHF) or Constitutional AI [id=\"yt-andrej-karpathy-s-llm-in\"]. The outcome is an instruction-following assistant model, such as ChatGPT, where its \"personality\" and helpfulness are crafted [id=\"yt-andrej-karpathy-s-llm-in\"].",
+    "citations": [
+      {
+        "id": "yt-andrej-karpathy-s-llm-in",
+        "node_id": "yt-andrej-karpathy-s-llm-in",
+        "title": "Andrej Karpathy's LLM Introduction",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=zjkBMFhNj_g",
+        "snippet": "{\"brief_summary\": \"In this lecture, Andrej Karpathy argues that large language models are fundamentally next-token predictors built on the transformer architecture, whose development involves a two-stage process of pre-training for broad text understanding and fine-tuning for instruction following, leading to complex behaviors and operational considerations.\", \"detailed_summary\": \"## Overview\\n- I",
+        "timestamp": null,
+        "rerank_score": 0.9972155094146729
+      },
+      {
+        "id": "yt-software-1-0-vs-software",
+        "node_id": "yt-software-1-0-vs-software",
+        "title": "Software 1 0 vs Software",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+        "snippet": "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way",
+        "timestamp": null,
+        "rerank_score": 0.731263279914856
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-software-1-0-vs-software"
+    ],
+    "reranked_node_ids": [
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-software-1-0-vs-software"
+    ],
+    "contexts": [
+      "{\"brief_summary\": \"In this lecture, Andrej Karpathy argues that large language models are fundamentally next-token predictors built on the transformer architecture, whose development involves a two-stage process of pre-training for broad text understanding and fine-tuning for instruction following, leading to complex behaviors and operational considerations.\", \"detailed_summary\": \"## Overview\\n- I",
+      "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way"
+    ]
+  },
+  {
+    "query_id": "q2",
+    "answer": "The Transformer architecture enabled unprecedented scaling by replacing sequential recurrence, found in older models like Recurrent Neural Networks (RNNs), with a parallelizable self-attention mechanism [id=\"yt-transformer-architecture\"]. This non-sequential design allows for significant parallelization during training, addressing the bottlenecks and slow processing inherent in RNNs, which were limited by compressing prior context into a single hidden state vector at each step [id=\"yt-transformer-architecture\"]. This shift from sequential processing to parallel self-attention was a fundamental breakthrough, enabling the training of vastly larger models [id=\"yt-transformer-architecture\"].",
+    "citations": [
+      {
+        "id": "yt-transformer-architecture",
+        "node_id": "yt-transformer-architecture",
+        "title": "Transformer Architecture Explained",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=wjZofJX0v4M",
+        "snippet": "{\"brief_summary\": \"In this lecture, Unknown Presenter argues that the transformer architecture, by replacing sequential recurrence with a parallelizable self-attention mechanism, enabled unprecedented scaling of neural networks for sequential data, fundamentally advancing natural language processing and generative ai. The closing takeaway: The Transformer architecture's shift from sequential proce",
+        "timestamp": null,
+        "rerank_score": 0.9866210222244263
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-transformer-architecture"
+    ],
+    "reranked_node_ids": [
+      "yt-transformer-architecture"
+    ],
+    "contexts": [
+      "{\"brief_summary\": \"In this lecture, Unknown Presenter argues that the transformer architecture, by replacing sequential recurrence with a parallelizable self-attention mechanism, enabled unprecedented scaling of neural networks for sequential data, fundamentally advancing natural language processing and generative ai. The closing takeaway: The Transformer architecture's shift from sequential proce"
+    ]
+  },
+  {
+    "query_id": "q3",
+    "answer": "Andrej Karpathy distinguishes Software 1.0 as classical programming where humans write explicit instructions using languages like Python or C++, with its program space limited by human design [id=\"yt-software-1-0-vs-software\"]. In contrast, Software 2.0 is an approach where a program's skeleton, such as a neural network architecture, is optimized on large datasets, and the specific program is discovered through this optimization process as learned weights [id=\"yt-software-1-0-vs-software\"]. Software 2.0 excels at complex tasks difficult for humans to program directly, like computer vision, speech recognition, machine translation, and game playing (e.g., AlphaGo) [id=\"yt-software-1-0-vs-software\"].\n\nThe development cycle fundamentally changes with Software 2.0. The programmer's role shifts from writing and debugging code to being a \"teacher\" or \"data curator\" [id=\"yt-software-1-0-vs-software\"]. Core tasks now involve collecting, cleaning, and meticulously labeling massive datasets [id=\"yt-software-1-0-vs-software\"]. If a Software 2.0 system produces an error, the solution is not to modify the code but to augment the dataset with more labeled examples of the failure case, forming an iterative loop of data curation followed by model retraining [id=\"yt-software-1-0-vs-software\"].",
+    "citations": [
+      {
+        "id": "yt-software-1-0-vs-software",
+        "node_id": "yt-software-1-0-vs-software",
+        "title": "Software 1 0 vs Software",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+        "snippet": "re 2.0 paradigm. ### New Development Cycle\\n- The development process for Software 2.0 differs fundamentally from traditional software engineering.\\n- The role of the programmer shifts from writing and debugging code to that of a \\\"teacher\\\" or \\\"data curator.\\\".\\n- Core tasks now involve collecting, cleaning, and meticulously labeling massive datasets.\\n- When a Software 2.0 system produces an er",
+        "timestamp": null,
+        "rerank_score": 0.9986487030982971
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-software-1-0-vs-software"
+    ],
+    "reranked_node_ids": [
+      "yt-software-1-0-vs-software"
+    ],
+    "contexts": [
+      "re 2.0 paradigm. ### New Development Cycle\\n- The development process for Software 2.0 differs fundamentally from traditional software engineering.\\n- The role of the programmer shifts from writing and debugging code to that of a \\\"teacher\\\" or \\\"data curator.\\\".\\n- Core tasks now involve collecting, cleaning, and meticulously labeling massive datasets.\\n- When a Software 2.0 system produces an er"
+    ]
+  },
+  {
+    "query_id": "q4",
+    "answer": "Yann LeCun argues that auto-regressive large language models (LLMs) are fundamentally limited in achieving human-level intelligence because their architecture focuses on next-token prediction [id=\"yt-lecun-s-vision-human-lev\"]. He asserts that these models are restricted to reactive \"System 1\" thinking, which prevents them from performing true reasoning, planning, or developing an internal world model [id=\"yt-lecun-s-vision-human-lev\"]. LeCun attributes hallucinations and unreliable multi-step reasoning to this architectural flaw, which he believes cannot be resolved by simply scaling the models [id=\"yt-lecun-s-vision-human-lev\"]. Additionally, a finite amount of high-quality training text creates a data bottleneck, limiting their scaling potential [id=\"yt-lecun-s-vision-human-lev\"].\n\nAs an alternative, LeCun proposes a modular \"Objective-Driven AI\" architecture, which is based on Joint Embedding Predictive Architectures (JEPA) [id=\"yt-lecun-s-vision-human-lev\"]. This architecture is designed for reasoning, planning, and building internal world models, and it includes a Perception Module for sensory input and a World Model that simulates dynamics using a JEPA-style approach [id=\"yt-lecun-s-vision-human-lev\"]. JEPA is considered a more efficient and effective alternative for learning world models compared to generative models [id=\"yt-lecun-s-vision-human-lev\"].",
+    "citations": [
+      {
+        "id": "yt-lecun-s-vision-human-lev",
+        "node_id": "yt-lecun-s-vision-human-lev",
+        "title": "LeCun's Vision Human Level",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=5t1vTLU7s40",
+        "snippet": "{\"brief_summary\": \"In this lecture, Yann LeCun argues that yann lecun argues that auto-regressive large language models are fundamentally limited in their ability to achieve human-level intelligence due to their architectural focus on next-token prediction. The closing takeaway: LeCun envisions AI's ultimate role as an amplifier of human intelligence, leading to a \\\"new Renaissance\\\" where AI syst",
+        "timestamp": null,
+        "rerank_score": 0.9988753199577332
+      },
+      {
+        "id": "yt-andrej-karpathy-s-llm-in",
+        "node_id": "yt-andrej-karpathy-s-llm-in",
+        "title": "Andrej Karpathy's LLM Introduction",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=zjkBMFhNj_g",
+        "snippet": "{\"brief_summary\": \"In this lecture, Andrej Karpathy argues that large language models are fundamentally next-token predictors built on the transformer architecture, whose development involves a two-stage process of pre-training for broad text understanding and fine-tuning for instruction following, leading to complex behaviors and operational considerations.\", \"detailed_summary\": \"## Overview\\n- I",
+        "timestamp": null,
+        "rerank_score": 0.30650603771209717
+      },
+      {
+        "id": "yt-software-1-0-vs-software",
+        "node_id": "yt-software-1-0-vs-software",
+        "title": "Software 1 0 vs Software",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+        "snippet": "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way",
+        "timestamp": null,
+        "rerank_score": 8.168070780811831e-05
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-lecun-s-vision-human-lev",
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-software-1-0-vs-software"
+    ],
+    "reranked_node_ids": [
+      "yt-lecun-s-vision-human-lev",
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-software-1-0-vs-software"
+    ],
+    "contexts": [
+      "{\"brief_summary\": \"In this lecture, Yann LeCun argues that yann lecun argues that auto-regressive large language models are fundamentally limited in their ability to achieve human-level intelligence due to their architectural focus on next-token prediction. The closing takeaway: LeCun envisions AI's ultimate role as an amplifier of human intelligence, leading to a \\\"new Renaissance\\\" where AI syst",
+      "{\"brief_summary\": \"In this lecture, Andrej Karpathy argues that large language models are fundamentally next-token predictors built on the transformer architecture, whose development involves a two-stage process of pre-training for broad text understanding and fine-tuning for instruction following, leading to complex behaviors and operational considerations.\", \"detailed_summary\": \"## Overview\\n- I",
+      "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way"
+    ]
+  },
+  {
+    "query_id": "q5",
+    "answer": "The popular perception of programming as rapid, flawless typing is inaccurate [id=\"yt-programming-workflow-is\"]. Instead, the actual process is an iterative cycle primarily centered on debugging, where a significant amount of time is dedicated to diagnosing and fixing errors using external resources, rather than writing new code [id=\"yt-programming-workflow-is\"]. Consequently, the most important skill in programming is not typing speed, but rather a methodical problem-solving approach that heavily relies on searching for and applying existing solutions [id=\"yt-programming-workflow-is\"].",
+    "citations": [
+      {
+        "id": "yt-programming-workflow-is",
+        "node_id": "yt-programming-workflow-is",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "snippet": "{\"brief_summary\": \"This walkthrough video explains The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle. It moves through sections on Code Entry with Error and Execution Failure. It also covers Google and Stack Overflow. Key voices and figures include Jombo and Google. The main takeaway is This cycle suggests the core programming sk",
+        "timestamp": null,
+        "rerank_score": 0.988381564617157
+      },
+      {
+        "id": "yt-software-1-0-vs-software",
+        "node_id": "yt-software-1-0-vs-software",
+        "title": "Software 1 0 vs Software",
+        "source_type": "youtube",
+        "url": "https://www.youtube.com/watch?v=LCEmiRjPEtQ",
+        "snippet": "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way",
+        "timestamp": null,
+        "rerank_score": 0.00010979393118759617
+      }
+    ],
+    "retrieved_node_ids": [
+      "yt-programming-workflow-is",
+      "yt-software-1-0-vs-software"
+    ],
+    "reranked_node_ids": [
+      "yt-programming-workflow-is",
+      "yt-software-1-0-vs-software"
+    ],
+    "contexts": [
+      "{\"brief_summary\": \"This walkthrough video explains The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle. It moves through sections on Code Entry with Error and Execution Failure. It also covers Google and Stack Overflow. Key voices and figures include Jombo and Google. The main takeaway is This cycle suggests the core programming sk",
+      "{\"brief_summary\": \"In this commentary, Andrej Karpathy argues that andrej karpathy posits a fundamental shift in software development from traditional, explicit programming (software 1.0) to a data-driven, optimization-based approach using neural networks (software 2.0). The commentary moves through Software 1.0 vs. Software 2.0, New Development Cycle, and Impact on Technology Stack. Along the way"
+    ]
+  }
+]
