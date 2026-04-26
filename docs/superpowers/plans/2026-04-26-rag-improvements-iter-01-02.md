@@ -10,6 +10,15 @@
 
 **Source spec:** `docs/superpowers/specs/2026-04-26-rag-improvements-iter-01-02-design.md`
 
+**Branch & deploy strategy:** All implementation work happens on the worktree branch `worktree-rag-improvements-iter-01-02`. Commits land on the worktree branch directly. The CI deploy workflow (`.github/workflows/deploy-droplet.yml`) only runs on `master`, so each iter ends with a fast-forward (or PR-merge) into `master` to trigger deploy. **Never push to master with unreviewed changes** — the iter's regression gate (Task 29 / 37) is the safety net.
+
+**Pre-flight (run once before Task 1):**
+```bash
+git branch --show-current   # expect: worktree-rag-improvements-iter-01-02
+git status                  # expect: clean working tree
+```
+If branch differs, abort and re-enter the worktree.
+
 ---
 
 ## File Structure
@@ -19,7 +28,7 @@
 - Modify: `website/api/routes.py` — assert `added_count == len(requested)` post-RPC
 - Modify: `website/features/user_home/js/index.js` (or equivalent; verify path) — rebind Add button via event delegation
 - Modify: `website/features/user_kastens/js/index.js` (or equivalent; verify path) — rebind Create button via event delegation
-- Modify: `ops/requirements.txt` — add `dateparser>=1.2`, `tldextract>=5.1`
+- Modify: `ops/requirements.txt` — add `dateparser>=1.2`, `tldextract>=5.1`, `cachetools>=5.3`
 - Test: `tests/integration_tests/test_rag_sandbox_rpc.py`
 
 ### iter-01 — Phase 1 (metadata layer)
@@ -375,6 +384,8 @@ git commit -m "feat: query metadata extractor c-pass"
 - Modify: `website/features/rag_pipeline/query/metadata.py`
 - Test: `tests/unit/rag/test_query_metadata.py`
 
+- [ ] **Step 0: Confirm GeminiKeyPool method name.** Read `website/features/api_key_switching/__init__.py` and identify the structured-output method (likely `generate_structured`, `generate_with_schema`, or `acomplete_json`). Use the discovered name verbatim in the test and implementation below.
+
 - [ ] **Step 1: Add failing A-pass test (mocked Gemini).**
 ```python
 # Append to tests/unit/rag/test_query_metadata.py
@@ -433,7 +444,7 @@ async def _a_pass(self, text: str, meta: QueryMetadata) -> QueryMetadata:
     return meta
 ```
 
-NOTE: `key_pool.generate_structured` is the existing entry point on `GeminiKeyPool`; verify its signature matches by reading `website/features/api_key_switching/__init__.py`. If the actual method name differs (e.g., `generate_with_schema`), use that.
+Use the method name discovered in Step 0 wherever this code shows `generate_structured`.
 
 - [ ] **Step 4: Run test, verify PASS.**
 
@@ -822,9 +833,13 @@ git commit -m "feat: chunk metadata backfill script + schema"
 ### Task 13: Wire backfill into deploy hook
 
 **Files:**
-- Modify: `ops/Dockerfile` OR `ops/deploy/deploy.sh` (verify which exists; the deploy script is canonical per CLAUDE.md)
+- Modify: `ops/deploy/deploy.sh` (canonical deploy script per CLAUDE.md, mirrored to droplet at `/opt/zettelkasten/deploy/deploy.sh`)
 
-- [ ] **Step 1: Locate the deploy script** referenced in CLAUDE.md (`/opt/zettelkasten/deploy/deploy.sh`). Find a corresponding repo file.
+- [ ] **Step 1: Confirm the deploy script exists.**
+```bash
+test -f ops/deploy/deploy.sh && echo OK || echo MISSING
+```
+If MISSING, search alternate paths: `grep -rln "ACTIVE_COLOR" ops/`. Use the matching file. Do NOT create a new deploy script.
 
 - [ ] **Step 2: Add post-cutover hook.** After the "color is green and traffic switched" step:
 ```bash
@@ -1077,13 +1092,26 @@ if self._compressor is not None:
 ```
 Place this immediately before the existing `_fit_within_budget` call so compressed content drives token packing.
 
-- [ ] **Step 2: In `service.py`, instantiate `EvidenceCompressor` and pass to `ContextAssembler`.**
+- [ ] **Step 2a: Add `score_pairs` method to `CascadeReranker`** if absent. Read `website/features/rag_pipeline/rerank/cascade.py`; if no `score_pairs(query: str, passages: list[str]) -> list[float]` exists, add it. Implementation reuses the BGE-CE ONNX session already loaded for stage-2 rerank:
+```python
+async def score_pairs(self, query: str, passages: list[str]) -> list[float]:
+    """Score (query, passage) pairs with the BGE cross-encoder. Async-safe."""
+    if not passages:
+        return []
+    # Reuse the same _score_with_bge_ce machinery used by stage-2 rerank
+    pairs = [(query, p) for p in passages]
+    return await asyncio.get_event_loop().run_in_executor(
+        None, self._bge_ce_score_batch, pairs
+    )
+```
+The exact private method name (`_bge_ce_score_batch` here) must match whatever stage-2 rerank already uses. Test it with one query and 3 passages; expect 3 floats in [0,1].
+
+- [ ] **Step 2b: Wire compressor in `service.py`.**
 ```python
 from website.features.rag_pipeline.context.distiller import EvidenceCompressor
-compressor = EvidenceCompressor(embedder=embedder, cross_encoder=reranker)  # reranker exposes BGE-CE scoring
+compressor = EvidenceCompressor(embedder=embedder, cross_encoder=reranker)
 assembler = ContextAssembler(compressor=compressor)
 ```
-NOTE: verify the reranker exposes a `score_pairs(query, passages) -> list[float]` API. If not, expose a thin method on `CascadeReranker` that wraps the BGE-CE ONNX session for sentence-pair scoring (separate sub-step before this one).
 
 - [ ] **Step 3: Run integration smoke.**
 ```bash
@@ -1264,7 +1292,7 @@ class RetrievalPlanner:
         for entity in query_meta.entities:
             try:
                 hits = self._kg.hybrid_search(self._kg._supabase if hasattr(self._kg, "_supabase") else None,
-                                              user_id=self._user_id, query=entity, limit=3)
+                                              user_id=user_id, query=entity, limit=3)
                 seed_ids.extend([h.id for h in hits])
             except Exception:
                 continue
@@ -1618,10 +1646,15 @@ pytest tests/integration_tests/test_rag_sandbox_rpc.py --live -v
 ```
 Expected: PASS (Task 2 fix verified).
 
-- [ ] **Step 4: Push to master.**
+- [ ] **Step 4: Push worktree branch + fast-forward master to trigger deploy.**
 ```bash
-git push origin master
+# Push the iter-01 commits to the worktree branch first (review-friendly history)
+git push origin worktree-rag-improvements-iter-01-02
+# Fast-forward master to the worktree branch HEAD so the deploy workflow fires
+git fetch origin master
+git push origin worktree-rag-improvements-iter-01-02:master
 ```
+Expected: `master` advances to current HEAD; CI workflow `deploy-droplet.yml` triggers automatically.
 
 ### Task 26: Deploy + wait for prod cutover
 
@@ -1677,7 +1710,18 @@ Expected: backfill reported as `complete: N chunks`.
 
 - [ ] **Step 7: Run ablation pass.** Replay each query with `?graph_weight=0.0` query param (or via internal API if the route supports override). Save into `ablation_eval.json`.
 
-- [ ] **Step 8: Run KG-first ablation.** SSH to droplet, edit the inactive (idle) color's `.env` file in `/opt/zettelkasten/deploy/` to add `RAG_KG_FIRST_ENABLED=false`, run `docker compose -f docker-compose.<idle>.yml up -d --force-recreate`, swap Caddy upstream to the idle color via `caddy reload`, re-run 3 queries via Chrome, swap back, restore env.
+- [ ] **Step 8: Run KG-first ablation.** Resolve droplet hostname from `.github/workflows/deploy-droplet.yml` (the `DROPLET_HOST` secret) — e.g., `ssh deploy@$DROPLET_HOST`. On the droplet:
+```bash
+ACTIVE=$(cat /opt/zettelkasten/deploy/active_color)
+IDLE=$([ "$ACTIVE" = "blue" ] && echo green || echo blue)
+# Add the flag to the idle color's env file
+echo "RAG_KG_FIRST_ENABLED=false" >> /opt/zettelkasten/deploy/.env.${IDLE}
+cd /opt/zettelkasten/deploy && docker compose -f docker-compose.${IDLE}.yml up -d --force-recreate
+# Caddy reload to point traffic at the idle (now KG-first-disabled) color
+sed -i "s/127.0.0.1:1000[01]/127.0.0.1:1000$([ "$IDLE" = "blue" ] && echo 0 || echo 1)/" /opt/zettelkasten/caddy/Caddyfile
+caddy reload --config /opt/zettelkasten/caddy/Caddyfile
+```
+Re-run 3 queries via Chrome, capture, then revert: edit env, recreate, swap Caddy back. **Fallback:** if Caddy reload mid-iter is too risky, skip the ablation and note `kg_first_ablation: skipped (operational risk)` in `manual_review.md` — the regression gate still validates correctness.
 
 ### Task 28: Compute eval artifacts via existing eval_runner
 
@@ -1711,7 +1755,28 @@ NOTE: verify the exact CLI signature by reading `eval_runner.py`. Adjust if need
 git mv docs/rag_eval/_kasten_topic_discovery.json docs/rag_eval/<kasten-slug>/iter-01/kasten.json
 ```
 
-- [ ] **Step 8: Commit eval bundle.**
+- [ ] **Step 8: Write `qa_pairs.md`** — human-readable Q&A in iter-06 style. For each query in `queries.json`, write a section: `### qN — {short topic}` with target node, citations table (rank, node_id, rerank_score), answer length, result (✓/✗).
+
+- [ ] **Step 9: Write `atomic_facts.json`** — for each query's gold answer, list 3-5 atomic facts that any correct answer must contain. Format: `{"q1": ["fact1", "fact2", ...], ...}`. Used by the synthesis grader.
+
+- [ ] **Step 10: Write `ingest.json`** — record any fresh Zettels added during Task 27 step 4. Format: `[{"url": "...", "node_id": "...", "summarize_cost_usd": null, "chunks_ingested": N, "ingested_at": "..."}]`. Empty array `[]` if no fresh adds.
+
+- [ ] **Step 11: Write `kg_snapshot.json`** — node + edge counts before and after iter-01. Query Supabase: `SELECT count(*) FROM kg_nodes WHERE user_id = '<naruto_id>'` and same for `kg_links` and `kg_node_chunks`. Format: `{"before": {...}, "after": {...}, "delta": {...}}`.
+
+- [ ] **Step 12: Write `kg_changes.md`** — narrative of changes to Naruto's KG: Zettels added, metadata-enriched chunk count, usage-edges row count (likely 0 in iter-01 since cron hasn't fired yet).
+
+- [ ] **Step 13: Write `kg_recommendations.json`** — advisory output from `evaluation/kg_recommender.py` if it can run on the new Kasten. Run `python -m website.features.rag_pipeline.evaluation.kg_recommender --kasten <slug> --output docs/rag_eval/<kasten-slug>/iter-01/kg_recommendations.json`. If the script signature differs, capture available recommendations as `[]` with a note.
+
+- [ ] **Step 14: Write `diff.md`** — list of files touched and commit SHAs in iter-01:
+```bash
+git log --oneline worktree-rag-improvements-iter-01-02 ^master --reverse > /tmp/iter01_commits.txt
+git diff --stat master...HEAD > /tmp/iter01_diff.txt
+```
+Compose `diff.md` with two sections: `## Commits in iter-01` (the log output) and `## Files changed` (the stat output).
+
+- [ ] **Step 15: Write `manual_review.md`** — narrative of Chrome flow: prod issues encountered, screenshots referenced (link relative paths), browser-side observations not captured by automated eval, any UX regressions noticed.
+
+- [ ] **Step 16: Commit eval bundle.**
 ```bash
 git add docs/rag_eval/<kasten-slug>/iter-01/
 git commit -m "feat: rag_eval <kasten-slug> iter-01 wide-net all-phases"
@@ -1724,11 +1789,23 @@ git commit -m "feat: rag_eval <kasten-slug> iter-01 wide-net all-phases"
 - [ ] **Step 1: Read `improvement_delta.json`.**
 
 - [ ] **Step 2: Apply gate.** If composite < 85 * 0.95 = 80.75:
-  - Auto-revert: identify all iter-01 commits since the spec commit
-  - `git revert --no-commit <range>; git commit -m "ops: auto-revert iter-01 regression"`
-  - Push, redeploy
-  - Document failure mode in `manual_review.md`
-  - STOP — do not proceed to iter-02
+  - Identify all iter-01 commits since branching from master:
+    ```bash
+    git log master..worktree-rag-improvements-iter-01-02 --reverse --pretty=format:"%H %s"
+    ```
+    Capture the FIRST commit SHA in this list as `FIRST_ITER_SHA`.
+  - Revert range:
+    ```bash
+    git revert --no-commit ${FIRST_ITER_SHA}^..HEAD
+    git commit -m "ops: auto-revert iter-01 regression"
+    ```
+  - Push to worktree branch + master to redeploy reverted state:
+    ```bash
+    git push origin worktree-rag-improvements-iter-01-02
+    git push origin worktree-rag-improvements-iter-01-02:master
+    ```
+  - Document failure mode in `manual_review.md`.
+  - STOP — do not proceed to iter-02.
 
 - [ ] **Step 3: If composite ≥ 80.75:** proceed to iter-02. Push final iter-01.
 
@@ -1869,11 +1946,15 @@ git commit -m "feat: supabase write-through query metadata cache"
 
 Identical to Tasks 25-29 but pointing at `iter-02/` folder, with `iter-01/improvement_delta.json` composite as the regression baseline (gate = composite < iter01 * 0.95 → auto-revert).
 
-- [ ] **Step 1:** Pre-deploy tests, push.
-- [ ] **Step 2:** Deploy + wait + prod-health poll.
-- [ ] **Step 3:** Claude-in-Chrome verification on the SAME Kasten (different queries to test no-overfit) + AI/ML Foundations regression check.
-- [ ] **Step 4:** Compute `iter-02/eval.json`, `scores.md`, `improvement_delta.json` (vs iter-01).
-- [ ] **Step 5:** Apply regression gate.
+- [ ] **Step 1:** Pre-deploy tests (`pytest tests/unit tests/integration_tests -m 'not live' -q`); push to worktree branch then fast-forward master:
+```bash
+git push origin worktree-rag-improvements-iter-01-02
+git push origin worktree-rag-improvements-iter-01-02:master
+```
+- [ ] **Step 2:** Deploy + wait + prod-health poll (mirror Task 26 procedure).
+- [ ] **Step 3:** Claude-in-Chrome verification on the SAME Kasten (different queries to test no-overfit) + AI/ML Foundations regression check (Task 30).
+- [ ] **Step 4:** Compute `iter-02/eval.json`, `scores.md`, `improvement_delta.json` (vs iter-01) — and write the same 17 artifacts as Task 28 (Steps 1-15) with `iter-02` substituted for `iter-01`.
+- [ ] **Step 5:** Apply regression gate vs iter-01 baseline (composite < iter01 * 0.95 → auto-revert per Task 29 procedure with iter-02 commits as the range).
 - [ ] **Step 6:** Commit `feat: rag_eval <kasten-slug> iter-02 refinement`.
 
 ---
