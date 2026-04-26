@@ -378,10 +378,14 @@ async def _run_phase_a(args: argparse.Namespace) -> dict:
 
     answers: list[dict] = []
     answers_ablated: list[dict] = []
+    per_query_latencies: list[float] = []
     for q in queries:
         chat_q = ChatQuery(content=q.question)
         turn = await runtime.orchestrator.answer(query=chat_q, user_id=naruto_id)
         answers.append(_serialize_turn(turn, q))
+        # Capture orchestrator-reported latency for the with-graph path so the
+        # eval result publishes p50/p95 alongside composite/component scores.
+        per_query_latencies.append(float(getattr(turn, "latency_ms", 0) or 0))
         ablated_turn = await runtime.orchestrator.answer(
             query=chat_q, user_id=naruto_id, graph_weight_override=0.0
         )
@@ -407,6 +411,7 @@ async def _run_phase_a(args: argparse.Namespace) -> dict:
         queries=queries,
         answers=answers,
         chunks_per_node=chunks_per_node,
+        per_query_latencies=per_query_latencies,
     )
     result_ablated = runner.evaluate(
         iter_id=f"{args.source}/iter-{args.iter_num:02d}_ablated",
