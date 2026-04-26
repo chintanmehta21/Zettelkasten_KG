@@ -80,6 +80,27 @@ def main() -> int:
     chunks = sb.table("kg_node_chunks").select("node_id", count="exact").in_("node_id", node_ids).execute()
     print(f"chunk_count={chunks.count}")
 
+    _print_section("rag_resolve_effective_nodes RPC call (sandbox-only)")
+    try:
+        rpc_resp = sb.rpc("rag_resolve_effective_nodes", {
+            "p_user_id": sandbox_user_id,
+            "p_sandbox_id": args.sandbox_id,
+            "p_node_ids": None,
+            "p_tags": None,
+            "p_tag_mode": "all",
+            "p_source_types": None,
+        }).execute()
+        rpc_rows = rpc_resp.data or []
+        print(f"resolver returned {len(rpc_rows)} rows")
+        print(f"first 5: {[r['node_id'] for r in rpc_rows[:5]]}")
+    except Exception as exc:
+        print(f"RPC call failed: {exc}")
+
+    _print_section("kg_node_chunks count by user_id (filtered to member node_ids)")
+    chunk_rows = sb.table("kg_node_chunks").select("node_id,user_id").in_("node_id", node_ids).execute().data or []
+    chunk_user_ids = Counter(c.get("user_id") for c in chunk_rows)
+    print(f"distinct user_ids in chunks: {dict(chunk_user_ids)}")
+
     _print_section("MISMATCH SUMMARY")
     mm = []
     if user_ids and len(user_ids) > 1:
