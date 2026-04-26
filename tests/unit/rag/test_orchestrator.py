@@ -43,7 +43,8 @@ class _Graph:
 
 
 class _Reranker:
-    async def rerank(self, query, candidates, top_k=8, query_class=None):
+    async def rerank(self, query, candidates, top_k=8, query_class=None, graph_weight_override=None):
+        # graph_weight_override accepted for iter-03 KG ablation; mock is a no-op.
         for idx, candidate in enumerate(candidates):
             candidate.rerank_score = 0.9 - idx * 0.1
             candidate.final_score = candidate.rerank_score

@@ -196,7 +196,9 @@ async def test_thematic_weights_lean_on_semantic() -> None:
     )
     payload = supabase.calls[0][1]
     assert payload["p_semantic_weight"] > payload["p_fulltext_weight"]
-    assert payload["p_semantic_weight"] == pytest.approx(0.60)
+    # iter-02 retune lowered THEMATIC semantic 0.60 -> 0.55 to add graph share.
+    # iter-04/iter-06 best-of preserved 0.55. See rag_pipeline/retrieval/hybrid.py.
+    assert payload["p_semantic_weight"] == pytest.approx(0.55)
 
 
 def test_exact_title_match_gets_large_boost() -> None:
