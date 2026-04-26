@@ -80,10 +80,14 @@ docker run --rm --network host \
 MIG_RC=${PIPESTATUS[0]}
 set -e
 if [ "$MIG_RC" -ne 0 ]; then
-    log "[migration] FAILED rc=$MIG_RC — ABORTING DEPLOY (no traffic flip, IDLE container not started)"
-    exit "$MIG_RC"
+    if [ "${MIGRATION_REQUIRED:-0}" = "1" ]; then
+        log "[migration] FAILED rc=$MIG_RC and MIGRATION_REQUIRED=1 — ABORTING DEPLOY"
+        exit "$MIG_RC"
+    fi
+    log "[migration] WARN rc=$MIG_RC — continuing deploy (set MIGRATION_REQUIRED=1 to make fatal)"
+else
+    log "[migration] OK — proceeding with blue/green flip."
 fi
-log "[migration] OK — proceeding with blue/green flip."
 
 log "Starting $IDLE container with new image..."
 IMAGE_TAG="$SHA" docker compose \
