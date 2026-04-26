@@ -1,10 +1,42 @@
+/* KAS-15: a11y skip link — visually hidden until focused. */
+.rag-skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+    overflow: hidden;
+    white-space: nowrap;
+}
+.rag-skip-link:focus,
+.rag-skip-link:focus-visible {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    width: auto;
+    height: auto;
+    clip: auto;
+    overflow: visible;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.82rem;
+    z-index: 1200;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .rag-container {
-    max-width: 1360px;
+    max-width: 960px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 .rag-header {
     display: grid !important;
-    grid-template-columns: 64px 1fr 160px;
+    grid-template-columns: 64px 1fr auto;
     align-items: center;
     gap: 1rem;
     text-align: left !important;
@@ -17,70 +49,314 @@
 .rag-header-actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 0.6rem;
 }
 
-.rag-shell {
-    display: grid;
-    grid-template-columns: 340px minmax(0, 1fr);
-    gap: 1rem;
+/* KAS-16: "Manage kastens" looks like a real secondary button now. */
+.rag-manage-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.rag-manage-btn:hover {
+    border-color: var(--accent-muted);
+    background: var(--bg-elevated, var(--bg-secondary));
 }
 
-.rag-sidebar,
+/* KAS-12: 3-dot menu in the page header. */
+.rag-menu-wrap {
+    position: relative;
+}
+.rag-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.rag-menu-btn:hover {
+    border-color: var(--accent-muted);
+}
+.rag-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 180px;
+    background: var(--bg-elevated, var(--bg-secondary));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md, 0 10px 30px rgba(0, 0, 0, 0.35));
+    padding: 0.35rem;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+}
+.rag-menu.hidden {
+    display: none;
+}
+.rag-menu button {
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text-primary);
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.rag-menu button:hover {
+    background: var(--accent-glow);
+    color: var(--accent);
+}
+.rag-menu .rag-menu-danger {
+    color: hsl(0, 75%, 65%);
+}
+.rag-menu .rag-menu-danger:hover {
+    background: hsla(0, 75%, 50%, 0.12);
+    color: hsl(0, 75%, 70%);
+}
+
+/* Single-column chat shell — no sidebar (KAS-1). */
+.rag-main {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+}
 .rag-chat-panel {
     border: 1px solid var(--border);
     border-radius: 28px;
     background: linear-gradient(180deg, hsla(222, 22%, 9.5%, 0.98), hsla(221, 18%, 8%, 1));
     box-shadow: var(--shadow-sm);
-}
-
-.rag-sidebar {
-    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    min-height: calc(100vh - 180px);
+    padding: 1.1rem 1.1rem 0;
+    position: relative;
 }
 
-.rag-sidebar-section {
-    border: 1px solid var(--border);
+.rag-chat-head {
+    padding: 0.4rem 0.4rem 0.9rem;
+}
+.rag-chat-head h1 {
+    font-size: 1.6rem;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.35rem;
+}
+.rag-chat-hint {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    max-width: 60ch;
+}
+.rag-chat-hint.hidden {
+    display: none;
+}
+
+.rag-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0.25rem 0.2rem 1rem;
+    min-height: 240px;
+}
+
+.rag-empty-state {
+    border: 1px dashed var(--border);
     border-radius: 22px;
-    background: var(--bg-secondary);
-    padding: 1rem;
+    padding: 1.4rem;
+    text-align: center;
+    margin: 1rem 0;
+}
+.rag-empty-state.hidden {
+    display: none;
 }
 
-.rag-sidebar-head,
-.rag-chat-head,
-.rag-composer-actions,
-.rag-message-head,
-.rag-citations {
+/* Messages */
+.rag-message {
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    border-radius: 18px;
+    padding: 0.9rem 1rem;
+}
+.rag-message.user {
+    background: linear-gradient(180deg, hsla(188, 64%, 14%, 0.62), hsla(188, 52%, 10%, 0.58));
+    border-color: hsla(172, 66%, 50%, 0.16);
+}
+.rag-message.assistant {
+    background: linear-gradient(180deg, hsla(222, 22%, 11%, 0.98), hsla(221, 18%, 8%, 1));
+}
+.rag-message-head {
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
+    align-items: center;
 }
-
-.rag-sidebar-head,
-.rag-chat-head {
-    align-items: flex-start;
-    margin-bottom: 0.85rem;
-}
-
-.rag-label,
-.rag-eyebrow,
 .rag-message-role {
     font-family: var(--font-mono);
     font-size: 0.74rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    color: var(--text-muted);
+}
+.rag-message-meta {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+.rag-message-body {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    line-height: 1.7;
+    margin-top: 0.5rem;
+}
+.rag-message-body.error {
+    color: hsl(0, 75%, 70%);
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+.rag-message-body.error::before {
+    content: "⚠";
+    flex: 0 0 auto;
 }
 
-.rag-label,
-.rag-message-role {
+/* KAS-23: critic-verdict badges. */
+.rag-verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.7rem;
+    margin-right: 0.5rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+.rag-verdict.grounded {
+    background: hsla(150, 60%, 30%, 0.18);
+    color: hsl(150, 60%, 70%);
+    border-color: hsla(150, 60%, 50%, 0.35);
+}
+.rag-verdict.partial {
+    background: hsla(40, 80%, 35%, 0.18);
+    color: hsl(40, 90%, 70%);
+    border-color: hsla(40, 80%, 50%, 0.35);
+}
+.rag-verdict.unsupported {
+    background: hsla(0, 70%, 35%, 0.18);
+    color: hsl(0, 75%, 72%);
+    border-color: hsla(0, 70%, 50%, 0.35);
+}
+
+/* KAS-25: copy / regenerate / feedback action row. */
+.rag-msg-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.rag-msg-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+.rag-msg-actions button:hover {
+    border-color: var(--accent-muted);
+    color: var(--text-primary);
+}
+.rag-msg-actions button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+.rag-retry-btn {
+    margin-left: 0.5rem;
+    background: transparent;
+    border: 1px solid hsla(0, 70%, 50%, 0.4);
+    color: hsl(0, 75%, 70%);
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+/* Citations */
+.rag-citations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.8rem;
+}
+.rag-citation-chip {
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--accent-glow);
+    color: var(--accent);
+    padding: 0.32rem 0.7rem;
+    font-size: 0.78rem;
+}
+
+/* KAS-4: Advanced filters disclosure. */
+.rag-advanced {
+    border-top: 1px solid var(--border);
+    padding: 0.6rem 0.4rem 0;
+}
+.rag-advanced > summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding: 0.3rem 0;
+    list-style: none;
+    user-select: none;
+}
+.rag-advanced > summary::-webkit-details-marker { display: none; }
+.rag-advanced > summary::before {
+    content: "⋯ ";
+    color: var(--text-muted);
+}
+.rag-advanced[open] > summary::before {
+    content: "▾ ";
+}
+.rag-advanced-body {
+    padding: 0.6rem 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.rag-label {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-muted);
     display: block;
-    margin-bottom: 0.4rem;
-}
-
-.rag-eyebrow {
-    color: var(--accent);
     margin-bottom: 0.4rem;
 }
 
@@ -88,18 +364,13 @@
 .rag-input,
 #composer-input {
     width: 100%;
-    border-radius: 16px;
+    border-radius: 14px;
     border: 1px solid var(--border);
     background: var(--bg-primary);
     color: var(--text-primary);
-    padding: 0.8rem 0.9rem;
+    padding: 0.7rem 0.85rem;
     font: inherit;
     margin-bottom: 0.85rem;
-}
-
-#composer-input {
-    resize: vertical;
-    min-height: 120px;
 }
 
 .rag-select:focus,
@@ -110,16 +381,13 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-.rag-source-grid,
-.rag-chip-list {
+.rag-source-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 0.55rem;
+    margin-bottom: 0.4rem;
 }
-
-.rag-source-chip,
-.rag-chip,
-.rag-citation-chip {
+.rag-source-chip {
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--bg-primary);
@@ -128,172 +396,229 @@
     font-size: 0.8rem;
     cursor: pointer;
 }
-
-.rag-source-chip.active,
-.rag-chip:hover {
+.rag-source-chip.active {
     border-color: var(--accent-muted);
-    color: var(--text-primary);
+    color: var(--accent);
     background: var(--accent-glow);
 }
-
-.rag-source-chip:focus-visible,
-.rag-chip:focus-visible,
-.rag-session-card:focus-visible {
+.rag-source-chip:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
-.rag-source-chip.active {
-    color: var(--accent);
+/* KAS-6: Sticky composer at bottom. */
+.rag-composer {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(180deg, hsla(221, 18%, 8%, 0.4), hsla(221, 18%, 8%, 1) 25%);
+    padding: 0.9rem 0.4rem 1rem;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    z-index: 5;
 }
-
-.rag-session-list,
-.rag-transcript {
+.rag-composer-row {
     display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
+    gap: 0.6rem;
+    align-items: flex-end;
 }
-
-.rag-session-card,
-.rag-message {
-    border: 1px solid var(--border);
-    background: var(--bg-secondary);
-    border-radius: 18px;
-    padding: 0.9rem 1rem;
+#composer-input {
+    margin-bottom: 0;
+    resize: none;
+    min-height: 44px;
+    max-height: 184px; /* ~6 rows */
+    line-height: 1.45;
+    overflow-y: auto;
 }
-
-.rag-session-card {
+.rag-send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--accent);
+    color: var(--bg-primary);
+    border: 0;
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    font-weight: 600;
     cursor: pointer;
+    flex: 0 0 auto;
+    height: 44px;
+    transition: filter 120ms ease;
+}
+.rag-send-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+.rag-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.rag-session-card.active,
-.rag-session-card:hover {
-    border-color: hsla(172, 66%, 50%, 0.28);
-    box-shadow: 0 10px 24px hsla(172, 66%, 50%, 0.08);
+.rag-composer-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.45rem;
+    gap: 0.6rem;
 }
-
-.rag-session-card h3,
-.rag-message h3 {
-    font-size: 0.96rem;
-    margin-bottom: 0.25rem;
-}
-
-.rag-session-card p,
-.rag-message p,
-.rag-chat-hint,
 .rag-status {
     color: var(--text-secondary);
-}
-
-.rag-chat-panel {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-    min-height: 72vh;
-    padding: 1rem;
-}
-
-.rag-chat-head {
-    padding: 0.2rem 0.2rem 0.8rem;
-}
-
-.rag-chat-head h1 {
-    font-size: 1.85rem;
-    line-height: 1.05;
-    letter-spacing: -0.04em;
-}
-
-.rag-chat-hint {
-    max-width: 28ch;
-    font-size: 0.9rem;
-}
-
-.rag-transcript {
-    padding: 0.25rem 0;
-    overflow-y: auto;
-    min-height: 380px;
-}
-
-.rag-empty-state {
-    border: 1px dashed var(--border);
-    border-radius: 22px;
-    padding: 1.4rem;
-    text-align: center;
-    margin: auto 0;
-}
-
-.rag-empty-state.hidden {
-    display: none;
-}
-
-.rag-message.user {
-    background: linear-gradient(180deg, hsla(188, 64%, 14%, 0.62), hsla(188, 52%, 10%, 0.58));
-    border-color: hsla(172, 66%, 50%, 0.16);
-}
-
-.rag-message.assistant {
-    background: linear-gradient(180deg, hsla(222, 22%, 11%, 0.98), hsla(221, 18%, 8%, 1));
-}
-
-.rag-message-body {
-    color: var(--text-primary);
-    white-space: pre-wrap;
-    line-height: 1.7;
-    margin-top: 0.5rem;
-}
-
-.rag-message-meta {
-    color: var(--text-muted);
     font-size: 0.78rem;
 }
-
-.rag-citations {
-    margin-top: 0.8rem;
-    flex-wrap: wrap;
+.rag-status.error {
+    color: hsl(0, 75%, 70%);
+}
+.rag-kbd-hint {
+    color: var(--text-muted);
+    font-size: 0.72rem;
 }
 
-.rag-citation-chip {
-    color: var(--accent);
-    background: var(--accent-glow);
-    cursor: default;
+/* Modals — shared shell. */
+.rag-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
 }
-
-.rag-composer {
-    margin-top: 1rem;
-    padding-top: 1rem;
+.rag-modal-overlay.hidden {
+    display: none;
+}
+.rag-modal {
+    background: var(--bg-elevated, hsl(222, 22%, 11%));
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.rag-modal-narrow {
+    max-width: 440px;
+}
+.rag-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+}
+.rag-modal-head h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+.rag-modal-close {
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+}
+.rag-modal-body {
+    padding: 1rem 1.2rem;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+.rag-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 0.85rem 1.2rem;
     border-top: 1px solid var(--border);
 }
+.rag-modal-hint {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+}
+.rag-modal-error {
+    color: hsl(0, 75%, 70%);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+.rag-modal-error.hidden { display: none; }
 
-.rag-composer-actions {
+.rag-add-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.rag-add-list li {
+    display: flex;
+    gap: 0.6rem;
     align-items: center;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+.rag-add-list li:last-child { border-bottom: 0; }
+.rag-add-list li:hover { background: var(--accent-glow); }
+.rag-add-list li.member {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.rag-add-list li input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+.rag-add-list .rag-add-name {
+    flex: 1 1 auto;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+.rag-add-list .rag-add-source {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
 }
 
-.rag-status {
-    font-size: 0.84rem;
+.rag-delete-confirm {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+.rag-danger-btn {
+    background: hsl(0, 70%, 50%);
+    color: white;
+    border: 0;
+    border-radius: 10px;
+    padding: 0.55rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.rag-danger-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.rag-danger-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
 }
 
-@media (max-width: 1080px) {
-    .rag-shell {
-        grid-template-columns: 1fr;
-    }
-}
-
+/* Responsive */
 @media (max-width: 720px) {
     .rag-container {
-        padding-inline: 1rem;
+        padding-inline: 0.75rem;
     }
-
     .rag-header {
         grid-template-columns: 48px 1fr;
     }
-
     .rag-header-actions {
         grid-column: 1 / -1;
         justify-content: flex-start;
     }
-
-    .rag-chat-head,
-    .rag-composer-actions {
-        flex-direction: column;
-        align-items: flex-start;
+    .rag-chat-head h1 {
+        font-size: 1.3rem;
     }
 }

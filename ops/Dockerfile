@@ -41,6 +41,14 @@ COPY --chown=appuser:appuser website/ website/
 COPY --chown=appuser:appuser run.py ./
 COPY --chown=appuser:appuser pyproject.toml ./
 
+# D-1: ship the migration runner + SQL files so deploy.sh can run
+# `python ops/scripts/apply_migrations.py` from inside the new image
+# before the blue/green flip. Also includes ops/scripts/backfill_metadata.py
+# and the existing post-cutover backfill scripts referenced by deploy.sh.
+COPY --chown=appuser:appuser ops/scripts/ ops/scripts/
+COPY --chown=appuser:appuser supabase/website/kg_public/migrations/ \
+     supabase/website/kg_public/migrations/
+
 RUN mkdir -p /app/kg_output /app/bot_data \
     && chown -R appuser:appuser /app/kg_output /app/bot_data
 

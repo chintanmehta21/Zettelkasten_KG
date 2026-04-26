@@ -467,6 +467,18 @@ COMMENT ON FUNCTION kg_expand_subgraph(uuid, text[], int) IS
     'Recursive BFS over kg_links (both directions) returning the deduped neighbourhood of p_node_ids up to p_depth hops, scoped to p_user_id. Excludes seed nodes.';
 
 
+-- ── Migration tracking (D-1) ────────────────────────────────────────────────
+-- Used by ops/scripts/apply_migrations.py to track which files in
+-- supabase/website/kg_public/migrations/ have been applied. The runner
+-- self-bootstraps this table on a fresh DB; included here for completeness.
+CREATE TABLE IF NOT EXISTS _migrations_applied (
+    name        TEXT PRIMARY KEY,
+    applied_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    checksum    TEXT NOT NULL,
+    applied_by  TEXT
+);
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.
