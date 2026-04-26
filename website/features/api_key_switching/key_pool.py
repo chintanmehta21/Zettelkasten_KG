@@ -52,6 +52,26 @@ def key_role_filter() -> str | None:
     return None
 
 
+# This is a decision because: iter-06 spec §11 requires deferring the
+# paid/billing key until both free keys are on cooldown, but operators may
+# load keys from a plain api_env file (no `role=` tokens). We expose
+# RAG_BILLING_KEY_INDEX as an opt-in env override so a specific index is
+# tagged billing-tier at pool init without rewriting the secret file.
+# Explicit `role=billing` in api_env still wins (we only promote keys whose
+# parsed role is "free"); without the env var, behavior is unchanged.
+def _billing_key_index_override() -> int | None:
+    raw = os.environ.get("RAG_BILLING_KEY_INDEX", "").strip()
+    if not raw:
+        return None
+    try:
+        idx = int(raw)
+    except ValueError:
+        return None
+    if idx < 0:
+        return None
+    return idx
+
+
 def parse_api_env_line(line: str) -> tuple[str, str]:
     """Parse one api_env line into (key, role)."""
     parts = line.strip().split()
@@ -205,6 +225,18 @@ class GeminiKeyPool:
         normalized = normalize_api_keys(api_keys)
         self._keys = [key for key, _role in normalized]
         self._key_roles = [role for _key, role in normalized]
+
+        # Apply RAG_BILLING_KEY_INDEX override only when the caller hasn't
+        # already tagged any key as billing in api_env — explicit caller
+        # intent always wins over the env var.
+        billing_override = _billing_key_index_override()
+        any_explicit_billing = any(role == "billing" for role in self._key_roles)
+        if (
+            billing_override is not None
+            and not any_explicit_billing
+            and billing_override < len(self._key_roles)
+        ):
+            self._key_roles[billing_override] = "billing"
         self._clients: dict[int, genai.Client] = {}
         self._cooldowns: dict[tuple[int, str], float] = {}
         self._next_gen_key = 0
