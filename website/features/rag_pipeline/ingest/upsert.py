@@ -22,6 +22,23 @@ async def upsert_chunks(
     if not chunks:
         return 0
 
+    # Intra-call dedupe: drop chunks whose content_hash already appeared
+    # earlier in this list. Preserves chunk_idx ordering by keeping the
+    # first occurrence and re-numbering compactly. This guards against
+    # chunkers that emit duplicate text (e.g., overlap windows on
+    # short inputs) — duplicates would otherwise pollute retrieval.
+    seen_hashes: set[bytes] = set()
+    deduped: list[Chunk] = []
+    for chunk in chunks:
+        h = ChunkEmbedder.content_hash(chunk.content)
+        if h in seen_hashes:
+            continue
+        seen_hashes.add(h)
+        deduped.append(chunk)
+    if len(deduped) != len(chunks):
+        # Renumber chunk_idx contiguously so downstream order is stable.
+        chunks = [c.model_copy(update={"chunk_idx": i}) for i, c in enumerate(deduped)]
+
     supabase = get_supabase_client()
     existing = (
         supabase.table("kg_node_chunks")
