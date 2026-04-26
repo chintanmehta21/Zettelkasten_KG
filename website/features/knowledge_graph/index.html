@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/kg/css/style.css?v=20260426b">
+  <link rel="stylesheet" href="/kg/css/style.css?v=20260426c">
 </head>
 <body>
   <!--ZK_HEADER-->
@@ -118,6 +118,11 @@
   <!-- Graph container -->
   <div id="graph-container"></div>
 
+  <!-- Active-node title — HTML overlay (crisp browser text rendering, no
+       Three.js SpriteText artefacts). Positioned each frame by app.js to
+       follow the selected/hovered node's projected screen coordinates. -->
+  <div id="kg-active-label" class="kg-active-label hidden" aria-hidden="true"></div>
+
   <!-- Side panel -->
   <aside class="kg-panel hidden" id="side-panel" data-node-id="" aria-label="Note details">
     <div class="kg-panel-content" id="panel-content">
@@ -214,7 +219,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
-  <script src="/kg/js/kasten_modal.js?v=20260426b"></script>
-  <script src="/kg/js/app.js?v=20260426b"></script>
+  <script src="/kg/js/kasten_modal.js?v=20260426c"></script>
+  <script src="/kg/js/app.js?v=20260426c"></script>
 </body>
 </html>

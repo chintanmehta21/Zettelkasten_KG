@@ -751,12 +751,17 @@
       graphData.nodes.forEach(function (node) {
         var obj = node.__threeObj;
         if (!obj || !obj.children) return;
+        var nodeIsActive = (selectedNode && selectedNode.id === node.id) ||
+                           (hoverNode && hoverNode.id === node.id);
         for (var i = 0; i < obj.children.length; i++) {
           var child = obj.children[i];
           if (child.__isRing) {
             child.lookAt(cam.position);
           }
           if (!child.__isLabel) continue;
+          // Hide the in-canvas SpriteText for the active node — the HTML
+          // overlay below renders that title with crisp browser text.
+          child.visible = !nodeIsActive;
           if (child.__origSy === undefined) {
             child.__origSy = child.scale.y;
             child.__origSx = child.scale.x;
@@ -772,6 +777,47 @@
           }
         }
       });
+      _updateActiveLabel();
+    }
+
+    // HTML title overlay for selected / hovered node — projects world coords
+    // to screen each frame and parks the label just below the node.
+    var _activeLabelEl = document.getElementById('kg-active-label');
+    var _lastActiveLabelText = '';
+    function _updateActiveLabel() {
+      if (!_activeLabelEl) return;
+      var active = selectedNode || hoverNode;
+      if (!active || active.x === undefined) {
+        if (!_activeLabelEl.classList.contains('hidden')) {
+          _activeLabelEl.classList.add('hidden');
+        }
+        return;
+      }
+      var deg = nodeDegrees[active.id] || 1;
+      var baseRadius = (active.pagerank !== undefined && _maxPagerank > 0)
+        ? 2 + (active.pagerank / _maxPagerank) * 4
+        : Math.min(2 + deg * 0.3, 5);
+      var anchor = new THREE.Vector3(active.x || 0, (active.y || 0) - (baseRadius + 4.5), active.z || 0);
+      var screen = anchor.clone().project(graph.camera());
+      // Behind camera → hide.
+      if (screen.z > 1) {
+        if (!_activeLabelEl.classList.contains('hidden')) {
+          _activeLabelEl.classList.add('hidden');
+        }
+        return;
+      }
+      var rect = container.getBoundingClientRect();
+      var x = (screen.x * 0.5 + 0.5) * rect.width + rect.left;
+      var y = (-screen.y * 0.5 + 0.5) * rect.height + rect.top;
+      _activeLabelEl.style.transform = 'translate(-50%, 0) translate3d(' + Math.round(x) + 'px, ' + Math.round(y) + 'px, 0)';
+      var name = active.name || '';
+      if (name !== _lastActiveLabelText) {
+        _activeLabelEl.textContent = name;
+        _lastActiveLabelText = name;
+      }
+      if (_activeLabelEl.classList.contains('hidden')) {
+        _activeLabelEl.classList.remove('hidden');
+      }
     }
     requestAnimationFrame(clampLabelScales);
   }
