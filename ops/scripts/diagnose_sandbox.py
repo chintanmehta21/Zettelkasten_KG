@@ -43,7 +43,7 @@ def main() -> int:
     sb = _client()
 
     _print_section(f"sandbox {args.sandbox_id}")
-    sandbox = sb.table("rag_sandboxes").select("id,user_id,name,description,created_at").eq("id", args.sandbox_id).execute().data
+    sandbox = sb.table("rag_sandboxes").select("id,user_id,description,created_at").eq("id", args.sandbox_id).execute().data
     print(json.dumps(sandbox, indent=2, default=str))
     if not sandbox:
         print("NO sandbox row found")
@@ -51,12 +51,12 @@ def main() -> int:
     sandbox_user_id = sandbox[0]["user_id"]
 
     _print_section(f"kg_users for sandbox.user_id={sandbox_user_id}")
-    users = sb.table("kg_users").select("id,render_user_id,name,created_at").eq("id", sandbox_user_id).execute().data
+    users = sb.table("kg_users").select("id,render_user_id,created_at").eq("id", sandbox_user_id).execute().data
     print(json.dumps(users, indent=2, default=str))
 
-    _print_section("kg_users where name like 'naruto' (case-insensitive)")
-    naruto_users = sb.table("kg_users").select("id,render_user_id,name").ilike("name", "%naruto%").execute().data
-    print(json.dumps(naruto_users, indent=2, default=str))
+    _print_section("all kg_users (id, render_user_id)")
+    all_users = sb.table("kg_users").select("id,render_user_id").execute().data
+    print(json.dumps(all_users, indent=2, default=str))
 
     _print_section(f"rag_sandbox_members where sandbox_id={args.sandbox_id}")
     members = sb.table("rag_sandbox_members").select("user_id,node_id,added_via,added_at").eq("sandbox_id", args.sandbox_id).execute().data
@@ -71,7 +71,7 @@ def main() -> int:
     node_ids = [m["node_id"] for m in members]
 
     _print_section(f"kg_nodes for {len(node_ids)} member node_ids")
-    nodes = sb.table("kg_nodes").select("id,user_id,title,source_type").in_("id", node_ids).execute().data
+    nodes = sb.table("kg_nodes").select("id,user_id,source_type").in_("id", node_ids).execute().data
     print(f"node_count={len(nodes)}")
     node_user_ids = Counter(n["user_id"] for n in nodes)
     print(f"distinct user_ids in kg_nodes: {dict(node_user_ids)}")
