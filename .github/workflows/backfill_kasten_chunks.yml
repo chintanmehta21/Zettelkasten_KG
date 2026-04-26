@@ -55,4 +55,4 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          python ops/scripts/backfill_chunks.py $ARGS
+          PYTHONPATH="$PWD" python ops/scripts/backfill_chunks.py $ARGS
