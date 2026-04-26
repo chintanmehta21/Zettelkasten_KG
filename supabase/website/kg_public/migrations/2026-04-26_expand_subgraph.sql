@@ -28,14 +28,14 @@ AS $$
   WITH RECURSIVE walk AS (
     SELECT unnest(p_node_ids) AS id, 0 AS d
     UNION ALL
-    SELECT l.target_node_id, w.d + 1
+    SELECT
+      CASE WHEN l.source_node_id = w.id THEN l.target_node_id
+           ELSE l.source_node_id
+      END AS id,
+      w.d + 1
     FROM kg_links l
-    JOIN walk w ON l.source_node_id = w.id
-    WHERE w.d < p_depth AND l.user_id = p_user_id
-    UNION ALL
-    SELECT l.source_node_id, w.d + 1
-    FROM kg_links l
-    JOIN walk w ON l.target_node_id = w.id
+    JOIN walk w
+      ON l.source_node_id = w.id OR l.target_node_id = w.id
     WHERE w.d < p_depth AND l.user_id = p_user_id
   )
   SELECT DISTINCT id FROM walk WHERE id <> ALL(p_node_ids);
