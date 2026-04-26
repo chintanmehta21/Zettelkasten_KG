@@ -74,7 +74,7 @@ IMAGE_TAG="$SHA" docker compose \
 log "[migration] Applying pending Supabase migrations against prod..."
 set +e
 docker run --rm --network host \
-    --env-file /etc/secrets/api_env \
+    --env-file /opt/zettelkasten/compose/.env \
     "$IMAGE" \
     python ops/scripts/apply_migrations.py 2>&1 | tee -a "$LOG"
 MIG_RC=${PIPESTATUS[0]}
