@@ -229,12 +229,16 @@ def test_missing_env_returns_config_error(monkeypatch, fake_psycopg):
     assert rc == 2
 
 
-def test_dsn_assembly_from_url_and_key(monkeypatch, fake_psycopg):
+def test_build_dsn_requires_supabase_db_url(monkeypatch, fake_psycopg):
     monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
     monkeypatch.setenv("SUPABASE_URL", "https://abcxyz.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "secret/with+chars")
     am = _load()
-    dsn = am._build_dsn()
-    assert "db.abcxyz.supabase.co:5432" in dsn
-    # URL-encoded special chars in password
-    assert "secret%2Fwith%2Bchars" in dsn
+    with pytest.raises(RuntimeError, match="SUPABASE_DB_URL must be set"):
+        am._build_dsn()
+
+
+def test_build_dsn_returns_supabase_db_url_when_set(monkeypatch, fake_psycopg):
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://u:p@host:5432/db")
+    am = _load()
+    assert am._build_dsn() == "postgresql://u:p@host:5432/db"

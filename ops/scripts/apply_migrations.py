@@ -86,44 +86,28 @@ logging.basicConfig(
 # DSN assembly
 # ---------------------------------------------------------------------------
 def _build_dsn() -> str:
-    """Return a Postgres DSN, preferring SUPABASE_DB_URL when set.
+    """Return the Postgres DSN from ``SUPABASE_DB_URL``.
 
-    When only ``SUPABASE_URL`` + ``SUPABASE_SERVICE_ROLE_KEY`` are available,
-    we assemble the canonical Supabase direct-connection DSN:
-    ``postgresql://postgres:<key>@db.<project-ref>.supabase.co:5432/postgres``.
-    The service-role key doubles as the postgres password for direct
-    connections; for poolers Supabase exposes ``SUPABASE_DB_URL`` explicitly.
+    Auto-deriving from ``SUPABASE_URL`` + ``SUPABASE_SERVICE_ROLE_KEY`` is
+    NOT supported: the service-role JWT is not the postgres direct-connect
+    password. The DB password is set per project in Supabase Studio and
+    must be supplied via ``SUPABASE_DB_URL`` (preferably the IPv4 pooler
+    endpoint, since ``db.<ref>.supabase.co`` is IPv6-only and may not
+    resolve from IPv4-only droplet networks).
+
+    Format (IPv4 pooler):
+        postgresql://postgres.<ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.com:6543/postgres
     """
     direct = os.environ.get("SUPABASE_DB_URL")
     if direct:
         return direct
 
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    if not url or not key:
-        raise RuntimeError(
-            "Either SUPABASE_DB_URL or both SUPABASE_URL + "
-            "SUPABASE_SERVICE_ROLE_KEY must be set."
-        )
-
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    # Supabase URLs look like https://<ref>.supabase.co
-    project_ref = host.split(".", 1)[0] if host else ""
-    if not project_ref:
-        raise RuntimeError(
-            f"Could not derive project ref from SUPABASE_URL={url!r}"
-        )
-    # NOTE: db.<ref>.supabase.co is IPv6-only on Supabase as of 2024 and may
-    # NOT resolve from IPv4-only networks (incl. some DigitalOcean droplet
-    # configs). If the runner fails with `getaddrinfo failed`, set
-    # SUPABASE_DB_URL explicitly to either the IPv4 pooler endpoint:
-    #   postgresql://postgres.<ref>:<key>@aws-0-<region>.pooler.supabase.com:6543/postgres
-    # or any IPv4 connection string Supabase Studio surfaces in
-    # Project Settings > Database > Connection string.
-    return (
-        f"postgresql://postgres:{quote_plus(key)}"
-        f"@db.{project_ref}.supabase.co:5432/postgres"
+    raise RuntimeError(
+        "SUPABASE_DB_URL must be set. Get the IPv4 pooler connection "
+        "string from Supabase Studio > Project Settings > Database > "
+        "Connection string (Transaction or Session pooler) and register "
+        "it as a GitHub Actions secret named SUPABASE_DB_URL. "
+        "Note: SUPABASE_SERVICE_ROLE_KEY is NOT the postgres password."
     )
 
 
