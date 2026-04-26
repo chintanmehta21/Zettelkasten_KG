@@ -67,6 +67,24 @@ IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
     pull
 
+# ── D-1 (KAS-11): apply pending Supabase migrations BEFORE traffic flips. ──
+# Runs the new image as a short-lived helper container so the migration set
+# matches the code about to be deployed. Failure is FATAL — we abort before
+# touching the IDLE container so prod stays on the previous (working) color.
+log "[migration] Applying pending Supabase migrations against prod..."
+set +e
+docker run --rm --network host \
+    --env-file /opt/zettelkasten/compose/.env \
+    "$IMAGE" \
+    python ops/scripts/apply_migrations.py 2>&1 | tee -a "$LOG"
+MIG_RC=${PIPESTATUS[0]}
+set -e
+if [ "$MIG_RC" -ne 0 ]; then
+    log "[migration] FAILED rc=$MIG_RC — ABORTING DEPLOY (no traffic flip, IDLE container not started)"
+    exit "$MIG_RC"
+fi
+log "[migration] OK — proceeding with blue/green flip."
+
 log "Starting $IDLE container with new image..."
 IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
