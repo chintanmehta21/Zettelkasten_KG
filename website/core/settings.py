@@ -85,7 +85,11 @@ class Settings(BaseSettings):
     webhook_secret: str = ""
 
     model_name: str = "gemini-2.5-flash"
-    rag_chunks_enabled: bool = False
+    # Default True so /api/summarize auto-fires ingest_node_chunks even on
+    # container builds that don't bundle ops/config.yaml (the iter-06 prod
+    # observation). The hook itself is exception-safe and never blocks the
+    # capture; opt out via env RAG_CHUNKS_ENABLED=false if needed.
+    rag_chunks_enabled: bool = True
 
     log_level: str = "INFO"
 
