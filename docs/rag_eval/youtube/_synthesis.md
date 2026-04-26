@@ -110,6 +110,11 @@ YouTube rag_eval loop completed cleanly per spec §9 verification checkpoints:
 **Final iter-by-iter commit chain:**
 - iter-01 53c6712 — baseline composite 80.59 + framework infrastructure
 - iter-02 e64204a — wide-net retune (chunking real text, chunk-cap, fusion, MMR, prompts, rewriter)
-- iter-03 3cba834 — context floor + chunk cap revert (PEAK)
+- iter-03 3cba834 — context floor + chunk cap revert (PEAK CLI)
 - iter-04 (Phase A: 8996a31) — probe handling (probe Zettel rejected from citations)
 - iter-05 — held-out generalization
+- iter-06 67121c7 — **live production browser flow on the deployed droplet; new Zettel ingested 5min before query → gold@1 cited as primary source. Estimated composite 90.9.**
+
+## BASELINE LOCKED — iter-06
+
+The iter-06 production run is the locked baseline going forward. Future iter loops on Reddit / GitHub / Newsletter MUST beat the iter-06 quality bar (composite ≥ 88, gold@1 on regression suite, <5pt held-out gap) before merging. The iter-07+ scope shifts from per-iter weight tuning to: (a) closing the 5 production bugs surfaced in iter-06, (b) layering in faithfulness/context-P/R/stress/regression eval dimensions, (c) wiring a CI/CD quality gate.
