@@ -253,6 +253,7 @@
         setPersonalEnabled(true);
         loadKastens();
         loadUserOwnedIds();
+        refreshOpenPanelAddBtn();
         if (savedView === 'my') {
           currentView = 'my';
           setViewBtns('my');
@@ -273,6 +274,7 @@
       .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
       .then(data => {
         userOwnedIds = new Set((data.nodes || []).map(n => n.id));
+        refreshOpenPanelAddBtn();
       })
       .catch(() => { /* leave empty; gating will treat all nodes as not-addable */ });
   }
@@ -293,6 +295,44 @@
       if (t === node.id && userOwnedIds.has(s)) return 'enabled';
     }
     return 'unlinked';
+  }
+
+  // Apply Add-to-Kasten button state for the currently-open panel node.
+  // Extracted so it can be re-run when isLoggedIn / userOwnedIds change
+  // asynchronously after the panel is already open (avoids a race where the
+  // panel was opened before /api/me resolved and stays in 'login' state).
+  function _applyAddBtnState(node) {
+    const addBtn = document.getElementById('panel-add-kasten');
+    if (!addBtn || !node) return;
+    const state = computeAddBtnState(node);
+    addBtn.classList.toggle('disabled-soft', state !== 'enabled');
+    if (state === 'login') {
+      addBtn.setAttribute('aria-disabled', 'true');
+      addBtn.title = 'Sign in to add to a Kasten';
+    } else if (state === 'unlinked') {
+      addBtn.setAttribute('aria-disabled', 'true');
+      addBtn.title = 'Connect this to one of your zettels to add it to a Kasten';
+    } else {
+      addBtn.removeAttribute('aria-disabled');
+      addBtn.title = 'Add to a Kasten';
+    }
+    addBtn.onclick = () => {
+      const liveState = computeAddBtnState(node); // recompute at click time
+      if (liveState === 'login') { openLoginModalFromKG(); return; }
+      if (liveState === 'unlinked') { showToast(addBtn.title); return; }
+      if (window.kgKastenModal) {
+        window.kgKastenModal.open(node, kastenList, authHeaders, () => loadKastens());
+      }
+    };
+  }
+
+  // If the panel is currently open, re-apply its Add-to-Kasten state. Called
+  // after auth confirms or userOwnedIds populates so the button flips from
+  // "Sign in" → enabled / unlinked the moment the data lands.
+  function refreshOpenPanelAddBtn() {
+    if (!_currentPanelNodeId) return;
+    const node = (graphData.nodes || []).find(n => n.id === _currentPanelNodeId);
+    if (node) _applyAddBtnState(node);
   }
 
   // Lightweight transient toast — used for the "Connect this to your zettels"
@@ -925,25 +965,7 @@
     // "If a single Node connected to their own Zettel, then the user can
     // add that particular Kasten from Global to their own Kasten."
     if (addBtn) {
-      const state = computeAddBtnState(node);
-      addBtn.classList.toggle('disabled-soft', state !== 'enabled');
-      if (state === 'login') {
-        addBtn.setAttribute('aria-disabled', 'true');
-        addBtn.title = 'Sign in to add to a Kasten';
-      } else if (state === 'unlinked') {
-        addBtn.setAttribute('aria-disabled', 'true');
-        addBtn.title = 'Connect this to one of your zettels to add it to a Kasten';
-      } else {
-        addBtn.removeAttribute('aria-disabled');
-        addBtn.title = 'Add to a Kasten';
-      }
-      addBtn.onclick = () => {
-        if (state === 'login') { openLoginModalFromKG(); return; }
-        if (state === 'unlinked') { showToast(addBtn.title); return; }
-        if (window.kgKastenModal) {
-          window.kgKastenModal.open(node, kastenList, authHeaders, () => loadKastens());
-        }
-      };
+      _applyAddBtnState(node);
     }
 
     tags.innerHTML = (Array.isArray(node.tags) ? node.tags : []).map(
