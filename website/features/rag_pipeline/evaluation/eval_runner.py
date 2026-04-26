@@ -15,6 +15,22 @@ from website.features.rag_pipeline.evaluation.types import (
 )
 
 
+# Canonical refusal phrase the orchestrator emits when nothing in the user's
+# Zettels covers a query. Mirrored in stress_fixtures.REFUSAL_PHRASE; kept
+# here as a string literal to avoid an inter-module import cycle.
+_REFUSAL_PHRASE = "I can't find that in your Zettels."
+
+
+def _refusal_query_score(query: GoldQuery, answer: dict) -> float:
+    """Phrase-match scoring for queries with expected_behavior in
+    {"refuse", "ask_clarification_or_refuse"}: 1.0 if the answer contains the
+    canonical refusal phrase, 0.0 otherwise. Returned on the 0..1 RAGAS scale
+    so it composes cleanly with the rest of the pipeline.
+    """
+    raw = str(answer.get("answer") or "")
+    return 1.0 if _REFUSAL_PHRASE in raw else 0.0
+
+
 class EvalRunner:
     def __init__(self, *, weights: dict[str, float], weights_hash: str):
         self._weights = weights
