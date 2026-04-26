@@ -85,7 +85,7 @@ def fake_psycopg(monkeypatch):
     fake_conn = FakeConn()
     fake_module = ModuleType("psycopg")
 
-    def _connect(dsn: str, autocommit: bool = False) -> FakeConn:
+    def _connect(dsn: str, autocommit: bool = False, **kwargs) -> FakeConn:
         fake_conn.dsn = dsn  # type: ignore[attr-defined]
         return fake_conn
 
