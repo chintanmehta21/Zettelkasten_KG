@@ -96,6 +96,11 @@ class GoldQuery(BaseModel):
     gold_ranking: list[str] = Field(min_length=1)
     reference_answer: str
     atomic_facts: list[str] = Field(min_length=1)
+    # Stress-test dimension: queries that should refuse or ask-for-clarification
+    # are scored by phrase-match against reference_answer instead of RAGAS.
+    expected_behavior: Literal[
+        "answer", "refuse", "ask_clarification_or_refuse"
+    ] = "answer"
 
 
 class ComponentScores(BaseModel):
@@ -130,6 +135,14 @@ class EvalResult(BaseModel):
     graph_lift: GraphLift | dict[str, float]
     per_query: list[PerQueryScore]
     eval_divergence: bool = False
+    # Sidecar RAGAS scores (0-100 scale) — promoted out of the per_query.ragas
+    # blob so the quality gate and dashboards can read them without parsing.
+    faithfulness_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    answer_relevancy_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    # Latency p50/p95 (ms) across per-query orchestrator answers; populated
+    # only when the eval driver passes per_query_latencies to evaluate().
+    latency_p50_ms: float | None = None
+    latency_p95_ms: float | None = None
 
 
 class KGSnapshot(BaseModel):

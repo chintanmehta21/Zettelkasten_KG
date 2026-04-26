@@ -29,6 +29,7 @@ class EvalRunner:
         chunks_per_node: dict[str, list[dict]],
         embeddings_per_node: dict[str, list[list[float]]] | None = None,
         graph_lift: GraphLift | None = None,
+        per_query_latencies: list[float] | None = None,
     ) -> EvalResult:
         # Per-query: build RAGAS samples + retrieval/rerank scores
         per_query: list[PerQueryScore] = []
@@ -87,6 +88,34 @@ class EvalRunner:
         )
         composite = compute_composite(component_scores, self._weights)
 
+        # Sidecar scores promoted out of ragas_overall onto the top-level
+        # EvalResult so the quality gate and dashboards don't need to
+        # re-parse the per-query blob. RAGAS scores are 0..1; we publish 0..100.
+        faithfulness_score = float(ragas_overall.get("faithfulness", 0.0)) * 100.0
+        answer_relevancy_score = float(ragas_overall.get("answer_relevancy", 0.0)) * 100.0
+
+        latency_p50_ms: float | None = None
+        latency_p95_ms: float | None = None
+        if per_query_latencies:
+            # Sorted-percentile (linear interpolation between samples) — same
+            # algorithm numpy.percentile uses by default. Avoids the hard
+            # numpy dependency for environments that ship without it.
+            samples = sorted(float(x) for x in per_query_latencies)
+
+            def _pct(p: float) -> float:
+                if not samples:
+                    return 0.0
+                if len(samples) == 1:
+                    return samples[0]
+                rank = (p / 100.0) * (len(samples) - 1)
+                lo = int(rank)
+                hi = min(lo + 1, len(samples) - 1)
+                frac = rank - lo
+                return samples[lo] * (1 - frac) + samples[hi] * frac
+
+            latency_p50_ms = _pct(50.0)
+            latency_p95_ms = _pct(95.0)
+
         return EvalResult(
             iter_id=iter_id,
             component_scores=component_scores,
@@ -96,4 +125,8 @@ class EvalRunner:
             graph_lift=graph_lift or GraphLift(composite=0.0, retrieval=0.0, reranking=0.0),
             per_query=per_query,
             eval_divergence=any_divergence,
+            faithfulness_score=faithfulness_score,
+            answer_relevancy_score=answer_relevancy_score,
+            latency_p50_ms=latency_p50_ms,
+            latency_p95_ms=latency_p95_ms,
         )
