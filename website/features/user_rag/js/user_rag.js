@@ -590,11 +590,15 @@
 
   function buildScopeFilter() {
     var tagValue = (els.tagsInput.value || '').trim();
+    var tags = tagValue
+      ? tagValue.split(',').map(function (item) { return item.trim(); }).filter(Boolean)
+      : null;
+    var sources = state.sources && state.sources.length ? state.sources.slice() : null;
     return {
-      node_ids: state.focusNodeId ? [state.focusNodeId] : [],
-      tags: tagValue ? tagValue.split(',').map(function (item) { return item.trim(); }).filter(Boolean) : [],
+      node_ids: state.focusNodeId ? [state.focusNodeId] : null,
+      tags: tags,
       tag_mode: 'any',
-      source_types: state.sources.slice()
+      source_types: sources
     };
   }
 

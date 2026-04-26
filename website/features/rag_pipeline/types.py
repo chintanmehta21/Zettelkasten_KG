@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SourceType(str, Enum):
@@ -46,6 +46,16 @@ class ScopeFilter(BaseModel):
     tags: list[str] | None = None
     tag_mode: Literal["all", "any"] = "all"
     source_types: list[SourceType] | None = None
+
+    @field_validator("node_ids", "tags", "source_types", mode="before")
+    @classmethod
+    def _empty_list_to_none(cls, v):
+        # An empty list from the client means "no filter", not "match nothing".
+        # The SQL resolver uses `IS NULL` to short-circuit unfiltered branches;
+        # ANY('{}') would otherwise match zero rows and produce empty_scope.
+        if isinstance(v, list) and len(v) == 0:
+            return None
+        return v
 
 
 class ChunkRecord(BaseModel):
