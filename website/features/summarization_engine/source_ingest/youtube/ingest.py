@@ -39,6 +39,8 @@ class YouTubeIngestor(BaseIngestor):
             "tier_latency_ms": tier_result.latency_ms,
             **tier_result.extra,
         }
+        # Surface the per-tier outcomes for diagnostic 422 responses.
+        metadata["tier_results"] = list(tier_result.extra.get("all_tier_results", []))
 
         sections = {
             "Video": metadata.get("title") or "",

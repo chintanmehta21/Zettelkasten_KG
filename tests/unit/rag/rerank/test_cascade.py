@@ -197,7 +197,11 @@ def test_passage_text_prepends_name_when_absent_from_content() -> None:
         rrf_score=0.0,
     )
     text = _passage_text(candidate)
-    assert text.startswith("Attention Is All You Need")
+    # Header is now prepended; name still appears before body when content
+    # does not already contain it.
+    lines = text.split("\n\n")
+    assert lines[0].startswith("[source=youtube")
+    assert lines[1] == "Attention Is All You Need"
     assert "body text without the title here" in text
 
 
@@ -229,7 +233,9 @@ def test_passage_text_handles_missing_name() -> None:
         content="some body",
         rrf_score=0.0,
     )
-    assert _passage_text(candidate) == "some body"
+    text = _passage_text(candidate)
+    # Header is always present; with no name, body follows directly after.
+    assert text == "[source=web]\n\nsome body"
 
 
 def test_mmr_prefers_distinct_nodes_when_scores_are_close() -> None:

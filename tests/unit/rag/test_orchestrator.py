@@ -37,7 +37,9 @@ class _Retriever:
 
 
 class _Graph:
-    async def score(self, *, user_id, candidates):
+    async def score(self, *, user_id, candidates, query_class=None):
+        # ``query_class`` accepted for T20 (activates the dormant T24
+        # usage-edge bonus); mock ignores it.
         for candidate in candidates:
             candidate.graph_score = 0.2
 
@@ -52,14 +54,15 @@ class _Reranker:
 
 
 class _Assembler:
-    async def build(self, *, candidates, quality, user_query):
+    async def build(self, *, candidates, quality, user_query, model=None):
+        # ``model`` accepted for T17 per-LLM-tier budget; mock is a no-op.
         return "<context><zettel id=\"node-1\"/></context>", candidates
 
 
 class _EmptyAssembler:
     """Emits the canonical no-context marker so the short-circuit fires."""
 
-    async def build(self, *, candidates, quality, user_query):
+    async def build(self, *, candidates, quality, user_query, model=None):
         return (
             "<context>\n  <!-- no relevant Zettels found -->\n</context>",
             [],

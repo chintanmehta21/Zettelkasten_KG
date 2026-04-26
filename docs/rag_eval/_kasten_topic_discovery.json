@@ -1,0 +1,131 @@
+{
+  "_meta": {
+    "task": "Phase 0a — Task 1 of docs/superpowers/plans/2026-04-26-rag-improvements-iter-01-02.md",
+    "generated_at": "2026-04-26",
+    "user": "naruto@zettelkasten.local",
+    "render_user_id": "f2105544-b73d-4946-8329-096d82f070d3",
+    "kg_user_id_iter06": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "graph_endpoint": "GET /api/graph",
+    "login_evidence_screenshot": "ss_2426pxa94 (kastens page with naruto avatar top-right; KASTENS=2, ZETTELS=7, latest=AI/ML Foundations)"
+  },
+  "graph_summary": {
+    "total_nodes": 28,
+    "total_links": 49,
+    "source_breakdown": {
+      "youtube": 15,
+      "newsletter": 6,
+      "github": 4,
+      "web": 2,
+      "reddit": 1
+    },
+    "junk_excluded": ["web-test-title"],
+    "ai_ml_foundations_excluded": [
+      "yt-andrej-karpathy-s-llm-in",
+      "yt-software-1-0-vs-software",
+      "yt-transformer-architecture",
+      "yt-lecun-s-vision-human-lev",
+      "yt-programming-workflow-is",
+      "web-attention-mechanism-in-m"
+    ],
+    "candidate_pool_size": 21
+  },
+  "candidate_clusters_ranked": [
+    {
+      "rank": 1,
+      "tag_or_theme": "lecture (broad)",
+      "node_ids": ["yt-dan-shapiro-overcoming-t","yt-petrodollar-system-mechanism-benefits-v","yt-effective-public-speakin","yt-steve-jobs-2005-stanford","yt-infinite-complexity-chess"],
+      "count": 5,
+      "distinct_source_types": 1,
+      "qualifies_strict_gate_7and3": false,
+      "qualifies_partial_5to6": true,
+      "rejected_reason": "topic too broad (mixed: negotiation, geopolitics, public-speaking, life-lessons, chess) — would not produce coherent Kasten"
+    },
+    {
+      "rank": 2,
+      "tag_or_theme": "python / api-framework",
+      "node_ids": ["gh-pydantic-pydantic","gh-anthropics-claude-cookbo","gh-fastapi-fastapi","gh-psf-requests"],
+      "count": 4,
+      "distinct_source_types": 1,
+      "qualifies_strict_gate_7and3": false,
+      "qualifies_partial_5to6": false,
+      "rejected_reason": "single-source (github only); cluster size below 5-6 partial threshold"
+    },
+    {
+      "rank": 3,
+      "tag_or_theme": "AI agents / MCP / developer tooling",
+      "node_ids": ["gh-anthropics-claude-cookbo","nl-beehiiv-mcp-integrates-with-ai-clients-as-a-business-os","nl-the-pragmatic-engineer-the-product-minded-engineer-in-the-a","nl-the-pragmatic-engineer-t"],
+      "count": 4,
+      "distinct_source_types": 2,
+      "qualifies_strict_gate_7and3": false,
+      "qualifies_partial_5to6": false,
+      "rejected_reason": "size 4 below partial threshold; would need 3+ fresh zettels of which 2+ from new sources (yt, rd, web)"
+    },
+    {
+      "rank": 4,
+      "tag_or_theme": "psychology / consciousness / neuroscience",
+      "node_ids": ["yt-cannabis-use-disorder-impact-on","yt-dmt-history-neuroscience-entity-encounters","yt-matt-walker-sleep-depriv","rd-r-hinduism-share-persona","yt-dan-shapiro-overcoming-t"],
+      "count": 5,
+      "distinct_source_types": 2,
+      "qualifies_strict_gate_7and3": false,
+      "qualifies_partial_5to6": true,
+      "rejected_reason": "topic blend (substance neuroscience + sleep + spirituality + negotiation-psych) is too thematic-loose for a coherent eval Kasten — questions could not be reliably grounded"
+    },
+    {
+      "rank": 5,
+      "tag_or_theme": "newsletter-platforms / content-policy",
+      "node_ids": ["nl-platformer-substack-s-algorithmic-promotion-of-extremist-co","nl-beehiiv-mcp-integrates-with-ai-clients-as-a-business-os","nl-beehiiv-email-boosts-enable-in-newsletter-paid-recommendati"],
+      "count": 3,
+      "distinct_source_types": 1,
+      "qualifies_strict_gate_7and3": false,
+      "qualifies_partial_5to6": false,
+      "rejected_reason": "single-source, sub-threshold"
+    }
+  ],
+  "decision": {
+    "selected_topic": "Knowledge Management & Personal Productivity",
+    "kasten_slug": "knowledge-management",
+    "rationale": "Per plan Step 4: no organic cluster meets the strict gate (count>=7 AND distinct_sources>=3). The two clusters that hit the partial 5-6 threshold (lecture / psychology) are topic-mush and would not anchor a coherent eval. Falling back to the plan-specified default 'Knowledge Management & Personal Productivity' (slug 'knowledge-management'), which is orthogonal to AI/ML Foundations and intersects with several existing nodes (Pragmatic Engineer, Patrick Winston public speaking, Steve Jobs commencement, sleep/learning, programming workflow) — providing some warm-start grounding while requiring 5+ fresh zettels for source-type diversity.",
+    "warm_start_existing_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "nl-the-pragmatic-engineer-the-product-minded-engineer-in-the-a",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is"
+    ],
+    "fresh_zettels_needed": [
+      {"url": "https://www.youtube.com/watch?v=OPf0YbXqDm0", "rationale": "PLACEHOLDER — to be replaced with a real lecture/talk on PKM/Zettelkasten/note-taking workflows. Required source: youtube. Drop-in candidates: Niklas Luhmann zettelkasten talks, Andy Matuschak working-with-the-garage-door-up, Tiago Forte Building a Second Brain talks."},
+      {"url": "https://github.com/topics/zettelkasten", "rationale": "PLACEHOLDER — github repo for a popular note-taking / PKM tool (e.g., obsidian-zettelkasten plugin, logseq, or Anki) to provide a tooling perspective. Required source: github."},
+      {"url": "https://www.reddit.com/r/Zettelkasten/top/?t=year", "rationale": "PLACEHOLDER — top reddit thread from r/Zettelkasten or r/PKMS on workflow disputes/tradeoffs to seed community-perspective answers. Required source: reddit."},
+      {"url": "https://andymatuschak.org/", "rationale": "PLACEHOLDER — generic-web essay on evergreen notes / spaced repetition (Andy Matuschak) for a long-form web article slot. Required source: web."},
+      {"url": "https://www.platformer.news/", "rationale": "PLACEHOLDER — newsletter post on knowledge-work/AI-augmented PKM (Platformer or Pragmatic Engineer follow-up). Required source: newsletter — keeps newsletter rep balanced."}
+    ],
+    "projected_kasten_size_after_fresh_adds": 11,
+    "projected_source_breakdown_after_adds": {"youtube": 4, "newsletter": 3, "github": 2, "reddit": 1, "web": 1}
+  },
+  "ui_ux_findings_during_audit": [
+    {
+      "id": "F-1",
+      "severity": "data-quality",
+      "endpoint": "GET /api/graph",
+      "observation": "Every node returned with source_type=undefined and title=null. Source-type is recoverable from id-prefix (yt-, gh-, rd-, ss-, web-, nl-, md-) but the API is dropping these fields server-side. Will degrade Phase 1 retrieval-side source-type boost (Task 9) and Phase 4 graph-score weighting (Task 24). Filed as pre-existing prod data-shape bug — not in current plan scope but referenced here for traceability."
+    },
+    {
+      "id": "F-2",
+      "severity": "info",
+      "page": "/home/kastens",
+      "observation": "Create Kasten button (id=create-kasten-btn, class=kastens-add-circle) is bound via getElementById at first paint. Modal opens correctly on FIRST click after page load (verified via screenshot ss_2381e8fpr — modal renders with Name/Quality/Zettels-to-include/Description/Cancel/Create). This matches Task 3's stale-handler pattern: handler works pre-async-auth-resettlement, fails after. Will be confirmed/repro'd by Task 3 implementer subagent."
+    },
+    {
+      "id": "F-3",
+      "severity": "info",
+      "page": "/home/kastens",
+      "observation": "Junk node 'web-test-title' (no tags, no title) appears in /api/graph response and inflates KASTENS-stats. Pre-existing test artifact — out of plan scope but flagged for cleanup."
+    }
+  ],
+  "next_actions_for_pipeline": [
+    "Phase 0b/0c subagents proceed regardless of this artifact.",
+    "Eval Kasten construction (post-Task 26 deploy) will use slug 'knowledge-management' and add the 5 fresh zettels via Chrome MCP UI flow (not direct DB) so it co-validates Task 3's button-rebind fix.",
+    "Resolve F-1 (api/graph source_type/title null) before Task 28 eval computation — failing this means recency/source boosts cannot be measured."
+  ]
+}

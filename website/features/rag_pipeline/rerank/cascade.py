@@ -337,18 +337,41 @@ def _sigmoid(values: np.ndarray) -> np.ndarray:
 
 
 def _passage_text(candidate: RetrievalCandidate) -> str:
-    """Build the text passed to both rerank stages. Prepending the candidate's
-    name (unless the content already starts with it) gives the cross-encoder
-    strong title signal for non-first chunks and summary rows whose body may
-    not repeat the zettel title verbatim."""
+    """Build the text passed to both rerank stages.
+
+    Prepends a compact bracketed metadata header (source / author / date /
+    tags) so the cross-encoder gets richer signal for the same compute
+    budget. The header is followed by the candidate name (unless content
+    already restates it) and finally the body. Missing metadata fields are
+    silently omitted — no `None`-stringified noise leaks into the input."""
     content = (candidate.content or "")[:4000]
     name = (candidate.name or "").strip()
-    if not name:
-        return content
-    head = content.lstrip()[:120].lower()
-    if name.lower() in head:
-        return content
-    return f"{name}\n\n{content}"
+    parts: list[str] = []
+
+    meta_pieces: list[str] = []
+    src = getattr(candidate.source_type, "value", str(candidate.source_type or "unknown"))
+    meta_pieces.append(f"source={src}")
+    md = candidate.metadata or {}
+    author = md.get("author") or md.get("channel")
+    if author:
+        meta_pieces.append(f"author={author}")
+    ts = md.get("timestamp")
+    if not ts:
+        time_span = md.get("time_span")
+        if isinstance(time_span, dict):
+            ts = time_span.get("end")
+    if ts:
+        meta_pieces.append(f"date={str(ts)[:10]}")
+    if candidate.tags:
+        meta_pieces.append("tags=" + ",".join(candidate.tags[:5]))
+    parts.append("[" + "; ".join(meta_pieces) + "]")
+
+    if name:
+        head = content.lstrip()[:120].lower()
+        if name.lower() not in head:
+            parts.append(name)
+    parts.append(content)
+    return "\n\n".join(parts)
 
 
 def _mmr_select(

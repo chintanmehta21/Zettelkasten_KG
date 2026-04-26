@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS kg_node_chunks (
     embedding       vector(768),                                 -- Gemini-001 via MRL
     fts             tsvector,                                    -- trigger-maintained
     metadata        JSONB           NOT NULL DEFAULT '{}',
+    metadata_enriched_at TIMESTAMPTZ,                            -- set by ingest-side MetadataEnricher / backfill_metadata.py
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
 
     FOREIGN KEY (user_id, node_id) REFERENCES kg_nodes(user_id, id) ON DELETE CASCADE,
@@ -48,6 +49,11 @@ CREATE INDEX IF NOT EXISTS idx_kg_node_chunks_fts
 
 CREATE INDEX IF NOT EXISTS idx_kg_node_chunks_hash
     ON kg_node_chunks (user_id, node_id, content_hash);
+
+-- Partial index for cheap "what's still un-enriched?" scans during backfill.
+CREATE INDEX IF NOT EXISTS idx_kg_node_chunks_meta_enriched_pending
+    ON kg_node_chunks (created_at)
+    WHERE metadata_enriched_at IS NULL;
 
 -- FTS trigger: weight chunk content as the canonical text body
 CREATE OR REPLACE FUNCTION kg_node_chunks_fts_update()

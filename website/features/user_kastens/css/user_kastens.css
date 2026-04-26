@@ -419,3 +419,52 @@
 .create-kasten-submit:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .hidden { display: none !important; }
+
+/* UX-2/UX-6: inline button spinner. */
+.btn-inline-spinner {
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    margin-right: 0.4em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.15em;
+    animation: zk-spin 0.8s linear infinite;
+    opacity: 0.85;
+}
+@keyframes zk-spin { to { transform: rotate(360deg); } }
+
+/* UX-3: chooser refresh affordance. */
+.create-kasten-chooser-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.chooser-refresh {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.chooser-refresh:hover { color: var(--text-primary); }
+.chooser-refresh[disabled] { opacity: 0.5; cursor: default; }
+
+/* UX-5: lazy chooser placeholder. */
+.create-kasten-zettel-loading {
+    padding: 0.6rem 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* UX-6: subtle dim on submitting form. */
+.create-kasten-form[data-busy="true"] .create-kasten-actions { opacity: 0.85; }

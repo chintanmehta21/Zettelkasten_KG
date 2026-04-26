@@ -56,3 +56,8 @@ python-multipart>=0.0.20
 flashrank>=0.2
 onnxruntime>=1.17
 huggingface_hub>=0.20
+
+# Query metadata extraction (Phase 1)
+dateparser>=1.2
+tldextract>=5.1
+cachetools>=5.3

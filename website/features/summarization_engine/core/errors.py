@@ -30,7 +30,24 @@ class ExtractionError(EngineError):
 
 
 class ExtractionConfidenceError(ExtractionError):
-    """Raised when extraction confidence is low and caller rejects it."""
+    """Raised when extraction confidence is low and caller rejects it.
+
+    Optionally carries ``tier_results`` (per-tier diagnostics) and ``url`` so
+    HTTP callers can surface a structured failure payload.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        source_type: str = "",
+        reason: str = "",
+        tier_results: list[dict] | None = None,
+        url: str = "",
+    ):
+        super().__init__(message, source_type=source_type, reason=reason)
+        self.tier_results = list(tier_results) if tier_results else []
+        self.url = url
 
 
 class NewsletterURLUnreachable(ExtractionError):

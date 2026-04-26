@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import time
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 try:
     from langfuse import get_client, observe
@@ -36,9 +40,30 @@ from website.features.rag_pipeline.generation.sanitize import (
     strip_invalid_citations,
 )
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
+from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor
+from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 
+# T20: env-gated KG-first planner. Defaults on so prod gets the new path,
+# but operators can disable via ``RAG_KG_FIRST_ENABLED=false`` for incident
+# rollback without redeploying.
+_KG_FIRST_ENABLED = os.environ.get("RAG_KG_FIRST_ENABLED", "true").lower() == "true"
+
 langfuse = get_client()
+
+
+# T17: map quality tier -> expected default Gemini model. The assembler uses
+# this as a hint only (unknown values fall back to its quality budget), so
+# divergence between this hint and the key pool's actual selection at
+# generation time is non-fatal.
+_DEFAULT_MODEL_BY_QUALITY: dict[str, str] = {
+    "fast": "gemini-2.5-flash",
+    "high": "gemini-2.5-pro",
+}
+
+
+def _default_model_for_quality(quality: str) -> str | None:
+    return _DEFAULT_MODEL_BY_QUALITY.get(quality)
 
 
 @dataclass(slots=True)
@@ -48,6 +73,7 @@ class _PreparedQuery:
     standalone: str
     query_class: QueryClass
     variants: list[str]
+    metadata: QueryMetadata = field(default_factory=QueryMetadata)
 
 
 @dataclass(slots=True)
@@ -94,6 +120,8 @@ class RAGOrchestrator:
         llm,
         critic,
         sessions,
+        metadata_extractor: QueryMetadataExtractor | None = None,
+        planner: RetrievalPlanner | None = None,
     ):
         self._rewriter = rewriter
         self._router = router
@@ -105,6 +133,8 @@ class RAGOrchestrator:
         self._llm = llm
         self._critic = critic
         self._sessions = sessions
+        self._metadata_extractor = metadata_extractor
+        self._planner = planner
 
     @observe(name="rag.answer")
     async def answer(self, *, query, user_id, graph_weight_override: float | None = None):
@@ -128,6 +158,7 @@ class RAGOrchestrator:
                 user_id=user_id,
                 query_variants=prepared.variants,
                 query_class=prepared.query_class,
+                query_meta=prepared.metadata,
             )
         except EmptyScopeError:
             yield {
@@ -194,12 +225,23 @@ class RAGOrchestrator:
         query_class = await self._router.classify(standalone)
         variants = await self._transformer.transform(standalone, query_class)
 
+        metadata = QueryMetadata()
+        if self._metadata_extractor is not None:
+            try:
+                metadata = await self._metadata_extractor.extract(
+                    standalone, query_class=query_class
+                )
+            except Exception as exc:  # noqa: BLE001 - best-effort enrichment
+                logger.warning("query metadata extract failed: %s", exc)
+                metadata = QueryMetadata()
+
         return _PreparedQuery(
             session_id=session_id,
             trace_id=trace_id,
             standalone=standalone,
             query_class=query_class,
             variants=variants,
+            metadata=metadata,
         )
 
     async def _run_nonstream(
@@ -216,6 +258,7 @@ class RAGOrchestrator:
             query_variants=prepared.variants,
             query_class=prepared.query_class,
             graph_weight_override=graph_weight_override,
+            query_meta=prepared.metadata,
         )
         generation = await self._generate_once(query=query, context_xml=context.context_xml)
         return await self._finalize_answer(
@@ -235,17 +278,45 @@ class RAGOrchestrator:
         query_variants,
         query_class: QueryClass,
         graph_weight_override: float | None = None,
+        query_meta: QueryMetadata | None = None,
     ) -> _RetrievedContext:
         async with track_latency("retrieve_context"):
+            # T20: KG-first planning. When the planner is wired and the env
+            # flag is on, narrow the scope_filter to entity-related node IDs
+            # before retrieve. Any planner failure -> degrade to the original
+            # scope so a planner regression cannot break the request path.
+            scope_filter = query.scope_filter
+            if (
+                _KG_FIRST_ENABLED
+                and self._planner is not None
+                and query_meta is not None
+                and query_meta.entities
+            ):
+                try:
+                    scope_filter = await self._planner.plan(
+                        user_id=user_id,
+                        query_meta=query_meta,
+                        query_class=query_class,
+                        scope_filter=scope_filter,
+                    )
+                except Exception as exc:  # noqa: BLE001 - degrade silently
+                    logger.warning("retrieval planner failed: %s", exc)
+                    scope_filter = query.scope_filter
             candidates = await self._retriever.retrieve(
                 user_id=user_id,
                 query_variants=query_variants,
                 sandbox_id=query.sandbox_id,
-                scope_filter=query.scope_filter,
+                scope_filter=scope_filter,
                 query_class=query_class,
                 limit=30 if query.quality == "fast" else 50,
             )
-            await self._graph.score(user_id=user_id, candidates=candidates)
+            # T20: pass query_class through so graph_score activates the
+            # dormant T24 usage-edge bonus tier (see graph_score.score).
+            await self._graph.score(
+                user_id=user_id,
+                candidates=candidates,
+                query_class=query_class,
+            )
             ranked = await self._reranker.rerank(
                 query.content,
                 candidates,
@@ -253,10 +324,17 @@ class RAGOrchestrator:
                 query_class=query_class,
                 graph_weight_override=graph_weight_override,
             )
+            # T17: hint the assembler at the LLM tier we will most likely
+            # invoke so it can pick a per-tier token budget. Derived from
+            # ``quality`` because the actual key/model is not chosen until
+            # the generation step runs through the key pool — passing the
+            # default tier is a safe pre-commit estimate that the assembler
+            # treats as advisory (unknown values fall back to quality).
             context_xml, used_candidates = await self._assembler.build(
                 candidates=ranked,
                 quality=query.quality,
                 user_query=query.content,
+                model=_default_model_for_quality(query.quality),
             )
         return _RetrievedContext(context_xml=context_xml, used_candidates=used_candidates)
 
@@ -407,6 +485,7 @@ class RAGOrchestrator:
             user_id=user_id,
             query_variants=retry_variants,
             query_class=QueryClass.THEMATIC,
+            query_meta=prepared.metadata,
         )
         retry_generation = await self._generate_once(query=query, context_xml=retry_context.context_xml)
         retry_verdict, retry_details = await self._critic.verify(

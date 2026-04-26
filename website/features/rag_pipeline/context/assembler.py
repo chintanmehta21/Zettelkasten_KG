@@ -3,12 +3,24 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 from collections import OrderedDict
 
 from website.features.rag_pipeline.types import ChunkKind, RetrievalCandidate
 
+_LOG = logging.getLogger(__name__)
+
 _BUDGET_BY_QUALITY = {"fast": 6000, "high": 12000}
+# T17: per-LLM-tier override. Keyed by Gemini model ID; matched by substring
+# so backend-prefixed names (e.g. "models/gemini-2.5-pro") still resolve.
+# When the model is unknown the assembler falls back to the quality budget,
+# preserving pre-T17 behaviour for callers that don't pass a model.
+_BUDGET_BY_LLM_TIER = {
+    "gemini-2.5-flash-lite": 4000,
+    "gemini-2.5-flash": 6000,
+    "gemini-2.5-pro": 8000,
+}
 _MIN_USEFUL_TOKENS = 40
 _MIN_USEFUL_CHARS = 40
 
@@ -46,11 +58,12 @@ class ContextAssembler:
         candidates: list[RetrievalCandidate],
         quality: str = "fast",
         user_query: str,
+        model: str | None = None,
     ) -> tuple[str, list[RetrievalCandidate]]:
         if not candidates:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
 
-        budget = _BUDGET_BY_QUALITY[quality]
+        budget = _resolve_budget(quality=quality, model=model)
         candidates = [c for c in candidates if not _is_stub_passage(c.content)]
         # iter-06 best-of: restore the iter-03 floor of 0.30. The iter-04 0.22
         # softening was meant to recover graph_lift but synthesis faithfulness
@@ -81,6 +94,29 @@ class ContextAssembler:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
         grouped.sort(key=lambda group: max(item.final_score or item.rrf_score for item in group), reverse=True)
         sandwiched = self._sandwich_order(grouped)
+        # T16: if a compressor is wired and the candidate stack would overflow
+        # the budget, route through bi-encoder/cross-encoder sentence-level
+        # compression first so token packing operates on distilled content.
+        # Failure must never propagate — fall back to plain truncation, which
+        # is what the assembler did before T16 landed.
+        if self._compressor is not None:
+            est_tokens = sum(
+                max(_MIN_USEFUL_TOKENS, len(item.content) // 4)
+                for group in sandwiched
+                for item in group
+            )
+            if est_tokens > budget:
+                try:
+                    sandwiched = await self._compressor.compress(
+                        user_query=user_query,
+                        grouped=sandwiched,
+                        target_budget_tokens=budget,
+                    )
+                except Exception:  # noqa: BLE001 - degrade to truncation
+                    _LOG.warning(
+                        "EvidenceCompressor.compress failed; falling back to truncation",
+                        exc_info=True,
+                    )
         fitted, used = await self._fit_within_budget(sandwiched, budget, user_query)
         return self._render_xml(fitted), used
 
@@ -258,6 +294,24 @@ class ContextAssembler:
                     best_score = score
                     best = candidate
         return best
+
+
+def _resolve_budget(*, quality: str, model: str | None) -> int:
+    """Resolve the token budget for assembly.
+
+    A non-empty ``model`` whose ID matches a known Gemini tier (substring
+    match — covers backend-prefixed names like ``models/gemini-2.5-pro``)
+    overrides the quality-based budget. Unknown / missing models fall back
+    to ``_BUDGET_BY_QUALITY[quality]``. Order matters: ``flash-lite`` is
+    checked before ``flash`` so the longer key wins.
+    """
+    if model:
+        normalized = model.lower()
+        # Iterate longest-key first so flash-lite never collides with flash.
+        for tier_key in sorted(_BUDGET_BY_LLM_TIER, key=len, reverse=True):
+            if tier_key in normalized:
+                return _BUDGET_BY_LLM_TIER[tier_key]
+    return _BUDGET_BY_QUALITY[quality]
 
 
 def _trim_leading_overlap(prev: str, curr: str) -> str:

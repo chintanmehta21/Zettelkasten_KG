@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from website.features.rag_pipeline.errors import EmptyScopeError
+from website.features.rag_pipeline.query.metadata import QueryMetadata
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
+
+_log = logging.getLogger(__name__)
 
 _DEPTH_BY_CLASS = {
     QueryClass.LOOKUP: 1,
@@ -57,6 +62,7 @@ class HybridRetriever:
         scope_filter: ScopeFilter,
         query_class: QueryClass,
         limit: int = 30,
+        query_metadata: QueryMetadata | None = None,
     ) -> list[RetrievalCandidate]:
         effective_nodes = await self._resolve_nodes(user_id, sandbox_id, scope_filter)
         if effective_nodes is not None and len(effective_nodes) == 0:
@@ -92,7 +98,12 @@ class HybridRetriever:
             _search(query_text, query_vec)
             for query_text, query_vec in zip(query_variants, embeddings)
         ])
-        return self._dedup_and_fuse(results, query_variants=query_variants)
+        return self._dedup_and_fuse(
+            results,
+            query_variants=query_variants,
+            query_metadata=query_metadata,
+            query_class=query_class,
+        )
 
     async def _resolve_nodes(
         self,
@@ -122,6 +133,8 @@ class HybridRetriever:
         multi_variant: list[list[dict]],
         *,
         query_variants: list[str] | None = None,
+        query_metadata: QueryMetadata | None = None,
+        query_class: QueryClass | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
@@ -164,6 +177,30 @@ class HybridRetriever:
             # signal than a single stream. Small bump so it nudges, not skews.
             if len(kinds_by_node.get(candidate.node_id, set())) > 1:
                 candidate.rrf_score += 0.03
+
+        # Query-metadata-aware boosts (T10): recency, source-type, and
+        # author-match. Skipped entirely when no QueryMetadata is supplied so
+        # legacy callers see zero overhead and zero behavioral change.
+        if query_metadata is not None and query_class is not None:
+            total_boost = 0.0
+            for candidate in by_key.values():
+                rec = _recency_boost(candidate.metadata, query_class)
+                src = _source_type_boost(candidate, query_class)
+                aut = _author_match_boost(candidate, query_metadata)
+                delta = rec + src + aut
+                if delta:
+                    candidate.rrf_score += delta
+                    total_boost += delta
+            if total_boost:
+                _log.debug(
+                    "dedup_and_fuse query-metadata boost total=%.4f over %d candidates",
+                    total_boost,
+                    len(by_key),
+                )
+
+        # sorted() is stable: ties preserve insertion order, which mirrors the
+        # row order across query variants — critical for deterministic ranking
+        # when multiple candidates land on identical final scores.
         ordered = sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
         return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
 
@@ -235,6 +272,99 @@ def _title_match_boost(name: str, normalized_variants: list[str]) -> float:
             )
             best = max(best, 0.20 * ratio)
     return best
+
+
+def _recency_boost(metadata: dict | None, query_class: QueryClass) -> float:
+    """Return a small positive score boost for chunks whose source content is
+    recent. Pure helper — no I/O, never raises, never returns negative.
+
+    The chunk-date field is read from ``metadata['timestamp']`` first, falling
+    back to ``metadata['time_span']['end']`` so that both per-chunk timestamps
+    and aggregate node-level spans are honored. Anything missing or
+    unparseable yields 0.0. Future-dated chunks also yield 0.0 (so a clock
+    skew can never penalise — and never inflate — a candidate).
+
+    Magnitude: linear decay over a 730-day (~2yr) window. Per-class scale is
+    0.10 for LOOKUP / VAGUE (recency matters most for "what / when" lookups
+    and ambiguous queries) and 0.05 for THEMATIC / MULTI_HOP / STEP_BACK
+    (older canonical content shouldn't be penalised heavily for synthesis
+    queries). Returned value is bounded by ``scale`` so it never overpowers
+    the base RRF score.
+    """
+    if not metadata:
+        return 0.0
+    ts = metadata.get("timestamp") or (metadata.get("time_span") or {}).get("end")
+    if not ts:
+        return 0.0
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except Exception:
+        return 0.0
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    age_days = (datetime.now(timezone.utc) - dt).days
+    if age_days < 0:
+        return 0.0
+    scale = 0.10 if query_class in (QueryClass.LOOKUP, QueryClass.VAGUE) else 0.05
+    return scale * max(0.0, 1.0 - age_days / 730.0)
+
+
+def _source_type_boost(candidate: RetrievalCandidate, query_class: QueryClass) -> float:
+    """Return a small boost when a candidate's source type matches the kind of
+    content typically most useful for a given query class.
+
+    Pure helper — no I/O, never raises, never returns negative. Magnitudes are
+    deliberately small (0.02-0.03) so they nudge ordering without overpowering
+    the base RRF / title / recency signals that T8/T10 also feed in.
+
+    - THEMATIC / STEP_BACK queries lean toward long-form discussion content,
+      where YouTube transcripts (talks, lectures, podcasts) tend to dominate.
+    - LOOKUP queries (specific "what / where" questions) often resolve best
+      against Reddit threads, which carry concrete Q&A-shaped answers.
+    Other (class, source) combinations return 0.0.
+    """
+    if candidate is None:
+        return 0.0
+    try:
+        st_raw = getattr(candidate.source_type, "value", candidate.source_type)
+        st = str(st_raw or "").lower()
+    except Exception:
+        return 0.0
+    if query_class in (QueryClass.THEMATIC, QueryClass.STEP_BACK) and st == "youtube":
+        return 0.03
+    if query_class is QueryClass.LOOKUP and st == "reddit":
+        return 0.02
+    return 0.0
+
+
+def _author_match_boost(candidate: RetrievalCandidate, query_meta) -> float:
+    """Return a small boost when a query mentions an author/channel that the
+    candidate is attributed to.
+
+    Pure helper — no I/O, never raises, never returns negative. The candidate's
+    attribution is read from ``metadata['author']`` first, falling back to
+    ``metadata['channel']`` for sources (YouTube, podcasts) where the channel
+    name is the canonical attribution. Match is a case-insensitive substring
+    check in either direction so "karpathy" in the query matches an
+    "Andrej Karpathy" attribution. The boost is a single 0.05 — never summed
+    across multiple author hits — so it stays bounded and idempotent.
+    """
+    if candidate is None or not query_meta:
+        return 0.0
+    authors = getattr(query_meta, "authors", None) or []
+    if not authors:
+        return 0.0
+    md = candidate.metadata or {}
+    cand_author = md.get("author") or md.get("channel")
+    if not cand_author:
+        return 0.0
+    cand_lower = str(cand_author).lower()
+    for qa in authors:
+        if not qa:
+            continue
+        if str(qa).lower() in cand_lower:
+            return 0.05
+    return 0.0
 
 
 def _row_to_candidate(row: dict) -> RetrievalCandidate:

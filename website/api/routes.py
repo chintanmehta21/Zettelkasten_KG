@@ -418,6 +418,24 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
         return persistence.result
     except ExtractionConfidenceError as exc:
         logger.warning("Extraction too thin for %s: %s", body.url, exc)
+        is_youtube = (exc.source_type or "").lower() == "youtube"
+        if is_youtube:
+            message = (
+                "YouTube transcript unavailable for this video. All extraction "
+                "tiers (transcript API, Piped, Invidious, Gemini audio, oEmbed, "
+                "metadata-only) failed — usually due to datacenter IP "
+                "restrictions on the host, a private or age-restricted video, "
+                "or YouTube blocking the regional fetcher. Try a different "
+                "URL, or paste the transcript content directly."
+            )
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": message,
+                    "tier_results": exc.tier_results,
+                    "url": exc.url or body.url,
+                },
+            )
         raise HTTPException(
             status_code=422,
             detail=(

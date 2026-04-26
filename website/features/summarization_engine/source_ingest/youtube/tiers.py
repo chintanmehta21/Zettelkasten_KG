@@ -56,20 +56,43 @@ class TranscriptChain:
     async def run(self, *, video_id: str, config: dict) -> TierResult:
         start = time.monotonic()
         last_result: TierResult | None = None
+        attempts: list[dict[str, Any]] = []
+
+        def _record(result: TierResult) -> None:
+            attempts.append(
+                {
+                    "tier": result.tier.value,
+                    "status": "success" if result.success else "failed",
+                    "reason": (result.error or "")[:200] if not result.success else "",
+                    "latency_ms": result.latency_ms,
+                }
+            )
 
         for tier in self._tiers:
             elapsed_ms = int((time.monotonic() - start) * 1000)
             if elapsed_ms >= self._budget_ms:
+                attempts.append(
+                    {
+                        "tier": "budget_exhausted",
+                        "status": "skipped",
+                        "reason": f"budget {self._budget_ms}ms exceeded",
+                        "latency_ms": elapsed_ms,
+                    }
+                )
                 break
             last_result = await tier(video_id, config)
+            _record(last_result)
             if last_result.success:
+                last_result.extra.setdefault("all_tier_results", attempts)
                 return last_result
 
-        return last_result or TierResult(
+        final = last_result or TierResult(
             tier=TierName.METADATA_ONLY,
             transcript="",
             success=False,
         )
+        final.extra.setdefault("all_tier_results", attempts)
+        return final
 
 
 async def tier_ytdlp_player_rotation(video_id: str, config: dict) -> TierResult:

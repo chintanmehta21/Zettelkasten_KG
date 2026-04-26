@@ -139,7 +139,13 @@ class SandboxStore:
                 "p_added_via": added_via,
             },
         ).execute()
-        return int(response.data or 0)
+        # Post-2026-04-26 migration: RPC returns jsonb
+        # {added_count, candidate_count, dropped_node_ids} instead of a bare int.
+        # Tolerate the legacy int return shape during the deploy transition window.
+        data = response.data
+        if isinstance(data, dict):
+            return int(data.get("added_count", 0) or 0)
+        return int(data or 0)
 
     async def remove_member(self, sandbox_id: UUID, user_id: UUID, node_id: str) -> bool:
         response = (

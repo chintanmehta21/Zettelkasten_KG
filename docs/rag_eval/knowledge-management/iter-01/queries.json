@@ -1,0 +1,113 @@
+{
+  "_meta": {
+    "kasten_slug": "knowledge-management",
+    "kasten_name": "Knowledge Management & Personal Productivity",
+    "kasten_built_at": "2026-04-26",
+    "iter": "01",
+    "members_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "source_type_breakdown": {"youtube": 4, "newsletter": 1, "web": 1, "github": 1},
+    "execution_protocol": "STRICT Chrome MCP UI flow — submit each query through /home/rag chat input, capture SSE-streamed answer + citations + token-counts via DOM scrape (NO direct /api/rag/sessions calls)."
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "exact-source citation; bi-encoder + cross-encoder routing to a single zettel",
+      "text": "What's the core argument of the zk-org/zk command-line tool?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk is a command-line tool written in Go for managing a plain text Zettelkasten or personal wiki, focused on creating, searching, filtering notes with Markdown, Wikilinks, hashtags."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "T9 author boost — Naruto's query mentions an author by name (Steve Jobs)",
+      "text": "What did Steve Jobs say at the Stanford 2005 commencement about death?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Death is the destination we all share; awareness of mortality clarifies priorities and helps avoid the trap of living someone else's life."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "T9 source-type boost — query explicitly mentions YouTube",
+      "text": "Summarize the YouTube talk on effective public speaking from MIT.",
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Patrick Winston's MIT lecture on rules for effective communication: empowerment promise, cycling, building fences, verbal punctuation, asking questions."
+    },
+    {
+      "qid": "q4",
+      "class": "multi_hop",
+      "tests": "T18+T20 KG expand_subgraph + planner — answer requires combining 2 zettels (sleep ↔ programming-workflow on cognitive performance)",
+      "text": "How does sleep deprivation impact a programmer's debugging workflow? Combine evidence from the Zettels on sleep and on programming workflow.",
+      "expected_primary_citation": ["yt-matt-walker-sleep-depriv", "yt-programming-workflow-is"],
+      "expected_minimum_citations": 2,
+      "ground_truth": "Sleep loss degrades memory consolidation, attention, and complex problem-solving — all critical to debugging cycles where the programmer must hold mental models of perception-vs-reality gaps and iterate on them."
+    },
+    {
+      "qid": "q5",
+      "class": "thematic",
+      "tests": "T15+T16 EvidenceCompressor — open-ended synthesis across all 7 zettels, must compress under budget",
+      "text": "What recurring themes connect the zettels in this Kasten about how high performers protect their attention and energy?",
+      "expected_primary_citation": ["yt-matt-walker-sleep-depriv", "yt-effective-public-speakin", "yt-steve-jobs-2005-stanford", "nl-the-pragmatic-engineer-t", "web-transformative-tools-for"],
+      "expected_minimum_citations": 3,
+      "ground_truth": "Themes: (1) sleep is foundational to cognitive performance, (2) deliberate communication / writing externalizes thought, (3) tools-for-thought (PKM, evergreen notes) augment human attention, (4) life direction comes from clarity about mortality and meaningful work."
+    },
+    {
+      "qid": "q6",
+      "class": "step_back",
+      "tests": "Step-back reasoning — zoom out from concrete tool to abstract principle",
+      "text": "Beyond the specific tool zk-org/zk, what general principles of plain-text knowledge management does it embody, and where else in this Kasten do those principles appear?",
+      "expected_primary_citation": ["gh-zk-org-zk", "web-transformative-tools-for"],
+      "expected_minimum_citations": 2,
+      "ground_truth": "Principles: durability of plain text, link-density over hierarchy (wikilinks/hashtags), tools should augment human cognition (Matuschak's transformative tools for thought), externalize memory to free working memory."
+    },
+    {
+      "qid": "q7",
+      "class": "vague",
+      "tests": "Vague-query rewriter — input is intentionally underspecified",
+      "text": "What about the Andy Matuschak thing?",
+      "expected_primary_citation": "web-transformative-tools-for",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Andy Matuschak develops transformative tools for thought (augmented book, Pico for human attention) funded by Patreon, building on Apple/Khan Academy work."
+    },
+    {
+      "qid": "q8",
+      "class": "lookup_recency",
+      "tests": "T8 recency boost — recently-added zettels should rank higher when query is generic",
+      "text": "What's the latest thing I've added to my Knowledge Management Kasten?",
+      "expected_primary_citation": ["gh-zk-org-zk", "web-transformative-tools-for"],
+      "expected_minimum_citations": 1,
+      "ground_truth": "Three additions on 2026-04-26: Andy Matuschak transformative tools, zk-org/zk CLI, Tim Urban procrastination (last not in this Kasten)."
+    },
+    {
+      "qid": "q9",
+      "class": "adversarial_negative",
+      "tests": "hallucination resistance — asks about content NOT in any Kasten zettel",
+      "text": "What does this Kasten say about Roam Research vs Logseq?",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "Neither Roam Research nor Logseq is mentioned in any zettel of this Kasten. Correct answer should refuse to answer or explicitly state the absence — hallucinating brand comparisons would be a critic_verdict='unsupported' fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q10",
+      "class": "adversarial_partial",
+      "tests": "partial-coverage detection — answer requires combining a Kasten fact with a NOT-in-Kasten fact",
+      "text": "Compare Patrick Winston's lecture style with that of Carl Sagan.",
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Winston's style is in the Kasten (rules-driven, structured). Carl Sagan is NOT in the Kasten — answer should use Winston as the grounded half and either refuse the Sagan half or explicitly mark it as outside the Kasten's evidence.",
+      "expected_critic_verdict": "partial"
+    }
+  ]
+}

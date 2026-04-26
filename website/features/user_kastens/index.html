@@ -23,7 +23,7 @@
                     <p class="kastens-subtitle">Curated collections of zettels that you can chat with as focused sandboxes.</p>
                 </div>
 
-                <button class="kastens-add-circle" id="create-kasten-btn" type="button" aria-label="Create kasten" title="Create Kasten">
+                <button class="kastens-add-circle" id="create-kasten-btn" data-action="create-kasten" type="button" aria-label="Create kasten" title="Create Kasten">
                     <span aria-hidden="true">+</span>
                 </button>
             </section>
@@ -124,7 +124,10 @@
                 </div>
 
                 <div class="create-kasten-scope-panel hidden" id="kasten-scope-specific-panel">
-                    <label class="create-kasten-label">Pick zettels</label>
+                    <div class="create-kasten-chooser-header">
+                        <label class="create-kasten-label" style="margin:0">Pick zettels</label>
+                        <button type="button" class="chooser-refresh" id="kasten-chooser-refresh" title="Refresh zettel list">&#x21BB; Refresh</button>
+                    </div>
                     <div class="create-kasten-zettels">
                         <input type="search" class="create-kasten-zettel-search" id="kasten-zettel-search" placeholder="Filter your zettels..." autocomplete="off" />
                         <div class="create-kasten-zettel-list" id="kasten-zettel-list"></div>

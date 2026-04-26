@@ -339,6 +339,134 @@ FROM kg_users u;
 COMMENT ON VIEW kg_graph_view IS 'Per-user graph data as JSONB {nodes, links} for frontend consumption';
 
 
+-- ── Usage edges (RAG graph-score signal, plan iter-01 T21) ─────────────────
+-- Empirical co-citation / co-retrieval signals between KG nodes. Producer:
+-- T22 recompute_usage_edges.py inserts events here when a synthesis step
+-- cites two nodes together. Consumer: T24 graph_score.py reads the decayed
+-- aggregate weights from kg_usage_edges_agg.
+-- Added by migration: 2026-04-26_kg_usage_edges.sql
+
+CREATE TABLE IF NOT EXISTS kg_usage_edges (
+    id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         uuid        NOT NULL REFERENCES kg_users(id) ON DELETE CASCADE,
+    source_node_id  text        NOT NULL,
+    target_node_id  text        NOT NULL,
+    query_class     text        NOT NULL,
+    verdict         text        NOT NULL CHECK (verdict IN ('supported','retried_supported')),
+    delta           float       NOT NULL DEFAULT 1.0,
+    created_at      timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kg_usage_edges_user_target
+    ON kg_usage_edges (user_id, target_node_id);
+CREATE INDEX IF NOT EXISTS idx_kg_usage_edges_class
+    ON kg_usage_edges (query_class);
+
+ALTER TABLE kg_usage_edges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS user_owns_usage_edge_select ON kg_usage_edges;
+CREATE POLICY user_owns_usage_edge_select ON kg_usage_edges
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM kg_users u
+            WHERE u.id = kg_usage_edges.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
+
+DROP POLICY IF EXISTS user_owns_usage_edge_insert ON kg_usage_edges;
+CREATE POLICY user_owns_usage_edge_insert ON kg_usage_edges
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM kg_users u
+            WHERE u.id = kg_usage_edges.user_id
+              AND u.render_user_id = (SELECT auth.uid())::text
+        )
+    );
+
+DROP POLICY IF EXISTS kg_usage_edges_service_all ON kg_usage_edges;
+CREATE POLICY kg_usage_edges_service_all ON kg_usage_edges
+    FOR ALL USING (
+        current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
+    )
+    WITH CHECK (
+        current_setting('request.jwt.claims', true)::jsonb ->> 'role' = 'service_role'
+    );
+
+-- 30-day exponential time-decay aggregate for the graph-score adapter
+CREATE MATERIALIZED VIEW IF NOT EXISTS kg_usage_edges_agg AS
+    SELECT user_id, source_node_id, target_node_id, query_class,
+           SUM(delta * exp(-EXTRACT(epoch FROM (now()-created_at))/2592000.0)) AS weight
+    FROM kg_usage_edges
+    GROUP BY user_id, source_node_id, target_node_id, query_class;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_usage_edges_agg
+    ON kg_usage_edges_agg (user_id, source_node_id, target_node_id, query_class);
+
+CREATE TABLE IF NOT EXISTS recompute_runs (
+    id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    ran_at           timestamptz DEFAULT now(),
+    job_name         text        NOT NULL,
+    rows_inserted    int         DEFAULT 0,
+    rows_aggregated  int         DEFAULT 0,
+    status           text        NOT NULL,
+    error_message    text
+);
+
+-- Refresh wrapper for the materialized view. Used by the ops cron job
+-- (T22 ops/scripts/recompute_usage_edges.py) to trigger the MV refresh
+-- without requiring the runner to own the view.
+CREATE OR REPLACE FUNCTION kg_refresh_usage_edges_agg()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY kg_usage_edges_agg;
+EXCEPTION WHEN feature_not_supported THEN
+    REFRESH MATERIALIZED VIEW kg_usage_edges_agg;
+END;
+$$;
+
+COMMENT ON FUNCTION kg_refresh_usage_edges_agg() IS
+    'Refresh kg_usage_edges_agg; prefers CONCURRENTLY, falls back to plain REFRESH for first run.';
+
+
+-- ── KG subgraph expansion RPC (plan iter-01 T18) ───────────────────────────
+-- Recursive-CTE BFS over kg_links (both directions). Used by the
+-- RetrievalPlanner adapter (T19) to expand seed nodes before scoring.
+-- Added by migration: 2026-04-26_expand_subgraph.sql
+
+CREATE OR REPLACE FUNCTION kg_expand_subgraph(
+    p_user_id uuid,
+    p_node_ids text[],
+    p_depth int DEFAULT 1
+) RETURNS TABLE(id text)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    WITH RECURSIVE walk AS (
+        SELECT unnest(p_node_ids) AS id, 0 AS d
+        UNION ALL
+        SELECT l.target_node_id, w.d + 1
+        FROM kg_links l
+        JOIN walk w ON l.source_node_id = w.id
+        WHERE w.d < p_depth AND l.user_id = p_user_id
+        UNION ALL
+        SELECT l.source_node_id, w.d + 1
+        FROM kg_links l
+        JOIN walk w ON l.target_node_id = w.id
+        WHERE w.d < p_depth AND l.user_id = p_user_id
+    )
+    SELECT DISTINCT id FROM walk WHERE id <> ALL(p_node_ids);
+$$;
+
+COMMENT ON FUNCTION kg_expand_subgraph(uuid, text[], int) IS
+    'Recursive BFS over kg_links (both directions) returning the deduped neighbourhood of p_node_ids up to p_depth hops, scoped to p_user_id. Excludes seed nodes.';
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.

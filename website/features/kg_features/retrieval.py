@@ -140,3 +140,54 @@ def hybrid_search(
             continue
 
     return results
+
+
+# ── Subgraph expansion ──────────────────────────────────────────────────────
+
+def expand_subgraph(
+    supabase_client,
+    *,
+    user_id,
+    node_ids: list[str],
+    depth: int = 1,
+) -> list[str]:
+    """Expand a seed set of node IDs by walking the KG up to ``depth`` hops.
+
+    Thin Python wrapper around the ``kg_expand_subgraph`` Supabase RPC,
+    which performs a recursive-CTE BFS over ``kg_links`` (both directions)
+    and returns the deduped neighbourhood, excluding the seed nodes
+    themselves.  The SQL function owns cycle handling, dedup, and
+    edge-direction symmetry.
+
+    Parameters
+    ----------
+    supabase_client:
+        An initialised Supabase client instance.
+    user_id:
+        UUID of the requesting user (data isolation).  Coerced to ``str``
+        so callers may pass either a ``uuid.UUID`` or a string.
+    node_ids:
+        Seed node IDs to expand from.  Not mutated.  Empty input short-
+        circuits to ``[]`` without an RPC round-trip.
+    depth:
+        Maximum hop count from any seed (default 1).
+
+    Returns
+    -------
+    list[str]
+        Newly discovered node IDs within ``depth`` hops of any seed,
+        excluding the seeds themselves.  Empty list on empty seed input
+        or when the RPC returns no rows.
+    """
+    if not node_ids:
+        return []
+    response = supabase_client.rpc(
+        "kg_expand_subgraph",
+        {
+            "p_user_id": str(user_id),
+            "p_node_ids": list(node_ids),
+            "p_depth": depth,
+        },
+    ).execute()
+    rows = response.data or []
+    return [row["id"] for row in rows]

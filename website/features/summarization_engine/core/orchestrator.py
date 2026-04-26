@@ -134,6 +134,8 @@ async def summarize_url_bundle(
             f"Reason: {ingest_result.confidence_reason}",
             source_type=effective_source_type.value,
             reason=ingest_result.confidence_reason,
+            tier_results=ingest_result.metadata.get("tier_results") or [],
+            url=url,
         )
 
     summarizer_cls = get_summarizer(effective_source_type)

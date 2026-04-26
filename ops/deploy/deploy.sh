@@ -95,6 +95,19 @@ ACTIVE_CONTAINER_ID="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME
 
 echo "$IDLE" > "$ACTIVE_FILE"
 
+log "Running metadata backfill against $IDLE (idempotent, non-fatal)..."
+# T13: enrich pre-existing chunks that lack metadata_enriched_at. The
+# script's IS NULL filter makes repeated runs no-ops. Failure here MUST
+# NOT block the deploy — backfill is enrichment, not correctness-critical.
+# Run in background so it doesn't extend deploy wall-time; logs go to deploy.log.
+BACKFILL_SCRIPT="ops/scripts/backfill_metadata.py"
+if docker exec "zettelkasten-${IDLE}" test -f "$BACKFILL_SCRIPT" 2>/dev/null; then
+    nohup bash -c "docker exec zettelkasten-${IDLE} python $BACKFILL_SCRIPT --batch-size 200 >> '$LOG' 2>&1 || echo '[backfill] WARN: metadata backfill exited non-zero (deploy unaffected)' >> '$LOG'" >/dev/null 2>&1 &
+    log "Metadata backfill dispatched (pid=$!) — see $LOG for progress."
+else
+    log "WARN: $BACKFILL_SCRIPT not found in $IDLE container — skipping backfill."
+fi
+
 log "Handing off $ACTIVE retirement to background drain (${DRAIN_SECONDS}s)..."
 nohup "$ROOT/deploy/retire_color.sh" "$ACTIVE" "$DRAIN_SECONDS" "$ACTIVE_CONTAINER_ID" >/dev/null 2>&1 &
 RETIRE_PID=$!

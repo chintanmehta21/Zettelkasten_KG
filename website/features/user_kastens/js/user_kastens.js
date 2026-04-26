@@ -9,9 +9,12 @@
   var _supabaseClient = null;
   var _session = null;
   var _token = '';
-  var _userNodes = [];              // cached zettels from /api/rag/nodes
+  var _userNodes = [];              // cached zettels from /api/graph?view=my
   var _userNodesLoaded = false;
+  var _userNodesFetchedAt = 0;
+  var _userNodesInflight = null;
   var _selectedNodeIds = new Set();
+  var KASTEN_CHOOSER_TTL_MS = 5000;
 
   var ALL_SOURCES = ['youtube', 'github', 'reddit', 'substack', 'medium', 'twitter', 'web', 'generic'];
 
@@ -154,7 +157,6 @@
   // ── Create Kasten modal ──────────────────────────────────────────
 
   function setupCreateKastenModal() {
-    var btn = document.getElementById('create-kasten-btn');
     var overlay = document.getElementById('create-kasten-overlay');
     var form = document.getElementById('create-kasten-form');
     var nameInput = document.getElementById('kasten-name');
@@ -166,9 +168,10 @@
     var zettelList = document.getElementById('kasten-zettel-list');
     var zettelSearch = document.getElementById('kasten-zettel-search');
 
-    if (!btn || !overlay || !form) return;
+    if (!overlay || !form) return;
 
     function openModal() {
+      // UX-5: paint the modal SHELL synchronously before any data work.
       errEl.textContent = '';
       form.reset();
       _selectedNodeIds = new Set();
@@ -176,14 +179,35 @@
       specificPanel.classList.add('hidden');
       overlay.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+      var listEl = document.getElementById('kasten-zettel-list');
+      if (listEl && (!_userNodesLoaded || _userNodes.length === 0)) {
+        listEl.innerHTML = '<div class="create-kasten-zettel-loading"><span class="btn-inline-spinner" aria-hidden="true"></span>Loading zettels…</div>';
+      }
       setTimeout(function () { nameInput && nameInput.focus(); }, 30);
+      // Defer the network fetch to the next frame so the modal paints first.
+      requestAnimationFrame(function () {
+        var ageMs = Date.now() - _userNodesFetchedAt;
+        if (!_userNodesLoaded || ageMs > KASTEN_CHOOSER_TTL_MS) {
+          loadUserNodes({ silent: true }).then(function () {
+            if (!specificPanel.classList.contains('hidden')) {
+              renderZettelList(zettelSearch ? zettelSearch.value : '');
+            }
+          });
+        }
+      });
     }
     function closeModal() {
       overlay.classList.add('hidden');
       document.body.style.overflow = '';
     }
 
-    btn.addEventListener('click', openModal);
+    // Bind Create Kasten via event delegation on document.body. The direct
+    // getElementById listener went stale when the page re-rendered after
+    // async auth lands and the original button node was replaced; delegation
+    // survives that swap and still fires the click.
+    document.body.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="create-kasten"]')) openModal();
+    });
     overlay.addEventListener('click', function (e) {
       if (e.target && e.target.hasAttribute('data-close-kasten')) closeModal();
     });
@@ -197,9 +221,11 @@
         var v = r.value;
         sourcePanel.classList.toggle('hidden', v !== 'source');
         specificPanel.classList.toggle('hidden', v !== 'specific');
-        if (v === 'specific' && !_userNodesLoaded) {
-          await loadUserNodes();
-          renderZettelList('');
+        if (v === 'specific') {
+          if (!_userNodesLoaded) {
+            await loadUserNodes();
+          }
+          renderZettelList(zettelSearch ? zettelSearch.value : '');
         }
       });
     });
@@ -207,6 +233,20 @@
     if (zettelSearch) {
       zettelSearch.addEventListener('input', function () {
         renderZettelList(zettelSearch.value || '');
+      });
+    }
+
+    // UX-3: explicit Refresh button in the chooser header.
+    var refreshBtn = document.getElementById('kasten-chooser-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async function () {
+        refreshBtn.disabled = true;
+        try {
+          await loadUserNodes({ force: true });
+          renderZettelList(zettelSearch ? zettelSearch.value : '');
+        } finally {
+          refreshBtn.disabled = false;
+        }
       });
     }
 
@@ -235,8 +275,12 @@
         if (!pickedNodeIds.length) { errEl.textContent = 'Select at least one zettel'; return; }
       }
 
+      // UX-6: prevent re-submit while busy + spinner glyph + data-busy.
+      if (submit.disabled) return;
       submit.disabled = true;
-      submit.textContent = 'Creating…';
+      submit.setAttribute('aria-busy', 'true');
+      submit.innerHTML = '<span class="btn-inline-spinner" aria-hidden="true"></span>Creating Kasten…';
+      form.setAttribute('data-busy', 'true');
       try {
         var createResp = await fetch('/api/rag/sandboxes', {
           method: 'POST',
@@ -292,31 +336,52 @@
         errEl.textContent = 'Network error. Please try again.';
       } finally {
         submit.disabled = false;
+        submit.removeAttribute('aria-busy');
         submit.textContent = 'Create';
+        form.removeAttribute('data-busy');
       }
     });
   }
 
   // ── Zettel picker ────────────────────────────────────────────────
 
-  async function loadUserNodes() {
-    try {
-      var resp = await fetch('/api/rag/nodes?limit=500', {
-        headers: { 'Authorization': 'Bearer ' + _token }
-      });
-      if (!resp.ok) {
-        console.warn('[kastens] load nodes failed', resp.status);
+  async function loadUserNodes(opts) {
+    opts = opts || {};
+    if (_userNodesInflight && !opts.force) return _userNodesInflight;
+    _userNodesInflight = (async function () {
+      try {
+        // UX-3: source the chooser from /api/graph?view=my so newly-added
+        // zettels show up; the file-based /api/rag/nodes was lagging.
+        var resp = await fetch('/api/graph?view=my', {
+          credentials: 'include',
+          headers: { 'Authorization': 'Bearer ' + _token }
+        });
+        if (!resp.ok) {
+          console.warn('[kastens] load graph failed', resp.status);
+          _userNodes = [];
+        } else {
+          var data = await resp.json();
+          var nodes = data.nodes || [];
+          _userNodes = nodes.map(function (n) {
+            return {
+              id: n.id,
+              name: n.name || n.title || n.id,
+              source_type: n.group || n.source_type || 'web',
+              summary: n.summary || n.description || ''
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('[kastens] load graph err', e);
         _userNodes = [];
-        _userNodesLoaded = true;
-        return;
       }
-      var data = await resp.json();
-      _userNodes = data.nodes || [];
       _userNodesLoaded = true;
-    } catch (e) {
-      console.warn('[kastens] load nodes err', e);
-      _userNodes = [];
-      _userNodesLoaded = true;
+      _userNodesFetchedAt = Date.now();
+    })();
+    try {
+      await _userNodesInflight;
+    } finally {
+      _userNodesInflight = null;
     }
   }
 

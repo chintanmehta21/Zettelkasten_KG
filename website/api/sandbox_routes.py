@@ -315,6 +315,16 @@ async def add_members(
         source_types=[item.value for item in body.source_types] if body.source_types else None,
         added_via=body.added_via,
     )
+    # Post-iter-06 guard: when the caller passes explicit node_ids, every id
+    # must land in rag_sandbox_members. A short count signals the silent-no-op
+    # regression fixed by 2026-04-26_fix_rag_bulk_add_to_sandbox.sql.
+    if body.node_ids:
+        requested_node_ids = body.node_ids
+        if added != len(requested_node_ids):
+            raise HTTPException(
+                500,
+                detail=f"Sandbox bulk-add silently dropped rows: requested={len(requested_node_ids)} added={added}",
+            )
     members = await runtime.sandboxes.list_members(sandbox_id, runtime.kg_user_id)
     return {
         "status": "ok",

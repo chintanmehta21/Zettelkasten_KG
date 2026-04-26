@@ -18,7 +18,7 @@
 
   var avatarBtn, avatarImg, avatarFallback, avatarDropdown, avatarWrap;
   var cardGrid, emptyState, zettelCount, userDisplayName;
-  var addZettelBtn, addZettelDropdown, addZettelForm, addUrlInput;
+  var addZettelDropdown, addZettelForm, addUrlInput;
   var addSubmitBtn, addError, addLoading;
   var avatarModal, avatarModalOverlay, avatarModalClose, avatarGrid;
   var menuProfile, menuNexus, menuSignout;
@@ -33,7 +33,6 @@
     emptyState = document.getElementById('empty-state');
     zettelCount = document.getElementById('zettel-count');
     userDisplayName = document.getElementById('user-display-name');
-    addZettelBtn = document.getElementById('add-zettel-btn');
     addZettelDropdown = document.getElementById('add-zettel-dropdown');
     addZettelForm = document.getElementById('add-zettel-form');
     addUrlInput = document.getElementById('add-url-input');
@@ -544,6 +543,58 @@
       .trim();
   }
 
+  // ── My Zettels badge (UX-8) ──────────────────────────────────────
+  // The header badge was set once at render time and drifted from the
+  // authoritative count returned by /api/graph?view=my as the user added
+  // zettels. We now refetch on add success and on stale interaction.
+
+  var _badgeUpdatedAt = 0;
+  var BADGE_TTL_MS = 60 * 1000;
+  var _badgeRefreshing = false;
+  var _badgeListenersBound = false;
+
+  async function refreshMyZettelsBadge(token) {
+    if (_badgeRefreshing) return;
+    _badgeRefreshing = true;
+    try {
+      var resp = await fetch('/api/graph?view=my', {
+        credentials: 'include',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) return;
+      var data = await resp.json();
+      var nodes = data.nodes || [];
+      var links = data.links || [];
+      var badge = document.getElementById('zettel-count');
+      if (badge) badge.textContent = nodes.length;
+      var kgN = document.getElementById('kg-node-count');
+      var kgL = document.getElementById('kg-link-count');
+      if (kgN) kgN.textContent = nodes.length;
+      if (kgL) kgL.textContent = links.length;
+      _badgeUpdatedAt = Date.now();
+    } catch (e) {
+      console.warn('[home] badge refresh failed', e);
+    } finally {
+      _badgeRefreshing = false;
+    }
+  }
+
+  function bindBadgeFreshness(token) {
+    if (_badgeListenersBound) return;
+    _badgeListenersBound = true;
+    _badgeUpdatedAt = Date.now();
+    function maybeRefresh() {
+      if (Date.now() - _badgeUpdatedAt > BADGE_TTL_MS) {
+        refreshMyZettelsBadge(token);
+      }
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') maybeRefresh();
+    });
+    var vault = document.getElementById('home-vault');
+    if (vault) vault.addEventListener('click', maybeRefresh);
+  }
+
   // ── Add Zettel ────────────────────────────────────────────────────
 
   // ── Glass Shatter Animation ─────────────────────────────────────
@@ -666,7 +717,31 @@
 
   async function addZettel(url, token) {
     if (addError) addError.textContent = '';
-    if (addSubmitBtn) addSubmitBtn.disabled = true;
+    // UX-2: immediate progress feedback — disable + spinner label + busy attr.
+    var addWrapEl = document.getElementById('add-zettel-wrap');
+    var _origSubmitLabel = null;
+    if (addSubmitBtn) {
+      addSubmitBtn.disabled = true;
+      _origSubmitLabel = addSubmitBtn.textContent;
+      addSubmitBtn.innerHTML = '<span class="btn-inline-spinner" aria-hidden="true"></span>Summarizing…';
+      addSubmitBtn.setAttribute('aria-busy', 'true');
+    }
+    if (addWrapEl) addWrapEl.setAttribute('data-busy', 'true');
+    // UX-2 bonus: clarifying message after 30s if still in flight.
+    var _slowMsgTimer = setTimeout(function () {
+      if (addError && addWrapEl && addWrapEl.getAttribute('data-busy') === 'true') {
+        addError.textContent = 'Still working… large pages can take up to 60 s.';
+      }
+    }, 30000);
+    function _restoreAddButton() {
+      clearTimeout(_slowMsgTimer);
+      if (addSubmitBtn) {
+        addSubmitBtn.disabled = false;
+        addSubmitBtn.textContent = _origSubmitLabel || 'Add';
+        addSubmitBtn.removeAttribute('aria-busy');
+      }
+      if (addWrapEl) addWrapEl.removeAttribute('data-busy');
+    }
 
     // Capture dropdown rect before hiding
     var dropdownRect = addZettelDropdown ? addZettelDropdown.getBoundingClientRect() : null;
@@ -818,12 +893,16 @@
 
       var count = parseInt(zettelCount.textContent || '0', 10) + 1;
       zettelCount.textContent = count;
+      // UX-2: clear any slow-message that may have appeared in-flight.
+      if (addError) addError.textContent = '';
+      // UX-8: refresh the My Zettels badge authoritatively from /api/graph.
+      refreshMyZettelsBadge(token);
     } catch (e) {
       if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (addError) addError.textContent = e.message;
       if (addZettelDropdown) addZettelDropdown.classList.add('open');
     } finally {
-      if (addSubmitBtn) addSubmitBtn.disabled = false;
+      _restoreAddButton();
     }
   }
 
@@ -969,16 +1048,23 @@
       });
     }
 
-    // Add Zettel toggle
-    if (addZettelBtn) {
-      addZettelBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        addZettelDropdown.classList.toggle('open');
-        if (addZettelDropdown.classList.contains('open') && addUrlInput) {
-          addUrlInput.focus();
-        }
-      });
-    }
+    // Add Zettel toggle — bound via event delegation on document.body so the
+    // handler survives async re-renders (e.g. avatar/auth state landing after
+    // initial paint replaces the toolbar DOM and would orphan a direct
+    // getElementById listener). Filter by data-action so the listener only
+    // ever fires on the real Add button.
+    document.body.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action="add-zettel"]');
+      if (!btn) return;
+      e.stopPropagation();
+      var dropdown = document.getElementById('add-zettel-dropdown');
+      if (!dropdown) return;
+      dropdown.classList.toggle('open');
+      var urlInput = document.getElementById('add-url-input');
+      if (dropdown.classList.contains('open') && urlInput) {
+        urlInput.focus();
+      }
+    });
 
     // Add Zettel form submit
     if (addZettelForm) {
@@ -1013,17 +1099,22 @@
 
     // Create Kasten modal
     setupCreateKastenModal(token);
+
+    // UX-8: refresh badge on stale interaction (60 s TTL).
+    bindBadgeFreshness(token);
   }
 
   // ── Create Kasten Modal ───────────────────────────────────────────
 
   var _createKastenNodes = [];
   var _createKastenNodesLoaded = false;
+  var _createKastenNodesFetchedAt = 0;
   var _createKastenSelectedIds = new Set();
+  var _createKastenInflight = null;
   var ALL_KASTEN_SOURCES = ['youtube', 'github', 'reddit', 'substack', 'medium', 'twitter', 'web', 'generic'];
+  var KASTEN_CHOOSER_TTL_MS = 5000;
 
   function setupCreateKastenModal(token) {
-    var btn = document.getElementById('create-kasten-btn');
     var overlay = document.getElementById('create-kasten-overlay');
     var form = document.getElementById('create-kasten-form');
     var nameInput = document.getElementById('kasten-name');
@@ -1033,9 +1124,12 @@
     var sourcePanel = document.getElementById('kasten-scope-source-panel');
     var specificPanel = document.getElementById('kasten-scope-specific-panel');
     var zettelSearch = document.getElementById('kasten-zettel-search');
-    if (!btn || !overlay || !form) return;
+    if (!overlay || !form) return;
 
     function openModal() {
+      // UX-5: paint the modal SHELL synchronously before doing any data work.
+      // Prior code's chooser-build / graph-fetch happened on the same tick
+      // and pushed first-paint to ~12 s; now everything async runs after rAF.
       errEl.textContent = '';
       form.reset();
       _createKastenSelectedIds = new Set();
@@ -1043,14 +1137,36 @@
       if (specificPanel) specificPanel.classList.add('hidden');
       overlay.classList.remove('hidden');
       setBodyScrollLocked(true);
+      // Show a placeholder in the (still-hidden) chooser so when the user
+      // toggles the Specific radio there's visible feedback immediately.
+      var listEl = document.getElementById('kasten-zettel-list');
+      if (listEl && (!_createKastenNodesLoaded || _createKastenNodes.length === 0)) {
+        listEl.innerHTML = '<div class="create-kasten-zettel-loading"><span class="btn-inline-spinner" aria-hidden="true"></span>Loading zettels…</div>';
+      }
       setTimeout(function () { nameInput && nameInput.focus(); }, 30);
+      // Defer the network fetch to the next frame so the modal paints first.
+      requestAnimationFrame(function () {
+        var ageMs = Date.now() - _createKastenNodesFetchedAt;
+        if (!_createKastenNodesLoaded || ageMs > KASTEN_CHOOSER_TTL_MS) {
+          loadCreateKastenNodes(token).then(function () {
+            if (specificPanel && !specificPanel.classList.contains('hidden')) {
+              renderCreateKastenZettelList(zettelSearch ? zettelSearch.value : '');
+            }
+          });
+        }
+      });
     }
     function closeModal() {
       overlay.classList.add('hidden');
       setBodyScrollLocked(false);
     }
 
-    btn.addEventListener('click', openModal);
+    // Bind Create Kasten via event delegation so the click survives any
+    // async toolbar re-render (the direct getElementById listener went stale
+    // when auth resolved after initial paint and replaced the button node).
+    document.body.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="create-kasten"]')) openModal();
+    });
     overlay.addEventListener('click', function (e) {
       if (e.target.hasAttribute('data-close-kasten')) closeModal();
     });
@@ -1064,9 +1180,11 @@
         var v = r.value;
         if (sourcePanel) sourcePanel.classList.toggle('hidden', v !== 'source');
         if (specificPanel) specificPanel.classList.toggle('hidden', v !== 'specific');
-        if (v === 'specific' && !_createKastenNodesLoaded) {
-          await loadCreateKastenNodes(token);
-          renderCreateKastenZettelList('');
+        if (v === 'specific') {
+          if (!_createKastenNodesLoaded) {
+            await loadCreateKastenNodes(token);
+          }
+          renderCreateKastenZettelList(zettelSearch ? zettelSearch.value : '');
         }
       });
     });
@@ -1074,6 +1192,20 @@
     if (zettelSearch) {
       zettelSearch.addEventListener('input', function () {
         renderCreateKastenZettelList(zettelSearch.value || '');
+      });
+    }
+
+    // UX-3: explicit Refresh button in the chooser header.
+    var refreshBtn = document.getElementById('kasten-chooser-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async function () {
+        refreshBtn.disabled = true;
+        try {
+          await loadCreateKastenNodes(token, { force: true });
+          renderCreateKastenZettelList(zettelSearch ? zettelSearch.value : '');
+        } finally {
+          refreshBtn.disabled = false;
+        }
       });
     }
 
@@ -1098,8 +1230,12 @@
         if (!pickedNodeIds.length) { errEl.textContent = 'Select at least one zettel'; return; }
       }
 
+      // UX-6: prevent re-submit while busy + spinner glyph + data-busy.
+      if (submit.disabled) return;
       submit.disabled = true;
-      submit.textContent = 'Creating…';
+      submit.setAttribute('aria-busy', 'true');
+      submit.innerHTML = '<span class="btn-inline-spinner" aria-hidden="true"></span>Creating Kasten…';
+      form.setAttribute('data-busy', 'true');
       try {
         var resp = await fetch('/api/rag/sandboxes', {
           method: 'POST',
@@ -1153,29 +1289,54 @@
         errEl.textContent = 'Network error. Please try again.';
       } finally {
         submit.disabled = false;
+        submit.removeAttribute('aria-busy');
         submit.textContent = 'Create';
+        form.removeAttribute('data-busy');
       }
     });
   }
 
-  async function loadCreateKastenNodes(token) {
-    try {
-      var resp = await fetch('/api/rag/nodes?limit=500', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (!resp.ok) {
-        console.warn('[create-kasten] load nodes failed', resp.status);
+  async function loadCreateKastenNodes(token, opts) {
+    opts = opts || {};
+    // Reuse an in-flight request so concurrent callers (open + radio toggle)
+    // don't double-fetch.
+    if (_createKastenInflight && !opts.force) return _createKastenInflight;
+    _createKastenInflight = (async function () {
+      try {
+        // UX-3: source the chooser from /api/graph?view=my so newly-added
+        // zettels are always present (graph is the canonical user view).
+        var resp = await fetch('/api/graph?view=my', {
+          credentials: 'include',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          console.warn('[create-kasten] load graph failed', resp.status);
+          _createKastenNodes = [];
+        } else {
+          var data = await resp.json();
+          var nodes = data.nodes || [];
+          // Normalize to the shape renderCreateKastenZettelList expects:
+          // {id, name, source_type, summary}. Graph uses `group`.
+          _createKastenNodes = nodes.map(function (n) {
+            return {
+              id: n.id,
+              name: n.name || n.title || n.id,
+              source_type: n.group || n.source_type || 'web',
+              summary: n.summary || n.description || ''
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('[create-kasten] load graph err', e);
         _createKastenNodes = [];
-        _createKastenNodesLoaded = true;
-        return;
       }
-      var data = await resp.json();
-      _createKastenNodes = data.nodes || [];
       _createKastenNodesLoaded = true;
-    } catch (e) {
-      console.warn('[create-kasten] load nodes err', e);
-      _createKastenNodes = [];
-      _createKastenNodesLoaded = true;
+      _createKastenNodesFetchedAt = Date.now();
+    })();
+    try {
+      await _createKastenInflight;
+    } finally {
+      _createKastenInflight = null;
     }
   }
 
