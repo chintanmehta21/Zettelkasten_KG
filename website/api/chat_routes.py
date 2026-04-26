@@ -111,7 +111,11 @@ def _serialize_message(row: dict) -> dict:
 
 def _sse_encode(event: dict[str, Any]) -> str:
     event_name = str(event.get("type") or "message")
-    payload = json.dumps(event, ensure_ascii=True)
+    # default=str coerces UUID, datetime, Decimal etc. to strings — Pydantic v2
+    # model_dump() returns these as native objects (not JSON-coerced), so the
+    # encoder must accept them. Without this, the post-stream "done" event
+    # raised "Object of type UUID is not JSON serializable" (iter-06 bug 3).
+    payload = json.dumps(event, ensure_ascii=True, default=str)
     return f"event: {event_name}\ndata: {payload}\n\n"
 
 

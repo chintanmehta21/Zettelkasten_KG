@@ -163,7 +163,9 @@ class RAGOrchestrator:
         if result.replaced_text is not None:
             yield {"type": "replace", "content": result.replaced_text}
 
-        yield {"type": "done", "turn": result.turn.model_dump()}
+        # mode="json" coerces UUID/datetime/Enum to JSON-native types so the
+        # downstream SSE encoder doesn't have to special-case them.
+        yield {"type": "done", "turn": result.turn.model_dump(mode="json")}
 
     @trace_stage("prepare_query")
     async def _prepare_query(self, *, query, user_id) -> _PreparedQuery:
