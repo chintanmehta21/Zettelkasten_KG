@@ -7,6 +7,8 @@
 
   var state = {
     token: '',
+    userName: 'You',
+    userEmail: '',
     sandboxes: [],
     sessionId: '',
     sandboxId: '',
@@ -105,9 +107,22 @@
         },
       });
       var sessionResult = await client.auth.getSession();
-      return sessionResult && sessionResult.data && sessionResult.data.session
-        ? sessionResult.data.session.access_token
-        : '';
+      var session = sessionResult && sessionResult.data && sessionResult.data.session;
+      if (!session) return '';
+      // Personalize the role label: prefer full_name from OAuth metadata, fall
+      // back to the local-part of the email (everything before "@"), then to
+      // the literal "You". CSS still uppercases the label.
+      try {
+        var meta = session.user && session.user.user_metadata || {};
+        var email = (session.user && session.user.email) || '';
+        state.userEmail = email;
+        var name = meta.full_name || meta.name || meta.given_name || '';
+        if (!name && email) {
+          name = email.split('@')[0].replace(/[._]+/g, ' ');
+        }
+        if (name) state.userName = name.trim().slice(0, 32);
+      } catch (_) { /* fall through to default 'You' */ }
+      return session.access_token;
     } catch (err) {
       console.error('[user_rag] auth init failed', err);
       return '';
@@ -311,7 +326,11 @@
     head.className = 'rag-message-head';
     var roleSpan = document.createElement('span');
     roleSpan.className = 'rag-message-role';
-    roleSpan.textContent = role;
+    // Personalize the user role with the signed-in user's name; assistant stays
+    // a stable product label so users orient quickly.
+    roleSpan.textContent = role === 'user'
+      ? (state.userName || 'You')
+      : 'Zettelkasten';
     var metaSpan = document.createElement('span');
     metaSpan.className = 'rag-message-meta';
     head.appendChild(roleSpan);
@@ -450,25 +469,53 @@
       els.input.value = '';
       autoGrow();
 
-      var response = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + state.token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: content,
-          quality: els.qualitySelect.value,
-          scope_filter: buildScopeFilter(),
-          stream: true
-        })
+      var requestBody = JSON.stringify({
+        content: content,
+        quality: els.qualitySelect.value,
+        scope_filter: buildScopeFilter(),
+        stream: true
       });
-
-      if (!response.ok || !response.body) {
-        var payload = await safeJson(response);
-        var msg = (payload && (payload.detail && (payload.detail.message || payload.detail))) || 'The chat request failed.';
-        throw new Error(typeof msg === 'string' ? msg : 'The chat request failed.');
+      // Single retry on transient infra failures (502/503/504, fetch reject).
+      // The orchestrator and proxy stack occasionally drop the first
+      // streaming connection during cold-start or blue/green cutover; a
+      // 1-second backoff is enough to avoid the flake without making real
+      // failures visibly slower to the user.
+      var attempts = [0, 1];
+      var response = null;
+      var lastErr = null;
+      for (var i = 0; i < attempts.length; i++) {
+        if (attempts[i] > 0) {
+          setStatus('Reconnecting…');
+          await new Promise(function (r) { setTimeout(r, 1000); });
+        }
+        try {
+          response = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + state.token,
+              'Content-Type': 'application/json'
+            },
+            body: requestBody
+          });
+          if (response.ok && response.body) { lastErr = null; break; }
+          // 502/503/504 → retry once; 4xx → terminal.
+          if (i + 1 < attempts.length && response.status >= 500 && response.status < 600) {
+            lastErr = new Error('Upstream returned ' + response.status);
+            continue;
+          }
+          var payload = await safeJson(response);
+          var msg = (payload && (payload.detail && (payload.detail.message || payload.detail))) || ('The chat request failed (' + response.status + ').');
+          throw new Error(typeof msg === 'string' ? msg : 'The chat request failed.');
+        } catch (fetchErr) {
+          lastErr = fetchErr;
+          // TypeError = fetch network failure → retry once.
+          if (i + 1 < attempts.length && fetchErr && (fetchErr.name === 'TypeError' || /network|failed to fetch/i.test(fetchErr.message || ''))) {
+            continue;
+          }
+          throw fetchErr;
+        }
       }
+      if (lastErr) throw lastErr;
 
       await consumeSSE(response.body.getReader(), assistantNode);
     } catch (err) {

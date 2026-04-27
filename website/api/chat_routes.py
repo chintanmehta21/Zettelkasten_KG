@@ -109,6 +109,16 @@ def _serialize_message(row: dict) -> dict:
     }
 
 
+def _safe_error_message(exc: BaseException, *, limit: int = 320) -> str:
+    """Return a chat-safe error string capped at `limit` chars.
+
+    Strips internal Python traceback noise and surfaces a leaf message users
+    can act on (or copy verbatim into a bug report).
+    """
+    msg = str(exc).strip() or exc.__class__.__name__
+    return msg[:limit]
+
+
 def _sse_encode(event: dict[str, Any]) -> str:
     event_name = str(event.get("type") or "message")
     # default=str coerces UUID, datetime, Decimal etc. to strings — Pydantic v2
@@ -174,30 +184,45 @@ async def _stream_answer(
     # browser/proxy combos surface that long header-stall as a generic
     # "network error" before the real answer stream begins.
     yield _sse_encode({"type": "status", "stage": "queued"})
-    await runtime.sessions.update_session(
-        UUID(session["id"]),
-        kg_user_id,
-        last_scope_filter=body.scope_filter.model_dump(),
-        quality_mode=body.quality,
-    )
-    query = ChatQuery(
-        session_id=UUID(session["id"]),
-        sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
-        content=body.content,
-        scope_filter=body.scope_filter,
-        quality=body.quality,
-        stream=True,
-    )
+
+    # Wrap EVERYTHING after the sentinel in one try/except so any failure —
+    # update_session DB error, ChatQuery construction error, orchestrator
+    # exception, post-answer side-effect exception — surfaces to the client
+    # as an SSE `error` event on the already-200 response, never as a 5xx
+    # mid-stream connection drop. The latter is what the browser renders as
+    # the generic "network error" the user has been seeing.
     try:
+        await runtime.sessions.update_session(
+            UUID(session["id"]),
+            kg_user_id,
+            last_scope_filter=body.scope_filter.model_dump(),
+            quality_mode=body.quality,
+        )
+        query = ChatQuery(
+            session_id=UUID(session["id"]),
+            sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
+            content=body.content,
+            scope_filter=body.scope_filter,
+            quality=body.quality,
+            stream=True,
+        )
         async for event in runtime.orchestrator.answer_stream(query=query, user_id=kg_user_id):
             if event.get("type") == "done":
-                await _post_answer_side_effects(
-                    runtime,
-                    kg_user_id,
-                    session,
-                    body.content,
-                    body.scope_filter.model_dump(),
-                )
+                try:
+                    await _post_answer_side_effects(
+                        runtime,
+                        kg_user_id,
+                        session,
+                        body.content,
+                        body.scope_filter.model_dump(),
+                    )
+                except Exception:
+                    # Side-effect failure must not poison the answer the user
+                    # already sees; log and continue.
+                    logger.exception(
+                        "Post-answer side effect failed for session %s",
+                        session["id"],
+                    )
             yield _sse_encode(event)
     except Exception as exc:
         logger.exception("Streaming answer failed for session %s", session["id"])
@@ -205,7 +230,7 @@ async def _stream_answer(
             {
                 "type": "error",
                 "code": "chat_failed",
-                "message": str(exc),
+                "message": _safe_error_message(exc),
             }
         )
 
