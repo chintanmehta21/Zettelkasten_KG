@@ -588,6 +588,39 @@
     font-family: var(--font-mono);
 }
 
+/* 3A.1: Sticky Select-all header for the add-zettels modal. Teal accent. */
+.rag-add-list .rag-add-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--accent-glow);
+    border-bottom: 1px solid var(--accent-muted);
+    font-size: 0.85rem;
+    cursor: default;
+}
+.rag-add-list .rag-add-header:hover { background: var(--accent-glow); }
+.rag-add-list .rag-add-header input[type="checkbox"] {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.rag-add-list .rag-add-header-label {
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.rag-add-list .rag-add-header-counter {
+    color: var(--accent);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
 .rag-delete-confirm {
     display: flex;
     align-items: center;

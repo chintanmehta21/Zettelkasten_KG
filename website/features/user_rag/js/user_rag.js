@@ -865,11 +865,44 @@
     var visible = state.userNodes.filter(function (n) {
       return !query || (n.name || '').toLowerCase().indexOf(query) >= 0;
     });
+    // Selectable = visible AND not already a member of this Kasten.
+    var selectable = visible.filter(function (n) { return !state.sandboxMemberIds.has(n.id); });
+    var selectableCount = selectable.length;
+    var selectedVisibleCount = selectable.filter(function (n) {
+      return state.addModalSelected.has(n.id);
+    }).length;
+
+    // Header row with Select all + counter (3A.1).
+    var header = document.createElement('li');
+    header.className = 'rag-add-header';
+    var allChecked = selectableCount > 0 && selectedVisibleCount === selectableCount;
+    var someChecked = selectedVisibleCount > 0 && selectedVisibleCount < selectableCount;
+    header.innerHTML =
+      '<input type="checkbox" id="rag-add-select-all"' +
+      (allChecked ? ' checked' : '') +
+      (selectableCount === 0 ? ' disabled' : '') + '>' +
+      '<label for="rag-add-select-all" class="rag-add-header-label">Select all visible</label>' +
+      '<span class="rag-add-header-counter" id="rag-add-counter">' +
+      selectedVisibleCount + ' / ' + selectableCount + ' selected</span>';
+    els.addList.appendChild(header);
+    var headerCb = header.querySelector('#rag-add-select-all');
+    headerCb.indeterminate = someChecked;
+    headerCb.addEventListener('click', function (e) { e.stopPropagation(); });
+    headerCb.addEventListener('change', function () {
+      if (headerCb.checked) {
+        selectable.forEach(function (n) { state.addModalSelected.add(n.id); });
+      } else {
+        selectable.forEach(function (n) { state.addModalSelected.delete(n.id); });
+      }
+      renderAddList();
+    });
+
     if (!visible.length) {
       var empty = document.createElement('li');
       empty.className = 'member';
       empty.textContent = 'No zettels match.';
       els.addList.appendChild(empty);
+      updateAddSubmit();
       return;
     }
     visible.forEach(function (node) {
@@ -892,14 +925,36 @@
           checkbox.checked = true;
         }
         updateAddSubmit();
+        refreshAddHeaderCounter();
       };
       li.addEventListener('click', function (e) {
         if (e.target !== checkbox) toggle();
-        else updateAddSubmit();
+        else { updateAddSubmit(); refreshAddHeaderCounter(); }
       });
       els.addList.appendChild(li);
     });
     updateAddSubmit();
+  }
+
+  // Sync the Select-all header counter + checkbox state without a full
+  // re-render (avoids losing focus on the search input or scroll position).
+  function refreshAddHeaderCounter() {
+    var query = (els.addSearch.value || '').trim().toLowerCase();
+    var visible = state.userNodes.filter(function (n) {
+      return !query || (n.name || '').toLowerCase().indexOf(query) >= 0;
+    });
+    var selectable = visible.filter(function (n) { return !state.sandboxMemberIds.has(n.id); });
+    var selectableCount = selectable.length;
+    var selectedVisibleCount = selectable.filter(function (n) {
+      return state.addModalSelected.has(n.id);
+    }).length;
+    var counter = document.getElementById('rag-add-counter');
+    if (counter) counter.textContent = selectedVisibleCount + ' / ' + selectableCount + ' selected';
+    var headerCb = document.getElementById('rag-add-select-all');
+    if (headerCb) {
+      headerCb.checked = selectableCount > 0 && selectedVisibleCount === selectableCount;
+      headerCb.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < selectableCount;
+    }
   }
 
   function updateAddSubmit() {
