@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -206,31 +207,62 @@ async def _stream_answer(
             quality=body.quality,
             stream=True,
         )
-        async for event in runtime.orchestrator.answer_stream(query=query, user_id=kg_user_id):
-            if event.get("type") == "done":
-                try:
-                    await _post_answer_side_effects(
-                        runtime,
-                        kg_user_id,
-                        session,
-                        body.content,
-                        body.scope_filter.model_dump(),
-                    )
-                except Exception:
-                    # Side-effect failure must not poison the answer the user
-                    # already sees; log and continue.
-                    logger.exception(
-                        "Post-answer side effect failed for session %s",
-                        session["id"],
-                    )
-            yield _sse_encode(event)
+
+        # Server-side retry on the orchestrator iter. The first call after a
+        # cold container reliably fails on "network error" — supabase-py /
+        # google-genai connection-pool warmup races with the first request.
+        # One automatic retry with a short backoff hides that from the user.
+        last_exc: Exception | None = None
+        produced_any = False
+        for attempt in range(2):
+            try:
+                async for event in runtime.orchestrator.answer_stream(
+                    query=query, user_id=kg_user_id
+                ):
+                    produced_any = True
+                    if event.get("type") == "done":
+                        try:
+                            await _post_answer_side_effects(
+                                runtime,
+                                kg_user_id,
+                                session,
+                                body.content,
+                                body.scope_filter.model_dump(),
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Post-answer side effect failed for session %s",
+                                session["id"],
+                            )
+                    yield _sse_encode(event)
+                last_exc = None
+                break
+            except Exception as inner_exc:
+                last_exc = inner_exc
+                logger.warning(
+                    "answer_stream attempt %d/2 failed for session %s: %r",
+                    attempt + 1,
+                    session["id"],
+                    inner_exc,
+                )
+                if produced_any:
+                    # Already streamed tokens to the client; cannot rewind.
+                    break
+                if attempt + 1 < 2:
+                    await asyncio.sleep(0.8)
+                    continue
+
+        if last_exc is not None:
+            raise last_exc
     except Exception as exc:
-        logger.exception("Streaming answer failed for session %s", session["id"])
+        logger.exception(
+            "Streaming answer failed for session %s: %r", session["id"], exc
+        )
         yield _sse_encode(
             {
                 "type": "error",
                 "code": "chat_failed",
-                "message": _safe_error_message(exc),
+                "message": _safe_error_message(exc) or "The pipeline hit an error. Please retry.",
             }
         )
 
