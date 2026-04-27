@@ -254,6 +254,19 @@
     if (current && current.default_quality) {
       els.qualitySelect.value = current.default_quality;
     }
+    updateComposerPlaceholder();
+  }
+
+  // 3B.1: Composer placeholder reflects the active Kasten name. The
+  // ?focus_node= deep-link override (set in init() before sandboxes load)
+  // always wins so a per-zettel question does not get retitled.
+  function updateComposerPlaceholder() {
+    if (state.focusNodeTitle) return;
+    var sandbox = currentSandbox();
+    var name = sandbox && sandbox.name
+      ? String(sandbox.name).slice(0, 40)
+      : 'your Zettelkasten';
+    els.input.placeholder = 'Ask ' + name + ' something…';
   }
 
   function currentSandbox() {
@@ -275,6 +288,7 @@
       }
       updateChatTitle();
       updateDocTitle();
+      updateComposerPlaceholder();
 
       var payload = await api('/api/rag/sessions/' + encodeURIComponent(sessionId) + '/messages');
       renderMessages(payload.messages || []);
