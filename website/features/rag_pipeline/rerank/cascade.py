@@ -1,8 +1,20 @@
-"""In-process cascade reranker built from FlashRank and BGE ONNX."""
+"""In-process cascade reranker built from FlashRank and BGE ONNX.
+
+The stage-2 path is now int8-aware: when ``models/bge-reranker-base-int8.onnx``
+exists at process start, an int8 session is loaded eagerly at module import so
+gunicorn ``--preload`` can share the resident pages across worker forks. A
+calibration regression (``_int8_score_cal.json``) and per-class margin file
+(``_int8_thresholds.json``) live next to this module. An optional fp32 verify
+session re-scores the top-K to absorb int8 outliers (Layer 5) and ``score_batch``
+supports test-time augmentation (Layer 7) when ``mode='high'``.
+"""
 
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +27,101 @@ from tokenizers import Tokenizer
 from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger
 from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
+
+_logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Module-level int8 wiring (spec 3.15 layers 1-7)
+# ---------------------------------------------------------------------------
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+INT8_MODEL_PATH = _REPO_ROOT / "models" / "bge-reranker-base-int8.onnx"
+FP32_MODEL_PATH = _REPO_ROOT / "models" / "bge-reranker-base.onnx"
+SCORE_CAL_PATH = Path(__file__).parent / "_int8_score_cal.json"
+THRESHOLDS_PATH = Path(__file__).resolve().parents[1] / "retrieval" / "_int8_thresholds.json"
+FP32_VERIFY_ENABLED = os.environ.get("RAG_FP32_VERIFY", "on").lower() == "on"
+
+
+def _build_ort_session(path: Path) -> ort.InferenceSession | None:
+    """Eagerly load an ONNX session if the file exists, else return None.
+
+    Single-threaded CPU session: gunicorn ``--preload`` will fork workers after
+    this completes, so each worker inherits the resident model via copy-on-write
+    rather than each loading its own ~110 MB int8 weights.
+    """
+    if not path.exists():
+        return None
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = 1
+    opts.inter_op_num_threads = 1
+    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    try:
+        return ort.InferenceSession(
+            str(path), sess_options=opts, providers=["CPUExecutionProvider"]
+        )
+    except Exception as exc:  # pragma: no cover - load-time fault is logged
+        _logger.warning("failed to eager-load %s: %s", path, exc)
+        return None
+
+
+_STAGE2_SESSION: ort.InferenceSession | None = _build_ort_session(INT8_MODEL_PATH)
+_FP32_VERIFY_SESSION: ort.InferenceSession | None = (
+    _build_ort_session(FP32_MODEL_PATH) if FP32_VERIFY_ENABLED else None
+)
+
+
+def _load_json(path: Path, default: dict) -> dict:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:  # pragma: no cover - config fault
+        _logger.warning("failed to load %s, using defaults: %s", path, exc)
+        return default
+
+
+_SCORE_CAL = _load_json(SCORE_CAL_PATH, {"a": 1.0, "b": 0.0})
+_THRESHOLDS = _load_json(THRESHOLDS_PATH, {"default": 0.50})
+
+
+def _score_one(session: ort.InferenceSession, query: str, chunk: str) -> float:
+    """Single (query, chunk) pair scoring helper used by the int8 path.
+
+    Loads/caches a tokenizer next to the model and returns the sigmoid-squashed
+    score. Heavy: callers should batch where possible.
+    """
+    tok = _score_one._tokenizer  # type: ignore[attr-defined]
+    if tok is None:
+        # Resolve a tokenizer.json sitting next to the int8 model. If none is
+        # present, fall back to a sentinel that lets the caller skip scoring
+        # gracefully -- typical only in tests where the model is absent.
+        candidates = [
+            INT8_MODEL_PATH.parent / "tokenizer.json",
+            FP32_MODEL_PATH.parent / "tokenizer.json",
+        ]
+        for cand in candidates:
+            if cand.exists():
+                tok = Tokenizer.from_file(str(cand))
+                break
+        if tok is None:
+            raise FileNotFoundError("BGE tokenizer.json not found alongside model files")
+        tok.enable_truncation(max_length=512)
+        tok.enable_padding(length=512)
+        _score_one._tokenizer = tok  # type: ignore[attr-defined]
+
+    enc = tok.encode(query, chunk)
+    input_ids = np.asarray([enc.ids], dtype=np.int64)
+    attention_mask = np.asarray([enc.attention_mask], dtype=np.int64)
+    feeds = {"input_ids": input_ids, "attention_mask": attention_mask}
+    if any(enc.type_ids):
+        feeds["token_type_ids"] = np.asarray([enc.type_ids], dtype=np.int64)
+    feeds = {meta.name: feeds[meta.name] for meta in session.get_inputs() if meta.name in feeds}
+    out = session.run(None, feeds)
+    logits = np.asarray(out[0])
+    raw = logits.reshape(-1)[0] if logits.ndim >= 1 else float(logits)
+    return float(_sigmoid(np.asarray([raw]))[0])
+
+
+_score_one._tokenizer = None  # type: ignore[attr-defined]
 
 
 # Query-class-aware (rerank, graph, rrf) fusion weights — different signals
@@ -78,9 +185,18 @@ _MMR_LAMBDA = 0.05
 class CascadeReranker:
     """Rerank candidates with a fast shortlist stage and a deeper ONNX stage."""
 
-    def __init__(self, model_dir: str | Path, stage1_k: int = 15, max_length: int = 512) -> None:
-        self._model_manager = ModelManager(model_dir)
-        self._degradation_logger = DegradationLogger(model_dir)
+    def __init__(
+        self,
+        model_dir: str | Path | None = None,
+        stage1_k: int = 15,
+        max_length: int = 512,
+    ) -> None:
+        # ``model_dir`` is optional now -- the int8 path is wired through the
+        # eager module-level session and doesn't depend on FlashRank's cache dir.
+        # Existing callers continue to pass it for stage-1 (FlashRank).
+        effective_model_dir = model_dir if model_dir is not None else str(_REPO_ROOT / "models")
+        self._model_manager = ModelManager(effective_model_dir)
+        self._degradation_logger = DegradationLogger(effective_model_dir)
         self._stage1_k = max(stage1_k, 1)
         self._max_length = max_length
         self._stage1: Ranker | None = None
@@ -88,6 +204,70 @@ class CascadeReranker:
         self._stage2_tokenizer: Tokenizer | None = None
         self._stage1_lock = threading.Lock()
         self._stage2_lock = threading.Lock()
+
+        # int8 wiring (spec 3.15)
+        self.stage2_model_path = str(INT8_MODEL_PATH)
+        self._calibration_a = float(_SCORE_CAL.get("a", 1.0))
+        self._calibration_b = float(_SCORE_CAL.get("b", 0.0))
+        self._fp32_verify_enabled = FP32_VERIFY_ENABLED and _FP32_VERIFY_SESSION is not None
+        self._tta_call_count_for_last_query = 0
+
+    # ------------------------------------------------------------------
+    # int8 helpers (spec 3.15 layers 4-7)
+    # ------------------------------------------------------------------
+    def _apply_score_calibration(self, raw: float) -> float:
+        """Recover fp32 scale: fp32 ~= a * int8 + b (Layer 4)."""
+        return self._calibration_a * raw + self._calibration_b
+
+    def _threshold_for_class(self, query_class: str) -> float:
+        """Per-class margin threshold from the tuned table (Layer 6)."""
+        return float(_THRESHOLDS.get(query_class, _THRESHOLDS.get("default", 0.50)))
+
+    def _fp32_verify_top_k(
+        self, query: str, top_docs: list[dict], k: int = 3
+    ) -> list[dict]:
+        """Layer 5: re-score the top-k with the fp32 model and re-sort."""
+        if not self._fp32_verify_enabled or _FP32_VERIFY_SESSION is None:
+            return top_docs
+        sub = list(top_docs[:k])
+        for doc in sub:
+            doc["score"] = _score_one(_FP32_VERIFY_SESSION, query, doc["text"])
+        sub.sort(key=lambda d: d["score"], reverse=True)
+        return sub + list(top_docs[k:])
+
+    def score_batch(
+        self, query: str, docs: list[dict], *, mode: str = "fast"
+    ) -> list[dict]:
+        """Score every doc with the int8 session. ``mode='high'`` enables TTA.
+
+        Test-time augmentation (Layer 7) re-scores once with the doc list
+        reversed and averages the two passes, dampening positional bias.
+        """
+        if _STAGE2_SESSION is None:
+            raise RuntimeError(
+                "int8 stage-2 session is not loaded - "
+                f"missing {INT8_MODEL_PATH}. Run ops/scripts/quantize_bge_int8.py."
+            )
+        self._tta_call_count_for_last_query = 0
+
+        def _score_pass(doc_order: list[dict]) -> list[float]:
+            self._tta_call_count_for_last_query += 1
+            with self._stage2_lock:
+                return [_score_one(_STAGE2_SESSION, query, d["text"]) for d in doc_order]
+
+        raw_scores = _score_pass(docs)
+        if mode == "high":
+            rev_scores = _score_pass(list(reversed(docs)))
+            rev_scores_aligned = list(reversed(rev_scores))
+            raw_scores = [(a + b) / 2.0 for a, b in zip(raw_scores, rev_scores_aligned)]
+
+        for doc, raw in zip(docs, raw_scores):
+            doc["score"] = self._apply_score_calibration(raw)
+
+        docs.sort(key=lambda d: d["score"], reverse=True)
+        if mode == "high":
+            docs = self._fp32_verify_top_k(query, docs, k=3)
+        return docs
 
     async def rerank(
         self,

@@ -1,0 +1,9 @@
+{
+  "lookup": 0.55,
+  "vague": 0.50,
+  "multi_hop": 0.48,
+  "thematic": 0.45,
+  "step_back": 0.45,
+  "default": 0.50,
+  "_note": "Tuned by ops/scripts/tune_int8_thresholds.py at quantization time. Re-run if calibration set changes."
+}
