@@ -1,5 +1,7 @@
 # User Authentication Design — Supabase Auth + Google OAuth
 
+> **ARCHIVED CONTEXT — pre-migration spec.** Written while the app was hosted on Render.com (legacy, no longer used). Any "Render Dashboard" / "Render env var" reference below should be read as the production environment generally — those env vars now live in the DigitalOcean droplet's container env, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 **Date**: 2026-03-31
 **Status**: Draft
 **Approach**: Pure client-side Supabase Auth (Approach A)

@@ -48,6 +48,29 @@ This is a live production web application with active users across frontend, bac
 - Proceed through ambiguity without acknowledging it.
 - Present assumptions as verified facts.
 
+## Research Discipline (read before every plan / brainstorm / design)
+
+**The rule:** Every plan, design, recommendation, or question set must be grounded in completed, verified research. Never reason from assumptions, punch-list summaries, or partial agent output when more research is in flight.
+
+**When you dispatch background subagents:**
+1. Wait for **every** dispatched agent to complete before making recommendations or asking decisive questions. A partial picture will silently shape the question set with wrong defaults — and the user will catch you, costing more time than waiting did.
+2. If you must communicate before all agents return, state explicitly which agents are still running and that you are NOT yet making recommendations.
+3. After each agent returns, fully digest its output and check it against any prior recommendation you made — flag and revise anything contradicted.
+4. Only after all agents return AND their outputs have been cross-checked, issue the question set or design.
+
+**When the user asks "rapid-fire" or "be fast":**
+- Speed up communication, not research. Batch questions, drop ceremony, skip preamble.
+- Do NOT speed up by skipping research, by reasoning from punch-list claims, or by guessing at file locations / current behavior.
+- Verify every code claim with `smart_search` / `Read` / `Grep` before stating it. Punch-list items often contain stale assumptions about file paths, threshold names, or query-class labels — treat them as hypotheses to verify, not facts.
+- "Punch list says X exists at file:line" → check the file. Roughly half the time, the claim is wrong or out of date.
+
+**Verification before recommendation:**
+- For every clarifying question with a recommended default, the recommendation must cite a verified file or fact, not a punch-list summary or a memory.
+- For every "fix at file:line" in a design, confirm the file and line exist now.
+- For every infra constraint (RAM, workers, timeouts), measurement or research must justify the number — never a guess.
+
+**When in doubt, dispatch a scout.** A 90-second architecture-scout agent is always cheaper than one wrong recommendation that the user has to correct, then a revised recommendation, then a re-revised plan.
+
 ## Commands
 
 ```bash
@@ -81,9 +104,16 @@ pip install -r ops/requirements-dev.txt
 pip install -e .
 ```
 
-## Deployment (DigitalOcean Droplet)
+## Deployment Infrastructure (Canonical)
 
-Production deploys are automated via GitHub Actions and a blue/green Docker Compose stack on a DigitalOcean droplet.
+**This is the ONLY production environment.** Earlier iterations of this app ran on Render.com; that platform is **legacy / no longer used**. Any doc, comment, or plan that references Render, `*.onrender.com`, the Render dashboard, or "Render Secret Files" is historical context unless explicitly stated otherwise.
+
+- **Provider:** DigitalOcean
+- **Droplet:** Premium Intel — 2 GB RAM, 1 vCPU, 70 GB NVMe SSD
+- **Networking:** DigitalOcean Reserved IP attached (stable public IP across droplet lifecycle events)
+- **Stack:** Docker Compose blue/green (app containers bind `127.0.0.1:10000` and `127.0.0.1:10001`) fronted by a Caddy 2 container that terminates TLS (Let's Encrypt) and reverse-proxies to whichever color is live
+- **CI/CD:** GitHub Actions builds the image to `ghcr.io/chintanmehta21/zettelkasten-kg-website:<git-sha>`, then SSHes into the droplet and runs `/opt/zettelkasten/deploy/deploy.sh <git-sha>` to flip colors with a graceful Caddy reload (zero dropped connections)
+- **DNS:** Cloudflare (delegated from GoDaddy), apex `zettelkasten.in` -> Reserved IP
 
 ### GitHub Actions
 
@@ -117,7 +147,7 @@ The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache)
 
 ### Reddit credentials and RAG chunk density
 
-`REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` are **required for OAuth-backed Reddit extraction** (used by the website `RedditIngestor` and by `ops/scripts/backfill_chunks.py --refetch-source` when it encounters `/r/` URLs). Without them the ingestor degrades to the public JSON endpoint + HTML scraping, which often returns thin content for Reddit's anti-bot walls and caps RAG chunk density at ~1 chunk per post. Set both in the production container's env or `/etc/secrets/api_env`. See `ops/.env.example` for the template.
+`REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` are **required for OAuth-backed Reddit extraction** (used by the website `RedditIngestor` and by `ops/scripts/backfill_chunks.py --refetch-source` when it encounters `/r/` URLs). Without them the ingestor degrades to the public JSON endpoint + HTML scraping, which often returns thin content for Reddit's anti-bot walls and caps RAG chunk density at ~1 chunk per post. On the production droplet, set both in the container env (via `--env-file`) or in the secret file mounted at `/etc/secrets/api_env`. See `ops/.env.example` for the template.
 
 ## Architecture
 
@@ -134,7 +164,7 @@ Key modules in `telegram_bot/pipeline/`:
 
 #### API Key Pool & Model Fallback
 
-A centralized `GeminiKeyPool` (`website/features/api_key_switching/`) manages up to 10 API keys with key-first traversal: `key1/gemini-2.5-flash` → `key2/gemini-2.5-flash` → ... → `key1/gemini-2.5-flash-lite` → `key2/gemini-2.5-flash-lite`. On a 429 rate-limit, it tries the next key (same model) before downgrading to the next model tier. Content-aware routing sends short/simple content to `flash-lite` first to preserve `flash` quota for complex content. Keys are loaded from an `api_env` file (one key per line) at project root or `/etc/secrets/api_env` (Render-compatible secret-file path), with fallback to `GEMINI_API_KEY` for backward compatibility. If ALL keys/models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True`. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API.
+A centralized `GeminiKeyPool` (`website/features/api_key_switching/`) manages up to 10 API keys with key-first traversal: `key1/gemini-2.5-flash` → `key2/gemini-2.5-flash` → ... → `key1/gemini-2.5-flash-lite` → `key2/gemini-2.5-flash-lite`. On a 429 rate-limit, it tries the next key (same model) before downgrading to the next model tier. Content-aware routing sends short/simple content to `flash-lite` first to preserve `flash` quota for complex content. Keys are loaded from an `api_env` file (one key per line) at project root or `/etc/secrets/api_env` (the secret-file path mounted into the droplet container; the path was originally adopted from Render conventions and carried over), with fallback to `GEMINI_API_KEY` for backward compatibility. If ALL keys/models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True`. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API.
 
 ### Source Extractors (plugin pattern)
 

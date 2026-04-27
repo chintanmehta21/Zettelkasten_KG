@@ -1,5 +1,7 @@
 # API Key Switching Implementation Plan
 
+> **ARCHIVED CONTEXT — pre-migration plan.** Written while the app was hosted on Render.com (legacy, no longer used). Any "Render Secret Files" / Render-dashboard step is historical. The `api_env` file format and `/etc/secrets/api_env` path are still used, but mounted into the DigitalOcean droplet container today, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the single Gemini API key with a pool of up to 10 keys, rotated automatically on rate limits using key-first traversal, with content-aware model routing.

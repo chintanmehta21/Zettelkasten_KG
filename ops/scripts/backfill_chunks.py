@@ -52,7 +52,8 @@ def _bootstrap_env() -> None:
     load_dotenv(_PROJECT_ROOT / "supabase" / ".env", override=False)
     load_dotenv(_PROJECT_ROOT / ".env", override=False)
 
-    # Render secret-file paths (prod container)
+    # Secret-file paths mounted into the production droplet container
+    # (path convention originally adopted from Render and carried over).
     for candidate in (
         Path("/etc/secrets/nexus_env"),
         Path("/etc/secrets/api_env"),

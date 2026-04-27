@@ -1,5 +1,7 @@
 # Render → DigitalOcean Migration Implementation Plan
 
+> **ARCHIVED — Historical migration record (legacy, no longer used).** This plan tracked the one-time migration from Render.com to a DigitalOcean droplet. The migration is complete and the droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. **Do not action any Render-related step in this file** — they are preserved for context only. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Migrate the production `website/` FastAPI application from Render.com to a single DigitalOcean Droplet (Premium AMD $7/mo, BLR1) running Docker behind Caddy with zero-downtime blue-green deploys, persistent SSD storage, and 99.9%+ uptime hardening.
