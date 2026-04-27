@@ -44,6 +44,7 @@ import argparse
 import hashlib
 import logging
 import os
+import re
 import socket
 import sys
 import time
@@ -139,10 +140,20 @@ def _checksum(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+_MIGRATION_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(_\d{2})?_[a-z0-9_]+\.sql$")
+
+
 def _list_migrations(directory: Path) -> list[Path]:
     if not directory.is_dir():
         raise RuntimeError(f"Migrations directory not found: {directory}")
-    return sorted(p for p in directory.glob("*.sql") if not p.name.endswith(".down.sql"))
+    files = sorted(p for p in directory.glob("*.sql") if not p.name.endswith(".down.sql"))
+    invalid = [p.name for p in files if not _MIGRATION_NAME_RE.match(p.name)]
+    if invalid:
+        raise RuntimeError(
+            f"Invalid migration filenames: {invalid}. "
+            f"Expected: YYYY-MM-DD[_NN]_<slug>.sql"
+        )
+    return files
 
 
 # ---------------------------------------------------------------------------
@@ -285,16 +296,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     hostname = socket.gethostname()
 
     logger.info("[migration] connecting to %s", _redact_dsn(dsn))
-    try:
-        conn = psycopg.connect(dsn, autocommit=False, connect_timeout=15)
-    except Exception as exc:
+    conn = None
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            conn = psycopg.connect(dsn, autocommit=False, connect_timeout=15)
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            logger.warning(
+                "[migration] connect attempt %d/3 failed: %s",
+                attempt + 1,
+                exc,
+            )
+            if attempt < 2:
+                time.sleep(5)
+    if conn is None:
         logger.error(
-            "could not connect to Postgres at %s: %s. "
+            "could not connect to Postgres at %s after 3 attempts: %s. "
             "If the host did not resolve, the assembled DSN is IPv6-only — "
             "set SUPABASE_DB_URL to the IPv4 pooler endpoint from "
             "Supabase Studio > Project Settings > Database > Connection string.",
             _redact_dsn(dsn),
-            exc,
+            last_exc,
         )
         return 2
 
