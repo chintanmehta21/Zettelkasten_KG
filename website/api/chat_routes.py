@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
+from website.api._concurrency import QueueFull, acquire_rerank_slot
 from website.api.auth import get_current_user
 from website.features.rag_pipeline.service import get_rag_runtime, load_example_queries
 from website.features.rag_pipeline.types import ChatQuery, ScopeFilter, SourceType
@@ -176,6 +177,34 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
         "session_id": session["id"],
         "turn": turn.model_dump(),
     }
+
+
+async def _stream_answer_with_backpressure(
+    runtime,
+    kg_user_id: UUID,
+    session: dict,
+    body: ChatMessageRequest,
+) -> AsyncIterator[str]:
+    """Acquire a rerank slot before streaming; emit an SSE error if shed.
+
+    Wrapping inside the generator keeps the existing 200 SSE response shape:
+    when capacity is exhausted we surface the 503 metadata as an SSE ``error``
+    event so the browser handles it consistently with other late failures.
+    """
+    try:
+        async with acquire_rerank_slot():
+            async for event in _stream_answer(runtime, kg_user_id, session, body):
+                yield event
+    except QueueFull as exc:
+        logger.warning("RAG queue full -- shedding request: %s", exc)
+        yield _sse_encode(
+            {
+                "type": "error",
+                "code": "queue_full",
+                "retry_after_seconds": 5,
+                "message": "Server is busy. Please retry in a few seconds.",
+            }
+        )
 
 
 async def _stream_answer(
@@ -357,8 +386,17 @@ async def create_message(
         raise HTTPException(status_code=404, detail="Session not found")
 
     if body.stream:
+        from website.api._concurrency import _get_state
+
+        state = _get_state()
+        if state.depth >= state.queue_max:
+            raise HTTPException(
+                status_code=503,
+                detail={"reason": "queue_full", "retry_after_seconds": 5},
+                headers={"Retry-After": "5"},
+            )
         return StreamingResponse(
-            _stream_answer(runtime, runtime.kg_user_id, session, body),
+            _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -388,8 +426,17 @@ async def adhoc_message(
         raise HTTPException(status_code=500, detail="Session could not be created")
 
     if body.stream:
+        from website.api._concurrency import _get_state
+
+        state = _get_state()
+        if state.depth >= state.queue_max:
+            raise HTTPException(
+                status_code=503,
+                detail={"reason": "queue_full", "retry_after_seconds": 5},
+                headers={"Retry-After": "5"},
+            )
         return StreamingResponse(
-            _stream_answer(runtime, runtime.kg_user_id, session, body),
+            _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
