@@ -85,8 +85,19 @@ def _read_weights(path: Path) -> dict:
 
 
 def _serialize_turn(turn, query) -> dict:
-    """Flatten an AnswerTurn + GoldQuery into the dict shape EvalRunner expects."""
+    """Flatten an AnswerTurn + GoldQuery into the dict shape EvalRunner expects.
+
+    iter-03 (Task 4A.1): also attaches a `per_stage` sub-dict so the CI
+    gate (Phase 4C) and downstream analysis can grade retrieval recall,
+    reranker margin, synthesizer grounding, critic verdict, query class,
+    model chain, and latency without re-running the orchestrator. The
+    derivation reads only AnswerTurn-level data (no orchestrator
+    instrumentation needed); see ops/scripts/eval/per_stage.py.
+    """
+    from ops.scripts.eval.per_stage import build_per_stage
+
     citations = [c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in (turn.citations or [])]
+    gold_node_ids = list(getattr(query, "gold_node_ids", []) or [])
     return {
         "query_id": query.id,
         "answer": turn.content if hasattr(turn, "content") else (turn.get("content") or ""),
@@ -94,6 +105,7 @@ def _serialize_turn(turn, query) -> dict:
         "retrieved_node_ids": [c["node_id"] for c in citations],
         "reranked_node_ids": [c["node_id"] for c in citations],
         "contexts": [c.get("snippet") or c.get("content") or "" for c in citations],
+        "per_stage": build_per_stage(turn=turn, gold_node_ids=gold_node_ids),
     }
 
 
