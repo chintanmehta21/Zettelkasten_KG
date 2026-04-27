@@ -110,14 +110,20 @@ def _serialize_message(row: dict) -> dict:
     }
 
 
-def _safe_error_message(exc: BaseException, *, limit: int = 320) -> str:
-    """Return a chat-safe error string capped at `limit` chars.
+_GENERIC_USER_ERROR = "I hit a temporary error while answering. Please retry in a moment."
 
-    Strips internal Python traceback noise and surfaces a leaf message users
-    can act on (or copy verbatim into a bug report).
+
+def _safe_error_message(exc: BaseException, *, limit: int = 320) -> str:
+    """Return a user-safe error string.
+
+    End users must NEVER see raw library exception text (httpx network errors,
+    google-genai timeouts, supabase 5xx — all of which stringify in
+    confusing ways like the literal "network error" the user kept seeing).
+    The full traceback is captured server-side via logger.exception; the
+    chat bubble only ever shows a friendly, actionable line.
     """
-    msg = str(exc).strip() or exc.__class__.__name__
-    return msg[:limit]
+    del exc, limit
+    return _GENERIC_USER_ERROR
 
 
 def _sse_encode(event: dict[str, Any]) -> str:

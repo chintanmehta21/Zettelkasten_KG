@@ -246,7 +246,13 @@ class GeminiKeyPool:
         if key_index not in self._clients:
             self._clients[key_index] = genai.Client(
                 api_key=self._keys[key_index],
-                http_options={"timeout": 60_000},
+                # 180s upper bound. The previous 60s value caused gemini-2.5-pro
+                # to abort on long high-quality synthesis queries (multi-hop,
+                # thematic, two-fact extraction) — the user-facing symptom was
+                # the chat bubble showing the SDK's stringified timeout
+                # ("network error") and a Retry button. 180s covers the slowest
+                # observed legitimate response while still bounding runaway.
+                http_options={"timeout": 180_000},
             )
         return self._clients[key_index]
 
