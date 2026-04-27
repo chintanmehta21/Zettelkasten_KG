@@ -67,6 +67,13 @@ DEFAULT_MIGRATIONS_DIR = (
     ROOT / "supabase" / "website" / "kg_public" / "migrations"
 )
 
+# Bootstrap placeholders that an operator may have inserted into
+# ``_migrations_applied.checksum`` to mark a migration as "already
+# applied out-of-band; just record it on next run". On match we treat
+# the migration as applied and silently overwrite nothing — the row's
+# checksum is rewritten only via ``--reconcile-checksum``.
+_BOOTSTRAP_PLACEHOLDERS: tuple[str, ...] = ("manual-prebackfill",)
+
 # Stable lock key derived from the literal string 'apply_migrations' so two
 # concurrent invocations serialize on Postgres rather than racing.
 LOCK_KEY = int.from_bytes(
@@ -245,6 +252,15 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Name of an applied migration to roll back (requires <name>.down.sql).",
     )
+    p.add_argument(
+        "--reconcile-checksum",
+        metavar="NAME",
+        default=None,
+        help=(
+            "Rewrite the recorded checksum for an already-applied migration "
+            "to the current file's SHA-256 (operator review required)."
+        ),
+    )
     return p.parse_args(list(argv) if argv is not None else None)
 
 
@@ -290,6 +306,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         _acquire_lock(conn)
         _ensure_table(conn)
 
+        if args.reconcile_checksum:
+            name = args.reconcile_checksum
+            sql_path = directory / name
+            if not sql_path.exists():
+                logger.error("[migration] reconcile failed: file not found: %s", sql_path)
+                return 1
+            new_checksum = _checksum(sql_path.read_text(encoding="utf-8"))
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE _migrations_applied SET checksum = %s WHERE name = %s",
+                    (new_checksum, name),
+                )
+            conn.commit()
+            logger.warning(
+                "[migration] reconciled checksum for %s -> %s",
+                name,
+                new_checksum[:12],
+            )
+            return 0
+
         if args.rollback:
             return _run_rollback(conn, directory, args.rollback, hostname)
 
@@ -304,7 +340,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if prior is not None:
                 # Allow the bootstrap placeholder so operators can flip to a
                 # real checksum on first successful re-application.
-                if prior == checksum or prior == "manual-prebackfill":
+                if prior == checksum or prior in _BOOTSTRAP_PLACEHOLDERS:
                     logger.info("[migration] skip %s (already applied)", path.name)
                     skipped_count += 1
                     continue

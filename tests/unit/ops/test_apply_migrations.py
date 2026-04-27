@@ -41,6 +41,13 @@ class FakeCursor:
             assert params is not None
             name, checksum, applied_by = params
             self.conn.applied_rows.append((name, checksum))
+        elif sql_low.startswith("update _migrations_applied"):
+            assert params is not None
+            new_checksum, name = params
+            self.conn.applied_rows = [
+                (r[0], new_checksum) if r[0] == name else r
+                for r in self.conn.applied_rows
+            ]
         elif sql_low.startswith("delete from _migrations_applied"):
             assert params is not None
             (name,) = params
@@ -242,3 +249,54 @@ def test_build_dsn_returns_supabase_db_url_when_set(monkeypatch, fake_psycopg):
     monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://u:p@host:5432/db")
     am = _load()
     assert am._build_dsn() == "postgresql://u:p@host:5432/db"
+
+
+def test_bootstrap_placeholders_constant():
+    am = _load()
+    assert "manual-prebackfill" in am._BOOTSTRAP_PLACEHOLDERS
+
+
+def test_bootstrap_placeholder_skips_apply(fake_psycopg, env, mig_dir):
+    am = _load()
+    # Pre-mark first migration with the placeholder — it must be skipped
+    # without an INSERT and without a checksum mismatch.
+    fake_psycopg.applied_rows.append(("001_first.sql", "manual-prebackfill"))
+    rc = am.main(["--migrations-dir", str(mig_dir)])
+    assert rc == 0
+    # Second migration must have been applied normally; first untouched.
+    inserts = [
+        ex for ex in fake_psycopg.executed
+        if ex[0].lower().startswith("insert into _migrations_applied")
+    ]
+    inserted_names = [params[0] for _sql, params in inserts]
+    assert "001_first.sql" not in inserted_names
+    assert "002_second.sql" in inserted_names
+
+
+def test_reconcile_checksum_rewrites_existing_row(fake_psycopg, env, mig_dir):
+    am = _load()
+    fake_psycopg.applied_rows.append(("001_first.sql", "stale-deadbeef"))
+    rc = am.main([
+        "--migrations-dir", str(mig_dir),
+        "--reconcile-checksum", "001_first.sql",
+    ])
+    assert rc == 0
+    updates = [
+        ex for ex in fake_psycopg.executed
+        if ex[0].lower().startswith("update _migrations_applied")
+    ]
+    assert len(updates) == 1
+    _sql, params = updates[0]
+    expected_checksum = am._checksum(
+        (mig_dir / "001_first.sql").read_text(encoding="utf-8")
+    )
+    assert params == (expected_checksum, "001_first.sql")
+
+
+def test_reconcile_checksum_missing_file_returns_error(fake_psycopg, env, mig_dir):
+    am = _load()
+    rc = am.main([
+        "--migrations-dir", str(mig_dir),
+        "--reconcile-checksum", "999_does_not_exist.sql",
+    ])
+    assert rc == 1
