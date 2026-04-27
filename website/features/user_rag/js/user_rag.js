@@ -596,7 +596,16 @@
     if (payload.type === 'done') {
       var turn = payload.turn || {};
       body.textContent = turn.content || body.textContent;
-      replaceCitations(assistantNode, turn.citations || state.currentAssistantCitations || []);
+      // iter-02 q9 surfaced an irrelevant Pragmatic Engineer citation chip on
+      // a correct adversarial refusal — the chip implied a source the answer
+      // didn't actually use. When the synthesizer emits the canned-refusal
+      // string, suppress citations so the UI accurately reflects "nothing
+      // grounded the answer."
+      var isCannedRefusal = /^I can't find that in your Zettels\.?\s*$/i.test(body.textContent || '');
+      replaceCitations(
+        assistantNode,
+        isCannedRefusal ? [] : (turn.citations || state.currentAssistantCitations || [])
+      );
       // End-user UI must never expose internal model name / tier / token
        // counts. The .rag-message-meta element is kept (CSS hides it; data is
        // not written) so a future opt-in devtools panel can read it back from
