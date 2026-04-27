@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import logging
 import os
 import re
@@ -266,6 +267,146 @@ def _run_rollback(conn, directory: Path, name: str, hostname: str) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Schema-drift detection (iter-03 §1C.5)
+# ---------------------------------------------------------------------------
+DEFAULT_MANIFEST_PATH = (
+    ROOT / "supabase" / "website" / "kg_public" / "expected_schema.json"
+)
+
+
+def _introspect_schema(conn) -> dict:
+    """Build a normalized snapshot of the live ``public`` schema.
+
+    Captures, per table, every column's data_type, nullability, and default
+    expression — the four kinds of drift the iter-03 spec calls out
+    (added, removed, type change, nullability change, default change).
+    Functions are captured by their fully-qualified signature; indexes by
+    their definition string for completeness, though only tables and
+    functions feed the gate by default.
+    """
+    snap: dict = {"tables": {}, "functions": {}, "indexes": {}}
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT table_name, column_name, data_type, is_nullable, column_default
+              FROM information_schema.columns
+             WHERE table_schema = 'public'
+             ORDER BY table_name, ordinal_position
+            """
+        )
+        for tbl, col, dtype, is_nullable, default in cur.fetchall():
+            t = snap["tables"].setdefault(tbl, {"columns": {}})
+            t["columns"][col] = {
+                "data_type": dtype,
+                "is_nullable": is_nullable,
+                "default": default,
+            }
+
+        cur.execute(
+            """
+            SELECT indexname, tablename, indexdef
+              FROM pg_indexes
+             WHERE schemaname = 'public'
+             ORDER BY indexname
+            """
+        )
+        for name, tbl, ddef in cur.fetchall():
+            snap["indexes"][name] = {"table": tbl, "definition": ddef}
+
+        cur.execute(
+            """
+            SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS sig,
+                   pg_get_function_result(p.oid) AS rettype
+              FROM pg_proc p
+              JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'public'
+             ORDER BY sig
+            """
+        )
+        for sig, rettype in cur.fetchall():
+            snap["functions"][sig] = {"return_type": rettype}
+
+    return snap
+
+
+def _diff_schemas(expected: dict, live: dict) -> list[str]:
+    """Return a list of human-readable drift descriptions; empty == match."""
+    drift: list[str] = []
+    expected_tables = expected.get("tables", {})
+    live_tables = live.get("tables", {})
+
+    for tbl, spec in expected_tables.items():
+        if tbl not in live_tables:
+            drift.append(f"missing table: {tbl}")
+            continue
+        live_cols = live_tables[tbl].get("columns", {})
+        expected_cols = spec.get("columns", {})
+        for col, expected_col in expected_cols.items():
+            live_col = live_cols.get(col)
+            if live_col is None:
+                drift.append(f"missing column: {tbl}.{col}")
+                continue
+            # Per-attribute comparison so we can name the drift kind.
+            for attr in ("data_type", "is_nullable", "default"):
+                exp_v = expected_col.get(attr) if isinstance(expected_col, dict) else None
+                live_v = live_col.get(attr) if isinstance(live_col, dict) else None
+                # Back-compat: legacy manifest may have stored bare type str.
+                if isinstance(expected_col, str) and attr == "data_type":
+                    exp_v = expected_col
+                if exp_v is None and attr in ("is_nullable", "default"):
+                    # Manifest didn't pin this attribute — skip.
+                    continue
+                if exp_v != live_v:
+                    drift.append(
+                        f"{attr} mismatch: {tbl}.{col} expected={exp_v!r} live={live_v!r}"
+                    )
+        # Removed-column detection: column present live, absent in manifest.
+        for col in live_cols:
+            if col not in expected_cols:
+                drift.append(f"unexpected column (manifest stale?): {tbl}.{col}")
+
+    for fn in expected.get("functions", {}):
+        if fn not in live.get("functions", {}):
+            drift.append(f"missing function: {fn}")
+
+    return drift
+
+
+def _verify_schema(conn, manifest_path: Path) -> int:
+    """Return 0 if live schema matches manifest, 1 if drift detected."""
+    if not manifest_path.exists():
+        logger.error("[migration] expected_schema.json missing: %s", manifest_path)
+        return 1
+    expected = json.loads(manifest_path.read_text(encoding="utf-8"))
+    live = _introspect_schema(conn)
+    drift = _diff_schemas(expected, live)
+    if drift:
+        logger.error("[migration] SCHEMA DRIFT detected:")
+        for d in drift:
+            logger.error("  - %s", d)
+        return 1
+    logger.info("[migration] schema matches expected_schema.json")
+    return 0
+
+
+def _write_manifest(conn, manifest_path: Path) -> int:
+    """Write the live schema to ``manifest_path`` (bootstrap or update)."""
+    snap = _introspect_schema(conn)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        json.dumps(snap, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    logger.warning(
+        "[migration] wrote schema manifest -> %s (%d tables, %d functions)",
+        manifest_path,
+        len(snap["tables"]),
+        len(snap["functions"]),
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -288,6 +429,32 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help=(
             "Rewrite the recorded checksum for an already-applied migration "
             "to the current file's SHA-256 (operator review required)."
+        ),
+    )
+    p.add_argument(
+        "--manifest-path",
+        default=str(DEFAULT_MANIFEST_PATH),
+        help=f"Path to expected_schema.json (default: {DEFAULT_MANIFEST_PATH}).",
+    )
+    p.add_argument(
+        "--bootstrap-manifest",
+        action="store_true",
+        help="Write the live schema to the manifest path and exit.",
+    )
+    p.add_argument(
+        "--update-manifest",
+        action="store_true",
+        help=(
+            "Apply pending migrations, then overwrite the manifest with the "
+            "post-apply schema (use after a deliberate schema change)."
+        ),
+    )
+    p.add_argument(
+        "--check-manifest-fresh",
+        action="store_true",
+        help=(
+            "Compare the live schema to the manifest and exit; do NOT apply "
+            "any migrations. Used by the CI freshness gate."
         ),
     )
     return p.parse_args(list(argv) if argv is not None else None)
@@ -344,9 +511,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     skipped_count = 0
     total_count = 0
     rc = 0
+    manifest_path = Path(args.manifest_path).resolve()
     try:
         _acquire_lock(conn)
         _ensure_table(conn)
+
+        if args.bootstrap_manifest:
+            return _write_manifest(conn, manifest_path)
+
+        if args.check_manifest_fresh:
+            return _verify_schema(conn, manifest_path)
 
         if args.reconcile_checksum:
             name = args.reconcile_checksum
@@ -416,6 +590,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "[migration] applied %s in %.0fms", path.name, elapsed
             )
             applied_count += 1
+
+        # iter-03 §1C.5: post-apply manifest gate. On --update-manifest we
+        # rewrite the manifest from the live schema (deliberate change). On
+        # a normal apply (rc==0, not dry-run) we verify the live schema
+        # matches the manifest and fail the deploy on drift. The gate is
+        # opt-in until the manifest exists at the configured path so the
+        # rollout can land without a live bootstrap blocking deploys; once
+        # the manifest is committed, drift becomes a hard fail.
+        if rc == 0 and not args.dry_run:
+            if args.update_manifest:
+                _write_manifest(conn, manifest_path)
+            elif manifest_path.exists():
+                drift_rc = _verify_schema(conn, manifest_path)
+                if drift_rc != 0:
+                    rc = 1
+            else:
+                logger.warning(
+                    "[migration] schema-drift gate skipped: manifest not "
+                    "found at %s. Bootstrap with --bootstrap-manifest.",
+                    manifest_path,
+                )
     finally:
         _release_lock(conn)
         conn.close()

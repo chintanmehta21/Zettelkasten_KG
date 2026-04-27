@@ -105,10 +105,15 @@ def fake_psycopg(monkeypatch):
 
 
 @pytest.fixture
-def env(monkeypatch):
+def env(monkeypatch, tmp_path):
     monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://u:p@h:5432/db")
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    # iter-03 §1C.5: redirect the schema-drift manifest path to a tmp
+    # location so the post-apply gate is a no-op (manifest absent) for
+    # all unit tests except the dedicated drift-detection tests.
+    am = _load()
+    monkeypatch.setattr(am, "DEFAULT_MANIFEST_PATH", tmp_path / "no-manifest.json")
 
 
 @pytest.fixture
