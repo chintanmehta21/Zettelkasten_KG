@@ -39,7 +39,10 @@ class FakeCursor:
             self._rows = list(self.conn.applied_rows)
         elif sql_low.startswith("insert into _migrations_applied"):
             assert params is not None
-            name, checksum, applied_by = params
+            # Older 3-tuple form supported for back-compat in tests, but the
+            # canonical iter-03 §1C.4 form is 7-tuple with audit columns.
+            name = params[0]
+            checksum = params[1]
             self.conn.applied_rows.append((name, checksum))
         elif sql_low.startswith("update _migrations_applied"):
             assert params is not None
@@ -167,9 +170,10 @@ def test_writes_audit_row_on_success(fake_psycopg, env, mig_dir):
         if ex[0].lower().startswith("insert into _migrations_applied")
     ]
     assert len(inserts) == 2
-    # Each insert carries (name, checksum, hostname) tuple.
+    # iter-03 §1C.4: insert tuple is now
+    # (name, checksum, applied_by, deploy_git_sha, deploy_id, deploy_actor, runner_hostname)
     for _sql, params in inserts:
-        assert params is not None and len(params) == 3
+        assert params is not None and len(params) == 7
 
 
 def test_rolls_back_on_sql_error(fake_psycopg, env, mig_dir):
@@ -291,6 +295,43 @@ def test_reconcile_checksum_rewrites_existing_row(fake_psycopg, env, mig_dir):
         (mig_dir / "2026-01-01_first.sql").read_text(encoding="utf-8")
     )
     assert params == (expected_checksum, "2026-01-01_first.sql")
+
+
+def test_audit_trail_columns_populated_from_env(monkeypatch, fake_psycopg, env, mig_dir):
+    monkeypatch.setenv("DEPLOY_GIT_SHA", "abc123")
+    monkeypatch.setenv("DEPLOY_ID", "run-7-1")
+    monkeypatch.setenv("DEPLOY_ACTOR", "chintanmehta21")
+    am = _load()
+    rc = am.main(["--migrations-dir", str(mig_dir)])
+    assert rc == 0
+    inserts = [
+        ex for ex in fake_psycopg.executed
+        if ex[0].lower().startswith("insert into _migrations_applied")
+    ]
+    assert inserts, "no audit insert observed"
+    for _sql, params in inserts:
+        name, checksum, applied_by, git_sha, deploy_id, actor, runner = params
+        assert git_sha == "abc123"
+        assert deploy_id == "run-7-1"
+        assert actor == "chintanmehta21"
+        assert runner == applied_by  # hostname mirrored
+
+
+def test_audit_trail_columns_null_when_env_missing(
+    monkeypatch, fake_psycopg, env, mig_dir
+):
+    monkeypatch.delenv("DEPLOY_GIT_SHA", raising=False)
+    monkeypatch.delenv("DEPLOY_ID", raising=False)
+    monkeypatch.delenv("DEPLOY_ACTOR", raising=False)
+    am = _load()
+    am.main(["--migrations-dir", str(mig_dir)])
+    inserts = [
+        ex for ex in fake_psycopg.executed
+        if ex[0].lower().startswith("insert into _migrations_applied")
+    ]
+    for _sql, params in inserts:
+        _name, _checksum, _ab, git_sha, deploy_id, actor, _runner = params
+        assert git_sha is None and deploy_id is None and actor is None
 
 
 def test_invalid_filename_rejected(tmp_path):

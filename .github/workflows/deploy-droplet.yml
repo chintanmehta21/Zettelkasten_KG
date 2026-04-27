@@ -180,7 +180,9 @@ jobs:
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
-          envs: ENV_BODY,GHCR_READ_PAT,SHA
+          # iter-03 §1C.4: forward deploy provenance into deploy.sh so the
+          # migration audit row records who/what/which-deploy applied it.
+          envs: ENV_BODY,GHCR_READ_PAT,SHA,DEPLOY_GIT_SHA,DEPLOY_ID,DEPLOY_ACTOR
           command_timeout: 8m
           script: |
             set -euo pipefail
@@ -255,8 +257,14 @@ jobs:
             sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 
             # ── 5. Run deploy with one retry ──
+            # iter-03 §1C.4: preserve DEPLOY_* across sudo so deploy.sh can
+            # forward them into the migration container as audit metadata.
             for attempt in 1 2; do
-              if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
+              if sudo \
+                   DEPLOY_GIT_SHA="$DEPLOY_GIT_SHA" \
+                   DEPLOY_ID="$DEPLOY_ID" \
+                   DEPLOY_ACTOR="$DEPLOY_ACTOR" \
+                   /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
               fi
 
@@ -271,3 +279,6 @@ jobs:
           ENV_BODY: ${{ steps.env.outputs.env_body }}
           GHCR_READ_PAT: ${{ secrets.GHCR_READ_PAT }}
           SHA: ${{ github.sha }}
+          DEPLOY_GIT_SHA: ${{ github.sha }}
+          DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          DEPLOY_ACTOR: ${{ github.actor }}

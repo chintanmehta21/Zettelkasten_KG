@@ -82,8 +82,14 @@ fi
 
 log "[migration] Applying pending Supabase migrations against prod..."
 set +e
+# iter-03 §1C.4: pass deploy provenance so apply_migrations can stamp each
+# audit row with git SHA / deploy id / actor. Defaults guarantee non-null
+# values even when this script is run outside CI (manual operator deploy).
 docker run --rm --network host \
     --env-file /opt/zettelkasten/compose/.env \
+    -e DEPLOY_GIT_SHA="${DEPLOY_GIT_SHA:-$SHA}" \
+    -e DEPLOY_ID="${DEPLOY_ID:-manual-$(date -u +%Y%m%dT%H%M%SZ)}" \
+    -e DEPLOY_ACTOR="${DEPLOY_ACTOR:-$(whoami)}" \
     "$IMAGE" \
     python ops/scripts/apply_migrations.py 2>&1 | tee -a "$LOG"
 MIG_RC=${PIPESTATUS[0]}

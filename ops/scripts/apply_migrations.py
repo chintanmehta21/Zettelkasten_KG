@@ -200,15 +200,33 @@ def _release_lock(conn) -> None:
 # Apply / rollback
 # ---------------------------------------------------------------------------
 def _apply_one(conn, path: Path, sql: str, checksum: str, hostname: str) -> float:
-    """Run one migration file inside a single transaction. Returns elapsed ms."""
+    """Run one migration file inside a single transaction. Returns elapsed ms.
+
+    iter-03 §1C.4: also records deploy provenance (git SHA, deploy id,
+    actor, runner hostname) into the audit row so we can later trace which
+    deploy applied each migration.
+    """
+    git_sha = os.environ.get("DEPLOY_GIT_SHA")
+    deploy_id = os.environ.get("DEPLOY_ID")
+    deploy_actor = os.environ.get("DEPLOY_ACTOR")
     t0 = time.perf_counter()
     try:
         with conn.cursor() as cur:
             cur.execute(sql)
             cur.execute(
-                "INSERT INTO _migrations_applied (name, checksum, applied_by) "
-                "VALUES (%s, %s, %s)",
-                (path.name, checksum, hostname),
+                "INSERT INTO _migrations_applied "
+                "(name, checksum, applied_by, deploy_git_sha, deploy_id, "
+                "deploy_actor, runner_hostname) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (
+                    path.name,
+                    checksum,
+                    hostname,
+                    git_sha,
+                    deploy_id,
+                    deploy_actor,
+                    hostname,
+                ),
             )
         conn.commit()
     except Exception:
