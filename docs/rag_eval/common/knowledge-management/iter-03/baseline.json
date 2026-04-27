@@ -1,0 +1,43 @@
+{
+  "iter": "iter-02",
+  "captured_at": "2026-04-28T00:00:00Z",
+  "source": "docs/rag_eval/common/knowledge-management/iter-02/scores.md (deployed_sha 83da88e)",
+  "kasten": "Knowledge Management & Personal Productivity (sandbox 227e0fb2)",
+  "total_queries": 10,
+  "infra_failures": 5,
+  "orchestrator_reached": 5,
+  "end_to_end": {
+    "gold_at_1_full": 0.30,
+    "gold_at_1_full_note": "3 PASS / 10 queries; counts q4-q7,q10 Cloudflare 502s as failures (infra path is part of e2e)",
+    "gold_at_1_orchestrator_only": 0.60,
+    "gold_at_1_orchestrator_only_note": "3 PASS / 5 reaching orchestrator; reflects synthesizer ceiling when infra OK",
+    "p95_latency_seconds": 35.2,
+    "p95_latency_note": "Single observed elapsed_ms ~35s for q1 fast tier; degraded by Pro→Flash fallback"
+  },
+  "per_stage": {
+    "retrieval_recall_at_10": 1.0,
+    "retrieval_recall_at_10_note": "All 5 reaching orchestrator had correct gold zettel in retrieval set",
+    "retrieval_primary_citation_correct_pct": 0.60,
+    "reranker_top1_top2_margin_p50": null,
+    "reranker_top1_top2_margin_p50_note": "Not separately measured in iter-02 (cascaded inside fast tier)",
+    "synthesizer_grounding_pct": 0.60,
+    "synthesizer_grounding_note": "3 grounded answers out of 5 reaching orchestrator (q3, q8 over-refused despite correct retrieval)",
+    "critic_agreement_with_manual_pct": null,
+    "critic_agreement_with_manual_pct_note": "Critic trace not captured in iter-02"
+  },
+  "ci_gates": {
+    "end_to_end_gold_at_1_min": 0.65,
+    "end_to_end_gold_at_1_min_note": "Floor = max(iter-02 full 0.30, iter-02 orchestrator 0.60) + 0.05 → require 0.65 e2e on iter-03 (13 queries)",
+    "synthesizer_grounding_min": 0.85,
+    "synthesizer_grounding_note": "iter-02 0.60 + 0.25 — fixing synth over-refusal is centerpiece of Phase 2A",
+    "infra_failures_max": 0,
+    "infra_failures_note": "Phase 1B+1A burst capacity must drive Cloudflare 502s to zero on the 13-query burst replay"
+  },
+  "iter_02_known_gaps_rolling_to_iter_03": [
+    "P0: Cloudflare/Caddy 502 storm under burst load (5 concurrent POSTs)",
+    "P1: Synthesizer over-refusal (q3 verbal-punctuation, q8 zk-org practical) when wording diverges from zettel",
+    "P2: Citation chip on canned-refusal answers — fixed in c54c99e (master) post-iter-02",
+    "P1: Pro-tier latency for multi-hop/thematic — needs Strong/Fast routing",
+    "P2: Naruto legacy user-transfer race (q1 secondary citation pollution)"
+  ]
+}
