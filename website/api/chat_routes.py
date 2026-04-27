@@ -167,6 +167,13 @@ async def _stream_answer(
     session: dict,
     body: ChatMessageRequest,
 ) -> AsyncIterator[str]:
+    # Yield a sentinel SSE frame FIRST so the response headers + first byte
+    # flush within milliseconds. Without this, every byte is held back until
+    # update_session() + _prepare_query() (which calls Gemini for query
+    # rewriting on `high`-quality turns and can take 5–30 s) complete; some
+    # browser/proxy combos surface that long header-stall as a generic
+    # "network error" before the real answer stream begins.
+    yield _sse_encode({"type": "status", "stage": "queued"})
     await runtime.sessions.update_session(
         UUID(session["id"]),
         kg_user_id,
