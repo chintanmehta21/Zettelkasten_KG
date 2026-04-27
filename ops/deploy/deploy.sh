@@ -71,6 +71,15 @@ IMAGE_TAG="$SHA" docker compose \
 # Runs the new image as a short-lived helper container so the migration set
 # matches the code about to be deployed. Failure is FATAL — we abort before
 # touching the IDLE container so prod stays on the previous (working) color.
+
+# iter-03 §1C.1 preflight: confirm SUPABASE_DB_URL is in the env-file before
+# we even spin the migration container. Without it apply_migrations exits
+# with rc=2 (config error) — surface that as a clear deploy abort.
+if ! grep -q '^SUPABASE_DB_URL=' /opt/zettelkasten/compose/.env; then
+    log "[deploy] FATAL: SUPABASE_DB_URL missing from /opt/zettelkasten/compose/.env"
+    exit 2
+fi
+
 log "[migration] Applying pending Supabase migrations against prod..."
 set +e
 docker run --rm --network host \
