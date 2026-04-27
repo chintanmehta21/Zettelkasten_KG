@@ -1,5 +1,14 @@
 name: Deploy to DigitalOcean Droplet
 
+# Canonical production target:
+#   - DigitalOcean Premium Intel droplet (2 GB RAM, 1 vCPU, 70 GB NVMe SSD)
+#   - Reserved IP attached (stable across droplet lifecycle events)
+#   - Cloudflare DNS for apex zettelkasten.in
+#   - Caddy 2 container terminates TLS (Let's Encrypt) and proxies to the active color
+#   - Blue/green Docker Compose: blue=127.0.0.1:10000, green=127.0.0.1:10001
+#   - Image registry: ghcr.io/chintanmehta21/zettelkasten-kg-website:<git-sha>
+#   - Cutover script on droplet: /opt/zettelkasten/deploy/deploy.sh <git-sha>
+
 on:
   push:
     branches: [master]

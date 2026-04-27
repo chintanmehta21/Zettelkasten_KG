@@ -140,7 +140,9 @@ docker run -p 10000:10000 --env-file .env ^
 
 ### Production: DigitalOcean Droplet (blue/green)
 
-Production deploys are automated from GitHub Actions. On pushes to `master`, `.github/workflows/deploy-droplet.yml` runs the mocked pytest suite, builds `ops/Dockerfile`, pushes `ghcr.io/chintanmehta21/zettelkasten-kg-website:<git-sha>`, then SSHes into the droplet and runs the blue/green deploy script.
+The canonical production environment runs on a DigitalOcean Premium Intel droplet (2 GB RAM / 1 vCPU / 70 GB NVMe SSD) with a Reserved IP, fronted by Cloudflare DNS for the apex `zettelkasten.in`. A Caddy 2 container terminates TLS (Let's Encrypt) and reverse-proxies to whichever Docker Compose color is live: blue binds `127.0.0.1:10000`, green binds `127.0.0.1:10001`.
+
+Deploys are automated from GitHub Actions. On pushes to `master`, `.github/workflows/deploy-droplet.yml` runs the mocked pytest suite, builds `ops/Dockerfile`, pushes `ghcr.io/chintanmehta21/zettelkasten-kg-website:<git-sha>`, then SSHes into the droplet and runs `/opt/zettelkasten/deploy/deploy.sh <git-sha>` to flip colors with a graceful Caddy reload (zero dropped connections).
 
 ### Note Storage Modes
 
