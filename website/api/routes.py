@@ -108,6 +108,43 @@ async def health():
     return {"status": "ok"}
 
 
+@router.get("/health/warm")
+async def warm():
+    """Pre-warm endpoint: triggers reranker first inference + tokenizer load.
+
+    Called by ``ops/deploy/deploy.sh`` after the new color comes up so the
+    first user request doesn't pay the BGE cold-start tax (~1-3s on a 1 vCPU
+    droplet). Returns 200 with a small JSON payload regardless of whether the
+    int8 model is present -- in the no-model case ``rerank_ms`` is 0 and the
+    body still carries ``warmed=True`` so the deploy script's healthcheck
+    succeeds.
+    """
+    import time as _time
+
+    rerank_ms = 0.0
+    detail = "ok"
+    try:
+        from website.features.rag_pipeline.rerank import cascade as cascade_mod
+        from website.features.rag_pipeline.rerank.cascade import CascadeReranker
+
+        if cascade_mod._STAGE2_SESSION is not None:
+            cr = CascadeReranker()
+            t0 = _time.perf_counter()
+            cr.score_batch(
+                "warmup query",
+                [{"id": "w", "text": "warmup chunk"}],
+                mode="fast",
+            )
+            rerank_ms = round((_time.perf_counter() - t0) * 1000, 1)
+        else:
+            detail = "int8_model_absent"
+    except Exception as exc:  # pragma: no cover - logged for ops
+        logger.warning("warm endpoint encountered %r", exc)
+        detail = f"warmup_failed: {type(exc).__name__}"
+
+    return {"warmed": True, "rerank_ms": rerank_ms, "detail": detail}
+
+
 @router.get("/auth/config")
 async def auth_config():
     """Return public Supabase config for client-side auth init."""

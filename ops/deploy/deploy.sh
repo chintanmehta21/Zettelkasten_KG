@@ -93,6 +93,24 @@ IMAGE_TAG="$SHA" docker compose \
 log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 "$ROOT/deploy/healthcheck.sh" "$IDLE_PORT"
 
+# Pre-warm the new color so the first user request after cutover doesn't pay
+# the BGE int8 ONNX cold-start tax (~1-3s on a 1 vCPU droplet). Best-effort:
+# the loop tolerates the endpoint being briefly unavailable while gunicorn
+# workers come up after --preload.
+log "Pre-warming $IDLE on port $IDLE_PORT..."
+PREWARM_OK=0
+for i in {1..30}; do
+    if curl -fsS "http://127.0.0.1:${IDLE_PORT}/api/health/warm" > /dev/null 2>&1; then
+        log "Pre-warm complete after ${i}s"
+        PREWARM_OK=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$PREWARM_OK" -ne 1 ]]; then
+    log "WARN: pre-warm did not respond within 30s -- proceeding with cutover"
+fi
+
 log "Flipping Caddy upstream to $IDLE..."
 # IMPORTANT: must write in-place (truncate + rewrite) rather than via
 # `mv TMP SNIPPET`. Docker bind mounts of a single file track the inode
