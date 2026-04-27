@@ -512,7 +512,19 @@
             body: requestBody
           });
           if (response.ok && response.body) { lastErr = null; break; }
-          // 502/503/504 → retry once; 4xx → terminal.
+          // 3B.2: 503 + Retry-After is the bounded-queue backpressure
+          // signal from Phase 1B. Honor it precisely instead of the
+          // blanket 1s upstream-5xx retry below.
+          if (i + 1 < attempts.length && response.status === 503) {
+            var retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
+            if (!Number.isFinite(retryAfter) || retryAfter < 1) retryAfter = 5;
+            if (retryAfter > 30) retryAfter = 30;  // sanity cap
+            showQueuedNotice(retryAfter);
+            await new Promise(function (r) { setTimeout(r, retryAfter * 1000); });
+            lastErr = new Error('Queued (503)');
+            continue;
+          }
+          // 502/504 → retry once; 4xx → terminal.
           if (i + 1 < attempts.length && response.status >= 500 && response.status < 600) {
             lastErr = new Error('Upstream returned ' + response.status);
             continue;
@@ -815,6 +827,36 @@
     var div = document.createElement('div');
     div.textContent = String(value || '');
     return div.innerHTML;
+  }
+
+  // 3B.2: Visible "Queued — retrying in Ns" notice driven by the server's
+  // Retry-After header. Replaces any existing notice so concurrent retries
+  // don't stack. Removes itself when the countdown reaches zero.
+  function showQueuedNotice(seconds) {
+    var existing = document.getElementById('rag-queued-notice');
+    if (existing) existing.remove();
+    var notice = document.createElement('div');
+    notice.id = 'rag-queued-notice';
+    notice.className = 'rag-queued-notice';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    notice.innerHTML =
+      '<span class="rag-queued-dot" aria-hidden="true"></span>' +
+      '<span class="rag-queued-text">Lots of questions right now — retrying in ' +
+      '<span class="rag-queued-cd">' + seconds + '</span>s…</span>';
+    var composer = document.querySelector('.rag-composer');
+    if (composer) composer.parentNode.insertBefore(notice, composer);
+    var s = seconds;
+    var cd = notice.querySelector('.rag-queued-cd');
+    var tick = setInterval(function () {
+      s -= 1;
+      if (s <= 0) {
+        clearInterval(tick);
+        if (notice.parentNode) notice.parentNode.removeChild(notice);
+      } else if (cd) {
+        cd.textContent = String(s);
+      }
+    }, 1000);
   }
 
   // ── Add-zettels modal ───────────────────────────────────────────

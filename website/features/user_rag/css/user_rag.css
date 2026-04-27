@@ -588,6 +588,48 @@
     font-family: var(--font-mono);
 }
 
+/* 3B.2: Queued-503 notice. Sits above the sticky composer. Teal-only. */
+.rag-queued-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.5rem 0;
+    padding: 0.5rem 0.85rem;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid var(--accent-muted);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    animation: rag-queued-breathe 1.6s ease-in-out infinite;
+}
+.rag-queued-notice .rag-queued-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 var(--accent);
+    animation: rag-queued-pulse 1.6s ease-out infinite;
+    flex: 0 0 auto;
+}
+.rag-queued-notice .rag-queued-cd {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+@keyframes rag-queued-breathe {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.78; }
+}
+@keyframes rag-queued-pulse {
+    0%   { box-shadow: 0 0 0 0 var(--accent); }
+    70%  { box-shadow: 0 0 0 8px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rag-queued-notice,
+    .rag-queued-notice .rag-queued-dot { animation: none; }
+}
+
 /* 3A.1: Sticky Select-all header for the add-zettels modal. Teal accent. */
 .rag-add-list .rag-add-header {
     position: sticky;
