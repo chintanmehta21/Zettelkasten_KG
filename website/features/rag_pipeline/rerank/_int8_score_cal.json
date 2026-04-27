@@ -1,0 +1,8 @@
+{
+  "a": 1.0,
+  "b": 0.0,
+  "n_points": 0,
+  "fitted_at": "placeholder",
+  "calibration_sha256": "placeholder",
+  "_note": "Identity transform until ops/scripts/fit_score_calibration.py is run on the droplet."
+}
