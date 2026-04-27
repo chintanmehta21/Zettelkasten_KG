@@ -1,0 +1,198 @@
+{
+  "_meta": {
+    "kasten_slug": "knowledge-management",
+    "kasten_name": "Knowledge Management & Personal Productivity",
+    "sandbox_id": "227e0fb2-ff81-4d08-8702-76d9235564f4",
+    "iter": "02",
+    "captured_at": "2026-04-27T05:55:00Z",
+    "deployed_sha": "83da88e (final fix bundle)",
+    "ui_fixes_live_at_capture_time": [
+      "Shared <!--ZK_HEADER--> partial used (was custom header) — keeps rag page in sync with /home/zettels",
+      "Composer textarea overflow:hidden — phantom scrollbar buttons gone",
+      "Advanced Filters disclosure removed (DOM kept hidden so JS contract unchanged); default quality forced to 'high' or 'fast' via JS",
+      "Role label personalized: 'USER' replaced with the signed-in user's display name (\"Naruto\" in this run)",
+      "Assistant label fixed to 'Zettelkasten' (was 'ASSISTANT')",
+      "Message bubbles tighter (reduced padding, smaller role/meta type)",
+      "Model-name + token-count metadata hidden from end users (no infra disclosure)",
+      "SSE pre-yield 'queued' status flush in <100 ms (Caddy/Cloudflare don't time out the response head)",
+      "Server-side single retry on cold-start orchestrator failures (~0.8 s backoff)",
+      "Client-side single retry on 502/503/504 + fetch reject",
+      "Friendly mid-stream error: 'Lost connection mid-answer. Please retry.' (was raw 'network error')",
+      "Friendly orchestrator error: 'I hit a temporary error while answering. Please retry in a moment.'",
+      "Gemini SDK timeout 60s -> 180s (was a hard cap on Pro multi-hop synthesis)"
+    ],
+    "capture_method": "Direct POST /api/rag/adhoc {stream:false} from inside the authenticated chat tab, plus q1 captured via the streaming UI form path (both flow through the same orchestrator). The non-stream path was used for q2–q10 because the streaming SSE path was hitting Cloudflare 502s on long bodies during this capture window.",
+    "quality_mode": "fast (gemini-2.5-flash). High-quality (gemini-2.5-pro) was tried first and consistently blew the 60 s SDK timeout on the multi-hop and thematic queries — the 180 s bump shipped just before this capture but Cloudflare/Caddy upstream was already returning 502 for the long-body adhoc POSTs by then.",
+    "known_constraints": "Five queries (q4, q5, q6, q7, q10) returned 502 Bad Gateway from Cloudflare during the direct-POST capture pass. The 502s arrived in 119–5831 ms — much faster than any orchestrator path could fail, indicating Cloudflare or Caddy is dropping the connection before the upstream container responds. Likely root cause is the 1 GB droplet's single-uvicorn-worker getting oversubscribed when 5 concurrent quality:fast retrieval+rerank+LLM pipelines kick off in the same window. Out of scope for this iter — see next_actions.md."
+  },
+  "results": [
+    {
+      "qid": "q1",
+      "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+      "via": "ui-stream",
+      "quality": "fast",
+      "elapsed_ms": 35220,
+      "is_error": false,
+      "answer": "The `zk-org/zk` command-line tool is written in Go [id=\"gh-zk-org-zk\"]. It processes and supports Markdown for its notes [id=\"gh-zk-org-zk\"].",
+      "citations": [
+        {"rank": 1, "title": "zk-org/zk"},
+        {"rank": 2, "title": "The Pragmatic Engineer: The Product-Minded Engineer"}
+      ],
+      "expected_primary_citation": "gh-zk-org-zk",
+      "scoring": {
+        "answer_correct": true,
+        "primary_citation_correct": true,
+        "two_facts_present": true,
+        "verdict": "PASS"
+      }
+    },
+    {
+      "qid": "q2",
+      "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 28526,
+      "is_error": false,
+      "status": 200,
+      "answer": "Steve Jobs described death as \"the single best invention of Life\" and \"Life's change agent\" for clearing out the old [id=\"yt-steve-jobs-2005-stanford\"]. He claimed that remembering one will die is the most effective way to avoid the \"trap of thinking you have something to lose,\" asserting that \"You are already naked. There is no reason not to follow your heart\" [id=\"yt-steve-jobs-2005-stanford\"].",
+      "citations": [
+        {"rank": 1, "node_id": "yt-steve-jobs-2005-stanford", "title": "Steve Jobs 2005 Stanford Address", "source_type": "youtube"}
+      ],
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "critic_verdict": "supported",
+      "query_class": "lookup",
+      "scoring": {
+        "answer_correct": true,
+        "primary_citation_correct": true,
+        "exact_quotes_present": true,
+        "verdict": "PASS"
+      }
+    },
+    {
+      "qid": "q3",
+      "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 20290,
+      "is_error": false,
+      "status": 200,
+      "answer": "I can't find that in your Zettels.",
+      "citations": [
+        {"rank": 1, "node_id": "yt-effective-public-speakin", "title": "Effective Public Speaking Strategies", "source_type": "youtube"},
+        {"rank": 2, "node_id": "nl-the-pragmatic-engineer-t", "title": "The Pragmatic Engineer: The Product-Minded Engineer", "source_type": "web"}
+      ],
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "critic_verdict": "supported",
+      "query_class": "multi_hop",
+      "scoring": {
+        "answer_correct": false,
+        "primary_citation_correct": true,
+        "false_negative_refusal": true,
+        "verdict": "FAIL — retrieval found the right zettel, synthesizer hallucinated a refusal"
+      }
+    },
+    {
+      "qid": "q4",
+      "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 5699,
+      "is_error": true,
+      "answer": "(fetch threw: SyntaxError on '<!DOCTYPE' — Cloudflare 502 page)",
+      "scoring": {"verdict": "INFRASTRUCTURE_ERROR — Cloudflare 502 mid-batch"}
+    },
+    {
+      "qid": "q5",
+      "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 126,
+      "is_error": true,
+      "answer": "(fetch threw: SyntaxError on '<!DOCTYPE' — Cloudflare 502 page)",
+      "scoring": {"verdict": "INFRASTRUCTURE_ERROR — Cloudflare 502 mid-batch"}
+    },
+    {
+      "qid": "q6",
+      "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function — augmenting cognition rather than just storing information?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 119,
+      "is_error": true,
+      "answer": "(fetch threw: SyntaxError on '<!DOCTYPE' — Cloudflare 502 page)",
+      "scoring": {"verdict": "INFRASTRUCTURE_ERROR — Cloudflare 502 mid-batch"}
+    },
+    {
+      "qid": "q7",
+      "text": "Anything about commencement?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 121,
+      "is_error": true,
+      "answer": "(fetch threw: SyntaxError on '<!DOCTYPE' — Cloudflare 502 page)",
+      "scoring": {"verdict": "INFRASTRUCTURE_ERROR — Cloudflare 502 mid-batch"}
+    },
+    {
+      "qid": "q8",
+      "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 23396,
+      "is_error": false,
+      "status": 200,
+      "answer": "I can't find that in your Zettels.",
+      "citations": [
+        {"rank": 1, "node_id": "nl-the-pragmatic-engineer-t", "title": "The Pragmatic Engineer: The Product-Minded Engineer", "source_type": "web"}
+      ],
+      "expected_primary_citation": "gh-zk-org-zk",
+      "critic_verdict": "supported",
+      "query_class": "lookup",
+      "scoring": {
+        "answer_correct": false,
+        "primary_citation_correct": false,
+        "false_negative_refusal": true,
+        "verdict": "FAIL — retriever picked the wrong zettel (Pragmatic Engineer instead of zk-org/zk) and synthesizer refused"
+      }
+    },
+    {
+      "qid": "q9",
+      "text": "Summarize what this Kasten says about Notion's database features.",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 17759,
+      "is_error": false,
+      "status": 200,
+      "answer": "I can't find that in your Zettels.",
+      "citations": [
+        {"rank": 1, "node_id": "nl-the-pragmatic-engineer-t", "title": "The Pragmatic Engineer: The Product-Minded Engineer", "source_type": "web"}
+      ],
+      "expected_primary_citation": [],
+      "expected_critic_verdict": "unsupported_or_partial",
+      "critic_verdict": "supported",
+      "query_class": "thematic",
+      "scoring": {
+        "answer_correct": true,
+        "hallucination_resisted": true,
+        "verdict": "PASS — adversarial query correctly refused (Notion is not in any zettel). Note the irrelevant Pragmatic Engineer citation chip is a UX bug — refusal should not surface a citation chip."
+      }
+    },
+    {
+      "qid": "q10",
+      "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+      "via": "adhoc-nonstream",
+      "quality": "fast",
+      "elapsed_ms": 5831,
+      "is_error": true,
+      "answer": "(fetch threw: SyntaxError on '<!DOCTYPE' — Cloudflare 502 page)",
+      "scoring": {"verdict": "INFRASTRUCTURE_ERROR — Cloudflare 502 mid-batch"}
+    }
+  ],
+  "summary": {
+    "total_queries": 10,
+    "passed": 3,
+    "failed_synthesizer": 2,
+    "infra_502": 5,
+    "passed_qids": ["q1", "q2", "q9"],
+    "failed_qids": ["q3", "q8"],
+    "infra_qids": ["q4", "q5", "q6", "q7", "q10"]
+  }
+}
