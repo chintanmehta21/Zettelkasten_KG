@@ -36,49 +36,66 @@ def _make_cand(source_type: SourceType, author: str | None = None, channel: str 
 
 
 # --- source-type boost ---------------------------------------------------
+#
+# Spec 2B.1: _source_type_boost signature changed to keyword-only and now
+# returns the *new* score (not a delta). Tests below pass base_score=0.0 so
+# the return value still reflects just the boost magnitude — preserves the
+# legacy assertions while exercising the new contract.
+
+
+def _delta(c, qc, question: str = "") -> float:
+    st = getattr(c.source_type, "value", c.source_type)
+    return _source_type_boost(
+        base_score=0.0,
+        source_type=str(st or ""),
+        query_class=qc,
+        question=question,
+    )
+
 
 def test_thematic_youtube_boost():
     c = _make_cand(SourceType.YOUTUBE)
-    assert _source_type_boost(c, QueryClass.THEMATIC) >= 0.03
+    assert _delta(c, QueryClass.THEMATIC) >= 0.03
 
 
 def test_step_back_youtube_boost():
     c = _make_cand(SourceType.YOUTUBE)
-    assert _source_type_boost(c, QueryClass.STEP_BACK) >= 0.03
+    assert _delta(c, QueryClass.STEP_BACK) >= 0.03
 
 
 def test_lookup_reddit_boost():
     c = _make_cand(SourceType.REDDIT)
-    assert _source_type_boost(c, QueryClass.LOOKUP) >= 0.02
+    assert _delta(c, QueryClass.LOOKUP) >= 0.02
 
 
 def test_source_type_mismatch_zero():
     c = _make_cand(SourceType.GITHUB)
-    assert _source_type_boost(c, QueryClass.THEMATIC) == 0.0
-    assert _source_type_boost(c, QueryClass.LOOKUP) == 0.0
+    assert _delta(c, QueryClass.THEMATIC) == 0.0
+    # LOOKUP + github + no action verb: still zero.
+    assert _delta(c, QueryClass.LOOKUP) == 0.0
 
 
 def test_lookup_youtube_zero():
-    # YouTube only boosted on thematic / step-back, not lookup.
+    # YouTube only boosted on thematic / step-back, not lookup (without action verb).
     c = _make_cand(SourceType.YOUTUBE)
-    assert _source_type_boost(c, QueryClass.LOOKUP) == 0.0
+    assert _delta(c, QueryClass.LOOKUP) == 0.0
 
 
 def test_thematic_reddit_zero():
     c = _make_cand(SourceType.REDDIT)
-    assert _source_type_boost(c, QueryClass.THEMATIC) == 0.0
+    assert _delta(c, QueryClass.THEMATIC) == 0.0
 
 
 def test_source_type_idempotent():
     c = _make_cand(SourceType.YOUTUBE)
-    a = _source_type_boost(c, QueryClass.THEMATIC)
-    b = _source_type_boost(c, QueryClass.THEMATIC)
+    a = _delta(c, QueryClass.THEMATIC)
+    b = _delta(c, QueryClass.THEMATIC)
     assert a == b
 
 
 def test_source_type_bounded():
     c = _make_cand(SourceType.YOUTUBE)
-    assert _source_type_boost(c, QueryClass.THEMATIC) <= 0.05 + 1e-9
+    assert _delta(c, QueryClass.THEMATIC) <= 0.05 + 1e-9
 
 
 # --- author-match boost --------------------------------------------------

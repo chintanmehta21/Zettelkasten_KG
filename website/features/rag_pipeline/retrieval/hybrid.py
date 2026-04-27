@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -183,9 +184,23 @@ class HybridRetriever:
         # legacy callers see zero overhead and zero behavioral change.
         if query_metadata is not None and query_class is not None:
             total_boost = 0.0
+            # Spec 2B.1: action-verb boost matches against the user's actual
+            # question. The first deduped variant is the standalone form of
+            # the user's query (rewriter passes it through verbatim when there
+            # is no transformation), so use it as the source-of-truth string.
+            primary_question = (query_variants or [""])[0] if query_variants else ""
             for candidate in by_key.values():
                 rec = _recency_boost(candidate.metadata, query_class)
-                src = _source_type_boost(candidate, query_class)
+                src_st = getattr(candidate.source_type, "value", candidate.source_type)
+                # _source_type_boost returns the *new* score (base + adjustments).
+                # Subtract the unmodified base to derive the delta we apply.
+                src_new = _source_type_boost(
+                    base_score=0.0,
+                    source_type=str(src_st or ""),
+                    query_class=query_class,
+                    question=primary_question,
+                )
+                src = src_new  # base was 0.0 -> the return is the delta
                 aut = _author_match_boost(candidate, query_metadata)
                 delta = rec + src + aut
                 if delta:
@@ -309,32 +324,65 @@ def _recency_boost(metadata: dict | None, query_class: QueryClass) -> float:
     return scale * max(0.0, 1.0 - age_days / 730.0)
 
 
-def _source_type_boost(candidate: RetrievalCandidate, query_class: QueryClass) -> float:
-    """Return a small boost when a candidate's source type matches the kind of
-    content typically most useful for a given query class.
+# Spec 2B.1 / iter-03 plan §3.7: action-verb regex. When a LOOKUP query
+# contains an action verb (build, install, set up, deploy, ...), the user is
+# almost always looking for executable / step-by-step content. GitHub repos
+# and generic web (docs, tutorials) tend to carry that; newsletter/YouTube
+# usually carry editorial / discussion content. Small magnitudes — see boost
+# table below — so the action-verb signal nudges without overpowering RRF.
+_ACTION_VERBS_RE = re.compile(
+    r"\b(build|start|open|run|install|set\s+up|spin\s+up|deploy|configure|create|launch|bootstrap|try|use)\b",
+    re.IGNORECASE,
+)
 
-    Pure helper — no I/O, never raises, never returns negative. Magnitudes are
-    deliberately small (0.02-0.03) so they nudge ordering without overpowering
-    the base RRF / title / recency signals that T8/T10 also feed in.
 
-    - THEMATIC / STEP_BACK queries lean toward long-form discussion content,
-      where YouTube transcripts (talks, lectures, podcasts) tend to dominate.
-    - LOOKUP queries (specific "what / where" questions) often resolve best
-      against Reddit threads, which carry concrete Q&A-shaped answers.
-    Other (class, source) combinations return 0.0.
+def _source_type_boost(
+    *,
+    base_score: float,
+    source_type: str,
+    query_class,
+    question: str,
+) -> float:
+    """Return ``base_score`` adjusted by source-type / query-class affinities.
+
+    Pure helper — no I/O, never raises. Returns the *new* score (NOT a delta)
+    so callers can adopt the result directly. Magnitudes are deliberately small
+    (0.02-0.05) so they nudge ordering without overpowering base RRF / title /
+    recency signals.
+
+    Affinities applied (cumulative — they can stack on the same candidate):
+
+    1. Class-specific source affinity (legacy T10):
+       - THEMATIC / STEP_BACK + youtube  -> +0.03 (long-form discussion content)
+       - LOOKUP + reddit                 -> +0.02 (concrete Q&A)
+
+    2. Action-verb affinity (spec 2B.1 / iter-03 plan §3.7) — only when the
+       query is LOOKUP-class and contains an action verb (build, install, set
+       up, deploy, ...):
+       - github / web        -> +0.05  (step-by-step / docs / tutorials)
+       - newsletter / youtube -> -0.02  (editorial / discussion, less actionable)
     """
-    if candidate is None:
-        return 0.0
-    try:
-        st_raw = getattr(candidate.source_type, "value", candidate.source_type)
-        st = str(st_raw or "").lower()
-    except Exception:
-        return 0.0
-    if query_class in (QueryClass.THEMATIC, QueryClass.STEP_BACK) and st == "youtube":
-        return 0.03
-    if query_class is QueryClass.LOOKUP and st == "reddit":
-        return 0.02
-    return 0.0
+    score = float(base_score)
+
+    st = str(source_type or "").lower()
+
+    # 1. Class-specific source affinity (legacy T10 behavior, preserved).
+    qc = query_class
+    qc_value = getattr(qc, "value", qc)
+    qc_str = str(qc_value or "").lower()
+    if qc_str in ("thematic", "step_back") and st == "youtube":
+        score += 0.03
+    if qc_str == "lookup" and st == "reddit":
+        score += 0.02
+
+    # 2. Action-verb affinity (spec 2B.1).
+    if qc_str == "lookup" and _ACTION_VERBS_RE.search(question or ""):
+        if st in ("github", "web"):
+            score += 0.05
+        elif st in ("newsletter", "youtube"):
+            score -= 0.02
+
+    return score
 
 
 def _author_match_boost(candidate: RetrievalCandidate, query_meta) -> float:
