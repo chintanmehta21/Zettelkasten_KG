@@ -543,9 +543,45 @@
       }
       if (lastErr) throw lastErr;
 
+      // 3D: long-pipeline loader — if no token frame arrives within 5s of
+      // the POST being accepted, render the Kasten-card-shuffle as a SIBLING
+      // of the assistant body so streaming tokens never collide with loader
+      // markup. Cleared on first body content, on done, or in finally.
+      var assistantBody = assistantNode.querySelector('.rag-message-body');
+      var loaderHost = document.createElement('div');
+      loaderHost.className = 'rag-message-loader';
+      if (assistantBody) assistantBody.parentNode.insertBefore(loaderHost, assistantBody);
+
+      var stopLongPipeline = null;
+      var longPipelineTimer = setTimeout(function () {
+        if (assistantBody && !assistantBody.textContent && window.ZkLoader) {
+          stopLongPipeline = window.ZkLoader.showLongPipelineLoader(loaderHost);
+        }
+      }, 5000);
+      var clearLongPipeline = function () {
+        clearTimeout(longPipelineTimer);
+        if (stopLongPipeline) { stopLongPipeline(); stopLongPipeline = null; }
+        if (loaderHost && loaderHost.parentNode) loaderHost.parentNode.removeChild(loaderHost);
+      };
+
+      // Poll the assistant body so the loader disappears the instant any
+      // stream output (token, error, replace) lands. Cheap; avoids
+      // monkey-patching handleSSEChunk under 'use strict'.
+      var loaderPoll = setInterval(function () {
+        if (!assistantBody) { clearInterval(loaderPoll); return; }
+        if (assistantBody.textContent && assistantBody.textContent.length > 0) {
+          clearInterval(loaderPoll);
+          clearLongPipeline();
+        }
+      }, 150);
+
       try {
         await consumeSSE(response.body.getReader(), assistantNode);
+        clearInterval(loaderPoll);
+        clearLongPipeline();
       } catch (sseErr) {
+        clearInterval(loaderPoll);
+        clearLongPipeline();
         // 3C.1: heartbeat-timeout = no frame for 15s. Auto-retry the whole
         // POST exactly once (silent, behind a teal "Reconnecting…" status)
         // before surfacing the friendly error. This catches single proxy
@@ -555,12 +591,24 @@
           || /heartbeat-timeout/.test(sseErr.message || ''));
         if (isHeartbeat && !state._sseRetryUsed) {
           state._sseRetryUsed = true;
+          var stopHeartbeat = null;
+          var manualRetryFired = { v: false };
           try {
             setStatus('Reconnecting your Kasten…');
             // Clear any partial bubble text so the retried answer starts
             // from a clean slate.
             var body = assistantNode.querySelector('.rag-message-body');
             if (body) body.textContent = '';
+            // Re-mount the loader host (cleared earlier) and show the
+            // heartbeat-state shuffle with a Retry-now affordance.
+            if (assistantBody && assistantBody.parentNode && window.ZkLoader) {
+              loaderHost = document.createElement('div');
+              loaderHost.className = 'rag-message-loader';
+              assistantBody.parentNode.insertBefore(loaderHost, assistantBody);
+              stopHeartbeat = window.ZkLoader.showHeartbeatLoader(loaderHost, function () {
+                manualRetryFired.v = true;
+              });
+            }
             await new Promise(function (r) { setTimeout(r, 1000); });
             var retryResp = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
               method: 'POST',
@@ -571,6 +619,7 @@
               body: requestBody
             });
             if (retryResp.ok && retryResp.body) {
+              if (stopHeartbeat) { stopHeartbeat(); stopHeartbeat = null; }
               await consumeSSE(retryResp.body.getReader(), assistantNode);
               state._sseRetryUsed = false;
             } else {
@@ -581,6 +630,8 @@
             var friendly2 = new Error('Lost connection mid-answer. Please retry.');
             friendly2.cause = retryErr;
             throw friendly2;
+          } finally {
+            if (stopHeartbeat) { stopHeartbeat(); }
           }
         } else {
           // The browser's fetch reader throws raw strings like "network error" or
