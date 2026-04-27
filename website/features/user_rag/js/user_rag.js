@@ -517,7 +517,18 @@
       }
       if (lastErr) throw lastErr;
 
-      await consumeSSE(response.body.getReader(), assistantNode);
+      try {
+        await consumeSSE(response.body.getReader(), assistantNode);
+      } catch (sseErr) {
+        // The browser's fetch reader throws raw strings like "network error" or
+        // "Failed to fetch" when the upstream connection drops mid-stream
+        // (e.g. blue/green cutover, container restart, brief proxy hiccup).
+        // Surface a friendly, actionable line instead of leaking the SDK
+        // string to the chat bubble.
+        var friendly = new Error('Lost connection mid-answer. Please retry.');
+        friendly.cause = sseErr;
+        throw friendly;
+      }
     } catch (err) {
       rollbackPendingAssistant(assistantNode, userNode, err, content);
     } finally {
