@@ -8,56 +8,46 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260427b">
-    <link rel="stylesheet" href="/home/rag/css/user_rag.css?v=20260427b">
+    <link rel="stylesheet" href="/header/css/header.css?v=20260418f">
+    <link rel="stylesheet" href="/home/rag/css/user_rag.css?v=20260427c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <a class="skip-link rag-skip-link" href="#main-content">Skip to main content</a>
     <div class="container rag-container">
-        <header class="header rag-header">
-            <div class="zettels-header-start">
-                <a class="zettels-back-btn" href="/home/kastens" aria-label="Back to User Kastens">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                    </svg>
-                </a>
-            </div>
-            <div class="branding">
-                <div class="logo">
-                    <img src="/artifacts/logo-zettelkasten.svg" alt="" class="logo-icon" width="34" height="34" />
-                    <span class="logo-text">Zettelkasten</span>
-                </div>
-                <p class="tagline">Interrogate your saved knowledge with grounded, citation-rich answers.</p>
-            </div>
-            <div class="rag-header-actions">
-                <a class="kastens-secondary rag-manage-btn" href="/home/kastens" aria-label="Manage kastens">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
-                        <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-                    </svg>
-                    <span>Manage kastens</span>
-                </a>
-                <div class="rag-menu-wrap">
-                    <button type="button" class="rag-menu-btn" id="rag-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Kasten actions">
-                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="18" height="18">
-                            <circle cx="12" cy="5" r="1.7"></circle>
-                            <circle cx="12" cy="12" r="1.7"></circle>
-                            <circle cx="12" cy="19" r="1.7"></circle>
-                        </svg>
-                    </button>
-                    <div class="rag-menu hidden" id="rag-menu" role="menu" aria-labelledby="rag-menu-btn">
-                        <button type="button" role="menuitem" data-action="add-zettels" id="rag-menu-add">Add zettels</button>
-                        <button type="button" role="menuitem" data-action="new-chat" id="rag-menu-new-chat">New chat</button>
-                        <button type="button" role="menuitem" data-action="delete-kasten" id="rag-menu-delete" class="rag-menu-danger">Delete Kasten</button>
-                    </div>
-                </div>
-            </div>
-        </header>
+<!--ZK_HEADER-->
 
         <main class="main rag-main" id="main-content">
             <section class="rag-chat-panel">
                 <div class="rag-chat-head">
-                    <h1 id="chat-title">Ask your knowledge graph something precise.</h1>
-                    <p class="rag-chat-hint" id="rag-chat-hint">Streaming answers appear live and cite the zettels they leaned on.</p>
+                    <div class="rag-chat-head-row">
+                        <div class="rag-chat-head-copy">
+                            <h1 id="chat-title">Ask your knowledge graph something precise.</h1>
+                            <p class="rag-chat-hint" id="rag-chat-hint">Streaming answers appear live and cite the zettels they leaned on.</p>
+                        </div>
+                        <div class="rag-chat-head-actions">
+                            <a class="kastens-secondary rag-manage-btn" href="/home/kastens" aria-label="Manage kastens">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
+                                    <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                                </svg>
+                                <span>Manage kastens</span>
+                            </a>
+                            <div class="rag-menu-wrap">
+                                <button type="button" class="rag-menu-btn" id="rag-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Kasten actions">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="18" height="18">
+                                        <circle cx="12" cy="5" r="1.7"></circle>
+                                        <circle cx="12" cy="12" r="1.7"></circle>
+                                        <circle cx="12" cy="19" r="1.7"></circle>
+                                    </svg>
+                                </button>
+                                <div class="rag-menu hidden" id="rag-menu" role="menu" aria-labelledby="rag-menu-btn">
+                                    <button type="button" role="menuitem" data-action="add-zettels" id="rag-menu-add">Add zettels</button>
+                                    <button type="button" role="menuitem" data-action="new-chat" id="rag-menu-new-chat">New chat</button>
+                                    <button type="button" role="menuitem" data-action="delete-kasten" id="rag-menu-delete" class="rag-menu-danger">Delete Kasten</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="rag-transcript" id="transcript" aria-live="polite" aria-label="Conversation transcript"></div>
                 <div class="rag-empty-state" id="empty-state">
@@ -138,6 +128,7 @@
         </div>
     </div>
 
-    <script src="/home/rag/js/user_rag.js?v=20260427a"></script>
+    <script src="/header/js/header.js?v=20260417a"></script>
+    <script src="/home/rag/js/user_rag.js?v=20260427b"></script>
 </body>
 </html>

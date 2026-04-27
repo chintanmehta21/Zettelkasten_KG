@@ -151,6 +151,24 @@
 .rag-chat-head {
     padding: 0.4rem 0.4rem 0.9rem;
 }
+.rag-chat-head-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.rag-chat-head-copy {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+.rag-chat-head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 0 0 auto;
+    padding-top: 0.25rem;
+}
 .rag-chat-head h1 {
     font-size: 1.6rem;
     line-height: 1.15;

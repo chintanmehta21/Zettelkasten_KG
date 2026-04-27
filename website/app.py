@@ -287,7 +287,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def user_rag(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return FileResponse(str(USER_RAG_DIR / "index.html"))
+        return _render_with_shell(USER_RAG_DIR / "index.html")
 
     @app.get("/summarization-engine")
     async def summarization_engine_dashboard(request: Request):
