@@ -1,0 +1,159 @@
+{
+  "_meta": {
+    "kasten_slug": "knowledge-management",
+    "kasten_name": "Knowledge Management & Personal Productivity",
+    "kasten_built_at": "2026-04-26",
+    "iter": "03",
+    "members_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "source_type_breakdown": {"youtube": 4, "newsletter": 1, "web": 1, "github": 1},
+    "execution_protocol": "Replays the 10 iter-02 queries verbatim plus 3 action-verb regression probes (av-1..av-3) on the iter-03 deploy via the Phase 4D Claude-in-Chrome harness. Same Kasten, same Naruto user, same /home/rag composer flow as iter-02 — see docs/rag_eval/common/knowledge-management/iter-02/_meta.execution_protocol for the underlying protocol.",
+    "design_notes": "Iter-03 keeps the iter-02 query set unchanged so retrieval/synthesis regressions are directly comparable, and adds three action-verb regression probes that mirror the q3 ('verbal punctuation') and q8 ('start a personal wiki tonight') failure pattern from iter-02 — the retriever returned the correct gold zettel but the synthesizer over-refused because the user's wording diverged from the zettel's wording. av-1/2/3 ask for the same gh-zk-org-zk (or web-transformative-tools-for) zettel using imperative action-verb phrasing ('install', 'run first', 'step-by-step setup commands') that the iter-02 prompt struggled with. A correct iter-03 synthesizer must answer (verdict 'supported' or 'partial'), not refuse.",
+    "ci_gate_baseline": "docs/rag_eval/common/knowledge-management/iter-03/baseline.json",
+    "ci_gates_summary": {
+      "end_to_end_gold_at_1_min": 0.65,
+      "synthesizer_grounding_min": 0.85,
+      "infra_failures_max": 0
+    }
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "two-fact extraction from a single GitHub zettel; replaces iter-01 q1's topic-only ask",
+      "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Go; Markdown (with wikilinks and hashtags). Both atomic facts must be present for a full-credit answer."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "T9 author boost + content-recall depth — Steve Jobs's specific framing of mortality, not just topic match",
+      "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Death as 'life's change agent' / the destination we all share — knowing you're going to die clears the way to follow your heart and avoid the trap of living someone else's life."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "single-zettel deep extraction — a named technique inside Patrick Winston's MIT lecture",
+      "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Verbal punctuation is announcing a landmark to the audience (\"and now I'm going to talk about X\") — it lets listeners who drifted re-board the talk; matters because audiences continually fade in and out of attention."
+    },
+    {
+      "qid": "q4",
+      "class": "multi_hop",
+      "tests": "explicit 2-zettel synthesis — the question itself names the two zettels to combine, so partial answers are diagnosable as retriever failures rather than reasoning failures",
+      "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+      "expected_primary_citation": ["yt-matt-walker-sleep-depriv", "yt-programming-workflow-is"],
+      "expected_minimum_citations": 2,
+      "ground_truth": "Working memory and attention/focus deficits from sleep loss directly impair the programmer's ability to hold simultaneous mental models of expected vs. actual program behaviour and iterate between them — which is the perception-vs-reality core of debugging."
+    },
+    {
+      "qid": "q5",
+      "class": "thematic",
+      "tests": "broad cross-corpus synthesis — explicitly asks for ≥4 citations so under-recall is measurable",
+      "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+      "expected_primary_citation": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for"
+      ],
+      "expected_minimum_citations": 4,
+      "ground_truth": "Themes: (1) sleep is foundational — debt costs cognitive precision (Walker); (2) build perception-vs-reality discipline into the workflow (programming-workflow); (3) externalize thought via tools (Matuschak); (4) keep work tied to meaning so motivation persists (Jobs); (5) the Pragmatic Engineer's 'product-minded' ritual ties craftsmanship to user-facing outcomes."
+    },
+    {
+      "qid": "q6",
+      "class": "step_back",
+      "tests": "abstract-from-concrete reasoning across multiple zettels — picks an abstraction (\"tools for thought\") and asks where else it appears",
+      "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function — augmenting cognition rather than just storing information?",
+      "expected_primary_citation": ["web-transformative-tools-for", "gh-zk-org-zk", "yt-effective-public-speakin"],
+      "expected_minimum_citations": 2,
+      "ground_truth": "zk-org/zk is a tool for thought (link-density wiki augments memory); Winston's verbal-punctuation / cycling rules are cognitive scaffolds for the speaker AND listener; arguably the Pragmatic Engineer's product-minded checklist is also a thinking ritual."
+    },
+    {
+      "qid": "q7",
+      "class": "vague",
+      "tests": "single-word topic — query rewriter must expand 'commencement' to a useful retrieval",
+      "text": "Anything about commencement?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Steve Jobs's 2005 Stanford commencement speech is the only commencement-related zettel; should retrieve and summarize at minimum the three-stories framing (connecting dots, love-and-loss, death)."
+    },
+    {
+      "qid": "q8",
+      "class": "lookup_recency",
+      "tests": "practical filter — 'I want to start a personal wiki tonight' should pick the actionable tool zettel, not a related abstraction",
+      "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk — it's the only zettel that is itself a buildable tool (Go CLI, Markdown notes). Matuschak's essay is a related theoretical companion but is not the action-first answer."
+    },
+    {
+      "qid": "q9",
+      "class": "adversarial_negative",
+      "tests": "hallucination resistance — Notion's database features are demonstrably absent from every zettel",
+      "text": "Summarize what this Kasten says about Notion's database features.",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "No zettel in this Kasten mentions Notion. A correct answer must refuse or explicitly state the absence; fabricating Notion-database details is critic_verdict='unsupported' and is the hard fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q10",
+      "class": "adversarial_partial",
+      "tests": "partial-coverage detection — Steve Jobs is in the Kasten, Naval Ravikant is not; answer must ground Jobs and explicitly mark Naval as outside the corpus",
+      "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Jobs's view is in the Kasten (love what you do; if today were your last, would you do what you're about to do; loss-of-Apple as gift). Naval is NOT in the Kasten — the answer must call this out, not invent his views.",
+      "expected_critic_verdict": "partial"
+    },
+    {
+      "qid": "av-1",
+      "class": "lookup",
+      "tests": "Action-verb regression mirroring q8 — 'install tonight' uses imperative phrasing the iter-02 synthesizer over-refused on despite gh-zk-org-zk being correctly retrieved.",
+      "text": "What should I install tonight to start a personal wiki?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_top1_source_type_in": ["github", "web"],
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk is the actionable install — Go-based CLI, plain-text Markdown notes. A correct answer must NOT pick the newsletter or theoretical Matuschak essay; it must NOT refuse on action-verb wording divergence.",
+      "annotation": "Action-verb regression — must NOT pick newsletter; must NOT refuse on wording divergence (q3/q8 iter-02 failure pattern)"
+    },
+    {
+      "qid": "av-2",
+      "class": "lookup",
+      "tests": "Action-verb regression mirroring q3 — 'which guide do I run first' is imperative phrasing for the same gh-zk-org-zk zettel; iter-02 synthesizer over-refused on similar phrasing.",
+      "text": "Which guide do I run first to set up my Zettelkasten?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_top1_source_type_in": ["github", "web"],
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk's README is the operational starter — install zk, init a notebook, write notes in Markdown. Must NOT refuse; correct verdict is 'supported'.",
+      "annotation": "Action-verb regression — synthesizer must answer (not refuse) when retriever returns the right zettel under imperative phrasing"
+    },
+    {
+      "qid": "av-3",
+      "class": "lookup",
+      "tests": "Action-verb regression mirroring q3/q8 — explicit 'step-by-step setup commands' demands procedural extraction from gh-zk-org-zk; iter-02 synthesizer historically over-refused on this wording shape.",
+      "text": "Step-by-step setup commands for a personal wiki",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_top1_source_type_in": ["github", "web"],
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk's README documents 'zk init' and the supporting flags. Must extract the install + init commands; must NOT refuse on the lack of a literal 'step-by-step' phrase in the zettel.",
+      "annotation": "Action-verb regression — procedural extraction; verdict must be 'supported' or 'partial', never 'unsupported'"
+    }
+  ]
+}
