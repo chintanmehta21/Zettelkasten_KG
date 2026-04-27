@@ -107,7 +107,8 @@ class AnswerTurn(BaseModel):
         "partial",
         "unsupported",
         "retried_supported",
-        "retried_still_bad",
+        "retried_still_bad",  # legacy alias for retried_low_confidence (kept for back-compat)
+        "retried_low_confidence",  # spec 2A.2 — 2nd-pass unsupported, draft + low-confidence tag returned
     ]
     critic_notes: str | None = None
     trace_id: str = ""

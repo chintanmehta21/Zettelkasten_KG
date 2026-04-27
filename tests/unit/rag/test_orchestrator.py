@@ -430,7 +430,10 @@ async def test_empty_context_short_circuits_stream_without_calling_llm() -> None
 
 
 @pytest.mark.asyncio
-async def test_answer_marks_retry_still_bad_and_prefixes_warning() -> None:
+async def test_answer_marks_retry_low_confidence_and_appends_details_tag() -> None:
+    """Spec 2A.2: when 2nd-pass critic still flags unsupported, the orchestrator
+    must return the retry draft annotated with a collapsible low-confidence
+    <details> tag — NOT a canned 'Warning: low confidence.' prefix or refusal."""
     orchestrator = RAGOrchestrator(
         rewriter=_Rewriter(),
         router=_Router(),
@@ -446,8 +449,15 @@ async def test_answer_marks_retry_still_bad_and_prefixes_warning() -> None:
 
     turn = await orchestrator.answer(query=ChatQuery(content="What is this about?"), user_id=uuid4())
 
-    assert turn.critic_verdict == "retried_still_bad"
-    assert turn.content.startswith("Warning: low confidence.\n\nRetry answer")
+    assert turn.critic_verdict == "retried_low_confidence"
+    # Draft is preserved (model's best attempt is shown to the user).
+    assert "Retry answer" in turn.content
+    # Collapsible low-confidence inline tag is appended.
+    assert "<summary>How sure am I?</summary>" in turn.content
+    assert "Citations don't fully cover this claim" in turn.content
+    # No canned-refusal phrasing leaks.
+    assert "Warning: low confidence." not in turn.content
+    assert "i can't find" not in turn.content.lower()
 
 
 @pytest.mark.asyncio
