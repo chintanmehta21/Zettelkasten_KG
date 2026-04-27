@@ -586,7 +586,11 @@
       var turn = payload.turn || {};
       body.textContent = turn.content || body.textContent;
       replaceCitations(assistantNode, turn.citations || state.currentAssistantCitations || []);
-      assistantNode.querySelector('.rag-message-meta').textContent = turn.llm_model || '';
+      // End-user UI must never expose internal model name / tier / token
+       // counts. The .rag-message-meta element is kept (CSS hides it; data is
+       // not written) so a future opt-in devtools panel can read it back from
+       // the turn payload without risking another regression.
+       assistantNode.querySelector('.rag-message-meta').textContent = '';
       // Clear any stale verdict / actions from a re-stream.
       Array.prototype.forEach.call(
         assistantNode.querySelectorAll('.rag-verdict, .rag-msg-actions'),

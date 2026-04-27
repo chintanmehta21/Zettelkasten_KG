@@ -34,24 +34,10 @@
     min-height: 100vh;
 }
 
-.rag-header {
-    display: grid !important;
-    grid-template-columns: 64px 1fr auto;
-    align-items: center;
-    gap: 1rem;
-    text-align: left !important;
-}
-
-.rag-header .branding {
-    align-items: flex-start !important;
-}
-
-.rag-header-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0.6rem;
-}
+/* Header markup is now the shared <!--ZK_HEADER--> partial — the dead
+   .rag-header / .rag-header-actions overrides used to fight the old custom
+   header and have been removed. Manage Kastens + 3-dot menu now live in
+   .rag-chat-head-actions (defined below). */
 
 /* KAS-16: "Manage kastens" looks like a real secondary button now. */
 .rag-manage-btn {
@@ -235,9 +221,9 @@
     line-height: 1;
 }
 .rag-message-meta {
-    color: var(--text-muted);
-    font-size: 0.74rem;
-    line-height: 1;
+    /* Internal infra metadata (model name / tier / tokens) is NEVER shown to
+       end users. Element is preserved for a future opt-in devtools panel. */
+    display: none;
 }
 .rag-message-body {
     color: var(--text-primary);
