@@ -77,3 +77,8 @@ new_envs.txt
 # NOTE: ops/host/cloud-init.yaml itself is safe to commit (only contains public key);
 #       this pattern is a safety net for any *.local.* variants.
 ops/host/cloud-init.local.yaml
+
+# Mac cruft
+__MACOSX
+**/.DS_Store
+**/._*

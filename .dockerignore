@@ -60,3 +60,8 @@ supabase/.env
 
 # Node tooling (if ever introduced)
 node_modules/
+
+# Mac cruft — never include in image
+__MACOSX
+**/.DS_Store
+**/._*
