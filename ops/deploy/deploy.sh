@@ -184,9 +184,10 @@ ACTUAL_SWAP_MAX=$(docker exec "zettelkasten-${IDLE}" cat /sys/fs/cgroup/memory.s
 log "[cgroup-assert] ${IDLE} memory.max=${ACTUAL_MEM_MAX} (expect ${EXPECTED_MEM_MAX})"
 log "[cgroup-assert] ${IDLE} memory.swap.max=${ACTUAL_SWAP_MAX} (expect ${EXPECTED_SWAP_MAX})"
 if [[ "$ACTUAL_MEM_MAX" != "$EXPECTED_MEM_MAX" ]] || [[ "$ACTUAL_SWAP_MAX" != "$EXPECTED_SWAP_MAX" ]]; then
-    log "[cgroup-assert] FATAL: cgroup limits don't match compose. Likely stale compose on droplet."
-    log "[cgroup-assert] FATAL: rolling back this deploy."
-    "$ROOT/deploy/rollback.sh" || true
+    log "[cgroup-assert] FATAL: cgroup limits don't match compose."
+    log "[cgroup-assert] FATAL: NOT auto-rolling back — operator must triage."
+    log "[cgroup-assert] Bad container left at zettelkasten-${IDLE}; Caddy still on previous color."
+    log "[cgroup-assert] Next deploy's --force-recreate will replace it; or 'docker stop zettelkasten-${IDLE}' manually."
     exit 87
 fi
 log "[cgroup-assert] ${IDLE} cgroup limits OK"

@@ -67,8 +67,34 @@ def test_deploy_sh_fails_loudly_on_cgroup_mismatch():
            'if [[ "$ACTUAL_MEM_MAX" != "$EXPECTED_MEM_MAX" ]] || [[ "$ACTUAL_SWAP_MAX" != "$EXPECTED_SWAP_MAX" ]]' in text
     # Must log [cgroup-assert] markers so log-greppers can track this
     assert "[cgroup-assert]" in text
-    # Must trigger a rollback path on mismatch
-    assert "rollback.sh" in text and "exit 87" in text
+    # Must exit non-zero with the unique rc 87 so callers can distinguish
+    # cgroup-mismatch failure from generic deploy failure
+    assert "exit 87" in text
+
+
+def test_deploy_sh_does_NOT_auto_rollback_on_cgroup_mismatch():
+    """Conservative on cgroup mismatch: fail loudly, leave state untouched,
+    operator triages. Auto-rollback was REMOVED 2026-04-28 because (a) the
+    assert fires BEFORE the Caddy flip so the failed container isn't serving
+    traffic — there's nothing live to roll back from, and (b) rollback.sh
+    rewrites caddy/upstream.snippet WITHOUT the iter-03 §1B transport block,
+    which would silently regress Strong-mode RAG to default 30s timeouts.
+
+    DO NOT re-add rollback.sh invocation here without first fixing rollback.sh
+    to preserve the iter-03 transport block (separate iteration).
+    """
+    text = DEPLOY_SH.read_text(encoding="utf-8")
+    # Locate the cgroup-assert block specifically — anchor on EXPECTED_MEM_MAX
+    cgroup_block_start = text.index("EXPECTED_MEM_MAX=")
+    cgroup_block_end = text.index('log "[cgroup-assert] ${IDLE} cgroup limits OK"')
+    cgroup_block = text[cgroup_block_start:cgroup_block_end]
+    # The cgroup-assert block must NOT call rollback.sh
+    assert "rollback.sh" not in cgroup_block, (
+        "deploy.sh cgroup-assert block must NOT auto-invoke rollback.sh. "
+        "On mismatch: log + exit 87, operator triages. See test docstring."
+    )
+    # And it must include the explicit operator-triage hint
+    assert "operator must triage" in cgroup_block
 
 
 def test_deploy_sh_runs_assert_after_healthcheck_before_caddy_flip():
