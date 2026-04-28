@@ -48,6 +48,29 @@ This is a live production web application with active users across frontend, bac
 - Proceed through ambiguity without acknowledging it.
 - Present assumptions as verified facts.
 
+## Critical Infra Decision Guardrails (HARD RULES — never silently undo)
+
+**These are infrastructure decisions baked into prior iterations with explicit rationale. They MUST NOT be reverted, downgraded, or "blindly mitigated" without (a) reproducing the failure with logs in hand and (b) the user's explicit authorization in the chat.** A failing health check or a 5xx storm is NOT authorization — it is the trigger to root-cause, not to revert.
+
+Specifically forbidden as a reflex response to production errors:
+- Reducing `GUNICORN_WORKERS` below 2 on the production droplet. The whole point of the iter-03 BGE int8 quantization (Phase 1A, ~110 MB RAM saving via COW + `--preload`) was to keep 2 workers viable on the 2 GB droplet so the system handles concurrent users at scale. Halving worker count silently undoes that work.
+- Disabling `--preload` (workers each load their own model — re-explodes RAM).
+- Switching the int8 cascade back to fp32 by setting `FP32_VERIFY_ENABLED=true` for everything (Phase 1A.5 made it a top-3 verifier only).
+- Lowering `GUNICORN_TIMEOUT` below 180s (Phase 1B reasoned 180s minimum for Strong/Pro multi-hop synth).
+- Disabling the rerank semaphore / bounded queue (Phase 1B.2). The 503 backpressure path is the burst-correctness mechanism.
+- Removing the SSE heartbeat wrapper (Phase 1B.4). Cloudflare 502s on idle non-streaming responses are exactly what it prevents.
+- Reverting blue/green Caddy timeouts to defaults (the explicit `transport http { read_timeout 240s ... }` block is the upstream-timeout fix for slow synth).
+- Disabling the schema-drift gate (Phase 1C.5) or the `kg_users` allowlist gate (Phase 2D.2) without explicit operator approval per occurrence.
+- Switching colors on the Kasten surface to anything other than teal, or putting amber outside `/knowledge-graph`.
+
+When prod is failing and one of these knobs looks tempting:
+1. **STOP.** Pull droplet logs (`gh workflow run read_recent_logs.yml`), Caddy access log, container `dmesg`, `free -h`. Read first.
+2. State the hypothesis with evidence. Not "it might be OOM" — show the OOM line.
+3. Propose the targeted fix that DOES NOT touch the protected knobs. (Examples: fix the actual exception, add the swapfile, bump a single timeout, retry policy, fix a leak.)
+4. If the only viable fix touches a protected knob, **ask the user explicitly with the trade-off named** before pushing. e.g. "Logs show OOM at 1.8 GB during cold-load — temporarily setting GUNICORN_WORKERS=1 until we add the swapfile?" — then wait.
+
+**Penalty pattern for the assistant:** if you're tempted to push a "blind mitigation" because triage is taking time, that's the exact moment to slow down. Production change discipline (CLAUDE.md §1) overrides perceived urgency. The user has consistently chosen "wait for logs + correct fix" over "fast-but-wrong revert".
+
 ## Research Discipline (read before every plan / brainstorm / design)
 
 **The rule:** Every plan, design, recommendation, or question set must be grounded in completed, verified research. Never reason from assumptions, punch-list summaries, or partial agent output when more research is in flight.

@@ -766,6 +766,174 @@ def phase_rag_composer(page: Page, site: str, token: str, kasten_name: str) -> t
 
 # ── Phase 5: 13 Q-A chain ───────────────────────────────────────────────────
 
+def phase_diversify_sources(page: Page, token: str, sandbox_id: str) -> tuple[PhaseReport, list[dict]]:
+    """Add 2 new Zettels (newsletter + web) to the Knowledge Management Kasten.
+
+    Two-step API flow that mirrors the URL-paste UX:
+      1. POST /api/summarize  with the URL → creates kg_node, returns node_id.
+      2. POST /api/rag/sandboxes/{sandbox_id}/members → adds the new node to
+         the Kasten (idempotent — sandbox_routes' bulk-add silently skips
+         already-members).
+
+    Returns the report PLUS the list of node_ids that landed (used by the
+    follow-up Q-A phase to assert citations match).
+    """
+    rep = PhaseReport(phase="diversify_sources")
+    t_phase = time.time()
+    new_nodes: list[dict] = []
+
+    for entry in DIVERSIFY_URLS:
+        url = entry["url"]
+        label = entry["label"]
+        # Step 1: summarize → kg_node
+        t0 = time.time()
+        sum_resp = api_fetch_json(page, "/api/summarize", token, method="POST",
+                                  body={"url": url}, timeout_ms=120_000)
+        ok = bool(sum_resp.get("ok"))
+        body = sum_resp.get("body") or {}
+        node_id = body.get("node_id") or body.get("id") or (body.get("node") or {}).get("id")
+        source_type = body.get("source_type") or (body.get("node") or {}).get("source_type")
+        title = body.get("title") or (body.get("node") or {}).get("name")
+        rep.checks.append(CheckResult(
+            name=f"POST /api/summarize {url}",
+            passed=ok and bool(node_id),
+            duration_ms=_ms_since(t0),
+            detail={
+                "label": label,
+                "http_status": sum_resp.get("status"),
+                "elapsed_ms": sum_resp.get("elapsed_ms"),
+                "node_id": node_id,
+                "source_type": source_type,
+                "title": title,
+                "expected_source_type": entry["expected_source_type"],
+                "source_type_matches_expected": (source_type == entry["expected_source_type"]),
+                "summarize_error": (None if ok else (sum_resp.get("error") or sum_resp.get("raw"))),
+            },
+        ))
+        if not (ok and node_id):
+            rep.notes.append(f"summarize failed for {url}: {sum_resp}")
+            continue
+
+        # Step 2: bulk-add to sandbox (membership)
+        t0 = time.time()
+        add_resp = api_fetch_json(
+            page, f"/api/rag/sandboxes/{sandbox_id}/members", token, method="POST",
+            body={"node_ids": [node_id]}, timeout_ms=30_000,
+        )
+        added_count = (add_resp.get("body") or {}).get("added_count")
+        members = (add_resp.get("body") or {}).get("members") or []
+        rep.checks.append(CheckResult(
+            name=f"POST /api/rag/sandboxes/{{id}}/members [{node_id}]",
+            passed=bool(add_resp.get("ok")) and (added_count is not None) and added_count >= 0,
+            duration_ms=_ms_since(t0),
+            detail={
+                "label": label,
+                "http_status": add_resp.get("status"),
+                "added_count": added_count,
+                "member_count_after": len(members),
+            },
+        ))
+        new_nodes.append({
+            "url": url,
+            "label": label,
+            "node_id": node_id,
+            "source_type": source_type,
+            "title": title,
+        })
+
+    rep.notes.append(f"new_nodes={[n['node_id'] for n in new_nodes]}")
+    rep.duration_ms = _ms_since(t_phase)
+    return rep, new_nodes
+
+
+def phase_post_diversification_qa(page: Page, token: str, sandbox_id: str,
+                                   new_nodes: list[dict]) -> PhaseReport:
+    """Run div-1 / div-2 — questions whose gold answers live ONLY in the new
+    Zettels we just added. This proves the entire ingest → embed → retrieval →
+    rerank → synthesize pipeline picked up the additions and that retrieval
+    can surface them above the existing 7 members."""
+    rep = PhaseReport(phase="post_diversification_qa")
+    t_phase = time.time()
+    if len(new_nodes) < 2:
+        rep.checks.append(CheckResult(
+            name="post-diversification Q-A",
+            passed=False,
+            detail={"error": f"only {len(new_nodes)} new nodes; need 2"},
+        ))
+        rep.duration_ms = _ms_since(t_phase)
+        return rep
+
+    # Build a url-substring → expected node_id map from the added nodes.
+    expected_by_substring = {}
+    for n in new_nodes:
+        for sub in [n["url"]]:
+            expected_by_substring[sub] = n["node_id"]
+
+    for q in DIVERSIFY_QA:
+        t0 = time.time()
+        resp = api_fetch_json(page, "/api/rag/adhoc", token, method="POST", body={
+            "sandbox_id": sandbox_id,
+            "content": q["text"],
+            "quality": q.get("quality", "fast"),
+            "stream": False,
+            "scope_filter": {},
+            "title": f"iter-03 {q['qid']}",
+        }, timeout_ms=120_000)
+
+        result: dict[str, Any] = {
+            "qid": q["qid"],
+            "expected_url_substring": q["expected_url_substring"],
+            "expected_source_type": q["expected_source_type"],
+            "text": q["text"],
+            "http_status": resp.get("status"),
+            "elapsed_ms": resp.get("elapsed_ms"),
+        }
+        if resp.get("ok"):
+            turn = (resp.get("body") or {}).get("turn") or {}
+            citations = turn.get("citations") or []
+            result["answer"] = turn.get("content", "")
+            result["citations"] = [
+                {"id": c.get("id"), "node_id": c.get("node_id"), "title": c.get("title")}
+                for c in citations
+            ]
+            result["primary_citation"] = citations[0]["node_id"] if citations else None
+            result["critic_verdict"] = turn.get("critic_verdict")
+            result["llm_model"] = turn.get("llm_model")
+            result["latency_ms_server"] = turn.get("latency_ms")
+            refused = _is_refusal(result["answer"])
+            result["refused"] = refused
+            # Match: primary citation matches one of the new node_ids.
+            new_ids = {n["node_id"] for n in new_nodes}
+            result["primary_in_new_zettels"] = bool(
+                result["primary_citation"] and result["primary_citation"] in new_ids
+            )
+            result["over_refusal"] = refused
+            passed = (
+                resp.get("status") == 200
+                and result["primary_in_new_zettels"]
+                and not refused
+            )
+        else:
+            result["error"] = resp.get("error") or resp.get("raw") or "unknown"
+            passed = False
+
+        rep.checks.append(CheckResult(
+            name=f"Q-A {q['qid']} (targets new {q['expected_source_type']})",
+            passed=passed,
+            duration_ms=_ms_since(t0),
+            detail=result,
+        ))
+        logger.info(
+            "  %s %s %sms primary_in_new=%s primary=%s critic=%s",
+            q["qid"], result.get("http_status"), result.get("elapsed_ms"),
+            result.get("primary_in_new_zettels"), result.get("primary_citation"),
+            result.get("critic_verdict"),
+        )
+
+    rep.duration_ms = _ms_since(t_phase)
+    return rep
+
+
 def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
                        queries: list[dict]) -> PhaseReport:
     rep = PhaseReport(phase="rag_qa_chain")
@@ -1120,9 +1288,29 @@ def main(argv: list[str] | None = None) -> int:
             _write_failure_artifacts(all_reports, args.site, queries)
             return 1
 
-        # Phase 5: Q-A chain (the centerpiece)
+        # Phase 4b (iter-03 source-diversification probe): add 2 new Zettels
+        # (newsletter + web) into the Kasten BEFORE the Q-A chain runs, so the
+        # 13-query chain runs against a 9-member Kasten and the new diversity
+        # is exercised.
+        diversify_rep, new_nodes = phase_diversify_sources(page, args.token, sandbox["id"])
+        all_reports.append(diversify_rep)
+
+        # Re-screenshot /home/kastens to confirm member-count bump (7 → 9).
+        try:
+            page.goto(f"{args.site}/home/kastens", wait_until="networkidle", timeout=30_000)
+            page.wait_for_timeout(1500)
+            _shoot(page, "07b_home_kastens_after_diversify")
+        except Exception:
+            pass
+
+        # Phase 5: Q-A chain (the centerpiece) — runs against the now-9-member Kasten.
         qa_rep = phase_rag_qa_chain(page, args.token, sandbox["id"], queries)
         all_reports.append(qa_rep)
+
+        # Phase 5b: targeted Q-A on the 2 new Zettels.
+        all_reports.append(phase_post_diversification_qa(
+            page, args.token, sandbox["id"], new_nodes,
+        ))
 
         # Phase 6: burst pressure
         if not args.skip_burst:
