@@ -197,7 +197,19 @@ log "Flipping Caddy upstream to $IDLE..."
 # container stuck viewing the pre-deploy snippet. Rewriting keeps inode.
 cat > "$SNIPPET" <<EOF
 # Updated by deploy.sh at $(date -u +%Y-%m-%dT%H:%M:%SZ) — SHA=$SHA
-reverse_proxy zettelkasten-${IDLE}:10000
+#
+# iter-03: explicit transport timeouts so Strong-mode / multi-hop synthesis
+# (Gemini Pro answers can take 60-120s) doesn't trip the upstream deadline.
+# Must be >= GUNICORN_TIMEOUT (180s) for sane semantics.
+reverse_proxy zettelkasten-${IDLE}:10000 {
+    transport http {
+        dial_timeout 5s
+        read_timeout 240s
+        write_timeout 240s
+        response_header_timeout 60s
+    }
+    flush_interval -1
+}
 EOF
 chown deploy:deploy "$SNIPPET"
 chmod 644 "$SNIPPET"

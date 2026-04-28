@@ -26,38 +26,36 @@ jobs:
     environment: production
     timeout-minutes: 5
     steps:
-      - name: SSH and dump logs to /tmp
+      - name: SSH dump container logs + dmesg + free + caddy access (inline stdout)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_SSH_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT }}
+          # capture_stdout=true makes the appleboy action surface the script's
+          # stdout into the workflow log (and in the action's outputs). We
+          # inline-cat the logs rather than tarring them back via scp because
+          # the scp pull-from-host pattern is not how appleboy/scp-action
+          # works (it uploads, not downloads).
+          capture_stdout: true
           script: |
             set -euo pipefail
             COLOR="${{ inputs.color }}"
             if [ "$COLOR" = "auto" ]; then
                 COLOR="$(cat /opt/zettelkasten/ACTIVE_COLOR 2>/dev/null || echo blue)"
             fi
-            echo "[read_recent_logs] tailing color=$COLOR lines=${{ inputs.tail_lines }}"
+            LINES=${{ inputs.tail_lines }}
+            echo "===== [read_recent_logs] color=$COLOR lines=$LINES ====="
+            echo "===== free -h ====="
+            free -h
+            echo "===== docker ps ====="
+            sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+            echo "===== dmesg | tail (oom hints) ====="
+            sudo dmesg --ctime 2>/dev/null | tail -120 || true
+            echo "===== app container logs (--tail $LINES) ====="
             cd /opt/zettelkasten/compose
-            docker compose -f docker-compose.${COLOR}.yml logs \
-                --tail ${{ inputs.tail_lines }} \
-                > /tmp/recent_logs.txt 2>&1
-            wc -l /tmp/recent_logs.txt
-
-      - name: Fetch logs back to runner
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          source: /tmp/recent_logs.txt
-          target: ./
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: recent-logs
-          path: recent_logs.txt
-          retention-days: 7
+            sudo docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
+            echo "===== caddy access (last $LINES) ====="
+            sudo tail -n ${LINES} /opt/zettelkasten/logs/caddy/access.log 2>/dev/null || true
+            echo "===== END ====="
