@@ -30,6 +30,25 @@ from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
 
 _logger = logging.getLogger(__name__)
 
+
+def _log_rss(label: str, **fields: object) -> None:
+    """Log current process RSS at a named profiling point.
+
+    iter-03 (2026-04-29): emits one line per phase boundary so we can grep the
+    container logs to compute per-stage memory deltas during q1. Pure-stdlib
+    /proc/self/status read - no psutil dependency, no measurable overhead.
+    """
+    try:
+        with open("/proc/self/status", "r", encoding="ascii") as f:
+            rss_kb = next(
+                (int(line.split()[1]) for line in f if line.startswith("VmRSS:")),
+                0,
+            )
+        extra = " ".join(f"{k}={v}" for k, v in fields.items())
+        _logger.info("[mem-trace] %s rss_kb=%d %s", label, rss_kb, extra)
+    except OSError:
+        pass  # /proc not available (Windows tests etc.)
+
 # ---------------------------------------------------------------------------
 # Module-level int8 wiring (spec 3.15 layers 1-7)
 # ---------------------------------------------------------------------------
@@ -232,7 +251,7 @@ class CascadeReranker:
     def __init__(
         self,
         model_dir: str | Path | None = None,
-        stage1_k: int = 15,
+        stage1_k: int = 10,
         max_length: int = 512,
     ) -> None:
         # ``model_dir`` is optional now -- the int8 path is wired through the
@@ -382,11 +401,20 @@ class CascadeReranker:
         query: str,
         candidates: list[RetrievalCandidate],
     ) -> list[float]:
+        # iter-03 (2026-04-29) instrumentation: log peak RSS at each phase
+        # boundary of the stage-2 hot path. Earlier prod profile pinpointed a
+        # +684 MB spike during the ONNX forward pass; we need per-step deltas
+        # to surgically shrink the right culprit. Negligible overhead.
+        _log_rss("stage2.enter", count=len(candidates))
         tokenizer = self._get_stage2_tokenizer()
         session = self._get_stage2_session()
         encoded = await asyncio.to_thread(self._encode_pairs_sync, tokenizer, query, candidates)
+        _log_rss("stage2.encoded", count=len(candidates))
         outputs = await asyncio.to_thread(self._run_stage2_sync, session, encoded)
-        return self._extract_scores(outputs)
+        _log_rss("stage2.ran", count=len(candidates))
+        scores = self._extract_scores(outputs)
+        _log_rss("stage2.scored", count=len(candidates))
+        return scores
 
     def _apply_scores(
         self,
