@@ -1,0 +1,17 @@
+{
+  "_meta": "Iter-03 drift-detection baseline. Captured at calibration time. Used by ops/scripts/check_corpus_drift.py to decide when to refresh.",
+  "calibrated_at": "2026-04-28",
+  "iter": "iter-03",
+  "calibration_parquet_sha256": "sha256:c2f12ea9ce7259e1fd978a6005777f1b7032d1c63caf476347774bd59761edc0",
+  "int8_onnx_sha256": "sha256:906fce99cf9fcae4ba3669ed799a391e01271fe3bc981054896f11ee45920c39",
+  "corpus_stats": {
+    "chunk_count": 0,
+    "source_type_distribution": {},
+    "embedding_centroid_l2": 0.0
+  },
+  "drift_thresholds": {
+    "chunk_count_pct_delta_max": 0.1,
+    "source_type_proportion_pp_max": 0.05,
+    "centroid_l2_max": 0.05
+  }
+}

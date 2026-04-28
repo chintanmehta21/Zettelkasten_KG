@@ -135,21 +135,29 @@ def build_calibration_pairs(
 
 
 def _load_chunks_from_supabase() -> pd.DataFrame:
-    """Pull all kg_node_chunks rows owned by the canonical evaluator account."""
+    """Pull all kg_node_chunks rows owned by the canonical evaluator account.
+
+    iter-03 (2026-04-28): the script's previous hardcoded ``naruto_id`` was the
+    Supabase ``auth.users.id`` (f2105544-...070d3), but ``kg_node_chunks.user_id``
+    is the kg-internal ``kg_users.id`` (Naruto = 8842e563-...5888e, mapped via
+    ``kg_users.render_user_id``). Also ``source_type`` lives on ``kg_nodes``,
+    not on ``kg_node_chunks`` -- needs a JOIN via ``node_id``.
+    """
     import os
 
     import psycopg
 
     dsn = os.environ["SUPABASE_DB_URL"]
-    naruto_id = "f2105544-b73d-4946-8329-096d82f070d3"
+    naruto_kg_user_id = "8842e563-ee10-4b8b-bbf2-8af4ba65888e"
     sql = (
-        "SELECT id::text AS chunk_id, content AS text, source_type "
-        "FROM kg_node_chunks "
-        "WHERE user_id = %s"
+        "SELECT c.id::text AS chunk_id, c.content AS text, n.source_type "
+        "FROM kg_node_chunks c "
+        "JOIN kg_nodes n ON c.node_id = n.id "
+        "WHERE c.user_id = %s AND n.source_type IS NOT NULL"
     )
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, (naruto_id,))
+            cur.execute(sql, (naruto_kg_user_id,))
             rows = cur.fetchall()
             cols = [d.name for d in cur.description]
     return pd.DataFrame(rows, columns=cols)
@@ -162,9 +170,13 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     chunks = _load_chunks_from_supabase()
-    if len(chunks) < 100:
+    # iter-03: threshold lowered 100->70 (operator-approved 2026-04-28). Naruto
+    # canonical vault has 79 chunks at refresh time. Stratified sampler still
+    # emits 500 pairs (per-class caps independent of source pool). Note in
+    # the iter-03 scorecard so iter-01/02/03 metrics compare apples-to-apples.
+    if len(chunks) < 70:
         logger.error(
-            "only %d chunks in evaluator vault - need >=100 to sample meaningfully",
+            "only %d chunks in evaluator vault - need >=70 to sample meaningfully",
             len(chunks),
         )
         return 1

@@ -56,13 +56,19 @@ def quantize_to_int8(
     # nodes_to_exclude keeps classifier head / final pooler in fp32 (Layer 2). Exact
     # node names depend on the BGE ONNX export -- if quantize_dynamic raises
     # "node X not found", inspect the fp32 model's graph and update this list.
+    # iter-03 (2026-04-28, operator-approved): drop op_types_to_quantize=["MatMul"]
+    # restriction. With selective MatMul-only quantization the int8 file came out
+    # at 856 MB (vs plan-estimated ~110 MB) because most weights stayed fp32 -
+    # too large to fit the 700 MB worker-RSS budget. Letting ORT quantize all
+    # default ops drops the file to ~140-200 MB while keeping per-channel symmetric
+    # weight quant. nodes_to_exclude still keeps classifier head / final pooler
+    # in fp32 to preserve final-layer precision (Layer 2 spec intent).
     quantize_dynamic(
         model_input=str(fp32_model_path),
         model_output=str(out_path),
         weight_type=QuantType.QInt8,
         per_channel=True,
         reduce_range=False,
-        op_types_to_quantize=["MatMul"],
         nodes_to_exclude=[
             "/classifier/MatMul",
             "/classifier/Add",

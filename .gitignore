@@ -82,3 +82,8 @@ ops/host/cloud-init.local.yaml
 __MACOSX
 **/.DS_Store
 **/._*
+
+# iter-03: fp32 BGE source onnx (1.1 GB) and the optimum staging export dir
+# are produced by ops/scripts/export_bge_onnx.py - never publish.
+models/bge-reranker-base.onnx
+models/bge_export/
