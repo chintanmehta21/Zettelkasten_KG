@@ -88,6 +88,57 @@ TIMING_LOG_PATH = EVAL_DIR / "timing_report.md"
 DEFAULT_SITE = "https://zettelkasten.in"
 DEFAULT_KASTEN = "Knowledge Management & Personal Productivity"
 
+# iter-03 source-diversification probe (user request 2026-04-28).
+# Adds two well-aligned Zettels from previously under-represented source types
+# (newsletter + web essay) to the Knowledge Management Kasten, then asks two
+# targeted questions whose gold answers live ONLY in those new Zettels. This
+# verifies the entire pipeline end-to-end:
+#   /api/summarize  →  kg_nodes write  →  chunk + embed  →  rag_sandbox_members
+#   /api/rag/sandboxes/{id}/members      →  POST (bulk add)
+#   /api/rag/adhoc                       →  retrieval picks up the new chunks
+#
+# URLs are chosen for topical fit with the existing 7 Zettels (PKM, tools for
+# thought, productivity) so the synthesizer has real material to cite.
+DIVERSIFY_URLS: list[dict] = [
+    {
+        "url": "https://nesslabs.com/personal-knowledge-management",
+        "expected_source_type": "newsletter",
+        "label": "Ness Labs — Personal Knowledge Management",
+    },
+    {
+        "url": "https://maggieappleton.com/garden-history",
+        "expected_source_type": "web",
+        "label": "Maggie Appleton — A Brief History & Ethos of the Digital Garden",
+    },
+]
+
+# Targeted Q-A on the new Zettels (run after diversification). These do NOT
+# overwrite queries.json — they're harness-only probes.
+DIVERSIFY_QA: list[dict] = [
+    {
+        "qid": "div-1",
+        "expected_source_type": "newsletter",
+        "expected_url_substring": "nesslabs.com",
+        "text": (
+            "What concrete practices does the Ness Labs PKM piece recommend for "
+            "building a personal knowledge management system, and how does it "
+            "frame the difference between collecting and connecting notes?"
+        ),
+        "quality": "fast",
+    },
+    {
+        "qid": "div-2",
+        "expected_source_type": "web",
+        "expected_url_substring": "maggieappleton.com",
+        "text": (
+            "According to Maggie Appleton's history of the digital garden, what "
+            "distinguishes a digital garden from a traditional blog, and what are "
+            "the core ethos points she calls out?"
+        ),
+        "quality": "fast",
+    },
+]
+
 # SLOs from the plan: end-user acceptable latency. Anything over warns.
 PAGE_LCP_BUDGET_MS = 4000  # public pages must paint LCP under 4s
 RAG_FAST_LATENCY_BUDGET_MS = 30_000  # fast tier: ≤30s

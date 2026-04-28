@@ -219,8 +219,8 @@ jobs:
             "DEPLOY_GIT_SHA=${DEPLOY_GIT_SHA}" \
             "DEPLOY_ID=${DEPLOY_ID}" \
             "DEPLOY_ACTOR=${DEPLOY_ACTOR}" \
-            "GUNICORN_WORKERS=1" \
-            "GUNICORN_TIMEOUT=180" \
+            "GUNICORN_WORKERS=2" \
+            "GUNICORN_TIMEOUT=240" \
             "GUNICORN_GRACEFUL_TIMEOUT=90")
 
           FULL_ENV="${SECRETS_BODY}"$'\n'"${STATIC_BODY}"
