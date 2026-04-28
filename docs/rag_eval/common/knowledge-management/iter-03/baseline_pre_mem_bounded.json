@@ -1,0 +1,692 @@
+{
+  "iter": "iter-03",
+  "site": "https://zettelkasten.in",
+  "captured_at": "2026-04-28T08:06:35Z",
+  "total_duration_ms": 185857,
+  "kasten": {
+    "name": "Knowledge Management & Personal Productivity",
+    "id": "227e0fb2-ff81-4d08-8702-76d9235564f4",
+    "member_count": 7
+  },
+  "qa_summary": {
+    "total": 3,
+    "end_to_end_gold_at_1": 0.3333,
+    "synthesizer_over_refusals": 0,
+    "infra_failures": 2,
+    "p95_latency_ms": 20531,
+    "p95_under_budget": true
+  },
+  "phases": [
+    {
+      "phase": "public_pages",
+      "duration_ms": 15937,
+      "checks": [
+        {
+          "name": "GET /",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/01_root_index.png",
+          "duration_ms": 7157,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 3095,
+              "domcontent_ms": 3526,
+              "load_ms": 3576,
+              "first_paint_ms": 3496,
+              "first_contentful_paint_ms": 3496,
+              "largest_contentful_paint_ms": 3496
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0.0006
+              },
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "GET /about",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/02_about.png",
+          "duration_ms": 5037,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 271,
+              "domcontent_ms": 842,
+              "load_ms": 843,
+              "first_paint_ms": 856,
+              "first_contentful_paint_ms": 856,
+              "largest_contentful_paint_ms": 3068
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "GET /pricing",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/03_pricing.png",
+          "duration_ms": 3742,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 433,
+              "domcontent_ms": 544,
+              "load_ms": 573,
+              "first_paint_ms": 568,
+              "first_contentful_paint_ms": 568,
+              "largest_contentful_paint_ms": 568
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "knowledge_graph",
+      "duration_ms": 7472,
+      "checks": [
+        {
+          "name": "GET /knowledge-graph (amber-allowed surface)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/04_knowledge_graph_3d.png",
+          "duration_ms": 7472,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 303,
+              "domcontent_ms": 593,
+              "load_ms": 593,
+              "first_paint_ms": 376,
+              "first_contentful_paint_ms": 376,
+              "largest_contentful_paint_ms": 5256
+            },
+            "color_audit": {
+              "offending_rules": [
+                {
+                  "source": "inline",
+                  "rule": ".graph-info-msg { top: 50%; width: 100%; text-align: center; color: lavender; opacity: 0.7; font-size: 22px; position: absolute; font-family: sans-serif; }"
+                }
+              ],
+              "passed": false
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 6,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            },
+            "note": "amber #D4A024 allowed here"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "authed_pages",
+      "duration_ms": 14709,
+      "checks": [
+        {
+          "name": "/home :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/05_home.png",
+          "duration_ms": 4947,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 151,
+              "domcontent_ms": 197,
+              "load_ms": 197,
+              "first_paint_ms": 216,
+              "first_contentful_paint_ms": 216,
+              "largest_contentful_paint_ms": 216
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/06_home_zettels.png",
+          "duration_ms": 5169,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 151,
+              "domcontent_ms": 184,
+              "load_ms": 184,
+              "first_paint_ms": 200,
+              "first_contentful_paint_ms": 200,
+              "largest_contentful_paint_ms": 200
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home/zettels :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/07_home_kastens.png",
+          "duration_ms": 4592,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 149,
+              "domcontent_ms": 223,
+              "load_ms": 223,
+              "first_paint_ms": 244,
+              "first_contentful_paint_ms": 244,
+              "largest_contentful_paint_ms": 244
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home/kastens :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "rag_composer",
+      "duration_ms": 34366,
+      "checks": [
+        {
+          "name": "GET /home/rag",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/08_rag_chooser.png",
+          "duration_ms": 3216,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 126,
+              "domcontent_ms": 214,
+              "load_ms": 214,
+              "first_paint_ms": 236,
+              "first_contentful_paint_ms": 236,
+              "largest_contentful_paint_ms": 236
+            }
+          }
+        },
+        {
+          "name": "GET /api/rag/sandboxes",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 853,
+          "detail": {
+            "http": 200,
+            "elapsed_ms": 844
+          }
+        },
+        {
+          "name": "Click Kasten in chooser",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 117,
+          "detail": {
+            "note": "best-effort UI click; falls through if not interactive"
+          }
+        },
+        {
+          "name": "Composer placeholder uses Kasten name",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/10_composer_placeholder.png",
+          "duration_ms": 30172,
+          "detail": {
+            "placeholder": "<error: Locator.get_attribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"textarea, input[type='text']\").first\n>"
+          }
+        }
+      ],
+      "notes": [
+        "Kasten id=227e0fb2-ff81-4d08-8702-76d9235564f4 members=7"
+      ]
+    },
+    {
+      "phase": "diversify_sources",
+      "duration_ms": 62083,
+      "checks": [
+        {
+          "name": "POST /api/summarize https://nesslabs.com/personal-knowledge-management",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 3612,
+          "detail": {
+            "label": "Ness Labs \u2014 Personal Knowledge Management",
+            "http_status": 500,
+            "elapsed_ms": 3604,
+            "node_id": null,
+            "source_type": null,
+            "title": null,
+            "expected_source_type": "newsletter",
+            "source_type_matches_expected": false,
+            "summarize_error": null
+          }
+        },
+        {
+          "name": "POST /api/summarize https://maggieappleton.com/garden-history",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 58470,
+          "detail": {
+            "label": "Maggie Appleton \u2014 A Brief History & Ethos of the Digital Garden",
+            "http_status": 200,
+            "elapsed_ms": 58458,
+            "node_id": null,
+            "source_type": "web",
+            "title": "Digital Gardening",
+            "expected_source_type": "web",
+            "source_type_matches_expected": true,
+            "summarize_error": null
+          }
+        }
+      ],
+      "notes": [
+        "summarize failed for https://nesslabs.com/personal-knowledge-management: {'ok': False, 'status': 500, 'elapsed_ms': 3604, 'body': {'detail': \"Failed to process URL: Client error '404 Not Found' for url 'https://nesslabs.com/personal-knowledge-management'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\"}, 'raw': None}",
+        "summarize failed for https://maggieappleton.com/garden-history: {'ok': True, 'status': 200, 'elapsed_ms': 58458, 'body': {'title': 'Digital Gardening', 'summary': \"## Core Concept of Digital Gardening\\n- A departure from traditional blogs, emphasizing free-form, work-in-progress wikis.\\n- Ideas evolve and are linked by context, not reverse-chronological order.\\n- Characterized as less rigid, performative, and perfect, echoing the early web's ethos.\\n\\n## Evolution of the 'Digital Garden' Concept\\n- Mark Bernstein's 1998 essay 'Hypertext Gardens' first addressed user experience and content organization in the context of the '90s 'Navigation Problem'.\\n- A brief, unrelated usage appeared on Twitter in April 2007, where Rory Sutherland defined it as digital maintenance or 'faffing'.\\n- The modern concept is credited to Mike Caufield's 2015 keynote 'The Garden and the Stream', which positioned the garden as a long-term, explorable knowledge space in contrast to ephemeral social media 'streams'.\\n- Caufield's ideas gained traction in late 2018, amplified by Tom Critchlow's 'campfires' metaphor and Joel Hooks' 2019 writing on gardening as a process.\\n- Amy Hoy's argument that Moveable Type's 2001 launch standardized the reverse-chronological blog is cited as a contrast.\\n- By 2019-2020, the concept was expanded by Shaun Wang and Anne-Laure Le Cunff, discussed by the IndieWeb community, and covered by MIT Tech Review.\\n\\n## Community and Technological Support\\n- The trend's growth was supported by communities such as IndieWeb, Roam Research users, and followers of 'Building a Second Brain' and 'Learn in Public' philosophies.\\n- Early adopters were often developers utilizing tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby).\\n- No-code tools like Obsidian, TiddlyWiki, and Notion now offer less customizable options for non-technical users.\\n\\n## Key Characteristics and Patterns\\n\\n### Topography over Timelines\\n- Prioritizes contextual, bi-directional links over chronological dates.\\n\\n### Continuous Growth\\n- Notes are never considered finished and are expected to evolve publicly.\\n\\n### Imperfection & Learning in Public\\n- Embraces a 'Domestic Cozy' approach, requiring transparency through status indicators.\\n- Examples include the author's seedling/budding/evergreen system and the epistemic statuses used by Gwern.net and Devon Zuegal.\\n\\n### Playful, Personal, and Experimental\\n- Encourages unique, non-homogenous sites built with web-native languages.\\n\\n### Intercropping & Content Diversity\\n- Includes various media types such as audio, video, and code.\\n\\n### Independent Ownership\\n- Focuses on controlling one's own space and data using open formats like HTML and markdown, outside of walled platforms like Medium or Facebook.\", 'brief_summary': \"Digital Gardening refers to a trend of creating free-form, evolving online knowledge spaces, akin to wikis, that prioritize contextual linking over reverse-chronological order. These 'gardens' are characterized by their less rigid, performative, and imperfect nature, encouraging continuous growth and public learning, contrasting with traditional blogs and ephemeral social media streams.\", 'detailed_summary': \"## Core Concept of Digital Gardening\\n- A departure from traditional blogs, emphasizing free-form, work-in-progress wikis.\\n- Ideas evolve and are linked by context, not reverse-chronological order.\\n- Characterized as less rigid, performative, and perfect, echoing the early web's ethos.\\n\\n## Evolution of the 'Digital Garden' Concept\\n- Mark Bernstein's 1998 essay 'Hypertext Gardens' first addressed user experience and content organization in the context of the '90s 'Navigation Problem'.\\n- A brief, unrelated usage appeared on Twitter in April 2007, where Rory Sutherland defined it as digital maintenance or 'faffing'.\\n- The modern concept is credited to Mike Caufield's 2015 keynote 'The Garden and the Stream', which positioned the garden as a long-term, explorable knowledge space in contrast to ephemeral social media 'streams'.\\n- Caufield's ideas gained traction in late 2018, amplified by Tom Critchlow's 'campfires' metaphor and Joel Hooks' 2019 writing on gardening as a process.\\n- Amy Hoy's argument that Moveable Type's 2001 launch standardized the reverse-chronological blog is cited as a contrast.\\n- By 2019-2020, the concept was expanded by Shaun Wang and Anne-Laure Le Cunff, discussed by the IndieWeb community, and covered by MIT Tech Review.\\n\\n## Community and Technological Support\\n- The trend's growth was supported by communities such as IndieWeb, Roam Research users, and followers of 'Building a Second Brain' and 'Learn in Public' philosophies.\\n- Early adopters were often developers utilizing tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby).\\n- No-code tools like Obsidian, TiddlyWiki, and Notion now offer less customizable options for non-technical users.\\n\\n## Key Characteristics and Patterns\\n\\n### Topography over Timelines\\n- Prioritizes contextual, bi-directional links over chronological dates.\\n\\n### Continuous Growth\\n- Notes are never considered finished and are expected to evolve publicly.\\n\\n### Imperfection & Learning in Public\\n- Embraces a 'Domestic Cozy' approach, requiring transparency through status indicators.\\n- Examples include the author's seedling/budding/evergreen system and the epistemic statuses used by Gwern.net and Devon Zuegal.\\n\\n### Playful, Personal, and Experimental\\n- Encourages unique, non-homogenous sites built with web-native languages.\\n\\n### Intercropping & Content Diversity\\n- Includes various media types such as audio, video, and code.\\n\\n### Independent Ownership\\n- Focuses on controlling one's own space and data using open formats like HTML and markdown, outside of walled platforms like Medium or Facebook.\", 'tags': ['digital-gardening', 'knowledge-management', 'personal-websites', 'blogging', 'indieweb', 'note-taking', 'content-creation'], 'source_type': 'web', 'source_url': 'https://maggieappleton.com/garden-history', 'one_line_summary': \"Digital Gardening refers to a trend of creating free-form, evolving online knowledge spaces, akin to wikis, that prioritize contextual linking over reverse-chronological order. These 'gardens' are characterized by their less rigid, performative, and imperfect nature, encouraging continuous growth and public learning, contrasting with traditional blogs and ephemeral social media streams.\", 'is_raw_fallback': False, 'tokens_used': 1767, 'latency_ms': 38731, 'metadata': {'source_type': 'web', 'url': 'https://maggieappleton.com/garden-history', 'extraction_confidence': 'high', 'confidence_reason': 'HTML article text extracted', 'total_tokens_used': 1767, 'gemini_pro_tokens': 0, 'gemini_flash_tokens': 1767, 'total_latency_ms': 38731, 'cod_iterations_used': 0, 'self_check_missing_count': 0, 'patch_applied': False, 'engine_version': '2.0.0', 'structured_payload': {'mini_title': 'Digital Gardening', 'brief_summary': \"Digital Gardening refers to a trend of creating free-form, evolving online knowledge spaces, akin to wikis, that prioritize contextual linking over reverse-chronological order. These 'gardens' are characterized by their less rigid, performative, and imperfect nature, encouraging continuous growth and public learning, contrasting with traditional blogs and ephemeral social media streams.\", 'tags': ['Digital Gardening', 'Knowledge Management', 'Personal Websites', 'Blogging', 'IndieWeb', 'Note-taking', 'Content Creation'], 'detailed_summary': [{'heading': 'Core Concept of Digital Gardening', 'bullets': ['A departure from traditional blogs, emphasizing free-form, work-in-progress wikis.', 'Ideas evolve and are linked by context, not reverse-chronological order.', \"Characterized as less rigid, performative, and perfect, echoing the early web's ethos.\"], 'sub_sections': {}}, {'heading': \"Evolution of the 'Digital Garden' Concept\", 'bullets': [\"Mark Bernstein's 1998 essay 'Hypertext Gardens' first addressed user experience and content organization in the context of the '90s 'Navigation Problem'.\", \"A brief, unrelated usage appeared on Twitter in April 2007, where Rory Sutherland defined it as digital maintenance or 'faffing'.\", \"The modern concept is credited to Mike Caufield's 2015 keynote 'The Garden and the Stream', which positioned the garden as a long-term, explorable knowledge space in contrast to ephemeral social media 'streams'.\", \"Caufield's ideas gained traction in late 2018, amplified by Tom Critchlow's 'campfires' metaphor and Joel Hooks' 2019 writing on gardening as a process.\", \"Amy Hoy's argument that Moveable Type's 2001 launch standardized the reverse-chronological blog is cited as a contrast.\", 'By 2019-2020, the concept was expanded by Shaun Wang and Anne-Laure Le Cunff, discussed by the IndieWeb community, and covered by MIT Tech Review.'], 'sub_sections': {}}, {'heading': 'Community and Technological Support', 'bullets': [\"The trend's growth was supported by communities such as IndieWeb, Roam Research users, and followers of 'Building a Second Brain' and 'Learn in Public' philosophies.\", 'Early adopters were often developers utilizing tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby).', 'No-code tools like Obsidian, TiddlyWiki, and Notion now offer less customizable options for non-technical users.'], 'sub_sections': {}}, {'heading': 'Key Characteristics and Patterns', 'bullets': [], 'sub_sections': {'Topography over Timelines': ['Prioritizes contextual, bi-directional links over chronological dates.'], 'Continuous Growth': ['Notes are never considered finished and are expected to evolve publicly.'], 'Imperfection & Learning in Public': [\"Embraces a 'Domestic Cozy' approach, requiring transparency through status indicators.\", \"Examples include the author's seedling/budding/evergreen system and the epistemic statuses used by Gwern.net and Devon Zuegal.\"], 'Playful, Personal, and Experimental': ['Encourages unique, non-homogenous sites built with web-native languages.'], 'Intercropping & Content Diversity': ['Includes various media types such as audio, video, and code.'], 'Independent Ownership': [\"Focuses on controlling one's own space and data using open formats like HTML and markdown, outside of walled platforms like Medium or Facebook.\"]}}]}, 'is_schema_fallback': False, 'model_used': [{'role': 'dense_verify', 'model': 'gemini-2.5-pro', 'starting_model': 'gemini-2.5-pro', 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, {'role': 'summarizer', 'model': 'gemini-2.5-flash', 'starting_model': 'gemini-2.5-flash', 'fallback_reason': 'gemini-2.5-flash-unavailable'}], 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, 'captured_at': '2026-04-28'}, 'raw': None}",
+        "new_nodes=[]"
+      ]
+    },
+    {
+      "phase": "rag_qa_chain",
+      "duration_ms": 40972,
+      "checks": [
+        {
+          "name": "Q-A q1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 14240,
+          "detail": {
+            "qid": "q1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+            "http_status": 502,
+            "elapsed_ms": 14230,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Bad gateway</span>\n                <span class=\"code-label\">Error code 502</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-28 08:06:09 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a bad gateway error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f34908dd9537f9b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q2 (fast)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 20548,
+          "detail": {
+            "qid": "q2",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+            "http_status": 200,
+            "elapsed_ms": 20531,
+            "answer": "Steve Jobs described death as \"the single best invention of Life\" and \"Life's change agent\" for clearing out the old [id=\"yt-steve-jobs-2005-stanford\"]. He claimed that remembering one will die is the best way to avoid the \"trap of thinking you have something to lose,\" stating, \"You are already naked. There is no reason not to follow your heart\" [id=\"yt-steve-jobs-2005-stanford\"].",
+            "citations": [
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              }
+            ],
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 1451,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "session_id": "8f8f92c1-88a3-45a6-a76f-0dd95dac5aa4",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 6183,
+          "detail": {
+            "qid": "q3",
+            "quality": "fast",
+            "expected": [
+              "yt-effective-public-speakin"
+            ],
+            "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+            "http_status": 502,
+            "elapsed_ms": 6169,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Bad gateway</span>\n                <span class=\"code-label\">Error code 502</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-28 08:06:36 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a bad gateway error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3491674aa07f9b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "post_diversification_qa",
+      "duration_ms": 0,
+      "checks": [
+        {
+          "name": "post-diversification Q-A",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "error": "only 0 new nodes; need 2"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "debug_param_leak",
+      "duration_ms": 2437,
+      "checks": [
+        {
+          "name": "?debug=1 hidden in prod (no panel, no model name)",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/11_debug_param.png",
+          "duration_ms": 2437,
+          "detail": {
+            "debug_panel_count": 0,
+            "model_leak_hits": []
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "modal_select_all",
+      "duration_ms": 3220,
+      "checks": [
+        {
+          "name": "Open Add Zettels modal",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/12_kastens_no_modal.png",
+          "duration_ms": 3220,
+          "detail": {
+            "note": "Add-Zettels trigger selector not found; UI may have changed"
+          }
+        }
+      ],
+      "notes": []
+    }
+  ]
+}
