@@ -103,6 +103,16 @@ def _build_flashrank_ranker(model_dir: Path) -> Ranker | None:
 _STAGE1_RANKER: Ranker | None = _build_flashrank_ranker(_DEFAULT_FLASHRANK_DIR)
 
 
+# iter-03 §7: BGE tokenizer also baked into the image. Eager-load at module
+# import so workers COW-share the parsed tokenizer state instead of each
+# parsing the 700 KB tokenizer.json post-fork. cascade._score_one's existing
+# int8-path tokenizer handling reads the same file at models/tokenizer.json.
+_TOKENIZER_PATH = INT8_MODEL_PATH.parent / "tokenizer.json"
+_STAGE2_TOKENIZER: Tokenizer | None = (
+    Tokenizer.from_file(str(_TOKENIZER_PATH)) if _TOKENIZER_PATH.exists() else None
+)
+
+
 def _load_json(path: Path, default: dict) -> dict:
     if not path.exists():
         return default
@@ -230,12 +240,14 @@ class CascadeReranker:
         # Existing callers continue to pass it for stage-1 (FlashRank).
         effective_model_dir = model_dir if model_dir is not None else str(_REPO_ROOT / "models")
         self._model_manager = ModelManager(effective_model_dir)
-        self._degradation_logger = DegradationLogger(effective_model_dir)
+        # iter-03 §7: write degradation events to a separate writable mount,
+        # not to model_dir. /app/models is read-only post-bake. Override via
+        # RAG_DEGRADATION_LOG_DIR env (default /app/runtime).
+        log_dir = os.environ.get("RAG_DEGRADATION_LOG_DIR", "/app/runtime")
+        self._degradation_logger = DegradationLogger(log_dir)
         self._stage1_k = max(stage1_k, 1)
         self._max_length = max_length
         self._stage1: Ranker | None = None
-        self._stage2_session: ort.InferenceSession | None = None
-        self._stage2_tokenizer: Tokenizer | None = None
         self._stage1_lock = threading.Lock()
         self._stage2_lock = threading.Lock()
 
@@ -463,16 +475,27 @@ class CascadeReranker:
             return self._stage1
 
     def _get_stage2_session(self) -> ort.InferenceSession:
-        if self._stage2_session is None:
-            bge_dir = self._model_manager.ensure_bge_onnx_model()
-            self._stage2_session = ort.InferenceSession(str(bge_dir / "onnx" / "model.onnx"))
-        return self._stage2_session
+        # iter-03 §7: int8 BGE is baked into the image at module import. There
+        # is no lazy fp32 fallback - if _STAGE2_SESSION is None, the image is
+        # broken and we fail loudly so deploy.sh [stage2-assert] catches it
+        # before Caddy flip. The previous lazy path ate 1 GB RSS per worker
+        # in iter-03-stale.
+        if _STAGE2_SESSION is None:
+            raise RuntimeError(
+                "int8 BGE session not loaded - image is missing "
+                "models/bge-reranker-base-int8.onnx or it failed to import"
+            )
+        return _STAGE2_SESSION
 
     def _get_stage2_tokenizer(self) -> Tokenizer:
-        if self._stage2_tokenizer is None:
-            bge_dir = self._model_manager.ensure_bge_onnx_model()
-            self._stage2_tokenizer = Tokenizer.from_file(str(bge_dir / "tokenizer.json"))
-        return self._stage2_tokenizer
+        # iter-03 §7: tokenizer also eager-loaded at module level (see
+        # _STAGE2_TOKENIZER). No lazy fallback.
+        if _STAGE2_TOKENIZER is None:
+            raise RuntimeError(
+                "BGE tokenizer not loaded - image is missing "
+                "models/tokenizer.json or it failed to import"
+            )
+        return _STAGE2_TOKENIZER
 
     def _run_stage1_sync(self, stage1: Ranker, request: RerankRequest) -> list[dict]:
         with self._stage1_lock:
