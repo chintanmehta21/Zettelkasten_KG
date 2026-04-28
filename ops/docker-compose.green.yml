@@ -9,7 +9,9 @@ services:
     environment:
       WEBHOOK_PORT: "10000"
       NEXUS_ENABLED: "true"
-      RAG_MODEL_DIR: "/app/models"
+      # iter-03 §6: models are baked into the image read-only; runtime writes
+      # go to /app/runtime via the mount below.
+      RAG_DEGRADATION_LOG_DIR: "/app/runtime"
     ports:
       - "127.0.0.1:10001:10000"
     networks:
@@ -17,7 +19,9 @@ services:
     volumes:
       - /opt/zettelkasten/data/kg_output:/app/kg_output
       - /opt/zettelkasten/data/bot_data:/app/bot_data
-      - /opt/zettelkasten/data/models:/app/models:rw
+      # iter-03 §6: models live inside the image; runtime writes (e.g. the
+      # cascade-reranker degradation log) go to a separate writable mount.
+      - /opt/zettelkasten/data/runtime:/app/runtime:rw
     # iter-03 mem-bounded: cgroup ceiling 1300m + 1000m swap budget. Spec §2.1.
     mem_limit: 1300m
     memswap_limit: 2300m
