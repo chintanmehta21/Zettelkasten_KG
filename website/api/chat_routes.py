@@ -179,6 +179,48 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
     }
 
 
+SSE_HEARTBEAT_INTERVAL_SECONDS = 10.0
+
+
+async def _heartbeat_wrapper(inner: AsyncIterator[str]) -> AsyncIterator[str]:
+    """Emit ``: heartbeat`` SSE comment every 10s alongside the real stream.
+
+    Keeps idle connections warm through Cloudflare/Caddy intermediaries during
+    long synthesizer waits (multi-hop ``high`` quality answers can stall 30+s
+    before the first token). The client treats ``:`` lines as no-ops.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+    sentinel = object()
+
+    async def _consume() -> None:
+        try:
+            async for event in inner:
+                await queue.put(event)
+        finally:
+            await queue.put(sentinel)
+
+    consumer = asyncio.create_task(_consume())
+    try:
+        while True:
+            try:
+                item = await asyncio.wait_for(
+                    queue.get(), timeout=SSE_HEARTBEAT_INTERVAL_SECONDS
+                )
+            except asyncio.TimeoutError:
+                yield ": heartbeat\n\n"
+                continue
+            if item is sentinel:
+                return
+            yield item
+    finally:
+        if not consumer.done():
+            consumer.cancel()
+            try:
+                await consumer
+            except (asyncio.CancelledError, Exception):
+                pass
+
+
 async def _stream_answer_with_backpressure(
     runtime,
     kg_user_id: UUID,
@@ -396,7 +438,9 @@ async def create_message(
                 headers={"Retry-After": "5"},
             )
         return StreamingResponse(
-            _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body),
+            _heartbeat_wrapper(
+                _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body)
+            ),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -436,7 +480,9 @@ async def adhoc_message(
                 headers={"Retry-After": "5"},
             )
         return StreamingResponse(
-            _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body),
+            _heartbeat_wrapper(
+                _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body)
+            ),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

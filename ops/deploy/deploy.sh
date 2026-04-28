@@ -28,7 +28,7 @@ fi
 
 ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
-DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-20}"
+DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-45}"
 
 MODEL_DIR="$ROOT/data/models"
 if [[ ! -d "$MODEL_DIR" ]]; then
