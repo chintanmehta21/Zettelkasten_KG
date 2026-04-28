@@ -1,0 +1,60 @@
+# iter-03 §9: weekly corpus drift detector. If drift exceeds thresholds,
+# refreshes calibration parquet + int8 ONNX and opens a PR for human review.
+name: Calibration drift check
+on:
+  schedule:
+    - cron: "0 2 * * 0"   # Sunday 02:00 UTC
+  workflow_dispatch:       # allow manual trigger from GH UI
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install runtime + dev requirements
+        run: |
+          pip install --no-cache-dir -r ops/requirements.txt
+          pip install --no-cache-dir -r ops/requirements-dev.txt
+      - name: Run drift detector
+        id: drift
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set +e
+          python ops/scripts/check_corpus_drift.py --current-from-supabase --report-out drift_report.json
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+      - name: Upload drift report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift_report.json
+      - name: Refresh calibration + int8 (drift detected)
+        if: steps.drift.outputs.rc == '1'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python ops/scripts/refresh_calibration_and_int8.py
+      - name: Open PR with refreshed artifacts
+        if: steps.drift.outputs.rc == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: auto/calibration-refresh-${{ github.run_id }}
+          title: "chore: auto refresh int8 calibration"
+          commit-message: "chore: refresh int8 calibration corpus drift"
+          body-path: drift_report.json
+          add-paths: |
+            models/bge-reranker-base-int8.onnx
+            models/bge_calibration_pairs.parquet
+            models/calibration_baseline.json
