@@ -50,12 +50,15 @@ jobs:
             echo "===== free -h ====="
             free -h
             echo "===== docker ps ====="
-            sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
-            echo "===== dmesg | tail (oom hints) ====="
-            sudo dmesg --ctime 2>/dev/null | tail -120 || true
+            # deploy user is in the docker group — no sudo needed (and the
+            # droplet sudoers config has no NOPASSWD rule for `docker`).
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+            echo "===== dmesg unavailable (deploy user lacks privileged access; OOM hints will be empty) ====="
             echo "===== app container logs (--tail $LINES) ====="
             cd /opt/zettelkasten/compose
-            sudo docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
+            docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
             echo "===== caddy access (last $LINES) ====="
-            sudo tail -n ${LINES} /opt/zettelkasten/logs/caddy/access.log 2>/dev/null || true
+            # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
+            # deploy.sh — readable directly without sudo.
+            tail -n ${LINES} /opt/zettelkasten/logs/caddy/access.log 2>/dev/null || true
             echo "===== END ====="
