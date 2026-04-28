@@ -85,13 +85,26 @@ set +e
 # iter-03 §1C.4: pass deploy provenance so apply_migrations can stamp each
 # audit row with git SHA / deploy id / actor. Defaults guarantee non-null
 # values even when this script is run outside CI (manual operator deploy).
+# iter-03 §1C.5: mount a host dir so the bootstrapped/verified manifest
+# survives the container exit. Operator commits this back to Git after the
+# first deploy, after which the in-image copy at /app/supabase/.../
+# expected_schema.json is the canonical source.
+MANIFEST_HOST_DIR="$ROOT/data/schema"
+mkdir -p "$MANIFEST_HOST_DIR"
+chown -R deploy:deploy "$MANIFEST_HOST_DIR" 2>/dev/null || true
+
 docker run --rm --network host \
     --env-file /opt/zettelkasten/compose/.env \
+    -v "$MANIFEST_HOST_DIR":/manifest-out \
     -e DEPLOY_GIT_SHA="${DEPLOY_GIT_SHA:-$SHA}" \
     -e DEPLOY_ID="${DEPLOY_ID:-manual-$(date -u +%Y%m%dT%H%M%SZ)}" \
     -e DEPLOY_ACTOR="${DEPLOY_ACTOR:-$(whoami)}" \
+    -e MIGRATION_MANIFEST_REQUIRED="${MIGRATION_MANIFEST_REQUIRED:-1}" \
+    -e MIGRATION_MANIFEST_AUTOBOOTSTRAP="${MIGRATION_MANIFEST_AUTOBOOTSTRAP:-1}" \
     "$IMAGE" \
-    python ops/scripts/apply_migrations.py 2>&1 | tee -a "$LOG"
+    python ops/scripts/apply_migrations.py \
+        --manifest-path /manifest-out/expected_schema.json \
+        2>&1 | tee -a "$LOG"
 MIG_RC=${PIPESTATUS[0]}
 set -e
 if [ "$MIG_RC" -ne 0 ]; then
@@ -101,16 +114,16 @@ fi
 log "[migration] OK — proceeding with blue/green flip."
 
 # iter-03 §3.9 / Plan 2D.2: single-tenant kg_users allowlist gate.
-# After migrations succeed but BEFORE traffic flips, verify that no rogue
-# kg_users rows exist outside the canonical Naruto + Zoro IDs. Aborts the
-# deploy if an unknown auth_id is in the live table — prevents silent
-# multi-tenant pollution that historically broke per-user retrieval scopes.
-log "[deploy] Running kg_users allowlist gate..."
-set +e
-docker run --rm --network host \
-    --env-file /opt/zettelkasten/compose/.env \
-    "$IMAGE" \
-    python -c "
+# Skipped by default per operator decision — re-enable with
+# DEPLOY_ALLOWLIST_GATE=1 once the live kg_users table has been reconciled
+# (run ops/scripts/reconcile_kg_users.py --audit first).
+if [ "${DEPLOY_ALLOWLIST_GATE:-0}" = "1" ]; then
+    log "[deploy] Running kg_users allowlist gate..."
+    set +e
+    docker run --rm --network host \
+        --env-file /opt/zettelkasten/compose/.env \
+        "$IMAGE" \
+        python -c "
 import json, os, sys, psycopg
 allowed = set(json.load(open('/app/ops/deploy/expected_users.json'))['allowed_auth_ids'])
 with psycopg.connect(os.environ['SUPABASE_DB_URL']) as c, c.cursor() as cur:
@@ -122,11 +135,14 @@ if unknown:
     sys.exit(1)
 print('[deploy] kg_users allowlist OK')
 " 2>&1 | tee -a "$LOG"
-GATE_RC=${PIPESTATUS[0]}
-set -e
-if [ "$GATE_RC" -ne 0 ]; then
-    log "[deploy] FATAL: allowlist gate failed rc=$GATE_RC — ABORTING DEPLOY"
-    exit "$GATE_RC"
+    GATE_RC=${PIPESTATUS[0]}
+    set -e
+    if [ "$GATE_RC" -ne 0 ]; then
+        log "[deploy] FATAL: allowlist gate failed rc=$GATE_RC — ABORTING DEPLOY"
+        exit "$GATE_RC"
+    fi
+else
+    log "[deploy] kg_users allowlist gate SKIPPED (DEPLOY_ALLOWLIST_GATE!=1)"
 fi
 
 log "Starting $IDLE container with new image..."

@@ -110,10 +110,13 @@ def env(monkeypatch, tmp_path):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
     # iter-03 §1C.5: redirect the schema-drift manifest path to a tmp
-    # location so the post-apply gate is a no-op (manifest absent) for
-    # all unit tests except the dedicated drift-detection tests.
+    # location and disable the gate for the migration-application tests
+    # (the dedicated drift-detection tests in test_schema_drift.py exercise
+    # the gate directly).
     am = _load()
     monkeypatch.setattr(am, "DEFAULT_MANIFEST_PATH", tmp_path / "no-manifest.json")
+    monkeypatch.setenv("MIGRATION_MANIFEST_REQUIRED", "0")
+    monkeypatch.setenv("MIGRATION_MANIFEST_AUTOBOOTSTRAP", "0")
 
 
 @pytest.fixture

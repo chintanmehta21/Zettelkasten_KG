@@ -591,25 +591,46 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             applied_count += 1
 
-        # iter-03 §1C.5: post-apply manifest gate. On --update-manifest we
-        # rewrite the manifest from the live schema (deliberate change). On
-        # a normal apply (rc==0, not dry-run) we verify the live schema
-        # matches the manifest and fail the deploy on drift. The gate is
-        # opt-in until the manifest exists at the configured path so the
-        # rollout can land without a live bootstrap blocking deploys; once
-        # the manifest is committed, drift becomes a hard fail.
+        # iter-03 §1C.5 (hardened): post-apply manifest gate.
+        #
+        # Default behavior is HARD-FAIL on drift or missing manifest. Two
+        # operator escapes:
+        #   * ``--update-manifest`` rewrites the manifest from the live schema
+        #     (deliberate schema change — committed back to Git).
+        #   * ``MIGRATION_MANIFEST_AUTOBOOTSTRAP=1`` writes the manifest if
+        #     absent, returns 0, and logs a loud reminder to commit it. Used
+        #     for the first deploy after iter-03; not for steady state.
+        #
+        # The legacy ``MIGRATION_MANIFEST_REQUIRED=0`` env reverts to warn-only
+        # behavior — kept for emergency rollback only.
         if rc == 0 and not args.dry_run:
+            required = os.environ.get("MIGRATION_MANIFEST_REQUIRED", "1") == "1"
+            autobootstrap = os.environ.get("MIGRATION_MANIFEST_AUTOBOOTSTRAP", "0") == "1"
+
             if args.update_manifest:
                 _write_manifest(conn, manifest_path)
             elif manifest_path.exists():
                 drift_rc = _verify_schema(conn, manifest_path)
                 if drift_rc != 0:
                     rc = 1
+            elif autobootstrap:
+                logger.warning(
+                    "[migration] manifest missing — AUTOBOOTSTRAP writing %s. "
+                    "OPERATOR MUST COMMIT THIS FILE TO GIT before the next deploy.",
+                    manifest_path,
+                )
+                _write_manifest(conn, manifest_path)
+            elif required:
+                logger.error(
+                    "[migration] FATAL: schema-drift manifest not found at %s. "
+                    "Either set MIGRATION_MANIFEST_AUTOBOOTSTRAP=1 for the first "
+                    "deploy, or run --bootstrap-manifest against staging and commit.",
+                    manifest_path,
+                )
+                rc = 1
             else:
                 logger.warning(
-                    "[migration] schema-drift gate skipped: manifest not "
-                    "found at %s. Bootstrap with --bootstrap-manifest.",
-                    manifest_path,
+                    "[migration] schema-drift gate skipped (MIGRATION_MANIFEST_REQUIRED=0).",
                 )
     finally:
         _release_lock(conn)
