@@ -30,16 +30,23 @@ ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
 DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-45}"
 
-# iter-03 §1C.4: pick up audit metadata written by the GH Actions workflow.
-# The file is sourced (not exec'd) so a missing or empty value falls through
-# to the existing `${VAR:-default}` defaults below — deploy still works for
-# manual operator invocations from a droplet shell.
-DEPLOY_META_FILE="${DEPLOY_META_FILE:-/opt/zettelkasten/compose/.deploy_meta}"
-if [[ -r "$DEPLOY_META_FILE" ]]; then
-    # shellcheck disable=SC1090
-    set -a
-    . "$DEPLOY_META_FILE"
-    set +a
+# iter-03 §1C.4: extract ONLY the DEPLOY_* audit metadata from the container
+# .env file (which the GH Actions workflow writes via the already-NOPASSWD-
+# allowed sudo /usr/bin/tee path). Avoids full-sourcing the file so the rest
+# of the .env (TELEGRAM_BOT_TOKEN, GEMINI_API_KEY, SUPABASE_*, etc.) stays
+# scoped to the docker --env-file path and never leaks into deploy.sh's
+# shell. Missing values fall through to the existing ${VAR:-default} guards
+# below — manual operator deploys from a droplet shell still work.
+ENV_FILE="${ENV_FILE:-/opt/zettelkasten/compose/.env}"
+if [[ -r "$ENV_FILE" ]]; then
+    while IFS='=' read -r _key _val; do
+        case "$_key" in
+            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR)
+                export "$_key=$_val"
+                ;;
+        esac
+    done < <(grep -E '^DEPLOY_(GIT_SHA|ID|ACTOR)=' "$ENV_FILE" || true)
+    unset _key _val
 fi
 
 MODEL_DIR="$ROOT/data/models"
