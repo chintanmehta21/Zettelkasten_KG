@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import logging
 import os
 from pathlib import Path
@@ -437,6 +438,53 @@ class GeminiKeyPool:
             f"Last error: `{last_exc}`"
         )
         raise last_exc  # type: ignore[misc]
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        response_schema: dict,
+        model_preference: str = "flash-lite",
+        label: str = "",
+    ):
+        """Structured-JSON variant of generate_content with strict response_schema.
+
+        Wraps generate_content with response_mime_type=application/json + the
+        caller-supplied schema, then parses the response text into a dict.
+
+        iter-03 fix: this method was referenced by website/features/rag_pipeline/
+        query/metadata.py:_a_pass and ingest/metadata_enricher.py:_extract_entities
+        but never existed on KeyPool, causing both call sites to log
+        "'GeminiKeyPool' object has no attribute 'generate_structured'" and fall
+        back to slower C-pass paths. The retry pressure compounded with stage-2
+        rerank memory to OOM-kill workers under realistic load.
+
+        Returns the parsed JSON object (dict). Returns the raw text string when
+        JSON parsing fails so the caller can decide. Returns {} on empty
+        response.
+        """
+        starting_model = {
+            "flash-lite": "gemini-2.5-flash-lite",
+            "flash": "gemini-2.5-flash",
+            "pro": "gemini-2.5-pro",
+        }.get(model_preference, "gemini-2.5-flash-lite")
+        config = {
+            "response_mime_type": "application/json",
+            "response_schema": response_schema,
+        }
+        response, _model_used, _key_index = await self.generate_content(
+            contents=prompt,
+            config=config,
+            starting_model=starting_model,
+            label=label or "generate_structured",
+        )
+        text = getattr(response, "text", None) or ""
+        if not text:
+            return {}
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
 
     def embed_content(self, contents, *, config: dict | None = None):
         chain = self._build_embedding_chain()
