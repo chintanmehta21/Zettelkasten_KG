@@ -126,3 +126,16 @@ async def test_queue_depth_returns_to_zero_after_burst():
 
     await asyncio.gather(*(quick() for _ in range(40)))
     assert queue_depth() == 0
+
+
+@pytest.mark.asyncio
+async def test_memory_guard_detect_mem_max_returns_sane_int():
+    """Sanity: _detect_mem_max returns a non-zero int when the harness is
+    running on a real host (or test harness with a writable proc). On
+    GitHub Actions / Linux this should be > 0; on macOS / Windows hosts
+    where /proc + cgroup are absent, it falls back to /proc/meminfo OR 0.
+    The point of this test is to ensure the fallback chain doesn't crash."""
+    from website.api import _memory_guard
+    value = _memory_guard._detect_mem_max()
+    assert isinstance(value, int)
+    assert value >= 0
