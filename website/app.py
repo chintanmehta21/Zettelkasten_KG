@@ -229,6 +229,29 @@ def create_app(lifespan=None) -> FastAPI:
         name="summarization-engine-js",
     )
 
+    # ── Favicon ──
+    # Browsers auto-fetch /favicon.ico on every page load; without a route the
+    # request 404s on every navigation (visible in the DevTools console).
+    # Serve a single SVG asset for both /favicon.ico and /favicon.svg with
+    # long browser cache headers — the icon never changes per request.
+    _favicon_path = STATIC_DIR / "favicon.svg"
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon_ico():
+        return FileResponse(
+            str(_favicon_path),
+            media_type="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=86400, immutable"},
+        )
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon_svg():
+        return FileResponse(
+            str(_favicon_path),
+            media_type="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=86400, immutable"},
+        )
+
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index():
