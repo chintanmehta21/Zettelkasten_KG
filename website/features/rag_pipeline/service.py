@@ -93,7 +93,7 @@ def _build_runtime(user_sub: str | None) -> RAGRuntime:
         graph_scorer=LocalizedPageRankScorer(supabase=client),
         reranker=CascadeReranker(
             model_dir=os.environ.get("RAG_MODEL_DIR", "/app/models"),
-            stage1_k=int(os.environ.get("RAG_CASCADE_STAGE1_K", "15")),
+            stage1_k=int(os.environ.get("RAG_CASCADE_STAGE1_K", "10")),
         ),
         assembler=ContextAssembler(),
         llm=LLMRouter(gemini=GeminiBackend(), claude=ClaudeBackend()),

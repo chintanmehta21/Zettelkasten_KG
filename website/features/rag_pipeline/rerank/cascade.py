@@ -12,6 +12,7 @@ supports test-time augmentation (Layer 7) when ``mode='high'``.
 from __future__ import annotations
 
 import asyncio
+import gc
 import json
 import logging
 import os
@@ -253,6 +254,7 @@ class CascadeReranker:
         model_dir: str | Path | None = None,
         stage1_k: int = 10,
         max_length: int = 512,
+        stage2_sub_batch: int | None = None,
     ) -> None:
         # ``model_dir`` is optional now -- the int8 path is wired through the
         # eager module-level session and doesn't depend on FlashRank's cache dir.
@@ -266,6 +268,14 @@ class CascadeReranker:
         self._degradation_logger = DegradationLogger(log_dir)
         self._stage1_k = max(stage1_k, 1)
         self._max_length = max_length
+        # iter-03 §B (2026-04-29): bound the ONNX forward-pass peak by
+        # processing candidates in sub-batches. Halving from 10 to 5 cuts the
+        # activation tensor allocation roughly in half so the worker fits
+        # under the 1.6 GB cgroup ceiling on the 2 GB droplet. Override via
+        # RAG_STAGE2_SUB_BATCH env var for tuning.
+        if stage2_sub_batch is None:
+            stage2_sub_batch = int(os.environ.get("RAG_STAGE2_SUB_BATCH", "5"))
+        self._stage2_sub_batch = max(stage2_sub_batch, 1)
         self._stage1: Ranker | None = None
         self._stage1_lock = threading.Lock()
         self._stage2_lock = threading.Lock()
@@ -355,6 +365,18 @@ class CascadeReranker:
         if not shortlisted:
             return []
 
+        # iter-03 §B (2026-04-29): explicitly free retrieval and stage-1
+        # working set before the stage-2 forward pass. HTTPx response buffers
+        # from Gemini rewriter calls and Supabase RPCs can hold ~100-200 MB
+        # of decoded JSON until refcounts naturally drop; running gc here
+        # returns that memory to the allocator right before the largest
+        # spike, buying cgroup headroom. Cost: ~30-50 ms (Gemini-bound p50
+        # is ~20s so invisible in p95). pre_gc/post_gc mem-trace lines let
+        # us measure the actual delta in prod.
+        _log_rss("stage2.pre_gc")
+        gc.collect()
+        _log_rss("stage2.post_gc")
+
         try:
             stage2_scores = await self._stage2_rank(query, shortlisted)
         except Exception as exc:
@@ -401,20 +423,37 @@ class CascadeReranker:
         query: str,
         candidates: list[RetrievalCandidate],
     ) -> list[float]:
-        # iter-03 (2026-04-29) instrumentation: log peak RSS at each phase
-        # boundary of the stage-2 hot path. Earlier prod profile pinpointed a
-        # +684 MB spike during the ONNX forward pass; we need per-step deltas
-        # to surgically shrink the right culprit. Negligible overhead.
+        # iter-03 §B (2026-04-29): split the stage-2 batch into sub-batches
+        # of self._stage2_sub_batch (default 5) and process them sequentially.
+        # The ONNX forward pass on a full batch=10 was the +684 MB spike that
+        # SIGKILLed the worker; a 5-wide sub-batch halves the activation
+        # tensors and keeps peak RSS under the 1.6 GB cgroup. Encoded buffers
+        # and outputs are released between sub-batches to bound peak.
         _log_rss("stage2.enter", count=len(candidates))
+        if not candidates:
+            _log_rss("stage2.scored", count=0)
+            return []
+
         tokenizer = self._get_stage2_tokenizer()
         session = self._get_stage2_session()
-        encoded = await asyncio.to_thread(self._encode_pairs_sync, tokenizer, query, candidates)
-        _log_rss("stage2.encoded", count=len(candidates))
-        outputs = await asyncio.to_thread(self._run_stage2_sync, session, encoded)
-        _log_rss("stage2.ran", count=len(candidates))
-        scores = self._extract_scores(outputs)
-        _log_rss("stage2.scored", count=len(candidates))
-        return scores
+
+        sub_batch = self._stage2_sub_batch
+        all_scores: list[float] = []
+        for chunk_start in range(0, len(candidates), sub_batch):
+            chunk = candidates[chunk_start : chunk_start + sub_batch]
+            encoded = await asyncio.to_thread(
+                self._encode_pairs_sync, tokenizer, query, chunk
+            )
+            _log_rss("stage2.encoded", chunk_start=chunk_start, chunk_size=len(chunk))
+            outputs = await asyncio.to_thread(self._run_stage2_sync, session, encoded)
+            _log_rss("stage2.ran", chunk_start=chunk_start, chunk_size=len(chunk))
+            del encoded
+            chunk_scores = self._extract_scores(outputs)
+            del outputs
+            all_scores.extend(chunk_scores)
+
+        _log_rss("stage2.scored", count=len(all_scores))
+        return all_scores
 
     def _apply_scores(
         self,
