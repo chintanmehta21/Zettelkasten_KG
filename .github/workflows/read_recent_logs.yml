@@ -21,6 +21,9 @@ on:
 jobs:
   tail:
     runs-on: ubuntu-latest
+    # Production-scoped secrets (DROPLET_HOST etc.) live on the `production`
+    # environment — the deploy-droplet workflow uses the same scope.
+    environment: production
     timeout-minutes: 5
     steps:
       - name: SSH and dump logs to /tmp
