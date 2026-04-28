@@ -106,6 +106,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          lfs: true   # iter-03 §5: pull bge int8 + calibration parquet for docker build
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
@@ -238,6 +240,9 @@ jobs:
             "NEXUS_ENABLED=true" \
             "REDDIT_OPTIONAL=1" \
             "RAG_FP32_VERIFY=off" \
+            "RAG_DEGRADATION_LOG_DIR=/app/runtime" \
+            "RAG_SMOKE_KASTEN_ID=227e0fb2-ff81-4d08-8702-76d9235564f4" \
+            "RAG_SMOKE_TOKEN=${{ secrets.RAG_SMOKE_TOKEN }}" \
             "DEPLOY_GIT_SHA=${DEPLOY_GIT_SHA}" \
             "DEPLOY_ID=${DEPLOY_ID}" \
             "DEPLOY_ACTOR=${DEPLOY_ACTOR}" \
@@ -265,7 +270,7 @@ jobs:
           port: ${{ secrets.DROPLET_SSH_PORT }}
           # iter-03 §1C.4: forward deploy provenance into deploy.sh so the
           # migration audit row records who/what/which-deploy applied it.
-          envs: ENV_BODY,GHCR_READ_PAT,SHA
+          envs: ENV_BODY,GHCR_READ_PAT,SHA,RAG_SMOKE_TOKEN
           command_timeout: 8m
           script: |
             set -euo pipefail
@@ -368,3 +373,4 @@ jobs:
           ENV_BODY: ${{ steps.env.outputs.env_body }}
           GHCR_READ_PAT: ${{ secrets.GHCR_READ_PAT }}
           SHA: ${{ github.sha }}
+          RAG_SMOKE_TOKEN: ${{ secrets.RAG_SMOKE_TOKEN }}
