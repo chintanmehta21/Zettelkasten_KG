@@ -18,8 +18,9 @@ services:
       - /opt/zettelkasten/data/kg_output:/app/kg_output
       - /opt/zettelkasten/data/bot_data:/app/bot_data
       - /opt/zettelkasten/data/models:/app/models:rw
-    mem_limit: 1024m
-    memswap_limit: 1024m
+    # iter-03 mem-bounded: cgroup ceiling 1300m + 1000m swap budget. Spec §2.1.
+    mem_limit: 1300m
+    memswap_limit: 2300m
     pids_limit: 512
     stop_grace_period: 20s
     read_only: true
