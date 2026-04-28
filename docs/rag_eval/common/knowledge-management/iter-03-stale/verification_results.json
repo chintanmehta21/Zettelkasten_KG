@@ -1,0 +1,1044 @@
+{
+  "iter": "iter-03",
+  "site": "https://zettelkasten.in",
+  "captured_at": "2026-04-28T10:39:12Z",
+  "total_duration_ms": 388430,
+  "kasten": {
+    "name": "Knowledge Management & Personal Productivity",
+    "id": "227e0fb2-ff81-4d08-8702-76d9235564f4",
+    "member_count": 7
+  },
+  "qa_summary": {
+    "total": 13,
+    "end_to_end_gold_at_1": 0.2308,
+    "synthesizer_over_refusals": 0,
+    "infra_failures": 10,
+    "p95_latency_ms": 60140,
+    "p95_under_budget": false
+  },
+  "phases": [
+    {
+      "phase": "public_pages",
+      "duration_ms": 14635,
+      "checks": [
+        {
+          "name": "GET /",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/01_root_index.png",
+          "duration_ms": 7256,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 3385,
+              "domcontent_ms": 3773,
+              "load_ms": 3817,
+              "first_paint_ms": 3768,
+              "first_contentful_paint_ms": 3768,
+              "largest_contentful_paint_ms": 3768
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0.0006
+              },
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "GET /about",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/02_about.png",
+          "duration_ms": 3640,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 124,
+              "domcontent_ms": 289,
+              "load_ms": 290,
+              "first_paint_ms": 300,
+              "first_contentful_paint_ms": 300,
+              "largest_contentful_paint_ms": 1804
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "GET /pricing",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/03_pricing.png",
+          "duration_ms": 3738,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 436,
+              "domcontent_ms": 519,
+              "load_ms": 544,
+              "first_paint_ms": 564,
+              "first_contentful_paint_ms": 564,
+              "largest_contentful_paint_ms": 564
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "knowledge_graph",
+      "duration_ms": 12092,
+      "checks": [
+        {
+          "name": "GET /knowledge-graph (amber-allowed surface)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/04_knowledge_graph_3d.png",
+          "duration_ms": 12092,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 119,
+              "domcontent_ms": 873,
+              "load_ms": 873,
+              "first_paint_ms": 196,
+              "first_contentful_paint_ms": 196,
+              "largest_contentful_paint_ms": 7256
+            },
+            "color_audit": {
+              "offending_rules": [
+                {
+                  "source": "inline",
+                  "rule": ".graph-info-msg { top: 50%; width: 100%; text-align: center; color: lavender; opacity: 0.7; font-size: 22px; position: absolute; font-family: sans-serif; }"
+                }
+              ],
+              "passed": false
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 6,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            },
+            "note": "amber #D4A024 allowed here"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "authed_pages",
+      "duration_ms": 14830,
+      "checks": [
+        {
+          "name": "/home :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/05_home.png",
+          "duration_ms": 5314,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 117,
+              "domcontent_ms": 244,
+              "load_ms": 244,
+              "first_paint_ms": 316,
+              "first_contentful_paint_ms": 316,
+              "largest_contentful_paint_ms": 316
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/06_home_zettels.png",
+          "duration_ms": 4751,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 137,
+              "domcontent_ms": 214,
+              "load_ms": 214,
+              "first_paint_ms": 240,
+              "first_contentful_paint_ms": 240,
+              "largest_contentful_paint_ms": 240
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home/zettels :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/07_home_kastens.png",
+          "duration_ms": 4765,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 131,
+              "domcontent_ms": 174,
+              "load_ms": 175,
+              "first_paint_ms": 188,
+              "first_contentful_paint_ms": 188,
+              "largest_contentful_paint_ms": 188
+            },
+            "title": "Zettelkasten Summarizer"
+          }
+        },
+        {
+          "name": "/home/kastens :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "rag_composer",
+      "duration_ms": 33767,
+      "checks": [
+        {
+          "name": "GET /home/rag",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/08_rag_chooser.png",
+          "duration_ms": 3123,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 135,
+              "domcontent_ms": 218,
+              "load_ms": 219,
+              "first_paint_ms": 236,
+              "first_contentful_paint_ms": 236,
+              "largest_contentful_paint_ms": 236
+            }
+          }
+        },
+        {
+          "name": "GET /api/rag/sandboxes",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 400,
+          "detail": {
+            "http": 200,
+            "elapsed_ms": 390
+          }
+        },
+        {
+          "name": "Click Kasten in chooser",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 47,
+          "detail": {
+            "note": "best-effort UI click; falls through if not interactive"
+          }
+        },
+        {
+          "name": "Composer placeholder uses Kasten name",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/10_composer_placeholder.png",
+          "duration_ms": 30191,
+          "detail": {
+            "placeholder": "<error: Locator.get_attribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"textarea, input[type='text']\").first\n>"
+          }
+        }
+      ],
+      "notes": [
+        "Kasten id=227e0fb2-ff81-4d08-8702-76d9235564f4 members=7"
+      ]
+    },
+    {
+      "phase": "diversify_sources",
+      "duration_ms": 49520,
+      "checks": [
+        {
+          "name": "POST /api/summarize https://nesslabs.com/personal-knowledge-management",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 3516,
+          "detail": {
+            "label": "Ness Labs \u2014 Personal Knowledge Management",
+            "http_status": 500,
+            "elapsed_ms": 3509,
+            "node_id": null,
+            "source_type": null,
+            "title": null,
+            "expected_source_type": "newsletter",
+            "source_type_matches_expected": false,
+            "summarize_error": null
+          }
+        },
+        {
+          "name": "POST /api/summarize https://maggieappleton.com/garden-history",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 46003,
+          "detail": {
+            "label": "Maggie Appleton \u2014 A Brief History & Ethos of the Digital Garden",
+            "http_status": 200,
+            "elapsed_ms": 45983,
+            "node_id": null,
+            "source_type": "web",
+            "title": "Digital Gardening",
+            "expected_source_type": "web",
+            "source_type_matches_expected": true,
+            "summarize_error": null
+          }
+        }
+      ],
+      "notes": [
+        "summarize failed for https://nesslabs.com/personal-knowledge-management: {'ok': False, 'status': 500, 'elapsed_ms': 3509, 'body': {'detail': \"Failed to process URL: Client error '404 Not Found' for url 'https://nesslabs.com/personal-knowledge-management'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\"}, 'raw': None}",
+        "summarize failed for https://maggieappleton.com/garden-history: {'ok': True, 'status': 200, 'elapsed_ms': 45983, 'body': {'title': 'Digital Gardening', 'summary': '## Concept Definition\\n- Personal websites function as free-form, work-in-progress wikis.\\n- Features evolving, exploratory, and contextually-linked notes.\\n- Content is often incomplete and less performative than traditional blogs.\\n- Echoes the ethos of the early web.\\n\\n## Origin and Evolution of the Term\\n- First recorded use: Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience, content organization, and solving the \"Navigation Problem\" in early hypertext, framing the web as tended by \"WikiGardeners.\"\\n- Brief, separate usage: Rory Sutherland on Twitter around April 2007, defining it as digital maintenance or \"puttering.\"\\n- Current understanding primarily shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream.\"\\n- Caufield contrasted the \\'garden\\' (explorable, richly-linked space for accumulating knowledge over time, like Wikipedia) with the \\'stream\\' (ephemeral, chronological feeds of social media).\\n- Caufield\\'s ideas gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor for semi-private group discussions) and Joel Hooks (early 2019, emphasizing public revision, citing Amy Hoy on blog standardization by Moveable Type around 2001).\\n- By late 2020, the concept was covered by MIT Tech Review.\\n\\n## Supporting Communities and Tools\\n- Growth supported by communities like the IndieWeb, Roam Research users, and followers of Tiago Forte\\'s \"Building a Second Brain\" and the \"Learn in Public\" ethos.\\n- Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty) to build custom sites.\\n- No-code tools like Obsidian, TiddlyWiki, and Notion later offered more accessible, albeit more constrained, options.\\n\\n## Six Patterns of Digital Gardening\\n\\n### Topography over Timelines\\n- Organization is based on contextual links, often bi-directional, rather than publication dates.\\n\\n### Continuous Growth\\n- Notes are perpetually evolving works-in-progress, published as \"seedlings\" and tended in public.\\n\\n### Imperfection & Learning in Public\\n- Gardens are a \"Domestic Cozy\" response to performative personal branding, embracing imperfection.\\n- Requires transparency about a note\\'s status, using systems like seedling/budding/evergreen tags or epistemic statuses (e.g., Gwern.net, Devon Zuegal).\\n\\n### Playful & Personal\\n- Unique, experimental spaces that resist standardized templates.\\n- Allows for a higher-fidelity self-representation than social media profiles.\\n\\n### Intercropping & Content Diversity\\n- Incorporates various media like videos, diagrams, and code, not just text.\\n\\n### Independent Ownership\\n- Resides on personal domains, using open formats like HTML and Markdown for long-term control and portability, outside the walled gardens of platforms.', 'brief_summary': 'Digital Gardening describes a trend of personal websites functioning as free-form, work-in-progress wikis, featuring evolving, exploratory, and contextually-linked notes that are often incomplete and less performative than traditional blogs. This concept, while recently popularized, has roots dating back over two decades and emphasizes continuous growth, imperfection, and independent ownership of knowledge.', 'detailed_summary': '## Concept Definition\\n- Personal websites function as free-form, work-in-progress wikis.\\n- Features evolving, exploratory, and contextually-linked notes.\\n- Content is often incomplete and less performative than traditional blogs.\\n- Echoes the ethos of the early web.\\n\\n## Origin and Evolution of the Term\\n- First recorded use: Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience, content organization, and solving the \"Navigation Problem\" in early hypertext, framing the web as tended by \"WikiGardeners.\"\\n- Brief, separate usage: Rory Sutherland on Twitter around April 2007, defining it as digital maintenance or \"puttering.\"\\n- Current understanding primarily shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream.\"\\n- Caufield contrasted the \\'garden\\' (explorable, richly-linked space for accumulating knowledge over time, like Wikipedia) with the \\'stream\\' (ephemeral, chronological feeds of social media).\\n- Caufield\\'s ideas gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor for semi-private group discussions) and Joel Hooks (early 2019, emphasizing public revision, citing Amy Hoy on blog standardization by Moveable Type around 2001).\\n- By late 2020, the concept was covered by MIT Tech Review.\\n\\n## Supporting Communities and Tools\\n- Growth supported by communities like the IndieWeb, Roam Research users, and followers of Tiago Forte\\'s \"Building a Second Brain\" and the \"Learn in Public\" ethos.\\n- Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty) to build custom sites.\\n- No-code tools like Obsidian, TiddlyWiki, and Notion later offered more accessible, albeit more constrained, options.\\n\\n## Six Patterns of Digital Gardening\\n\\n### Topography over Timelines\\n- Organization is based on contextual links, often bi-directional, rather than publication dates.\\n\\n### Continuous Growth\\n- Notes are perpetually evolving works-in-progress, published as \"seedlings\" and tended in public.\\n\\n### Imperfection & Learning in Public\\n- Gardens are a \"Domestic Cozy\" response to performative personal branding, embracing imperfection.\\n- Requires transparency about a note\\'s status, using systems like seedling/budding/evergreen tags or epistemic statuses (e.g., Gwern.net, Devon Zuegal).\\n\\n### Playful & Personal\\n- Unique, experimental spaces that resist standardized templates.\\n- Allows for a higher-fidelity self-representation than social media profiles.\\n\\n### Intercropping & Content Diversity\\n- Incorporates various media like videos, diagrams, and code, not just text.\\n\\n### Independent Ownership\\n- Resides on personal domains, using open formats like HTML and Markdown for long-term control and portability, outside the walled gardens of platforms.', 'tags': ['digital-gardening', 'personal-websites', 'knowledge-management', 'hypertext', 'indieweb', 'learning-in-public'], 'source_type': 'web', 'source_url': 'https://maggieappleton.com/garden-history', 'one_line_summary': 'Digital Gardening describes a trend of personal websites functioning as free-form, work-in-progress wikis, featuring evolving, exploratory, and contextually-linked notes that are often incomplete and less performative than traditional blogs. This concept, while recently popularized, has roots dating back over two decades and emphasizes continuous growth, imperfection, and independent ownership of knowledge.', 'is_raw_fallback': False, 'tokens_used': 1916, 'latency_ms': 34312, 'metadata': {'source_type': 'web', 'url': 'https://maggieappleton.com/garden-history', 'extraction_confidence': 'high', 'confidence_reason': 'HTML article text extracted', 'total_tokens_used': 1916, 'gemini_pro_tokens': 0, 'gemini_flash_tokens': 1916, 'total_latency_ms': 34312, 'cod_iterations_used': 0, 'self_check_missing_count': 0, 'patch_applied': False, 'engine_version': '2.0.0', 'structured_payload': {'mini_title': 'Digital Gardening', 'brief_summary': 'Digital Gardening describes a trend of personal websites functioning as free-form, work-in-progress wikis, featuring evolving, exploratory, and contextually-linked notes that are often incomplete and less performative than traditional blogs. This concept, while recently popularized, has roots dating back over two decades and emphasizes continuous growth, imperfection, and independent ownership of knowledge.', 'tags': ['Digital Gardening', 'Personal Websites', 'Knowledge Management', 'Hypertext', 'IndieWeb', 'Learning in Public'], 'detailed_summary': [{'heading': 'Concept Definition', 'bullets': ['Personal websites function as free-form, work-in-progress wikis.', 'Features evolving, exploratory, and contextually-linked notes.', 'Content is often incomplete and less performative than traditional blogs.', 'Echoes the ethos of the early web.'], 'sub_sections': {}}, {'heading': 'Origin and Evolution of the Term', 'bullets': ['First recorded use: Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience, content organization, and solving the \"Navigation Problem\" in early hypertext, framing the web as tended by \"WikiGardeners.\"', 'Brief, separate usage: Rory Sutherland on Twitter around April 2007, defining it as digital maintenance or \"puttering.\"', 'Current understanding primarily shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream.\"', \"Caufield contrasted the 'garden' (explorable, richly-linked space for accumulating knowledge over time, like Wikipedia) with the 'stream' (ephemeral, chronological feeds of social media).\", 'Caufield\\'s ideas gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor for semi-private group discussions) and Joel Hooks (early 2019, emphasizing public revision, citing Amy Hoy on blog standardization by Moveable Type around 2001).', 'By late 2020, the concept was covered by MIT Tech Review.'], 'sub_sections': {}}, {'heading': 'Supporting Communities and Tools', 'bullets': ['Growth supported by communities like the IndieWeb, Roam Research users, and followers of Tiago Forte\\'s \"Building a Second Brain\" and the \"Learn in Public\" ethos.', 'Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty) to build custom sites.', 'No-code tools like Obsidian, TiddlyWiki, and Notion later offered more accessible, albeit more constrained, options.'], 'sub_sections': {}}, {'heading': 'Six Patterns of Digital Gardening', 'bullets': [], 'sub_sections': {'Topography over Timelines': ['Organization is based on contextual links, often bi-directional, rather than publication dates.'], 'Continuous Growth': ['Notes are perpetually evolving works-in-progress, published as \"seedlings\" and tended in public.'], 'Imperfection & Learning in Public': ['Gardens are a \"Domestic Cozy\" response to performative personal branding, embracing imperfection.', \"Requires transparency about a note's status, using systems like seedling/budding/evergreen tags or epistemic statuses (e.g., Gwern.net, Devon Zuegal).\"], 'Playful & Personal': ['Unique, experimental spaces that resist standardized templates.', 'Allows for a higher-fidelity self-representation than social media profiles.'], 'Intercropping & Content Diversity': ['Incorporates various media like videos, diagrams, and code, not just text.'], 'Independent Ownership': ['Resides on personal domains, using open formats like HTML and Markdown for long-term control and portability, outside the walled gardens of platforms.']}}]}, 'is_schema_fallback': False, 'model_used': [{'role': 'dense_verify', 'model': 'gemini-2.5-pro', 'starting_model': 'gemini-2.5-pro', 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, {'role': 'summarizer', 'model': 'gemini-2.5-flash', 'starting_model': 'gemini-2.5-flash', 'fallback_reason': None}], 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, 'captured_at': '2026-04-28'}, 'raw': None}",
+        "new_nodes=[]"
+      ]
+    },
+    {
+      "phase": "rag_qa_chain",
+      "duration_ms": 193211,
+      "checks": [
+        {
+          "name": "Q-A q1 (fast)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 26819,
+          "detail": {
+            "qid": "q1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+            "http_status": 200,
+            "elapsed_ms": 26810,
+            "answer": "The `zk-org/zk` command-line tool is written in Go [id=\"gh-zk-org-zk\"]. It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "multi_hop",
+            "latency_ms_server": 965,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "gh-zk-org-zk",
+              "gh-zk-org-zk"
+            ],
+            "session_id": "3a4f9fdf-0ad2-458c-a11e-e3e0d7736d29",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q2 (fast)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 18568,
+          "detail": {
+            "qid": "q2",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+            "http_status": 200,
+            "elapsed_ms": 18554,
+            "answer": "Steve Jobs described death as \"the single best invention of Life\" and \"Life's change agent\" for clearing out the old [id=\"yt-steve-jobs-2005-stanford\"]. He claimed that remembering one will die is the best way to avoid the \"trap of thinking you have something to lose,\" stating that since \"You are already naked,\" there is no reason not to follow one's heart [id=\"yt-steve-jobs-2005-stanford\"].",
+            "citations": [
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              }
+            ],
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 3211,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "session_id": "8011e1b7-30cf-4cfe-8f93-5c9df8e6a7b4",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 39278,
+          "detail": {
+            "qid": "q3",
+            "quality": "fast",
+            "expected": [
+              "yt-effective-public-speakin"
+            ],
+            "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+            "http_status": 500,
+            "elapsed_ms": 39261,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q4 (high)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 46503,
+          "detail": {
+            "qid": "q4",
+            "quality": "high",
+            "expected": [
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is"
+            ],
+            "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+            "http_status": 200,
+            "elapsed_ms": 46489,
+            "answer": "The core programming skill is described as a \"methodical problem-solving approach\" that relies on debugging, not rapid typing [id=\"yt-programming-workflow-is\"]. Matt Walker states that sleep deprivation significantly impairs brain function, specifically \"memory and cognitive abilities\" [id=\"yt-matt-walker-sleep-depriv\"]. The impairment of these cognitive abilities would directly hinder the methodical problem-solving required to execute the debugging cycle effectively [id=\"yt-programming-workflow-is\"][id=\"yt-matt-walker-sleep-depriv\"].",
+            "citations": [
+              {
+                "id": "yt-matt-walker-sleep-depriv",
+                "node_id": "yt-matt-walker-sleep-depriv",
+                "title": "Matt Walker: Sleep Deprivation's Broad Impacts"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              }
+            ],
+            "primary_citation": "yt-matt-walker-sleep-depriv",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-pro",
+            "query_class": "multi_hop",
+            "latency_ms_server": 1311,
+            "retrieved_node_ids": [
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-matt-walker-sleep-depriv",
+              "yt-matt-walker-sleep-depriv",
+              "yt-matt-walker-sleep-depriv",
+              "yt-matt-walker-sleep-depriv",
+              "nl-the-pragmatic-engineer-t"
+            ],
+            "session_id": "004445d4-a180-4bda-83f5-d97d82ed5530",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q5 (high)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60148,
+          "detail": {
+            "qid": "q5",
+            "quality": "high",
+            "expected": [
+              "web-transformative-tools-for",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "nl-the-pragmatic-engineer-t",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+            "http_status": 504,
+            "elapsed_ms": 60140,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-28 10:38:11 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f356e1facb87aff</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q6 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 144,
+          "detail": {
+            "qid": "q6",
+            "quality": "fast",
+            "expected": [
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-effective-public-speakin"
+            ],
+            "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+            "http_status": 503,
+            "elapsed_ms": 139,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q7 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 115,
+          "detail": {
+            "qid": "q7",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Anything about commencement?",
+            "http_status": 503,
+            "elapsed_ms": 109,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q8 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 378,
+          "detail": {
+            "qid": "q8",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+            "http_status": 503,
+            "elapsed_ms": 373,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q9 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 157,
+          "detail": {
+            "qid": "q9",
+            "quality": "fast",
+            "expected": [],
+            "text": "Summarize what this Kasten says about Notion's database features.",
+            "http_status": 503,
+            "elapsed_ms": 151,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q10 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 149,
+          "detail": {
+            "qid": "q10",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+            "http_status": 503,
+            "elapsed_ms": 141,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 388,
+          "detail": {
+            "qid": "av-1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "What should I install tonight to start a personal wiki?",
+            "http_status": 503,
+            "elapsed_ms": 375,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-2 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 432,
+          "detail": {
+            "qid": "av-2",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which guide do I run first to set up my Zettelkasten?",
+            "http_status": 503,
+            "elapsed_ms": 426,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 120,
+          "detail": {
+            "qid": "av-3",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Step-by-step setup commands for a personal wiki",
+            "http_status": 503,
+            "elapsed_ms": 116,
+            "error": "unknown",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "post_diversification_qa",
+      "duration_ms": 0,
+      "checks": [
+        {
+          "name": "post-diversification Q-A",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "error": "only 0 new nodes; need 2"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "burst_pressure",
+      "duration_ms": 60151,
+      "checks": [
+        {
+          "name": "12 concurrent /api/rag/adhoc \u2192 expect \u22651 503 with Retry-After",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 60151,
+          "detail": {
+            "by_status": {
+              "503": 8,
+              "504": 4
+            },
+            "retry_after_samples": [
+              "5",
+              "120",
+              "120"
+            ],
+            "raw": [
+              {
+                "i": 0,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 1,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 2,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 3,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 4,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 5,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 6,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 7,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 8,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 9,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 10,
+                "status": 503,
+                "retry_after": "5"
+              },
+              {
+                "i": 11,
+                "status": 503,
+                "retry_after": "5"
+              }
+            ]
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "debug_param_leak",
+      "duration_ms": 2939,
+      "checks": [
+        {
+          "name": "?debug=1 hidden in prod (no panel, no model name)",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/11_debug_param.png",
+          "duration_ms": 2939,
+          "detail": {
+            "debug_panel_count": 0,
+            "model_leak_hits": []
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "modal_select_all",
+      "duration_ms": 3374,
+      "checks": [
+        {
+          "name": "Open Add Zettels modal",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/12_kastens_no_modal.png",
+          "duration_ms": 3374,
+          "detail": {
+            "note": "Add-Zettels trigger selector not found; UI may have changed"
+          }
+        }
+      ],
+      "notes": []
+    }
+  ]
+}
