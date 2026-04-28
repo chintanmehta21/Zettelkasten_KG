@@ -41,11 +41,11 @@ ENV_FILE="${ENV_FILE:-/opt/zettelkasten/compose/.env}"
 if [[ -r "$ENV_FILE" ]]; then
     while IFS='=' read -r _key _val; do
         case "$_key" in
-            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR)
+            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR|RAG_SMOKE_TOKEN|RAG_SMOKE_KASTEN_ID)
                 export "$_key=$_val"
                 ;;
         esac
-    done < <(grep -E '^DEPLOY_(GIT_SHA|ID|ACTOR)=' "$ENV_FILE" || true)
+    done < <(grep -E '^(DEPLOY_(GIT_SHA|ID|ACTOR)|RAG_SMOKE_TOKEN|RAG_SMOKE_KASTEN_ID)=' "$ENV_FILE" || true)
     unset _key _val
 fi
 
