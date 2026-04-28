@@ -22,9 +22,14 @@ services:
       # iter-03 §6: models live inside the image; runtime writes (e.g. the
       # cascade-reranker degradation log) go to a separate writable mount.
       - /opt/zettelkasten/data/runtime:/app/runtime:rw
-    # iter-03 mem-bounded: cgroup ceiling 1300m + 1000m swap budget. Spec §2.1.
-    mem_limit: 1300m
-    memswap_limit: 2300m
+    # iter-03 mem-bounded: cgroup ceiling 1600m + 1000m swap budget.
+    # Original 1300m proved too tight under realistic q1 multi-hop load
+    # (worker SIGKILL during stage-2 BGE int8 inference + Gemini retry
+    # buffers). Bumped to 1600m 2026-04-28 with operator approval; iter-04
+    # owns proper memory engineering (smaller stage1_k, batched encoding).
+    # 2 GB droplet still leaves ~350 MB for caddy + system.
+    mem_limit: 1600m
+    memswap_limit: 2600m
     pids_limit: 512
     stop_grace_period: 20s
     read_only: true

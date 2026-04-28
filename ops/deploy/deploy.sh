@@ -177,7 +177,7 @@ log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 # This guards against the silent-no-op failure mode where compose ceiling
 # changes never reach the droplet (compose files stale / not synced) — a
 # class of bug that bit iter-03 mid-rollout. Mismatch fails the deploy.
-EXPECTED_MEM_MAX=1363148800        # 1300m == 1.3 GiB
+EXPECTED_MEM_MAX=1677721600        # 1600m == 1.5625 GiB (bumped from 1300m on 2026-04-28 - q1 OOM)
 EXPECTED_SWAP_MAX=1048576000       # 1000m == 1.0 GiB swap budget per cgroup
 ACTUAL_MEM_MAX=$(docker exec "zettelkasten-${IDLE}" cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "missing")
 ACTUAL_SWAP_MAX=$(docker exec "zettelkasten-${IDLE}" cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo "missing")
