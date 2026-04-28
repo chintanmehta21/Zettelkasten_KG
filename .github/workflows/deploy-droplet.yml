@@ -216,6 +216,7 @@ jobs:
             "WEBHOOK_URL=https://${TARGET_HOST}" \
             "NEXUS_ENABLED=true" \
             "REDDIT_OPTIONAL=1" \
+            "RAG_FP32_VERIFY=off" \
             "DEPLOY_GIT_SHA=${DEPLOY_GIT_SHA}" \
             "DEPLOY_ID=${DEPLOY_ID}" \
             "DEPLOY_ACTOR=${DEPLOY_ACTOR}" \
