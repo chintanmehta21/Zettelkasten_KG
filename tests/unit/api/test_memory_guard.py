@@ -15,14 +15,9 @@ from fastapi.testclient import TestClient
 from website.api import _memory_guard
 
 
-def _app_with_guard(threshold_percent: int | None = None) -> FastAPI:
+def _make_app() -> FastAPI:
     app = FastAPI()
-    if threshold_percent is not None:
-        with patch.dict(__import__("os").environ,
-                        {"RAG_MEMORY_GUARD_THRESHOLD_PERCENT": str(threshold_percent)}):
-            _memory_guard.install(app)
-    else:
-        _memory_guard.install(app)
+    _memory_guard.install(app)
 
     @app.get("/echo")
     async def _echo():
@@ -38,7 +33,8 @@ def _app_with_guard(threshold_percent: int | None = None) -> FastAPI:
 def test_below_threshold_passes_through(monkeypatch):
     monkeypatch.setattr(_memory_guard, "_detect_mem_max", lambda: 1_000_000_000)
     monkeypatch.setattr(_memory_guard, "_read_vm_rss_bytes", lambda: 100_000_000)
-    app = _app_with_guard(threshold_percent=90)
+    monkeypatch.setenv("RAG_MEMORY_GUARD_THRESHOLD_PERCENT", "90")
+    app = _make_app()
     client = TestClient(app)
     r = client.get("/echo")
     assert r.status_code == 200
@@ -47,7 +43,8 @@ def test_below_threshold_passes_through(monkeypatch):
 def test_above_threshold_returns_503_with_retry_after(monkeypatch):
     monkeypatch.setattr(_memory_guard, "_detect_mem_max", lambda: 1_000_000_000)
     monkeypatch.setattr(_memory_guard, "_read_vm_rss_bytes", lambda: 950_000_000)
-    app = _app_with_guard(threshold_percent=90)
+    monkeypatch.setenv("RAG_MEMORY_GUARD_THRESHOLD_PERCENT", "90")
+    app = _make_app()
     client = TestClient(app)
     r = client.get("/echo")
     assert r.status_code == 503
@@ -59,7 +56,8 @@ def test_above_threshold_returns_503_with_retry_after(monkeypatch):
 def test_threshold_zero_disables_guard(monkeypatch):
     monkeypatch.setattr(_memory_guard, "_detect_mem_max", lambda: 1_000_000_000)
     monkeypatch.setattr(_memory_guard, "_read_vm_rss_bytes", lambda: 999_999_999)
-    app = _app_with_guard(threshold_percent=0)
+    monkeypatch.setenv("RAG_MEMORY_GUARD_THRESHOLD_PERCENT", "0")
+    app = _make_app()
     client = TestClient(app)
     r = client.get("/echo")
     assert r.status_code == 200
