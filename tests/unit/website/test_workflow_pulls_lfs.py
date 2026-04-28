@@ -25,8 +25,10 @@ def test_static_body_has_rag_smoke_env_vars():
         "STATIC_BODY must include RAG_SMOKE_KASTEN_ID so deploy.sh can fire the "
         "pre-flip RAG smoke probe. See spec §8."
     )
-    assert '"RAG_SMOKE_TOKEN=' in text or '"RAG_SMOKE_BEARER=' in text, (
-        "STATIC_BODY must include the smoke-probe bearer token (from a GH secret)."
+    assert '"NARUTO_SMOKE_PASSWORD=' in text and '"SUPABASE_ANON_KEY_LEGACY_JWT=' in text, (
+        "STATIC_BODY must include NARUTO_SMOKE_PASSWORD + SUPABASE_ANON_KEY_LEGACY_JWT "
+        "so deploy.sh can mint a fresh JWT every deploy. (Replaced the static "
+        "RAG_SMOKE_TOKEN secret which expired after 1h and silently blocked deploys.)"
     )
     assert '"RAG_DEGRADATION_LOG_DIR=/app/runtime"' in text, (
         "STATIC_BODY must declare RAG_DEGRADATION_LOG_DIR=/app/runtime so the "

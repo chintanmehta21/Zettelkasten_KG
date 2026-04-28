@@ -41,11 +41,11 @@ ENV_FILE="${ENV_FILE:-/opt/zettelkasten/compose/.env}"
 if [[ -r "$ENV_FILE" ]]; then
     while IFS='=' read -r _key _val; do
         case "$_key" in
-            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR|RAG_SMOKE_TOKEN|RAG_SMOKE_KASTEN_ID)
+            DEPLOY_GIT_SHA|DEPLOY_ID|DEPLOY_ACTOR|RAG_SMOKE_KASTEN_ID|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)
                 export "$_key=$_val"
                 ;;
         esac
-    done < <(grep -E '^(DEPLOY_(GIT_SHA|ID|ACTOR)|RAG_SMOKE_TOKEN|RAG_SMOKE_KASTEN_ID)=' "$ENV_FILE" || true)
+    done < <(grep -E '^(DEPLOY_(GIT_SHA|ID|ACTOR)|RAG_SMOKE_KASTEN_ID|NARUTO_SMOKE_PASSWORD|SUPABASE_ANON_KEY_LEGACY_JWT|SUPABASE_URL)=' "$ENV_FILE" || true)
     unset _key _val
 fi
 
@@ -210,34 +210,54 @@ log "[stage2-assert] ${IDLE} stage2 session OK"
 
 # iter-03 §8: pre-flip canonical RAG smoke probe. Fires the iter-03 q1 zk-org/zk
 # two-fact lookup against the new color; asserts HTTP 200 + primary_citation
-# == "gh-zk-org-zk". Catches bugs that make _STAGE2_SESSION load but inference
-# produce nonsense (NaN scores, broken token IDs, etc.). 5-15s extra at deploy.
-# Fail-loud, no auto-rollback.
+# == "gh-zk-org-zk". Fail-loud, no auto-rollback.
+#
+# JWT minted inline every deploy via Supabase password grant (NARUTO_SMOKE_PASSWORD
+# + SUPABASE_ANON_KEY_LEGACY_JWT). Replaces the previous static RAG_SMOKE_TOKEN
+# secret which expired after 1 hour and silently blocked all subsequent deploys.
 RAG_SMOKE_KASTEN_ID="${RAG_SMOKE_KASTEN_ID:-227e0fb2-ff81-4d08-8702-76d9235564f4}"
-RAG_SMOKE_TOKEN="${RAG_SMOKE_TOKEN:-}"
 RAG_SMOKE_QUERY="Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?"
-if [[ -z "$RAG_SMOKE_TOKEN" ]]; then
-    log "[rag-smoke] WARN: RAG_SMOKE_TOKEN not set -- skipping (degraded confidence)"
+
+if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_ANON_KEY_LEGACY_JWT:-}" || -z "${NARUTO_SMOKE_PASSWORD:-}" ]]; then
+    log "[rag-smoke] WARN: smoke creds (SUPABASE_URL / ANON_KEY_LEGACY / NARUTO_PASSWORD) not all set -- skipping (degraded confidence)"
 else
-    SMOKE_BODY=$(printf '{"sandbox_id":"%s","content":%s,"quality":"fast","stream":false,"scope_filter":{}}' \
-        "$RAG_SMOKE_KASTEN_ID" "$(printf '%s' "$RAG_SMOKE_QUERY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
-    SMOKE_RESPONSE=$(curl -fsS --max-time 60 -H "Authorization: Bearer $RAG_SMOKE_TOKEN" -H "Content-Type: application/json" \
-        -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>&1 || echo "CURL_FAILED")
-    SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
+    log "[rag-smoke] minting fresh Naruto JWT via Supabase password grant..."
+    AUTH_RESP=$(curl -sS --max-time 15 -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+        -H "apikey: ${SUPABASE_ANON_KEY_LEGACY_JWT}" \
+        -H "Content-Type: application/json" \
+        -d "$(printf '{"email":"naruto@zettelkasten.local","password":%s}' "$(printf '%s' "$NARUTO_SMOKE_PASSWORD" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")" \
+        2>/dev/null || echo "AUTH_CURL_FAILED")
+    SMOKE_TOKEN=$(echo "$AUTH_RESP" | python3 -c "import json,sys
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('access_token') or '')
+except Exception:
+    print('')" 2>/dev/null)
+    if [[ -z "$SMOKE_TOKEN" ]]; then
+        log "[rag-smoke] WARN: JWT mint failed -- skipping smoke probe (degraded confidence)"
+    else
+        log "[rag-smoke] JWT minted (len ${#SMOKE_TOKEN}); firing probe..."
+        SMOKE_BODY=$(printf '{"sandbox_id":"%s","content":%s,"quality":"fast","stream":false,"scope_filter":{}}' \
+            "$RAG_SMOKE_KASTEN_ID" "$(printf '%s' "$RAG_SMOKE_QUERY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
+        SMOKE_RESPONSE=$(curl -sS --max-time 240 -H "Authorization: Bearer $SMOKE_TOKEN" -H "Content-Type: application/json" \
+            -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>&1 || echo "CURL_FAILED")
+        SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
 try:
     d = json.loads(sys.stdin.read())
     cits = d.get('turn',{}).get('citations',[])
     print(cits[0].get('node_id') if cits else 'NO_CITATIONS')
 except Exception as e:
     print('PARSE_FAIL:'+str(e))" 2>/dev/null || echo "PARSE_FAIL")
-    log "[rag-smoke] ${IDLE} primary_citation=${SMOKE_PRIMARY} (expect gh-zk-org-zk)"
-    if [[ "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
-        log "[rag-smoke] FATAL: smoke probe did not return gh-zk-org-zk."
-        log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
-        log "[rag-smoke] Possible causes: degraded retrieval; reranker scoring wrong; token expired; corpus drift since last calibration."
-        exit 89
+        log "[rag-smoke] ${IDLE} primary_citation=${SMOKE_PRIMARY} (expect gh-zk-org-zk)"
+        if [[ "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
+            log "[rag-smoke] FATAL: smoke probe did not return gh-zk-org-zk."
+            log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+            log "[rag-smoke] Possible causes: worker OOM-killed mid-pipeline; degraded retrieval; reranker scoring wrong; corpus drift."
+            exit 89
+        fi
+        log "[rag-smoke] ${IDLE} smoke probe OK"
     fi
-    log "[rag-smoke] ${IDLE} smoke probe OK"
+    unset SMOKE_TOKEN AUTH_RESP
 fi
 
 # Pre-warm the new color so the first user request after cutover doesn't pay
