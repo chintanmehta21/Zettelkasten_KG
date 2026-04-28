@@ -32,6 +32,18 @@ from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
 _logger = logging.getLogger(__name__)
 
 
+def _read_rss_kb() -> int:
+    """Return current process RSS in KB, or 0 if /proc not readable."""
+    try:
+        with open("/proc/self/status", "r", encoding="ascii") as f:
+            return next(
+                (int(line.split()[1]) for line in f if line.startswith("VmRSS:")),
+                0,
+            )
+    except OSError:
+        return 0
+
+
 def _log_rss(label: str, **fields: object) -> None:
     """Log current process RSS at a named profiling point.
 
@@ -39,16 +51,31 @@ def _log_rss(label: str, **fields: object) -> None:
     container logs to compute per-stage memory deltas during q1. Pure-stdlib
     /proc/self/status read - no psutil dependency, no measurable overhead.
     """
-    try:
-        with open("/proc/self/status", "r", encoding="ascii") as f:
-            rss_kb = next(
-                (int(line.split()[1]) for line in f if line.startswith("VmRSS:")),
-                0,
-            )
-        extra = " ".join(f"{k}={v}" for k, v in fields.items())
-        _logger.info("[mem-trace] %s rss_kb=%d %s", label, rss_kb, extra)
-    except OSError:
-        pass  # /proc not available (Windows tests etc.)
+    rss_kb = _read_rss_kb()
+    if rss_kb == 0:
+        return  # /proc not available (Windows tests etc.)
+    extra = " ".join(f"{k}={v}" for k, v in fields.items())
+    _logger.info("[mem-trace] %s rss_kb=%d %s", label, rss_kb, extra)
+
+
+class MemoryPressureError(RuntimeError):
+    """Raised when intra-request RSS exceeds the stage-2 ceiling.
+
+    iter-03 §B (2026-04-29): the request-dispatch memory guard
+    (`website/api/_memory_guard.py`) catches new traffic at 90% cgroup, but
+    once a single query has been admitted, RSS can still climb above the
+    ceiling during retrieval/Gemini calls. Stage-2's ONNX forward pass is
+    the largest in-flight allocation; if we let it run when baseline is
+    already above the ceiling, the worker SIGKILLs and we lose ALL
+    in-flight requests on that worker. Raising this from `_stage2_rank`
+    surfaces a clean 503 to the client and lets every other worker keep
+    serving. Configurable via RAG_STAGE2_RSS_CEILING_KB (default 1452MB).
+    """
+
+
+_STAGE2_RSS_CEILING_KB = int(
+    os.environ.get("RAG_STAGE2_RSS_CEILING_KB", str(1452 * 1024))
+)
 
 # ---------------------------------------------------------------------------
 # Module-level int8 wiring (spec 3.15 layers 1-7)
@@ -379,6 +406,13 @@ class CascadeReranker:
 
         try:
             stage2_scores = await self._stage2_rank(query, shortlisted)
+        except MemoryPressureError:
+            # iter-03 §B (2026-04-29): do NOT fall back to RRF on memory
+            # pressure -- propagate so the API layer returns 503 with
+            # Retry-After. Falling back here would silently downgrade
+            # answer quality when the right move is to shed load and let
+            # the client retry against a worker with healthier baseline.
+            raise
         except Exception as exc:
             self._log_degradation(query, shortlisted, "stage2", exc)
             return self._apply_scores(
@@ -426,9 +460,23 @@ class CascadeReranker:
         # iter-03 §B (2026-04-29): split the stage-2 batch into sub-batches
         # of self._stage2_sub_batch (default 5) and process them sequentially.
         # The ONNX forward pass on a full batch=10 was the +684 MB spike that
-        # SIGKILLed the worker; a 5-wide sub-batch halves the activation
-        # tensors and keeps peak RSS under the 1.6 GB cgroup. Encoded buffers
-        # and outputs are released between sub-batches to bound peak.
+        # SIGKILLed the worker; sub-batching halves the activation tensors and
+        # keeps peak RSS under the 1.6 GB cgroup. Encoded buffers and outputs
+        # are released between sub-batches to bound peak.
+        #
+        # Intra-request memory ceiling: even sub-batched, a forward pass adds
+        # ~+140 MB at size=3. If baseline already exceeded the ceiling before
+        # we got here (residual from prior queries on this worker), running
+        # stage-2 will OOM the worker and lose every other in-flight request
+        # on it. Raise MemoryPressureError so the API layer returns a clean
+        # 503 with Retry-After and the worker stays alive for next queries.
+        rss_kb = _read_rss_kb()
+        if rss_kb and rss_kb > _STAGE2_RSS_CEILING_KB:
+            _log_rss("stage2.ceiling_breach", ceiling_kb=_STAGE2_RSS_CEILING_KB)
+            raise MemoryPressureError(
+                f"stage-2 ceiling breach: rss_kb={rss_kb} > "
+                f"ceiling_kb={_STAGE2_RSS_CEILING_KB}"
+            )
         _log_rss("stage2.enter", count=len(candidates))
         if not candidates:
             _log_rss("stage2.scored", count=0)
@@ -439,20 +487,41 @@ class CascadeReranker:
 
         sub_batch = self._stage2_sub_batch
         all_scores: list[float] = []
-        for chunk_start in range(0, len(candidates), sub_batch):
-            chunk = candidates[chunk_start : chunk_start + sub_batch]
-            encoded = await asyncio.to_thread(
-                self._encode_pairs_sync, tokenizer, query, chunk
-            )
-            _log_rss("stage2.encoded", chunk_start=chunk_start, chunk_size=len(chunk))
-            outputs = await asyncio.to_thread(self._run_stage2_sync, session, encoded)
-            _log_rss("stage2.ran", chunk_start=chunk_start, chunk_size=len(chunk))
-            del encoded
-            chunk_scores = self._extract_scores(outputs)
-            del outputs
-            all_scores.extend(chunk_scores)
-
-        _log_rss("stage2.scored", count=len(all_scores))
+        try:
+            for chunk_start in range(0, len(candidates), sub_batch):
+                chunk = candidates[chunk_start : chunk_start + sub_batch]
+                encoded = await asyncio.to_thread(
+                    self._encode_pairs_sync, tokenizer, query, chunk
+                )
+                _log_rss(
+                    "stage2.encoded",
+                    chunk_start=chunk_start,
+                    chunk_size=len(chunk),
+                )
+                outputs = await asyncio.to_thread(
+                    self._run_stage2_sync, session, encoded
+                )
+                _log_rss(
+                    "stage2.ran",
+                    chunk_start=chunk_start,
+                    chunk_size=len(chunk),
+                )
+                del encoded
+                chunk_scores = self._extract_scores(outputs)
+                del outputs
+                all_scores.extend(chunk_scores)
+                del chunk_scores
+                del chunk
+            _log_rss("stage2.scored", count=len(all_scores))
+        finally:
+            # iter-03 §B (2026-04-29): release per-query residual before the
+            # next query lands on this worker. Even with sub-batching, ORT's
+            # internal allocators and tokenizer state hold ~30-50 MB that
+            # survives function return without an explicit gc. Running gc
+            # here (not after returning) ensures we report post_collect RSS
+            # to the trace before the caller's reference graph adds noise.
+            gc.collect()
+            _log_rss("stage2.post_collect")
         return all_scores
 
     def _apply_scores(

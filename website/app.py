@@ -125,6 +125,27 @@ def create_app(lifespan=None) -> FastAPI:
     # iter-03 mem-bounded §2.9: install AFTER routers so middleware wraps every route.
     _memory_guard.install(app)
 
+    # iter-03 §B (2026-04-29): convert intra-request stage-2 memory pressure
+    # to a clean 503 with Retry-After. The middleware above only sees RSS at
+    # request dispatch; once a query is admitted, stage-2 may discover the
+    # baseline has crept above the ceiling (residual from prior queries on
+    # this worker) and refuse to allocate the forward-pass tensors. That
+    # raises MemoryPressureError; we convert here so eval/clients get the
+    # same Retry-After=5 contract as the dispatch-time guard.
+    from website.features.rag_pipeline.rerank.cascade import MemoryPressureError
+
+    @app.exception_handler(MemoryPressureError)
+    async def _on_memory_pressure(request: Request, exc: MemoryPressureError):
+        logger.warning(
+            "stage-2 memory pressure shedding: %s path=%s",
+            exc, request.url.path,
+        )
+        return JSONResponse(
+            {"error": "server_under_memory_pressure", "retry_after_seconds": 5},
+            status_code=503,
+            headers={"Retry-After": "5"},
+        )
+
     # ── Unhandled-exception alerting ──
     # Any uncaught error in a request handler fans out to the #app-errors
     # Slack channel via notify_app_error, then returns a generic 500 to the
