@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 from typing import Any
+
+from cachetools import LRUCache
 
 try:
     from google.genai.types import EmbedContentConfig
@@ -22,7 +25,11 @@ class ChunkEmbedder:
         self._pool = pool
         self._batch_size = batch_size
         self._sem = asyncio.Semaphore(max_parallel)
-        self._query_cache: dict[str, list[float]] = {}
+        # iter-03 mem-bounded §2.6: bounded LRU caps slow linear leak. Default
+        # 256 entries × ~6 KB ≈ 1.5 MB. Override via RAG_QUERY_CACHE_MAX.
+        self._query_cache: LRUCache[str, list[float]] = LRUCache(
+            maxsize=int(os.environ.get("RAG_QUERY_CACHE_MAX", "256")),
+        )
 
     async def embed(
         self,
