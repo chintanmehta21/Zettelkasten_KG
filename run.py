@@ -38,6 +38,11 @@ def main() -> int:
         "--timeout", os.environ.get("GUNICORN_TIMEOUT", "90"),
         "--graceful-timeout", os.environ.get("GUNICORN_GRACEFUL_TIMEOUT", "60"),
         "--keep-alive", os.environ.get("GUNICORN_KEEPALIVE", "5"),
+        # iter-03 mem-bounded §2.7: recycle workers every ~100 requests to
+        # bound drift from leaky deps (psycopg pool, google-genai HTTP buffers).
+        # With FlashRank in master COW (§2.5), restart cost is ~10-50ms only.
+        "--max-requests", os.environ.get("GUNICORN_MAX_REQUESTS", "100"),
+        "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "20"),
         "website.main:app",
     ]
     return subprocess.call(cmd)
