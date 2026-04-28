@@ -245,6 +245,10 @@
         } catch (_) { profile = null; }
       }
       await loadAvatar(profile, getToken);
+      // iter-03 §UI: surface a stable signal harness/automation can read to
+      // verify every authed page actually called boot() (the missing-boot bug
+      // is invisible in the DOM otherwise — partial renders, img stays blank).
+      try { window.ZKHeader.__booted = true; } catch (_) { /* no-op */ }
       return profile;
     },
 

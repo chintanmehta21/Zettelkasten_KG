@@ -35,6 +35,20 @@
       return;
     }
 
+    // Boot the shared ZKHeader (avatar + sign-out + sticky chrome). Without
+    // this call the <!--ZK_HEADER--> partial renders but its avatar img stays
+    // unset on /home/rag — same partial loads on /home/zettels because that
+    // page does call ZKHeader.boot. Non-fatal if the script wasn't loaded.
+    try {
+      if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+        await window.ZKHeader.boot(state.token);
+      } else {
+        console.warn('[user_rag] ZKHeader missing — avatar will use CSS fallback only');
+      }
+    } catch (err) {
+      console.warn('[user_rag] ZKHeader.boot failed', err);
+    }
+
     var params = new URLSearchParams(window.location.search);
     // KAS-19: canonicalize to ?sandbox= and ?session= (accept legacy ?sandbox_id=/?session_id=).
     state.sandboxId = params.get('sandbox') || params.get('sandbox_id') || '';
