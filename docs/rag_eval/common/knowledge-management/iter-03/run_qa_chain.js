@@ -55,8 +55,41 @@
       text: "Step-by-step setup commands for a personal wiki." },
   ];
 
+  // Auth — Supabase JWT lives in localStorage under 'zk-auth-token' (see
+  // website/features/user_rag/js/user_rag.js getAuthToken()). The API uses
+  // Authorization: Bearer <jwt>, NOT cookies.
+  function readBearer() {
+    try {
+      const raw = localStorage.getItem("zk-auth-token");
+      if (!raw) return "";
+      const parsed = JSON.parse(raw);
+      // Supabase v2 stores either { access_token, ... } directly or wraps it
+      // under currentSession; cover both.
+      return (
+        (parsed && parsed.access_token) ||
+        (parsed && parsed.currentSession && parsed.currentSession.access_token) ||
+        ""
+      );
+    } catch (e) {
+      console.error("[iter-03] could not parse zk-auth-token", e);
+      return "";
+    }
+  }
+  const TOKEN = readBearer();
+  if (!TOKEN) {
+    console.error(
+      "[iter-03] FATAL: no Supabase JWT in localStorage['zk-auth-token']. " +
+        "Are you signed in as Naruto on this tab? If yes, refresh the page once and rerun."
+    );
+    return;
+  }
+  const AUTH_HEADERS = { Authorization: "Bearer " + TOKEN };
+
   console.log("[iter-03] discovering Kasten via /api/rag/sandboxes...");
-  const sboxResp = await fetch("/api/rag/sandboxes?limit=50", { credentials: "include" });
+  const sboxResp = await fetch("/api/rag/sandboxes?limit=50", {
+    credentials: "include",
+    headers: AUTH_HEADERS,
+  });
   if (!sboxResp.ok) {
     console.error("[iter-03] FATAL: /api/rag/sandboxes returned HTTP", sboxResp.status);
     return;
@@ -79,7 +112,7 @@
     try {
       const r = await fetch("/api/rag/adhoc", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...AUTH_HEADERS },
         credentials: "include",
         body: JSON.stringify({
           sandbox_id: target.id,
