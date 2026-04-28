@@ -192,6 +192,54 @@ if [[ "$ACTUAL_MEM_MAX" != "$EXPECTED_MEM_MAX" ]] || [[ "$ACTUAL_SWAP_MAX" != "$
 fi
 log "[cgroup-assert] ${IDLE} cgroup limits OK"
 
+# iter-03 §8: assert that _STAGE2_SESSION (the int8 BGE reranker) actually
+# loaded inside the running container. The lazy fp32 fallback is gone
+# (cascade.py refactor); if the int8 file is missing or failed to import,
+# the worker would 500 the first /api/rag/adhoc call. Catch it here pre-flip.
+# Fail-loud, no auto-rollback (same pattern as cgroup-assert post-de-fang).
+ACTUAL_STAGE2=$(docker exec "zettelkasten-${IDLE}" python -c "from website.features.rag_pipeline.rerank import cascade; print(cascade._STAGE2_SESSION is not None)" 2>/dev/null || echo "false")
+log "[stage2-assert] ${IDLE} _STAGE2_SESSION_loaded=${ACTUAL_STAGE2} (expect True)"
+if [[ "$ACTUAL_STAGE2" != "True" ]]; then
+    log "[stage2-assert] FATAL: int8 BGE session not loaded in ${IDLE}."
+    log "[stage2-assert] FATAL: NOT auto-rolling back -- operator must triage."
+    log "[stage2-assert] Likely causes: LFS pull failed in CI; image missing models/bge-reranker-base-int8.onnx; import error."
+    log "[stage2-assert] Bad container left at zettelkasten-${IDLE}; Caddy still on previous color."
+    exit 88
+fi
+log "[stage2-assert] ${IDLE} stage2 session OK"
+
+# iter-03 §8: pre-flip canonical RAG smoke probe. Fires the iter-03 q1 zk-org/zk
+# two-fact lookup against the new color; asserts HTTP 200 + primary_citation
+# == "gh-zk-org-zk". Catches bugs that make _STAGE2_SESSION load but inference
+# produce nonsense (NaN scores, broken token IDs, etc.). 5-15s extra at deploy.
+# Fail-loud, no auto-rollback.
+RAG_SMOKE_KASTEN_ID="${RAG_SMOKE_KASTEN_ID:-227e0fb2-ff81-4d08-8702-76d9235564f4}"
+RAG_SMOKE_TOKEN="${RAG_SMOKE_TOKEN:-}"
+RAG_SMOKE_QUERY="Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?"
+if [[ -z "$RAG_SMOKE_TOKEN" ]]; then
+    log "[rag-smoke] WARN: RAG_SMOKE_TOKEN not set -- skipping (degraded confidence)"
+else
+    SMOKE_BODY=$(printf '{"sandbox_id":"%s","content":%s,"quality":"fast","stream":false,"scope_filter":{}}' \
+        "$RAG_SMOKE_KASTEN_ID" "$(printf '%s' "$RAG_SMOKE_QUERY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
+    SMOKE_RESPONSE=$(curl -fsS --max-time 60 -H "Authorization: Bearer $RAG_SMOKE_TOKEN" -H "Content-Type: application/json" \
+        -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>&1 || echo "CURL_FAILED")
+    SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
+try:
+    d = json.loads(sys.stdin.read())
+    cits = d.get('turn',{}).get('citations',[])
+    print(cits[0].get('node_id') if cits else 'NO_CITATIONS')
+except Exception as e:
+    print('PARSE_FAIL:'+str(e))" 2>/dev/null || echo "PARSE_FAIL")
+    log "[rag-smoke] ${IDLE} primary_citation=${SMOKE_PRIMARY} (expect gh-zk-org-zk)"
+    if [[ "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
+        log "[rag-smoke] FATAL: smoke probe did not return gh-zk-org-zk."
+        log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
+        log "[rag-smoke] Possible causes: degraded retrieval; reranker scoring wrong; token expired; corpus drift since last calibration."
+        exit 89
+    fi
+    log "[rag-smoke] ${IDLE} smoke probe OK"
+fi
+
 # Pre-warm the new color so the first user request after cutover doesn't pay
 # the BGE int8 ONNX cold-start tax (~1-3s on a 1 vCPU droplet). Best-effort:
 # the loop tolerates the endpoint being briefly unavailable while gunicorn
