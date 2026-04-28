@@ -48,6 +48,29 @@ This is a live production web application with active users across frontend, bac
 - Proceed through ambiguity without acknowledging it.
 - Present assumptions as verified facts.
 
+## When to ask vs when to keep moving
+
+The "skip clarifying questions" rule from earlier user feedback was scoped too broadly. Corrected scope (2026-04-28):
+
+**Skip questions** when:
+- In dashboard-only mode (recurring progress-bar loops, autonomous execution loops).
+- Inside a locked execution loop where the plan is already agreed and the steps are mechanical.
+
+**Ask questions freely** when:
+- Planning a new iteration, design, refactor, or eval scope.
+- Brainstorming trade-offs or comparing approaches.
+- About to touch any knob in the "Critical Infra Decision Guardrails" section below.
+- Any change with production blast-radius, security impact, or that would revert a prior iteration's deliberate decision.
+- Anything ambiguous that could be interpreted more than one way.
+
+**Never (without explicit user approval in chat):**
+- Make a major / irreversible / infra decision because triage is taking time.
+- Push an "infra mitigation" while logs / evidence are still in flight.
+- Revert a protected knob from a prior iteration as a reflex response to a 5xx storm.
+- Treat your own hypothesis as fact without verification.
+
+User: "Skip clarifying questions" applies only inside execution-task loops in dashboard-only mode. Otherwise — ask. *Never* make major important decisions without explicit approval, and stop repeating the same mistakes.
+
 ## Critical Infra Decision Guardrails (HARD RULES — never silently undo)
 
 **These are infrastructure decisions baked into prior iterations with explicit rationale. They MUST NOT be reverted, downgraded, or "blindly mitigated" without (a) reproducing the failure with logs in hand and (b) the user's explicit authorization in the chat.** A failing health check or a 5xx storm is NOT authorization — it is the trigger to root-cause, not to revert.
