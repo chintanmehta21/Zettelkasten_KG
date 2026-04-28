@@ -49,6 +49,12 @@ COPY --chown=appuser:appuser ops/scripts/ ops/scripts/
 COPY --chown=appuser:appuser supabase/website/kg_public/migrations/ \
      supabase/website/kg_public/migrations/
 
+# iter-03: bake reranker model artifacts (int8 BGE + FlashRank stage-1) into
+# the image so /app/models is read-only at runtime. Eliminates the host-state-
+# drift class of bug that defeated iter-03-stale (model file silently missing
+# on the droplet -> lazy fp32 fallback ate 1 GB RSS per worker).
+COPY --chown=appuser:appuser models/ /app/models/
+
 RUN mkdir -p /app/kg_output /app/bot_data \
     && chown -R appuser:appuser /app/kg_output /app/bot_data
 
