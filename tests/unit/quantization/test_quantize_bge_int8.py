@@ -84,7 +84,10 @@ def test_int8_model_smaller_than_fp32(tmp_path):
 )
 def test_int8_model_classifier_head_in_fp32():
     """Layer 2: classifier head must remain fp32 for accuracy."""
-    import onnx
+    try:
+        import onnx
+    except ImportError:
+        pytest.skip("onnx package not installed (CI test env doesn't include it)")
 
     out = Path("models/bge-reranker-base-int8.onnx")
     model = onnx.load(str(out))
