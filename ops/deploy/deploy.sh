@@ -100,6 +100,35 @@ if [ "$MIG_RC" -ne 0 ]; then
 fi
 log "[migration] OK — proceeding with blue/green flip."
 
+# iter-03 §3.9 / Plan 2D.2: single-tenant kg_users allowlist gate.
+# After migrations succeed but BEFORE traffic flips, verify that no rogue
+# kg_users rows exist outside the canonical Naruto + Zoro IDs. Aborts the
+# deploy if an unknown auth_id is in the live table — prevents silent
+# multi-tenant pollution that historically broke per-user retrieval scopes.
+log "[deploy] Running kg_users allowlist gate..."
+set +e
+docker run --rm --network host \
+    --env-file /opt/zettelkasten/compose/.env \
+    "$IMAGE" \
+    python -c "
+import json, os, sys, psycopg
+allowed = set(json.load(open('/app/ops/deploy/expected_users.json'))['allowed_auth_ids'])
+with psycopg.connect(os.environ['SUPABASE_DB_URL']) as c, c.cursor() as cur:
+    cur.execute('SELECT id::text FROM kg_users')
+    live = {r[0] for r in cur.fetchall()}
+unknown = live - allowed
+if unknown:
+    print(f'[deploy] FATAL: kg_users has unknown auth_ids: {unknown}', file=sys.stderr)
+    sys.exit(1)
+print('[deploy] kg_users allowlist OK')
+" 2>&1 | tee -a "$LOG"
+GATE_RC=${PIPESTATUS[0]}
+set -e
+if [ "$GATE_RC" -ne 0 ]; then
+    log "[deploy] FATAL: allowlist gate failed rc=$GATE_RC — ABORTING DEPLOY"
+    exit "$GATE_RC"
+fi
+
 log "Starting $IDLE container with new image..."
 IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
