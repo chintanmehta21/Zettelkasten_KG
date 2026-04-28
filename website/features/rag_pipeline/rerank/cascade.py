@@ -75,6 +75,34 @@ _FP32_VERIFY_SESSION: ort.InferenceSession | None = (
 )
 
 
+# iter-03 mem-bounded §2.5: hoist FlashRank to module-level so gunicorn
+# --preload shares it via COW. The lazy per-instance path stays as a fallback
+# for tests where the model file is absent.
+_DEFAULT_FLASHRANK_DIR = _REPO_ROOT / "models"
+
+
+def _build_flashrank_ranker(model_dir: Path) -> Ranker | None:
+    """Build the FlashRank stage-1 ranker eagerly so it COW-shares post-fork.
+
+    Filesystem side effects (model download into ``model_dir``) MUST happen
+    pre-fork — we trigger them via ``ModelManager.ensure_flashrank_model()``
+    here at import time so the cache directory is populated and forked
+    workers do not race for the file.
+
+    Returns ``None`` on any failure so import-time problems degrade to the
+    legacy lazy path rather than crashing the whole app.
+    """
+    try:
+        ModelManager(str(model_dir)).ensure_flashrank_model()
+        return Ranker(model_name=FLASHRANK_MODEL_NAME, cache_dir=str(model_dir))
+    except Exception as exc:  # pragma: no cover - bootstrap fault is logged
+        _logger.warning("failed to preload FlashRank ranker: %s", exc)
+        return None
+
+
+_STAGE1_RANKER: Ranker | None = _build_flashrank_ranker(_DEFAULT_FLASHRANK_DIR)
+
+
 def _load_json(path: Path, default: dict) -> dict:
     if not path.exists():
         return default
@@ -417,13 +445,22 @@ class CascadeReranker:
         )
 
     def _get_stage1_ranker(self) -> Ranker:
-        if self._stage1 is None:
-            self._model_manager.ensure_flashrank_model()
-            self._stage1 = Ranker(
-                model_name=FLASHRANK_MODEL_NAME,
-                cache_dir=str(self._model_manager.model_dir),
-            )
-        return self._stage1
+        # Production path: the module-level singleton was preloaded in master
+        # under gunicorn --preload, so workers inherit it via COW. Return it
+        # directly without locking — the singleton is read-only after import.
+        if _STAGE1_RANKER is not None:
+            return _STAGE1_RANKER
+        # Test / smoke fallback: legacy per-instance lazy build retained so
+        # tests that patch model_dir keep working. Preserve the existing
+        # ensure_flashrank_model() download trigger so the file is on disk.
+        with self._stage1_lock:
+            if self._stage1 is None:
+                self._model_manager.ensure_flashrank_model()
+                self._stage1 = Ranker(
+                    model_name=FLASHRANK_MODEL_NAME,
+                    cache_dir=str(self._model_manager.model_dir),
+                )
+            return self._stage1
 
     def _get_stage2_session(self) -> ort.InferenceSession:
         if self._stage2_session is None:
