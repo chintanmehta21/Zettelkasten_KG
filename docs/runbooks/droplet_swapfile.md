@@ -10,6 +10,44 @@ the cgroup-confined containers (mem_limit 1300m, memswap_limit 2300m, see
 Without this the kernel cgroup-OOM kills gunicorn workers under inference
 pressure → Caddy reports 502s.
 
+## Sudoers limitation on `deploy` user (canonical iter-03+ path)
+
+The `deploy` user's NOPASSWD allowlist does NOT currently include `swapoff`,
+`tee`, or `chmod` (general). Allowed: `fallocate, mkswap, swapon, sysctl,
+journalctl, apt-get, find, rm`.
+
+This means **the recreate-in-place path (swapoff → rm → fallocate → swapon)
+cannot be driven from the deploy user's SSH session.** Two paths:
+
+**(A) Additive (canonical for ops automation):**
+Add a second swap file alongside `/swapfile`. Functionally identical end
+state, no swapoff window, drives entirely from the deploy user.
+
+```bash
+# As deploy@droplet:
+sudo fallocate -l 1G /swapfile2
+sudo find /swapfile2 -exec chmod 600 {} \;        # find IS in NOPASSWD
+sudo mkswap /swapfile2
+sudo swapon /swapfile2
+swapon --show                                      # confirm 2 entries totaling 2.0 GiB
+```
+
+**(B) Recreate-in-place (requires root):**
+Operator with full sudo runs the recreate block below. Only use when you
+have console / root SSH access — appleboy/ssh-action runs as `deploy`.
+
+## Persistence in /etc/fstab (one-time root op)
+
+The deploy user CANNOT append to /etc/fstab (no `tee` in NOPASSWD). After
+a swap recreate or addition, an operator with root must run, ONCE per file:
+
+```bash
+echo '/swapfile2 none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+Until that lands, the swap addition does NOT survive a droplet reboot.
+Track outstanding fstab gaps in `docs/operations/droplet_state.md`.
+
 ## Steps (run on droplet via SSH as the deploy user)
 
 ```bash

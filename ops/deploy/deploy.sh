@@ -172,6 +172,25 @@ IMAGE_TAG="$SHA" docker compose \
 log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 "$ROOT/deploy/healthcheck.sh" "$IDLE_PORT"
 
+# iter-03 mem-bounded §2.10 (post-mortem): assert the cgroup limits the
+# container actually ended up with match what the compose file declared.
+# This guards against the silent-no-op failure mode where compose ceiling
+# changes never reach the droplet (compose files stale / not synced) — a
+# class of bug that bit iter-03 mid-rollout. Mismatch fails the deploy.
+EXPECTED_MEM_MAX=1363148800        # 1300m == 1.3 GiB
+EXPECTED_SWAP_MAX=1048576000       # 1000m == 1.0 GiB swap budget per cgroup
+ACTUAL_MEM_MAX=$(docker exec "zettelkasten-${IDLE}" cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "missing")
+ACTUAL_SWAP_MAX=$(docker exec "zettelkasten-${IDLE}" cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo "missing")
+log "[cgroup-assert] ${IDLE} memory.max=${ACTUAL_MEM_MAX} (expect ${EXPECTED_MEM_MAX})"
+log "[cgroup-assert] ${IDLE} memory.swap.max=${ACTUAL_SWAP_MAX} (expect ${EXPECTED_SWAP_MAX})"
+if [[ "$ACTUAL_MEM_MAX" != "$EXPECTED_MEM_MAX" ]] || [[ "$ACTUAL_SWAP_MAX" != "$EXPECTED_SWAP_MAX" ]]; then
+    log "[cgroup-assert] FATAL: cgroup limits don't match compose. Likely stale compose on droplet."
+    log "[cgroup-assert] FATAL: rolling back this deploy."
+    "$ROOT/deploy/rollback.sh" || true
+    exit 87
+fi
+log "[cgroup-assert] ${IDLE} cgroup limits OK"
+
 # Pre-warm the new color so the first user request after cutover doesn't pay
 # the BGE int8 ONNX cold-start tax (~1-3s on a 1 vCPU droplet). Best-effort:
 # the loop tolerates the endpoint being briefly unavailable while gunicorn

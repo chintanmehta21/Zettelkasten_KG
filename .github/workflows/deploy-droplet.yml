@@ -154,11 +154,18 @@ jobs:
       #            because GH reserves the GITHUB_ prefix, so production
       #            uses GH_*_FOR_NOTES which must remap to GITHUB_TOKEN /
       #            GITHUB_REPO at deploy time.
-      - name: Checkout deploy scripts
+      - name: Checkout deploy scripts and compose files
         uses: actions/checkout@v5
         with:
-          sparse-checkout: ops/deploy
-          sparse-checkout-cone-mode: true
+          # iter-03 mem-bounded §2.10: also sync compose files so mem_limit /
+          # memswap_limit edits in ops/docker-compose.{blue,green}.yml actually
+          # reach the droplet. Without this, compose ceiling changes silently
+          # no-op at runtime — exactly the gap that bit iter-03 mid-rollout.
+          sparse-checkout: |
+            ops/deploy
+            ops/docker-compose.blue.yml
+            ops/docker-compose.green.yml
+          sparse-checkout-cone-mode: false
 
       - name: Sync deploy scripts to droplet
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
@@ -170,6 +177,20 @@ jobs:
           source: "ops/deploy/*.sh"
           target: "/opt/zettelkasten/deploy/"
           strip_components: 2  # ops/deploy/ -> /opt/zettelkasten/deploy/
+
+      - name: Sync compose files to droplet
+        # iter-03 mem-bounded §2.10: ensure compose ceiling edits propagate.
+        # Pairs with the cgroup-assertion in deploy.sh that fails the deploy if
+        # the running container's memory.max doesn't match the expected value.
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          source: "ops/docker-compose.blue.yml,ops/docker-compose.green.yml"
+          target: "/opt/zettelkasten/compose/"
+          strip_components: 1  # ops/ -> /opt/zettelkasten/compose/
 
       - name: Build container .env body from environment secrets
         id: env
