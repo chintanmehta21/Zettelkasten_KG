@@ -24,6 +24,7 @@ from website.api.sandbox_routes import router as sandbox_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.web_monitor import router as web_monitor_router
 from website.features.web_monitor.App_Errors import notify_app_error
+from website.api.admin_routes import router as admin_router
 
 logger = logging.getLogger("website.app")
 
@@ -117,6 +118,7 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(chat_router)
     app.include_router(sandbox_router)
     app.include_router(web_monitor_router)
+    app.include_router(admin_router)
     if nexus_enabled:
         app.include_router(nexus_router)
 
