@@ -56,12 +56,27 @@ def _resolve_seed_node_ids(source: str, iter_num: int) -> list[str]:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser()
+    # iter-03 Phase 4C hard-gate mode is mutually exclusive with the
+    # source/iter ingestion flow; --enforce-gates skips Phase A/B and
+    # exits with the gate result code.
+    p.add_argument(
+        "--enforce-gates",
+        action="store_true",
+        help="iter-03 Task 4C.1: compare an answers.json against a "
+             "baseline.json and exit non-zero on hard-gate failure.",
+    )
+    p.add_argument("--answers", type=str, default=None,
+                   help="Path to answers.json for --enforce-gates.")
+    p.add_argument("--queries", type=str, default=None,
+                   help="Path to queries.json for --enforce-gates.")
+    p.add_argument("--baseline", type=str, default=None,
+                   help="Path to baseline.json for --enforce-gates.")
     p.add_argument(
         "--source",
         choices=["youtube", "reddit", "github", "newsletter"],
-        required=True,
+        required=False,
     )
-    p.add_argument("--iter", type=int, required=True, dest="iter_num")
+    p.add_argument("--iter", type=int, required=False, dest="iter_num")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--skip-determinism", action="store_true")
     p.add_argument("--skip-breadth", action="store_true")
@@ -85,8 +100,19 @@ def _read_weights(path: Path) -> dict:
 
 
 def _serialize_turn(turn, query) -> dict:
-    """Flatten an AnswerTurn + GoldQuery into the dict shape EvalRunner expects."""
+    """Flatten an AnswerTurn + GoldQuery into the dict shape EvalRunner expects.
+
+    iter-03 (Task 4A.1): also attaches a `per_stage` sub-dict so the CI
+    gate (Phase 4C) and downstream analysis can grade retrieval recall,
+    reranker margin, synthesizer grounding, critic verdict, query class,
+    model chain, and latency without re-running the orchestrator. The
+    derivation reads only AnswerTurn-level data (no orchestrator
+    instrumentation needed); see ops/scripts/eval/per_stage.py.
+    """
+    from ops.scripts.eval.per_stage import build_per_stage
+
     citations = [c.model_dump() if hasattr(c, "model_dump") else dict(c) for c in (turn.citations or [])]
+    gold_node_ids = list(getattr(query, "gold_node_ids", []) or [])
     return {
         "query_id": query.id,
         "answer": turn.content if hasattr(turn, "content") else (turn.get("content") or ""),
@@ -94,6 +120,7 @@ def _serialize_turn(turn, query) -> dict:
         "retrieved_node_ids": [c["node_id"] for c in citations],
         "reranked_node_ids": [c["node_id"] for c in citations],
         "contexts": [c.get("snippet") or c.get("content") or "" for c in citations],
+        "per_stage": build_per_stage(turn=turn, gold_node_ids=gold_node_ids),
     }
 
 
@@ -571,6 +598,33 @@ async def _run_phase_b(args: argparse.Namespace) -> dict:
 
 def _cli_dispatch(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    if args.enforce_gates:
+        # iter-03 Phase 4C.1: hard CI gate. Skips the Kasten build /
+        # ingest / orchestrator-run flow entirely — this mode is the
+        # only thing the iter-03 PR-gated CI workflow runs.
+        from ops.scripts.eval.ci_gate import run_gate_from_paths
+
+        missing = [
+            name for name, val in (
+                ("--answers", args.answers),
+                ("--queries", args.queries),
+                ("--baseline", args.baseline),
+            ) if not val
+        ]
+        if missing:
+            print(f"ERROR: --enforce-gates requires {', '.join(missing)}", file=sys.stderr)
+            return 2
+        return run_gate_from_paths(
+            answers_path=Path(args.answers),
+            queries_path=Path(args.queries),
+            baseline_path=Path(args.baseline),
+        )
+    if not args.source or args.iter_num is None:
+        print(
+            "ERROR: --source and --iter are required unless --enforce-gates is passed",
+            file=sys.stderr,
+        )
+        return 2
     if HALT_FILE.exists():
         print(f"HALTED: {HALT_FILE.read_text(encoding='utf-8')}")
         return 1

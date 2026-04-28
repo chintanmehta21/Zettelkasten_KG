@@ -6,6 +6,8 @@ type: project
 
 ## Status: RESOLVED (2026-04-06)
 
+> **Note on hosting context:** The "on Render" / "on Render production" references below are **historical** — they describe verification done while the app was still hosted on Render.com. Render is **legacy / no longer used**; production now runs on a DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy). The verification conclusions still apply because the app code is unchanged.
+
 All 5 items verified and addressed. Summary below.
 
 ### 1. NL Graph Query (M4) — VERIFIED WORKING

@@ -66,6 +66,32 @@ def _default_model_for_quality(quality: str) -> str | None:
     return _DEFAULT_MODEL_BY_QUALITY.get(quality)
 
 
+# Spec 2A.2: low-confidence inline tag (HTML <details>) returned alongside the
+# 2nd-pass draft answer when the critic still flags it as unsupported. The
+# canned-refusal path was removed because spec §3.6 prong 2 requires the user
+# to see the model's best draft annotated as low-confidence rather than a
+# blanket "I can't find" message that q3/q8 surfaced as a smoking gun.
+_LOW_CONFIDENCE_DETAILS_TAG = (
+    "\n\n<details>"
+    "<summary>How sure am I?</summary>"
+    "Citations don't fully cover this claim. The answer is the model's best draft."
+    "</details>"
+)
+
+
+def _wrap_with_low_confidence_tag(draft_answer: str) -> str:
+    """Append the spec-§3.6 low-confidence inline tag to a draft answer.
+
+    Pure helper — never raises. Idempotent: a draft that already contains the
+    tag is returned unchanged so retries (or future re-wrapping) cannot
+    double-stamp the marker.
+    """
+    text = draft_answer or ""
+    if "<summary>How sure am I?</summary>" in text:
+        return text
+    return text + _LOW_CONFIDENCE_DETAILS_TAG
+
+
 @dataclass(slots=True)
 class _PreparedQuery:
     session_id: object
@@ -452,9 +478,14 @@ class RAGOrchestrator:
                 answer_text = retry_answer
                 replaced_text = answer_text
             else:
-                verdict = "retried_still_bad"
+                # Spec 2A.2 / iter-03 plan §3.6 prong 2: do NOT canned-refuse
+                # on a 2nd-pass unsupported verdict. Return the retry draft
+                # with a collapsible low-confidence inline tag so the user
+                # still sees the model's best attempt and is informed that
+                # citations did not fully cover the claim.
+                verdict = "retried_low_confidence"
                 details = retry_details
-                answer_text = "Warning: low confidence.\n\n" + retry_answer
+                answer_text = _wrap_with_low_confidence_tag(retry_answer)
                 replaced_text = answer_text
 
         turn = AnswerTurn(

@@ -254,6 +254,19 @@
     if (current && current.default_quality) {
       els.qualitySelect.value = current.default_quality;
     }
+    updateComposerPlaceholder();
+  }
+
+  // 3B.1: Composer placeholder reflects the active Kasten name. The
+  // ?focus_node= deep-link override (set in init() before sandboxes load)
+  // always wins so a per-zettel question does not get retitled.
+  function updateComposerPlaceholder() {
+    if (state.focusNodeTitle) return;
+    var sandbox = currentSandbox();
+    var name = sandbox && sandbox.name
+      ? String(sandbox.name).slice(0, 40)
+      : 'your Zettelkasten';
+    els.input.placeholder = 'Ask ' + name + ' something…';
   }
 
   function currentSandbox() {
@@ -275,6 +288,7 @@
       }
       updateChatTitle();
       updateDocTitle();
+      updateComposerPlaceholder();
 
       var payload = await api('/api/rag/sessions/' + encodeURIComponent(sessionId) + '/messages');
       renderMessages(payload.messages || []);
@@ -498,7 +512,19 @@
             body: requestBody
           });
           if (response.ok && response.body) { lastErr = null; break; }
-          // 502/503/504 → retry once; 4xx → terminal.
+          // 3B.2: 503 + Retry-After is the bounded-queue backpressure
+          // signal from Phase 1B. Honor it precisely instead of the
+          // blanket 1s upstream-5xx retry below.
+          if (i + 1 < attempts.length && response.status === 503) {
+            var retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
+            if (!Number.isFinite(retryAfter) || retryAfter < 1) retryAfter = 5;
+            if (retryAfter > 30) retryAfter = 30;  // sanity cap
+            showQueuedNotice(retryAfter);
+            await new Promise(function (r) { setTimeout(r, retryAfter * 1000); });
+            lastErr = new Error('Queued (503)');
+            continue;
+          }
+          // 502/504 → retry once; 4xx → terminal.
           if (i + 1 < attempts.length && response.status >= 500 && response.status < 600) {
             lastErr = new Error('Upstream returned ' + response.status);
             continue;
@@ -517,17 +543,107 @@
       }
       if (lastErr) throw lastErr;
 
+      // 3D: long-pipeline loader — if no token frame arrives within 5s of
+      // the POST being accepted, render the Kasten-card-shuffle as a SIBLING
+      // of the assistant body so streaming tokens never collide with loader
+      // markup. Cleared on first body content, on done, or in finally.
+      var assistantBody = assistantNode.querySelector('.rag-message-body');
+      var loaderHost = document.createElement('div');
+      loaderHost.className = 'rag-message-loader';
+      if (assistantBody) assistantBody.parentNode.insertBefore(loaderHost, assistantBody);
+
+      var stopLongPipeline = null;
+      var longPipelineTimer = setTimeout(function () {
+        if (assistantBody && !assistantBody.textContent && window.ZkLoader) {
+          stopLongPipeline = window.ZkLoader.showLongPipelineLoader(loaderHost);
+        }
+      }, 5000);
+      var clearLongPipeline = function () {
+        clearTimeout(longPipelineTimer);
+        if (stopLongPipeline) { stopLongPipeline(); stopLongPipeline = null; }
+        if (loaderHost && loaderHost.parentNode) loaderHost.parentNode.removeChild(loaderHost);
+      };
+
+      // Poll the assistant body so the loader disappears the instant any
+      // stream output (token, error, replace) lands. Cheap; avoids
+      // monkey-patching handleSSEChunk under 'use strict'.
+      var loaderPoll = setInterval(function () {
+        if (!assistantBody) { clearInterval(loaderPoll); return; }
+        if (assistantBody.textContent && assistantBody.textContent.length > 0) {
+          clearInterval(loaderPoll);
+          clearLongPipeline();
+        }
+      }, 150);
+
       try {
         await consumeSSE(response.body.getReader(), assistantNode);
+        clearInterval(loaderPoll);
+        clearLongPipeline();
       } catch (sseErr) {
-        // The browser's fetch reader throws raw strings like "network error" or
-        // "Failed to fetch" when the upstream connection drops mid-stream
-        // (e.g. blue/green cutover, container restart, brief proxy hiccup).
-        // Surface a friendly, actionable line instead of leaking the SDK
-        // string to the chat bubble.
-        var friendly = new Error('Lost connection mid-answer. Please retry.');
-        friendly.cause = sseErr;
-        throw friendly;
+        clearInterval(loaderPoll);
+        clearLongPipeline();
+        // 3C.1: heartbeat-timeout = no frame for 15s. Auto-retry the whole
+        // POST exactly once (silent, behind a teal "Reconnecting…" status)
+        // before surfacing the friendly error. This catches single proxy
+        // hiccups during blue/green cutover without forcing the user to hit
+        // Retry manually.
+        var isHeartbeat = sseErr && (sseErr.code === 'heartbeat-timeout'
+          || /heartbeat-timeout/.test(sseErr.message || ''));
+        if (isHeartbeat && !state._sseRetryUsed) {
+          state._sseRetryUsed = true;
+          var stopHeartbeat = null;
+          var manualRetryFired = { v: false };
+          try {
+            setStatus('Reconnecting your Kasten…');
+            // Clear any partial bubble text so the retried answer starts
+            // from a clean slate.
+            var body = assistantNode.querySelector('.rag-message-body');
+            if (body) body.textContent = '';
+            // Re-mount the loader host (cleared earlier) and show the
+            // heartbeat-state shuffle with a Retry-now affordance.
+            if (assistantBody && assistantBody.parentNode && window.ZkLoader) {
+              loaderHost = document.createElement('div');
+              loaderHost.className = 'rag-message-loader';
+              assistantBody.parentNode.insertBefore(loaderHost, assistantBody);
+              stopHeartbeat = window.ZkLoader.showHeartbeatLoader(loaderHost, function () {
+                manualRetryFired.v = true;
+              });
+            }
+            await new Promise(function (r) { setTimeout(r, 1000); });
+            var retryResp = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + state.token,
+                'Content-Type': 'application/json'
+              },
+              body: requestBody
+            });
+            if (retryResp.ok && retryResp.body) {
+              if (stopHeartbeat) { stopHeartbeat(); stopHeartbeat = null; }
+              await consumeSSE(retryResp.body.getReader(), assistantNode);
+              state._sseRetryUsed = false;
+            } else {
+              throw new Error('Retry failed (' + retryResp.status + ').');
+            }
+          } catch (retryErr) {
+            state._sseRetryUsed = false;
+            var friendly2 = new Error('Lost connection mid-answer. Please retry.');
+            friendly2.cause = retryErr;
+            throw friendly2;
+          } finally {
+            if (stopHeartbeat) { stopHeartbeat(); }
+          }
+        } else {
+          // The browser's fetch reader throws raw strings like "network error" or
+          // "Failed to fetch" when the upstream connection drops mid-stream
+          // (e.g. blue/green cutover, container restart, brief proxy hiccup).
+          // Surface a friendly, actionable line instead of leaking the SDK
+          // string to the chat bubble.
+          state._sseRetryUsed = false;
+          var friendly = new Error('Lost connection mid-answer. Please retry.');
+          friendly.cause = sseErr;
+          throw friendly;
+        }
       }
     } catch (err) {
       rollbackPendingAssistant(assistantNode, userNode, err, content);
@@ -550,21 +666,62 @@
     setQueryParams();
   }
 
+  // 3C.1: Heartbeat-aware SSE consumer.
+  //
+  // Phase 1B's streaming endpoint emits `:heartbeat\n\n` comment frames every
+  // ~10s so intermediate proxies (Caddy, Cloudflare) and the browser's
+  // dead-connection heuristics don't silently kill an in-flight stream during
+  // a long pipeline. If we go > HEARTBEAT_TIMEOUT_MS without ANY frame
+  // (heartbeat or data) the upstream is presumed dead — we cancel the reader
+  // with a tagged reason so the caller's catch can decide whether to retry.
+  //
+  // `:` comment lines are ignored by parseSSEPayload (it only reads `data:`),
+  // so heartbeats serve purely to refresh `lastFrameMs` here.
+  var HEARTBEAT_TIMEOUT_MS = 15000;
+  var HEARTBEAT_CHECK_MS = 5000;
+
   async function consumeSSE(reader, assistantNode) {
     var decoder = new TextDecoder();
     var buffer = '';
-    while (true) {
-      var result = await reader.read();
-      if (result.done) break;
-      buffer += decoder.decode(result.value, { stream: true });
-      var parts = buffer.split('\n\n');
-      buffer = parts.pop();
-      parts.forEach(function (chunk) {
-        handleSSEChunk(chunk, assistantNode);
-      });
-    }
-    if (buffer.trim()) {
-      handleSSEChunk(buffer, assistantNode);
+    var lastFrameMs = Date.now();
+    var doneSeen = false;
+    var watchdogFired = false;
+
+    var watchdog = setInterval(function () {
+      if (doneSeen) return;
+      if (Date.now() - lastFrameMs > HEARTBEAT_TIMEOUT_MS) {
+        watchdogFired = true;
+        try { reader.cancel('heartbeat-timeout'); } catch (_) { /* already closed */ }
+      }
+    }, HEARTBEAT_CHECK_MS);
+
+    try {
+      while (true) {
+        var result = await reader.read();
+        if (result.done) break;
+        lastFrameMs = Date.now();
+        buffer += decoder.decode(result.value, { stream: true });
+        var parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        parts.forEach(function (chunk) {
+          // Track the terminal `done` event so the watchdog stops nagging
+          // during the trailing tail flush.
+          if (chunk.indexOf('event: done') >= 0 || chunk.indexOf('"type":"done"') >= 0) {
+            doneSeen = true;
+          }
+          handleSSEChunk(chunk, assistantNode);
+        });
+      }
+      if (buffer.trim()) {
+        handleSSEChunk(buffer, assistantNode);
+      }
+      if (watchdogFired) {
+        var hbErr = new Error('heartbeat-timeout');
+        hbErr.code = 'heartbeat-timeout';
+        throw hbErr;
+      }
+    } finally {
+      clearInterval(watchdog);
     }
   }
 
@@ -803,6 +960,36 @@
     return div.innerHTML;
   }
 
+  // 3B.2: Visible "Queued — retrying in Ns" notice driven by the server's
+  // Retry-After header. Replaces any existing notice so concurrent retries
+  // don't stack. Removes itself when the countdown reaches zero.
+  function showQueuedNotice(seconds) {
+    var existing = document.getElementById('rag-queued-notice');
+    if (existing) existing.remove();
+    var notice = document.createElement('div');
+    notice.id = 'rag-queued-notice';
+    notice.className = 'rag-queued-notice';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    notice.innerHTML =
+      '<span class="rag-queued-dot" aria-hidden="true"></span>' +
+      '<span class="rag-queued-text">Lots of questions right now — retrying in ' +
+      '<span class="rag-queued-cd">' + seconds + '</span>s…</span>';
+    var composer = document.querySelector('.rag-composer');
+    if (composer) composer.parentNode.insertBefore(notice, composer);
+    var s = seconds;
+    var cd = notice.querySelector('.rag-queued-cd');
+    var tick = setInterval(function () {
+      s -= 1;
+      if (s <= 0) {
+        clearInterval(tick);
+        if (notice.parentNode) notice.parentNode.removeChild(notice);
+      } else if (cd) {
+        cd.textContent = String(s);
+      }
+    }, 1000);
+  }
+
   // ── Add-zettels modal ───────────────────────────────────────────
 
   async function openAddModal() {
@@ -865,11 +1052,44 @@
     var visible = state.userNodes.filter(function (n) {
       return !query || (n.name || '').toLowerCase().indexOf(query) >= 0;
     });
+    // Selectable = visible AND not already a member of this Kasten.
+    var selectable = visible.filter(function (n) { return !state.sandboxMemberIds.has(n.id); });
+    var selectableCount = selectable.length;
+    var selectedVisibleCount = selectable.filter(function (n) {
+      return state.addModalSelected.has(n.id);
+    }).length;
+
+    // Header row with Select all + counter (3A.1).
+    var header = document.createElement('li');
+    header.className = 'rag-add-header';
+    var allChecked = selectableCount > 0 && selectedVisibleCount === selectableCount;
+    var someChecked = selectedVisibleCount > 0 && selectedVisibleCount < selectableCount;
+    header.innerHTML =
+      '<input type="checkbox" id="rag-add-select-all"' +
+      (allChecked ? ' checked' : '') +
+      (selectableCount === 0 ? ' disabled' : '') + '>' +
+      '<label for="rag-add-select-all" class="rag-add-header-label">Select all visible</label>' +
+      '<span class="rag-add-header-counter" id="rag-add-counter">' +
+      selectedVisibleCount + ' / ' + selectableCount + ' selected</span>';
+    els.addList.appendChild(header);
+    var headerCb = header.querySelector('#rag-add-select-all');
+    headerCb.indeterminate = someChecked;
+    headerCb.addEventListener('click', function (e) { e.stopPropagation(); });
+    headerCb.addEventListener('change', function () {
+      if (headerCb.checked) {
+        selectable.forEach(function (n) { state.addModalSelected.add(n.id); });
+      } else {
+        selectable.forEach(function (n) { state.addModalSelected.delete(n.id); });
+      }
+      renderAddList();
+    });
+
     if (!visible.length) {
       var empty = document.createElement('li');
       empty.className = 'member';
       empty.textContent = 'No zettels match.';
       els.addList.appendChild(empty);
+      updateAddSubmit();
       return;
     }
     visible.forEach(function (node) {
@@ -892,14 +1112,36 @@
           checkbox.checked = true;
         }
         updateAddSubmit();
+        refreshAddHeaderCounter();
       };
       li.addEventListener('click', function (e) {
         if (e.target !== checkbox) toggle();
-        else updateAddSubmit();
+        else { updateAddSubmit(); refreshAddHeaderCounter(); }
       });
       els.addList.appendChild(li);
     });
     updateAddSubmit();
+  }
+
+  // Sync the Select-all header counter + checkbox state without a full
+  // re-render (avoids losing focus on the search input or scroll position).
+  function refreshAddHeaderCounter() {
+    var query = (els.addSearch.value || '').trim().toLowerCase();
+    var visible = state.userNodes.filter(function (n) {
+      return !query || (n.name || '').toLowerCase().indexOf(query) >= 0;
+    });
+    var selectable = visible.filter(function (n) { return !state.sandboxMemberIds.has(n.id); });
+    var selectableCount = selectable.length;
+    var selectedVisibleCount = selectable.filter(function (n) {
+      return state.addModalSelected.has(n.id);
+    }).length;
+    var counter = document.getElementById('rag-add-counter');
+    if (counter) counter.textContent = selectedVisibleCount + ' / ' + selectableCount + ' selected';
+    var headerCb = document.getElementById('rag-add-select-all');
+    if (headerCb) {
+      headerCb.checked = selectableCount > 0 && selectedVisibleCount === selectableCount;
+      headerCb.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < selectableCount;
+    }
   }
 
   function updateAddSubmit() {

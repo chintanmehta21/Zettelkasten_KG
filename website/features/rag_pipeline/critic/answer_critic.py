@@ -10,7 +10,13 @@ from website.features.rag_pipeline.adapters.pool_factory import get_generation_p
 
 _CRITIC_MODEL = "gemini-2.5-flash-lite"
 
-_CRITIC_PROMPT = """You are a fact-check auditor. A personal-research-assistant produced an ANSWER from a CONTEXT block. Your job is to judge whether every factual claim in the ANSWER is supported by the CONTEXT.
+_CRITIC_PROMPT = """You are a verifier. Decide if the ANSWER is supported by the CITATIONS in the CONTEXT.
+
+Be lenient on wording divergence. If the citations semantically support the claim — even with different phrasing, partial paraphrasing, summarization, or generalization — verdict is "supported". A claim counts as supported when a reasonable reader would agree the citation conveys the same idea, even if the wording differs.
+
+Verdict is "partial" when only some claims in the ANSWER are supported and others are not directly addressed by the citations.
+
+Verdict is "unsupported" ONLY if no citation supports the claim, or the citations contradict it.
 
 Return JSON ONLY with keys verdict, unsupported_claims, and bad_citations.
 

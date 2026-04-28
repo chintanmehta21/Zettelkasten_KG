@@ -1,7 +1,9 @@
 # Render → DigitalOcean Migration Design Specification
 
+> **ARCHIVED — Historical migration record.** This document describes a one-time migration from Render.com to a DigitalOcean droplet. The migration is complete and merged. The DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. **Do not treat any Render reference in this file as current; Render is no longer used.** See the "Deployment Infrastructure (Canonical)" section in the project root `CLAUDE.md` for the live setup.
+
 **Date:** 2026-04-09
-**Status:** Proposed and approved for implementation planning
+**Status:** Implemented and merged (archived for historical context)
 **Owner:** Website infrastructure / deployment
 **Scope:** `website/` application (FastAPI + static UI) — primary target. Telegram bot is secondary/future, mentioned only where its existing webhook coupling matters.
 

@@ -42,7 +42,7 @@ fi
 log "Stopping $COLOR container..."
 docker compose \
     -f "$COMPOSE_FILE" \
-    down --timeout 20 || log "Warning: failed to stop $COLOR cleanly"
+    down --timeout 30 || log "Warning: failed to stop $COLOR cleanly"
 
 log "[cleanup] Pruning unused Docker resources..."
 docker system prune -af --filter "until=72h" >/dev/null 2>&1 || true

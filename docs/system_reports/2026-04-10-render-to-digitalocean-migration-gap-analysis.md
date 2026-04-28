@@ -1,5 +1,7 @@
 # Render → DigitalOcean Migration — Plan vs Implementation Gap Analysis
 
+> **ARCHIVED — Historical gap-analysis report (legacy, no longer used).** This system report audited the Render → DigitalOcean migration when it landed. The migration is complete; Render is no longer used. The DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 **Date:** 2026-04-10
 **Plan reviewed:** `docs/superpowers/plans/2026-04-09-render-to-digitalocean-migration.md` (4014 lines, 53 tasks across 13 phases)
 **Reviewer:** Claude (worktree `cranky-visvesvaraya`, branch `claude/cranky-visvesvaraya`)

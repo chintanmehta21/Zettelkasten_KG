@@ -1,8 +1,10 @@
 """Website-only runtime entrypoint.
 
-Boots the FastAPI app directly under uvicorn. No Telegram webhook, no PTB
-application lifecycle — this is the only production entrypoint now that the
-Telegram bot has been retired.
+Boots the FastAPI app. The module-level ``app`` is what gunicorn loads when
+``--preload`` runs, so heavy ONNX sessions in :mod:`website.features.rag_pipeline.rerank.cascade`
+are imported once in the master and inherited by workers via copy-on-write.
+
+``main()`` retains a uvicorn fallback for ``ENV=dev`` / interactive debugging.
 """
 
 from __future__ import annotations
@@ -16,6 +18,9 @@ from website.core.settings import get_settings
 
 logger = logging.getLogger("website.main")
 
+# Module-level ASGI app. gunicorn imports ``website.main:app`` with --preload.
+app = create_app()
+
 
 def main() -> None:
     settings = get_settings()
@@ -25,10 +30,8 @@ def main() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    app = create_app()
     port = settings.webhook_port or 10000
-
-    logger.info("Starting Zettelkasten website on 0.0.0.0:%d", port)
+    logger.info("Starting Zettelkasten website on 0.0.0.0:%d (uvicorn dev mode)", port)
 
     uvicorn.run(
         app,

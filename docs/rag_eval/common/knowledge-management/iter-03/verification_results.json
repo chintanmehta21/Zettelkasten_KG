@@ -1,0 +1,199 @@
+{
+  "iter": "iter-03",
+  "deployed_sha": null,
+  "captured_at": null,
+  "checks": [
+    {
+      "id": 1,
+      "name": "kasten_chooser_renders",
+      "status": "pending",
+      "evidence": "screenshots/01_chooser.png"
+    },
+    {
+      "id": 2,
+      "name": "composer_placeholder_uses_kasten_name",
+      "status": "pending",
+      "evidence": "screenshots/02_chat_composer.png"
+    },
+    {
+      "id": 3,
+      "name": "all_13_queries_answered_without_overrefusal",
+      "status": "pending",
+      "evidence": "screenshots/03_q_*.png"
+    },
+    {
+      "id": 4,
+      "name": "strong_mode_triggers_critic_loop",
+      "status": "pending",
+      "evidence": "answers.json"
+    },
+    {
+      "id": 5,
+      "name": "add_zettels_select_all_works",
+      "status": "pending",
+      "evidence": "screenshots/05_select_all.png"
+    },
+    {
+      "id": 6,
+      "name": "heartbeat_retry_fires_after_idle",
+      "status": "pending",
+      "evidence": "screenshots/06_heartbeat_retry.png"
+    },
+    {
+      "id": 7,
+      "name": "queue_ux_surfaces_503_retry_after",
+      "status": "pending",
+      "evidence": "screenshots/07_queue_503.png"
+    },
+    {
+      "id": 8,
+      "name": "debug_param_hidden_in_prod",
+      "status": "pending",
+      "evidence": "screenshots/08_debug_hidden.png"
+    },
+    {
+      "id": 9,
+      "name": "schema_drift_gate_blocks_drift",
+      "status": "pending",
+      "evidence": "deploy.log excerpt"
+    },
+    {
+      "id": 10,
+      "name": "sse_survives_blue_green_cutover",
+      "status": "pending",
+      "evidence": "screenshots/10_sse_cutover.png"
+    }
+  ],
+  "queries": [
+    {
+      "qid": "q1",
+      "query": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q2",
+      "query": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q3",
+      "query": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q4",
+      "query": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+      "expected_primary_citation": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q5",
+      "query": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+      "expected_primary_citation": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for"
+      ],
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q6",
+      "query": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+      "expected_primary_citation": [
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-effective-public-speakin"
+      ],
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q7",
+      "query": "Anything about commencement?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q8",
+      "query": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q9",
+      "query": "Summarize what this Kasten says about Notion's database features.",
+      "expected_primary_citation": [],
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "q10",
+      "query": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "av-1",
+      "query": "What should I install tonight to start a personal wiki?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "av-2",
+      "query": "Which guide do I run first to set up my Zettelkasten?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    },
+    {
+      "qid": "av-3",
+      "query": "Step-by-step setup commands for a personal wiki",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "answer": null,
+      "primary_citation": null,
+      "elapsed_ms": null,
+      "verdict": "pending"
+    }
+  ]
+}

@@ -28,7 +28,7 @@ fi
 
 ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
-DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-20}"
+DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-45}"
 
 MODEL_DIR="$ROOT/data/models"
 if [[ ! -d "$MODEL_DIR" ]]; then
@@ -71,12 +71,40 @@ IMAGE_TAG="$SHA" docker compose \
 # Runs the new image as a short-lived helper container so the migration set
 # matches the code about to be deployed. Failure is FATAL — we abort before
 # touching the IDLE container so prod stays on the previous (working) color.
+
+# iter-03 §1C.1 preflight: confirm SUPABASE_DB_URL is in the env-file before
+# we even spin the migration container. Without it apply_migrations exits
+# with rc=2 (config error) — surface that as a clear deploy abort.
+if ! grep -q '^SUPABASE_DB_URL=' /opt/zettelkasten/compose/.env; then
+    log "[deploy] FATAL: SUPABASE_DB_URL missing from /opt/zettelkasten/compose/.env"
+    exit 2
+fi
+
 log "[migration] Applying pending Supabase migrations against prod..."
 set +e
+# iter-03 §1C.4: pass deploy provenance so apply_migrations can stamp each
+# audit row with git SHA / deploy id / actor. Defaults guarantee non-null
+# values even when this script is run outside CI (manual operator deploy).
+# iter-03 §1C.5: mount a host dir so the bootstrapped/verified manifest
+# survives the container exit. Operator commits this back to Git after the
+# first deploy, after which the in-image copy at /app/supabase/.../
+# expected_schema.json is the canonical source.
+MANIFEST_HOST_DIR="$ROOT/data/schema"
+mkdir -p "$MANIFEST_HOST_DIR"
+chown -R deploy:deploy "$MANIFEST_HOST_DIR" 2>/dev/null || true
+
 docker run --rm --network host \
     --env-file /opt/zettelkasten/compose/.env \
+    -v "$MANIFEST_HOST_DIR":/manifest-out \
+    -e DEPLOY_GIT_SHA="${DEPLOY_GIT_SHA:-$SHA}" \
+    -e DEPLOY_ID="${DEPLOY_ID:-manual-$(date -u +%Y%m%dT%H%M%SZ)}" \
+    -e DEPLOY_ACTOR="${DEPLOY_ACTOR:-$(whoami)}" \
+    -e MIGRATION_MANIFEST_REQUIRED="${MIGRATION_MANIFEST_REQUIRED:-1}" \
+    -e MIGRATION_MANIFEST_AUTOBOOTSTRAP="${MIGRATION_MANIFEST_AUTOBOOTSTRAP:-1}" \
     "$IMAGE" \
-    python ops/scripts/apply_migrations.py 2>&1 | tee -a "$LOG"
+    python ops/scripts/apply_migrations.py \
+        --manifest-path /manifest-out/expected_schema.json \
+        2>&1 | tee -a "$LOG"
 MIG_RC=${PIPESTATUS[0]}
 set -e
 if [ "$MIG_RC" -ne 0 ]; then
@@ -85,6 +113,38 @@ if [ "$MIG_RC" -ne 0 ]; then
 fi
 log "[migration] OK — proceeding with blue/green flip."
 
+# iter-03 §3.9 / Plan 2D.2: single-tenant kg_users allowlist gate.
+# Skipped by default per operator decision — re-enable with
+# DEPLOY_ALLOWLIST_GATE=1 once the live kg_users table has been reconciled
+# (run ops/scripts/reconcile_kg_users.py --audit first).
+if [ "${DEPLOY_ALLOWLIST_GATE:-0}" = "1" ]; then
+    log "[deploy] Running kg_users allowlist gate..."
+    set +e
+    docker run --rm --network host \
+        --env-file /opt/zettelkasten/compose/.env \
+        "$IMAGE" \
+        python -c "
+import json, os, sys, psycopg
+allowed = set(json.load(open('/app/ops/deploy/expected_users.json'))['allowed_auth_ids'])
+with psycopg.connect(os.environ['SUPABASE_DB_URL']) as c, c.cursor() as cur:
+    cur.execute('SELECT id::text FROM kg_users')
+    live = {r[0] for r in cur.fetchall()}
+unknown = live - allowed
+if unknown:
+    print(f'[deploy] FATAL: kg_users has unknown auth_ids: {unknown}', file=sys.stderr)
+    sys.exit(1)
+print('[deploy] kg_users allowlist OK')
+" 2>&1 | tee -a "$LOG"
+    GATE_RC=${PIPESTATUS[0]}
+    set -e
+    if [ "$GATE_RC" -ne 0 ]; then
+        log "[deploy] FATAL: allowlist gate failed rc=$GATE_RC — ABORTING DEPLOY"
+        exit "$GATE_RC"
+    fi
+else
+    log "[deploy] kg_users allowlist gate SKIPPED (DEPLOY_ALLOWLIST_GATE!=1)"
+fi
+
 log "Starting $IDLE container with new image..."
 IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
@@ -92,6 +152,24 @@ IMAGE_TAG="$SHA" docker compose \
 
 log "Waiting for $IDLE healthcheck on port $IDLE_PORT..."
 "$ROOT/deploy/healthcheck.sh" "$IDLE_PORT"
+
+# Pre-warm the new color so the first user request after cutover doesn't pay
+# the BGE int8 ONNX cold-start tax (~1-3s on a 1 vCPU droplet). Best-effort:
+# the loop tolerates the endpoint being briefly unavailable while gunicorn
+# workers come up after --preload.
+log "Pre-warming $IDLE on port $IDLE_PORT..."
+PREWARM_OK=0
+for i in {1..30}; do
+    if curl -fsS "http://127.0.0.1:${IDLE_PORT}/api/health/warm" > /dev/null 2>&1; then
+        log "Pre-warm complete after ${i}s"
+        PREWARM_OK=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$PREWARM_OK" -ne 1 ]]; then
+    log "WARN: pre-warm did not respond within 30s -- proceeding with cutover"
+fi
 
 log "Flipping Caddy upstream to $IDLE..."
 # IMPORTANT: must write in-place (truncate + rewrite) rather than via

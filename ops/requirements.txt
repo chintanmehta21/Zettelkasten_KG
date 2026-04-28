@@ -23,6 +23,7 @@ yt-dlp>=2024.0
 # Web frontend
 fastapi>=0.115
 uvicorn>=0.34
+gunicorn>=23.0
 
 # Supabase (multi-user knowledge graph storage)
 supabase>=2.0

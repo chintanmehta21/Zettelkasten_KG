@@ -49,7 +49,12 @@ def _load_key_value_secret_file(path: Path) -> int:
 
 
 def _bootstrap_env() -> None:
-    """Load env vars from local files and Render Secret Files.
+    """Load env vars from local files and from the droplet secret-file mounts.
+
+    The `/etc/secrets/*` paths below are mounted into the production
+    DigitalOcean droplet container. The path convention was originally
+    adopted from Render's Secret Files feature and carried over to the
+    droplet for continuity; Render itself is no longer used.
 
     Precedence remains: explicit environment variables > file values.
     """

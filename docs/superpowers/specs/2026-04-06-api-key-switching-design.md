@@ -1,7 +1,9 @@
 # API Key Switching — Multi-Key Rotation + Content-Aware Model Routing
 
+> **ARCHIVED CONTEXT — pre-migration spec.** This design was written while the app was hosted on Render.com (legacy, no longer used). Any reference below to "Render Secret Files", the Render dashboard, or `*.onrender.com` is historical. The `api_env` file format and the `/etc/secrets/api_env` path described here did carry forward; they are now mounted into the production DigitalOcean droplet container, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 **Date**: 2026-04-06
-**Status**: Draft — pending user approval
+**Status**: Implemented (archived for historical context)
 **Approach**: A (Centralized Key Pool Manager)
 **Research basis**: 2 research subagents (Gemini rate limits, architecture patterns), source code analysis of all 5 Gemini API consumers
 

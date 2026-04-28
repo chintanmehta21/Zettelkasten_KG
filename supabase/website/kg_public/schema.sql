@@ -472,10 +472,15 @@ COMMENT ON FUNCTION kg_expand_subgraph(uuid, text[], int) IS
 -- supabase/website/kg_public/migrations/ have been applied. The runner
 -- self-bootstraps this table on a fresh DB; included here for completeness.
 CREATE TABLE IF NOT EXISTS _migrations_applied (
-    name        TEXT PRIMARY KEY,
-    applied_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    checksum    TEXT NOT NULL,
-    applied_by  TEXT
+    name             TEXT PRIMARY KEY,
+    applied_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    checksum         TEXT NOT NULL,
+    applied_by       TEXT,
+    -- iter-03 §1C.4 audit-trail columns: who/what triggered the apply.
+    deploy_git_sha   TEXT,
+    deploy_id        TEXT,
+    deploy_actor     TEXT,
+    runner_hostname  TEXT
 );
 
 

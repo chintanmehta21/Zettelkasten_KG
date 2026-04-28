@@ -146,7 +146,14 @@ def test_boosts_are_additive_not_multiplicative() -> None:
     )[0]
     cand = fused
     expected_recency = _recency_boost(cand.metadata, QueryClass.THEMATIC)
-    expected_source = _source_type_boost(cand, QueryClass.THEMATIC)
+    # Spec 2B.1: new keyword-only signature; pass base_score=0.0 to recover
+    # the historical "delta-only" semantics this test relies on.
+    expected_source = _source_type_boost(
+        base_score=0.0,
+        source_type=getattr(cand.source_type, "value", cand.source_type),
+        query_class=QueryClass.THEMATIC,
+        question="",
+    )
     expected_author = _author_match_boost(cand, qm)
     assert fused.rrf_score == pytest.approx(
         baseline + expected_recency + expected_source + expected_author

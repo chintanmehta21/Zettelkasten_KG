@@ -1,2 +1,6 @@
 # Force LF line endings for shell scripts (prevent CRLF on Windows)
 *.sh text eol=lf
+
+# Large model artefacts and calibration sets are stored via Git LFS.
+models/*.onnx filter=lfs diff=lfs merge=lfs -text
+models/*.parquet filter=lfs diff=lfs merge=lfs -text

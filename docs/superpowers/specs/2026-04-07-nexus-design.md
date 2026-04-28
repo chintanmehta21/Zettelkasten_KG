@@ -1,5 +1,7 @@
 # Nexus Design Specification (Experimental)
 
+> **ARCHIVED CONTEXT — pre-migration spec.** This design was written while the app was hosted on Render.com (legacy, no longer used). Any reference below to "Render env" / "Render environment variables" should be read as the production environment generally — those secrets now live in the DigitalOcean droplet's container env (via `--env-file` and the `/etc/secrets/*` mounts), not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
+
 **Date:** 2026-04-07
 **Status:** Proposed and approved for implementation planning
 **Owner:** Website experimental features
