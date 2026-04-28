@@ -242,6 +242,19 @@ jobs:
             sudo /usr/bin/chmod 600 /opt/zettelkasten/compose/.env
             sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.env
 
+            # iter-03 §1C.4: write deploy provenance to a sourcable file the
+            # deploy script reads. We can't pass DEPLOY_* through `sudo VAR=...`
+            # because the droplet sudoers config does not whitelist those names
+            # in env_keep, and we can't switch to `sudo bash -c "..."` because
+            # only the exact deploy.sh form is NOPASSWD-allowed. Writing a file
+            # via the already-allowed tee path is the durable answer — it does
+            # not depend on sudo env-keep config or password prompts.
+            printf 'DEPLOY_GIT_SHA=%s\nDEPLOY_ID=%s\nDEPLOY_ACTOR=%s\n' \
+              "$DEPLOY_GIT_SHA" "$DEPLOY_ID" "$DEPLOY_ACTOR" \
+              | sudo /usr/bin/tee /opt/zettelkasten/compose/.deploy_meta > /dev/null
+            sudo /usr/bin/chmod 644 /opt/zettelkasten/compose/.deploy_meta
+            sudo /usr/bin/chown deploy:deploy /opt/zettelkasten/compose/.deploy_meta
+
             # ── 3. Ensure Caddy has --init (tini as PID 1) ──
             # Fixes "OCI runtime exec failed: procReady not received" in
             # non-root containers with cap_drop:ALL + no-new-privileges.
@@ -304,18 +317,12 @@ jobs:
             sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 
             # ── 5. Run deploy with one retry ──
-            # iter-03 §1C.4: forward DEPLOY_* into the sudo'd shell so deploy.sh
-            # can stamp the migration audit columns. We assign them INSIDE the
-            # sudo'd bash invocation rather than via `sudo VAR=...` because the
-            # droplet sudoers config does not whitelist these names in env_keep
-            # (sudo would otherwise abort with "you are not allowed to set...").
+            # Audit metadata (DEPLOY_GIT_SHA / DEPLOY_ID / DEPLOY_ACTOR) is
+            # delivered to deploy.sh via /opt/zettelkasten/compose/.deploy_meta
+            # written above; deploy.sh sources that file. The invocation here
+            # uses the exact NOPASSWD-allowed form.
             for attempt in 1 2; do
-              if sudo /bin/bash -c "
-                export DEPLOY_GIT_SHA='${DEPLOY_GIT_SHA}'
-                export DEPLOY_ID='${DEPLOY_ID}'
-                export DEPLOY_ACTOR='${DEPLOY_ACTOR}'
-                /opt/zettelkasten/deploy/deploy.sh '${SHA}'
-              "; then
+              if sudo /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
                 exit 0
               fi
 

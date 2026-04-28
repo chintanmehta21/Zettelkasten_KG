@@ -30,6 +30,18 @@ ROOT=/opt/zettelkasten
 IMAGE="ghcr.io/chintanmehta21/zettelkasten-kg-website:${SHA}"
 DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-45}"
 
+# iter-03 §1C.4: pick up audit metadata written by the GH Actions workflow.
+# The file is sourced (not exec'd) so a missing or empty value falls through
+# to the existing `${VAR:-default}` defaults below — deploy still works for
+# manual operator invocations from a droplet shell.
+DEPLOY_META_FILE="${DEPLOY_META_FILE:-/opt/zettelkasten/compose/.deploy_meta}"
+if [[ -r "$DEPLOY_META_FILE" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    . "$DEPLOY_META_FILE"
+    set +a
+fi
+
 MODEL_DIR="$ROOT/data/models"
 if [[ ! -d "$MODEL_DIR" ]]; then
     mkdir -p "$MODEL_DIR"
