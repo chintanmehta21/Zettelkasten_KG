@@ -304,14 +304,18 @@ jobs:
             sed -i 's/\r$//' /opt/zettelkasten/deploy/*.sh
 
             # ── 5. Run deploy with one retry ──
-            # iter-03 §1C.4: preserve DEPLOY_* across sudo so deploy.sh can
-            # forward them into the migration container as audit metadata.
+            # iter-03 §1C.4: forward DEPLOY_* into the sudo'd shell so deploy.sh
+            # can stamp the migration audit columns. We assign them INSIDE the
+            # sudo'd bash invocation rather than via `sudo VAR=...` because the
+            # droplet sudoers config does not whitelist these names in env_keep
+            # (sudo would otherwise abort with "you are not allowed to set...").
             for attempt in 1 2; do
-              if sudo \
-                   DEPLOY_GIT_SHA="$DEPLOY_GIT_SHA" \
-                   DEPLOY_ID="$DEPLOY_ID" \
-                   DEPLOY_ACTOR="$DEPLOY_ACTOR" \
-                   /opt/zettelkasten/deploy/deploy.sh "$SHA"; then
+              if sudo /bin/bash -c "
+                export DEPLOY_GIT_SHA='${DEPLOY_GIT_SHA}'
+                export DEPLOY_ID='${DEPLOY_ID}'
+                export DEPLOY_ACTOR='${DEPLOY_ACTOR}'
+                /opt/zettelkasten/deploy/deploy.sh '${SHA}'
+              "; then
                 exit 0
               fi
 
