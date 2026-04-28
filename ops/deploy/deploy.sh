@@ -164,6 +164,21 @@ else
     log "[deploy] kg_users allowlist gate SKIPPED (DEPLOY_ALLOWLIST_GATE!=1)"
 fi
 
+# iter-03 (2026-04-28): SEQUENTIAL blue/green - stop ACTIVE before starting
+# IDLE. The 2 GB droplet cannot fit two simultaneous containers each holding
+# the int8 BGE (267 MB resident) + 2 gunicorn workers + temp tensors during
+# stage-2 rerank (peak +684 MB). Running both blue and green at once causes
+# system-level OOM during the smoke probe q1 query. Trade-off: ~30-60s of
+# 502s while Caddy points at the now-stopped ACTIVE color until the post-
+# assert flip below. Acceptable for a single-droplet 2 GB target; iter-04
+# can revisit (larger droplet, smaller stage1_k, or batched encoding).
+log "[seq-deploy] Stopping ACTIVE color ${ACTIVE} to free memory for ${IDLE}..."
+ACTIVE_CONTAINER_NAME_PRE="zettelkasten-${ACTIVE}"
+ACTIVE_CONTAINER_ID_PRE="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME_PRE" 2>/dev/null || true)"
+docker stop --time 20 "$ACTIVE_CONTAINER_NAME_PRE" 2>/dev/null || log "[seq-deploy] WARN: stop ${ACTIVE} returned non-zero (likely already stopped)"
+docker rm "$ACTIVE_CONTAINER_NAME_PRE" 2>/dev/null || true
+log "[seq-deploy] ${ACTIVE} stopped. Caddy will 502 until cutover (~30-60s)."
+
 log "Starting $IDLE container with new image..."
 IMAGE_TAG="$SHA" docker compose \
     -f "$ROOT/compose/docker-compose.${IDLE}.yml" \
@@ -323,8 +338,10 @@ else
     log "WARN: $BACKFILL_SCRIPT not found in $IDLE container — skipping backfill."
 fi
 
-log "Handing off $ACTIVE retirement to background drain (${DRAIN_SECONDS}s)..."
-nohup "$ROOT/deploy/retire_color.sh" "$ACTIVE" "$DRAIN_SECONDS" "$ACTIVE_CONTAINER_ID" >/dev/null 2>&1 &
-RETIRE_PID=$!
+# iter-03 sequential blue/green: ACTIVE was stopped pre-flight (line ~167)
+# to free RAM for IDLE on this 2 GB droplet. There's no live container to
+# drain - skip the background retire step. Kept the variable name above for
+# audit-log compatibility.
+log "[seq-deploy] ACTIVE color ${ACTIVE} already stopped pre-flight; no retire needed."
 
-log "DEPLOY SUCCEEDED. New active color: $IDLE, image: $IMAGE, retire_pid=$RETIRE_PID"
+log "DEPLOY SUCCEEDED. New active color: $IDLE, image: $IMAGE"

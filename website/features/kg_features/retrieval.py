@@ -98,17 +98,22 @@ def hybrid_search(
         query_embedding = []
 
     # Build RPC parameters.
+    # iter-03 (2026-04-28): coerce UUID-typed args to str. Supabase RPC payload
+    # is serialized via stdlib json which raises "Object of type UUID is not
+    # JSON serializable" on bare UUID objects. Callers in the RAG pipeline pass
+    # UUID instances even though the signature is typed as `str`. Fixing at the
+    # boundary keeps every caller working without forcing them to coerce.
     rpc_params: dict = {
         "query_text": query,
         "query_embedding": query_embedding if query_embedding else None,
-        "p_user_id": user_id,
+        "p_user_id": str(user_id) if user_id is not None else None,
         "p_limit": limit,
         "semantic_weight": sem_w,
         "fulltext_weight": ft_w,
         "graph_weight": gr_w,
     }
     if seed_node_id:
-        rpc_params["p_seed_node_id"] = seed_node_id
+        rpc_params["p_seed_node_id"] = str(seed_node_id)
 
     try:
         response = supabase_client.rpc(
