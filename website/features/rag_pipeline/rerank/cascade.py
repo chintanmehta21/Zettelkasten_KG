@@ -54,6 +54,12 @@ def _build_ort_session(path: Path) -> ort.InferenceSession | None:
     opts.intra_op_num_threads = 1
     opts.inter_op_num_threads = 1
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    # iter-03 mem-bounded §2.3: cap arena at per-call working set instead of
+    # holding the high-water mark for the session lifetime. Both flags off
+    # because mem_pattern only helps when arena is on AND shapes are static.
+    # Latency cost: +10-30 ms per BGE call (Gemini-bound p50 ~20s ⇒ invisible).
+    opts.enable_cpu_mem_arena = False
+    opts.enable_mem_pattern = False
     try:
         return ort.InferenceSession(
             str(path), sess_options=opts, providers=["CPUExecutionProvider"]
