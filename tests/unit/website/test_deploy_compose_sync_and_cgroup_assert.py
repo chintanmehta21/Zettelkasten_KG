@@ -49,8 +49,10 @@ def test_workflow_sparse_checkout_includes_compose_files():
 
 def test_deploy_sh_asserts_cgroup_memory_max():
     text = DEPLOY_SH.read_text(encoding="utf-8")
-    assert "EXPECTED_MEM_MAX=1363148800" in text, (
-        "deploy.sh must hard-code expected memory.max=1363148800 (1300m)."
+    assert "EXPECTED_MEM_MAX=1677721600" in text, (
+        "deploy.sh must hard-code expected memory.max=1677721600 (1600m). "
+        "Bumped from 1300m on 2026-04-28 after q1 OOM-killed workers; stage-2 "
+        "BGE rerank temp tensors push peak RSS to ~1.19 GB (profiled 16:49 UTC)."
     )
     assert "EXPECTED_SWAP_MAX=1048576000" in text, (
         "deploy.sh must hard-code expected memory.swap.max=1048576000 (1000m)."
