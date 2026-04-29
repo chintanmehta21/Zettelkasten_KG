@@ -320,6 +320,33 @@ chmod 644 "$SNIPPET"
 log "Reloading Caddy..."
 "$ROOT/deploy/reload_caddy.sh"
 
+# iter-03 §B (2026-04-29): public-facing smoke gate. Catches the failure
+# mode where Caddy reload silently no-ops (autosave.json keeps the prior
+# upstream color, every public request returns 502 even though the
+# 127.0.0.1:10000 upstream probe was happy). We hit the apex hostname so
+# the request actually traverses Caddy's reverse_proxy with the new config.
+# Two attempts, 5s apart, to absorb cert/HSTS warm-up after a restart.
+PUBLIC_SMOKE_OK=0
+for attempt in 1 2; do
+    PUBLIC_HTTP="$(curl -sS -o /dev/null -w '%{http_code}' \
+        --max-time 10 \
+        --resolve "zettelkasten.in:443:127.0.0.1" \
+        https://zettelkasten.in/api/health || echo "000")"
+    if [[ "$PUBLIC_HTTP" == "200" ]]; then
+        PUBLIC_SMOKE_OK=1
+        break
+    fi
+    log "[caddy-smoke] attempt ${attempt}/2 returned HTTP=${PUBLIC_HTTP}; sleeping 5s..."
+    sleep 5
+done
+if (( PUBLIC_SMOKE_OK == 0 )); then
+    log "[caddy-smoke] FATAL: public probe via Caddy did not return 200 after flip."
+    log "[caddy-smoke] FATAL: NOT auto-rolling back -- operator must triage Caddy/upstream binding."
+    log "[caddy-smoke] Likely causes: caddy reload no-op (check autosave.json upstream), TLS cert issue, dns drift, container stopped."
+    exit 90
+fi
+log "[caddy-smoke] public probe via Caddy OK (HTTP 200)"
+
 ACTIVE_CONTAINER_NAME="zettelkasten-${ACTIVE}"
 ACTIVE_CONTAINER_ID="$(docker inspect --format '{{.Id}}' "$ACTIVE_CONTAINER_NAME" 2>/dev/null || true)"
 
