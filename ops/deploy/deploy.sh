@@ -345,7 +345,7 @@ reverse_proxy zettelkasten-${IDLE}:10000 {
         dial_timeout 5s
         read_timeout 240s
         write_timeout 240s
-        response_header_timeout 60s
+        response_header_timeout 240s
     }
     flush_interval -1
 }
