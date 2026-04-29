@@ -79,11 +79,29 @@ from playwright.sync_api import (
 # ── Constants ────────────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parents[2]
-EVAL_DIR = ROOT / "docs" / "rag_eval" / "common" / "knowledge-management" / "iter-03"
-QUERIES_PATH = EVAL_DIR / "queries.json"
-RESULTS_PATH = EVAL_DIR / "verification_results.json"
-SCREENSHOTS_DIR = EVAL_DIR / "screenshots"
-TIMING_LOG_PATH = EVAL_DIR / "timing_report.md"
+
+# iter-04: paths are derived at runtime from --iter so the same harness can
+# drive iter-03 (legacy), iter-04 (current), or any future iter without
+# editing this file. Default kept at iter-03 for backward compatibility with
+# existing scripts / Makefile invocations.
+DEFAULT_ITER = "iter-03"
+
+
+def _eval_paths_for(iter_id: str) -> tuple[Path, Path, Path, Path, Path]:
+    eval_dir = ROOT / "docs" / "rag_eval" / "common" / "knowledge-management" / iter_id
+    return (
+        eval_dir,
+        eval_dir / "queries.json",
+        eval_dir / "verification_results.json",
+        eval_dir / "screenshots",
+        eval_dir / "timing_report.md",
+    )
+
+
+# Module-level constants kept for backward compatibility (some imports may
+# reference them); resolved against the default iter only. Runtime path
+# resolution happens inside main() via --iter.
+EVAL_DIR, QUERIES_PATH, RESULTS_PATH, SCREENSHOTS_DIR, TIMING_LOG_PATH = _eval_paths_for(DEFAULT_ITER)
 
 DEFAULT_SITE = "https://zettelkasten.in"
 DEFAULT_KASTEN = "Knowledge Management & Personal Productivity"
@@ -877,7 +895,7 @@ def phase_post_diversification_qa(page: Page, token: str, sandbox_id: str,
             "quality": q.get("quality", "fast"),
             "stream": False,
             "scope_filter": {},
-            "title": f"iter-03 {q['qid']}",
+            "title": f"{q['qid']}",
         }, timeout_ms=120_000)
 
         result: dict[str, Any] = {
@@ -955,7 +973,7 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             "quality": quality,
             "stream": False,
             "scope_filter": {},
-            "title": f"iter-03 {qid}",
+            "title": f"{qid}",
         }, timeout_ms=120_000)
 
         result: dict[str, Any] = {
@@ -1240,7 +1258,30 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--headed", action="store_true")
     p.add_argument("--skip-burst", action="store_true")
     p.add_argument("--max-queries", type=int, default=0)
+    p.add_argument(
+        "--iter",
+        dest="iter_id",
+        default=os.environ.get("ZK_EVAL_ITER", DEFAULT_ITER),
+        help="iter directory under docs/rag_eval/common/knowledge-management/ (default: iter-03)",
+    )
+    p.add_argument(
+        "--skip-scoring",
+        action="store_true",
+        help="Skip the post-Playwright RAGAS / DeepEval scoring stage.",
+    )
     args = p.parse_args(argv)
+
+    # Re-resolve paths so this run targets the requested iter folder.
+    iter_id = args.iter_id or DEFAULT_ITER
+    eval_dir, queries_path, results_path, screenshots_dir, timing_log_path = _eval_paths_for(iter_id)
+    # Re-bind module-level names so the phase functions (which read EVAL_DIR /
+    # SCREENSHOTS_DIR / RESULTS_PATH directly) target the right folder.
+    global EVAL_DIR, QUERIES_PATH, RESULTS_PATH, SCREENSHOTS_DIR, TIMING_LOG_PATH
+    EVAL_DIR = eval_dir
+    QUERIES_PATH = queries_path
+    RESULTS_PATH = results_path
+    SCREENSHOTS_DIR = screenshots_dir
+    TIMING_LOG_PATH = timing_log_path
 
     if not args.token:
         logger.error(
@@ -1250,10 +1291,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    if not QUERIES_PATH.exists():
+        logger.error(
+            "no queries.json at %s — copy from a prior iter or author one for %s",
+            QUERIES_PATH, iter_id,
+        )
+        return 2
     queries = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))["queries"]
     if args.max_queries:
         queries = queries[: args.max_queries]
-    logger.info("loaded %d iter-03 queries", len(queries))
+    logger.info("loaded %d %s queries", len(queries), iter_id)
 
     EVAL_DIR.mkdir(parents=True, exist_ok=True)
     SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1326,7 +1373,7 @@ def main(argv: list[str] | None = None) -> int:
 
     qa_stats = _qa_summary(qa_rep)
     summary = {
-        "iter": "iter-03",
+        "iter": iter_id,
         "site": args.site,
         "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "total_duration_ms": _ms_since(overall_t0),
@@ -1364,6 +1411,22 @@ def main(argv: list[str] | None = None) -> int:
         qa_stats["infra_failures"],
         qa_stats["p95_latency_ms"],
     )
+
+    # iter-04: post-Playwright scoring stage. Pulls chunks from Supabase,
+    # runs RAGAS + DeepEval + composite + holistic monitoring metrics, and
+    # writes eval.json + scores.md alongside verification_results.json.
+    # Skippable via --skip-scoring or non-zero exit ignored (scoring runs
+    # last, so a scoring failure does not invalidate the Playwright run).
+    if not args.skip_scoring:
+        try:
+            from ops.scripts import score_rag_eval
+            logger.info("running RAGAS / DeepEval / composite scoring against %s", EVAL_DIR)
+            score_rc = score_rag_eval.main(["--iter-dir", str(EVAL_DIR)])
+            if score_rc != 0:
+                logger.warning("scoring stage exited %d (verification still valid)", score_rc)
+        except Exception as exc:  # noqa: BLE001 — scoring is best-effort
+            logger.warning("scoring stage failed: %s", exc)
+
     return 0 if qa_stats["infra_failures"] == 0 else 1
 
 

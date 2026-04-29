@@ -1,0 +1,595 @@
+{
+  "iter_id": "03",
+  "component_scores": {
+    "chunking": 31.942765567765573,
+    "retrieval": 91.88736263736263,
+    "reranking": 63.1917807319391,
+    "synthesis": 73.85384615384613
+  },
+  "composite": 72.0387041317358,
+  "weights": {
+    "chunking": 0.1,
+    "retrieval": 0.25,
+    "reranking": 0.2,
+    "synthesis": 0.45
+  },
+  "weights_hash": "422403f9d47a3c2add30687b68fb6bc6fb5676cf18934e0e2b6abda9e9f2c710",
+  "graph_lift": {
+    "composite": 0.0,
+    "retrieval": 0.0,
+    "reranking": 0.0
+  },
+  "per_query": [
+    {
+      "query_id": "q1",
+      "retrieved_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk"
+      ],
+      "reranked_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is",
+        "yt-steve-jobs-2005-stanford",
+        "nl-the-pragmatic-engineer-t",
+        "web-transformative-tools-for",
+        "yt-effective-public-speakin"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 44.28571428571429,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "q2",
+      "retrieved_node_ids": [
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford"
+      ],
+      "reranked_node_ids": [
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford"
+      ],
+      "cited_node_ids": [
+        "yt-steve-jobs-2005-stanford"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 140.0,
+        "rerank": 131.54648767857287
+      }
+    },
+    {
+      "query_id": "q3",
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "reranked_node_ids": [
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "cited_node_ids": [
+        "yt-effective-public-speakin",
+        "nl-the-pragmatic-engineer-t",
+        "yt-programming-workflow-is"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 220.00000000000003,
+        "rerank": 178.08031558224252
+      }
+    },
+    {
+      "query_id": "q4",
+      "retrieved_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-effective-public-speakin",
+        "yt-matt-walker-sleep-depriv",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-steve-jobs-2005-stanford",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is"
+      ],
+      "reranked_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-effective-public-speakin",
+        "yt-matt-walker-sleep-depriv",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-steve-jobs-2005-stanford",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is"
+      ],
+      "cited_node_ids": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin",
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 31.995346485803122
+      }
+    },
+    {
+      "query_id": "q5",
+      "retrieved_node_ids": [
+        "gh-zk-org-zk",
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for"
+      ],
+      "reranked_node_ids": [
+        "gh-zk-org-zk",
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk",
+        "web-transformative-tools-for",
+        "yt-programming-workflow-is"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 63.99999999999999,
+        "rerank": 39.009343166259484
+      }
+    },
+    {
+      "query_id": "q6",
+      "retrieved_node_ids": [
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-programming-workflow-is",
+        "gh-zk-org-zk",
+        "yt-matt-walker-sleep-depriv",
+        "yt-effective-public-speakin"
+      ],
+      "reranked_node_ids": [
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-programming-workflow-is",
+        "gh-zk-org-zk",
+        "yt-matt-walker-sleep-depriv",
+        "yt-effective-public-speakin"
+      ],
+      "cited_node_ids": [
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-effective-public-speakin",
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 140.0,
+        "rerank": 110.10536732502736
+      }
+    },
+    {
+      "query_id": "q7",
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "reranked_node_ids": [
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "cited_node_ids": [
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin",
+        "yt-programming-workflow-is",
+        "web-transformative-tools-for",
+        "yt-matt-walker-sleep-depriv"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 117.5,
+        "rerank": 40.87646826539674
+      }
+    },
+    {
+      "query_id": "q8",
+      "retrieved_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "reranked_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    },
+    {
+      "query_id": "q9",
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford",
+        "gh-zk-org-zk",
+        "gh-zk-org-zk"
+      ],
+      "reranked_node_ids": [
+        "yt-effective-public-speakin",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford",
+        "gh-zk-org-zk",
+        "gh-zk-org-zk"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk",
+        "web-transformative-tools-for",
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin"
+      ],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_correctness": 1.0
+      },
+      "deepeval": {
+        "semantic_similarity": 1.0,
+        "hallucination": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "q10",
+      "retrieved_node_ids": [
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is"
+      ],
+      "reranked_node_ids": [
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is"
+      ],
+      "cited_node_ids": [
+        "web-transformative-tools-for",
+        "yt-programming-workflow-is",
+        "gh-zk-org-zk"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "av-1",
+      "retrieved_node_ids": [
+        "yt-programming-workflow-is",
+        "gh-zk-org-zk",
+        "gh-zk-org-zk",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin"
+      ],
+      "reranked_node_ids": [
+        "yt-programming-workflow-is",
+        "gh-zk-org-zk",
+        "gh-zk-org-zk",
+        "web-transformative-tools-for",
+        "web-transformative-tools-for",
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk",
+        "yt-steve-jobs-2005-stanford",
+        "yt-effective-public-speakin",
+        "yt-programming-workflow-is",
+        "web-transformative-tools-for"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 125.0,
+        "rerank": 89.87982101190622
+      }
+    },
+    {
+      "query_id": "av-2",
+      "retrieved_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "reranked_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    },
+    {
+      "query_id": "av-3",
+      "retrieved_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk"
+      ],
+      "reranked_node_ids": [
+        "nl-the-pragmatic-engineer-t",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-programming-workflow-is",
+        "yt-effective-public-speakin",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "gh-zk-org-zk"
+      ],
+      "cited_node_ids": [
+        "gh-zk-org-zk",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for",
+        "yt-effective-public-speakin"
+      ],
+      "ragas": {
+        "faithfulness": 0.9166666666666666,
+        "answer_correctness": 0.65,
+        "context_precision": 0.5275000000000001,
+        "context_recall": 0.575,
+        "answer_relevancy": 0.8083333333333332
+      },
+      "deepeval": {
+        "semantic_similarity": 0.5666666666666665,
+        "hallucination": 0.125,
+        "contextual_relevance": 0.8833333333333333
+      },
+      "component_breakdown": {
+        "retrieval": 43.75,
+        "rerank": 0.0
+      }
+    }
+  ],
+  "eval_divergence": false,
+  "faithfulness_score": 92.3076923076923,
+  "answer_relevancy_score": 82.3076923076923,
+  "latency_p50_ms": 50419.0,
+  "latency_p95_ms": 86769.19999999998,
+  "holistic": {
+    "n_queries": 13,
+    "critic_verdict_distribution": {
+      "partial": 7,
+      "supported": 5,
+      "retried_supported": 1
+    },
+    "primary_citation_distribution": {
+      "gh-zk-org-zk": 7,
+      "yt-steve-jobs-2005-stanford": 2,
+      "yt-effective-public-speakin": 1,
+      "yt-matt-walker-sleep-depriv": 1,
+      "web-transformative-tools-for": 2
+    },
+    "primary_citation_magnets": {
+      "gh-zk-org-zk": 7
+    },
+    "query_class_distribution": {
+      "multi_hop": 5,
+      "lookup": 3,
+      "thematic": 4,
+      "step_back": 1
+    },
+    "gold_at_1": 0.3846,
+    "gold_at_3": 0.6154,
+    "gold_at_8": 0.8462,
+    "refused_count": 1,
+    "within_budget_rate": 0.1538
+  },
+  "burst": {
+    "by_status": {
+      "502": 12
+    },
+    "burst_503_rate": 0.0,
+    "burst_502_rate": 1.0
+  }
+}
