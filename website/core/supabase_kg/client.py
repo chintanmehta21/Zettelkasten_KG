@@ -99,6 +99,18 @@ def get_supabase_client() -> Client:
     httpx_kwargs: dict[str, object] = {
         "timeout": timeout,
         "verify": verify,
+        # iter-03 §B (2026-04-29): bound the connection pool. The same
+        # httpx.Client is shared across postgrest + storage + auth + functions
+        # (supabase/_sync/client.py:189/201/216/290 fan-out), so a single
+        # request can use multiple slots. Verified-safe values per SDK
+        # research: max_connections>=5 to absorb postgrest+auth concurrent
+        # use without PoolTimeout under burst. Caps connection-buffer
+        # residual at ~30 MB instead of unbounded growth.
+        "limits": httpx.Limits(
+            max_keepalive_connections=5,
+            max_connections=10,
+            keepalive_expiry=30.0,
+        ),
     }
     if proxy:
         # httpx 0.27+ accepts a single proxy URL via ``proxy=``.

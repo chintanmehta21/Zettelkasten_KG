@@ -242,14 +242,29 @@ class RAGOrchestrator:
             content=query.content,
         )
 
+        # iter-03 §B (2026-04-29): pipeline-wide mem-trace. Each stage logs
+        # rss_kb at exit so we can compute per-stage deltas for a single
+        # query. Prior tracer only covered stage-2; this gives full
+        # attribution (rewriter / router / transformer / metadata / retrieve
+        # / graph_score / rerank / assemble / synth).
+        from website.api._mem_trace import log_rss as _log_rss
+        _log_rss("pipeline.enter", session_id=session_id)
+
         history = await self._sessions.load_recent_turns(session_id, user_id)
         history_payload = [
             turn.model_dump() if hasattr(turn, "model_dump") else turn
             for turn in history
         ]
+        _log_rss("pipeline.history_loaded", turns=len(history_payload))
+
         standalone = await self._rewriter.rewrite(query.content, history_payload)
+        _log_rss("pipeline.rewriter_done")
+
         query_class = await self._router.classify(standalone)
+        _log_rss("pipeline.router_done", qc=str(query_class))
+
         variants = await self._transformer.transform(standalone, query_class)
+        _log_rss("pipeline.transformer_done", variants=len(variants))
 
         metadata = QueryMetadata()
         if self._metadata_extractor is not None:
@@ -260,6 +275,7 @@ class RAGOrchestrator:
             except Exception as exc:  # noqa: BLE001 - best-effort enrichment
                 logger.warning("query metadata extract failed: %s", exc)
                 metadata = QueryMetadata()
+            _log_rss("pipeline.metadata_done")
 
         return _PreparedQuery(
             session_id=session_id,
@@ -328,6 +344,7 @@ class RAGOrchestrator:
                 except Exception as exc:  # noqa: BLE001 - degrade silently
                     logger.warning("retrieval planner failed: %s", exc)
                     scope_filter = query.scope_filter
+            from website.api._mem_trace import log_rss as _log_rss
             candidates = await self._retriever.retrieve(
                 user_id=user_id,
                 query_variants=query_variants,
@@ -336,6 +353,7 @@ class RAGOrchestrator:
                 query_class=query_class,
                 limit=30 if query.quality == "fast" else 50,
             )
+            _log_rss("pipeline.retriever_done", cands=len(candidates))
             # T20: pass query_class through so graph_score activates the
             # dormant T24 usage-edge bonus tier (see graph_score.score).
             await self._graph.score(
@@ -343,6 +361,7 @@ class RAGOrchestrator:
                 candidates=candidates,
                 query_class=query_class,
             )
+            _log_rss("pipeline.graph_score_done")
             ranked = await self._reranker.rerank(
                 query.content,
                 candidates,
@@ -350,6 +369,7 @@ class RAGOrchestrator:
                 query_class=query_class,
                 graph_weight_override=graph_weight_override,
             )
+            _log_rss("pipeline.rerank_done", ranked=len(ranked))
             # T17: hint the assembler at the LLM tier we will most likely
             # invoke so it can pick a per-tier token budget. Derived from
             # ``quality`` because the actual key/model is not chosen until
@@ -362,6 +382,11 @@ class RAGOrchestrator:
                 user_query=query.content,
                 model=_default_model_for_quality(query.quality),
             )
+            _log_rss(
+                "pipeline.assembler_done",
+                ctx_chars=len(context_xml),
+                used=len(used_candidates),
+            )
         return _RetrievedContext(context_xml=context_xml, used_candidates=used_candidates)
 
     @trace_stage("generate_once")
@@ -372,12 +397,18 @@ class RAGOrchestrator:
             context_xml=context_xml,
             user_query=query.content,
         )
+        from website.api._mem_trace import log_rss as _log_rss
+        _log_rss("pipeline.synth_start", prompt_chars=len(user_prompt))
         async with track_latency("generate_once"):
             generation = await self._llm.generate(
                 query=query,
                 system_prompt=SYSTEM_PROMPT,
                 user_prompt=user_prompt,
             )
+        _log_rss(
+            "pipeline.synth_done",
+            answer_chars=len(getattr(generation, "content", "") or ""),
+        )
         result = _GeneratedAnswer(
             content=generation.content,
             model=getattr(generation, "model", ""),

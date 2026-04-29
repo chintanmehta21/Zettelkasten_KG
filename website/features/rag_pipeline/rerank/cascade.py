@@ -43,29 +43,20 @@ _logger = logging.getLogger(__name__)
 
 
 def _read_rss_kb() -> int:
-    """Return current process RSS in KB, or 0 if /proc not readable."""
-    try:
-        with open("/proc/self/status", "r", encoding="ascii") as f:
-            return next(
-                (int(line.split()[1]) for line in f if line.startswith("VmRSS:")),
-                0,
-            )
-    except OSError:
-        return 0
+    """Return current process RSS in KB. Lazy import avoids circular load."""
+    from website.api._mem_trace import read_rss_kb
+
+    return read_rss_kb()
 
 
 def _log_rss(label: str, **fields: object) -> None:
-    """Log current process RSS at a named profiling point.
+    """Emit a mem-trace line via the shared helper. iter-03 §B (2026-04-29):
+    pipeline-wide tracer was hoisted to website.api._mem_trace so the
+    orchestrator can reuse the same format and we get one consistent
+    [mem-trace] grep target across stages."""
+    from website.api._mem_trace import log_rss
 
-    iter-03 (2026-04-29): emits one line per phase boundary so we can grep the
-    container logs to compute per-stage memory deltas during q1. Pure-stdlib
-    /proc/self/status read - no psutil dependency, no measurable overhead.
-    """
-    rss_kb = _read_rss_kb()
-    if rss_kb == 0:
-        return  # /proc not available (Windows tests etc.)
-    extra = " ".join(f"{k}={v}" for k, v in fields.items())
-    _logger.info("[mem-trace] %s rss_kb=%d %s", label, rss_kb, extra)
+    log_rss(label, **fields)
 
 
 class MemoryPressureError(RuntimeError):

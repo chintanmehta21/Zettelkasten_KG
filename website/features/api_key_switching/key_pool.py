@@ -245,6 +245,23 @@ class GeminiKeyPool:
 
     def _get_client(self, key_index: int) -> genai.Client:
         if key_index not in self._clients:
+            # iter-03 §B (2026-04-29): bound the underlying httpx connection
+            # pool. Without limits the pool grows to ~30 MB of buffered
+            # response state per client per worker, and with up to 10 keys
+            # cached in self._clients that's ~300 MB of pure connection
+            # residual. limits below were verified against google-genai 1.65
+            # (HttpOptions.client_args / async_client_args spread directly
+            # into httpx.Client kwargs at _api_client.py:736/740). Safe
+            # values per SDK research: max_connections >= 4 leaves headroom
+            # for fan-out retries (key-pool tries next key on rate limit).
+            import httpx
+            from google.genai.types import HttpOptions
+
+            _pool_limits = httpx.Limits(
+                max_keepalive_connections=5,
+                max_connections=10,
+                keepalive_expiry=30.0,
+            )
             self._clients[key_index] = genai.Client(
                 api_key=self._keys[key_index],
                 # 180s upper bound. The previous 60s value caused gemini-2.5-pro
@@ -253,7 +270,11 @@ class GeminiKeyPool:
                 # the chat bubble showing the SDK's stringified timeout
                 # ("network error") and a Retry button. 180s covers the slowest
                 # observed legitimate response while still bounding runaway.
-                http_options={"timeout": 180_000},
+                http_options=HttpOptions(
+                    timeout=180_000,
+                    client_args={"limits": _pool_limits},
+                    async_client_args={"limits": _pool_limits},
+                ),
             )
         return self._clients[key_index]
 
