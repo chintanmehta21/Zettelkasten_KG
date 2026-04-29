@@ -1,0 +1,1445 @@
+{
+  "iter": "iter-03",
+  "site": "https://zettelkasten.in",
+  "captured_at": "2026-04-29T19:19:28Z",
+  "total_duration_ms": 978658,
+  "kasten": {
+    "name": "Knowledge Management & Personal Productivity",
+    "id": "227e0fb2-ff81-4d08-8702-76d9235564f4",
+    "member_count": 7
+  },
+  "qa_summary": {
+    "total": 13,
+    "end_to_end_gold_at_1": 0.8462,
+    "synthesizer_over_refusals": 0,
+    "infra_failures": 0,
+    "p95_latency_ms": 95402,
+    "p95_under_budget": false
+  },
+  "phases": [
+    {
+      "phase": "public_pages",
+      "duration_ms": 14526,
+      "checks": [
+        {
+          "name": "GET /",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/01_root_index.png",
+          "duration_ms": 7115,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 3060,
+              "domcontent_ms": 3374,
+              "load_ms": 3538,
+              "first_paint_ms": 3364,
+              "first_contentful_paint_ms": 3364,
+              "largest_contentful_paint_ms": 3364
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0.0006
+              },
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "GET /about",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/02_about.png",
+          "duration_ms": 3852,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 504,
+              "domcontent_ms": 645,
+              "load_ms": 646,
+              "first_paint_ms": 652,
+              "first_contentful_paint_ms": 652,
+              "largest_contentful_paint_ms": 2108
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "GET /pricing",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/03_pricing.png",
+          "duration_ms": 3557,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 457,
+              "domcontent_ms": 505,
+              "load_ms": 540,
+              "first_paint_ms": 520,
+              "first_contentful_paint_ms": 520,
+              "largest_contentful_paint_ms": 520
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "knowledge_graph",
+      "duration_ms": 15757,
+      "checks": [
+        {
+          "name": "GET /knowledge-graph (amber-allowed surface)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/04_knowledge_graph_3d.png",
+          "duration_ms": 15757,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 304,
+              "domcontent_ms": 1037,
+              "load_ms": 1037,
+              "first_paint_ms": 364,
+              "first_contentful_paint_ms": 364,
+              "largest_contentful_paint_ms": 9080
+            },
+            "color_audit": {
+              "offending_rules": [
+                {
+                  "source": "inline",
+                  "rule": ".graph-info-msg { top: 50%; width: 100%; text-align: center; color: lavender; opacity: 0.7; font-size: 22px; position: absolute; font-family: sans-serif; }"
+                }
+              ],
+              "passed": false
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 6,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            },
+            "note": "amber #D4A024 allowed here"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "authed_pages",
+      "duration_ms": 22903,
+      "checks": [
+        {
+          "name": "/home :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/05_home.png",
+          "duration_ms": 7455,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 474,
+              "domcontent_ms": 685,
+              "load_ms": 685,
+              "first_paint_ms": 740,
+              "first_contentful_paint_ms": 740,
+              "largest_contentful_paint_ms": 740
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/06_home_zettels.png",
+          "duration_ms": 9595,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 3417,
+              "domcontent_ms": 3454,
+              "load_ms": 3454,
+              "first_paint_ms": 3468,
+              "first_contentful_paint_ms": 3468,
+              "largest_contentful_paint_ms": 3468
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home/zettels :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/07_home_kastens.png",
+          "duration_ms": 5852,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 317,
+              "domcontent_ms": 350,
+              "load_ms": 350,
+              "first_paint_ms": 364,
+              "first_contentful_paint_ms": 364,
+              "largest_contentful_paint_ms": 364
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home/kastens :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "rag_composer",
+      "duration_ms": 41626,
+      "checks": [
+        {
+          "name": "GET /home/rag",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/08_rag_chooser.png",
+          "duration_ms": 9243,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 315,
+              "domcontent_ms": 365,
+              "load_ms": 365,
+              "first_paint_ms": 384,
+              "first_contentful_paint_ms": 384,
+              "largest_contentful_paint_ms": 384
+            }
+          }
+        },
+        {
+          "name": "GET /api/rag/sandboxes",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 2232,
+          "detail": {
+            "http": 200,
+            "elapsed_ms": 2229
+          }
+        },
+        {
+          "name": "Click Kasten in chooser",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 20,
+          "detail": {
+            "note": "best-effort UI click; falls through if not interactive"
+          }
+        },
+        {
+          "name": "Composer placeholder uses Kasten name",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/10_composer_placeholder.png",
+          "duration_ms": 30125,
+          "detail": {
+            "placeholder": "<error: Locator.get_attribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"textarea, input[type='text']\").first\n>"
+          }
+        }
+      ],
+      "notes": [
+        "Kasten id=227e0fb2-ff81-4d08-8702-76d9235564f4 members=7"
+      ]
+    },
+    {
+      "phase": "diversify_sources",
+      "duration_ms": 49774,
+      "checks": [
+        {
+          "name": "POST /api/summarize https://nesslabs.com/personal-knowledge-management",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 3213,
+          "detail": {
+            "label": "Ness Labs \u2014 Personal Knowledge Management",
+            "http_status": 500,
+            "elapsed_ms": 3205,
+            "node_id": null,
+            "source_type": null,
+            "title": null,
+            "expected_source_type": "newsletter",
+            "source_type_matches_expected": false,
+            "summarize_error": null
+          }
+        },
+        {
+          "name": "POST /api/summarize https://maggieappleton.com/garden-history",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 46559,
+          "detail": {
+            "label": "Maggie Appleton \u2014 A Brief History & Ethos of the Digital Garden",
+            "http_status": 200,
+            "elapsed_ms": 46555,
+            "node_id": null,
+            "source_type": "web",
+            "title": "Digital Gardening",
+            "expected_source_type": "web",
+            "source_type_matches_expected": true,
+            "summarize_error": null
+          }
+        }
+      ],
+      "notes": [
+        "summarize failed for https://nesslabs.com/personal-knowledge-management: {'ok': False, 'status': 500, 'elapsed_ms': 3205, 'body': {'detail': \"Failed to process URL: Client error '404 Not Found' for url 'https://nesslabs.com/personal-knowledge-management'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\"}, 'raw': None}",
+        "summarize failed for https://maggieappleton.com/garden-history: {'ok': True, 'status': 200, 'elapsed_ms': 46555, 'body': {'title': 'Digital Gardening', 'summary': '## Concept Definition and Origins\\n- \"Digital Gardening\" describes personal knowledge websites that function as free-form, work-in-progress wikis, rather than reverse-chronological blogs.\\n- These sites feature evolving, contextually-linked, and incomplete notes, embracing an ethos that is less rigid and performative.\\n\\n### Etymology\\n- The term originated with Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience and the \"Navigation Problem.\"\\n- A brief tangent in April 2007 on Twitter used the term for digital maintenance or \"puttering\" (Rory Sutherland).\\n\\n### Modern Understanding\\n- The modern understanding was shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream,\" contrasting the topological, explorable \"garden\" with fleeting, chronological \"stream.\"\\n- The idea gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor), Joel Hooks (public revision), and Amy Hoy (analysis of Moveable Type standardizing blogs into the \"Chronological Sort Era\").\\n- By late 2020, the concept was covered by MIT Tech Review.\\n\\n## Growth and Adoption\\n- The trend\\'s growth is attributed to interest from communities like The IndieWeb, Roam Research users, and followers of \"Building a Second Brain\" and \"Learn in Public.\"\\n- Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty, Next).\\n- No-code options like Obsidian, TiddlyWiki, and Notion later emerged for non-technical users, though they offer less customization.\\n\\n## Defining Characteristics\\n\\n### 1. Topography over Timelines\\n- Organization is based on contextual, often bi-directional, links rather than publication dates.\\n\\n### 2. Continuous Growth\\n- Notes are never final and are tended in public, evolving from \"seedlings\" to more complete thoughts.\\n\\n### 3. Imperfection & Learning in Public\\n- Gardens are intentionally imperfect, serving as a \"Domestic Cozy\" alternative to performative personal branding.\\n- Requires transparency about a note\\'s status through systems like author\\'s seedling/budding/evergreen tags, Gwern.net\\'s detailed metadata (stage, certainty, importance), or Devon Zuegal\\'s epistemic status/effort.\\n\\n### 4. Playful, Personal, and Experimental\\n- They are unique, non-homogenous spaces, ideally built with HTML/CSS/JS for high-fidelity self-representation.\\n\\n### 5. Intercropping & Content Diversity\\n- They incorporate various media types (video, audio, code, diagrams) beyond just text.\\n\\n### 6. Independent Ownership\\n- They reside on a personally owned domain using open formats (HTML, CSS, markdown) for long-term control, separate from walled-garden platforms like Medium or Facebook.', 'brief_summary': \"Digital Gardening describes personal knowledge websites that function as free-form, work-in-progress wikis, distinct from reverse-chronological blogs. These sites feature evolving, contextually-linked, and incomplete notes, embracing a less rigid and performative ethos. The concept gained modern traction from Mike Caufield's 2015 keynote and is defined by six key patterns including topography over timelines, continuous growth, and independent ownership.\", 'detailed_summary': '## Concept Definition and Origins\\n- \"Digital Gardening\" describes personal knowledge websites that function as free-form, work-in-progress wikis, rather than reverse-chronological blogs.\\n- These sites feature evolving, contextually-linked, and incomplete notes, embracing an ethos that is less rigid and performative.\\n\\n### Etymology\\n- The term originated with Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience and the \"Navigation Problem.\"\\n- A brief tangent in April 2007 on Twitter used the term for digital maintenance or \"puttering\" (Rory Sutherland).\\n\\n### Modern Understanding\\n- The modern understanding was shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream,\" contrasting the topological, explorable \"garden\" with fleeting, chronological \"stream.\"\\n- The idea gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor), Joel Hooks (public revision), and Amy Hoy (analysis of Moveable Type standardizing blogs into the \"Chronological Sort Era\").\\n- By late 2020, the concept was covered by MIT Tech Review.\\n\\n## Growth and Adoption\\n- The trend\\'s growth is attributed to interest from communities like The IndieWeb, Roam Research users, and followers of \"Building a Second Brain\" and \"Learn in Public.\"\\n- Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty, Next).\\n- No-code options like Obsidian, TiddlyWiki, and Notion later emerged for non-technical users, though they offer less customization.\\n\\n## Defining Characteristics\\n\\n### 1. Topography over Timelines\\n- Organization is based on contextual, often bi-directional, links rather than publication dates.\\n\\n### 2. Continuous Growth\\n- Notes are never final and are tended in public, evolving from \"seedlings\" to more complete thoughts.\\n\\n### 3. Imperfection & Learning in Public\\n- Gardens are intentionally imperfect, serving as a \"Domestic Cozy\" alternative to performative personal branding.\\n- Requires transparency about a note\\'s status through systems like author\\'s seedling/budding/evergreen tags, Gwern.net\\'s detailed metadata (stage, certainty, importance), or Devon Zuegal\\'s epistemic status/effort.\\n\\n### 4. Playful, Personal, and Experimental\\n- They are unique, non-homogenous spaces, ideally built with HTML/CSS/JS for high-fidelity self-representation.\\n\\n### 5. Intercropping & Content Diversity\\n- They incorporate various media types (video, audio, code, diagrams) beyond just text.\\n\\n### 6. Independent Ownership\\n- They reside on a personally owned domain using open formats (HTML, CSS, markdown) for long-term control, separate from walled-garden platforms like Medium or Facebook.', 'tags': ['digital-gardening', 'knowledge-management', 'personal-websites', 'hypertext', 'learning-in-public'], 'source_type': 'web', 'source_url': 'https://maggieappleton.com/garden-history', 'one_line_summary': \"Digital Gardening describes personal knowledge websites that function as free-form, work-in-progress wikis, distinct from reverse-chronological blogs. These sites feature evolving, contextually-linked, and incomplete notes, embracing a less rigid and performative ethos. The concept gained modern traction from Mike Caufield's 2015 keynote and is defined by six key patterns including topography over timelines, continuous growth, and independent ownership.\", 'is_raw_fallback': False, 'tokens_used': 1866, 'latency_ms': 33549, 'metadata': {'source_type': 'web', 'url': 'https://maggieappleton.com/garden-history', 'extraction_confidence': 'high', 'confidence_reason': 'HTML article text extracted', 'total_tokens_used': 1866, 'gemini_pro_tokens': 0, 'gemini_flash_tokens': 1866, 'total_latency_ms': 33549, 'cod_iterations_used': 0, 'self_check_missing_count': 0, 'patch_applied': False, 'engine_version': '2.0.0', 'structured_payload': {'mini_title': 'Digital Gardening', 'brief_summary': \"Digital Gardening describes personal knowledge websites that function as free-form, work-in-progress wikis, distinct from reverse-chronological blogs. These sites feature evolving, contextually-linked, and incomplete notes, embracing a less rigid and performative ethos. The concept gained modern traction from Mike Caufield's 2015 keynote and is defined by six key patterns including topography over timelines, continuous growth, and independent ownership.\", 'tags': ['Digital Gardening', 'Knowledge Management', 'Personal Websites', 'Hypertext', 'Learning in Public'], 'detailed_summary': [{'heading': 'Concept Definition and Origins', 'bullets': ['\"Digital Gardening\" describes personal knowledge websites that function as free-form, work-in-progress wikis, rather than reverse-chronological blogs.', 'These sites feature evolving, contextually-linked, and incomplete notes, embracing an ethos that is less rigid and performative.'], 'sub_sections': {'Etymology': ['The term originated with Mark Bernstein\\'s 1998 essay \"Hypertext Gardens,\" focusing on user experience and the \"Navigation Problem.\"', 'A brief tangent in April 2007 on Twitter used the term for digital maintenance or \"puttering\" (Rory Sutherland).'], 'Modern Understanding': ['The modern understanding was shaped by Mike Caufield\\'s 2015 keynote, \"The Garden and the Stream,\" contrasting the topological, explorable \"garden\" with fleeting, chronological \"stream.\"', 'The idea gained traction in late 2018, amplified by Tom Critchlow (adding the \"campfire\" metaphor), Joel Hooks (public revision), and Amy Hoy (analysis of Moveable Type standardizing blogs into the \"Chronological Sort Era\").', 'By late 2020, the concept was covered by MIT Tech Review.']}}, {'heading': 'Growth and Adoption', 'bullets': ['The trend\\'s growth is attributed to interest from communities like The IndieWeb, Roam Research users, and followers of \"Building a Second Brain\" and \"Learn in Public.\"', 'Early adopters were often developers using tools like Netlify, Vercel, and static site generators (Jekyll, Gatsby, 11ty, Next).', 'No-code options like Obsidian, TiddlyWiki, and Notion later emerged for non-technical users, though they offer less customization.'], 'sub_sections': {}}, {'heading': 'Defining Characteristics', 'bullets': [], 'sub_sections': {'1. Topography over Timelines': ['Organization is based on contextual, often bi-directional, links rather than publication dates.'], '2. Continuous Growth': ['Notes are never final and are tended in public, evolving from \"seedlings\" to more complete thoughts.'], '3. Imperfection & Learning in Public': ['Gardens are intentionally imperfect, serving as a \"Domestic Cozy\" alternative to performative personal branding.', \"Requires transparency about a note's status through systems like author's seedling/budding/evergreen tags, Gwern.net's detailed metadata (stage, certainty, importance), or Devon Zuegal's epistemic status/effort.\"], '4. Playful, Personal, and Experimental': ['They are unique, non-homogenous spaces, ideally built with HTML/CSS/JS for high-fidelity self-representation.'], '5. Intercropping & Content Diversity': ['They incorporate various media types (video, audio, code, diagrams) beyond just text.'], '6. Independent Ownership': ['They reside on a personally owned domain using open formats (HTML, CSS, markdown) for long-term control, separate from walled-garden platforms like Medium or Facebook.']}}]}, 'is_schema_fallback': False, 'model_used': [{'role': 'dense_verify', 'model': 'gemini-2.5-pro', 'starting_model': 'gemini-2.5-pro', 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, {'role': 'summarizer', 'model': 'gemini-2.5-flash', 'starting_model': 'gemini-2.5-flash', 'fallback_reason': 'gemini-2.5-flash-rate-limited'}], 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, 'captured_at': '2026-04-29'}, 'raw': None}",
+        "new_nodes=[]"
+      ]
+    },
+    {
+      "phase": "rag_qa_chain",
+      "duration_ms": 724173,
+      "checks": [
+        {
+          "name": "Q-A q1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 41036,
+          "detail": {
+            "qid": "q1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+            "http_status": 200,
+            "elapsed_ms": 41030,
+            "answer": "The `zk-org/zk` command-line tool is written in Go [id=\"gh-zk-org-zk\"]. It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "multi_hop",
+            "latency_ms_server": 2004,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk"
+            ],
+            "session_id": "1fc5624c-2ee7-40e5-8a15-53235694cf49",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q2 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 44015,
+          "detail": {
+            "qid": "q2",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+            "http_status": 200,
+            "elapsed_ms": 44006,
+            "answer": "At the Stanford 2005 commencement, Steve Jobs described death as \"the single best invention of Life\" and \"Life's change agent\" for clearing out the old [id=\"yt-steve-jobs-2005-stanford\"]. He also claimed that remembering one will die is the best way to avoid the \"trap of thinking you have something to lose,\" stating, \"You are already naked\" [id=\"yt-steve-jobs-2005-stanford\"].",
+            "citations": [
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              }
+            ],
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 1880,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "session_id": "8c1deefa-54e4-48fc-a332-9aabe6bd501c",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 48569,
+          "detail": {
+            "qid": "q3",
+            "quality": "fast",
+            "expected": [
+              "yt-effective-public-speakin"
+            ],
+            "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+            "http_status": 200,
+            "elapsed_ms": 47842,
+            "answer": "\"Verbal punctuation\" is not covered in your Zettels. Here's what I found about structuring a talk in Patrick Winston's MIT lecture on effective public speaking:\n\nPatrick Winston advocates for a cyclical structure in the body of a talk: \"Tell them what you're going to say, say it, then tell them what you said\" [id=\"yt-effective-public-speakin\"]. This cycle should be repeated about five times in a one-hour presentation to combat the natural decline in audience attention [id=\"yt-effective-public-speakin\"]. To enhance memorability, he suggests using the \"5 S's\": a recurring visual Symbol, a short Slogan, a Surprising fact, the Salient Idea (single most important point), and a Story to illustrate concepts [id=\"yt-effective-public-speakin\"]. The talk should begin with an \"empowering promise\" and conclude by summarizing the main contribution, acknowledging collaborators, and presenting a memorable vision or slogan [id=\"yt-effective-public-speakin\"].",
+            "citations": [
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              }
+            ],
+            "primary_citation": "yt-effective-public-speakin",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "multi_hop",
+            "latency_ms_server": 1199,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "yt-effective-public-speakin",
+              "yt-effective-public-speakin",
+              "yt-effective-public-speakin",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "nl-the-pragmatic-engineer-t",
+              "nl-the-pragmatic-engineer-t"
+            ],
+            "session_id": "926e2376-62a2-4773-919f-b7cd0b436835",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q4 (high)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 53410,
+          "detail": {
+            "qid": "q4",
+            "quality": "high",
+            "expected": [
+              "yt-programming-workflow-is",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+            "http_status": 200,
+            "elapsed_ms": 52771,
+            "answer": "According to your Zettels, widespread sleep deprivation significantly impairs brain function, including memory and cognitive abilities [id=\"yt-matt-walker-sleep-depriv\"]. The programming workflow is described not as rapid typing but as a methodical, iterative problem-solving cycle centered on debugging [id=\"yt-programming-workflow-is\"]. Therefore, the impairment of memory and cognitive abilities that Matt Walker describes would most directly harm the methodical problem-solving approach essential to the debugging cycle [id=\"yt-matt-walker-sleep-depriv\"][id=\"yt-programming-workflow-is\"].",
+            "citations": [
+              {
+                "id": "yt-matt-walker-sleep-depriv",
+                "node_id": "yt-matt-walker-sleep-depriv",
+                "title": "Matt Walker: Sleep Deprivation's Broad Impacts"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              }
+            ],
+            "primary_citation": "yt-matt-walker-sleep-depriv",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-pro",
+            "query_class": "multi_hop",
+            "latency_ms_server": 1479,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is"
+            ],
+            "session_id": "4eb9a280-bd4e-49a6-b66f-1375b3cd3fb7",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q5 (high)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 52645,
+          "detail": {
+            "qid": "q5",
+            "quality": "high",
+            "expected": [
+              "yt-matt-walker-sleep-depriv",
+              "nl-the-pragmatic-engineer-t",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "web-transformative-tools-for"
+            ],
+            "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+            "http_status": 200,
+            "elapsed_ms": 52575,
+            "answer": "The daily structure for a knowledge worker is not covered in your Zettels. Here's what I found about the workflows, tools, and goals of knowledge work: The process of programming is described as an iterative debugging cycle of writing code, encountering an error, searching for a solution on Google or Stack Overflow, and applying the fix [id=\"yt-programming-workflow-is\"]. This work can be supported by command-line tools for maintaining a plain text Zettelkasten, which process Markdown notes, `[[Wikilinks]]`, and hashtags [id=\"gh-zk-org-zk\"]. The broader goal of such systems is to create \"transformative tools for thought\" and \"enabling environments\" that expand human cognition and creativity [id=\"web-transformative-tools-for\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-pro",
+            "query_class": "multi_hop",
+            "latency_ms_server": 1497,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk",
+              "gh-zk-org-zk",
+              "yt-programming-workflow-is",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for"
+            ],
+            "session_id": "8a8078d6-3b24-4043-8884-b4ff87dd77dd",
+            "refused": false,
+            "gold_at_1": false,
+            "over_refusal": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q6 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 45372,
+          "detail": {
+            "qid": "q6",
+            "quality": "fast",
+            "expected": [
+              "yt-effective-public-speakin",
+              "gh-zk-org-zk",
+              "web-transformative-tools-for"
+            ],
+            "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+            "http_status": 200,
+            "elapsed_ms": 45358,
+            "answer": "The Matuschak essay describes \"transformative tools for thought\" aimed at expanding human cognition and creativity, including an \"augmented book\" to help people understand, remember, and use what they read, and research into \"networked notes\" and \"memory systems\" [id=\"web-transformative-tools-for\"].\n\nOther zettels in this Kasten describe tools, practices, or rituals that augment cognition:\n*   **`gh-zk-org-zk`** details a command-line tool for managing a plain text Zettelkasten, which processes Markdown notes with `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"]. It offers advanced search capabilities and integrates with LSP-compatible editors to provide diagnostics for missing backlinks, thereby augmenting memory, understanding, and the ability to connect ideas [id=\"gh-zk-org-zk\"].\n*   **`yt-programming-workflow-is`** describes the programming workflow as an iterative debugging cycle, where the core skill is a methodical problem-solving approach that relies on searching for and applying existing solutions [id=\"yt-programming-workflow-is\"]. This process augments cognitive problem-solving abilities.\n*   **`yt-matt-walker-sleep-depriv`** highlights that sleep deprivation significantly impairs brain function, including memory and cognitive abilities [id=\"yt-matt-walker-sleep-depriv\"]. Therefore, adequate sleep can be considered a ritual essential for augmenting and maintaining cognitive function.\n*   **`yt-effective-public-speakin`** outlines strategies for effective public speaking, such as structuring talks with an \"empowering promise\" and a cyclical \"Tell them what you're going to say, say it, then tell them what you said\" approach [id=\"yt-effective-public-speakin\"]. It also suggests using \"Symbols,\" \"Slogans,\" \"Surprise,\" \"Salient Idea,\" and \"Story\" to enhance memorability [id=\"yt-effective-public-speakin\"]. These practices augment the speaker's ability to convey ideas and the audience's ability to process and retain information.",
+            "citations": [
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              },
+              {
+                "id": "yt-matt-walker-sleep-depriv",
+                "node_id": "yt-matt-walker-sleep-depriv",
+                "title": "Matt Walker: Sleep Deprivation's Broad Impacts"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              }
+            ],
+            "primary_citation": "web-transformative-tools-for",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "thematic",
+            "latency_ms_server": 1217,
+            "retrieved_node_ids": [
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv",
+              "yt-effective-public-speakin"
+            ],
+            "session_id": "7f7ce9b2-eef8-44b9-b695-72bb89fcb003",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q7 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 49228,
+          "detail": {
+            "qid": "q7",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Anything about commencement?",
+            "http_status": 200,
+            "elapsed_ms": 49179,
+            "answer": "Steve Jobs delivered a commencement address at Stanford in 2005 [id=\"yt-steve-jobs-2005-stanford\"]. In this speech, he advised graduates to \"Keep looking. Don't settle,\" emphasizing that great work requires loving what you do [id=\"yt-steve-jobs-2005-stanford\"]. The address concluded with the message \"Stay Hungry. Stay Foolish,\" from *The Whole Earth Catalog* [id=\"yt-steve-jobs-2005-stanford\"]. His core thesis in the address was that one cannot plan a life path forward but can only \"connect the dots\" looking backward, necessitating trust in intuition [id=\"yt-steve-jobs-2005-stanford\"].",
+            "citations": [
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-matt-walker-sleep-depriv",
+                "node_id": "yt-matt-walker-sleep-depriv",
+                "title": "Matt Walker: Sleep Deprivation's Broad Impacts"
+              }
+            ],
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "thematic",
+            "latency_ms_server": 2077,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "yt-effective-public-speakin",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "web-transformative-tools-for",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is"
+            ],
+            "session_id": "bf65b162-016a-4692-8d95-870d37c0d8ea",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q8 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 34670,
+          "detail": {
+            "qid": "q8",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+            "http_status": 200,
+            "elapsed_ms": 34550,
+            "answer": "To start building your own plain-text personal wiki tonight, you would open the information about `zk-org/zk` [id=\"gh-zk-org-zk\"]. This is a command-line tool written in Go specifically designed for maintaining a plain text Zettelkasten or personal wiki [id=\"gh-zk-org-zk\"]. It processes Markdown notes, including `[[Wikilinks]]`, multiple hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"]. You can install it via pre-built binaries, Homebrew, Nix, Alpine, or Arch Linux packages, or by building from source [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 1230,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk"
+            ],
+            "session_id": "247b7914-eef0-4964-8be8-c89440317def",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q9 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 95421,
+          "detail": {
+            "qid": "q9",
+            "quality": "fast",
+            "expected": [],
+            "text": "Summarize what this Kasten says about Notion's database features.",
+            "http_status": 200,
+            "elapsed_ms": 95402,
+            "answer": "I can't find that in your Zettels.",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "retried_supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "thematic",
+            "latency_ms_server": 46718,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "yt-steve-jobs-2005-stanford",
+              "yt-steve-jobs-2005-stanford",
+              "gh-zk-org-zk",
+              "gh-zk-org-zk"
+            ],
+            "session_id": "155cd57b-53cb-4e99-96b7-9564277de513",
+            "refused": true,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q10 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 81029,
+          "detail": {
+            "qid": "q10",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+            "http_status": 200,
+            "elapsed_ms": 81014,
+            "answer": "Steve Jobs and Naval Ravikant are not covered in your Zettels. Here's what I found about work and problem-solving:\n\nAn applied researcher is focused on creating user interfaces and \"transformative tools for thought\" to expand human cognition and creativity, including an \"augmented book\" [id=\"web-transformative-tools-for\"]. This work, independently funded, involves exploring enabling environments and questions like \"what comes after the book?\" [id=\"web-transformative-tools-for\"]. Separately, the programming workflow is described as an iterative debugging cycle, where the core skill is a methodical problem-solving approach that relies heavily on searching for and applying existing solutions, rather than rapid, flawless typing [id=\"yt-programming-workflow-is\"].",
+            "citations": [
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              }
+            ],
+            "primary_citation": "web-transformative-tools-for",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "multi_hop",
+            "latency_ms_server": 38796,
+            "retrieved_node_ids": [
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-programming-workflow-is"
+            ],
+            "session_id": "2212287f-bf67-4e4a-a359-386af42997a3",
+            "refused": false,
+            "gold_at_1": false,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 68202,
+          "detail": {
+            "qid": "av-1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "What should I install tonight to start a personal wiki?",
+            "http_status": 200,
+            "elapsed_ms": 68193,
+            "answer": "To start a personal wiki, you can install `zk-org/zk`, a command-line tool written in Go designed for managing a plain text Zettelkasten or personal wiki [id=\"gh-zk-org-zk\"].\n\nYou can install it through several methods:\n*   Pre-built binaries for macOS and Linux [id=\"gh-zk-org-zk\"].\n*   Homebrew [id=\"gh-zk-org-zk\"].\n*   Nix (via nixpkgs and a Home Manager module) [id=\"gh-zk-org-zk\"].\n*   Alpine Linux's `testing` repository [id=\"gh-zk-org-zk\"].\n*   Arch Linux's official repositories [id=\"gh-zk-org-zk\"].\n*   Alternatively, you can build it from source, which requires Go 1.21+ and uses a `Makefile` [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "thematic",
+            "latency_ms_server": 5275,
+            "retrieved_node_ids": [
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "gh-zk-org-zk",
+              "web-transformative-tools-for",
+              "web-transformative-tools-for",
+              "yt-steve-jobs-2005-stanford",
+              "yt-effective-public-speakin"
+            ],
+            "session_id": "14d46615-5c3c-450a-9973-e4b84f8af813",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-2 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 59875,
+          "detail": {
+            "qid": "av-2",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which guide do I run first to set up my Zettelkasten?",
+            "http_status": 200,
+            "elapsed_ms": 59868,
+            "answer": "A general guide for setting up your Zettelkasten is not covered in your Zettels. Here's what I found about installing the `zk-org/zk` command-line tool, which is designed for maintaining a plain text Zettelkasten:\n\nYou can install `zk-org/zk` using pre-built binaries for macOS and Linux, or through package managers like Homebrew, Nix, Alpine Linux's `testing` repository, or Arch Linux's official repositories [id=\"gh-zk-org-zk\"]. Alternatively, you can build it from source, which requires Go 1.21+ and uses a `Makefile` [id=\"gh-zk-org-zk\"]. The tool is not a note editor or a web server for notes, but it processes Markdown notes, including `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 4255,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk"
+            ],
+            "session_id": "ac47494b-8e8e-4b19-86dd-22bfe5239061",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 50424,
+          "detail": {
+            "qid": "av-3",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Step-by-step setup commands for a personal wiki",
+            "http_status": 200,
+            "elapsed_ms": 50419,
+            "answer": "Specific step-by-step setup commands for a personal wiki are not covered in your Zettels. Here's what I found about setting up `zk-org/zk`, a command-line tool for managing a plain text Zettelkasten or personal wiki:\n\n`zk-org/zk` can be installed using pre-built binaries for macOS and Linux, Homebrew, Nix (via nixpkgs and a Home Manager module), Alpine Linux's `testing` repository, or Arch Linux's official repositories [id=\"gh-zk-org-zk\"]. To build it from source, Go 1.21+ is required, and the process uses a `Makefile` [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              },
+              {
+                "id": "yt-programming-workflow-is",
+                "node_id": "yt-programming-workflow-is",
+                "title": "Programming Workflow Is Debugging Cycle"
+              },
+              {
+                "id": "nl-the-pragmatic-engineer-t",
+                "node_id": "nl-the-pragmatic-engineer-t",
+                "title": "The Pragmatic Engineer: The Product-Minded Engineer"
+              },
+              {
+                "id": "yt-steve-jobs-2005-stanford",
+                "node_id": "yt-steve-jobs-2005-stanford",
+                "title": "Steve Jobs 2005 Stanford Address"
+              },
+              {
+                "id": "web-transformative-tools-for",
+                "node_id": "web-transformative-tools-for",
+                "title": "Transformative Tools for Thought"
+              },
+              {
+                "id": "yt-effective-public-speakin",
+                "node_id": "yt-effective-public-speakin",
+                "title": "Effective Public Speaking Strategies"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "supported",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "step_back",
+            "latency_ms_server": 1559,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-programming-workflow-is",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk"
+            ],
+            "session_id": "de407769-dfeb-4161-a9c9-1bd0f8f0f4be",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "post_diversification_qa",
+      "duration_ms": 0,
+      "checks": [
+        {
+          "name": "post-diversification Q-A",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "error": "only 0 new nodes; need 2"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "burst_pressure",
+      "duration_ms": 95465,
+      "checks": [
+        {
+          "name": "12 concurrent /api/rag/adhoc \u2192 expect \u22651 503 with Retry-After",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 95465,
+          "detail": {
+            "by_status": {
+              "502": 12
+            },
+            "retry_after_samples": [
+              "60",
+              "60",
+              "60"
+            ],
+            "raw": [
+              {
+                "i": 0,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 1,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 2,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 3,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 4,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 5,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 6,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 7,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 8,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 9,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 10,
+                "status": 502,
+                "retry_after": "60"
+              },
+              {
+                "i": 11,
+                "status": 502,
+                "retry_after": "60"
+              }
+            ]
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "debug_param_leak",
+      "duration_ms": 4805,
+      "checks": [
+        {
+          "name": "?debug=1 hidden in prod (no panel, no model name)",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/11_debug_param.png",
+          "duration_ms": 4805,
+          "detail": {
+            "debug_panel_count": 0,
+            "model_leak_hits": []
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "modal_select_all",
+      "duration_ms": 4387,
+      "checks": [
+        {
+          "name": "Open Add Zettels modal",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/12_kastens_no_modal.png",
+          "duration_ms": 4387,
+          "detail": {
+            "note": "Add-Zettels trigger selector not found; UI may have changed"
+          }
+        }
+      ],
+      "notes": []
+    }
+  ]
+}
