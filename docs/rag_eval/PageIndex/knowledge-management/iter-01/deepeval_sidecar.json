@@ -1,0 +1,84 @@
+{
+  "status": "computed_internal_sidecar",
+  "fake_scores_written": false,
+  "per_query": [
+    {
+      "query_id": "q1",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q2",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q3",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q4",
+      "hallucination": 0.0,
+      "contextual_relevance": 0.8888888888888888,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q5",
+      "hallucination": 0.0,
+      "contextual_relevance": 0.854014598540146,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q6",
+      "hallucination": 0.0,
+      "contextual_relevance": 0.8181818181818182,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q7",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q8",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "q9",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 0.0
+    },
+    {
+      "query_id": "q10",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "av-1",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    },
+    {
+      "query_id": "av-2",
+      "hallucination": 0.0,
+      "contextual_relevance": 0.5,
+      "semantic_similarity": 0.5
+    },
+    {
+      "query_id": "av-3",
+      "hallucination": 0.0,
+      "contextual_relevance": 1.0,
+      "semantic_similarity": 1.0
+    }
+  ]
+}

@@ -66,3 +66,7 @@ huggingface_hub>=0.20
 dateparser>=1.2
 tldextract>=5.1
 cachetools>=5.3
+
+# Experimental PageIndex RAG
+# PageIndex commit a51d97f63cedbf1d36b1121ff47386ea4e088ff5 is verified,
+# but the upstream repo is not pip-installable at that commit.

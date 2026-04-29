@@ -1,0 +1,97 @@
+{
+  "status": "computed_internal_sidecar",
+  "fake_scores_written": false,
+  "per_query": [
+    {
+      "query_id": "q1",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q2",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q3",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q4",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8888888888888888
+    },
+    {
+      "query_id": "q5",
+      "faithfulness": 1.0,
+      "context_recall": 0.8,
+      "context_precision": 0.8,
+      "answer_relevancy": 0.854014598540146
+    },
+    {
+      "query_id": "q6",
+      "faithfulness": 1.0,
+      "context_recall": 0.6666666666666666,
+      "context_precision": 0.6666666666666666,
+      "answer_relevancy": 0.8181818181818182
+    },
+    {
+      "query_id": "q7",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q8",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q9",
+      "faithfulness": 1.0,
+      "context_recall": 0.0,
+      "context_precision": 0.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "q10",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "av-1",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    },
+    {
+      "query_id": "av-2",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.5
+    },
+    {
+      "query_id": "av-3",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0
+    }
+  ]
+}

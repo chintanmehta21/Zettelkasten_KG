@@ -1,0 +1,3499 @@
+[
+  {
+    "query_id": "q1",
+    "query": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+    "retrieved_node_ids": [
+      "gh-zk-org-zk",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "reranked_node_ids": [
+      "gh-zk-org-zk",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "evidence": [
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 12.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 9.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 9.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 8.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 6.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 5.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 1.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information about the programming language the zk-org/zk command-line tool is written in, nor the file format it uses for notes.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information about the programming language in which the zk-org/zk command-line tool is written, nor does it specify the file format it uses for notes.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information about which programming language the zk-org/zk command-line tool is written in, nor does it specify the file format it uses for notes.\",\n \"cited_node_ids\": [\n  \"gh-zk-org-zk\"\n ],\n \"citations\": [\n  {\n   \"node_id\": \"gh-zk-org-zk\",\n   \"title\": \"zk-org/zk\",\n   \"source_url\": \"https://github.com/zk-org/zk\"\n  }\n ]\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 122.93579999959547,
+      "candidate_ms": 2.491799999916111,
+      "evidence_ms": 0.34839999989344506,
+      "generation_ms": 14929.101400000036,
+      "total_ms": 15054.883899999822
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q2",
+    "query": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+    "retrieved_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "reranked_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 12.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 4.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 3.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"I am sorry, but the provided evidence does not contain the specific metaphor Steve Jobs used at the Stanford 2005 commencement to describe the role of death in motivating life choices. The node related to the address only provides its title.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n \"text\": \"The provided evidence mentions the \\\"Steve Jobs 2005 Stanford Address\\\" but does not contain the text or a summary of the speech itself, thus it does not describe any metaphor Steve Jobs used to describe the role of death in motivating life choices.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain the specific metaphor Steve Jobs used at the Stanford 2005 commencement to describe the role of death in motivating life choices.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 65.32730000026277,
+      "candidate_ms": 1.7485000003034656,
+      "evidence_ms": 0.22629999966738978,
+      "generation_ms": 8868.941299999733,
+      "total_ms": 8936.248400000295
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q3",
+    "query": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+    "retrieved_node_ids": [
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk",
+      "yt-programming-workflow-is"
+    ],
+    "reranked_node_ids": [
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk",
+      "yt-programming-workflow-is"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 12.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 5.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 3.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 2.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 2.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"I am sorry, but the provided evidence does not contain information about what Patrick Winston means by 'verbal punctuation' or why it matters in his MIT lecture on effective public speaking.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The supplied evidence does not contain information about what Patrick Winston means by 'verbal punctuation' or why it matters in his MIT lecture on effective public speaking.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n  \"text\": \"The supplied evidence does not contain information about what Patrick Winston means by 'verbal punctuation' or why it matters in his MIT lecture on effective public speaking.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 7.586499999888474,
+      "candidate_ms": 2.9576000001725333,
+      "evidence_ms": 0.32909999981711735,
+      "generation_ms": 9737.76480000015,
+      "total_ms": 9748.643999999786
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q4",
+    "query": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+    "retrieved_node_ids": [
+      "yt-programming-workflow-is",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "reranked_node_ids": [
+      "yt-programming-workflow-is",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 11.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 8.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 7.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 5.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 5.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 4.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 3.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n  \"text\": \"The provided evidence does not contain details of specific cognitive deficits described by Matt Walker, nor does it describe the 'perception-vs-reality reasoning' involved in debugging. The nodes for \\\"Matt Walker: Sleep Deprivation's Broad Impacts\\\" and \\\"Programming Workflow Is Debugging Cycle\\\" only provide their titles.\",\n  \"cited_node_ids\": [\n    \"yt-matt-walker-sleep-depriv\",\n    \"yt-programming-workflow-is\"\n  ],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-programming-workflow-is",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n \"text\": \"The provided evidence mentions \\\"Matt Walker: Sleep Deprivation's Broad Impacts\\\" and \\\"Programming Workflow Is Debugging Cycle\\\" by title, but it does not contain any specific details regarding Walker's described cognitive deficits from sleep loss or the specific \\\"perception-vs-reality reasoning\\\" involved in the mental gymnastics of debugging. Therefore, it is not possible to determine which of Walker's deficits would most directly impair the debugging zettel's described reasoning based solely on the supplied evidence.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-programming-workflow-is",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"The provided evidence mentions \\\"Matt Walker: Sleep Deprivation's Broad Impacts\\\" and \\\"Programming Workflow Is Debugging Cycle,\\\" but it does not contain the specific details regarding Walker's described cognitive deficits or the detailed description of perception-vs-reality reasoning within the debugging workflow zettel. Therefore, I cannot identify which of Walker's deficits would most directly impair the described reasoning.\",\n \"cited_node_ids\": [\n  \"yt-matt-walker-sleep-depriv\",\n  \"yt-programming-workflow-is\"\n ],\n \"citations\": [\n  {\n   \"node_id\": \"yt-matt-walker-sleep-depriv\",\n   \"title\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n   \"section\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n   \"source_url\": \"https://www.youtube.com/watch?v=5MuIMqhT8DM\",\n   \"text\": \"# Matt Walker: Sleep Deprivation's Broad Impacts\"\n  },\n  {\n   \"node_id\": \"yt-programming-workflow-is\",\n   \"title\": \"Programming Workflow Is Debugging Cycle\",\n   \"section\": \"Programming Workflow Is Debugging Cycle\",\n   \"source_url\": \"https://www.youtube.com/watch?v=HluANRwPyNo\",\n   \"text\": \"# Programming Workflow Is Debugging Cycle\"\n  }\n ]\n}\n```",
+        "cited_node_ids": [
+          "yt-programming-workflow-is",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 4.253699999935634,
+      "candidate_ms": 1.9941999998991378,
+      "evidence_ms": 0.24410000014540856,
+      "generation_ms": 16256.433900000047,
+      "total_ms": 16262.929100000292
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q5",
+    "query": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+    "retrieved_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "reranked_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "evidence": [
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 8.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 7.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 5.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 4.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n  \"text\": \"The provided evidence consists solely of titles and does not contain the textual content necessary to derive an implicit theory of how a knowledge worker should structure a day to do their best thinking. While some titles hint at topics relevant to thinking and work (e.g., \\\"Matt Walker: Sleep Deprivation's Broad Impacts\\\" suggesting the importance of sleep, or \\\"Transformative Tools for Thought\\\" indicating the value of good tools), no specific advice or theoretical framework for daily structuring is present.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"Across these zettels, the implicit theory of how a knowledge worker should structure a day for best thinking emphasizes a multi-faceted approach, integrating foundational well-being with iterative and externally supported cognitive processes, all guided by a pragmatic orientation:\\n\\n1.  **Foundational Well-being**: The most fundamental aspect is the prioritization of optimal cognitive function through adequate rest. Sleep is presented as a critical prerequisite, with evidence highlighting the broad impacts of sleep deprivation on thinking (`yt-matt-walker-sleep-depriv`). This implies that a productive day begins with a mind prepared by sufficient sleep, rather than sacrificing it.\\n2.  **Leveraging External Tools for Thought**: In contrast to purely internal reflection, the theory advocates for actively engaging with and structuring the day around \\\"transformative tools for thought\\\" (`web-transformative-tools-for`). This involves consistent interaction with knowledge management systems, such as `zk-org/zk`, to organize, connect, and evolve ideas, thereby augmenting natural cognitive capacities and enabling more effective long-term thinking.\\n3.  **Embracing an Iterative Workflow**: Thinking and problem-solving are not seen as linear processes but rather as iterative and cyclical. The concept of a \\\"programming workflow\\\" being a continuous \\\"debugging cycle\\\" (`yt-programming-workflow-is`) suggests that a knowledge worker's day should involve repeated loops of problem identification, testing of ideas, reflection, and refinement. This stands in contrast to a rigid, step-by-step approach.\\n4.  **Pragmatic, Product-Oriented Focus**: All intellectual efforts within the day should be guided by a \\\"product-minded\\\" orientation (`nl-the-pragmatic-engineer-t`). This indicates that thinking is not merely for exploration but is purposefully directed towards achieving tangible outcomes and practical solutions. This pragmatic focus shapes the prioritization of tasks and the direction of the iterative thinking cycles.\",\n  \"cited_node_ids\": [\n    \"yt-matt-walker-sleep-depriv\",\n    \"web-transformative-tools-for\",\n    \"gh-zk-org-zk\",\n    \"yt-programming-workflow-is\",\n    \"nl-the-pragmatic-engineer-t\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"yt-matt-walker-sleep-depriv\",\n      \"title\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n      \"section\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n      \"source_url\": \"https://www.youtube.com/watch?v=5MuIMqhT8DM\"\n    },\n    {\n      \"node_id\": \"web-transformative-tools-for\",\n      \"title\": \"Transformative Tools for Thought\",\n      \"section\": \"Transformative Tools for Thought\",\n      \"source_url\": \"https://andymatuschak.org/\"\n    },\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"section\": \"zk-org/zk\",\n      \"source_url\": \"https://github.com/zk-org/zk\"\n    },\n    {\n      \"node_id\": \"yt-programming-workflow-is\",\n      \"title\": \"Programming Workflow Is Debugging Cycle\",\n      \"section\": \"Programming Workflow Is Debugging Cycle\",\n      \"source_url\": \"https://www.youtube.com/watch?v=HluANRwPyNo\"\n    },\n    {\n      \"node_id\": \"nl-the-pragmatic-engineer-t\",\n      \"title\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"section\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"source_url\": \"https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n  \"text\": \"Based on the supplied evidence, an implicit theory of how a knowledge worker should structure a day for best thinking appears to revolve around several key principles, primarily inferred from the titles of the zettels.\\n\\nFirst and foremost, **prioritizing adequate sleep** is foundational. The existence of a zettel on \\\"Matt Walker: Sleep Deprivation's Broad Impacts\\\" strongly implies that avoiding sleep deprivation is crucial for optimal cognitive function, suggesting that a knowledge worker's day (and overall 24-hour cycle) must incorporate sufficient rest to ensure the best conditions for thinking (yt-matt-walker-sleep-depriv).\\n\\nSecondly, thinking is structured as an **iterative and refining workflow**. The concept that \\\"Programming Workflow Is Debugging Cycle\\\" suggests that a knowledge worker's day should not be seen as a linear progression, but rather as a continuous loop of problem identification, analysis, solution exploration, testing, and refinement (yt-programming-workflow-is). This implies dedicating time to cyclical processes of ideation and correction.\\n\\nThirdly, the theory suggests leveraging **specific tools and methodologies for cognitive enhancement**. The mention of \\\"Transformative Tools for Thought\\\" indicates that best thinking is supported by actively employing or developing systems and instruments designed to augment cognitive processes (web-transformative-tools-for). A knowledge worker's day, therefore, should include engagement with these tools or time dedicated to developing better ways of thinking.\\n\\nFinally, thinking is implicitly guided by a **product-oriented mindset**. The idea of \\\"The Product-Minded Engineer\\\" implies that best thinking is often directed towards tangible outcomes and practical applications (nl-the-pragmatic-engineer-t). This suggests structuring the day's activities with a focus on problem-solving that leads to a defined product or valuable result.\",\n  \"cited_node_ids\": [\n    \"yt-matt-walker-sleep-depriv\",\n    \"yt-programming-workflow-is\",\n    \"web-transformative-tools-for\",\n    \"nl-the-pragmatic-engineer-t\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"yt-matt-walker-sleep-depriv\",\n      \"title\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n      \"section\": \"Matt Walker: Sleep Deprivation's Broad Impacts\",\n      \"source_url\": \"https://www.youtube.com/watch?v=5MuIMqhT8DM\"\n    },\n    {\n      \"node_id\": \"yt-programming-workflow-is\",\n      \"title\": \"Programming Workflow Is Debugging Cycle\",\n      \"section\": \"Programming Workflow Is Debugging Cycle\",\n      \"source_url\": \"https://www.youtube.com/watch?v=HluANRwPyNo\"\n    },\n    {\n      \"node_id\": \"web-transformative-tools-for\",\n      \"title\": \"Transformative Tools for Thought\",\n      \"section\": \"Transformative Tools for Thought\",\n      \"source_url\": \"https://andymatuschak.org/\"\n    },\n    {\n      \"node_id\": \"nl-the-pragmatic-engineer-t\",\n      \"title\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"section\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"source_url\": \"https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 3.700600000229315,
+      "candidate_ms": 1.598300000296149,
+      "evidence_ms": 0.20570000015140977,
+      "generation_ms": 36828.947799999696,
+      "total_ms": 36834.45729999994
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q6",
+    "query": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+    "retrieved_node_ids": [
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-programming-workflow-is",
+      "yt-matt-walker-sleep-depriv",
+      "gh-zk-org-zk"
+    ],
+    "reranked_node_ids": [
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-programming-workflow-is",
+      "yt-matt-walker-sleep-depriv",
+      "gh-zk-org-zk"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 10.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 10.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 9.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 6.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 6.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 3.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 2.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"Based on the supplied evidence, no other zettels describe tools, practices, or rituals that perform the function of augmenting cognition rather than just storing information. The provided text for each zettel beyond the Matuschak essay consists only of its title, offering no descriptive content about its function.\",\n \"cited_node_ids\": [\n  \"web-transformative-tools-for\"\n ],\n \"citations\": [\n  {\n   \"node_id\": \"web-transformative-tools-for\",\n   \"text\": \"# Transformative Tools for Thought\",\n   \"url\": \"https://andymatuschak.org/\"\n  }\n ]\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The Matuschak essay calls for 'Transformative Tools for Thought.' Other zettels that describe tools, practices, or rituals augmenting cognition rather than merely storing information include \\\"Effective Public Speaking Strategies,\\\" which outlines practices for improved communication. \\\"The Pragmatic Engineer: The Product-Minded Engineer\\\" suggests an approach or mindset that could augment an engineer's cognitive process in product development. \\\"Programming Workflow Is Debugging Cycle\\\" describes a workflow practice that directly augments problem-solving and cognitive processes in software development. Finally, \\\"zk-org/zk\\\" refers to a Zettelkasten-like system, which is inherently a tool and practice for organizing and connecting thoughts to augment cognition.\",\n  \"cited_node_ids\": [\n    \"web-transformative-tools-for\",\n    \"yt-effective-public-speakin\",\n    \"nl-the-pragmatic-engineer-t\",\n    \"yt-programming-workflow-is\",\n    \"gh-zk-org-zk\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"web-transformative-tools-for\",\n      \"title\": \"Transformative Tools for Thought\",\n      \"url\": \"https://andymatuschak.org/\"\n    },\n    {\n      \"node_id\": \"yt-effective-public-speakin\",\n      \"title\": \"Effective Public Speaking Strategies\",\n      \"url\": \"https://www.youtube.com/watch?v=Unzc731iCUY\"\n    },\n    {\n      \"node_id\": \"nl-the-pragmatic-engineer-t\",\n      \"title\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"url\": \"https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer\"\n    },\n    {\n      \"node_id\": \"yt-programming-workflow-is\",\n      \"title\": \"Programming Workflow Is Debugging Cycle\",\n      \"url\": \"https://www.youtube.com/watch?v=HluANRwPyNo\"\n    },\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"url\": \"https://github.com/zk-org/zk\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n  \"text\": \"Beyond the Matuschak essay 'Transformative Tools for Thought,' other zettels describing tools, practices, or rituals that augment cognition include 'Effective Public Speaking Strategies,' which outlines practices for organizing and communicating thought. 'The Pragmatic Engineer: The Product-Minded Engineer' suggests a cognitive approach or mindset that enhances problem-solving. 'Programming Workflow Is Debugging Cycle' describes a structured workflow, a practice central to cognitive processing and problem-solving in programming. Lastly, 'zk-org/zk,' likely referring to a Zettelkasten system, represents a tool and practice specifically designed for augmenting thinking, knowledge synthesis, and idea generation.\",\n  \"cited_node_ids\": [\n    \"web-transformative-tools-for\",\n    \"yt-effective-public-speakin\",\n    \"nl-the-pragmatic-engineer-t\",\n    \"yt-programming-workflow-is\",\n    \"gh-zk-org-zk\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"web-transformative-tools-for\",\n      \"title\": \"Transformative Tools for Thought\",\n      \"url\": \"https://andymatuschak.org/\"\n    },\n    {\n      \"node_id\": \"yt-effective-public-speakin\",\n      \"title\": \"Effective Public Speaking Strategies\",\n      \"url\": \"https://www.youtube.com/watch?v=Unzc731iCUY\"\n    },\n    {\n      \"node_id\": \"nl-the-pragmatic-engineer-t\",\n      \"title\": \"The Pragmatic Engineer: The Product-Minded Engineer\",\n      \"url\": \"https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer\"\n    },\n    {\n      \"node_id\": \"yt-programming-workflow-is\",\n      \"title\": \"Programming Workflow Is Debugging Cycle\",\n      \"url\": \"https://www.youtube.com/watch?v=HluANRwPyNo\"\n    },\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"url\": \"https://github.com/zk-org/zk\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 10.670199999822216,
+      "candidate_ms": 3.485599999748956,
+      "evidence_ms": 0.3806999998232641,
+      "generation_ms": 17088.48829999988,
+      "total_ms": 17103.032500000154
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q7",
+    "query": "Anything about commencement?",
+    "retrieved_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "reranked_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 1.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 0.1
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 0.1
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 0.1
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information about commencement.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The provided evidence includes a reference to the \\\"Steve Jobs 2005 Stanford Address\\\" which is a well-known commencement speech.\",\n  \"cited_node_ids\": [\n    \"yt-steve-jobs-2005-stanford\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"yt-steve-jobs-2005-stanford\",\n      \"title\": \"Steve Jobs 2005 Stanford Address\",\n      \"section\": \"Steve Jobs 2005 Stanford Address\",\n      \"source_url\": \"https://www.youtube.com/watch?v=UF8uR6Z6KLc\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"The supplied evidence mentions the \\\"Steve Jobs 2005 Stanford Address\\\".\",\n \"cited_node_ids\": [\n  \"yt-steve-jobs-2005-stanford\"\n ],\n \"citations\": [\n  {\n   \"node_id\": \"yt-steve-jobs-2005-stanford\",\n   \"title\": \"Steve Jobs 2005 Stanford Address\",\n   \"section\": \"Steve Jobs 2005 Stanford Address\",\n   \"source_url\": \"https://www.youtube.com/watch?v=UF8uR6Z6KLc\",\n   \"text\": \"# Steve Jobs 2005 Stanford Address\"\n  }\n ]\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 11.74799999989773,
+      "candidate_ms": 3.2436999999845284,
+      "evidence_ms": 0.3775999998651969,
+      "generation_ms": 14537.83139999996,
+      "total_ms": 14553.20619999975
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q8",
+    "query": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+    "retrieved_node_ids": [
+      "gh-zk-org-zk",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "reranked_node_ids": [
+      "gh-zk-org-zk",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "evidence": [
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 8.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 7.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 7.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 6.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 3.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 1.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n  \"text\": \"To start building your own plain-text personal wiki tonight, you would open `zk-org/zk`.\",\n  \"cited_node_ids\": [\n    \"gh-zk-org-zk\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"section\": \"zk-org/zk\",\n      \"source_url\": \"https://github.com/zk-org/zk\",\n      \"text\": \"# zk-org/zk\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"To start building a plain-text personal wiki tonight, you would open `zk-org/zk` first. This is because the 'zk' in its title commonly refers to Zettelkasten, a knowledge management system frequently implemented using plain-text files, making it the most directly relevant resource for building a plain-text personal wiki. Other items in the evidence, such as those concerning public speaking, programming workflows, sleep deprivation, or general 'tools for thought' without specific mention of plain-text wikis, do not offer a comparable starting point for this specific task.\",\n  \"cited_node_ids\": [\n    \"gh-zk-org-zk\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"section\": \"zk-org/zk\",\n      \"source_url\": \"https://github.com/zk-org/zk\",\n      \"text\": \"# zk-org/zk\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"Based on the provided items, the one that appears most relevant for starting to build a plain-text personal wiki tonight would be \\\"zk-org/zk\\\". The 'zk' often refers to Zettelkasten, a method of knowledge management that typically involves plain-text files and is a common approach for building a personal wiki-like system. As it's presented as a GitHub repository (zk-org/zk), it suggests a tool or project that could be opened and utilized for this purpose.\",\n \"cited_node_ids\": [\n  \"gh-zk-org-zk\"\n ],\n \"citations\": [\n  {\n   \"node_id\": \"gh-zk-org-zk\",\n   \"title\": \"zk-org/zk\",\n   \"section\": \"zk-org/zk\",\n   \"source_url\": \"https://github.com/zk-org/zk\"\n  }\n ]\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 11.035399999855144,
+      "candidate_ms": 4.131599999709579,
+      "evidence_ms": 0.425100000029488,
+      "generation_ms": 16609.8778999999,
+      "total_ms": 16625.47779999977
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q9",
+    "query": "Summarize what this Kasten says about Notion's database features.",
+    "retrieved_node_ids": [
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "reranked_node_ids": [
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 4.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 4.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 2.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 1.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 1.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"The supplied evidence does not contain information about what Kasten says regarding Notion's database features.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n \"text\": \"I am sorry, but the provided evidence does not contain any information about what Kasten says regarding Notion's database features.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n  \"text\": \"The provided evidence does not contain any information about what a 'Kasten' says regarding Notion's database features. The documents cover a range of topics including public speaking, Steve Jobs' 2005 Stanford Address, the concept of a product-minded engineer, impacts of sleep deprivation, programming workflows, transformative tools for thought, and a GitHub repository, but none of these sources mention Notion or its database capabilities, nor do they refer to anyone named Kasten discussing such topics.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "web-transformative-tools-for",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 10.588600000119186,
+      "candidate_ms": 4.390300000068237,
+      "evidence_ms": 0.4548000001705077,
+      "generation_ms": 8870.115299999725,
+      "total_ms": 8885.55550000001
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "q10",
+    "query": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+    "retrieved_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk"
+    ],
+    "reranked_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "gh-zk-org-zk"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 9.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 4.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 4.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 2.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 2.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 1.0
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information about Steve Jobs' or Naval Ravikant's views on meaningful work.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The provided evidence mentions Steve Jobs through the title \\\"Steve Jobs 2005 Stanford Address\\\" but offers no textual content about his views on meaningful work. Naval Ravikant is not mentioned anywhere in the supplied text. Therefore, a comparison of their views on meaningful work cannot be made based on the given evidence.\",\n  \"cited_node_ids\": [\n    \"yt-steve-jobs-2005-stanford\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"yt-steve-jobs-2005-stanford\",\n      \"metadata\": {\n        \"title\": \"Steve Jobs 2005 Stanford Address\",\n        \"section\": \"Steve Jobs 2005 Stanford Address\",\n        \"source_url\": \"https://www.youtube.com/watch?v=UF8uR6Z6KLc\"\n      }\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain information regarding Steve Jobs' or Naval Ravikant's views on meaningful work. The node mentioning Steve Jobs only provides the title of his 2005 Stanford Address without any details of its content, and Naval Ravikant is not mentioned in the supplied evidence.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "yt-effective-public-speakin",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is",
+          "gh-zk-org-zk"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 4.1376999997737585,
+      "candidate_ms": 1.8723999996836937,
+      "evidence_ms": 0.22829999988971394,
+      "generation_ms": 11510.59430000032,
+      "total_ms": 11516.837499999838
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "av-1",
+    "query": "What should I install tonight to start a personal wiki?",
+    "retrieved_node_ids": [
+      "gh-zk-org-zk",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is"
+    ],
+    "reranked_node_ids": [
+      "gh-zk-org-zk",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "nl-the-pragmatic-engineer-t",
+      "web-transformative-tools-for",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is"
+    ],
+    "evidence": [
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 4.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 3.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 2.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 1.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"I cannot answer your question as the supplied evidence does not contain information on what to install to start a personal wiki.\",\n \"cited_node_ids\": [],\n \" \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"Based on the supplied evidence, there is no information about specific software to install tonight to start a personal wiki.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"I apologize, but the provided evidence does not contain information on what to install tonight to start a personal wiki.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "yt-effective-public-speakin",
+          "yt-steve-jobs-2005-stanford",
+          "nl-the-pragmatic-engineer-t",
+          "web-transformative-tools-for",
+          "yt-matt-walker-sleep-depriv",
+          "yt-programming-workflow-is"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 11.039800000162359,
+      "candidate_ms": 3.618000000187749,
+      "evidence_ms": 0.4116000000067288,
+      "generation_ms": 12571.701500000017,
+      "total_ms": 12586.77650000027
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "av-2",
+    "query": "Which guide do I run first to set up my Zettelkasten?",
+    "retrieved_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "gh-zk-org-zk",
+      "nl-the-pragmatic-engineer-t",
+      "yt-programming-workflow-is",
+      "yt-effective-public-speakin",
+      "yt-matt-walker-sleep-depriv",
+      "web-transformative-tools-for"
+    ],
+    "reranked_node_ids": [
+      "yt-steve-jobs-2005-stanford",
+      "gh-zk-org-zk",
+      "nl-the-pragmatic-engineer-t",
+      "yt-programming-workflow-is",
+      "yt-effective-public-speakin",
+      "yt-matt-walker-sleep-depriv",
+      "web-transformative-tools-for"
+    ],
+    "evidence": [
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 2.0
+      },
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 2.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 0.1
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"I am sorry, but the provided evidence does not contain information on which guide to run first to set up a Zettelkasten.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "gh-zk-org-zk",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The provided evidence does not offer specific guides for setting up a Zettelkasten, nor does it recommend which one to run first. While `zk-org/zk` is mentioned, implying a connection to Zettelkasten tools, it does not provide setup instructions or comparative guidance on different Zettelkasten setup guides.\",\n  \"cited_node_ids\": [\n    \"gh-zk-org-zk\"\n  ],\n  \"citations\": [\n    {\n      \"node_id\": \"gh-zk-org-zk\",\n      \"title\": \"zk-org/zk\",\n      \"section\": \"zk-org/zk\",\n      \"source_url\": \"https://github.com/zk-org/zk\",\n      \"text\": \"# zk-org/zk\"\n    }\n  ]\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "gh-zk-org-zk",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n  \"text\": \"Based on the provided evidence, there is no guide mentioned that instructs on how to set up a Zettelkasten, nor is there an indication of which guide to run first.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "yt-steve-jobs-2005-stanford",
+          "gh-zk-org-zk",
+          "nl-the-pragmatic-engineer-t",
+          "yt-programming-workflow-is",
+          "yt-effective-public-speakin",
+          "yt-matt-walker-sleep-depriv",
+          "web-transformative-tools-for"
+        ],
+        "citations": [
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 5.546900000354071,
+      "candidate_ms": 2.624000000196247,
+      "evidence_ms": 0.34009999990303186,
+      "generation_ms": 13225.557899999785,
+      "total_ms": 13234.074500000133
+    },
+    "memory_rss_mb": {}
+  },
+  {
+    "query_id": "av-3",
+    "query": "Step-by-step setup commands for a personal wiki",
+    "retrieved_node_ids": [
+      "gh-zk-org-zk",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "yt-programming-workflow-is",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "reranked_node_ids": [
+      "gh-zk-org-zk",
+      "web-transformative-tools-for",
+      "nl-the-pragmatic-engineer-t",
+      "yt-steve-jobs-2005-stanford",
+      "yt-effective-public-speakin",
+      "yt-programming-workflow-is",
+      "yt-matt-walker-sleep-depriv"
+    ],
+    "evidence": [
+      {
+        "node_id": "gh-zk-org-zk",
+        "doc_id": "40df115a-ef09-4662-9796-e179d4df8d3b",
+        "title": "zk-org/zk",
+        "source_url": "https://github.com/zk-org/zk",
+        "section": "zk-org/zk",
+        "line_range": "1",
+        "text": "# zk-org/zk",
+        "score": 5.0
+      },
+      {
+        "node_id": "web-transformative-tools-for",
+        "doc_id": "c5a041bc-bd48-450c-8d51-27fd406a2fa5",
+        "title": "Transformative Tools for Thought",
+        "source_url": "https://andymatuschak.org/",
+        "section": "Transformative Tools for Thought",
+        "line_range": "1",
+        "text": "# Transformative Tools for Thought",
+        "score": 4.0
+      },
+      {
+        "node_id": "nl-the-pragmatic-engineer-t",
+        "doc_id": "aaa1fcc9-19c1-44f7-bfcd-f603a3a51b86",
+        "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+        "section": "The Pragmatic Engineer: The Product-Minded Engineer",
+        "line_range": "1",
+        "text": "# The Pragmatic Engineer: The Product-Minded Engineer",
+        "score": 2.0
+      },
+      {
+        "node_id": "yt-steve-jobs-2005-stanford",
+        "doc_id": "10721dc1-2de5-435e-b9a8-57d22a896bb3",
+        "title": "Steve Jobs 2005 Stanford Address",
+        "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+        "section": "Steve Jobs 2005 Stanford Address",
+        "line_range": "1",
+        "text": "# Steve Jobs 2005 Stanford Address",
+        "score": 2.0
+      },
+      {
+        "node_id": "yt-effective-public-speakin",
+        "doc_id": "0a1690cf-2f8e-4a54-95ad-d080e05f2e41",
+        "title": "Effective Public Speaking Strategies",
+        "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+        "section": "Effective Public Speaking Strategies",
+        "line_range": "1",
+        "text": "# Effective Public Speaking Strategies",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-programming-workflow-is",
+        "doc_id": "cb0d6960-f902-449c-990b-9b9de6f2c251",
+        "title": "Programming Workflow Is Debugging Cycle",
+        "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+        "section": "Programming Workflow Is Debugging Cycle",
+        "line_range": "1",
+        "text": "# Programming Workflow Is Debugging Cycle",
+        "score": 1.0
+      },
+      {
+        "node_id": "yt-matt-walker-sleep-depriv",
+        "doc_id": "2e04e0eb-04a6-4c94-98e1-4f1d698efff3",
+        "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+        "section": "Matt Walker: Sleep Deprivation's Broad Impacts",
+        "line_range": "1",
+        "text": "# Matt Walker: Sleep Deprivation's Broad Impacts",
+        "score": 0.1
+      }
+    ],
+    "answers": [
+      {
+        "answer_id": "a1",
+        "style": "direct",
+        "text": "```json\n{\n \"text\": \"The provided evidence does not contain step-by-step setup commands for a personal wiki.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a2",
+        "style": "comparative",
+        "text": "```json\n{\n  \"text\": \"The provided evidence does not contain any step-by-step setup commands for a personal wiki. While 'zk-org/zk' is mentioned, its content only provides a title and no specific setup instructions.\",\n  \"cited_node_ids\": [],\n  \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      },
+      {
+        "answer_id": "a3",
+        "style": "exploratory",
+        "text": "```json\n{\n \"text\": \"I apologize, but the provided evidence does not contain information on step-by-step setup commands for a personal wiki.\",\n \"cited_node_ids\": [],\n \"citations\": []\n}\n```",
+        "cited_node_ids": [
+          "gh-zk-org-zk",
+          "web-transformative-tools-for",
+          "nl-the-pragmatic-engineer-t",
+          "yt-steve-jobs-2005-stanford",
+          "yt-effective-public-speakin",
+          "yt-programming-workflow-is",
+          "yt-matt-walker-sleep-depriv"
+        ],
+        "citations": [
+          {
+            "node_id": "gh-zk-org-zk",
+            "title": "zk-org/zk",
+            "source_url": "https://github.com/zk-org/zk"
+          },
+          {
+            "node_id": "web-transformative-tools-for",
+            "title": "Transformative Tools for Thought",
+            "source_url": "https://andymatuschak.org/"
+          },
+          {
+            "node_id": "nl-the-pragmatic-engineer-t",
+            "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+            "source_url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer"
+          },
+          {
+            "node_id": "yt-steve-jobs-2005-stanford",
+            "title": "Steve Jobs 2005 Stanford Address",
+            "source_url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+          },
+          {
+            "node_id": "yt-effective-public-speakin",
+            "title": "Effective Public Speaking Strategies",
+            "source_url": "https://www.youtube.com/watch?v=Unzc731iCUY"
+          },
+          {
+            "node_id": "yt-programming-workflow-is",
+            "title": "Programming Workflow Is Debugging Cycle",
+            "source_url": "https://www.youtube.com/watch?v=HluANRwPyNo"
+          },
+          {
+            "node_id": "yt-matt-walker-sleep-depriv",
+            "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+            "source_url": "https://www.youtube.com/watch?v=5MuIMqhT8DM"
+          }
+        ],
+        "metrics": {
+          "gemini_key_index": 2.0,
+          "gemini_model_reported": 1.0
+        }
+      }
+    ],
+    "timings_ms": {
+      "index_ms": 5.473299999721348,
+      "candidate_ms": 2.540599999974802,
+      "evidence_ms": 0.34580000010464573,
+      "generation_ms": 10984.899399999904,
+      "total_ms": 10993.265099999917
+    },
+    "memory_rss_mb": {}
+  }
+]
