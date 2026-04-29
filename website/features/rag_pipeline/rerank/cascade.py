@@ -17,6 +17,16 @@ import json
 import logging
 import os
 import threading
+
+
+def aggressive_release() -> None:
+    """Lazy-import the shared release helper. cascade.py is imported by the
+    API layer (website.api -> rag_pipeline.service -> cascade), so a
+    top-level import would create a cycle. The helper is stateless and
+    cheap to look up after the first call (Python caches the import)."""
+    from website.api._mem_release import aggressive_release as _release
+
+    _release()
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -107,6 +117,12 @@ def _build_ort_session(path: Path) -> ort.InferenceSession | None:
     # Latency cost: +10-30 ms per BGE call (Gemini-bound p50 ~20s ⇒ invisible).
     opts.enable_cpu_mem_arena = False
     opts.enable_mem_pattern = False
+    # iter-03 §B (2026-04-29): suppress ORT debug/profiling buffers. log
+    # severity 3 = ERROR-only (no INFO/VERBOSE log message construction);
+    # explicit profiling=off prevents some builds from buffering profile
+    # events. Frees ~5-10 MB of internal log buffers per session.
+    opts.log_severity_level = 3
+    opts.enable_profiling = False
     try:
         return ort.InferenceSession(
             str(path), sess_options=opts, providers=["CPUExecutionProvider"]
@@ -401,7 +417,7 @@ class CascadeReranker:
         # is ~20s so invisible in p95). pre_gc/post_gc mem-trace lines let
         # us measure the actual delta in prod.
         _log_rss("stage2.pre_gc")
-        gc.collect()
+        aggressive_release()
         _log_rss("stage2.post_gc")
 
         try:
@@ -520,7 +536,7 @@ class CascadeReranker:
             # survives function return without an explicit gc. Running gc
             # here (not after returning) ensures we report post_collect RSS
             # to the trace before the caller's reference graph adds noise.
-            gc.collect()
+            aggressive_release()
             _log_rss("stage2.post_collect")
         return all_scores
 

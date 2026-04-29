@@ -125,6 +125,31 @@ def create_app(lifespan=None) -> FastAPI:
     # iter-03 mem-bounded §2.9: install AFTER routers so middleware wraps every route.
     _memory_guard.install(app)
 
+    # iter-03 §B (2026-04-29): post-response aggressive memory release.
+    # Runs gc.collect() + glibc malloc_trim(0) AFTER each response is sent
+    # to the client (no user-perceived latency impact). Targets the
+    # ~180-430 MB per-query native residual that gc alone cannot free
+    # (ONNX internal buffers, Gemini/Supabase httpx body buffers, glibc
+    # arena freelist). Exempts /api/health* and /favicon.* so cheap probes
+    # don't pay the trim cost. Safe on non-glibc platforms (no-op).
+    from website.api._mem_release import aggressive_release as _aggressive_release
+
+    _RELEASE_EXEMPT_PREFIXES = (
+        "/api/health",
+        "/favicon.",
+    )
+
+    @app.middleware("http")
+    async def _post_response_release(request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if not any(path.startswith(p) for p in _RELEASE_EXEMPT_PREFIXES):
+            try:
+                _aggressive_release()
+            except Exception:  # noqa: BLE001 — never let release break the response
+                logger.exception("post-response release failed")
+        return response
+
     # iter-03 §B (2026-04-29): convert intra-request stage-2 memory pressure
     # to a clean 503 with Retry-After. The middleware above only sees RSS at
     # request dispatch; once a query is admitted, stage-2 may discover the
