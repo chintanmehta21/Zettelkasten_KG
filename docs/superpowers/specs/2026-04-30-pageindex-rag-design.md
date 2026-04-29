@@ -26,6 +26,8 @@ Relevant PageIndex references:
 
 The cloud SDK shape and open-source repo shape differ. The cloud docs expose API methods such as `submit_document`, `get_document`, `get_tree`, and `chat_completions`. The open-source repo exposes local `PageIndexClient.index()`, `get_document_structure()`, and `get_page_content()`, with Markdown support through `md_to_tree`. Because this project needs self-hosted behavior, the first implementation should use the open-source PageIndex path behind a local adapter.
 
+Dependency contract: pin PageIndex to an exact PyPI version or git SHA during implementation planning. Before feature work, verify the local self-hosted API shape in a smoke test: `PageIndexClient(workspace=...)`, `index(markdown_path, mode="md")`, `get_document()`, `get_document_structure()`, and `get_page_content()`. Do not track an unpinned main branch.
+
 ## Non-Goals
 
 - Do not replace the production RAG route by default.
@@ -49,7 +51,7 @@ The cloud SDK shape and open-source repo shape differ. The cloud docs expose API
    Match the current RAG shape: one system can ask across the full Zettel system, and another can be created from multiple selected zettels, analogous to current sandbox/scoped RAG.
 
 5. Gemini key pool remains the default model strategy.
-   PageIndex calls should be adapted toward the existing Gemini key pool where practical. Any OpenAI-compatible or `litellm` bridge is compatibility plumbing, not the default production provider model.
+   All PageIndex indexing, tree-summary, retrieval-planning, and answer-generation model calls must route through the existing Gemini key pool by default. OpenAI-compatible or `litellm` paths are allowed only as non-production compatibility shims or explicit test overrides, not as the production provider model.
 
 6. Three answer candidates.
    The answer stage synthesizes three independent cross-zettel answers with citations. CLI output should expose all three and their metrics. Evaluation should score each answer and optionally best-of-three, critic-selected, or merged variants.
@@ -111,6 +113,8 @@ Render every zettel from `kg_nodes` into deterministic Markdown:
 - Existing metadata needed for citations.
 - Stable source markers so citations can map back to `node_id`, source URL, and section.
 
+Because self-hosted PageIndex Markdown mode builds structure from Markdown headings, the renderer must emit exactly one H1, deterministic metadata headings, and normalized section headings. Raw extracted content must be nested under a stable heading, and any embedded headings must be demoted, escaped, or fenced so they cannot corrupt the zettel tree.
+
 Renderer output must be content-addressed. The index key should include:
 
 - `user_id`
@@ -163,7 +167,9 @@ Initial candidate selector should support:
 - Metadata-aware filtering by tags, source types, and node IDs.
 - A cheap first-pass score using zettel title, tags, summary, source type, and PageIndex tree summaries when available.
 
-Candidate selection can initially reuse current Supabase metadata and optionally current retrieval signals as a baseline comparator, but PageIndex RAG should have a path toward independent selection so it can become a replacement.
+Scoped RAG must support an explicit `PageIndexRagScope` with `scope_id`, `user_id`, `node_ids`, `membership_hash`, optional name, TTL/expiry for temporary scopes, and persisted-scope mode for reusable multi-zettel systems. Scope membership must be user-isolated and must not duplicate PageIndex documents unnecessarily.
+
+Candidate selection can initially reuse current Supabase metadata. Current RAG signals may be used only for comparison, ablation, or shadow diagnostics. Replacement-readiness scoring must include a PageIndex-only candidate-selection mode that does not call `rag_pipeline` retrieval, rerank, or context assembly.
 
 ### 5. Tree-Guided Evidence Retrieval
 
@@ -173,6 +179,8 @@ For each selected candidate zettel:
 2. Ask the retrieval model which tree nodes are relevant to the query.
 3. Fetch tight content ranges from the selected zettel.
 4. Normalize evidence into a common `EvidenceItem` model.
+
+Self-hosted retrieval must follow the local PageIndex tool protocol: `get_document` -> `get_document_structure` without text -> choose node IDs or line ranges -> `get_page_content` using Markdown line-number ranges. Do not depend on PageIndex Cloud `chat_completions`, MCP, or `enable_citations` for local retrieval.
 
 Evidence items must carry:
 
@@ -212,6 +220,8 @@ Testing path:
 3. Hidden API route only for local/CLI testing.
 4. No web UI entrypoint until evaluation passes.
 
+The hidden API route must be disabled by default, require `PAGEINDEX_RAG_ENABLED=true` and `PAGEINDEX_RAG_MODE=local`, be guarded for CLI/admin/local-only access, and never be linked from or mounted into public web UI flows before evaluation approval.
+
 ### 8. Metrics and Observability
 
 Treat this as a candidate replacement. It must report metrics comparable to current RAG:
@@ -249,6 +259,8 @@ Because the system generates three answers, evaluation should record:
 - Best-of-three score.
 - Critic-selected score, if a critic is added.
 - Merged-answer score, if merging is added later.
+
+Reuse or mirror the current `website/features/rag_pipeline/evaluation` output schema where possible: component scores, per-query scores, retrieved node IDs, reranked node IDs, cited node IDs, RAGAS/DeepEval sidecars, latency p50/p95, and explicit retrieval/rerank formulas such as Recall@k, MRR, Hit@k, NDCG@k, Precision@k, and false-positive rate.
 
 ## Error Handling
 
