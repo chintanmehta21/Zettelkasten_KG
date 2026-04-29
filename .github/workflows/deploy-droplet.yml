@@ -247,8 +247,9 @@ jobs:
             "GUNICORN_MAX_REQUESTS_JITTER=2" \
             "RAG_LATENCY_SOFT_S=5" \
             "RAG_LATENCY_HARD_S=20" \
-            "RAG_RETRIEVAL_LIMIT_FAST=15" \
+            "RAG_RETRIEVAL_LIMIT_FAST=20" \
             "RAG_RETRIEVAL_LIMIT_STRONG=25" \
+            "RAG_STAGE1_SUB_BATCH=5" \
             "NARUTO_SMOKE_PASSWORD=${{ secrets.NARUTO_SMOKE_PASSWORD }}" \
             "SUPABASE_ANON_KEY_LEGACY_JWT=${{ secrets.SUPABASE_ANON_KEY_LEGACY_JWT }}" \
             "DEPLOY_GIT_SHA=${DEPLOY_GIT_SHA}" \

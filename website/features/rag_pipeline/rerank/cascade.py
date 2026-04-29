@@ -289,6 +289,7 @@ class CascadeReranker:
         stage1_k: int = 10,
         max_length: int = 512,
         stage2_sub_batch: int | None = None,
+        stage1_sub_batch: int | None = None,
     ) -> None:
         # ``model_dir`` is optional now -- the int8 path is wired through the
         # eager module-level session and doesn't depend on FlashRank's cache dir.
@@ -310,6 +311,16 @@ class CascadeReranker:
         if stage2_sub_batch is None:
             stage2_sub_batch = int(os.environ.get("RAG_STAGE2_SUB_BATCH", "5"))
         self._stage2_sub_batch = max(stage2_sub_batch, 1)
+        # iter-03 §B (2026-04-29): mirror stage-2 sub-batching for stage-1
+        # FlashRank. MiniLM-L-12 forward pass on the full retrieval set
+        # (20 candidates × seq=512 × 12 layers) was the +328 MB unmitigated
+        # spike per the per-stage mem-trace. Cross-encoder scores are
+        # independent per (query, passage) pair so sub-batching is
+        # score-equivalent to a single batch — no quality regression. Default
+        # 5 matches stage-2; tunable via RAG_STAGE1_SUB_BATCH.
+        if stage1_sub_batch is None:
+            stage1_sub_batch = int(os.environ.get("RAG_STAGE1_SUB_BATCH", "5"))
+        self._stage1_sub_batch = max(stage1_sub_batch, 1)
         self._stage1: Ranker | None = None
         self._stage1_lock = threading.Lock()
         self._stage2_lock = threading.Lock()
@@ -445,19 +456,49 @@ class CascadeReranker:
         query: str,
         candidates: list[RetrievalCandidate],
     ) -> list[_ScoredCandidate]:
+        # iter-03 §B (2026-04-29): sub-batched FlashRank forward pass.
+        # Cross-encoder MiniLM-L-12 scores each (query, passage) pair
+        # independently — no batch-relative softmax — so sub-batching is
+        # score-equivalent to a single batch. Each chunk's encoded buffers
+        # are released between sub-batches to bound peak RSS during the
+        # forward pass.
+        if not candidates:
+            _log_rss("stage1.scored", count=0)
+            return []
+        _log_rss("stage1.enter", count=len(candidates))
         stage1 = self._get_stage1_ranker()
-        passages = [
-            {"id": index, "text": _passage_text(candidate), "meta": {"index": index}}
-            for index, candidate in enumerate(candidates)
-        ]
-        request = RerankRequest(query=query, passages=passages)
-        results = await asyncio.to_thread(self._run_stage1_sync, stage1, request)
-
-        scored = []
-        for item in results:
-            candidate = candidates[item["meta"]["index"]]
-            scored.append(_ScoredCandidate(candidate=candidate, score=float(item["score"])))
-        return scored
+        sub_batch = self._stage1_sub_batch
+        all_scored: list[_ScoredCandidate] = []
+        for chunk_start in range(0, len(candidates), sub_batch):
+            chunk = candidates[chunk_start : chunk_start + sub_batch]
+            chunk_passages = [
+                {
+                    "id": chunk_start + i,
+                    "text": _passage_text(c),
+                    "meta": {"index": chunk_start + i},
+                }
+                for i, c in enumerate(chunk)
+            ]
+            chunk_request = RerankRequest(query=query, passages=chunk_passages)
+            chunk_results = await asyncio.to_thread(
+                self._run_stage1_sync, stage1, chunk_request
+            )
+            _log_rss(
+                "stage1.chunk_done",
+                chunk_start=chunk_start,
+                chunk_size=len(chunk),
+            )
+            for item in chunk_results:
+                cand = candidates[item["meta"]["index"]]
+                all_scored.append(
+                    _ScoredCandidate(candidate=cand, score=float(item["score"]))
+                )
+            del chunk_passages
+            del chunk_request
+            del chunk_results
+            del chunk
+        _log_rss("stage1.scored", count=len(all_scored))
+        return all_scored
 
     async def _stage2_rank(
         self,
