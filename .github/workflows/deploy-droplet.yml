@@ -243,6 +243,8 @@ jobs:
             "RAG_DEGRADATION_LOG_DIR=/app/runtime" \
             "RAG_SMOKE_KASTEN_ID=227e0fb2-ff81-4d08-8702-76d9235564f4" \
             "RAG_STAGE2_SUB_BATCH=3" \
+            "GUNICORN_MAX_REQUESTS=5" \
+            "GUNICORN_MAX_REQUESTS_JITTER=2" \
             "NARUTO_SMOKE_PASSWORD=${{ secrets.NARUTO_SMOKE_PASSWORD }}" \
             "SUPABASE_ANON_KEY_LEGACY_JWT=${{ secrets.SUPABASE_ANON_KEY_LEGACY_JWT }}" \
             "DEPLOY_GIT_SHA=${DEPLOY_GIT_SHA}" \
