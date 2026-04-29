@@ -19,7 +19,7 @@ class _Router:
 
 
 class _Transformer:
-    async def transform(self, standalone, query_class):
+    async def transform(self, standalone, query_class, *, entities=None):
         return [standalone]
 
 

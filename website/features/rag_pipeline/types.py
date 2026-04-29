@@ -109,6 +109,10 @@ class AnswerTurn(BaseModel):
         "retried_supported",
         "retried_still_bad",  # legacy alias for retried_low_confidence (kept for back-compat)
         "retried_low_confidence",  # spec 2A.2 — 2nd-pass unsupported, draft + low-confidence tag returned
+        # iter-04 critic-retry hardening (orchestrator.py):
+        "unsupported_no_retry",   # first-pass refusal / low-score / vague-low-entity → retry skipped
+        "retry_budget_exceeded",  # retry exceeded RAG_RETRY_BUDGET_S (default 12s)
+        "retry_skipped_dejavu",   # retry mutation matrix produced identical params hash
     ]
     critic_notes: str | None = None
     trace_id: str = ""

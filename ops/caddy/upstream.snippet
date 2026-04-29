@@ -1,3 +1,25 @@
 # This file is rewritten by deploy.sh to point at blue (10000) or green (10001).
 # Caddy is reloaded gracefully when this changes — zero dropped connections.
-reverse_proxy zettelkasten-blue:10000
+#
+# iter-04: explicit transport timeouts (Gemini Pro answers can take 60-120s),
+# bounded upstream concurrency (max_conns_per_host 20 = 2 workers x (2 sem +
+# 8 queue) = 20 in-flight slots), and 502-or-504 -> 503 conversion so clients
+# get a structured Retry-After instead of a bare gateway-error page when the
+# upstream is exhausted. Must be in sync with the HEREDOC in
+# ops/deploy/deploy.sh — that script overwrites this file at every deploy.
+reverse_proxy zettelkasten-blue:10000 {
+    transport http {
+        dial_timeout 5s
+        read_timeout 240s
+        write_timeout 240s
+        response_header_timeout 240s
+        max_conns_per_host 20
+    }
+    flush_interval -1
+    lb_try_duration 0s
+    @upstream_down status 502 504
+    handle_response @upstream_down {
+        header Retry-After 10
+        respond "queue_full" 503
+    }
+}

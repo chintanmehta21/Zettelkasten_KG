@@ -484,6 +484,25 @@ CREATE TABLE IF NOT EXISTS _migrations_applied (
 );
 
 
+-- ── Table: kg_kasten_node_freq (iter-04 anti-magnet prior) ─────────────────
+-- Per-Kasten top-1 retrieval-hit counts. Hybrid retriever applies a
+-- multiplicative damping factor 1/(1+log(1+freq)) to candidate scores
+-- post-RRF fusion, so nodes that magnet across unrelated queries inside a
+-- Kasten lose ranking. Cold-start: penalty suppressed until total hits in
+-- a Kasten >= 50 (see compute_frequency_penalty in
+-- website/features/rag_pipeline/retrieval/kasten_freq.py). Migration:
+-- supabase/website/kg_public/migrations/2026-04-30_kasten_node_frequency.sql.
+CREATE TABLE IF NOT EXISTS kg_kasten_node_freq (
+    kasten_id     UUID         NOT NULL,
+    node_id       TEXT         NOT NULL,
+    hit_count     INTEGER      NOT NULL DEFAULT 0,
+    last_hit_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (kasten_id, node_id)
+);
+CREATE INDEX IF NOT EXISTS idx_kg_kasten_node_freq_kasten
+    ON kg_kasten_node_freq(kasten_id);
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.

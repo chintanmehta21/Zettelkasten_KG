@@ -469,16 +469,22 @@ async def adhoc_message(
     if session is None:
         raise HTTPException(status_code=500, detail="Session could not be created")
 
-    if body.stream:
-        from website.api._concurrency import _get_state
+    # iter-04: admission gate applied to BOTH stream and non-stream paths.
+    # Previously only the stream branch checked queue depth — burst-12 to
+    # /api/rag/adhoc with stream=False produced 12/12 = 502 because the
+    # gate never fired and gunicorn workers blocked behind the OS accept
+    # queue. Non-stream now returns 503 Retry-After:5 the same way.
+    from website.api._concurrency import _get_state
 
-        state = _get_state()
-        if state.depth >= state.queue_max:
-            raise HTTPException(
-                status_code=503,
-                detail={"reason": "queue_full", "retry_after_seconds": 5},
-                headers={"Retry-After": "5"},
-            )
+    state = _get_state()
+    if state.depth >= state.queue_max:
+        raise HTTPException(
+            status_code=503,
+            detail={"reason": "queue_full", "retry_after_seconds": 5},
+            headers={"Retry-After": "5"},
+        )
+
+    if body.stream:
         return StreamingResponse(
             _heartbeat_wrapper(
                 _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body)

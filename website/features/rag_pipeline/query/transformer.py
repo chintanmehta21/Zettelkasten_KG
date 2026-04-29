@@ -1,31 +1,50 @@
-﻿"""Query expansion helpers for the retrieval pipeline."""
+"""Query expansion helpers for the retrieval pipeline."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
 from website.features.rag_pipeline.adapters.pool_factory import get_generation_pool
 from website.features.rag_pipeline.types import QueryClass
 
 
 class QueryTransformer:
-    """Generate retrieval variants based on the routed query class."""
+    """Generate retrieval variants based on the routed query class.
+
+    iter-04: when ``entities`` is supplied (post-metadata extraction), the
+    decomposition / multi-query prompts instruct the LLM to preserve every
+    proper-noun entity verbatim in every variant, and a deterministic
+    post-check appends the primary entity to any variant that lost it. This
+    is the q10 fix: prevents proper-noun loss across thematic / multi-hop
+    paraphrasing, which previously caused the 'Steve Jobs and Naval Ravikant'
+    query to drop the Stanford zettel from retrieval.
+    """
 
     def __init__(self, pool: Any | None = None):
         self._pool = pool
 
-    async def transform(self, query: str, cls: QueryClass) -> list[str]:
+    async def transform(
+        self,
+        query: str,
+        cls: QueryClass,
+        *,
+        entities: list[str] | None = None,
+    ) -> list[str]:
+        ents = _clean_entities(entities)
         if cls is QueryClass.LOOKUP:
             return [query]
         if cls is QueryClass.VAGUE:
-            return _dedupe([query, await self._hyde(query)])
-        if cls is QueryClass.MULTI_HOP:
-            return _dedupe([query, *await self._decompose(query, n=3)])
-        if cls is QueryClass.THEMATIC:
-            return _dedupe([query, *await self._multi_query(query, n=3)])
-        if cls is QueryClass.STEP_BACK:
-            return _dedupe([query, await self._step_back(query)])
-        return [query]
+            variants = [query, await self._hyde(query)]
+        elif cls is QueryClass.MULTI_HOP:
+            variants = [query, *await self._decompose(query, n=3, entities=ents)]
+        elif cls is QueryClass.THEMATIC:
+            variants = [query, *await self._multi_query(query, n=3, entities=ents)]
+        elif cls is QueryClass.STEP_BACK:
+            variants = [query, await self._step_back(query)]
+        else:
+            return [query]
+        anchored = _enforce_entity_anchoring(variants, ents)
+        return _dedupe(anchored)
 
     async def _hyde(self, query: str) -> str:
         return await self._single_variant(
@@ -33,17 +52,29 @@ class QueryTransformer:
             f"{query}"
         )
 
-    async def _decompose(self, query: str, n: int) -> list[str]:
-        return await self._multi_variant(
-            f"Break this question into {n} short sub-questions, one per line:\n{query}",
-            n,
-        )
+    async def _decompose(self, query: str, n: int, entities: list[str] | None = None) -> list[str]:
+        if entities:
+            ent_str = ", ".join(entities)
+            prompt = (
+                f"Break this question into {n} short sub-questions, one per line. "
+                f"Every sub-question MUST mention at least one of these named entities verbatim: {ent_str}.\n"
+                f"Query: {query}"
+            )
+        else:
+            prompt = f"Break this question into {n} short sub-questions, one per line:\n{query}"
+        return await self._multi_variant(prompt, n)
 
-    async def _multi_query(self, query: str, n: int) -> list[str]:
-        return await self._multi_variant(
-            f"Generate {n} alternative search reformulations for this question, one per line:\n{query}",
-            n,
-        )
+    async def _multi_query(self, query: str, n: int, entities: list[str] | None = None) -> list[str]:
+        if entities:
+            ent_str = ", ".join(entities)
+            prompt = (
+                f"Generate {n} alternative search reformulations for this question, one per line. "
+                f"Every reformulation MUST keep these named entities verbatim: {ent_str}.\n"
+                f"Query: {query}"
+            )
+        else:
+            prompt = f"Generate {n} alternative search reformulations for this question, one per line:\n{query}"
+        return await self._multi_variant(prompt, n)
 
     async def _step_back(self, query: str) -> str:
         return await self._single_variant(
@@ -102,3 +133,40 @@ def _dedupe(values: list[str]) -> list[str]:
             seen.add(cleaned)
     return deduped
 
+
+def _clean_entities(entities: Iterable[str] | None) -> list[str]:
+    if not entities:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for ent in entities:
+        if not isinstance(ent, str):
+            continue
+        cleaned = ent.strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cleaned)
+    return out[:4]
+
+
+def _enforce_entity_anchoring(variants: list[str], entities: list[str]) -> list[str]:
+    """Belt-and-suspenders: even when the LLM ignores the prompt instruction,
+    deterministically append the primary entity to any variant that lost it.
+    The first variant (verbatim user query) is left untouched.
+    """
+    if not entities or not variants:
+        return variants
+    primary = entities[0]
+    out: list[str] = []
+    entity_lower = [e.lower() for e in entities]
+    for i, variant in enumerate(variants):
+        v_lc = variant.lower()
+        if i == 0 or any(e in v_lc for e in entity_lower):
+            out.append(variant)
+        else:
+            out.append(f"{variant} (regarding {primary})")
+    return out

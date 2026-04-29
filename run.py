@@ -43,6 +43,12 @@ def main() -> int:
         # With FlashRank in master COW (§2.5), restart cost is ~10-50ms only.
         "--max-requests", os.environ.get("GUNICORN_MAX_REQUESTS", "100"),
         "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "20"),
+        # iter-04: cap OS accept-queue. Default gunicorn backlog is 2048
+        # which lets the kernel accept 2048 SYNs into a 240 s death-trail
+        # under burst load. With 2 workers x (2 sem + 8 queue) = 20 in-
+        # flight + 4x headroom = 64. Beyond that we'd rather fail-fast at
+        # the listen() boundary so Caddy can hand back 503.
+        "--backlog", os.environ.get("GUNICORN_BACKLOG", "64"),
         "website.main:app",
     ]
     return subprocess.call(cmd)

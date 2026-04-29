@@ -11,6 +11,10 @@ from uuid import UUID
 
 from website.features.rag_pipeline.errors import EmptyScopeError
 from website.features.rag_pipeline.query.metadata import QueryMetadata
+from website.features.rag_pipeline.retrieval.kasten_freq import (
+    KastenFrequencyStore,
+    compute_frequency_penalty,
+)
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
 
@@ -48,11 +52,33 @@ _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
 # context-assembly stage via a similarity floor (see context/assembler.py).
 _MAX_CHUNKS_PER_NODE = 3
 
+# iter-04: xQuAD diversity-by-construction (Abdollahpouri et al. 2017).
+# After all per-candidate score adjustments, we pick top-K slot-by-slot
+# greedy-maximising lambda*rel - (1-lambda)*overlap_with_already_picked,
+# where overlap is per-node_id (so a magnet that already has a chunk in
+# the picked set gets demoted for subsequent slots). Replaces a flat
+# sort that let one node monopolize the top of the candidate list.
+_XQUAD_LAMBDA = 0.7
+
+# iter-04 consensus-suppress threshold: if a candidate appears in >= this
+# fraction of variants, suppress the per-variant consensus bump (it's a
+# magnet, not a relevance signal). The bump is at line ~169.
+_CONSENSUS_SUPPRESS_FRACTION = 0.5
+
 
 class HybridRetriever:
-    def __init__(self, embedder: Any, supabase: Any | None = None):
+    def __init__(
+        self,
+        embedder: Any,
+        supabase: Any | None = None,
+        *,
+        kasten_freq_store: KastenFrequencyStore | None = None,
+    ):
         self._supabase = supabase or get_supabase_client()
         self._embedder = embedder
+        # iter-04: anti-magnet per-Kasten frequency prior. Optional; when
+        # None we skip the prior (cold-start / single-Kasten dev paths).
+        self._kasten_freq = kasten_freq_store or KastenFrequencyStore(self._supabase)
 
     async def retrieve(
         self,
@@ -95,15 +121,30 @@ class HybridRetriever:
             ).execute()
             return response.data or []
 
+        # iter-04: kick off the per-Kasten frequency lookup in parallel with
+        # the hybrid RPCs so it's free latency-wise.
+        freq_task = asyncio.create_task(
+            self._kasten_freq.get_frequencies(sandbox_id)
+        )
+
         results = await asyncio.gather(*[
             _search(query_text, query_vec)
             for query_text, query_vec in zip(query_variants, embeddings)
         ])
+
+        kasten_freqs: dict[str, int] = {}
+        try:
+            kasten_freqs = await freq_task
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            _log.debug("kasten_freq fetch failed: %s", exc)
+            kasten_freqs = {}
+
         return self._dedup_and_fuse(
             results,
             query_variants=query_variants,
             query_metadata=query_metadata,
             query_class=query_class,
+            kasten_freqs=kasten_freqs,
         )
 
     async def _resolve_nodes(
@@ -136,6 +177,7 @@ class HybridRetriever:
         query_variants: list[str] | None = None,
         query_metadata: QueryMetadata | None = None,
         query_class: QueryClass | None = None,
+        kasten_freqs: dict[str, int] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
@@ -165,8 +207,18 @@ class HybridRetriever:
         for candidate in by_key.values():
             kinds_by_node.setdefault(candidate.node_id, set()).add(candidate.kind.value)
 
+        # iter-04 consensus-suppress: a node hit by EVERY variant in a 3+
+        # variant fan-out is a topic-magnet (q10 root cause: web-tools-for
+        # hit all 3 paraphrases of the Steve Jobs question and won by the
+        # consensus bump alone). Suppress the bump only in that magnet
+        # case — small 2-variant fan-outs and legit 2-of-3 matches still
+        # get the original consensus boost.
+        total_variants = max(len(multi_variant), 1)
         for key, candidate in by_key.items():
-            candidate.rrf_score += 0.05 * (variant_hits[key] - 1)
+            hits = variant_hits[key]
+            is_magnet = hits == total_variants and total_variants >= 3
+            if hits > 1 and not is_magnet:
+                candidate.rrf_score += 0.05 * (hits - 1)
             # Title/name-match boost — queries that mention a zettel name
             # verbatim should reliably surface that zettel even when dense /
             # FTS signals are weak (e.g. stub bodies, rare embeddings).
@@ -213,11 +265,77 @@ class HybridRetriever:
                     len(by_key),
                 )
 
+        # iter-04 anti-magnet per-Kasten frequency prior. Multiplicatively
+        # damps the score of nodes that have a high top-1 hit history within
+        # this Kasten. Floor of 50 total hits prevents cold-start over-
+        # penalisation; cap at 0.5 so a magnet can still rank where genuine
+        # signal puts it.
+        if kasten_freqs:
+            total_hits = sum(kasten_freqs.values())
+            for candidate in by_key.values():
+                penalty = compute_frequency_penalty(
+                    kasten_freqs.get(candidate.node_id, 0),
+                    total_hits_in_kasten=total_hits,
+                )
+                if penalty < 1.0:
+                    candidate.rrf_score *= penalty
+
         # sorted() is stable: ties preserve insertion order, which mirrors the
         # row order across query variants — critical for deterministic ranking
         # when multiple candidates land on identical final scores.
         ordered = sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
+
+        # iter-04 xQuAD slot-by-slot selection (Abdollahpouri 2017). Replaces
+        # the flat sort with a greedy diversity-by-construction picker:
+        # at each slot, pick the candidate that maximises
+        # lambda*rel - (1-lambda)*overlap_with_already_picked, where overlap
+        # counts node_ids already in the picked set. Diversity-aware ranking
+        # is what prevents one node monopolising the top-K (q5 fix).
+        ordered = _xquad_select(ordered, lam=_XQUAD_LAMBDA)
+
         return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
+
+
+def _xquad_select(
+    candidates: list[RetrievalCandidate],
+    *,
+    lam: float = 0.7,
+) -> list[RetrievalCandidate]:
+    """xQuAD slot-by-slot diversity selector.
+
+    Greedy: at each slot, pick the candidate maximising
+    ``lam * rel - (1 - lam) * already_picked_count_for_node``. ``rel`` is
+    the candidate's current ``rrf_score`` (already includes all boosts and
+    the frequency prior). The penalty is per-``node_id``, so a magnet with
+    one chunk picked gets a -0.05 ish demotion when its second chunk would
+    otherwise win the next slot.
+
+    Returns a list with the same length as the input (no candidates are
+    dropped — only reordered). Stable for ties via insertion order, since
+    we iterate the input list in deterministic order.
+    """
+    if not candidates:
+        return candidates
+    if len(candidates) == 1:
+        return list(candidates)
+    remaining = list(candidates)
+    picked: list[RetrievalCandidate] = []
+    picked_node_counts: dict[str, int] = {}
+    one_minus_lam = 1.0 - lam
+    while remaining:
+        best_idx = 0
+        best_score = float("-inf")
+        for i, candidate in enumerate(remaining):
+            relevance = candidate.rrf_score
+            overlap = picked_node_counts.get(candidate.node_id, 0)
+            xq = lam * relevance - one_minus_lam * overlap
+            if xq > best_score:
+                best_score = xq
+                best_idx = i
+        chosen = remaining.pop(best_idx)
+        picked.append(chosen)
+        picked_node_counts[chosen.node_id] = picked_node_counts.get(chosen.node_id, 0) + 1
+    return picked
 
 
 def _cap_per_node(

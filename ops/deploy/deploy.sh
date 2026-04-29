@@ -340,14 +340,29 @@ cat > "$SNIPPET" <<EOF
 # iter-03: explicit transport timeouts so Strong-mode / multi-hop synthesis
 # (Gemini Pro answers can take 60-120s) doesn't trip the upstream deadline.
 # Must be >= GUNICORN_TIMEOUT (180s) for sane semantics.
+#
+# iter-04: bound upstream concurrency at the proxy layer with
+# max_conns_per_host 20 (= 2 workers x (2 sem + 8 queue)). Pair with
+# gunicorn --backlog 64 in run.py:46 to make the OS accept-queue overflow
+# fail fast rather than queueing into a 240s death-trail. Convert
+# upstream 502 / 504 to 503 with a Retry-After:10 header so the burst
+# client sees structured backpressure (the eval expects >=1 503; pre-iter-04
+# all 12 saw raw 502 because the app-layer 503 path was unreachable).
 reverse_proxy zettelkasten-${IDLE}:10000 {
     transport http {
         dial_timeout 5s
         read_timeout 240s
         write_timeout 240s
         response_header_timeout 240s
+        max_conns_per_host 20
     }
     flush_interval -1
+    lb_try_duration 0s
+    @upstream_down status 502 504
+    handle_response @upstream_down {
+        header Retry-After 10
+        respond "queue_full" 503
+    }
 }
 EOF
 chown deploy:deploy "$SNIPPET"

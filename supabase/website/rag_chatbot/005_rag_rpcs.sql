@@ -163,11 +163,46 @@ BEGIN
         ORDER BY ts_rank_cd(c.fts, websearch_to_tsquery('english', p_query_text)) DESC
         LIMIT p_limit * 3
     ),
-    -- ── Stream 3: Graph expansion from top-5 dense_summary seeds ───────────
+    -- ── Stream 3: Graph expansion from MMR-diversified dense_summary seeds ──
     --    Recursive CTE bounded by p_graph_depth (1 for lookup, 2 for thematic).
     --    Must stay within effective node set.
+    --
+    --    iter-04 MMR: previously SELECT WHERE rank <= 5 took the top-5
+    --    by raw dense rank, which let a topic-magnet node both *seed* the
+    --    graph walk *and* receive re-injection through its own neighbours
+    --    — the q5-class self-seeding loop. We now pick the best seed per
+    --    source_type (1 per youtube/github/web/...) before backfilling
+    --    by overall rank, so seeds are diverse-by-construction. No DPP /
+    --    learned diversification needed at this candidate-set size.
+    seeds_ranked AS (
+        SELECT ds.node_id,
+               ds.rank,
+               n.source_type,
+               ROW_NUMBER() OVER (
+                   PARTITION BY n.source_type
+                   ORDER BY ds.rank
+               ) AS source_type_rank,
+               ROW_NUMBER() OVER (ORDER BY ds.rank) AS overall_rank
+        FROM dense_summary ds
+        LEFT JOIN kg_nodes n
+            ON n.user_id = p_user_id AND n.id = ds.node_id
+    ),
     seeds AS (
-        SELECT node_id, rank FROM dense_summary WHERE rank <= 5
+        -- Take top-1 per source type (diversity tier).
+        SELECT node_id, rank
+        FROM seeds_ranked
+        WHERE source_type_rank = 1
+        UNION
+        -- Backfill remaining slots up to 5 by overall rank, skipping
+        -- already-included node_ids (diversity tier may have <5 entries
+        -- when the Kasten has few source types).
+        SELECT node_id, rank
+        FROM seeds_ranked
+        WHERE overall_rank <= 5
+          AND node_id NOT IN (
+              SELECT node_id FROM seeds_ranked WHERE source_type_rank = 1
+          )
+        LIMIT 5
     ),
     graph_walk AS (
         SELECT s.node_id AS nid, 0 AS depth, s.rank AS seed_rank, ARRAY[s.node_id] AS path

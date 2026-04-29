@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import os
+import re
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -42,6 +44,7 @@ from website.features.rag_pipeline.generation.sanitize import (
 )
 from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
 from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor
+from website.features.rag_pipeline.query.router import apply_class_overrides
 from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner
 from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 
@@ -49,6 +52,100 @@ from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
 # but operators can disable via ``RAG_KG_FIRST_ENABLED=false`` for incident
 # rollback without redeploying.
 _KG_FIRST_ENABLED = os.environ.get("RAG_KG_FIRST_ENABLED", "true").lower() == "true"
+
+# iter-04: critic-retry hardening (the q9 fix — first-pass refusal scored
+# unsupported re-ran the whole pipeline for 46.7s and produced an identical
+# refusal). See research findings — this block implements:
+#   * refusal-regex short-circuit (CRAG-style "Incorrect" termination)
+#   * top-rerank-score floor short-circuit
+#   * deja-vu hash to prevent identical retry
+#   * 12s wall-clock budget cap (asyncio.wait_for)
+#   * mutation matrix so retry materially differs from first attempt
+# Tunable via env: RAG_RETRY_BUDGET_S=12.0
+_RETRY_BUDGET_S = float(os.environ.get("RAG_RETRY_BUDGET_S", "12.0"))
+_RETRY_TOP_SCORE_FLOOR = float(os.environ.get("RAG_RETRY_TOP_SCORE_FLOOR", "0.10"))
+
+# Refusal regex — matches the canonical no-context phrases the synth model
+# produces when grounding is missing. Drawn from REFUSAL_PHRASE plus the
+# observed q5/q9/q10 refusal templates. Case-insensitive.
+_REFUSAL_RE = re.compile(
+    r"(?i)("
+    r"\bno relevant\b"
+    r"|\bno information\b"
+    r"|\bcannot find\b"
+    r"|\binsufficient context\b"
+    r"|\bi don'?t have\b"
+    r"|\bdo not have\b"
+    r"|\bunable to (?:find|locate|answer)\b"
+    r"|\bnot covered in\b"
+    r"|\bnot mentioned in\b"
+    r"|\bcan'?t find that\b"
+    r"|\bnot found in your zettels\b"
+    r")"
+)
+
+
+class _RetryDejaVu(Exception):
+    """Raised when a retry would replay identical params; caller short-circuits."""
+    pass
+
+
+def _retry_param_hash(qc: "QueryClass", variants: list[str]) -> str:
+    payload = f"{getattr(qc, 'value', qc)}|{'||'.join(sorted(variants or []))}"
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()
+
+
+def _has_refusal_phrase(text: str) -> bool:
+    if not text:
+        return False
+    return bool(_REFUSAL_RE.search(text))
+
+
+def _top_candidate_score(used_candidates) -> float:
+    best = 0.0
+    for candidate in used_candidates or []:
+        score = candidate.rerank_score if candidate.rerank_score is not None else (candidate.rrf_score or 0.0)
+        if score > best:
+            best = float(score)
+    return best
+
+
+def _should_skip_retry(
+    *,
+    answer_text: str,
+    used_candidates,
+    query_class: "QueryClass",
+    metadata: QueryMetadata,
+) -> tuple[bool, str | None]:
+    """Decide whether to short-circuit the unsupported→retry path.
+
+    Returns ``(skip, reason)``. ``reason`` is suitable for the critic verdict
+    tag and for tracing.
+    """
+    if _has_refusal_phrase(answer_text):
+        return True, "refusal_regex"
+    if not used_candidates:
+        return True, "no_candidates"
+    if _top_candidate_score(used_candidates) < _RETRY_TOP_SCORE_FLOOR:
+        return True, "evaluator_low_score"
+    if query_class is QueryClass.VAGUE:
+        ent_count = len(metadata.entities or []) + len(metadata.authors or [])
+        if ent_count < 2:
+            return True, "vague_low_entity"
+    return False, None
+
+
+# iter-04 retry-mutation matrix. Original class -> retry class. Guarantees the
+# retry produces a non-trivially-different candidate set (vs the historical
+# `_retry_with_thematic_context` that re-ran the same class for half the
+# original classes, producing q9-style identical refusals).
+_RETRY_MUTATION = {
+    QueryClass.LOOKUP: QueryClass.THEMATIC,
+    QueryClass.MULTI_HOP: QueryClass.STEP_BACK,
+    QueryClass.STEP_BACK: QueryClass.THEMATIC,
+    QueryClass.THEMATIC: QueryClass.MULTI_HOP,
+    QueryClass.VAGUE: QueryClass.STEP_BACK,
+}
 
 langfuse = get_client()
 
@@ -78,6 +175,30 @@ _LOW_CONFIDENCE_DETAILS_TAG = (
     "Citations don't fully cover this claim. The answer is the model's best draft."
     "</details>"
 )
+
+
+def _dedupe_anchor_entities(values: list[str]) -> list[str]:
+    """Build the entity-anchor list passed to the transformer.
+
+    Combines authors + entities from metadata, dedupes case-insensitively
+    while preserving casing, drops empties, and caps at 4. Capping is
+    important: too many anchors over-constrain the LLM prompt and the
+    paraphrases collapse onto a single phrasing.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        cleaned = value.strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cleaned)
+    return out[:4]
 
 
 def _wrap_with_low_confidence_tag(draft_answer: str) -> str:
@@ -271,44 +392,68 @@ class RAGOrchestrator:
         standalone = await self._rewriter.rewrite(query.content, history_payload)
         _log_rss("pipeline.rewriter_done")
 
-        # iter-03 §B (2026-04-30): metadata back on; offset the Gemini cost
-        # by running transformer + metadata IN PARALLEL after the router.
-        # Earlier parallel run burned rate-limits when cooldowns were a flat
-        # 10s; we now use exp-backoff with Retry-After honor (key_pool.py
-        # _cooldown_for_attempt) so concurrent burst recovers gracefully.
-        # Net wall-clock for prepare_query: rewriter + router + max(
-        # transform, metadata) ≈ 3 sequential Gemini latencies instead of 4
-        # — back to iter-2 timing but WITH the entity enrichment.
-        # Disable via RAG_METADATA_EXTRACTOR_ENABLED=false if quota burns.
-        query_class = await self._router.classify(standalone)
-        _log_rss("pipeline.router_done", qc=str(query_class))
+        # iter-04: sequence metadata → class-override → entity-anchored
+        # transformer instead of running transformer ‖ metadata in parallel.
+        # The parallel branch saved ~1-2s but blocked the q10 / q5 fix
+        # because the transformer needs ``metadata.authors`` (post-A-pass)
+        # to anchor proper-noun entities into every variant. The Gemini
+        # cost stays identical (router + metadata + transform = 3 calls);
+        # only the wall-clock changes from max(t,m) to t+m. Per the
+        # Quality First rule (CLAUDE.md), correctness wins over the ~1-2s
+        # latency at this stage.
+        # Disable via RAG_METADATA_EXTRACTOR_ENABLED=false to fall back to
+        # the parallel/no-entity behaviour.
+        llm_query_class = await self._router.classify(standalone)
+        _log_rss("pipeline.router_done", qc=str(llm_query_class))
 
-        async def _transform_branch():
-            v = await self._transformer.transform(standalone, query_class)
-            _log_rss("pipeline.transformer_done", variants=len(v))
-            return v
-
-        async def _metadata_branch():
-            _metadata_enabled = (
-                os.environ.get("RAG_METADATA_EXTRACTOR_ENABLED", "true").lower()
-                not in ("false", "0", "no", "off")
-            )
-            if self._metadata_extractor is None or not _metadata_enabled:
-                return QueryMetadata()
+        _metadata_enabled = (
+            os.environ.get("RAG_METADATA_EXTRACTOR_ENABLED", "true").lower()
+            not in ("false", "0", "no", "off")
+        )
+        if self._metadata_extractor is None or not _metadata_enabled:
+            metadata = QueryMetadata()
+        else:
             try:
-                m = await self._metadata_extractor.extract(
-                    standalone, query_class=query_class
+                metadata = await self._metadata_extractor.extract(
+                    standalone, query_class=llm_query_class
                 )
             except Exception as exc:  # noqa: BLE001 - best-effort enrichment
                 logger.warning("query metadata extract failed: %s", exc)
-                m = QueryMetadata()
-            _log_rss("pipeline.metadata_done")
-            return m
+                metadata = QueryMetadata()
+        _log_rss("pipeline.metadata_done")
 
-        variants, metadata = await asyncio.gather(
-            _transform_branch(),
-            _metadata_branch(),
+        # iter-04: vote-table override — class-auto-correct after metadata.
+        # See website/features/rag_pipeline/query/router.py:apply_class_overrides
+        # for the full priority order. Logged at DEBUG so we can audit
+        # router-LLM drift in production.
+        query_class, override_reason = apply_class_overrides(
+            standalone,
+            llm_query_class,
+            person_entities=list(metadata.authors or []),
         )
+        if override_reason:
+            logger.info(
+                "router class override: llm=%s -> final=%s (reason=%s)",
+                llm_query_class.value,
+                query_class.value,
+                override_reason,
+            )
+        _log_rss(
+            "pipeline.class_overridden",
+            qc=str(query_class),
+            override=override_reason or "none",
+        )
+
+        # iter-04: entity-anchored transformer. Pulls authors + entities from
+        # metadata so proper nouns survive paraphrase / decomposition.
+        anchor_entities = _dedupe_anchor_entities(
+            list(metadata.authors or []) + list(metadata.entities or [])
+        )
+        variants = await self._transformer.transform(
+            standalone, query_class, entities=anchor_entities
+        )
+        _log_rss("pipeline.transformer_done", variants=len(variants))
+
         # iter-03 §B (2026-04-29): release the metadata-extract residual
         # (Gemini structured-output protobuf buffers, ~140 MB) before
         # retrieval/stage-1/stage-2 begin.
@@ -526,6 +671,15 @@ class RAGOrchestrator:
         generation: _GeneratedAnswer,
     ) -> _PipelineResult:
         t0 = time.monotonic()
+        # iter-04: keep a handle to the pre-citation-validation candidate
+        # set so the unsupported-skip check below can distinguish "no
+        # candidates from retrieval" (genuine empty Kasten -> skip retry)
+        # from "candidates present but synth dropped the citation tag"
+        # (retry might help). Without this, a streaming-path answer that
+        # streamed tokens without the [id=...] tag would null out the
+        # used_candidates list and trip the no_candidates short-circuit
+        # by accident.
+        pre_validation_candidates = list(context.used_candidates)
         answer_text = sanitize_answer(generation.content)
         valid_ids = {candidate.node_id for candidate in context.used_candidates}
         answer_text, _dropped_citations = strip_invalid_citations(answer_text, valid_ids)
@@ -549,37 +703,103 @@ class RAGOrchestrator:
         used_candidates = context.used_candidates
         active_generation = generation
 
-        if verdict == "unsupported":
-            retry_context, retry_generation, retry_verdict, retry_details = await self._retry_with_thematic_context(
-                query=query,
-                user_id=user_id,
-                prepared=prepared,
-            )
-            used_candidates = retry_context.used_candidates
-            active_generation = retry_generation
+        # iter-04 partial-verdict gate: a "partial" with zero citations is
+        # materially equivalent to unsupported (the answer is ungrounded).
+        # Escalate so it goes through the same refusal-aware skip/retry
+        # path. We deliberately do NOT escalate partials with 1+ citation
+        # from any source type — partial-with-evidence is a legitimate UX
+        # state (see test_vague_query_partial_still_returns_answer).
+        if verdict == "partial":
+            tentative_citations = self._build_citations(context.used_candidates)
+            if not tentative_citations:
+                verdict = "unsupported"
+                logger.debug("partial->unsupported escalation: zero citations")
 
-            retry_valid_ids = {
-                candidate.node_id for candidate in retry_context.used_candidates
-            }
-            retry_answer = sanitize_answer(retry_generation.content)
-            retry_answer, _retry_dropped = strip_invalid_citations(
-                retry_answer, retry_valid_ids
+        if verdict == "unsupported":
+            # iter-04: feed the ORIGINAL un-substituted generation.content to
+            # the refusal-regex check. answer_text may have been replaced by
+            # REFUSAL_PHRASE above when citation validation failed (streaming
+            # path that lost the [id=...] tag), and that substitution is NOT
+            # the model genuinely refusing — retry might recover. Same logic
+            # for used_candidates: the validation block clears the list, but
+            # the pre-validation set is what matters for "is the Kasten
+            # actually empty".
+            skip, skip_reason = _should_skip_retry(
+                answer_text=generation.content or "",
+                used_candidates=pre_validation_candidates,
+                query_class=prepared.query_class,
+                metadata=prepared.metadata,
             )
-            if retry_verdict == "supported":
-                verdict = "retried_supported"
-                details = retry_details
-                answer_text = retry_answer
+            if skip:
+                # Refusal-aware short-circuit (q9 fix). Don't burn another
+                # ~45s pipeline pass producing the same refusal. The skip
+                # reason ("refusal_regex" | "no_candidates" |
+                # "evaluator_low_score" | "vague_low_entity") is recorded
+                # in details so it surfaces via critic_notes and the
+                # observability span.
+                verdict = "unsupported_no_retry"
+                if not isinstance(details, dict):
+                    details = {}
+                details = {**details, "skip_reason": skip_reason}
+                answer_text = _wrap_with_low_confidence_tag(answer_text)
                 replaced_text = answer_text
+                logger.info(
+                    "critic-retry short-circuit: reason=%s qc=%s",
+                    skip_reason,
+                    getattr(prepared.query_class, "value", prepared.query_class),
+                )
             else:
-                # Spec 2A.2 / iter-03 plan §3.6 prong 2: do NOT canned-refuse
-                # on a 2nd-pass unsupported verdict. Return the retry draft
-                # with a collapsible low-confidence inline tag so the user
-                # still sees the model's best attempt and is informed that
-                # citations did not fully cover the claim.
-                verdict = "retried_low_confidence"
-                details = retry_details
-                answer_text = _wrap_with_low_confidence_tag(retry_answer)
-                replaced_text = answer_text
+                first_attempt_hash = _retry_param_hash(
+                    prepared.query_class, prepared.variants
+                )
+                try:
+                    retry_context, retry_generation, retry_verdict, retry_details = (
+                        await asyncio.wait_for(
+                            self._retry_with_mutated_context(
+                                query=query,
+                                user_id=user_id,
+                                prepared=prepared,
+                                first_attempt_hash=first_attempt_hash,
+                            ),
+                            timeout=_RETRY_BUDGET_S,
+                        )
+                    )
+                    used_candidates = retry_context.used_candidates
+                    active_generation = retry_generation
+                    retry_valid_ids = {
+                        c.node_id for c in retry_context.used_candidates
+                    }
+                    retry_answer = sanitize_answer(retry_generation.content)
+                    retry_answer, _retry_dropped = strip_invalid_citations(
+                        retry_answer, retry_valid_ids
+                    )
+                    if retry_verdict == "supported":
+                        verdict = "retried_supported"
+                        details = retry_details
+                        answer_text = retry_answer
+                        replaced_text = answer_text
+                    else:
+                        # 2nd-pass still unsupported — surface the retry
+                        # draft with the spec §3.6 low-confidence tag.
+                        verdict = "retried_low_confidence"
+                        details = retry_details
+                        answer_text = _wrap_with_low_confidence_tag(retry_answer)
+                        replaced_text = answer_text
+                except asyncio.TimeoutError:
+                    verdict = "retry_budget_exceeded"
+                    answer_text = _wrap_with_low_confidence_tag(answer_text)
+                    replaced_text = answer_text
+                    logger.warning(
+                        "critic-retry budget exceeded (%.1fs); serving first-pass answer",
+                        _RETRY_BUDGET_S,
+                    )
+                except _RetryDejaVu:
+                    verdict = "retry_skipped_dejavu"
+                    answer_text = _wrap_with_low_confidence_tag(answer_text)
+                    replaced_text = answer_text
+                    logger.info(
+                        "critic-retry deja-vu: mutation matrix produced identical params"
+                    )
 
         turn = AnswerTurn(
             content=answer_text,
@@ -600,31 +820,67 @@ class RAGOrchestrator:
             turn=turn,
         )
 
+        # iter-04 anti-magnet: record a top-1 hit for this Kasten so the
+        # next query in this Kasten gets the frequency-prior demotion if
+        # this node is becoming a magnet. Fire-and-forget — no latency
+        # cost, never raises (`record_hit` swallows all errors). Only
+        # fires when (a) we have a sandbox/Kasten id, (b) the verdict is
+        # not a refusal/retry-budget-exceeded path, and (c) the retriever
+        # exposes a kasten-freq store. Skipped for sandbox-less sessions
+        # (no Kasten = no per-context frequency table).
+        sandbox_id = getattr(query, "sandbox_id", None)
+        kasten_freq = getattr(self._retriever, "_kasten_freq", None)
+        if (
+            sandbox_id is not None
+            and kasten_freq is not None
+            and turn.citations
+            and verdict in ("supported", "partial", "retried_supported")
+        ):
+            top_node_id = turn.citations[0].node_id
+            try:
+                asyncio.create_task(
+                    kasten_freq.record_hit(
+                        kasten_id=sandbox_id,
+                        node_id=top_node_id,
+                    )
+                )
+            except RuntimeError:
+                # No running event loop (rare; sync test paths). Drop
+                # silently — the prior is best-effort.
+                pass
+
         return _PipelineResult(turn=turn, replaced_text=replaced_text)
 
-    async def _retry_with_thematic_context(self, *, query, user_id, prepared: _PreparedQuery):
-        # iter-03 §B (2026-04-30): class-aware retry. The prior path always
-        # re-fanned-out as THEMATIC regardless of original class — for
-        # lookup queries this DILUTED the correct zettel by mixing in
-        # broad thematic neighbours, producing the q3-style "right zettel
-        # at first pass, lost it on retry" failure mode. Now:
-        #   * lookup / lookup_recency → retry with same class but broader
-        #     variant set (bigger top_k, lower stage1_k cut)
-        #   * multi_hop / step_back / vague → keep original class on retry
-        #   * thematic / unknown → fall back to historical THEMATIC retry
+    async def _retry_with_mutated_context(
+        self,
+        *,
+        query,
+        user_id,
+        prepared: _PreparedQuery,
+        first_attempt_hash: str,
+    ):
+        """iter-04 mutation-matrix retry.
+
+        Replaces the historical ``_retry_with_thematic_context`` which kept
+        the same class for half the originals and produced q9-style identical
+        retries. Mutation matrix at ``_RETRY_MUTATION`` guarantees the retry
+        class differs from the first attempt so the retrieval candidate set
+        is materially different. Raises ``_RetryDejaVu`` if the mutated params
+        still hash-match the first attempt.
+        """
         original_qc = prepared.query_class
-        if original_qc in (
-            QueryClass.LOOKUP,
-            QueryClass.MULTI_HOP,
-            QueryClass.STEP_BACK,
-            QueryClass.VAGUE,
-        ):
-            retry_qc = original_qc
-        else:
-            retry_qc = QueryClass.THEMATIC
-        retry_variants = await self._transformer.transform(
-            prepared.standalone, retry_qc
+        retry_qc = _RETRY_MUTATION.get(original_qc, QueryClass.THEMATIC)
+        anchor_entities = _dedupe_anchor_entities(
+            list(prepared.metadata.authors or [])
+            + list(prepared.metadata.entities or [])
         )
+        retry_variants = await self._transformer.transform(
+            prepared.standalone, retry_qc, entities=anchor_entities
+        )
+        retry_hash = _retry_param_hash(retry_qc, retry_variants)
+        if retry_hash == first_attempt_hash:
+            raise _RetryDejaVu()
+
         retry_context = await self._retrieve_context(
             query=query,
             user_id=user_id,
