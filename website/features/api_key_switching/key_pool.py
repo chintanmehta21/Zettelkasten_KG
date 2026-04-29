@@ -617,8 +617,10 @@ class GeminiKeyPool:
             except Exception as exc:
                 last_exc = exc
                 if _is_rate_limited(exc):
+                    # `position` is 0-indexed position in the attempt chain;
+                    # +1 gives the 1-indexed attempt number for exp-backoff.
                     cooldown_secs = self._mark_cooldown(
-                        key_index, model, attempt=retries, exc=exc
+                        key_index, model, attempt=position + 1, exc=exc
                     )
                     next_key_role = None
                     if position + 1 < len(chain):
@@ -629,7 +631,7 @@ class GeminiKeyPool:
                         next_key_role=next_key_role,
                     )
                     logger.warning(
-                        "Embedding rate-limited on key[%d]; cooldown %ds, trying next",
+                        "Embedding rate-limited on key[%d]; cooldown %.1fs, trying next",
                         key_index,
                         cooldown_secs,
                     )
