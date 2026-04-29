@@ -271,29 +271,44 @@ class RAGOrchestrator:
         standalone = await self._rewriter.rewrite(query.content, history_payload)
         _log_rss("pipeline.rewriter_done")
 
-        query_class = await self._router.classify(standalone)
-        _log_rss("pipeline.router_done", qc=str(query_class))
+        # iter-03 §B (2026-04-29): the prior sequential chain (router →
+        # transformer → metadata) burned ~18s of pure Gemini latency. Router
+        # output is needed by transformer (transform takes query_class), so
+        # those two stay sequential. But metadata_extract only needs
+        # `standalone` — fire it in parallel with router+transformer to
+        # collapse 3 serial Gemini calls into 2 wall-clock latencies.
+        # Skip metadata entirely for "fast" quality: it's enrichment-only,
+        # the retrieval planner can always degrade gracefully without it.
+        async def _classify_then_transform():
+            qc = await self._router.classify(standalone)
+            _log_rss("pipeline.router_done", qc=str(qc))
+            v = await self._transformer.transform(standalone, qc)
+            _log_rss("pipeline.transformer_done", variants=len(v))
+            return qc, v
 
-        variants = await self._transformer.transform(standalone, query_class)
-        _log_rss("pipeline.transformer_done", variants=len(variants))
-
-        metadata = QueryMetadata()
-        if self._metadata_extractor is not None:
+        async def _extract_metadata():
+            if self._metadata_extractor is None or query.quality == "fast":
+                return QueryMetadata()
             try:
-                metadata = await self._metadata_extractor.extract(
-                    standalone, query_class=query_class
+                m = await self._metadata_extractor.extract(
+                    standalone, query_class=QueryClass.LOOKUP
                 )
             except Exception as exc:  # noqa: BLE001 - best-effort enrichment
                 logger.warning("query metadata extract failed: %s", exc)
-                metadata = QueryMetadata()
+                m = QueryMetadata()
             _log_rss("pipeline.metadata_done")
-            # iter-03 §B (2026-04-29): the structured-output Gemini call in
-            # the metadata extractor adds ~140 MB of protobuf parse buffers.
-            # Release before stage-1 / stage-2 to keep baseline low at the
-            # forward-pass entry. Cheap (5-15ms gc + malloc_trim).
-            from website.api._mem_release import aggressive_release as _ar
-            _ar()
-            _log_rss("pipeline.metadata_released")
+            return m
+
+        (query_class, variants), metadata = await asyncio.gather(
+            _classify_then_transform(),
+            _extract_metadata(),
+        )
+        # iter-03 §B (2026-04-29): release the metadata-extract residual
+        # (Gemini structured-output protobuf buffers, ~140 MB) before
+        # retrieval/stage-1/stage-2 begin.
+        from website.api._mem_release import aggressive_release as _ar
+        _ar()
+        _log_rss("pipeline.prepare_released")
 
         return _PreparedQuery(
             session_id=session_id,
