@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -164,14 +165,85 @@ class RAGOrchestrator:
 
     @observe(name="rag.answer")
     async def answer(self, *, query, user_id, graph_weight_override: float | None = None):
+        # iter-03 §B (2026-04-29): SLO budget. Soft (5s) → log warning, no
+        # behavior change. Hard (20s) → cancel pipeline, return polite
+        # low-confidence fallback. Both internal-only — the user-facing
+        # answer looks normal, never says "we timed out". Set
+        # RAG_LATENCY_HARD_S=0 to disable (eval harness).
+        from website.api._latency_budget import (
+            LatencyBudget,
+            hard_budget_enabled,
+            hard_budget_s,
+        )
+
+        bgt = LatencyBudget()
+        if hard_budget_enabled():
+            try:
+                result = await asyncio.wait_for(
+                    self._answer_inner(
+                        query=query,
+                        user_id=user_id,
+                        graph_weight_override=graph_weight_override,
+                        bgt=bgt,
+                    ),
+                    timeout=hard_budget_s(),
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "[latency-budget] hard (%.1fs) exceeded; returning degraded answer",
+                    hard_budget_s(),
+                )
+                return self._degraded_timeout_turn(query=query, elapsed_s=bgt.elapsed_s())
+            return result.turn
+        # Hard cap disabled: original path.
+        result = await self._answer_inner(
+            query=query,
+            user_id=user_id,
+            graph_weight_override=graph_weight_override,
+            bgt=bgt,
+        )
+        return result.turn
+
+    async def _answer_inner(
+        self,
+        *,
+        query,
+        user_id,
+        graph_weight_override: float | None,
+        bgt,
+    ):
         prepared = await self._prepare_query(query=query, user_id=user_id)
+        bgt.checkpoint("after_prepare_query")
         result = await self._run_nonstream(
             query=query,
             user_id=user_id,
             prepared=prepared,
             graph_weight_override=graph_weight_override,
         )
-        return result.turn
+        bgt.checkpoint("after_run_nonstream")
+        return result
+
+    def _degraded_timeout_turn(self, *, query, elapsed_s: float):
+        """Build a low-confidence AnswerTurn that surfaces no infra detail.
+        Used when the SLO hard budget elapses. The body is deliberately
+        generic — never mentions timeouts or memory; the Knowledge UI just
+        shows it as a normal answer marked partial. Telemetry retains the
+        actual elapsed time via the warning log above."""
+        return AnswerTurn(
+            content=(
+                "I couldn't pull together a confident answer for that question "
+                "right now. Try rephrasing or breaking it into smaller parts."
+            ),
+            citations=[],
+            query_class=QueryClass.LOOKUP,
+            critic_verdict="retried_low_confidence",
+            critic_notes=None,
+            latency_ms=int(elapsed_s * 1000),
+            token_counts={"prompt": 0, "completion": 0, "total": 0},
+            llm_model="budget_timeout",
+            retrieved_node_ids=[],
+            retrieved_chunk_ids=[],
+        )
 
     @observe(name="rag.answer_stream")
     async def answer_stream(self, *, query, user_id):
@@ -276,6 +348,13 @@ class RAGOrchestrator:
                 logger.warning("query metadata extract failed: %s", exc)
                 metadata = QueryMetadata()
             _log_rss("pipeline.metadata_done")
+            # iter-03 §B (2026-04-29): the structured-output Gemini call in
+            # the metadata extractor adds ~140 MB of protobuf parse buffers.
+            # Release before stage-1 / stage-2 to keep baseline low at the
+            # forward-pass entry. Cheap (5-15ms gc + malloc_trim).
+            from website.api._mem_release import aggressive_release as _ar
+            _ar()
+            _log_rss("pipeline.metadata_released")
 
         return _PreparedQuery(
             session_id=session_id,
@@ -345,13 +424,23 @@ class RAGOrchestrator:
                     logger.warning("retrieval planner failed: %s", exc)
                     scope_filter = query.scope_filter
             from website.api._mem_trace import log_rss as _log_rss
+            # iter-03 §B (2026-04-29): trim retrieval limit. Stage-1
+            # FlashRank gets all retrieved candidates and runs MiniLM in a
+            # single batch — observed +328 MB activation peak on 20-22
+            # candidates. Cutting retrieval to 15/25 halves the stage-1
+            # forward-pass memory while still surfacing top-10 to stage-2
+            # post-trim. Quality impact is minimal: stage-2 sees the same
+            # top-10 either way. Override via RAG_RETRIEVAL_LIMIT_FAST /
+            # _STRONG for tuning.
+            _retrieval_fast = int(os.environ.get("RAG_RETRIEVAL_LIMIT_FAST", "15"))
+            _retrieval_strong = int(os.environ.get("RAG_RETRIEVAL_LIMIT_STRONG", "25"))
             candidates = await self._retriever.retrieve(
                 user_id=user_id,
                 query_variants=query_variants,
                 sandbox_id=query.sandbox_id,
                 scope_filter=scope_filter,
                 query_class=query_class,
-                limit=30 if query.quality == "fast" else 50,
+                limit=_retrieval_fast if query.quality == "fast" else _retrieval_strong,
             )
             _log_rss("pipeline.retriever_done", cands=len(candidates))
             # T20: pass query_class through so graph_score activates the
