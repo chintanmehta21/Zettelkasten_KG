@@ -39,7 +39,84 @@ def _max_retries() -> int:
 
 
 def _rate_limit_cooldown_secs() -> int:
+    """Legacy flat-cooldown env. Kept for callers/tests that still pass an int.
+    Production path now uses _cooldown_for_attempt() which scales with attempt
+    count and respects Retry-After. Default 10s acts as the base cooldown
+    when neither attempt count nor Retry-After is available."""
     return _int_env("GEMINI_RATE_LIMIT_COOLDOWN_SECS", 10)
+
+
+def _cooldown_base_s() -> float:
+    return float(_int_env("GEMINI_COOLDOWN_BASE_S", 1))
+
+
+def _cooldown_max_s() -> float:
+    return float(_int_env("GEMINI_COOLDOWN_MAX_S", 30))
+
+
+def _retry_after_from_exc(exc: Exception) -> float | None:
+    """Try to extract a Retry-After hint from a Gemini SDK error.
+    google-genai's ClientError exposes the upstream HTTP response on either
+    .response (httpx.Response) or .response_data (parsed JSON). When Google
+    sends 429, the JSON body usually contains a `retryDelay` field like
+    "23s" inside details[].retryInfo. We honor it as the floor so we don't
+    bounce 429 instantly on a per-minute limit. Returns seconds, or None."""
+    # 1. httpx Response with Retry-After header
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        ra = None
+        try:
+            ra = resp.headers.get("Retry-After") if hasattr(resp, "headers") else None
+        except Exception:  # noqa: BLE001
+            ra = None
+        if ra:
+            try:
+                return float(ra)
+            except (TypeError, ValueError):
+                pass
+    # 2. Gemini structured error body — look for retryDelay in details
+    body = getattr(exc, "response_data", None) or getattr(exc, "details", None)
+    if isinstance(body, dict):
+        for d in (body.get("error", {}).get("details") or []):
+            delay = (d or {}).get("retryDelay")
+            if isinstance(delay, str) and delay.endswith("s"):
+                try:
+                    return float(delay[:-1])
+                except ValueError:
+                    pass
+    # 3. Fallback: scrape the str() form for a "retryDelay: \"NNs\"" hint
+    text = str(exc)
+    import re
+    m = re.search(r'retryDelay[\'"\s:]*\s*[\'"]?(\d+(?:\.\d+)?)s', text)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    return None
+
+
+def _cooldown_for_attempt(
+    attempt: int, exc: Exception | None = None
+) -> float:
+    """Exponential backoff with jitter, clamped to [base, max].
+    Honors Retry-After / retryDelay from the upstream error if present.
+    `attempt` is 1-indexed (1 = first retry).
+    """
+    base = _cooldown_base_s()
+    cap = _cooldown_max_s()
+    backoff = min(cap, base * (2 ** max(0, attempt - 1)))
+    # 25% jitter so concurrent workers don't synchronize on the same wakeup.
+    import random
+    jittered = backoff * (1.0 + random.uniform(-0.25, 0.25))
+    if exc is not None:
+        hint = _retry_after_from_exc(exc)
+        if hint is not None:
+            # Use the upstream hint as a floor — never sleep less than it
+            # asked, but also don't exceed our cap (safety against rogue
+            # 600s hints during a quota outage).
+            jittered = max(jittered, min(cap, hint))
+    return max(base, jittered)
 
 
 def _fail_fast_on_all_cooldowns() -> bool:
@@ -278,8 +355,18 @@ class GeminiKeyPool:
             )
         return self._clients[key_index]
 
-    def _mark_cooldown(self, key_index: int, model: str) -> None:
-        self._cooldowns[(key_index, model)] = time.monotonic() + _rate_limit_cooldown_secs()
+    def _mark_cooldown(
+        self,
+        key_index: int,
+        model: str,
+        attempt: int = 1,
+        exc: Exception | None = None,
+    ) -> float:
+        """Mark (key, model) on cooldown using exp-backoff + Retry-After hint.
+        Returns the cooldown seconds applied so the caller can log/telemetry."""
+        cooldown_s = _cooldown_for_attempt(attempt, exc=exc)
+        self._cooldowns[(key_index, model)] = time.monotonic() + cooldown_s
+        return cooldown_s
 
     def _purge_expired(self) -> None:
         now = time.monotonic()
@@ -415,7 +502,9 @@ class GeminiKeyPool:
                 last_exc = exc
                 if _is_retryable(exc):
                     retries += 1
-                    self._mark_cooldown(key_index, model)
+                    cooldown_secs = self._mark_cooldown(
+                        key_index, model, attempt=retries, exc=exc
+                    )
                     next_key_role = None
                     if position + 1 < len(chain):
                         next_key_role = self._role_for_key(chain[position + 1][0])
@@ -432,7 +521,7 @@ class GeminiKeyPool:
                         reason = "timeout"
                     attempts.append({"model": model, "key_index": key_index, "reason": reason})
                     logger.warning(
-                        "%s %s on key[%d]/%s; retry %d/%d, cooldown %ds",
+                        "%s %s on key[%d]/%s; retry %d/%d, cooldown %.1fs",
                         label or "Gemini",
                         reason,
                         key_index,
@@ -528,7 +617,9 @@ class GeminiKeyPool:
             except Exception as exc:
                 last_exc = exc
                 if _is_rate_limited(exc):
-                    self._mark_cooldown(key_index, model)
+                    cooldown_secs = self._mark_cooldown(
+                        key_index, model, attempt=retries, exc=exc
+                    )
                     next_key_role = None
                     if position + 1 < len(chain):
                         next_key_role = self._role_for_key(chain[position + 1][0])
