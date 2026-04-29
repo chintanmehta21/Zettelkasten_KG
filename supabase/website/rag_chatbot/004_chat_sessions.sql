@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     -- Hallucination critic outcome
     critic_verdict      TEXT         CHECK (critic_verdict IN (
                             'supported', 'partial', 'unsupported',
-                            'retried_supported', 'retried_still_bad'
+                            'retried_supported', 'retried_still_bad',
+                            'retried_low_confidence'
                         )),
     critic_notes        TEXT,
 

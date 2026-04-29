@@ -1,0 +1,168 @@
+{
+  "results": [
+    {
+      "qid": "q1",
+      "code": 200,
+      "elapsed_ms": 45000,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 2,
+      "critic": "partial",
+      "quality": "fast"
+    },
+    {
+      "qid": "q2",
+      "code": 200,
+      "elapsed_ms": 50125,
+      "primary": "yt-steve-jobs-2005-stanford",
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": true,
+      "citations": 1,
+      "critic": "supported",
+      "quality": "fast"
+    },
+    {
+      "qid": "q3",
+      "code": 504,
+      "elapsed_ms": 60625,
+      "primary": null,
+      "expected": "yt-effective-public-speakin",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "fast"
+    },
+    {
+      "qid": "q4",
+      "code": 504,
+      "elapsed_ms": 60281,
+      "primary": null,
+      "expected": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "q5",
+      "code": 504,
+      "elapsed_ms": 60265,
+      "primary": null,
+      "expected": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for"
+      ],
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "q6",
+      "code": 504,
+      "elapsed_ms": 60375,
+      "primary": null,
+      "expected": [
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-effective-public-speakin"
+      ],
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "q7",
+      "code": 502,
+      "elapsed_ms": 48203,
+      "primary": null,
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "q8",
+      "code": 200,
+      "elapsed_ms": 46015,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 1,
+      "critic": "partial",
+      "quality": "high"
+    },
+    {
+      "qid": "q9",
+      "code": 504,
+      "elapsed_ms": 60265,
+      "primary": null,
+      "expected": [],
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "q10",
+      "code": 504,
+      "elapsed_ms": 60296,
+      "primary": null,
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "high"
+    },
+    {
+      "qid": "av-1",
+      "code": 504,
+      "elapsed_ms": 60406,
+      "primary": null,
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "fast"
+    },
+    {
+      "qid": "av-2",
+      "code": 504,
+      "elapsed_ms": 60390,
+      "primary": null,
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "fast"
+    },
+    {
+      "qid": "av-3",
+      "code": 504,
+      "elapsed_ms": 60202,
+      "primary": null,
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": false,
+      "citations": 0,
+      "critic": null,
+      "quality": "fast"
+    }
+  ],
+  "summary": {
+    "total_count": 13,
+    "gold_at_1_count": 3,
+    "infra_failures": 10,
+    "fast_p95_ms": 60625,
+    "strong_p95_ms": null,
+    "max_ms": 60625
+  }
+}
