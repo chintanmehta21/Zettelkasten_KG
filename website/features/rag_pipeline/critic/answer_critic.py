@@ -68,12 +68,28 @@ class AnswerCritic:
         return verdict, parsed
 
     def _find_bad_citations(self, answer: str, candidates: list) -> list[str]:
+        # iter-03 §B (2026-04-30): the prior regex `[A-Za-z0-9_,\-\s]+`
+        # could NEVER match the prompt-prescribed `[id="..."]` shape
+        # (prompts.py rule 2) because the equals sign and double-quotes
+        # are excluded from the character class. The grounding guard was
+        # dead code → fabricated citation IDs slipped past every
+        # "supported" verdict. We now match BOTH shapes:
+        #   1. [id="<node_id>"]   — canonical form per prompts.py:22
+        #   2. [<node_id>]        — short fallback (rare; tolerated)
         valid_ids = {candidate.node_id for candidate in candidates}
-        cited_ids = set()
+        cited_ids: set[str] = set()
+        # Canonical [id="..."] form (single, double, or unquoted).
+        for match in re.finditer(
+            r'\[id\s*=\s*["\']?([a-zA-Z0-9_\-]+)["\']?\]', answer
+        ):
+            citation_id = match.group(1).strip()
+            if citation_id:
+                cited_ids.add(citation_id)
+        # Legacy [<id>] / [<id>,<id>] form for backward-compat.
         for match in re.finditer(r"\[([a-zA-Z0-9_,\-\s]+)\]", answer):
             for raw in match.group(1).split(","):
                 citation_id = raw.strip()
-                if citation_id:
+                if citation_id and not citation_id.startswith("id="):
                     cited_ids.add(citation_id)
         return sorted(cited_ids - valid_ids)
 

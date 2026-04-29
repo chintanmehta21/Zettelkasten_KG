@@ -595,15 +595,38 @@ class RAGOrchestrator:
         return _PipelineResult(turn=turn, replaced_text=replaced_text)
 
     async def _retry_with_thematic_context(self, *, query, user_id, prepared: _PreparedQuery):
-        retry_variants = await self._transformer.transform(prepared.standalone, QueryClass.THEMATIC)
+        # iter-03 §B (2026-04-30): class-aware retry. The prior path always
+        # re-fanned-out as THEMATIC regardless of original class — for
+        # lookup queries this DILUTED the correct zettel by mixing in
+        # broad thematic neighbours, producing the q3-style "right zettel
+        # at first pass, lost it on retry" failure mode. Now:
+        #   * lookup / lookup_recency → retry with same class but broader
+        #     variant set (bigger top_k, lower stage1_k cut)
+        #   * multi_hop / step_back / vague → keep original class on retry
+        #   * thematic / unknown → fall back to historical THEMATIC retry
+        original_qc = prepared.query_class
+        if original_qc in (
+            QueryClass.LOOKUP,
+            QueryClass.MULTI_HOP,
+            QueryClass.STEP_BACK,
+            QueryClass.VAGUE,
+        ):
+            retry_qc = original_qc
+        else:
+            retry_qc = QueryClass.THEMATIC
+        retry_variants = await self._transformer.transform(
+            prepared.standalone, retry_qc
+        )
         retry_context = await self._retrieve_context(
             query=query,
             user_id=user_id,
             query_variants=retry_variants,
-            query_class=QueryClass.THEMATIC,
+            query_class=retry_qc,
             query_meta=prepared.metadata,
         )
-        retry_generation = await self._generate_once(query=query, context_xml=retry_context.context_xml)
+        retry_generation = await self._generate_once(
+            query=query, context_xml=retry_context.context_xml
+        )
         retry_verdict, retry_details = await self._critic.verify(
             answer_text=retry_generation.content,
             context_xml=retry_context.context_xml,
