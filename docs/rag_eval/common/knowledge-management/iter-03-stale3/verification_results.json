@@ -1,0 +1,980 @@
+{
+  "iter": "iter-03",
+  "site": "https://zettelkasten.in",
+  "captured_at": "2026-04-29T16:47:30Z",
+  "total_duration_ms": 960423,
+  "kasten": {
+    "name": "Knowledge Management & Personal Productivity",
+    "id": "227e0fb2-ff81-4d08-8702-76d9235564f4",
+    "member_count": 7
+  },
+  "qa_summary": {
+    "total": 13,
+    "end_to_end_gold_at_1": 0.0769,
+    "synthesizer_over_refusals": 0,
+    "infra_failures": 12,
+    "p95_latency_ms": 60698,
+    "p95_under_budget": false
+  },
+  "phases": [
+    {
+      "phase": "public_pages",
+      "duration_ms": 15823,
+      "checks": [
+        {
+          "name": "GET /",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/01_root_index.png",
+          "duration_ms": 7934,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 3512,
+              "domcontent_ms": 3805,
+              "load_ms": 3922,
+              "first_paint_ms": 3816,
+              "first_contentful_paint_ms": 3816,
+              "largest_contentful_paint_ms": 3816
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0.0006
+              },
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "GET /about",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/02_about.png",
+          "duration_ms": 4202,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 494,
+              "domcontent_ms": 697,
+              "load_ms": 697,
+              "first_paint_ms": 712,
+              "first_contentful_paint_ms": 712,
+              "largest_contentful_paint_ms": 2224
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "GET /pricing",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/03_pricing.png",
+          "duration_ms": 3686,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 593,
+              "domcontent_ms": 638,
+              "load_ms": 659,
+              "first_paint_ms": 656,
+              "first_contentful_paint_ms": 656,
+              "largest_contentful_paint_ms": 656
+            },
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 0,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "knowledge_graph",
+      "duration_ms": 10064,
+      "checks": [
+        {
+          "name": "GET /knowledge-graph (amber-allowed surface)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/04_knowledge_graph_3d.png",
+          "duration_ms": 10064,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 713,
+              "domcontent_ms": 973,
+              "load_ms": 973,
+              "first_paint_ms": 776,
+              "first_contentful_paint_ms": 776,
+              "largest_contentful_paint_ms": 7360
+            },
+            "color_audit": {
+              "offending_rules": [
+                {
+                  "source": "inline",
+                  "rule": ".graph-info-msg { top: 50%; width: 100%; text-align: center; color: lavender; opacity: 0.7; font-size: 22px; position: absolute; font-family: sans-serif; }"
+                }
+              ],
+              "passed": false
+            },
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 6,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            },
+            "note": "amber #D4A024 allowed here"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "authed_pages",
+      "duration_ms": 17030,
+      "checks": [
+        {
+          "name": "/home :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/05_home.png",
+          "duration_ms": 6263,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 709,
+              "domcontent_ms": 753,
+              "load_ms": 753,
+              "first_paint_ms": 768,
+              "first_contentful_paint_ms": 768,
+              "largest_contentful_paint_ms": 768
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/06_home_zettels.png",
+          "duration_ms": 5435,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/zettels :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 511,
+              "domcontent_ms": 550,
+              "load_ms": 550,
+              "first_paint_ms": 564,
+              "first_contentful_paint_ms": 564,
+              "largest_contentful_paint_ms": 564
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home/zettels :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: header parity (ZKHeader booted, avatar loaded)",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/07_home_kastens.png",
+          "duration_ms": 5331,
+          "detail": {
+            "header": {
+              "has_avatar_btn": false,
+              "has_avatar_img": false,
+              "avatar_src": "",
+              "avatar_complete": false,
+              "avatar_natural_w": 0,
+              "avatar_visible": false,
+              "has_fallback": false,
+              "fallback_visible": false,
+              "zkheader_present": false,
+              "zkheader_booted": false
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: color audit (no purple/violet/lavender)",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "color_audit": {
+              "offending_rules": [],
+              "passed": true
+            }
+          }
+        },
+        {
+          "name": "/home/kastens :: LCP under 4000ms",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 365,
+              "domcontent_ms": 394,
+              "load_ms": 394,
+              "first_paint_ms": 408,
+              "first_contentful_paint_ms": 408,
+              "largest_contentful_paint_ms": 408
+            },
+            "title": "Summarize | Zettelkasten"
+          }
+        },
+        {
+          "name": "/home/kastens :: page hygiene (console errors, broken images, dead requests, CLS)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "issues": {
+              "console_errors": [],
+              "console_warnings_count": 2,
+              "network_failures": [
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                },
+                {
+                  "url": "https://zettelkasten.in/cdn-cgi/rum?",
+                  "method": "POST",
+                  "failure": "net::ERR_ABORTED",
+                  "resource_type": "ping"
+                }
+              ],
+              "bad_responses": [],
+              "dom_audit": {
+                "broken_images": [],
+                "missing_alt": [],
+                "empty_a11y_name": [],
+                "dead_links": [],
+                "cumulative_layout_shift": 0
+              },
+              "passed": false
+            }
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "rag_composer",
+      "duration_ms": 36022,
+      "checks": [
+        {
+          "name": "GET /home/rag",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/08_rag_chooser.png",
+          "duration_ms": 4076,
+          "detail": {
+            "perf": {
+              "ttfb_ms": 690,
+              "domcontent_ms": 721,
+              "load_ms": 722,
+              "first_paint_ms": 732,
+              "first_contentful_paint_ms": 732,
+              "largest_contentful_paint_ms": 732
+            }
+          }
+        },
+        {
+          "name": "GET /api/rag/sandboxes",
+          "passed": true,
+          "evidence": null,
+          "duration_ms": 1814,
+          "detail": {
+            "http": 200,
+            "elapsed_ms": 1807
+          }
+        },
+        {
+          "name": "Click Kasten in chooser",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 17,
+          "detail": {
+            "note": "best-effort UI click; falls through if not interactive"
+          }
+        },
+        {
+          "name": "Composer placeholder uses Kasten name",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/10_composer_placeholder.png",
+          "duration_ms": 30109,
+          "detail": {
+            "placeholder": "<error: Locator.get_attribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"textarea, input[type='text']\").first\n>"
+          }
+        }
+      ],
+      "notes": [
+        "Kasten id=227e0fb2-ff81-4d08-8702-76d9235564f4 members=7"
+      ]
+    },
+    {
+      "phase": "diversify_sources",
+      "duration_ms": 54363,
+      "checks": [
+        {
+          "name": "POST /api/summarize https://nesslabs.com/personal-knowledge-management",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 3004,
+          "detail": {
+            "label": "Ness Labs \u2014 Personal Knowledge Management",
+            "http_status": 500,
+            "elapsed_ms": 3001,
+            "node_id": null,
+            "source_type": null,
+            "title": null,
+            "expected_source_type": "newsletter",
+            "source_type_matches_expected": false,
+            "summarize_error": null
+          }
+        },
+        {
+          "name": "POST /api/summarize https://maggieappleton.com/garden-history",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 51357,
+          "detail": {
+            "label": "Maggie Appleton \u2014 A Brief History & Ethos of the Digital Garden",
+            "http_status": 200,
+            "elapsed_ms": 51352,
+            "node_id": null,
+            "source_type": "web",
+            "title": "Digital Gardening",
+            "expected_source_type": "web",
+            "source_type_matches_expected": true,
+            "summarize_error": null
+          }
+        }
+      ],
+      "notes": [
+        "summarize failed for https://nesslabs.com/personal-knowledge-management: {'ok': False, 'status': 500, 'elapsed_ms': 3001, 'body': {'detail': \"Failed to process URL: Client error '404 Not Found' for url 'https://nesslabs.com/personal-knowledge-management'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404\"}, 'raw': None}",
+        "summarize failed for https://maggieappleton.com/garden-history: {'ok': True, 'status': 200, 'elapsed_ms': 51352, 'body': {'title': 'Digital Gardening', 'summary': \"## Definition and Historical Context\\n- Digital Gardening is a concept popularized in April 2020, describing a departure from conventional personal blogs.\\n- It involves free-form, work-in-progress wikis of evolving, contextually-linked, and incomplete ideas.\\n- The practice harks back to the less rigid and performative early web.\\n\\n### Early Web Context\\n- Recalls the less rigid and performative nature of the early web.\\n\\n### Bernstein's 'Hypertext Gardens' (1998)\\n- First recorded use of 'Digital Garden' by Mark Bernstein.\\n- Addressed the 'Navigation Problem' of balancing chaos and structure in user experience.\\n- Focused on creating exploratory hypertext landscapes tended by 'WikiGardeners'.\\n\\n### Sutherland's Tangent (2007)\\n- Rory Sutherland used the term on Twitter to describe digital maintenance like defragging and syncing.\\n- Focused on pruning rather than cultivating, a different meaning from the modern concept.\\n\\n### Caufield's 'Garden and the Stream' (2015)\\n- Mike Caufield's keynote and essay are primarily attributed to the modern understanding.\\n- Framed the garden as a counterbalance to the ephemeral, time-bound 'stream' of social media feeds.\\n- Defined it as an explorable, richly-linked space for accumulating personal knowledge over time, independent of specific tools.\\n\\n## Evolution and Amplification of the Concept\\n- Caufield's ideas gained traction in late 2018 and were amplified by subsequent contributions.\\n- The trend grew significantly through 2019-2020.\\n\\n### Critchlow's Contribution (2018)\\n- Tom Critchlow's article amplified Caufield's ideas.\\n- Added the 'campfire' metaphor for semi-private group conversations.\\n\\n### Hooks and Hoy's Critique (2019)\\n- Joel Hooks' post 'My blog is a digital garden, not a blog' emphasized slow, public revision.\\n- Referenced Amy Hoy's argument that Moveable Type (c. 2001) standardized the reverse-chronological blog, killing early web diversity.\\n\\n### Growth and Timing (2019-2020)\\n- Shaun Wang's 'Digital Gardening Terms of Service' and a late 2020 MIT Tech Review article contributed to the trend.\\n- The movement's timing coincided with interest from various communities.\\n\\n## Associated Communities and Tools\\n- The concept resonated with several communities interested in personal knowledge management and independent web practices.\\n- A range of tools, from technical development frameworks to no-code applications, support digital gardening.\\n\\n### Communities of Interest\\n- IndieWeb collective\\n- Roam Research users\\n- Followers of Tiago Forte's 'Building a Second Brain'\\n- Adherents of the 'Learn in Public' ethos.\\n\\n### Technical Tools (for developers)\\n- Netlify\\n- Vercel\\n- Jekyll\\n- Gatsby\\n- 11ty\\n- Next.js (used to build custom sites).\\n\\n### No-Code Alternatives (for non-technical users)\\n- Obsidian\\n- TiddlyWiki\\n- Notion (offer no-code options, though they may limit deep customization).\\n\\n## Six Core Patterns of Digital Gardening\\n- The author identifies six distinct patterns that characterize digital gardening.\\n\\n### 1) Topography over Timelines\\n- Organizing content by contextual, bi-directional links rather than publication date.\\n\\n### 2) Continuous Growth\\n- Notes are never final and evolve publicly.\\n\\n### 3) Imperfection & Learning in Public\\n- A 'Domestic Cozy' response to performative branding.\\n- Requires making a note's status clear (e.g., seedling/budding/evergreen stages, or epistemic statuses as used by Gwern.net and Devon Zuegal).\\n\\n### 4) Playful, Personal, and Experimental\\n- Using the web's native languages (HTML, CSS, JS) to create unique, high-fidelity personal spaces.\\n\\n### 5) Intercropping & Content Diversity\\n- Incorporating various media like videos, diagrams, and code, not just text.\\n\\n### 6) Independent Ownership\\n- Hosting on a personal domain using open formats to ensure long-term control and viability, outside of platforms like Medium or Facebook.\", 'brief_summary': 'Digital Gardening describes a practice of creating free-form, evolving, and contextually-linked online knowledge spaces, departing from conventional polished blogs. It emphasizes continuous growth, public learning, and personal ownership, drawing on early web principles and contrasting with ephemeral social media streams.', 'detailed_summary': \"## Definition and Historical Context\\n- Digital Gardening is a concept popularized in April 2020, describing a departure from conventional personal blogs.\\n- It involves free-form, work-in-progress wikis of evolving, contextually-linked, and incomplete ideas.\\n- The practice harks back to the less rigid and performative early web.\\n\\n### Early Web Context\\n- Recalls the less rigid and performative nature of the early web.\\n\\n### Bernstein's 'Hypertext Gardens' (1998)\\n- First recorded use of 'Digital Garden' by Mark Bernstein.\\n- Addressed the 'Navigation Problem' of balancing chaos and structure in user experience.\\n- Focused on creating exploratory hypertext landscapes tended by 'WikiGardeners'.\\n\\n### Sutherland's Tangent (2007)\\n- Rory Sutherland used the term on Twitter to describe digital maintenance like defragging and syncing.\\n- Focused on pruning rather than cultivating, a different meaning from the modern concept.\\n\\n### Caufield's 'Garden and the Stream' (2015)\\n- Mike Caufield's keynote and essay are primarily attributed to the modern understanding.\\n- Framed the garden as a counterbalance to the ephemeral, time-bound 'stream' of social media feeds.\\n- Defined it as an explorable, richly-linked space for accumulating personal knowledge over time, independent of specific tools.\\n\\n## Evolution and Amplification of the Concept\\n- Caufield's ideas gained traction in late 2018 and were amplified by subsequent contributions.\\n- The trend grew significantly through 2019-2020.\\n\\n### Critchlow's Contribution (2018)\\n- Tom Critchlow's article amplified Caufield's ideas.\\n- Added the 'campfire' metaphor for semi-private group conversations.\\n\\n### Hooks and Hoy's Critique (2019)\\n- Joel Hooks' post 'My blog is a digital garden, not a blog' emphasized slow, public revision.\\n- Referenced Amy Hoy's argument that Moveable Type (c. 2001) standardized the reverse-chronological blog, killing early web diversity.\\n\\n### Growth and Timing (2019-2020)\\n- Shaun Wang's 'Digital Gardening Terms of Service' and a late 2020 MIT Tech Review article contributed to the trend.\\n- The movement's timing coincided with interest from various communities.\\n\\n## Associated Communities and Tools\\n- The concept resonated with several communities interested in personal knowledge management and independent web practices.\\n- A range of tools, from technical development frameworks to no-code applications, support digital gardening.\\n\\n### Communities of Interest\\n- IndieWeb collective\\n- Roam Research users\\n- Followers of Tiago Forte's 'Building a Second Brain'\\n- Adherents of the 'Learn in Public' ethos.\\n\\n### Technical Tools (for developers)\\n- Netlify\\n- Vercel\\n- Jekyll\\n- Gatsby\\n- 11ty\\n- Next.js (used to build custom sites).\\n\\n### No-Code Alternatives (for non-technical users)\\n- Obsidian\\n- TiddlyWiki\\n- Notion (offer no-code options, though they may limit deep customization).\\n\\n## Six Core Patterns of Digital Gardening\\n- The author identifies six distinct patterns that characterize digital gardening.\\n\\n### 1) Topography over Timelines\\n- Organizing content by contextual, bi-directional links rather than publication date.\\n\\n### 2) Continuous Growth\\n- Notes are never final and evolve publicly.\\n\\n### 3) Imperfection & Learning in Public\\n- A 'Domestic Cozy' response to performative branding.\\n- Requires making a note's status clear (e.g., seedling/budding/evergreen stages, or epistemic statuses as used by Gwern.net and Devon Zuegal).\\n\\n### 4) Playful, Personal, and Experimental\\n- Using the web's native languages (HTML, CSS, JS) to create unique, high-fidelity personal spaces.\\n\\n### 5) Intercropping & Content Diversity\\n- Incorporating various media like videos, diagrams, and code, not just text.\\n\\n### 6) Independent Ownership\\n- Hosting on a personal domain using open formats to ensure long-term control and viability, outside of platforms like Medium or Facebook.\", 'tags': ['digital-gardening', 'personal-knowledge-management', 'blogging-alternatives', 'hypertext', 'web-history', 'learning-in-public', 'indieweb'], 'source_type': 'web', 'source_url': 'https://maggieappleton.com/garden-history', 'one_line_summary': 'Digital Gardening describes a practice of creating free-form, evolving, and contextually-linked online knowledge spaces, departing from conventional polished blogs. It emphasizes continuous growth, public learning, and personal ownership, drawing on early web principles and contrasting with ephemeral social media streams.', 'is_raw_fallback': False, 'tokens_used': 2347, 'latency_ms': 32837, 'metadata': {'source_type': 'web', 'url': 'https://maggieappleton.com/garden-history', 'extraction_confidence': 'high', 'confidence_reason': 'HTML article text extracted', 'total_tokens_used': 2347, 'gemini_pro_tokens': 0, 'gemini_flash_tokens': 2347, 'total_latency_ms': 32837, 'cod_iterations_used': 0, 'self_check_missing_count': 0, 'patch_applied': False, 'engine_version': '2.0.0', 'structured_payload': {'mini_title': 'Digital Gardening', 'brief_summary': 'Digital Gardening describes a practice of creating free-form, evolving, and contextually-linked online knowledge spaces, departing from conventional polished blogs. It emphasizes continuous growth, public learning, and personal ownership, drawing on early web principles and contrasting with ephemeral social media streams.', 'tags': ['Digital Gardening', 'Personal Knowledge Management', 'Blogging Alternatives', 'Hypertext', 'Web History', 'Learning in Public', 'IndieWeb'], 'detailed_summary': [{'heading': 'Definition and Historical Context', 'bullets': ['Digital Gardening is a concept popularized in April 2020, describing a departure from conventional personal blogs.', 'It involves free-form, work-in-progress wikis of evolving, contextually-linked, and incomplete ideas.', 'The practice harks back to the less rigid and performative early web.'], 'sub_sections': {'Early Web Context': ['Recalls the less rigid and performative nature of the early web.'], \"Bernstein's 'Hypertext Gardens' (1998)\": [\"First recorded use of 'Digital Garden' by Mark Bernstein.\", \"Addressed the 'Navigation Problem' of balancing chaos and structure in user experience.\", \"Focused on creating exploratory hypertext landscapes tended by 'WikiGardeners'.\"], \"Sutherland's Tangent (2007)\": ['Rory Sutherland used the term on Twitter to describe digital maintenance like defragging and syncing.', 'Focused on pruning rather than cultivating, a different meaning from the modern concept.'], \"Caufield's 'Garden and the Stream' (2015)\": [\"Mike Caufield's keynote and essay are primarily attributed to the modern understanding.\", \"Framed the garden as a counterbalance to the ephemeral, time-bound 'stream' of social media feeds.\", 'Defined it as an explorable, richly-linked space for accumulating personal knowledge over time, independent of specific tools.']}}, {'heading': 'Evolution and Amplification of the Concept', 'bullets': [\"Caufield's ideas gained traction in late 2018 and were amplified by subsequent contributions.\", 'The trend grew significantly through 2019-2020.'], 'sub_sections': {\"Critchlow's Contribution (2018)\": [\"Tom Critchlow's article amplified Caufield's ideas.\", \"Added the 'campfire' metaphor for semi-private group conversations.\"], \"Hooks and Hoy's Critique (2019)\": [\"Joel Hooks' post 'My blog is a digital garden, not a blog' emphasized slow, public revision.\", \"Referenced Amy Hoy's argument that Moveable Type (c. 2001) standardized the reverse-chronological blog, killing early web diversity.\"], 'Growth and Timing (2019-2020)': [\"Shaun Wang's 'Digital Gardening Terms of Service' and a late 2020 MIT Tech Review article contributed to the trend.\", \"The movement's timing coincided with interest from various communities.\"]}}, {'heading': 'Associated Communities and Tools', 'bullets': ['The concept resonated with several communities interested in personal knowledge management and independent web practices.', 'A range of tools, from technical development frameworks to no-code applications, support digital gardening.'], 'sub_sections': {'Communities of Interest': ['IndieWeb collective', 'Roam Research users', \"Followers of Tiago Forte's 'Building a Second Brain'\", \"Adherents of the 'Learn in Public' ethos.\"], 'Technical Tools (for developers)': ['Netlify', 'Vercel', 'Jekyll', 'Gatsby', '11ty', 'Next.js (used to build custom sites).'], 'No-Code Alternatives (for non-technical users)': ['Obsidian', 'TiddlyWiki', 'Notion (offer no-code options, though they may limit deep customization).']}}, {'heading': 'Six Core Patterns of Digital Gardening', 'bullets': ['The author identifies six distinct patterns that characterize digital gardening.'], 'sub_sections': {'1) Topography over Timelines': ['Organizing content by contextual, bi-directional links rather than publication date.'], '2) Continuous Growth': ['Notes are never final and evolve publicly.'], '3) Imperfection & Learning in Public': [\"A 'Domestic Cozy' response to performative branding.\", \"Requires making a note's status clear (e.g., seedling/budding/evergreen stages, or epistemic statuses as used by Gwern.net and Devon Zuegal).\"], '4) Playful, Personal, and Experimental': [\"Using the web's native languages (HTML, CSS, JS) to create unique, high-fidelity personal spaces.\"], '5) Intercropping & Content Diversity': ['Incorporating various media like videos, diagrams, and code, not just text.'], '6) Independent Ownership': ['Hosting on a personal domain using open formats to ensure long-term control and viability, outside of platforms like Medium or Facebook.']}}]}, 'is_schema_fallback': False, 'model_used': [{'role': 'dense_verify', 'model': 'gemini-2.5-pro', 'starting_model': 'gemini-2.5-pro', 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, {'role': 'summarizer', 'model': 'gemini-2.5-flash', 'starting_model': 'gemini-2.5-flash', 'fallback_reason': 'gemini-2.5-flash-rate-limited'}], 'fallback_reason': 'gemini-2.5-pro-rate-limited'}, 'captured_at': '2026-04-29'}, 'raw': None}",
+        "new_nodes=[]"
+      ]
+    },
+    {
+      "phase": "rag_qa_chain",
+      "duration_ms": 720906,
+      "checks": [
+        {
+          "name": "Q-A q1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 45180,
+          "detail": {
+            "qid": "q1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+            "http_status": 200,
+            "elapsed_ms": 45170,
+            "answer": "The `zk-org/zk` command-line tool is written in Go [id=\"gh-zk-org-zk\"]. It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"].",
+            "citations": [
+              {
+                "id": "gh-zk-org-zk",
+                "node_id": "gh-zk-org-zk",
+                "title": "zk-org/zk"
+              }
+            ],
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "partial",
+            "llm_model": "gemini-2.5-flash",
+            "query_class": "lookup",
+            "latency_ms_server": 1907,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk",
+              "gh-zk-org-zk"
+            ],
+            "session_id": "64f359f6-71a2-4697-aa45-94d1fca90cb7",
+            "refused": false,
+            "gold_at_1": true,
+            "over_refusal": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q2 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60196,
+          "detail": {
+            "qid": "q2",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+            "http_status": 504,
+            "elapsed_ms": 60184,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:35:43 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fb73baf22285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60136,
+          "detail": {
+            "qid": "q3",
+            "quality": "fast",
+            "expected": [
+              "yt-effective-public-speakin"
+            ],
+            "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+            "http_status": 504,
+            "elapsed_ms": 60123,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:36:43 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fb8b3ec76285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q4 (high)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 50910,
+          "detail": {
+            "qid": "q4",
+            "quality": "high",
+            "expected": [
+              "yt-programming-workflow-is",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+            "http_status": 502,
+            "elapsed_ms": 50904,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Bad gateway</span>\n                <span class=\"code-label\">Error code 502</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:37:34 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a bad gateway error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fba2bbc94285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q5 (high)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60149,
+          "detail": {
+            "qid": "q5",
+            "quality": "high",
+            "expected": [
+              "yt-steve-jobs-2005-stanford",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for"
+            ],
+            "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+            "http_status": 504,
+            "elapsed_ms": 60144,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:38:34 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fbb69ecc3285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 90000
+          }
+        },
+        {
+          "name": "Q-A q6 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60146,
+          "detail": {
+            "qid": "q6",
+            "quality": "fast",
+            "expected": [
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-effective-public-speakin"
+            ],
+            "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+            "http_status": 504,
+            "elapsed_ms": 60139,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:39:34 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fbce1db83285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q7 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60169,
+          "detail": {
+            "qid": "q7",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Anything about commencement?",
+            "http_status": 504,
+            "elapsed_ms": 60161,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:40:34 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fbe59cb56285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q8 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 22491,
+          "detail": {
+            "qid": "q8",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+            "http_status": 502,
+            "elapsed_ms": 22483,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 502: Bad gateway</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Bad gateway</span>\n                <span class=\"code-label\">Error code 502</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:40:57 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a bad gateway error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fbfd1dd78285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_502&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": true,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q9 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60164,
+          "detail": {
+            "qid": "q9",
+            "quality": "fast",
+            "expected": [],
+            "text": "Summarize what this Kasten says about Notion's database features.",
+            "http_status": 504,
+            "elapsed_ms": 60156,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:41:57 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fc05e69c2285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A q10 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60707,
+          "detail": {
+            "qid": "q10",
+            "quality": "fast",
+            "expected": [
+              "yt-steve-jobs-2005-stanford"
+            ],
+            "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+            "http_status": 504,
+            "elapsed_ms": 60698,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:42:58 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fc1d67ada285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-1 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60343,
+          "detail": {
+            "qid": "av-1",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "What should I install tonight to start a personal wiki?",
+            "http_status": 504,
+            "elapsed_ms": 60331,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:43:58 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fc351eaa7285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-2 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60140,
+          "detail": {
+            "qid": "av-2",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Which guide do I run first to set up my Zettelkasten?",
+            "http_status": 504,
+            "elapsed_ms": 60131,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:44:58 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fc4cb08cb285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        },
+        {
+          "name": "Q-A av-3 (fast)",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60165,
+          "detail": {
+            "qid": "av-3",
+            "quality": "fast",
+            "expected": [
+              "gh-zk-org-zk"
+            ],
+            "text": "Step-by-step setup commands for a personal wiki",
+            "http_status": 504,
+            "elapsed_ms": 60152,
+            "error": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n\n<title>zettelkasten.in | 504: Gateway time-out</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\" />\n<meta name=\"robots\" content=\"noindex, nofollow\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<link rel=\"stylesheet\" id=\"cf_styles-css\" href=\"/cdn-cgi/styles/main.css\" />\n</head>\n<body>\n<div id=\"cf-wrapper\">\n    <div id=\"cf-error-details\" class=\"p-0\">\n        <header class=\"mx-auto pt-10 lg:pt-6 lg:px-8 w-240 lg:w-full mb-8\">\n            <h1 class=\"inline-block sm:block sm:mb-2 font-light text-60 lg:text-4xl text-black-dark leading-tight mr-2\">\n                <span class=\"inline-block\">Gateway time-out</span>\n                <span class=\"code-label\">Error code 504</span>\n            </h1>\n            <div>\n                Visit <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">cloudflare.com</a> for more information.\n            </div>\n            <div class=\"mt-3\">2026-04-29 16:45:58 UTC</div>\n        </header>\n        <div class=\"my-8 bg-gradient-gray\">\n            <div class=\"w-240 lg:w-full mx-auto\">\n                <div class=\"clearfix md:px-8\">\n                    <div id=\"cf-browser-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-browser block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">You</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Browser\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-cloudflare-status\" class=\" relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    <span class=\"cf-icon-cloud block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-ok w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    </a>\n  </div>\n  <span class=\"md:block w-full truncate\">Chennai</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  <a href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&utm_campaign=zettelkasten.in\" target=\"_blank\" rel=\"noopener noreferrer\">\n    Cloudflare\n  </a>\n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-green-success\">Working</span>\n  \n</div>\n                    <div id=\"cf-host-status\" class=\"cf-error-source relative w-1/3 md:w-full py-15 md:p-0 md:py-8 md:text-left md:border-solid md:border-0 md:border-b md:border-gray-400 overflow-hidden float-left md:float-none text-center\">\n  <div class=\"relative mb-10 md:m-0\">\n    \n    <span class=\"cf-icon-server block md:hidden h-20 bg-center bg-no-repeat\"></span>\n    <span class=\"cf-icon-error w-12 h-12 absolute left-1/2 md:left-auto md:right-0 md:top-0 -ml-6 -bottom-4\"></span>\n    \n  </div>\n  <span class=\"md:block w-full truncate\">zettelkasten.in</span>\n  <h3 class=\"md:inline-block mt-3 md:mt-0 text-2xl text-gray-600 font-light leading-1.3\">\n  \n    Host\n  \n  </h3>\n  \n  <span class=\"leading-1.3 text-2xl text-red-error\">Error</span>\n  \n</div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"w-240 lg:w-full mx-auto mb-8 lg:px-8\">\n            <div class=\"clearfix\">\n                <div class=\"w-1/2 md:w-full float-left pr-6 md:pb-10 md:pr-0 leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What happened?</h2>\n                    <p>The web server reported a gateway time-out error.</p>\n                </div>\n                <div class=\"w-1/2 md:w-full float-left leading-relaxed\">\n                    <h2 class=\"text-3xl font-normal leading-1.3 mb-4\">What can I do?</h2>\n                    <p class=\"mb-6\">Please try again in a few minutes.</p>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"cf-error-footer cf-wrapper w-240 lg:w-full py-10 sm:py-4 sm:px-8 mx-auto text-center sm:text-left border-solid border-0 border-t border-gray-300\">\n    <p class=\"text-13\">\n      <span class=\"cf-footer-item sm:block sm:mb-1\">Cloudflare Ray ID: <strong class=\"font-semibold\">9f3fc642fa08285b</strong></span>\n      <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      <span id=\"cf-footer-item-ip\" class=\"cf-footer-item hidden sm:block sm:mb-1\">\n        Your IP:\n        <button type=\"button\" id=\"cf-footer-ip-reveal\" class=\"cf-footer-ip-reveal-btn\">Click to reveal</button>\n        <span class=\"hidden\" id=\"cf-footer-ip\">49.207.250.135</span>\n        <span class=\"cf-footer-separator sm:hidden\">&bull;</span>\n      </span>\n      <span class=\"cf-footer-item sm:block sm:mb-1\"><span>Performance &amp; security by</span> <a rel=\"noopener noreferrer\" href=\"https://www.cloudflare.com/5xx-error-landing?utm_source=errorcode_504&#38;utm_campaign=zettelkasten.in\" id=\"brand_link\" target=\"_blank\">Cloudflare</a></span>\n      \n    </p>\n    <script>(function(){function d(){var b=a.getElementById(\"cf-footer-item-ip\"),c=a.getElementById(\"cf-footer-ip-reveal\");b&&\"classList\"in b&&(b.classList.remove(\"hidden\"),c.addEventListener(\"click\",function(){c.classList.add(\"hidden\");a.getElementById(\"cf-footer-ip\").classList.remove(\"hidden\")}))}var a=document;document.addEventListener&&a.addEventListener(\"DOMContentLoaded\",d)})();</script>\n  </div><!-- /.error-footer -->\n\n    </div>\n</div>\n</body>\n</html>",
+            "gold_at_1": false,
+            "within_budget": false,
+            "budget_ms": 30000
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "post_diversification_qa",
+      "duration_ms": 0,
+      "checks": [
+        {
+          "name": "post-diversification Q-A",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": null,
+          "detail": {
+            "error": "only 0 new nodes; need 2"
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "burst_pressure",
+      "duration_ms": 60374,
+      "checks": [
+        {
+          "name": "12 concurrent /api/rag/adhoc \u2192 expect \u22651 503 with Retry-After",
+          "passed": false,
+          "evidence": null,
+          "duration_ms": 60374,
+          "detail": {
+            "by_status": {
+              "504": 12
+            },
+            "retry_after_samples": [
+              "120",
+              "120",
+              "120"
+            ],
+            "raw": [
+              {
+                "i": 0,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 1,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 2,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 3,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 4,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 5,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 6,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 7,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 8,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 9,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 10,
+                "status": 504,
+                "retry_after": "120"
+              },
+              {
+                "i": 11,
+                "status": 504,
+                "retry_after": "120"
+              }
+            ]
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "debug_param_leak",
+      "duration_ms": 17831,
+      "checks": [
+        {
+          "name": "?debug=1 hidden in prod (no panel, no model name)",
+          "passed": true,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/11_debug_param.png",
+          "duration_ms": 17831,
+          "detail": {
+            "debug_panel_count": 0,
+            "model_leak_hits": []
+          }
+        }
+      ],
+      "notes": []
+    },
+    {
+      "phase": "modal_select_all",
+      "duration_ms": 18512,
+      "checks": [
+        {
+          "name": "Open Add Zettels modal",
+          "passed": false,
+          "evidence": "docs/rag_eval/common/knowledge-management/iter-03/screenshots/12_kastens_no_modal.png",
+          "duration_ms": 18512,
+          "detail": {
+            "note": "Add-Zettels trigger selector not found; UI may have changed"
+          }
+        }
+      ],
+      "notes": []
+    }
+  ]
+}
