@@ -271,36 +271,44 @@ class RAGOrchestrator:
         standalone = await self._rewriter.rewrite(query.content, history_payload)
         _log_rss("pipeline.rewriter_done")
 
-        # iter-03 §B (2026-04-29): sequential Gemini chain. Earlier
-        # parallelization (router → gather(transform, metadata)) burned
-        # rate-limit budget faster than keys could cool down — Gemini
-        # returned 429s, key_pool fell back through 10s cooldowns, and
-        # the cumulative wait pushed P95 past 60s on a 13-query eval.
-        # Sequential pacing keeps QPS to ~1 per worker so the per-key
-        # rate limit never trips. Metadata extraction can be disabled
-        # entirely via RAG_METADATA_EXTRACTOR_ENABLED=false to drop one
-        # full Gemini call per query — it's enrichment-only and the
-        # planner degrades cleanly when entities are empty.
+        # iter-03 §B (2026-04-30): metadata back on; offset the Gemini cost
+        # by running transformer + metadata IN PARALLEL after the router.
+        # Earlier parallel run burned rate-limits when cooldowns were a flat
+        # 10s; we now use exp-backoff with Retry-After honor (key_pool.py
+        # _cooldown_for_attempt) so concurrent burst recovers gracefully.
+        # Net wall-clock for prepare_query: rewriter + router + max(
+        # transform, metadata) ≈ 3 sequential Gemini latencies instead of 4
+        # — back to iter-2 timing but WITH the entity enrichment.
+        # Disable via RAG_METADATA_EXTRACTOR_ENABLED=false if quota burns.
         query_class = await self._router.classify(standalone)
         _log_rss("pipeline.router_done", qc=str(query_class))
 
-        variants = await self._transformer.transform(standalone, query_class)
-        _log_rss("pipeline.transformer_done", variants=len(variants))
+        async def _transform_branch():
+            v = await self._transformer.transform(standalone, query_class)
+            _log_rss("pipeline.transformer_done", variants=len(v))
+            return v
 
-        metadata = QueryMetadata()
-        _metadata_enabled = (
-            os.environ.get("RAG_METADATA_EXTRACTOR_ENABLED", "true").lower()
-            not in ("false", "0", "no", "off")
-        )
-        if self._metadata_extractor is not None and _metadata_enabled:
+        async def _metadata_branch():
+            _metadata_enabled = (
+                os.environ.get("RAG_METADATA_EXTRACTOR_ENABLED", "true").lower()
+                not in ("false", "0", "no", "off")
+            )
+            if self._metadata_extractor is None or not _metadata_enabled:
+                return QueryMetadata()
             try:
-                metadata = await self._metadata_extractor.extract(
+                m = await self._metadata_extractor.extract(
                     standalone, query_class=query_class
                 )
             except Exception as exc:  # noqa: BLE001 - best-effort enrichment
                 logger.warning("query metadata extract failed: %s", exc)
-                metadata = QueryMetadata()
+                m = QueryMetadata()
             _log_rss("pipeline.metadata_done")
+            return m
+
+        variants, metadata = await asyncio.gather(
+            _transform_branch(),
+            _metadata_branch(),
+        )
         # iter-03 §B (2026-04-29): release the metadata-extract residual
         # (Gemini structured-output protobuf buffers, ~140 MB) before
         # retrieval/stage-1/stage-2 begin.

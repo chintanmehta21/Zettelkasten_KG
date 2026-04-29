@@ -250,7 +250,7 @@ jobs:
             "RAG_RETRIEVAL_LIMIT_FAST=20" \
             "RAG_RETRIEVAL_LIMIT_STRONG=25" \
             "RAG_STAGE1_SUB_BATCH=5" \
-            "RAG_METADATA_EXTRACTOR_ENABLED=false" \
+            "RAG_METADATA_EXTRACTOR_ENABLED=true" \
             "RAG_CONTEXT_FLOOR_LOOKUP=0.30" \
             "RAG_CONTEXT_FLOOR_SYNTH=0.05" \
             "RAG_CONTEXT_FLOOR_DEFAULT=0.10" \
