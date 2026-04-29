@@ -84,16 +84,25 @@ def main():
         primary = None
         cit_count = 0
         crit_verdict = None
+        crit_notes = None
         answer_chars = 0
+        answer_text = ""
         retrieved_node_ids: list[str] = []
+        all_citations: list[dict] = []
         if body and isinstance(body, dict):
             turn = body.get("turn") or {}
             cits = turn.get("citations") or []
             cit_count = len(cits)
             primary = cits[0]["node_id"] if cits else None
             crit_verdict = turn.get("critic_verdict")
-            answer_chars = len(turn.get("content") or "")
+            crit_notes = turn.get("critic_notes")
+            answer_text = turn.get("content") or ""
+            answer_chars = len(answer_text)
             retrieved_node_ids = list(turn.get("retrieved_node_ids") or [])
+            all_citations = [
+                {"id": c.get("node_id"), "rerank_score": c.get("rerank_score")}
+                for c in cits
+            ]
         gold_at_1 = primary == gold
         # RAGAS-lite proxies (no Gemini judge — deterministic from response):
         # context_precision: gold cited at rank 1
@@ -140,10 +149,13 @@ def main():
                 "gold_at_1": gold_at_1,
                 "citations": cit_count,
                 "answer_chars": answer_chars,
+                "answer_text": answer_text[:2000],
                 "critic": crit_verdict,
+                "critic_notes": crit_notes,
                 "quality": quality,
                 "ragas": ragas,
                 "retrieved_node_ids": retrieved_node_ids,
+                "all_citations": all_citations,
             }
         )
     summary = {

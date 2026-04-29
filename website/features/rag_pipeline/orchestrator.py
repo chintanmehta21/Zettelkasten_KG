@@ -417,12 +417,25 @@ class RAGOrchestrator:
             # the generation step runs through the key pool — passing the
             # default tier is a safe pre-commit estimate that the assembler
             # treats as advisory (unknown values fall back to quality).
-            context_xml, used_candidates = await self._assembler.build(
-                candidates=ranked,
-                quality=query.quality,
-                user_query=query.content,
-                model=_default_model_for_quality(query.quality),
-            )
+            # Assembler signature was extended (iter-03 §B) to take
+            # query_class for class-aware context-floor logic. Older test
+            # stubs / alternate assemblers may not accept the kwarg, so
+            # fall back to the legacy signature on TypeError.
+            try:
+                context_xml, used_candidates = await self._assembler.build(
+                    candidates=ranked,
+                    quality=query.quality,
+                    user_query=query.content,
+                    model=_default_model_for_quality(query.quality),
+                    query_class=query_class,
+                )
+            except TypeError:
+                context_xml, used_candidates = await self._assembler.build(
+                    candidates=ranked,
+                    quality=query.quality,
+                    user_query=query.content,
+                    model=_default_model_for_quality(query.quality),
+                )
             _log_rss(
                 "pipeline.assembler_done",
                 ctx_chars=len(context_xml),

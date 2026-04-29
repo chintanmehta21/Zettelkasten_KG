@@ -59,30 +59,71 @@ class ContextAssembler:
         quality: str = "fast",
         user_query: str,
         model: str | None = None,
+        query_class: object | None = None,
     ) -> tuple[str, list[RetrievalCandidate]]:
         if not candidates:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
 
         budget = _resolve_budget(quality=quality, model=model)
         candidates = [c for c in candidates if not _is_stub_passage(c.content)]
-        # iter-06 best-of: restore the iter-03 floor of 0.30. The iter-04 0.22
-        # softening was meant to recover graph_lift but synthesis faithfulness
-        # dropped 0.84 -> 0.56. iter-03's 0.30 floor delivered the highest
-        # synthesis score (88.22) by hard-cutting marginal contexts. Combine
-        # with iter-04's cascade fusion weights (0.55, 0.30, 0.15) below for
-        # best-of-both: precision floor + strong rerank.
-        _CONTEXT_FLOOR = 0.30
+        # iter-03 §B (2026-04-30): query-class-aware floor + min-keep.
+        # The youtube-iter-06 0.30 floor was tuned exclusively against
+        # lookup-class queries. For multi_hop/thematic/step_back/vague
+        # the BGE int8 reranker naturally produces lower scores because
+        # no single zettel fully answers the question — yet those classes
+        # need the MOST candidates, not the fewest, to enable cross-zettel
+        # synthesis. Keep the strict 0.30 for lookup; relax for
+        # synthesis classes; guarantee a minimum keep so multi-hop synth
+        # always has 3+ candidates to ground on. Set
+        # RAG_CONTEXT_FLOOR_LOOKUP / _SYNTH / _ADVERSARIAL env to override.
+        from website.features.rag_pipeline.types import QueryClass
+        import os as _os
+
+        def _floor_for(qc) -> float:
+            if qc in (QueryClass.LOOKUP,):
+                return float(_os.environ.get("RAG_CONTEXT_FLOOR_LOOKUP", "0.30"))
+            if qc in (
+                QueryClass.MULTI_HOP, QueryClass.THEMATIC,
+                QueryClass.STEP_BACK, QueryClass.VAGUE,
+            ):
+                return float(_os.environ.get("RAG_CONTEXT_FLOOR_SYNTH", "0.05"))
+            return float(_os.environ.get("RAG_CONTEXT_FLOOR_DEFAULT", "0.10"))
+
+        _MIN_KEEP_LOOKUP = int(_os.environ.get("RAG_CONTEXT_MIN_KEEP_LOOKUP", "1"))
+        _MIN_KEEP_SYNTH = int(_os.environ.get("RAG_CONTEXT_MIN_KEEP_SYNTH", "5"))
+
+        # Use the explicit query_class kwarg when the orchestrator passes it
+        # (post-iter-03). Fall back to attribute on first candidate, else
+        # to the historical 0.30 floor so legacy callers keep working.
+        effective_qc = query_class
+        if effective_qc is None:
+            for c in candidates:
+                if getattr(c, "query_class", None) is not None:
+                    effective_qc = c.query_class
+                    break
+        _CONTEXT_FLOOR = _floor_for(effective_qc) if effective_qc is not None else 0.30
+        _MIN_KEEP = (
+            _MIN_KEEP_SYNTH
+            if effective_qc in (
+                QueryClass.MULTI_HOP, QueryClass.THEMATIC,
+                QueryClass.STEP_BACK, QueryClass.VAGUE,
+            )
+            else _MIN_KEEP_LOOKUP
+        )
+
         def _passes_floor(c):
             score = c.final_score if c.final_score is not None else (c.rerank_score or 0.0)
             return score >= _CONTEXT_FLOOR
+
         floored = [c for c in candidates if _passes_floor(c)]
-        # Safety: never empty the context due to the floor — if nothing passes,
-        # keep the top-1 candidate so the LLM has something to ground on rather
-        # than refusing.
-        if floored:
+        if len(floored) >= _MIN_KEEP:
             candidates = floored
         elif candidates:
-            candidates = candidates[:1]
+            # Min-keep: always retain top-N for synthesis classes so cross-
+            # zettel reasoning has substrate even when individual rerank
+            # scores fall below the floor (multi-hop is structurally
+            # low-score-per-doc).
+            candidates = candidates[: max(_MIN_KEEP, 1)]
         if not candidates:
             return "<context>\n  <!-- no relevant Zettels found -->\n</context>", []
         grouped = self._group_by_node(candidates)

@@ -1,0 +1,430 @@
+{
+  "results": [
+    {
+      "qid": "q1",
+      "code": 200,
+      "elapsed_ms": 55844,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 2,
+      "answer_chars": 202,
+      "answer_text": "The `zk-org/zk` command-line tool is written in Go [id=\"gh-zk-org-zk\"]. It processes Markdown notes, which can include `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"].",
+      "critic": "partial",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.5,
+        "composite": 0.875
+      },
+      "retrieved_node_ids": [
+        "gh-zk-org-zk",
+        "gh-zk-org-zk",
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "all_citations": [
+        {
+          "id": "gh-zk-org-zk",
+          "rerank_score": 0.9967939771371309
+        },
+        {
+          "id": "nl-the-pragmatic-engineer-t",
+          "rerank_score": 0.0011208614374073264
+        }
+      ]
+    },
+    {
+      "qid": "q2",
+      "code": 200,
+      "elapsed_ms": 49297,
+      "primary": "yt-steve-jobs-2005-stanford",
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": true,
+      "citations": 1,
+      "answer_chars": 376,
+      "answer_text": "At the Stanford 2005 commencement, Steve Jobs described death as \"the single best invention of Life\" and \"Life's change agent\" for clearing out the old [id=\"yt-steve-jobs-2005-stanford\"]. He also stated that remembering one will die is the best way to avoid the \"trap of thinking you have something to lose,\" because \"You are already naked\" [id=\"yt-steve-jobs-2005-stanford\"].",
+      "critic": "supported",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 1.0,
+        "composite": 1.0
+      },
+      "retrieved_node_ids": [
+        "yt-steve-jobs-2005-stanford",
+        "yt-steve-jobs-2005-stanford"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-steve-jobs-2005-stanford",
+          "rerank_score": 0.8619484713683302
+        }
+      ]
+    },
+    {
+      "qid": "q3",
+      "code": 200,
+      "elapsed_ms": 76546,
+      "primary": "yt-effective-public-speakin",
+      "expected": "yt-effective-public-speakin",
+      "gold_at_1": true,
+      "citations": 2,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.8
+      },
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "yt-effective-public-speakin",
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-effective-public-speakin",
+          "rerank_score": 0.955989636563541
+        },
+        {
+          "id": "nl-the-pragmatic-engineer-t",
+          "rerank_score": 3.9920446489543557e-05
+        }
+      ]
+    },
+    {
+      "qid": "q4",
+      "code": 200,
+      "elapsed_ms": 80594,
+      "primary": "yt-programming-workflow-is",
+      "expected": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "yt-programming-workflow-is"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-programming-workflow-is",
+          "rerank_score": 0.10484432619689042
+        }
+      ]
+    },
+    {
+      "qid": "q5",
+      "code": 200,
+      "elapsed_ms": 80969,
+      "primary": "yt-effective-public-speakin",
+      "expected": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for"
+      ],
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-effective-public-speakin",
+          "rerank_score": 0.0010209106943900698
+        }
+      ]
+    },
+    {
+      "qid": "q6",
+      "code": 200,
+      "elapsed_ms": 83014,
+      "primary": "web-transformative-tools-for",
+      "expected": [
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-effective-public-speakin"
+      ],
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "web-transformative-tools-for"
+      ],
+      "all_citations": [
+        {
+          "id": "web-transformative-tools-for",
+          "rerank_score": 0.3136250745132108
+        }
+      ]
+    },
+    {
+      "qid": "q7",
+      "code": 200,
+      "elapsed_ms": 105140,
+      "primary": "nl-the-pragmatic-engineer-t",
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "all_citations": [
+        {
+          "id": "nl-the-pragmatic-engineer-t",
+          "rerank_score": 3.994390424278014e-05
+        }
+      ]
+    },
+    {
+      "qid": "q8",
+      "code": 200,
+      "elapsed_ms": 41578,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 1,
+      "answer_chars": 444,
+      "answer_text": "Based on your Zettels, you would start with `zk-org/zk`, a command-line tool written in Go specifically for maintaining a plain text Zettelkasten or personal wiki [id=\"gh-zk-org-zk\"]. It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter [id=\"gh-zk-org-zk\"]. To begin tonight, you can install it using pre-built binaries, Homebrew, Nix, or packages for Arch and Alpine Linux [id=\"gh-zk-org-zk\"].",
+      "critic": "partial",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.5,
+        "composite": 0.875
+      },
+      "retrieved_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "all_citations": [
+        {
+          "id": "gh-zk-org-zk",
+          "rerank_score": 0.1903906606283086
+        }
+      ]
+    },
+    {
+      "qid": "q9",
+      "code": 200,
+      "elapsed_ms": 90780,
+      "primary": "yt-effective-public-speakin",
+      "expected": [],
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "yt-effective-public-speakin"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-effective-public-speakin",
+          "rerank_score": 0.00011950202139358002
+        }
+      ]
+    },
+    {
+      "qid": "q10",
+      "code": 200,
+      "elapsed_ms": 74000,
+      "primary": "nl-the-pragmatic-engineer-t",
+      "expected": "yt-steve-jobs-2005-stanford",
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "high",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "nl-the-pragmatic-engineer-t"
+      ],
+      "all_citations": [
+        {
+          "id": "nl-the-pragmatic-engineer-t",
+          "rerank_score": 4.0023633981613734e-05
+        }
+      ]
+    },
+    {
+      "qid": "av-1",
+      "code": 200,
+      "elapsed_ms": 67547,
+      "primary": "yt-programming-workflow-is",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": false,
+      "citations": 1,
+      "answer_chars": 165,
+      "answer_text": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>",
+      "critic": "retried_low_confidence",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 0.2,
+        "composite": 0.3
+      },
+      "retrieved_node_ids": [
+        "yt-programming-workflow-is"
+      ],
+      "all_citations": [
+        {
+          "id": "yt-programming-workflow-is",
+          "rerank_score": 4.055162879338099e-05
+        }
+      ]
+    },
+    {
+      "qid": "av-2",
+      "code": 200,
+      "elapsed_ms": 37062,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 1,
+      "answer_chars": 460,
+      "answer_text": "Users can set up their Zettelkasten by adopting the `zk-org/zk` command-line tool through several installation methods. These include installing pre-built binaries for macOS and Linux, using Homebrew, Nix (via nixpkgs or a Home Manager module), Alpine Linux's `testing` repository, or Arch Linux's official repositories [id=\"gh-zk-org-zk\"]. Alternatively, users can build the tool from source, which requires Go 1.21+ and uses a `Makefile` [id=\"gh-zk-org-zk\"].",
+      "critic": "supported",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 1.0,
+        "composite": 1.0
+      },
+      "retrieved_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "all_citations": [
+        {
+          "id": "gh-zk-org-zk",
+          "rerank_score": 0.37722818857137214
+        }
+      ]
+    },
+    {
+      "qid": "av-3",
+      "code": 200,
+      "elapsed_ms": 64843,
+      "primary": "gh-zk-org-zk",
+      "expected": "gh-zk-org-zk",
+      "gold_at_1": true,
+      "citations": 1,
+      "answer_chars": 781,
+      "answer_text": "To set up a personal wiki using `zk-org/zk`, you can install it through several methods:\n\n1.  **Pre-built binaries**: Install pre-built binaries for macOS and Linux [id=\"gh-zk-org-zk\"].\n2.  **Homebrew**: Install via Homebrew [id=\"gh-zk-org-zk\"].\n3.  **Nix**: Install via Nix, which includes `nixpkgs` and a Home Manager module [id=\"gh-zk-org-zk\"].\n4.  **Alpine Linux**: Install via Alpine Linux's `testing` repository [id=\"gh-zk-org-zk\"].\n5.  **Arch Linux**: Install via Arch Linux's official repositories [id=\"gh-zk-org-zk\"].\n6.  **Build from source**: If building from source, Go 1.21+ is required, and the build process uses a `Makefile` [id=\"gh-zk-org-zk\"]. The `Makefile` enables CGO for `mattn/go-sqlite3` and uses the `fts5` tag for search functionality [id=\"gh-zk-org-zk\"].",
+      "critic": "retried_supported",
+      "critic_notes": null,
+      "quality": "fast",
+      "ragas": {
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "faithfulness": 1.0,
+        "composite": 1.0
+      },
+      "retrieved_node_ids": [
+        "gh-zk-org-zk"
+      ],
+      "all_citations": [
+        {
+          "id": "gh-zk-org-zk",
+          "rerank_score": 0.5140652809599668
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_count": 13,
+    "gold_at_1_count": 6,
+    "infra_failures": 0,
+    "fast_p95_ms": 76546,
+    "strong_p95_ms": null,
+    "max_ms": 105140
+  }
+}
