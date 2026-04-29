@@ -251,26 +251,62 @@ except Exception:
     if [[ -z "$SMOKE_TOKEN" ]]; then
         log "[rag-smoke] WARN: JWT mint failed -- skipping smoke probe (degraded confidence)"
     else
-        log "[rag-smoke] JWT minted (len ${#SMOKE_TOKEN}); firing probe..."
+        log "[rag-smoke] JWT minted (len ${#SMOKE_TOKEN}); pre-warming and probing..."
         SMOKE_BODY=$(printf '{"sandbox_id":"%s","content":%s,"quality":"fast","stream":false,"scope_filter":{}}' \
             "$RAG_SMOKE_KASTEN_ID" "$(printf '%s' "$RAG_SMOKE_QUERY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
-        SMOKE_RESPONSE=$(curl -sS --max-time 240 -H "Authorization: Bearer $SMOKE_TOKEN" -H "Content-Type: application/json" \
-            -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>&1 || echo "CURL_FAILED")
-        SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
+
+        # iter-03 §B (2026-04-29): pre-warm hot paths before the smoke probe.
+        # First call after gunicorn fork can have cold Supabase RPC pools, cold
+        # pgvector index pages, and cold Gemini key-pool selectors. Without
+        # warming, retrieval can return 0 candidates → empty citations → smoke
+        # mis-classifies a healthy worker as broken. Best-effort, non-fatal.
+        curl -fsS --max-time 30 "http://127.0.0.1:${IDLE_PORT}/api/health/warm" >/dev/null 2>&1 || true
+
+        # iter-03 §B (2026-04-29): retry the smoke probe up to 3 times with
+        # 15s backoff. Cold-start retrieval and intra-request memory ceiling
+        # (503 backpressure) can both transiently fail the first probe.
+        # Three windows of 240s upper-bound = up to 12 min of grace, but
+        # typical cold-start is recovered by attempt 2 in ~30s.
+        SMOKE_PRIMARY=""
+        SMOKE_HTTP=""
+        SMOKE_RESPONSE=""
+        for smoke_attempt in 1 2 3; do
+            SMOKE_TMP=$(mktemp)
+            SMOKE_HTTP=$(curl -sS --max-time 240 -o "$SMOKE_TMP" -w "%{http_code}" \
+                -H "Authorization: Bearer $SMOKE_TOKEN" -H "Content-Type: application/json" \
+                -d "$SMOKE_BODY" "http://127.0.0.1:${IDLE_PORT}/api/rag/adhoc" 2>/dev/null || echo "000")
+            SMOKE_RESPONSE=$(cat "$SMOKE_TMP")
+            rm -f "$SMOKE_TMP"
+            SMOKE_PRIMARY=$(echo "$SMOKE_RESPONSE" | python3 -c "import json,sys
 try:
     d = json.loads(sys.stdin.read())
-    cits = d.get('turn',{}).get('citations',[])
-    print(cits[0].get('node_id') if cits else 'NO_CITATIONS')
+    if 'turn' not in d:
+        # 503 backpressure body has 'error', not 'turn'.
+        print('NO_TURN:'+str(d.get('error','unknown')))
+    else:
+        cits = d.get('turn',{}).get('citations',[])
+        print(cits[0].get('node_id') if cits else 'NO_CITATIONS')
 except Exception as e:
     print('PARSE_FAIL:'+str(e))" 2>/dev/null || echo "PARSE_FAIL")
-        log "[rag-smoke] ${IDLE} primary_citation=${SMOKE_PRIMARY} (expect gh-zk-org-zk)"
-        if [[ "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
-            log "[rag-smoke] FATAL: smoke probe did not return gh-zk-org-zk."
+            log "[rag-smoke] attempt ${smoke_attempt}/3 ${IDLE} HTTP=${SMOKE_HTTP} primary=${SMOKE_PRIMARY}"
+            if [[ "$SMOKE_HTTP" == "200" && "$SMOKE_PRIMARY" == "gh-zk-org-zk" ]]; then
+                log "[rag-smoke] ${IDLE} smoke probe OK on attempt ${smoke_attempt}"
+                break
+            fi
+            if (( smoke_attempt < 3 )); then
+                log "[rag-smoke] cold-start or backpressure -- waiting 15s before retry..."
+                sleep 15
+            fi
+        done
+
+        if [[ "$SMOKE_HTTP" != "200" || "$SMOKE_PRIMARY" != "gh-zk-org-zk" ]]; then
+            log "[rag-smoke] FATAL: smoke probe failed after 3 attempts. Final HTTP=${SMOKE_HTTP} primary=${SMOKE_PRIMARY}"
+            log "[rag-smoke] response body (first 600 chars):"
+            log "$(printf '%s' "$SMOKE_RESPONSE" | head -c 600)"
             log "[rag-smoke] FATAL: NOT auto-rolling back -- operator must triage."
-            log "[rag-smoke] Possible causes: worker OOM-killed mid-pipeline; degraded retrieval; reranker scoring wrong; corpus drift."
+            log "[rag-smoke] Possible causes: worker OOM-killed mid-pipeline; persistent backpressure (503); degraded retrieval; reranker scoring wrong; corpus drift."
             exit 89
         fi
-        log "[rag-smoke] ${IDLE} smoke probe OK"
     fi
     unset SMOKE_TOKEN AUTH_RESP
 fi
