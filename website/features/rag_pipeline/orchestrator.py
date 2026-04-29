@@ -271,27 +271,26 @@ class RAGOrchestrator:
         standalone = await self._rewriter.rewrite(query.content, history_payload)
         _log_rss("pipeline.rewriter_done")
 
-        # iter-03 §B (2026-04-29): the prior sequential chain (router →
-        # transformer → metadata) burned ~18s of pure Gemini latency. Router
-        # output is needed by transformer (transform takes query_class), so
-        # those two stay sequential. But metadata_extract only needs
-        # `standalone` — fire it in parallel with router+transformer to
-        # collapse 3 serial Gemini calls into 2 wall-clock latencies.
-        # Skip metadata entirely for "fast" quality: it's enrichment-only,
-        # the retrieval planner can always degrade gracefully without it.
-        async def _classify_then_transform():
-            qc = await self._router.classify(standalone)
-            _log_rss("pipeline.router_done", qc=str(qc))
-            v = await self._transformer.transform(standalone, qc)
-            _log_rss("pipeline.transformer_done", variants=len(v))
-            return qc, v
+        # iter-03 §B (2026-04-29): collapse the prior 3-Gemini-call serial
+        # chain (router → transformer → metadata, ~18s wall) by running
+        # router first (transformer + metadata both need its query_class),
+        # then transformer + metadata in parallel. Saves ~5-7s per query
+        # without changing any module's contract — both still receive
+        # standalone + the real query_class.
+        query_class = await self._router.classify(standalone)
+        _log_rss("pipeline.router_done", qc=str(query_class))
 
-        async def _extract_metadata():
-            if self._metadata_extractor is None or query.quality == "fast":
+        async def _transform_branch():
+            v = await self._transformer.transform(standalone, query_class)
+            _log_rss("pipeline.transformer_done", variants=len(v))
+            return v
+
+        async def _metadata_branch():
+            if self._metadata_extractor is None:
                 return QueryMetadata()
             try:
                 m = await self._metadata_extractor.extract(
-                    standalone, query_class=QueryClass.LOOKUP
+                    standalone, query_class=query_class
                 )
             except Exception as exc:  # noqa: BLE001 - best-effort enrichment
                 logger.warning("query metadata extract failed: %s", exc)
@@ -299,9 +298,9 @@ class RAGOrchestrator:
             _log_rss("pipeline.metadata_done")
             return m
 
-        (query_class, variants), metadata = await asyncio.gather(
-            _classify_then_transform(),
-            _extract_metadata(),
+        variants, metadata = await asyncio.gather(
+            _transform_branch(),
+            _metadata_branch(),
         )
         # iter-03 §B (2026-04-29): release the metadata-extract residual
         # (Gemini structured-output protobuf buffers, ~140 MB) before
