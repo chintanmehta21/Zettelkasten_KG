@@ -19,20 +19,21 @@
       "web": 1,
       "github": 1
     },
-    "execution_protocol": "iter-04: same query set as iter-03 to measure delta after q5/q10 routing fixes, anti-magnet xQuAD prior, refusal short-circuit, retry mutation matrix, MMR graph seeds, admission gate, and burst hardening landed.",
-    "design_notes": "Iter-03 keeps the iter-02 query set unchanged so retrieval/synthesis regressions are directly comparable, and adds three action-verb regression probes that mirror the q3 ('verbal punctuation') and q8 ('start a personal wiki tonight') failure pattern from iter-02 — the retriever returned the correct gold zettel but the synthesizer over-refused because the user's wording diverged from the zettel's wording. av-1/2/3 ask for the same gh-zk-org-zk (or web-transformative-tools-for) zettel using imperative action-verb phrasing ('install', 'run first', 'step-by-step setup commands') that the iter-02 prompt struggled with. A correct iter-03 synthesizer must answer (verdict 'supported' or 'partial'), not refuse.",
+    "execution_protocol": "iter-04: rebalanced query set. Iter-03 collapsed 5/13 queries onto gh-zk-org-zk (38%) and had ZERO dedicated lookups for the newsletter (Pragmatic Engineer) and web (Transformative Tools) zettels — making iter-03 a poor accuracy probe for those sources. Iter-04 adds dedicated single-source lookups for every Kasten member (q11–q14) so the magnet-prior + xQuAD + class-override fixes can be measured against per-source recall rather than aggregate gold@1. Multi-source synth queries (q4/q5/q6) and adversarials (q9/q10) preserved verbatim from iter-03 for direct delta comparison.",
+    "design_notes": "Source distribution of dedicated lookups (excluding multi-source synth + adversarials): github=2 (q1,q8), youtube/jobs=2 (q2,q7), youtube/speaking=1 (q3), youtube/walker=1 (q11), youtube/workflow=1 (q12), newsletter=1 (q13), web=1 (q14). Multi-source synth: q4 (walker+workflow), q5 (5-way thematic), q6 (step-back tools-for-thought). Adversarials: q9 (refusal), q10 (partial). q3 retained but the answer-quality bar is reframed: a correct answer must explain Winston's named technique even if the zettel transcript paraphrases the term — over-refusal on missing literal token is a fail. q8 keeps the action-verb imperative phrasing because the iter-04 router auto-correct + class override is supposed to keep this kind of phrasing classified correctly.",
     "ci_gate_baseline": "docs/rag_eval/common/knowledge-management/iter-03/baseline.json",
     "ci_gates_summary": {
       "end_to_end_gold_at_1_min": 0.65,
       "synthesizer_grounding_min": 0.85,
-      "infra_failures_max": 0
+      "infra_failures_max": 0,
+      "max_per_source_top1_share": 0.35
     }
   },
   "queries": [
     {
       "qid": "q1",
       "class": "lookup",
-      "tests": "two-fact extraction from a single GitHub zettel; replaces iter-01 q1's topic-only ask",
+      "tests": "two-fact extraction from a single GitHub zettel",
       "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
       "expected_primary_citation": "gh-zk-org-zk",
       "expected_minimum_citations": 1,
@@ -50,16 +51,16 @@
     {
       "qid": "q3",
       "class": "lookup",
-      "tests": "single-zettel deep extraction — a named technique inside Patrick Winston's MIT lecture",
+      "tests": "single-zettel deep extraction — Patrick Winston's named technique",
       "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
       "expected_primary_citation": "yt-effective-public-speakin",
       "expected_minimum_citations": 1,
-      "ground_truth": "Verbal punctuation is announcing a landmark to the audience (\"and now I'm going to talk about X\") — it lets listeners who drifted re-board the talk; matters because audiences continually fade in and out of attention."
+      "ground_truth": "Verbal punctuation is announcing a landmark to the audience ('and now I'm going to talk about X') — it lets listeners who drifted re-board the talk; matters because audiences continually fade in and out of attention."
     },
     {
       "qid": "q4",
       "class": "multi_hop",
-      "tests": "explicit 2-zettel synthesis — the question itself names the two zettels to combine, so partial answers are diagnosable as retriever failures rather than reasoning failures",
+      "tests": "explicit 2-zettel synthesis — names the two zettels to combine so partial answers are diagnosable as retriever failures rather than reasoning failures",
       "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
       "expected_primary_citation": [
         "yt-matt-walker-sleep-depriv",
@@ -86,7 +87,7 @@
     {
       "qid": "q6",
       "class": "step_back",
-      "tests": "abstract-from-concrete reasoning across multiple zettels — picks an abstraction (\"tools for thought\") and asks where else it appears",
+      "tests": "abstract-from-concrete reasoning across multiple zettels — picks an abstraction ('tools for thought') and asks where else it appears",
       "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function — augmenting cognition rather than just storing information?",
       "expected_primary_citation": [
         "web-transformative-tools-for",
@@ -108,11 +109,16 @@
     {
       "qid": "q8",
       "class": "lookup_recency",
-      "tests": "practical filter — 'I want to start a personal wiki tonight' should pick the actionable tool zettel, not a related abstraction",
-      "text": "Of the items in this Kasten, which one would I open first if I wanted to start building my own plain-text personal wiki tonight?",
+      "tests": "action-verb regression — 'install tonight' is imperative phrasing the iter-02 synthesizer over-refused on; iter-04 router auto-correct + class override should keep this classified as lookup, not multi_hop",
+      "text": "What should I install tonight to start a personal wiki?",
       "expected_primary_citation": "gh-zk-org-zk",
+      "expected_top1_source_type_in": [
+        "github",
+        "web"
+      ],
       "expected_minimum_citations": 1,
-      "ground_truth": "zk-org/zk — it's the only zettel that is itself a buildable tool (Go CLI, Markdown notes). Matuschak's essay is a related theoretical companion but is not the action-first answer."
+      "ground_truth": "zk-org/zk is the actionable install — Go-based CLI, plain-text Markdown notes. A correct answer must NOT pick the newsletter or theoretical Matuschak essay; it must NOT refuse on action-verb wording divergence.",
+      "annotation": "Action-verb regression — must NOT pick newsletter; must NOT refuse on wording divergence (q3/q8 iter-02 failure pattern)"
     },
     {
       "qid": "q9",
@@ -127,7 +133,7 @@
     {
       "qid": "q10",
       "class": "adversarial_partial",
-      "tests": "partial-coverage detection — Steve Jobs is in the Kasten, Naval Ravikant is not; answer must ground Jobs and explicitly mark Naval as outside the corpus",
+      "tests": "partial-coverage detection + entity-anchored retrieval — Steve Jobs is in the Kasten, Naval Ravikant is not; iter-04 router override (≥2 person entities → LOOKUP) must surface the Jobs zettel via FTS",
       "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
       "expected_primary_citation": "yt-steve-jobs-2005-stanford",
       "expected_minimum_citations": 1,
@@ -135,46 +141,57 @@
       "expected_critic_verdict": "partial"
     },
     {
-      "qid": "av-1",
+      "qid": "q11",
       "class": "lookup",
-      "tests": "Action-verb regression mirroring q8 — 'install tonight' uses imperative phrasing the iter-02 synthesizer over-refused on despite gh-zk-org-zk being correctly retrieved.",
-      "text": "What should I install tonight to start a personal wiki?",
-      "expected_primary_citation": "gh-zk-org-zk",
+      "tests": "dedicated walker lookup — checks the synthesizer can extract a SPECIFIC sleep-loss consequence (not just the broad 'impairs brain function' boilerplate the iter-03 synth defaulted to)",
+      "text": "According to Matt Walker, beyond memory loss, what does chronic sleep deprivation do to emotional regulation and decision-making?",
+      "expected_primary_citation": "yt-matt-walker-sleep-depriv",
       "expected_top1_source_type_in": [
-        "github",
-        "web"
+        "youtube"
       ],
       "expected_minimum_citations": 1,
-      "ground_truth": "zk-org/zk is the actionable install — Go-based CLI, plain-text Markdown notes. A correct answer must NOT pick the newsletter or theoretical Matuschak essay; it must NOT refuse on action-verb wording divergence.",
-      "annotation": "Action-verb regression — must NOT pick newsletter; must NOT refuse on wording divergence (q3/q8 iter-02 failure pattern)"
+      "ground_truth": "Sleep loss disinhibits the amygdala, dampening prefrontal-cortex regulation — emotional volatility and short-term, risk-taking decisions follow. A correct answer must extract at least one named domain (emotion, decision-making, risk perception) beyond memory.",
+      "annotation": "Source-balance probe: dedicated walker lookup. Without this, walker only appears as a synth co-citation in q4/q5."
     },
     {
-      "qid": "av-2",
+      "qid": "q12",
       "class": "lookup",
-      "tests": "Action-verb regression mirroring q3 — 'which guide do I run first' is imperative phrasing for the same gh-zk-org-zk zettel; iter-02 synthesizer over-refused on similar phrasing.",
-      "text": "Which guide do I run first to set up my Zettelkasten?",
-      "expected_primary_citation": "gh-zk-org-zk",
+      "tests": "dedicated programming-workflow lookup — probes the zettel's distinctive thesis (debugging is methodical search, not flawless typing) which iter-03 only surfaced as a synth co-citation",
+      "text": "How does the programming-workflow zettel characterise the actual day-to-day skill of programming — what is it, and what is it explicitly NOT?",
+      "expected_primary_citation": "yt-programming-workflow-is",
       "expected_top1_source_type_in": [
-        "github",
-        "web"
+        "youtube"
       ],
       "expected_minimum_citations": 1,
-      "ground_truth": "zk-org/zk's README is the operational starter — install zk, init a notebook, write notes in Markdown. Must NOT refuse; correct verdict is 'supported'.",
-      "annotation": "Action-verb regression — synthesizer must answer (not refuse) when retriever returns the right zettel under imperative phrasing"
+      "ground_truth": "Programming is described as an iterative debugging cycle — write code, hit an error, search for a fix on Google/Stack Overflow, apply it, repeat. It is explicitly NOT rapid flawless typing or memorising APIs; the core skill is methodical problem-decomposition + searching.",
+      "annotation": "Source-balance probe: dedicated programming-workflow lookup. Forces synth to extract the contrastive 'is/is-not' framing rather than generic 'debugging is hard'."
     },
     {
-      "qid": "av-3",
+      "qid": "q13",
       "class": "lookup",
-      "tests": "Action-verb regression mirroring q3/q8 — explicit 'step-by-step setup commands' demands procedural extraction from gh-zk-org-zk; iter-02 synthesizer historically over-refused on this wording shape.",
-      "text": "Step-by-step setup commands for a personal wiki",
-      "expected_primary_citation": "gh-zk-org-zk",
+      "tests": "dedicated newsletter lookup — the Pragmatic Engineer zettel had ZERO dedicated queries in iter-03, so newsletter recall was effectively untested",
+      "text": "What does the Pragmatic Engineer newsletter mean by a 'product-minded' engineer, and how does that differ from a stereotypical implementation-focused engineer?",
+      "expected_primary_citation": "nl-the-pragmatic-engineer-t",
       "expected_top1_source_type_in": [
-        "github",
+        "newsletter",
+        "substack"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "A product-minded engineer is one who reasons about user-facing outcomes, edge cases users will hit, and trade-offs between feature scope and ship velocity — not only about clean code or implementation correctness. The contrast is with engineers whose mental model stops at the API contract / spec and who treat product decisions as out-of-scope.",
+      "annotation": "Source-balance probe: dedicated newsletter lookup. Iter-03 never tested whether the synth could extract a specific newsletter claim."
+    },
+    {
+      "qid": "q14",
+      "class": "lookup",
+      "tests": "dedicated web/Matuschak lookup — the transformative-tools zettel had ZERO dedicated queries in iter-03; this asks for a specific Matuschak concept (augmented book) rather than the abstract 'tools for thought'",
+      "text": "In Matuschak's 'Transformative Tools for Thought' essay, what specifically does he mean by an 'augmented book' — what does it do that an ordinary book cannot?",
+      "expected_primary_citation": "web-transformative-tools-for",
+      "expected_top1_source_type_in": [
         "web"
       ],
       "expected_minimum_citations": 1,
-      "ground_truth": "zk-org/zk's README documents 'zk init' and the supporting flags. Must extract the install + init commands; must NOT refuse on the lack of a literal 'step-by-step' phrase in the zettel.",
-      "annotation": "Action-verb regression — procedural extraction; verdict must be 'supported' or 'partial', never 'unsupported'"
+      "ground_truth": "An 'augmented book' is reading software that actively helps the reader understand, remember, and use what they read — through embedded interactive explanations, spaced-repetition prompts, and live diagrams that respond to manipulation. An ordinary book is a passive linear artefact; the augmented book is a cognitive-scaffolding medium.",
+      "annotation": "Source-balance probe: dedicated web/Matuschak lookup. Forces synth to extract the augmented-book mechanism, not just restate 'tools for thought'."
     }
   ]
 }

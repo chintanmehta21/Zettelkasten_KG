@@ -4,9 +4,9 @@
     "chunking": 31.942765567765573,
     "retrieval": 91.88736263736263,
     "reranking": 63.1917807319391,
-    "synthesis": 73.85384615384613
+    "synthesis": 71.38461538461539
   },
-  "composite": 72.0387041317358,
+  "composite": 70.92755028558196,
   "weights": {
     "chunking": 0.1,
     "retrieval": 0.25,
@@ -49,16 +49,16 @@
         "yt-effective-public-speakin"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 44.28571428571429,
@@ -79,16 +79,16 @@
         "yt-steve-jobs-2005-stanford"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 140.0,
@@ -123,16 +123,16 @@
         "yt-programming-workflow-is"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 220.00000000000003,
@@ -175,16 +175,16 @@
         "nl-the-pragmatic-engineer-t"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 100.0,
@@ -213,16 +213,16 @@
         "yt-programming-workflow-is"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 63.99999999999999,
@@ -259,16 +259,16 @@
         "yt-programming-workflow-is"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 140.0,
@@ -305,16 +305,16 @@
         "yt-matt-walker-sleep-depriv"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 117.5,
@@ -333,16 +333,16 @@
         "gh-zk-org-zk"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 100.0,
@@ -415,16 +415,16 @@
         "gh-zk-org-zk"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 0.0,
@@ -459,16 +459,16 @@
         "web-transformative-tools-for"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 125.0,
@@ -487,16 +487,16 @@
         "gh-zk-org-zk"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 100.0,
@@ -534,16 +534,16 @@
         "yt-effective-public-speakin"
       ],
       "ragas": {
-        "faithfulness": 0.9166666666666666,
-        "answer_correctness": 0.65,
-        "context_precision": 0.5275000000000001,
-        "context_recall": 0.575,
-        "answer_relevancy": 0.8083333333333332
+        "faithfulness": 0.8583333333333334,
+        "answer_correctness": 0.6583333333333333,
+        "context_precision": 0.5166666666666667,
+        "context_recall": 0.5916666666666667,
+        "answer_relevancy": 0.75
       },
       "deepeval": {
-        "semantic_similarity": 0.5666666666666665,
-        "hallucination": 0.125,
-        "contextual_relevance": 0.8833333333333333
+        "semantic_similarity": 0.5666666666666667,
+        "hallucination": 0.19166666666666665,
+        "contextual_relevance": 0.9166666666666666
       },
       "component_breakdown": {
         "retrieval": 43.75,
@@ -552,8 +552,8 @@
     }
   ],
   "eval_divergence": false,
-  "faithfulness_score": 92.3076923076923,
-  "answer_relevancy_score": 82.3076923076923,
+  "faithfulness_score": 86.92307692307692,
+  "answer_relevancy_score": 76.92307692307693,
   "latency_p50_ms": 50419.0,
   "latency_p95_ms": 86769.19999999998,
   "holistic": {

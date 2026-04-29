@@ -1,16 +1,16 @@
 # 03 Scorecard
 
-**Composite:** 72.04  (weights={'chunking': 0.1, 'retrieval': 0.25, 'reranking': 0.2, 'synthesis': 0.45}, hash=422403f9d47a)
+**Composite:** 70.93  (weights={'chunking': 0.1, 'retrieval': 0.25, 'reranking': 0.2, 'synthesis': 0.45}, hash=422403f9d47a)
 
 ## Components
 - chunking:    31.94
 - retrieval:   91.89
 - reranking:   63.19
-- synthesis:   73.85
+- synthesis:   71.38
 
 ## RAGAS sidecar (0..100)
-- faithfulness:      92.31
-- answer_relevancy:  82.31
+- faithfulness:      86.92
+- answer_relevancy:  76.92
 
 ## Latency
 - p50: 50419 ms

@@ -97,7 +97,10 @@ def _build_gold_queries(queries_json: dict, expected_overrides: dict[str, list[s
         primary = q.get("expected_primary_citation")
         if expected_from_results:
             gold_ids = list(dict.fromkeys(expected_from_results))
-        elif primary:
+        elif isinstance(primary, list) and primary:
+            # Multi-source synthesis queries (q4/q5/q6) declare gold as a list.
+            gold_ids = [str(x) for x in primary if isinstance(x, str) and x]
+        elif isinstance(primary, str) and primary:
             gold_ids = [primary]
         else:
             gold_ids = []
