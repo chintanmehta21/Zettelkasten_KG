@@ -1,0 +1,158 @@
+{
+  "status": "deterministic_proxy_no_external_judges",
+  "fake_scores_written": false,
+  "metrics_note": "RAGAS-style proxies are computed locally from final answer text, citations, retrieval rows, and query ground truth. No external judge calls are made.",
+  "per_query": [
+    {
+      "query_id": "q1",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.0,
+      "ragas_proxy_score": 0.8500000000000001
+    },
+    {
+      "query_id": "q2",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8571428571428571,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.09523809523809523,
+      "ragas_proxy_score": 0.8642857142857143
+    },
+    {
+      "query_id": "q3",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.75,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.10526315789473684,
+      "ragas_proxy_score": 0.8375
+    },
+    {
+      "query_id": "q4",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 0.8888888888888888,
+      "answer_relevancy": 0.6842105263157895,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.28,
+      "ragas_proxy_score": 0.7932748538011696
+    },
+    {
+      "query_id": "q5",
+      "faithfulness": 1.0,
+      "context_recall": 0.8,
+      "context_precision": 0.854014598540146,
+      "answer_relevancy": 0.375,
+      "answer_correctness": 0.21212121212121213,
+      "answer_coverage": 0.21212121212121213,
+      "ragas_proxy_score": 0.7572536496350365
+    },
+    {
+      "query_id": "q6",
+      "faithfulness": 1.0,
+      "context_recall": 0.6666666666666666,
+      "context_precision": 0.8181818181818182,
+      "answer_relevancy": 0.23809523809523808,
+      "answer_correctness": 0.13636363636363635,
+      "answer_coverage": 0.13636363636363635,
+      "ragas_proxy_score": 0.6807359307359307
+    },
+    {
+      "query_id": "q7",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.0,
+      "answer_correctness": 0.21052631578947367,
+      "answer_coverage": 0.21052631578947367,
+      "ragas_proxy_score": 0.75
+    },
+    {
+      "query_id": "q8",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8333333333333334,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.05,
+      "ragas_proxy_score": 0.8583333333333334
+    },
+    {
+      "query_id": "q9",
+      "faithfulness": 1.0,
+      "context_recall": 0.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8333333333333334,
+      "answer_correctness": 0.1111111111111111,
+      "answer_coverage": 0.1111111111111111,
+      "ragas_proxy_score": 0.7083333333333334
+    },
+    {
+      "query_id": "q10",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.6363636363636364,
+      "answer_correctness": 0.2,
+      "answer_coverage": 0.2,
+      "ragas_proxy_score": 0.9090909090909091
+    },
+    {
+      "query_id": "q11",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 1.0,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.25925925925925924,
+      "ragas_proxy_score": 0.9
+    },
+    {
+      "query_id": "q12",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.875,
+      "answer_correctness": 0.18518518518518517,
+      "answer_coverage": 0.18518518518518517,
+      "ragas_proxy_score": 0.96875
+    },
+    {
+      "query_id": "q13",
+      "faithfulness": 1.0,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.75,
+      "answer_correctness": 0.08333333333333333,
+      "answer_coverage": 0.08333333333333333,
+      "ragas_proxy_score": 0.9375
+    },
+    {
+      "query_id": "q14",
+      "faithfulness": 0.6,
+      "context_recall": 1.0,
+      "context_precision": 1.0,
+      "answer_relevancy": 0.8181818181818182,
+      "answer_correctness": 0.0,
+      "answer_coverage": 0.10714285714285714,
+      "ragas_proxy_score": 0.8545454545454546
+    }
+  ],
+  "summary": {
+    "faithfulness_proxy": 0.7999999999999999,
+    "coverage": 0.14539601167420718,
+    "answer_relevancy_proxy": 0.6750471959118576,
+    "context_recall": 0.8904761904761905,
+    "context_precision": 0.9686489504007751,
+    "citation_grounding": 0.5,
+    "answer_correctness_proxy": 0.08133148527885369,
+    "ragas_proxy_score": 0.8335430841972059,
+    "overall_strength": 0.42887237936110106
+  }
+}

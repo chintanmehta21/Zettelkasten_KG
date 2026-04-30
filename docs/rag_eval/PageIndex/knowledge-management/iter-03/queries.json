@@ -1,0 +1,197 @@
+{
+  "_meta": {
+    "kasten_slug": "knowledge-management",
+    "kasten_name": "Knowledge Management & Personal Productivity",
+    "kasten_built_at": "2026-04-26",
+    "iter": "04",
+    "members_node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "source_type_breakdown": {
+      "youtube": 4,
+      "newsletter": 1,
+      "web": 1,
+      "github": 1
+    },
+    "execution_protocol": "iter-04: rebalanced query set. Iter-03 collapsed 5/13 queries onto gh-zk-org-zk (38%) and had ZERO dedicated lookups for the newsletter (Pragmatic Engineer) and web (Transformative Tools) zettels \u2014 making iter-03 a poor accuracy probe for those sources. Iter-04 adds dedicated single-source lookups for every Kasten member (q11\u2013q14) so the magnet-prior + xQuAD + class-override fixes can be measured against per-source recall rather than aggregate gold@1. Multi-source synth queries (q4/q5/q6) and adversarials (q9/q10) preserved verbatim from iter-03 for direct delta comparison.",
+    "design_notes": "Source distribution of dedicated lookups (excluding multi-source synth + adversarials): github=2 (q1,q8), youtube/jobs=2 (q2,q7), youtube/speaking=1 (q3), youtube/walker=1 (q11), youtube/workflow=1 (q12), newsletter=1 (q13), web=1 (q14). Multi-source synth: q4 (walker+workflow), q5 (5-way thematic), q6 (step-back tools-for-thought). Adversarials: q9 (refusal), q10 (partial). q3 retained but the answer-quality bar is reframed: a correct answer must explain Winston's named technique even if the zettel transcript paraphrases the term \u2014 over-refusal on missing literal token is a fail. q8 keeps the action-verb imperative phrasing because the iter-04 router auto-correct + class override is supposed to keep this kind of phrasing classified correctly.",
+    "ci_gate_baseline": "docs/rag_eval/common/knowledge-management/iter-03/baseline.json",
+    "ci_gates_summary": {
+      "end_to_end_gold_at_1_min": 0.65,
+      "synthesizer_grounding_min": 0.85,
+      "infra_failures_max": 0,
+      "max_per_source_top1_share": 0.35
+    }
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "two-fact extraction from a single GitHub zettel",
+      "text": "Which programming language is the zk-org/zk command-line tool written in, and what file format does it use for notes?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Go; Markdown (with wikilinks and hashtags). Both atomic facts must be present for a full-credit answer."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "T9 author boost + content-recall depth \u2014 Steve Jobs's specific framing of mortality, not just topic match",
+      "text": "What metaphor did Steve Jobs use at the Stanford 2005 commencement to describe the role of death in motivating life choices?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Death as 'life's change agent' / the destination we all share \u2014 knowing you're going to die clears the way to follow your heart and avoid the trap of living someone else's life."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "single-zettel deep extraction \u2014 Patrick Winston's named technique",
+      "text": "In Patrick Winston's MIT lecture on effective public speaking, what does he mean by 'verbal punctuation' and why does it matter?",
+      "expected_primary_citation": "yt-effective-public-speakin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Verbal punctuation is announcing a landmark to the audience ('and now I'm going to talk about X') \u2014 it lets listeners who drifted re-board the talk; matters because audiences continually fade in and out of attention."
+    },
+    {
+      "qid": "q4",
+      "class": "multi_hop",
+      "tests": "explicit 2-zettel synthesis \u2014 names the two zettels to combine so partial answers are diagnosable as retriever failures rather than reasoning failures",
+      "text": "Walker links sleep loss to specific cognitive deficits; the programming-workflow zettel describes the mental gymnastics of debugging. Which of Walker's deficits would most directly impair the perception-vs-reality reasoning the debugging zettel describes?",
+      "expected_primary_citation": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "Working memory and attention/focus deficits from sleep loss directly impair the programmer's ability to hold simultaneous mental models of expected vs. actual program behaviour and iterate between them \u2014 which is the perception-vs-reality core of debugging."
+    },
+    {
+      "qid": "q5",
+      "class": "thematic",
+      "tests": "broad cross-corpus synthesis \u2014 explicitly asks for \u22654 citations so under-recall is measurable",
+      "text": "Across these zettels, what is the implicit theory of how a knowledge worker should structure a day to do their best thinking? Cite at least four sources.",
+      "expected_primary_citation": [
+        "yt-matt-walker-sleep-depriv",
+        "yt-programming-workflow-is",
+        "nl-the-pragmatic-engineer-t",
+        "yt-steve-jobs-2005-stanford",
+        "web-transformative-tools-for"
+      ],
+      "expected_minimum_citations": 4,
+      "ground_truth": "Themes: (1) sleep is foundational \u2014 debt costs cognitive precision (Walker); (2) build perception-vs-reality discipline into the workflow (programming-workflow); (3) externalize thought via tools (Matuschak); (4) keep work tied to meaning so motivation persists (Jobs); (5) the Pragmatic Engineer's 'product-minded' ritual ties craftsmanship to user-facing outcomes."
+    },
+    {
+      "qid": "q6",
+      "class": "step_back",
+      "tests": "abstract-from-concrete reasoning across multiple zettels \u2014 picks an abstraction ('tools for thought') and asks where else it appears",
+      "text": "The Matuschak essay calls for 'tools for thought.' Which other zettels in this Kasten describe tools, practices, or rituals that perform this same function \u2014 augmenting cognition rather than just storing information?",
+      "expected_primary_citation": [
+        "web-transformative-tools-for",
+        "gh-zk-org-zk",
+        "yt-effective-public-speakin"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "zk-org/zk is a tool for thought (link-density wiki augments memory); Winston's verbal-punctuation / cycling rules are cognitive scaffolds for the speaker AND listener; arguably the Pragmatic Engineer's product-minded checklist is also a thinking ritual."
+    },
+    {
+      "qid": "q7",
+      "class": "vague",
+      "tests": "single-word topic \u2014 query rewriter must expand 'commencement' to a useful retrieval",
+      "text": "Anything about commencement?",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Steve Jobs's 2005 Stanford commencement speech is the only commencement-related zettel; should retrieve and summarize at minimum the three-stories framing (connecting dots, love-and-loss, death)."
+    },
+    {
+      "qid": "q8",
+      "class": "lookup_recency",
+      "tests": "action-verb regression \u2014 'install tonight' is imperative phrasing the iter-02 synthesizer over-refused on; iter-04 router auto-correct + class override should keep this classified as lookup, not multi_hop",
+      "text": "What should I install tonight to start a personal wiki?",
+      "expected_primary_citation": "gh-zk-org-zk",
+      "expected_top1_source_type_in": [
+        "github",
+        "web"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "zk-org/zk is the actionable install \u2014 Go-based CLI, plain-text Markdown notes. A correct answer must NOT pick the newsletter or theoretical Matuschak essay; it must NOT refuse on action-verb wording divergence.",
+      "annotation": "Action-verb regression \u2014 must NOT pick newsletter; must NOT refuse on wording divergence (q3/q8 iter-02 failure pattern)"
+    },
+    {
+      "qid": "q9",
+      "class": "adversarial_negative",
+      "tests": "hallucination resistance \u2014 Notion's database features are demonstrably absent from every zettel",
+      "text": "Summarize what this Kasten says about Notion's database features.",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "No zettel in this Kasten mentions Notion. A correct answer must refuse or explicitly state the absence; fabricating Notion-database details is critic_verdict='unsupported' and is the hard fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q10",
+      "class": "adversarial_partial",
+      "tests": "partial-coverage detection + entity-anchored retrieval \u2014 Steve Jobs is in the Kasten, Naval Ravikant is not; iter-04 router override (\u22652 person entities \u2192 LOOKUP) must surface the Jobs zettel via FTS",
+      "text": "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views as covered in this Kasten.",
+      "expected_primary_citation": "yt-steve-jobs-2005-stanford",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Jobs's view is in the Kasten (love what you do; if today were your last, would you do what you're about to do; loss-of-Apple as gift). Naval is NOT in the Kasten \u2014 the answer must call this out, not invent his views.",
+      "expected_critic_verdict": "partial"
+    },
+    {
+      "qid": "q11",
+      "class": "lookup",
+      "tests": "dedicated walker lookup \u2014 checks the synthesizer can extract a SPECIFIC sleep-loss consequence (not just the broad 'impairs brain function' boilerplate the iter-03 synth defaulted to)",
+      "text": "According to Matt Walker, beyond memory loss, what does chronic sleep deprivation do to emotional regulation and decision-making?",
+      "expected_primary_citation": "yt-matt-walker-sleep-depriv",
+      "expected_top1_source_type_in": [
+        "youtube"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "Sleep loss disinhibits the amygdala, dampening prefrontal-cortex regulation \u2014 emotional volatility and short-term, risk-taking decisions follow. A correct answer must extract at least one named domain (emotion, decision-making, risk perception) beyond memory.",
+      "annotation": "Source-balance probe: dedicated walker lookup. Without this, walker only appears as a synth co-citation in q4/q5."
+    },
+    {
+      "qid": "q12",
+      "class": "lookup",
+      "tests": "dedicated programming-workflow lookup \u2014 probes the zettel's distinctive thesis (debugging is methodical search, not flawless typing) which iter-03 only surfaced as a synth co-citation",
+      "text": "How does the programming-workflow zettel characterise the actual day-to-day skill of programming \u2014 what is it, and what is it explicitly NOT?",
+      "expected_primary_citation": "yt-programming-workflow-is",
+      "expected_top1_source_type_in": [
+        "youtube"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "Programming is described as an iterative debugging cycle \u2014 write code, hit an error, search for a fix on Google/Stack Overflow, apply it, repeat. It is explicitly NOT rapid flawless typing or memorising APIs; the core skill is methodical problem-decomposition + searching.",
+      "annotation": "Source-balance probe: dedicated programming-workflow lookup. Forces synth to extract the contrastive 'is/is-not' framing rather than generic 'debugging is hard'."
+    },
+    {
+      "qid": "q13",
+      "class": "lookup",
+      "tests": "dedicated newsletter lookup \u2014 the Pragmatic Engineer zettel had ZERO dedicated queries in iter-03, so newsletter recall was effectively untested",
+      "text": "What does the Pragmatic Engineer newsletter mean by a 'product-minded' engineer, and how does that differ from a stereotypical implementation-focused engineer?",
+      "expected_primary_citation": "nl-the-pragmatic-engineer-t",
+      "expected_top1_source_type_in": [
+        "newsletter",
+        "substack"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "A product-minded engineer is one who reasons about user-facing outcomes, edge cases users will hit, and trade-offs between feature scope and ship velocity \u2014 not only about clean code or implementation correctness. The contrast is with engineers whose mental model stops at the API contract / spec and who treat product decisions as out-of-scope.",
+      "annotation": "Source-balance probe: dedicated newsletter lookup. Iter-03 never tested whether the synth could extract a specific newsletter claim."
+    },
+    {
+      "qid": "q14",
+      "class": "lookup",
+      "tests": "dedicated web/Matuschak lookup \u2014 the transformative-tools zettel had ZERO dedicated queries in iter-03; this asks for a specific Matuschak concept (augmented book) rather than the abstract 'tools for thought'",
+      "text": "In Matuschak's 'Transformative Tools for Thought' essay, what specifically does he mean by an 'augmented book' \u2014 what does it do that an ordinary book cannot?",
+      "expected_primary_citation": "web-transformative-tools-for",
+      "expected_top1_source_type_in": [
+        "web"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "An 'augmented book' is reading software that actively helps the reader understand, remember, and use what they read \u2014 through embedded interactive explanations, spaced-repetition prompts, and live diagrams that respond to manipulation. An ordinary book is a passive linear artefact; the augmented book is a cognitive-scaffolding medium.",
+      "annotation": "Source-balance probe: dedicated web/Matuschak lookup. Forces synth to extract the augmented-book mechanism, not just restate 'tools for thought'."
+    }
+  ]
+}
