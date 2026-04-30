@@ -62,6 +62,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import sys
 import time
 from dataclasses import dataclass, field, asdict
@@ -107,6 +108,71 @@ def _eval_paths_for(iter_id: str) -> tuple[Path, Path, Path, Path, Path]:
         eval_dir / "screenshots",
         eval_dir / "timing_report.md",
     )
+
+
+# iter-05: outputs that a prior run may have produced and that should be
+# archived before a new run overwrites them. Add new artifacts here as the
+# harness gains them; do NOT include `queries.json` or `baseline.json` since
+# those are inputs / config, not outputs.
+_RUN_OUTPUT_FILES = (
+    "verification_results.json",
+    "timing_report.md",
+    "eval.json",
+    "scores.md",
+)
+
+
+def _archive_prior_run(eval_dir: Path, *, force: bool) -> Path | None:
+    """iter-05 hardening: if a prior run produced ``verification_results.json``
+    in ``eval_dir``, move ALL prior outputs (json/md + the screenshots dir)
+    to ``eval_dir/_runs/<UTC-ISO timestamp>/`` so the new run starts clean
+    and prior evidence is preserved with full provenance.
+
+    With ``force=True`` the archival is skipped (caller will overwrite). The
+    overwriting path exists because operators sometimes deliberately want to
+    blow away a known-bad run without keeping it; `--force` is the opt-in
+    escape hatch.
+
+    Returns the archive directory if anything was moved, ``None`` otherwise
+    (no prior results, or ``force=True``).
+    """
+    if force:
+        return None
+    if not (eval_dir / "verification_results.json").exists():
+        return None
+    timestamp = time.strftime("%Y-%m-%dT%H-%M-%SZ", time.gmtime())
+    archive_dir = eval_dir / "_runs" / timestamp
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    moved: list[str] = []
+    for name in _RUN_OUTPUT_FILES:
+        src = eval_dir / name
+        if src.exists():
+            shutil.move(str(src), str(archive_dir / name))
+            moved.append(name)
+    src_screens = eval_dir / "screenshots"
+    if src_screens.exists() and src_screens.is_dir():
+        # Move the entire dir (preserves any quarantine subfolders like
+        # 2026-04-30's `_OVERWRITTEN_BY_INTERRUPTED_RUN_*`).
+        shutil.move(str(src_screens), str(archive_dir / "screenshots"))
+        moved.append("screenshots/")
+    if moved:
+        try:
+            display_path = archive_dir.resolve().relative_to(ROOT)
+        except ValueError:
+            display_path = archive_dir
+        logger.info(
+            "archived prior run to %s (moved: %s)",
+            display_path,
+            ", ".join(moved),
+        )
+        return archive_dir
+    # Nothing actually moved — clean up the empty archive dirs we created.
+    try:
+        archive_dir.rmdir()
+        (eval_dir / "_runs").rmdir()
+    except OSError:
+        pass
+    return None
 
 
 # Module-level constants kept for backward compatibility (some imports may
@@ -1280,6 +1346,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip the post-Playwright RAGAS / DeepEval scoring stage.",
     )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Overwrite an existing verification_results.json without "
+            "archiving prior outputs to <iter>/_runs/<timestamp>/. Default "
+            "is safe-archive (iter-05 hardening: prevents the iter-04 "
+            "screenshot overwrite incident from recurring)."
+        ),
+    )
     args = p.parse_args(argv)
 
     # Re-resolve paths so this run targets the requested iter folder.
@@ -1313,6 +1389,8 @@ def main(argv: list[str] | None = None) -> int:
         queries = queries[: args.max_queries]
     logger.info("loaded %d %s queries", len(queries), iter_id)
 
+    # iter-05: archive any prior run before mkdir creates fresh empty dirs.
+    _archive_prior_run(EVAL_DIR, force=args.force)
     EVAL_DIR.mkdir(parents=True, exist_ok=True)
     SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
