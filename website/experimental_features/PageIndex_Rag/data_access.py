@@ -14,11 +14,11 @@ def load_knowledge_management_fixture(path: Path) -> tuple[dict[str, Any], list[
     return payload["_meta"], payload["queries"]
 
 
-def scope_from_fixture(meta: dict[str, Any], *, user_id: str) -> PageIndexRagScope:
+def scope_from_fixture(meta: dict[str, Any], *, user_id: str, iter_id: str = "iter-01") -> PageIndexRagScope:
     node_ids = tuple(meta["members_node_ids"])
     membership_hash = "|".join(sorted(node_ids))
     return PageIndexRagScope(
-        scope_id=f"{meta['kasten_slug']}:iter-01",
+        scope_id=f"{meta['kasten_slug']}:{iter_id}",
         user_id=user_id,
         node_ids=node_ids,
         membership_hash=membership_hash,
