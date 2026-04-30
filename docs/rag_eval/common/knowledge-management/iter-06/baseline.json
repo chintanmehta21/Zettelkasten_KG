@@ -1,0 +1,55 @@
+{
+  "iter": "iter-04",
+  "captured_at": "2026-04-30T04:23:49Z",
+  "source": "docs/rag_eval/common/knowledge-management/iter-04/verification_results.json (deployed_sha 8e52917)",
+  "kasten": "Knowledge Management & Personal Productivity (sandbox 227e0fb2)",
+  "total_queries": 14,
+  "infra_failures": 4,
+  "infra_failures_note": "q3, q6, q9, q10 returned HTTP 500 (application-level uncaught exceptions in iter-04 retry path; container oom_kill=0 confirmed via cgroup memory.events)",
+  "end_to_end": {
+    "gold_at_1": 0.6429,
+    "gold_at_1_note": "9/14 PASS; q3/q6/q9/q10 failed via HTTP 500 (infra path counts as fail), q5 failed via thematic recall miss",
+    "synthesizer_over_refusals": 0,
+    "p95_latency_ms": 58138,
+    "p95_under_budget": false
+  },
+  "per_query_baseline": {
+    "q1": "200 gold@1=true (44568 ms)",
+    "q2": "200 gold@1=true (38453 ms)",
+    "q3": "500 gold@1=false (30564 ms) — REGRESSION from iter-03 200",
+    "q4": "200 gold@1=true (52975 ms)",
+    "q5": "200 gold@1=false (51885 ms) — thematic recall miss (also failed in iter-03)",
+    "q6": "500 gold@1=false (58138 ms) — REGRESSION from iter-03 200",
+    "q7": "200 gold@1=true (34466 ms)",
+    "q8": "200 gold@1=true (49890 ms)",
+    "q9": "500 gold@1=false (35131 ms) — REGRESSION from iter-03 200 retried_supported",
+    "q10": "500 gold@1=false (40007 ms) — REGRESSION from iter-03 200 partial",
+    "q11": "200 gold@1=true (41798 ms)",
+    "q12": "200 gold@1=true (41858 ms)",
+    "q13": "200 gold@1=true (40407 ms)",
+    "q14": "200 gold@1=true (35109 ms)"
+  },
+  "ci_gates": {
+    "end_to_end_gold_at_1_min": 0.65,
+    "end_to_end_gold_at_1_note": "iter-04 = 0.6429; expect iter-05 to clear 0.65 once q3/q6/q9/q10 return 200",
+    "synthesizer_grounding_min": 0.85,
+    "infra_failures_max": 0,
+    "infra_failures_note": "iter-04 broke this with 4 failures; iter-05 patch a28dc12 must drive back to 0",
+    "max_per_source_top1_share": 0.35
+  },
+  "iter_04_fixes_landed_for_iter_05": [
+    "#1 writeback try/except (orchestrator L371, L825) — q9 root-cause class",
+    "#2 retry catch-all + cancellation cleanup (orchestrator L800-832) — q3/q6/q9/q10",
+    "#3 router rule#5 author guard (router L114-116) — q3 over-decomposition",
+    "#4 partial-verdict gate uses pre_validation_candidates (orchestrator L724-728) — q10 streaming-strip",
+    "#5 THEMATIC diversity floor (hybrid _ensure_member_coverage) — q5 cross-corpus recall",
+    "#6 post-assembler aggressive_release (orchestrator L597) — burst RSS hardening",
+    "#8 sys.path bootstrap + ops/__init__.py + ops/scripts/__init__.py — scoring stage"
+  ],
+  "iter_05_open_followups": [
+    "P5: burst Caddy 502 (still 12x 502 on /api/rag/adhoc concurrent — 503 backpressure path may not be wired)",
+    "Cold-start OOM: deploy 25157291932 saw oom_kill=1 in first ~60s (gunicorn worker recovery), max=6833 high-water events on cold-start",
+    "Patch #7 retry budget raise (RAG_RETRY_BUDGET_S 12→25) — only land if iter-05 still shows q9-class timeouts on retry path",
+    "Stage-1 FlashRank preload for COW sharing across workers (only stage-2 BGE int8 confirmed COW-shared in CLAUDE.md)"
+  ]
+}
