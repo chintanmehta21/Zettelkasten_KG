@@ -264,3 +264,22 @@ def answer_strength_summary_markdown(payload: dict) -> str:
         rows.append(f"| {key} | {summary[key]:.3f} |")
     rows.extend(["", payload["metrics_note"], ""])
     return "\n".join(rows)
+
+
+def enforce_answer_strength_gate(
+    summary: dict[str, float],
+    baseline: dict[str, float],
+    *,
+    metrics: tuple[str, ...] = ("coverage", "answer_correctness_proxy"),
+) -> None:
+    failed = [
+        metric
+        for metric in metrics
+        if float(summary.get(metric, 0.0)) <= float(baseline.get(metric, 0.0))
+    ]
+    if failed:
+        details = ", ".join(
+            f"{metric}={summary.get(metric, 0.0):.4f} <= baseline {baseline.get(metric, 0.0):.4f}"
+            for metric in failed
+        )
+        raise AssertionError(f"Answer-strength gate failed: {details}")

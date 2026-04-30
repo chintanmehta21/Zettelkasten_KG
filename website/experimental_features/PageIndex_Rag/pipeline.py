@@ -23,7 +23,10 @@ async def answer_query(
 ) -> PageIndexQueryResult:
     timings: dict[str, float] = {}
     t0 = time.perf_counter()
-    docs = {zettel.node_id: workspace.ensure_indexed(zettel) for zettel in zettels}
+    if workspace.kasten_document is not None:
+        docs = {zettel.node_id: workspace.kasten_document for zettel in zettels}
+    else:
+        docs = {zettel.node_id: workspace.ensure_indexed(zettel) for zettel in zettels}
     timings["index_ms"] = (time.perf_counter() - t0) * 1000
     t1 = time.perf_counter()
     candidates = select_candidates(query=query, zettels=zettels, documents=docs, limit=candidate_limit)

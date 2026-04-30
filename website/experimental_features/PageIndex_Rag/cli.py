@@ -7,6 +7,7 @@ import time
 from dataclasses import asdict
 
 from .config import REPO_ROOT, load_config
+from .answer_strength import enforce_answer_strength_gate
 from .data_access import (
     fetch_zettels_for_scope,
     load_knowledge_management_fixture,
@@ -46,11 +47,17 @@ async def run_eval() -> None:
     meta, queries = load_knowledge_management_fixture(config.queries_path)
     scope = scope_from_fixture(meta, user_id=user_id, iter_id=config.iter_id)
     zettels = fetch_zettels_for_scope(scope)
-    adapter = PageIndexAdapter(workspace=config.workspace)
+    adapter = PageIndexAdapter(
+        workspace=config.workspace,
+        api_mode=config.pageindex_api_mode,
+        api_key=config.pageindex_api_key,
+    )
     workspace = PageIndexWorkspace(root=config.workspace, adapter=adapter)
     results = []
     failures = []
     index_manifest = []
+    kasten_doc = workspace.ensure_kasten_indexed(scope.scope_id, zettels)
+    index_manifest.append(_document_artifact(kasten_doc))
     for query in queries:
         started = time.perf_counter()
         try:
@@ -89,6 +96,10 @@ async def run_eval() -> None:
         failures=failures,
         iter_id=f"PageIndex/knowledge-management/{config.iter_id}",
     )
+    if config.enforce_answer_strength_gate:
+        baseline_payload = json.loads(config.answer_strength_baseline_path.read_text(encoding="utf-8"))
+        baseline = baseline_payload.get("summary", baseline_payload)
+        enforce_answer_strength_gate(payload["answer_strength"], baseline)
     write_eval_artifacts(config.eval_dir, payload)
     (config.eval_dir / "README.md").write_text(
         "\n".join(

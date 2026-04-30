@@ -1,6 +1,7 @@
 from website.experimental_features.PageIndex_Rag.config import REPO_ROOT, PageIndexRagConfig, load_config
 from website.experimental_features.PageIndex_Rag.answer_strength import (
     build_answer_strength_payload,
+    enforce_answer_strength_gate,
     normalize_final_answer,
 )
 from website.experimental_features.PageIndex_Rag.eval_runner import build_eval_payload
@@ -130,6 +131,18 @@ def test_answer_strength_parses_fenced_json_and_scores_coverage():
     assert payload["summary"]["overall_strength"] > 0.8
 
 
+def test_answer_strength_gate_requires_iter03_improvement():
+    baseline = {
+        "coverage": 0.14539601167420718,
+        "answer_correctness_proxy": 0.08133148527885369,
+    }
+    improved = {"coverage": 0.2, "answer_correctness_proxy": 0.1}
+    enforce_answer_strength_gate(improved, baseline)
+    weak = {"coverage": 0.1, "answer_correctness_proxy": 0.1}
+    with pytest.raises(AssertionError):
+        enforce_answer_strength_gate(weak, baseline)
+
+
 def test_config_accepts_iter_02_env_overrides(monkeypatch, tmp_path):
     queries = tmp_path / "queries.json"
     eval_dir = tmp_path / "iter-02"
@@ -141,6 +154,14 @@ def test_config_accepts_iter_02_env_overrides(monkeypatch, tmp_path):
     assert config.eval_dir == eval_dir
     assert config.queries_path == queries
     assert str(REPO_ROOT) in str(config.login_details_path)
+
+
+def test_config_accepts_pageindex_api_mode(monkeypatch):
+    monkeypatch.setenv("PAGEINDEX_RAG_PAGEINDEX_API_MODE", "markdown_api")
+    monkeypatch.setenv("PAGEINDEX_RAG_PAGEINDEX_API_KEY", "test-key")
+    config = load_config()
+    assert config.pageindex_api_mode == "markdown_api"
+    assert config.pageindex_api_key == "test-key"
 
 
 @pytest.mark.asyncio
@@ -156,6 +177,10 @@ async def test_eval_cli_exits_cleanly_when_login_details_missing(tmp_path, monke
         kasten_slug="knowledge-management",
         kasten_name="Knowledge Management",
         candidate_limit=7,
+        pageindex_api_mode="local",
+        pageindex_api_key=None,
+        enforce_answer_strength_gate=False,
+        answer_strength_baseline_path=tmp_path / "answer_strength.json",
     )
     monkeypatch.setattr("website.experimental_features.PageIndex_Rag.cli.load_config", lambda: config)
     with pytest.raises(SystemExit) as exc:

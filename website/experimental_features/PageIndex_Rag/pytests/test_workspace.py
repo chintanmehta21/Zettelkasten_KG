@@ -57,3 +57,18 @@ def test_workspace_indexes_once_for_same_hash(tmp_path: Path):
     second = workspace.ensure_indexed(zettel)
     assert first.doc_id == second.doc_id == "doc-1"
     assert adapter.index_calls == 1
+
+
+def test_workspace_builds_kasten_level_document(tmp_path: Path):
+    adapter = FakeAdapter()
+    workspace = PageIndexWorkspace(root=tmp_path, adapter=adapter)
+    zettels = [
+        ZettelRecord("u", "a", "Alpha", "summary a", "body a", "web", None, ("x",), {}),
+        ZettelRecord("u", "b", "Beta", "summary b", "body b", "web", None, ("y",), {}),
+    ]
+    doc = workspace.ensure_kasten_indexed("km:iter-test", zettels)
+    markdown = doc.markdown_path.read_text(encoding="utf-8")
+    assert "# Kasten km:iter-test" in markdown
+    assert "## Alpha" in markdown
+    assert "## Beta" in markdown
+    assert doc.node_id == "__kasten__"

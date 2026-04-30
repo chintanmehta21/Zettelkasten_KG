@@ -20,6 +20,10 @@ class PageIndexRagConfig:
     kasten_slug: str
     kasten_name: str
     candidate_limit: int
+    pageindex_api_mode: str
+    pageindex_api_key: str | None
+    enforce_answer_strength_gate: bool
+    answer_strength_baseline_path: Path
 
 
 def load_config() -> PageIndexRagConfig:
@@ -45,4 +49,13 @@ def load_config() -> PageIndexRagConfig:
         kasten_slug="knowledge-management",
         kasten_name="Knowledge Management",
         candidate_limit=int(os.environ.get("PAGEINDEX_RAG_CANDIDATE_LIMIT", "7")),
+        pageindex_api_mode=os.environ.get("PAGEINDEX_RAG_PAGEINDEX_API_MODE", "local"),
+        pageindex_api_key=os.environ.get("PAGEINDEX_RAG_PAGEINDEX_API_KEY"),
+        enforce_answer_strength_gate=os.environ.get("PAGEINDEX_RAG_ENFORCE_STRENGTH_GATE", "false").lower() == "true",
+        answer_strength_baseline_path=Path(
+            os.environ.get(
+                "PAGEINDEX_RAG_ANSWER_STRENGTH_BASELINE",
+                str(REPO_ROOT / "docs" / "rag_eval" / "PageIndex" / "knowledge-management" / "iter-03" / "answer_strength.json"),
+            )
+        ),
     )

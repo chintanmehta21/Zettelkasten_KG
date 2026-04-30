@@ -45,3 +45,26 @@ def render_zettel_markdown(zettel: ZettelRecord) -> tuple[str, str]:
     ).strip() + "\n"
     content_hash = hashlib.sha256((RENDERER_VERSION + "\n" + body).encode("utf-8")).hexdigest()
     return body, content_hash
+
+
+def render_kasten_markdown(scope_id: str, zettels: list[ZettelRecord]) -> tuple[str, str]:
+    sections = [f"# Kasten {scope_id}"]
+    for zettel in zettels:
+        title = _clean_heading(zettel.title)
+        tags = ", ".join(sorted(zettel.tags))
+        sections.extend(
+            [
+                f"## {title}",
+                f"- Node ID: {zettel.node_id}",
+                f"- Source Type: {zettel.source_type}",
+                f"- Source URL: {zettel.url or ''}",
+                f"- Tags: {tags}",
+                "### Summary",
+                _demote_embedded_headings(zettel.summary),
+                "### Captured Content",
+                _demote_embedded_headings(zettel.content),
+            ]
+        )
+    body = "\n\n".join(sections).strip() + "\n"
+    content_hash = hashlib.sha256((RENDERER_VERSION + "\n" + body).encode("utf-8")).hexdigest()
+    return body, content_hash

@@ -8,11 +8,12 @@ def _python_sources():
     return [path for path in ROOT.rglob("*.py") if "pytests" not in path.parts]
 
 
-def test_no_pageindex_cloud_api_usage():
-    forbidden = ("chat_completions", "submit_document", "api.pageindex.ai", "enable_citations")
+def test_no_pageindex_chat_or_legacy_cloud_api_usage():
+    forbidden = ("chat_completions", "submit_document", "enable_citations", "/retrieval/", "/chat/completions")
     combined = "\n".join(path.read_text(encoding="utf-8") for path in _python_sources())
     for token in forbidden:
         assert token not in combined
+    assert "https://api.pageindex.ai/markdown/" in combined
 
 
 def test_pageindex_adapter_is_only_direct_pageindex_importer():

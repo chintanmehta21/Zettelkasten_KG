@@ -6,23 +6,34 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import httpx
+
 
 class PageIndexUnavailableError(RuntimeError):
     pass
 
 
 class PageIndexAdapter:
-    def __init__(self, *, workspace: Path, model: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        workspace: Path,
+        model: str | None = None,
+        api_mode: str = "local",
+        api_key: str | None = None,
+    ) -> None:
         try:
             from pageindex import PageIndexClient
         except Exception as exc:  # pragma: no cover - env-specific
-            PageIndexClient = _LocalMarkdownPageIndexClient
+            PageIndexClient = _PageIndexMarkdownApiClient if api_mode == "markdown_api" and api_key else _LocalMarkdownPageIndexClient
         self.workspace = workspace
         self.workspace.mkdir(parents=True, exist_ok=True)
         kwargs: dict[str, Any] = {"workspace": str(workspace)}
         if model:
             kwargs["model"] = model
             kwargs["retrieve_model"] = model
+        if PageIndexClient is _PageIndexMarkdownApiClient:
+            kwargs["api_key"] = api_key
         self._client = PageIndexClient(**kwargs)
 
     def index_markdown(self, markdown_path: Path) -> str:
@@ -100,13 +111,72 @@ class _LocalMarkdownPageIndexClient:
     def get_page_content(self, doc_id: str, pages: str) -> str:
         doc = self.documents[doc_id]
         lines = doc["lines"]
-        first = int(str(pages).split(",", 1)[0].split("-", 1)[0])
-        start = max(1, first)
-        next_heading = len(lines) + 1
-        for node in doc["structure"]:
-            line_num = int(node.get("line_num") or 1)
-            if line_num > start:
-                next_heading = line_num
-                break
-        content = "\n".join(lines[start - 1 : next_heading - 1]).strip()
-        return json.dumps([{"page": start, "content": content}])
+        page_items = []
+        for raw_page in str(pages).split(","):
+            first = int(raw_page.split("-", 1)[0])
+            start = max(1, first)
+            next_heading = len(lines) + 1
+            for node in doc["structure"]:
+                line_num = int(node.get("line_num") or 1)
+                if line_num > start:
+                    next_heading = line_num
+                    break
+            content = "\n".join(lines[start - 1 : next_heading - 1]).strip()
+            page_items.append({"page": start, "content": content})
+        return json.dumps(page_items)
+
+
+class _PageIndexMarkdownApiClient:
+    def __init__(self, *, workspace: str, api_key: str, **_: Any) -> None:
+        self.workspace = Path(workspace)
+        self.workspace.mkdir(parents=True, exist_ok=True)
+        self.api_key = api_key
+        self.documents: dict[str, dict[str, Any]] = {}
+
+    def index(self, file_path: str, mode: str = "md") -> str:
+        with open(file_path, "rb") as handle:
+            response = httpx.post(
+                "https://api.pageindex.ai/markdown/",
+                headers={"api_key": self.api_key},
+                files={"file": handle},
+                data={
+                    "if_add_node_id": "yes",
+                    "if_add_node_summary": "yes",
+                    "if_add_node_text": "yes",
+                    "if_add_doc_description": "yes",
+                },
+                timeout=120,
+            )
+        response.raise_for_status()
+        payload = response.json()
+        doc_id = str(payload.get("doc_id") or payload.get("id") or uuid4())
+        self.documents[doc_id] = {
+            "id": doc_id,
+            "path": str(Path(file_path).resolve()),
+            "structure": payload.get("structure") or payload.get("result") or [],
+            "raw": payload,
+        }
+        return doc_id
+
+    def get_document(self, doc_id: str) -> str:
+        return json.dumps(self.documents[doc_id])
+
+    def get_document_structure(self, doc_id: str) -> str:
+        return json.dumps(self.documents[doc_id]["structure"])
+
+    def get_page_content(self, doc_id: str, pages: str) -> str:
+        structure = self.documents[doc_id]["structure"]
+        wanted = {int(part.split("-", 1)[0]) for part in str(pages).split(",") if part}
+        results = []
+
+        def walk(nodes: list[dict[str, Any]]) -> None:
+            for node in nodes:
+                line_num = int(node.get("line_num") or node.get("start_index") or node.get("page_index") or 1)
+                if line_num in wanted:
+                    results.append({"page": line_num, "content": node.get("text") or node.get("summary") or ""})
+                children = node.get("nodes")
+                if isinstance(children, list):
+                    walk(children)
+
+        walk(structure if isinstance(structure, list) else [])
+        return json.dumps(results)
