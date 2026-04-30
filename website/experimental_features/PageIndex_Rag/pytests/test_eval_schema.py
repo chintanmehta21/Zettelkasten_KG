@@ -86,6 +86,31 @@ def test_eval_payload_records_production_fields_and_counts_infra_failures():
     assert payload["answer_strength"]["ragas_proxy_score"] < 1.0
 
 
+def test_eval_payload_counts_empty_expected_refusal_as_supported():
+    answers = (
+        AnswerCandidate("a1", "direct", "The evidence does not contain information about Notion.", ("n",), ({"node_id": "n"},)),
+        AnswerCandidate("a2", "comparative", "The evidence does not contain information about Notion.", ("n",), ({"node_id": "n"},)),
+        AnswerCandidate("a3", "exploratory", "The evidence does not contain information about Notion.", ("n",), ({"node_id": "n"},)),
+    )
+    result = PageIndexQueryResult(
+        query_id="q1",
+        query="Notion?",
+        retrieved_node_ids=("n",),
+        reranked_node_ids=("n",),
+        evidence=(),
+        answers=answers,
+        timings_ms={"total_ms": 12.0},
+        memory_rss_mb={},
+    )
+    payload = build_eval_payload(
+        queries=[{"qid": "q1", "expected_primary_citation": []}],
+        results=[result],
+    )
+    assert payload["per_query"][0]["gold_at_1"] is True
+    assert payload["per_query"][0]["primary_citation"] is None
+    assert payload["per_query"][0]["critic_verdict"] == "supported_refusal"
+
+
 def test_answer_strength_parses_fenced_json_and_scores_coverage():
     answer = AnswerCandidate(
         "a1",

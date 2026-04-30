@@ -1,0 +1,174 @@
+{
+  "scope": {
+    "scope_id": "urban-climate-resilience:iter-05",
+    "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+    "node_ids": [
+      "yt-urban-heat-islands-explained",
+      "gh-noaa-heat-dashboard",
+      "web-cool-roofs-urban-heat",
+      "rd-heat-pump-retrofit-lessons",
+      "nl-carbon-brief-urban-heat",
+      "web-sponge-cities-flooding",
+      "yt-heat-action-plans"
+    ],
+    "membership_hash": "gh-noaa-heat-dashboard|nl-carbon-brief-urban-heat|rd-heat-pump-retrofit-lessons|web-cool-roofs-urban-heat|web-sponge-cities-flooding|yt-heat-action-plans|yt-urban-heat-islands-explained",
+    "name": "Urban Climate Resilience",
+    "mode": "temporary"
+  },
+  "zettels": [
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "yt-urban-heat-islands-explained",
+      "title": "Urban Heat Islands Explained",
+      "summary": "Urban heat islands form when asphalt, dark roofs, concrete, and scarce tree canopy absorb solar energy during the day and release it slowly at night. The effect can keep dense neighborhoods 5 to 10 degrees Fahrenheit warmer than surrounding areas, with the highest risk in low-income districts that have fewer trees and more paved surfaces. The zettel emphasizes that heat is not only a comfort problem: hotter nights prevent physiological recovery, raise heat-stress hospital visits, and can compound air pollution. The mitigation stack is shade trees, high-albedo cool roofs, reflective pavements, shaded transit stops, cooling centers, and heat-alert outreach. It also notes that tree planting is slower but co-beneficial, while cool roofs can reduce building cooling load quickly.",
+      "content": "Urban heat islands form when asphalt, dark roofs, concrete, and scarce tree canopy absorb solar energy during the day and release it slowly at night. The effect can keep dense neighborhoods 5 to 10 degrees Fahrenheit warmer than surrounding areas, with the highest risk in low-income districts that have fewer trees and more paved surfaces. The zettel emphasizes that heat is not only a comfort problem: hotter nights prevent physiological recovery, raise heat-stress hospital visits, and can compound air pollution. The mitigation stack is shade trees, high-albedo cool roofs, reflective pavements, shaded transit stops, cooling centers, and heat-alert outreach. It also notes that tree planting is slower but co-beneficial, while cool roofs can reduce building cooling load quickly.",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=urban-heat-islands-explained",
+      "tags": [
+        "urban-climate",
+        "heat-islands",
+        "public-health",
+        "city-planning",
+        "resilience"
+      ],
+      "metadata": {
+        "source_kind": "youtube",
+        "eval_iter_start": "iter-05",
+        "captured_content": "Urban heat islands form when asphalt, dark roofs, concrete, and scarce tree canopy absorb solar energy during the day and release it slowly at night. The effect can keep dense neighborhoods 5 to 10 degrees Fahrenheit warmer than surrounding areas, with the highest risk in low-income districts that have fewer trees and more paved surfaces. The zettel emphasizes that heat is not only a comfort problem: hotter nights prevent physiological recovery, raise heat-stress hospital visits, and can compound air pollution. The mitigation stack is shade trees, high-albedo cool roofs, reflective pavements, shaded transit stops, cooling centers, and heat-alert outreach. It also notes that tree planting is slower but co-beneficial, while cool roofs can reduce building cooling load quickly.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "gh-noaa-heat-dashboard",
+      "title": "NOAA Heat Dashboard Patterns",
+      "summary": "This GitHub-style zettel describes an open-source heat dashboard pattern for city resilience teams. The dashboard combines NOAA forecasts, wet-bulb globe temperature, census vulnerability layers, tree-canopy maps, emergency-room trend data, and cooling-center locations. The key design principle is decision support rather than visualization novelty: staff need ward-level risk, a timestamped alert status, and an exportable list of priority blocks before heat peaks. The repository uses Python ETL jobs, PostGIS tables, and a small web map. It warns that a dashboard is dangerous if it is not connected to operating procedures such as extending library hours, opening cooling centers, texting outreach lists, and dispatching wellness checks.",
+      "content": "This GitHub-style zettel describes an open-source heat dashboard pattern for city resilience teams. The dashboard combines NOAA forecasts, wet-bulb globe temperature, census vulnerability layers, tree-canopy maps, emergency-room trend data, and cooling-center locations. The key design principle is decision support rather than visualization novelty: staff need ward-level risk, a timestamped alert status, and an exportable list of priority blocks before heat peaks. The repository uses Python ETL jobs, PostGIS tables, and a small web map. It warns that a dashboard is dangerous if it is not connected to operating procedures such as extending library hours, opening cooling centers, texting outreach lists, and dispatching wellness checks.",
+      "source_type": "github",
+      "url": "https://github.com/noaa/heat-dashboard-patterns",
+      "tags": [
+        "urban-climate",
+        "heat-alerts",
+        "open-data",
+        "dashboards",
+        "resilience"
+      ],
+      "metadata": {
+        "source_kind": "github",
+        "eval_iter_start": "iter-05",
+        "captured_content": "This GitHub-style zettel describes an open-source heat dashboard pattern for city resilience teams. The dashboard combines NOAA forecasts, wet-bulb globe temperature, census vulnerability layers, tree-canopy maps, emergency-room trend data, and cooling-center locations. The key design principle is decision support rather than visualization novelty: staff need ward-level risk, a timestamped alert status, and an exportable list of priority blocks before heat peaks. The repository uses Python ETL jobs, PostGIS tables, and a small web map. It warns that a dashboard is dangerous if it is not connected to operating procedures such as extending library hours, opening cooling centers, texting outreach lists, and dispatching wellness checks.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "web-cool-roofs-urban-heat",
+      "title": "Cool Roofs and Reflective Surfaces",
+      "summary": "Cool roofs use high solar reflectance and thermal emittance materials so buildings absorb less heat. The zettel says cool roofs are fastest on flat commercial roofs, schools, warehouses, and public buildings where procurement can be centralized. Benefits include lower indoor temperatures, lower air-conditioning demand, and reduced peak electricity load during heat waves. The main caveat is climate and context: reflective roofs are most valuable in hot sunny climates, must be paired with insulation and ventilation in older buildings, and can create glare if specified poorly. The zettel contrasts cool roofs with tree canopy: roofs are faster and easier to target building by building, while trees add shade, stormwater capture, and public-realm comfort over a longer time horizon.",
+      "content": "Cool roofs use high solar reflectance and thermal emittance materials so buildings absorb less heat. The zettel says cool roofs are fastest on flat commercial roofs, schools, warehouses, and public buildings where procurement can be centralized. Benefits include lower indoor temperatures, lower air-conditioning demand, and reduced peak electricity load during heat waves. The main caveat is climate and context: reflective roofs are most valuable in hot sunny climates, must be paired with insulation and ventilation in older buildings, and can create glare if specified poorly. The zettel contrasts cool roofs with tree canopy: roofs are faster and easier to target building by building, while trees add shade, stormwater capture, and public-realm comfort over a longer time horizon.",
+      "source_type": "web",
+      "url": "https://example.org/urban-climate/cool-roofs-reflective-surfaces",
+      "tags": [
+        "urban-climate",
+        "cool-roofs",
+        "buildings",
+        "mitigation",
+        "energy"
+      ],
+      "metadata": {
+        "source_kind": "web",
+        "eval_iter_start": "iter-05",
+        "captured_content": "Cool roofs use high solar reflectance and thermal emittance materials so buildings absorb less heat. The zettel says cool roofs are fastest on flat commercial roofs, schools, warehouses, and public buildings where procurement can be centralized. Benefits include lower indoor temperatures, lower air-conditioning demand, and reduced peak electricity load during heat waves. The main caveat is climate and context: reflective roofs are most valuable in hot sunny climates, must be paired with insulation and ventilation in older buildings, and can create glare if specified poorly. The zettel contrasts cool roofs with tree canopy: roofs are faster and easier to target building by building, while trees add shade, stormwater capture, and public-realm comfort over a longer time horizon.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "rd-heat-pump-retrofit-lessons",
+      "title": "Heat Pump Retrofit Lessons from Homeowners",
+      "summary": "This Reddit-style discussion collects practical lessons from homeowners who replaced gas furnaces or window AC units with heat pumps. The strongest pattern is that sizing and envelope work matter more than brand arguments: contractors should run load calculations, check ducts or line-set routes, and seal obvious leaks before installation. Residents report better comfort because heat pumps provide both winter heating and summer cooling, but they warn about undersized systems, poor installer commissioning, and electrical-panel constraints. The zettel connects heat pumps to climate resilience because efficient cooling becomes life-safety infrastructure during heat waves, especially when paired with weatherization, backup power planning, and demand-response programs.",
+      "content": "This Reddit-style discussion collects practical lessons from homeowners who replaced gas furnaces or window AC units with heat pumps. The strongest pattern is that sizing and envelope work matter more than brand arguments: contractors should run load calculations, check ducts or line-set routes, and seal obvious leaks before installation. Residents report better comfort because heat pumps provide both winter heating and summer cooling, but they warn about undersized systems, poor installer commissioning, and electrical-panel constraints. The zettel connects heat pumps to climate resilience because efficient cooling becomes life-safety infrastructure during heat waves, especially when paired with weatherization, backup power planning, and demand-response programs.",
+      "source_type": "reddit",
+      "url": "https://www.reddit.com/r/heatpumps/comments/retrofit_lessons_city_homes/",
+      "tags": [
+        "urban-climate",
+        "heat-pumps",
+        "buildings",
+        "electrification",
+        "resilience"
+      ],
+      "metadata": {
+        "source_kind": "reddit",
+        "eval_iter_start": "iter-05",
+        "captured_content": "This Reddit-style discussion collects practical lessons from homeowners who replaced gas furnaces or window AC units with heat pumps. The strongest pattern is that sizing and envelope work matter more than brand arguments: contractors should run load calculations, check ducts or line-set routes, and seal obvious leaks before installation. Residents report better comfort because heat pumps provide both winter heating and summer cooling, but they warn about undersized systems, poor installer commissioning, and electrical-panel constraints. The zettel connects heat pumps to climate resilience because efficient cooling becomes life-safety infrastructure during heat waves, especially when paired with weatherization, backup power planning, and demand-response programs.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "nl-carbon-brief-urban-heat",
+      "title": "Carbon Brief: Cities, Heat, and Equity",
+      "summary": "This newsletter zettel argues that urban heat adaptation is fundamentally an equity problem. It highlights that redlined or disinvested neighborhoods often have less tree canopy, more industrial land, wider roads, and older housing, so residents face higher outdoor temperatures and worse indoor exposure. The policy package is to map heat vulnerability, fund shade and cooling in the hottest blocks first, require tenant protections during extreme heat, and avoid green gentrification by pairing improvements with anti-displacement safeguards. It frames heat metrics as accountability tools: citywide average temperature hides the fact that the hottest census tracts are usually the ones with the fewest political resources.",
+      "content": "This newsletter zettel argues that urban heat adaptation is fundamentally an equity problem. It highlights that redlined or disinvested neighborhoods often have less tree canopy, more industrial land, wider roads, and older housing, so residents face higher outdoor temperatures and worse indoor exposure. The policy package is to map heat vulnerability, fund shade and cooling in the hottest blocks first, require tenant protections during extreme heat, and avoid green gentrification by pairing improvements with anti-displacement safeguards. It frames heat metrics as accountability tools: citywide average temperature hides the fact that the hottest census tracts are usually the ones with the fewest political resources.",
+      "source_type": "newsletter",
+      "url": "https://www.carbonbrief.org/newsletter/cities-heat-equity-adaptation",
+      "tags": [
+        "urban-climate",
+        "equity",
+        "heat-islands",
+        "adaptation",
+        "policy"
+      ],
+      "metadata": {
+        "source_kind": "newsletter",
+        "eval_iter_start": "iter-05",
+        "captured_content": "This newsletter zettel argues that urban heat adaptation is fundamentally an equity problem. It highlights that redlined or disinvested neighborhoods often have less tree canopy, more industrial land, wider roads, and older housing, so residents face higher outdoor temperatures and worse indoor exposure. The policy package is to map heat vulnerability, fund shade and cooling in the hottest blocks first, require tenant protections during extreme heat, and avoid green gentrification by pairing improvements with anti-displacement safeguards. It frames heat metrics as accountability tools: citywide average temperature hides the fact that the hottest census tracts are usually the ones with the fewest political resources.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "web-sponge-cities-flooding",
+      "title": "Sponge Cities and Cloudburst Streets",
+      "summary": "Sponge-city design treats streets, parks, roofs, and vacant lots as distributed stormwater infrastructure. Instead of moving all rainfall into pipes as fast as possible, a sponge city slows, stores, infiltrates, and reuses water through rain gardens, bioswales, permeable pavement, detention plazas, wetlands, and blue-green corridors. The zettel distinguishes everyday rain from cloudburst events: pipes still matter, but surface storage gives floodwater somewhere safer to go when pipes are overwhelmed. Co-benefits include shade, biodiversity, groundwater recharge, and cooler microclimates. The risk is maintenance: clogged inlets and neglected vegetation can turn green infrastructure into decorative failure.",
+      "content": "Sponge-city design treats streets, parks, roofs, and vacant lots as distributed stormwater infrastructure. Instead of moving all rainfall into pipes as fast as possible, a sponge city slows, stores, infiltrates, and reuses water through rain gardens, bioswales, permeable pavement, detention plazas, wetlands, and blue-green corridors. The zettel distinguishes everyday rain from cloudburst events: pipes still matter, but surface storage gives floodwater somewhere safer to go when pipes are overwhelmed. Co-benefits include shade, biodiversity, groundwater recharge, and cooler microclimates. The risk is maintenance: clogged inlets and neglected vegetation can turn green infrastructure into decorative failure.",
+      "source_type": "web",
+      "url": "https://example.org/urban-climate/sponge-cities-cloudburst-streets",
+      "tags": [
+        "urban-climate",
+        "flooding",
+        "stormwater",
+        "green-infrastructure",
+        "resilience"
+      ],
+      "metadata": {
+        "source_kind": "web",
+        "eval_iter_start": "iter-05",
+        "captured_content": "Sponge-city design treats streets, parks, roofs, and vacant lots as distributed stormwater infrastructure. Instead of moving all rainfall into pipes as fast as possible, a sponge city slows, stores, infiltrates, and reuses water through rain gardens, bioswales, permeable pavement, detention plazas, wetlands, and blue-green corridors. The zettel distinguishes everyday rain from cloudburst events: pipes still matter, but surface storage gives floodwater somewhere safer to go when pipes are overwhelmed. Co-benefits include shade, biodiversity, groundwater recharge, and cooler microclimates. The risk is maintenance: clogged inlets and neglected vegetation can turn green infrastructure into decorative failure.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    },
+    {
+      "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+      "node_id": "yt-heat-action-plans",
+      "title": "Heat Action Plans and Community Cooling",
+      "summary": "This video zettel explains that a heat action plan converts forecast risk into operational steps before, during, and after a heat wave. Core components include trigger thresholds, named agency owners, cooling-center hours, transit access, outreach to older adults and outdoor workers, multilingual alerts, and post-event mortality review. Cooling centers only work if residents know they exist, can reach them safely, and trust the host institution. The zettel stresses that response plans should be rehearsed before summer; otherwise alerts arrive but libraries, clinics, and emergency managers are not synchronized. It connects dashboards to action by saying the map should tell staff where to open centers and whom to contact first.",
+      "content": "This video zettel explains that a heat action plan converts forecast risk into operational steps before, during, and after a heat wave. Core components include trigger thresholds, named agency owners, cooling-center hours, transit access, outreach to older adults and outdoor workers, multilingual alerts, and post-event mortality review. Cooling centers only work if residents know they exist, can reach them safely, and trust the host institution. The zettel stresses that response plans should be rehearsed before summer; otherwise alerts arrive but libraries, clinics, and emergency managers are not synchronized. It connects dashboards to action by saying the map should tell staff where to open centers and whom to contact first.",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=heat-action-plans-community-cooling",
+      "tags": [
+        "urban-climate",
+        "heat-alerts",
+        "public-health",
+        "cooling-centers",
+        "resilience"
+      ],
+      "metadata": {
+        "source_kind": "youtube",
+        "eval_iter_start": "iter-05",
+        "captured_content": "This video zettel explains that a heat action plan converts forecast risk into operational steps before, during, and after a heat wave. Core components include trigger thresholds, named agency owners, cooling-center hours, transit access, outreach to older adults and outdoor workers, multilingual alerts, and post-event mortality review. Cooling centers only work if residents know they exist, can reach them safely, and trust the host institution. The zettel stresses that response plans should be rehearsed before summer; otherwise alerts arrive but libraries, clinics, and emergency managers are not synchronized. It connects dashboards to action by saying the map should tell staff where to open centers and whom to contact first.",
+        "eval_kasten_slug": "urban-climate-resilience"
+      }
+    }
+  ]
+}

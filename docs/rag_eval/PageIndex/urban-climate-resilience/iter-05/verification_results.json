@@ -1,0 +1,449 @@
+{
+  "iter": "PageIndex/knowledge-management/iter-05",
+  "total_duration_ms": 392829.7887000008,
+  "qa_summary": {
+    "total": 14,
+    "end_to_end_gold_at_1": 1.0,
+    "infra_failures": 0,
+    "p95_latency_ms": 41398.12460000394,
+    "p95_under_budget": false
+  },
+  "phases": [
+    {
+      "phase": "pageindex_rag",
+      "checks": [
+        {
+          "name": "Q-A q1",
+          "passed": true,
+          "duration_ms": 24999.923399998806,
+          "detail": {
+            "qid": "q1",
+            "http_status": 200,
+            "elapsed_ms": 24999.923399998806,
+            "gold_at_1": true,
+            "primary_citation": "yt-urban-heat-islands-explained",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-urban-heat-islands-explained",
+              "nl-carbon-brief-urban-heat",
+              "yt-heat-action-plans",
+              "rd-heat-pump-retrofit-lessons",
+              "gh-noaa-heat-dashboard",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "nl-carbon-brief-urban-heat",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q2",
+          "passed": true,
+          "duration_ms": 34196.18089999858,
+          "detail": {
+            "qid": "q2",
+            "http_status": 200,
+            "elapsed_ms": 34196.18089999858,
+            "gold_at_1": true,
+            "primary_citation": "gh-noaa-heat-dashboard",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "yt-heat-action-plans",
+              "rd-heat-pump-retrofit-lessons",
+              "yt-urban-heat-islands-explained",
+              "nl-carbon-brief-urban-heat",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q3",
+          "passed": true,
+          "duration_ms": 19124.96480000118,
+          "detail": {
+            "qid": "q3",
+            "http_status": 200,
+            "elapsed_ms": 19124.96480000118,
+            "gold_at_1": true,
+            "primary_citation": "web-cool-roofs-urban-heat",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-cool-roofs-urban-heat",
+              "yt-urban-heat-islands-explained",
+              "rd-heat-pump-retrofit-lessons",
+              "gh-noaa-heat-dashboard",
+              "yt-heat-action-plans",
+              "nl-carbon-brief-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q4",
+          "passed": true,
+          "duration_ms": 10602.527700000792,
+          "detail": {
+            "qid": "q4",
+            "http_status": 200,
+            "elapsed_ms": 10602.527700000792,
+            "gold_at_1": true,
+            "primary_citation": "rd-heat-pump-retrofit-lessons",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "rd-heat-pump-retrofit-lessons",
+              "yt-urban-heat-islands-explained",
+              "nl-carbon-brief-urban-heat",
+              "gh-noaa-heat-dashboard",
+              "yt-heat-action-plans",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q5",
+          "passed": true,
+          "duration_ms": 80053.09280000074,
+          "detail": {
+            "qid": "q5",
+            "http_status": 200,
+            "elapsed_ms": 80053.09280000074,
+            "gold_at_1": true,
+            "primary_citation": "nl-carbon-brief-urban-heat",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "nl-carbon-brief-urban-heat",
+              "yt-urban-heat-islands-explained",
+              "gh-noaa-heat-dashboard",
+              "rd-heat-pump-retrofit-lessons",
+              "yt-heat-action-plans",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q6",
+          "passed": true,
+          "duration_ms": 22959.738199999265,
+          "detail": {
+            "qid": "q6",
+            "http_status": 200,
+            "elapsed_ms": 22959.738199999265,
+            "gold_at_1": true,
+            "primary_citation": "web-sponge-cities-flooding",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-sponge-cities-flooding",
+              "yt-urban-heat-islands-explained",
+              "gh-noaa-heat-dashboard",
+              "web-cool-roofs-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "nl-carbon-brief-urban-heat",
+              "yt-heat-action-plans"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q7",
+          "passed": true,
+          "duration_ms": 22460.159499998554,
+          "detail": {
+            "qid": "q7",
+            "http_status": 200,
+            "elapsed_ms": 22460.159499998554,
+            "gold_at_1": true,
+            "primary_citation": "yt-heat-action-plans",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained",
+              "gh-noaa-heat-dashboard",
+              "rd-heat-pump-retrofit-lessons",
+              "nl-carbon-brief-urban-heat",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q8",
+          "passed": true,
+          "duration_ms": 31290.43300000194,
+          "detail": {
+            "qid": "q8",
+            "http_status": 200,
+            "elapsed_ms": 31290.43300000194,
+            "gold_at_1": true,
+            "primary_citation": "web-cool-roofs-urban-heat",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-cool-roofs-urban-heat",
+              "yt-urban-heat-islands-explained",
+              "yt-heat-action-plans",
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q9",
+          "passed": true,
+          "duration_ms": 12955.355500002042,
+          "detail": {
+            "qid": "q9",
+            "http_status": 200,
+            "elapsed_ms": 12955.355500002042,
+            "gold_at_1": true,
+            "primary_citation": null,
+            "critic_verdict": "supported_refusal",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-cool-roofs-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "yt-urban-heat-islands-explained",
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans"
+            ],
+            "cited_node_ids": []
+          }
+        },
+        {
+          "name": "Q-A q10",
+          "passed": true,
+          "duration_ms": 28867.888299995684,
+          "detail": {
+            "qid": "q10",
+            "http_status": 200,
+            "elapsed_ms": 28867.888299995684,
+            "gold_at_1": true,
+            "primary_citation": "web-cool-roofs-urban-heat",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-cool-roofs-urban-heat",
+              "yt-urban-heat-islands-explained",
+              "rd-heat-pump-retrofit-lessons",
+              "web-sponge-cities-flooding",
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "yt-heat-action-plans"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q11",
+          "passed": true,
+          "duration_ms": 22323.97260000289,
+          "detail": {
+            "qid": "q11",
+            "http_status": 200,
+            "elapsed_ms": 22323.97260000289,
+            "gold_at_1": true,
+            "primary_citation": "yt-heat-action-plans",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-heat-action-plans",
+              "gh-noaa-heat-dashboard",
+              "yt-urban-heat-islands-explained",
+              "rd-heat-pump-retrofit-lessons",
+              "web-sponge-cities-flooding",
+              "web-cool-roofs-urban-heat",
+              "nl-carbon-brief-urban-heat"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q12",
+          "passed": true,
+          "duration_ms": 12880.769600000349,
+          "detail": {
+            "qid": "q12",
+            "http_status": 200,
+            "elapsed_ms": 12880.769600000349,
+            "gold_at_1": true,
+            "primary_citation": "rd-heat-pump-retrofit-lessons",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "rd-heat-pump-retrofit-lessons",
+              "yt-urban-heat-islands-explained",
+              "yt-heat-action-plans",
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q13",
+          "passed": true,
+          "duration_ms": 28716.65779999603,
+          "detail": {
+            "qid": "q13",
+            "http_status": 200,
+            "elapsed_ms": 28716.65779999603,
+            "gold_at_1": true,
+            "primary_citation": "nl-carbon-brief-urban-heat",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "nl-carbon-brief-urban-heat",
+              "yt-urban-heat-islands-explained",
+              "yt-heat-action-plans",
+              "gh-noaa-heat-dashboard",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding"
+            ],
+            "cited_node_ids": [
+              "gh-noaa-heat-dashboard",
+              "nl-carbon-brief-urban-heat",
+              "rd-heat-pump-retrofit-lessons",
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-heat-action-plans",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q14",
+          "passed": true,
+          "duration_ms": 41398.12460000394,
+          "detail": {
+            "qid": "q14",
+            "http_status": 200,
+            "elapsed_ms": 41398.12460000394,
+            "gold_at_1": true,
+            "primary_citation": "yt-urban-heat-islands-explained",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-urban-heat-islands-explained",
+              "gh-noaa-heat-dashboard",
+              "yt-heat-action-plans",
+              "rd-heat-pump-retrofit-lessons",
+              "nl-carbon-brief-urban-heat",
+              "web-sponge-cities-flooding",
+              "web-cool-roofs-urban-heat"
+            ],
+            "cited_node_ids": [
+              "web-cool-roofs-urban-heat",
+              "web-sponge-cities-flooding",
+              "yt-urban-heat-islands-explained"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

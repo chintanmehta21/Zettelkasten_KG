@@ -1,0 +1,118 @@
+{
+  "_meta": {
+    "iter_id": "iter-05",
+    "kasten_slug": "urban-climate-resilience",
+    "kasten_name": "Urban Climate Resilience",
+    "topic": "Urban climate adaptation, heat resilience, buildings, and flood infrastructure",
+    "created_for_user": "Naruto",
+    "members_node_ids": [
+      "yt-urban-heat-islands-explained",
+      "gh-noaa-heat-dashboard",
+      "web-cool-roofs-urban-heat",
+      "rd-heat-pump-retrofit-lessons",
+      "nl-carbon-brief-urban-heat",
+      "web-sponge-cities-flooding",
+      "yt-heat-action-plans"
+    ],
+    "design_notes": "Iter-05 starts PageIndex on a new Naruto backend Kasten with a completely different topic from the prior Knowledge Management Kasten. Queries mix single-node factual checks, cross-node synthesis, absent-topic refusal, and partial-missing-entity handling."
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "text": "What physical features create urban heat islands, and why do nights matter for health?",
+      "expected_primary_citation": "yt-urban-heat-islands-explained",
+      "ground_truth": "Urban heat islands come from asphalt, dark roofs, concrete, scarce tree canopy, and other heat-absorbing surfaces. Nights matter because stored heat is released slowly, preventing physiological recovery and raising heat-stress risk."
+    },
+    {
+      "qid": "q2",
+      "text": "What data layers should a city heat dashboard combine before a heat wave peaks?",
+      "expected_primary_citation": "gh-noaa-heat-dashboard",
+      "ground_truth": "The dashboard should combine NOAA forecasts, wet-bulb globe temperature, census vulnerability, tree canopy, emergency-room trends, cooling-center locations, ward-level risk, alert status, and priority blocks."
+    },
+    {
+      "qid": "q3",
+      "text": "For a school district with flat roofs, what does the Kasten say is the fastest building-level heat mitigation, and what caveat should procurement remember?",
+      "expected_primary_citation": "web-cool-roofs-urban-heat",
+      "ground_truth": "Cool roofs are the fastest building-level mitigation for flat public roofs such as schools. Procurement should remember context: hot sunny climates benefit most, older buildings need insulation and ventilation, and poor specification can create glare."
+    },
+    {
+      "qid": "q4",
+      "text": "According to the homeowner retrofit discussion, what matters more than arguing about heat pump brands?",
+      "expected_primary_citation": "rd-heat-pump-retrofit-lessons",
+      "ground_truth": "Sizing and envelope work matter more than brand arguments: contractors should run load calculations, check ducts or line-set routes, seal leaks, commission correctly, and handle electrical-panel constraints."
+    },
+    {
+      "qid": "q5",
+      "text": "Why does the newsletter frame urban heat adaptation as an equity problem rather than only a climate problem?",
+      "expected_primary_citation": "nl-carbon-brief-urban-heat",
+      "ground_truth": "The newsletter frames heat adaptation as equity because redlined or disinvested neighborhoods often have less tree canopy, more industrial land, wider roads, older housing, higher exposure, and fewer political resources."
+    },
+    {
+      "qid": "q6",
+      "text": "What is the difference between ordinary storm pipes and a sponge-city approach during cloudbursts?",
+      "expected_primary_citation": "web-sponge-cities-flooding",
+      "ground_truth": "Storm pipes move rainfall away quickly, but a sponge city slows, stores, infiltrates, and reuses water through rain gardens, bioswales, permeable pavement, detention plazas, wetlands, and blue-green corridors, giving overflow safer surface storage during cloudbursts."
+    },
+    {
+      "qid": "q7",
+      "text": "What makes a heat action plan operational instead of just a warning document?",
+      "expected_primary_citation": "yt-heat-action-plans",
+      "ground_truth": "A heat action plan becomes operational when it has trigger thresholds, named agency owners, cooling-center hours, transit access, outreach lists, multilingual alerts, rehearsals before summer, and post-event mortality review."
+    },
+    {
+      "qid": "q8",
+      "text": "Compare cool roofs and tree canopy as heat interventions: which is faster, and which has broader public-realm benefits?",
+      "expected_primary_citation": [
+        "web-cool-roofs-urban-heat",
+        "yt-urban-heat-islands-explained"
+      ],
+      "ground_truth": "Cool roofs are faster and easier to target building by building, lowering indoor heat and cooling load. Tree canopy is slower but provides shade, public-realm comfort, stormwater capture, and other co-benefits."
+    },
+    {
+      "qid": "q9",
+      "text": "Summarize what this Kasten says about cryptocurrency mining and grid demand.",
+      "expected_primary_citation": [],
+      "ground_truth": "No zettel in this Kasten discusses cryptocurrency mining or its grid demand. A correct answer should refuse or explicitly state the absence without inventing details."
+    },
+    {
+      "qid": "q10",
+      "text": "Jane Jacobs and cool roofs both come up in urban planning debates. Compare their treatment in this Kasten.",
+      "expected_primary_citation": "web-cool-roofs-urban-heat",
+      "ground_truth": "Cool roofs are covered as high-reflectance building materials that reduce indoor heat and cooling load. Jane Jacobs is not covered in this Kasten, so the answer should not invent her views."
+    },
+    {
+      "qid": "q11",
+      "text": "Which zettels connect dashboards to action, and what action do they expect city staff to take?",
+      "expected_primary_citation": [
+        "gh-noaa-heat-dashboard",
+        "yt-heat-action-plans"
+      ],
+      "ground_truth": "The NOAA heat dashboard and heat action plan zettels connect maps to operations: extend library or cooling-center hours, open centers, text outreach lists, dispatch wellness checks, identify priority blocks, and contact at-risk residents before heat peaks."
+    },
+    {
+      "qid": "q12",
+      "text": "How do heat pumps fit the resilience story if they are usually described as building electrification?",
+      "expected_primary_citation": "rd-heat-pump-retrofit-lessons",
+      "ground_truth": "Heat pumps fit resilience because they provide efficient summer cooling as life-safety infrastructure during heat waves, especially when combined with weatherization, backup power planning, and demand response."
+    },
+    {
+      "qid": "q13",
+      "text": "Across this Kasten, what should a city prioritize first if it wants heat policy to be accountable to the hottest neighborhoods?",
+      "expected_primary_citation": [
+        "nl-carbon-brief-urban-heat",
+        "gh-noaa-heat-dashboard",
+        "yt-heat-action-plans"
+      ],
+      "ground_truth": "The city should map vulnerability at ward or census-tract/block level, prioritize the hottest and most vulnerable blocks, connect dashboards to cooling-center and outreach operations, and pair improvements with tenant and anti-displacement protections."
+    },
+    {
+      "qid": "q14",
+      "text": "Which interventions in the Kasten handle both heat and water, and why is maintenance a risk?",
+      "expected_primary_citation": [
+        "web-sponge-cities-flooding",
+        "yt-urban-heat-islands-explained"
+      ],
+      "ground_truth": "Green infrastructure such as tree canopy, rain gardens, bioswales, permeable pavement, wetlands, and blue-green corridors can cool microclimates while managing stormwater. Maintenance is a risk because clogged inlets or neglected vegetation turn green infrastructure into decorative failure."
+    }
+  ]
+}

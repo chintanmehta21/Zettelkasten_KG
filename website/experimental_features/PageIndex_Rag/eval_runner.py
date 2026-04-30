@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .answer_strength import answer_strength_summary_markdown, build_answer_strength_payload
+from .answer_strength import (
+    _is_refusal,
+    answer_strength_summary_markdown,
+    build_answer_strength_payload,
+    normalize_final_answer,
+)
 from .metrics import mrr, ndcg_at_k, percentile, recall_at_k
 from .types import PageIndexQueryResult
 
@@ -79,7 +84,17 @@ def build_eval_payload(
         retrieved = list(result.retrieved_node_ids)
         cited = sorted({node for answer in result.answers for node in answer.cited_node_ids})
         primary_citation = _primary_citation(result)
-        gold_at_1 = bool(expected and primary_citation in expected)
+        final_text, _, _ = normalize_final_answer(result.answers[0])
+        if not expected and _is_refusal(final_text):
+            cited = []
+            primary_citation = None
+        verdict = _critic_verdict(
+            expected=expected,
+            primary_citation=primary_citation,
+            cited=cited,
+            infra_failure=False,
+        )
+        gold_at_1 = bool(primary_citation in expected) if expected else verdict == "supported_refusal"
         per_query.append(
             {
                 "query_id": query_id,
@@ -88,12 +103,7 @@ def build_eval_payload(
                 "infra_failure": False,
                 "gold_at_1": gold_at_1,
                 "primary_citation": primary_citation,
-                "critic_verdict": _critic_verdict(
-                    expected=expected,
-                    primary_citation=primary_citation,
-                    cited=cited,
-                    infra_failure=False,
-                ),
+                "critic_verdict": verdict,
                 "retrieved_node_ids": retrieved,
                 "reranked_node_ids": list(result.reranked_node_ids),
                 "cited_node_ids": cited,
