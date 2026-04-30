@@ -75,6 +75,38 @@ jobs:
               [ -r "$f" ] || continue
               echo "$f: $(cat "$f" 2>/dev/null)"
             done
+            echo "===== cgroup v2 memory.stat (anon/file/slab/swap breakdown) ====="
+            for f in /sys/fs/cgroup/system.slice/docker-*.scope/memory.stat; do
+              [ -r "$f" ] || continue
+              echo "--- $f ---"
+              cat "$f" 2>/dev/null | head -25
+            done
+            echo "===== top -bn1 -o RES (top 8 by RSS) ====="
+            top -bn1 -o RES 2>&1 | head -15 || true
+            echo "===== docker exec proc memory per worker (RSS+swap) ====="
+            for c in zettelkasten-blue zettelkasten-green; do
+              [ -n "$(docker ps -q -f name=$c)" ] || continue
+              echo "--- $c ---"
+              docker exec "$c" sh -c '
+                for pid in $(pgrep -f "gunicorn|uvicorn|python" 2>/dev/null); do
+                  [ -r /proc/$pid/status ] || continue
+                  echo "pid=$pid $(grep -E "^(Name|VmRSS|VmSwap|VmSize|RssAnon|RssFile|RssShmem)" /proc/$pid/status | tr "\n" " ")"
+                done
+              ' 2>/dev/null || echo "  (exec failed)"
+            done
+            echo "===== docker exec smaps_rollup (swap by category, blue+green) ====="
+            for c in zettelkasten-blue zettelkasten-green; do
+              [ -n "$(docker ps -q -f name=$c)" ] || continue
+              echo "--- $c ---"
+              docker exec "$c" sh -c '
+                for pid in $(pgrep -f "gunicorn|uvicorn|python" 2>/dev/null | head -3); do
+                  [ -r /proc/$pid/smaps_rollup ] || continue
+                  echo "  pid=$pid:"
+                  grep -E "^(Rss|Pss|Anonymous|Swap|Shared_|Private_)" /proc/$pid/smaps_rollup 2>/dev/null \
+                    | sed "s/^/    /"
+                done
+              ' 2>/dev/null || echo "  (exec failed)"
+            done
             echo "===== journalctl -k (kernel ring; OOM only, last 6h) ====="
             # systemd-journal group membership grants kernel-message read; if
             # not granted this returns an error but doesn't fail the script.

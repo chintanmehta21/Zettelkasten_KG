@@ -352,35 +352,43 @@ def _xquad_select(
     return picked
 
 
+_DIVERSITY_FLOOR_SCORE_MIN = 0.05
+
+
 def _ensure_member_coverage(
     candidates: list[RetrievalCandidate],
     *,
     member_ids: list[str],
     min_per_member: int = 1,
+    score_floor: float = _DIVERSITY_FLOOR_SCORE_MIN,
 ) -> list[RetrievalCandidate]:
-    """iter-04: THEMATIC diversity floor — promote one chunk per Kasten member
-    to the front of ``candidates`` so the top-K handed to the reranker covers
-    every member that has any retrieved chunk. Members with zero retrieved
-    chunks are silently skipped (cannot promote what isn't there). Members
-    already represented in the top ``len(member_ids) * min_per_member`` slots
-    are left where they are. The order within the promoted block follows
-    score-descending (i.e. the best chunk per member, in score order across
-    members). The remainder of the input list is appended in the order it
-    arrived (xQuAD-ordered)."""
+    """iter-05: THEMATIC diversity floor with relevance gate. Promote one chunk
+    per Kasten member ONLY if that member's best chunk clears ``score_floor``.
+
+    Without the gate (iter-04 impl) this regressed q7 ("Anything about
+    commencement?") which is THEMATIC-classified but only one member is
+    actually relevant — promoting the other 6 members' near-zero-score chunks
+    pushed the magnet zettel out of top-1 and the synthesiser cited the
+    wrong member. The ``0.05`` default is empirically chosen to drop chunks
+    that don't share any meaningful term with the query while still letting
+    legitimate cross-corpus members through (q5-class synthesis queries)."""
     if not candidates or not member_ids or min_per_member < 1:
         return candidates
     member_set = set(member_ids)
-    # Best chunk per member, in input order (already xQuAD-ranked).
     promoted_per_member: dict[str, list[RetrievalCandidate]] = {}
     leftover: list[RetrievalCandidate] = []
     for cand in candidates:
         nid = cand.node_id
-        if nid in member_set and len(promoted_per_member.get(nid, [])) < min_per_member:
+        if (
+            nid in member_set
+            and len(promoted_per_member.get(nid, [])) < min_per_member
+            and cand.rrf_score >= score_floor
+        ):
             promoted_per_member.setdefault(nid, []).append(cand)
         else:
             leftover.append(cand)
-    # Flatten promoted block in descending rrf_score so highest-quality member
-    # picks lead the list (preserves xQuAD's relevance ordering across members).
+    if not promoted_per_member:
+        return candidates
     promoted: list[RetrievalCandidate] = []
     for chunks in promoted_per_member.values():
         promoted.extend(chunks)
