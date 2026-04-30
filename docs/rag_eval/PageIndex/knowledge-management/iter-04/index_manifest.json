@@ -1,0 +1,66 @@
+[
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "__kasten__",
+    "content_hash": "5e156077f2233a8f63c6149d47b716907f0f09f6823f05cc50a64dac4f7ac8aa",
+    "doc_id": "2d451297-b434-4d04-9354-2c04869a05f7",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/__kasten__/5e156077f2233a8f63c6149d47b716907f0f09f6823f05cc50a64dac4f7ac8aa/kasten.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/__kasten__/5e156077f2233a8f63c6149d47b716907f0f09f6823f05cc50a64dac4f7ac8aa/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "nl-the-pragmatic-engineer-t",
+    "content_hash": "b7c67fb4dc15f1925f495b79bccf6abba4f51cb2eefe75dd8cdfd08fd50e2d0a",
+    "doc_id": "c235411b-693a-45a4-9b49-f829f7f3627a",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/nl-the-pragmatic-engineer-t/b7c67fb4dc15f1925f495b79bccf6abba4f51cb2eefe75dd8cdfd08fd50e2d0a/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/nl-the-pragmatic-engineer-t/b7c67fb4dc15f1925f495b79bccf6abba4f51cb2eefe75dd8cdfd08fd50e2d0a/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "yt-effective-public-speakin",
+    "content_hash": "082efa5102b8fd69a404480659093c4dfc8771214a5577b97a599808abbecb2f",
+    "doc_id": "8accb67e-3492-4415-a06f-f550b3313de5",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-effective-public-speakin/082efa5102b8fd69a404480659093c4dfc8771214a5577b97a599808abbecb2f/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-effective-public-speakin/082efa5102b8fd69a404480659093c4dfc8771214a5577b97a599808abbecb2f/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "yt-steve-jobs-2005-stanford",
+    "content_hash": "cfbc08af6c4fdcff3b88035eb607b1284177a117564f2dd0fb060c7da1868f97",
+    "doc_id": "d558ede7-4703-4c71-9354-024db8c21bcb",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-steve-jobs-2005-stanford/cfbc08af6c4fdcff3b88035eb607b1284177a117564f2dd0fb060c7da1868f97/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-steve-jobs-2005-stanford/cfbc08af6c4fdcff3b88035eb607b1284177a117564f2dd0fb060c7da1868f97/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "yt-matt-walker-sleep-depriv",
+    "content_hash": "b437fa0ebf309d166cddf23210d51121079eb7bd963e7f173d7f1c6d16f942f4",
+    "doc_id": "838e5d93-c668-4cd7-84a4-4c3cbb4375dd",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-matt-walker-sleep-depriv/b437fa0ebf309d166cddf23210d51121079eb7bd963e7f173d7f1c6d16f942f4/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-matt-walker-sleep-depriv/b437fa0ebf309d166cddf23210d51121079eb7bd963e7f173d7f1c6d16f942f4/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "yt-programming-workflow-is",
+    "content_hash": "cbc38171794cf20200ecaa8a6953f1db17cf83587217bd0cf88a2dd0eefc1dde",
+    "doc_id": "4c299cfc-2cfb-463d-808c-6c4cb34c0995",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-programming-workflow-is/cbc38171794cf20200ecaa8a6953f1db17cf83587217bd0cf88a2dd0eefc1dde/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/yt-programming-workflow-is/cbc38171794cf20200ecaa8a6953f1db17cf83587217bd0cf88a2dd0eefc1dde/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "web-transformative-tools-for",
+    "content_hash": "7686c5a3706e17a10816502bc5180066ad4bd6edb079cbdff16e1a9723518649",
+    "doc_id": "f09a1103-e23b-49be-9d6a-ab338e97a04d",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/web-transformative-tools-for/7686c5a3706e17a10816502bc5180066ad4bd6edb079cbdff16e1a9723518649/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/web-transformative-tools-for/7686c5a3706e17a10816502bc5180066ad4bd6edb079cbdff16e1a9723518649/tree.json"
+  },
+  {
+    "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+    "node_id": "gh-zk-org-zk",
+    "content_hash": "e4cf58b6dd246ed5570dcd6d37932b87ca07812c02dae8381e91b6ec8c3728a0",
+    "doc_id": "c5db8dc5-45cd-44ea-a6e6-b259d008c744",
+    "markdown_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/gh-zk-org-zk/e4cf58b6dd246ed5570dcd6d37932b87ca07812c02dae8381e91b6ec8c3728a0/zettel.md",
+    "tree_path": ".cache/pageindex_rag_iter04/8842e563-ee10-4b8b-bbf2-8af4ba65888e/gh-zk-org-zk/e4cf58b6dd246ed5570dcd6d37932b87ca07812c02dae8381e91b6ec8c3728a0/tree.json"
+  }
+]

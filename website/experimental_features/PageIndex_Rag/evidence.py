@@ -82,6 +82,30 @@ def _line_range_from_tree(tree: list[dict], query: str) -> str:
     return ",".join(str(_line_value(node)) for node in sorted(plan_retrieval_nodes(tree, query), key=_line_value))
 
 
+def _candidate_subtree(tree: list[dict], candidate: CandidateDocument) -> list[dict]:
+    roots = [
+        node
+        for node in tree
+        if int(node.get("level") or 1) <= 2
+        and str(node.get("title") or "").strip().lower() == candidate.title.strip().lower()
+    ]
+    if not roots:
+        return tree
+    root = roots[0]
+    start = _line_value(root)
+    root_level = int(root.get("level") or 1)
+    end: int | None = None
+    for node in sorted(tree, key=_line_value):
+        line = _line_value(node)
+        if line <= start:
+            continue
+        level = int(node.get("level") or 1)
+        if level <= root_level:
+            end = line
+            break
+    return [node for node in tree if _line_value(node) >= start and (end is None or _line_value(node) < end)]
+
+
 def _fallback_zettel_content(zettel: ZettelRecord, *, full: bool) -> str:
     if full:
         return "\n\n".join(
@@ -100,7 +124,8 @@ def retrieve_evidence(
     evidence: list[EvidenceItem] = []
     for index, candidate in enumerate(candidates):
         tree = adapter.get_document_structure(candidate.doc_id)
-        pages = _line_range_from_tree(tree, query)
+        candidate_tree = _candidate_subtree(tree, candidate)
+        pages = _line_range_from_tree(candidate_tree, query)
         chunks = adapter.get_page_content(candidate.doc_id, pages)
         zettel = zettels_by_id[candidate.node_id]
         text = "\n\n".join(str(item.get("content") or "") for item in chunks).strip()
@@ -111,7 +136,7 @@ def retrieve_evidence(
             text = text[:1800].rsplit(" ", 1)[0].strip()
         if not text:
             continue
-        selected_nodes = plan_retrieval_nodes(tree, query)
+        selected_nodes = plan_retrieval_nodes(candidate_tree, query)
         evidence.append(
             EvidenceItem(
                 node_id=candidate.node_id,

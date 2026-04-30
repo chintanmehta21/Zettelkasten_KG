@@ -1,0 +1,466 @@
+{
+  "iter": "PageIndex/knowledge-management/iter-04",
+  "total_duration_ms": 337021.1746000132,
+  "qa_summary": {
+    "total": 14,
+    "end_to_end_gold_at_1": 0.9285714285714286,
+    "infra_failures": 0,
+    "p95_latency_ms": 47345.82889999729,
+    "p95_under_budget": false
+  },
+  "phases": [
+    {
+      "phase": "pageindex_rag",
+      "checks": [
+        {
+          "name": "Q-A q1",
+          "passed": true,
+          "duration_ms": 14895.585300000675,
+          "detail": {
+            "qid": "q1",
+            "http_status": 200,
+            "elapsed_ms": 14895.585300000675,
+            "gold_at_1": true,
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk",
+              "yt-programming-workflow-is",
+              "web-transformative-tools-for",
+              "nl-the-pragmatic-engineer-t",
+              "yt-steve-jobs-2005-stanford",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q2",
+          "passed": true,
+          "duration_ms": 15047.135900000285,
+          "detail": {
+            "qid": "q2",
+            "http_status": 200,
+            "elapsed_ms": 15047.135900000285,
+            "gold_at_1": true,
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "nl-the-pragmatic-engineer-t",
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q3",
+          "passed": true,
+          "duration_ms": 15736.389700003201,
+          "detail": {
+            "qid": "q3",
+            "http_status": 200,
+            "elapsed_ms": 15736.389700003201,
+            "gold_at_1": true,
+            "primary_citation": "yt-effective-public-speakin",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "nl-the-pragmatic-engineer-t",
+              "yt-matt-walker-sleep-depriv",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-programming-workflow-is"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q4",
+          "passed": true,
+          "duration_ms": 60909.970100001374,
+          "detail": {
+            "qid": "q4",
+            "http_status": 200,
+            "elapsed_ms": 60909.970100001374,
+            "gold_at_1": true,
+            "primary_citation": "yt-programming-workflow-is",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-programming-workflow-is",
+              "nl-the-pragmatic-engineer-t",
+              "yt-matt-walker-sleep-depriv",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q5",
+          "passed": true,
+          "duration_ms": 47345.82889999729,
+          "detail": {
+            "qid": "q5",
+            "http_status": 200,
+            "elapsed_ms": 47345.82889999729,
+            "gold_at_1": true,
+            "primary_citation": "nl-the-pragmatic-engineer-t",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "yt-steve-jobs-2005-stanford",
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q6",
+          "passed": true,
+          "duration_ms": 42407.58690000075,
+          "detail": {
+            "qid": "q6",
+            "http_status": 200,
+            "elapsed_ms": 42407.58690000075,
+            "gold_at_1": true,
+            "primary_citation": "yt-effective-public-speakin",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "nl-the-pragmatic-engineer-t",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "yt-matt-walker-sleep-depriv",
+              "gh-zk-org-zk"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q7",
+          "passed": true,
+          "duration_ms": 24080.43500000349,
+          "detail": {
+            "qid": "q7",
+            "http_status": 200,
+            "elapsed_ms": 24080.43500000349,
+            "gold_at_1": true,
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "yt-effective-public-speakin",
+              "nl-the-pragmatic-engineer-t",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q8",
+          "passed": true,
+          "duration_ms": 13487.512600004266,
+          "detail": {
+            "qid": "q8",
+            "http_status": 200,
+            "elapsed_ms": 13487.512600004266,
+            "gold_at_1": true,
+            "primary_citation": "gh-zk-org-zk",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "gh-zk-org-zk",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q9",
+          "passed": false,
+          "duration_ms": 14541.85359999974,
+          "detail": {
+            "qid": "q9",
+            "http_status": 200,
+            "elapsed_ms": 14541.85359999974,
+            "gold_at_1": false,
+            "primary_citation": "yt-effective-public-speakin",
+            "critic_verdict": "unsupported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "nl-the-pragmatic-engineer-t",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q10",
+          "passed": true,
+          "duration_ms": 21471.554900002957,
+          "detail": {
+            "qid": "q10",
+            "http_status": 200,
+            "elapsed_ms": 21471.554900002957,
+            "gold_at_1": true,
+            "primary_citation": "yt-steve-jobs-2005-stanford",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-steve-jobs-2005-stanford",
+              "nl-the-pragmatic-engineer-t",
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q11",
+          "passed": true,
+          "duration_ms": 16597.61819999403,
+          "detail": {
+            "qid": "q11",
+            "http_status": 200,
+            "elapsed_ms": 16597.61819999403,
+            "gold_at_1": true,
+            "primary_citation": "yt-matt-walker-sleep-depriv",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-matt-walker-sleep-depriv",
+              "yt-steve-jobs-2005-stanford",
+              "yt-effective-public-speakin",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "yt-programming-workflow-is"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q12",
+          "passed": true,
+          "duration_ms": 14341.43070000573,
+          "detail": {
+            "qid": "q12",
+            "http_status": 200,
+            "elapsed_ms": 14341.43070000573,
+            "gold_at_1": true,
+            "primary_citation": "yt-programming-workflow-is",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "yt-programming-workflow-is",
+              "nl-the-pragmatic-engineer-t",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "web-transformative-tools-for",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q13",
+          "passed": true,
+          "duration_ms": 24307.293899997603,
+          "detail": {
+            "qid": "q13",
+            "http_status": 200,
+            "elapsed_ms": 24307.293899997603,
+            "gold_at_1": true,
+            "primary_citation": "nl-the-pragmatic-engineer-t",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        },
+        {
+          "name": "Q-A q14",
+          "passed": true,
+          "duration_ms": 11850.978900001792,
+          "detail": {
+            "qid": "q14",
+            "http_status": 200,
+            "elapsed_ms": 11850.978900001792,
+            "gold_at_1": true,
+            "primary_citation": "web-transformative-tools-for",
+            "critic_verdict": "supported",
+            "infra_failure": false,
+            "retrieved_node_ids": [
+              "web-transformative-tools-for",
+              "nl-the-pragmatic-engineer-t",
+              "yt-effective-public-speakin",
+              "yt-steve-jobs-2005-stanford",
+              "yt-programming-workflow-is",
+              "gh-zk-org-zk",
+              "yt-matt-walker-sleep-depriv"
+            ],
+            "cited_node_ids": [
+              "gh-zk-org-zk",
+              "nl-the-pragmatic-engineer-t",
+              "web-transformative-tools-for",
+              "yt-effective-public-speakin",
+              "yt-matt-walker-sleep-depriv",
+              "yt-programming-workflow-is",
+              "yt-steve-jobs-2005-stanford"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

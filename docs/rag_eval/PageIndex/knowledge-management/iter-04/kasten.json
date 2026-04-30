@@ -1,0 +1,462 @@
+{
+  "scope": {
+    "scope_id": "knowledge-management:iter-04",
+    "user_id": "8e1d63a7-f9b7-4050-a28d-540590218833",
+    "node_ids": [
+      "nl-the-pragmatic-engineer-t",
+      "yt-effective-public-speakin",
+      "yt-steve-jobs-2005-stanford",
+      "yt-matt-walker-sleep-depriv",
+      "yt-programming-workflow-is",
+      "web-transformative-tools-for",
+      "gh-zk-org-zk"
+    ],
+    "membership_hash": "gh-zk-org-zk|nl-the-pragmatic-engineer-t|web-transformative-tools-for|yt-effective-public-speakin|yt-matt-walker-sleep-depriv|yt-programming-workflow-is|yt-steve-jobs-2005-stanford",
+    "name": "Knowledge Management & Personal Productivity",
+    "mode": "temporary"
+  },
+  "zettels": [
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "nl-the-pragmatic-engineer-t",
+      "title": "The Pragmatic Engineer: The Product-Minded Engineer",
+      "summary": "{\"brief_summary\": \"The Pragmatic Engineer newsletter highlights the growing demand for 'product-minded engineers', a trend significantly accelerated by AI tools. It introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer', detailing his extensive background in software and product management. The issue features an excerpt from Chapter 3, focusing on designing effective error messages for both human users and AI agents.\", \"detailed_summary\": {\"publication_identity\": \"Pragmatic Engineer\", \"issue_thesis\": \"The increasing importance of 'product-minded engineers,' a trend amplified by AI, and the introduction of a new O'Reilly book on this topic.\", \"sections\": [{\"heading\": \"Introducing 'The Product-Minded Engineer' by Drew Hoskins\", \"bullets\": [\"The newsletter introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer,' which addresses the increasing need for engineers with product-thinking skills.\", \"Hoskins, with over two decades of experience at companies like Microsoft, Facebook, Oculus, and Stripe, transitioned from software engineering to product management, bringing a unique perspective to the topic.\", \"The book originated from a proposal on usable API design but expanded to cover broader themes of product-thinking and user empathy, taking 18 months to write with diverse inputs.\", \"Hoskins advises engineers to cultivate product-mindedness by consistently asking 'why,' utilizing scenarios, engaging directly with customer support, and proactively assisting Product Managers with use cases.\", \"He also suggests joining customer calls to gain direct user insights and leveraging AI tools like Claude to aggregate user signals from various internal communication and project management platforms.\", \"John Carmack at Oculus is cited as an exemplary product-minded engineer, embodying the principles advocated in the book.\"]}, {\"heading\": \"Excerpt: Chapter 3 - Errors and Warnings\", \"bullets\": [\"An excerpt from Chapter 3, 'Errors and Warnings,' posits that diagnostics serve as a primary product interface, particularly for developers and emerging AI agents.\", \"It argues that errors should be meticulously designed for two distinct audiences: human users, requiring contextual and actionable messages, and programmers, needing typed errors with metadata for automated recovery.\", \"The chapter proposes five specific error categories: System, User's Invalid Argument, Precondition Not Met, Developer's Invalid Argument, and Assertion, providing a structured approach to error classification.\", \"Using a fictional SaaS company, 'Channelz,' the text illustrates how to craft actionable error messages, such as suggesting `#channel-name` when a user incorrectly inputs `@channel-name`.\", \"It advocates for raising errors at the API or UI interface where both system state and user intent are most clearly understood, either through upfront validation or by re-packaging lower-level errors.\", \"A key concept introduced is 'shifting left,' which means providing diagnostics as early as possible in the development or user interaction workflow to prevent deeper issues.\", \"Four techniques for 'shifting left' are detailed: static validations, upfront validations for multi-step processes, providing test environments or 'fakes' like Stripe's test mode, and requesting user confirmations via 'dry runs' or overrideable heuristic warnings.\"]}], \"conclusions_or_recommendations\": [\"The newsletter author strongly recommends Drew Hoskins' book, 'The Product-Minded Engineer,' for its practical insights.\", \"Drew Hoskins notes that while AI was not the book's initial catalyst, the current AI transition makes its subject particularly timely, hoping it helps engineers feel more secure in their evolving roles.\"], \"stance\": \"mixed\", \"cta\": \"The newsletter author is hiring a researcher, with applications closing on January 26. The author also recommends Drew Hoskins' book, 'The Product-Minded Engineer'.\"}}",
+      "content": "{\"brief_summary\": \"The Pragmatic Engineer newsletter highlights the growing demand for 'product-minded engineers', a trend significantly accelerated by AI tools. It introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer', detailing his extensive background in software and product management. The issue features an excerpt from Chapter 3, focusing on designing effective error messages for both human users and AI agents.\", \"detailed_summary\": {\"publication_identity\": \"Pragmatic Engineer\", \"issue_thesis\": \"The increasing importance of 'product-minded engineers,' a trend amplified by AI, and the introduction of a new O'Reilly book on this topic.\", \"sections\": [{\"heading\": \"Introducing 'The Product-Minded Engineer' by Drew Hoskins\", \"bullets\": [\"The newsletter introduces Drew Hoskins' new O'Reilly book, 'The Product-Minded Engineer,' which addresses the increasing need for engineers with product-thinking skills.\", \"Hoskins, with over two decades of experience at companies like Microsoft, Facebook, Oculus, and Stripe, transitioned from software engineering to product management, bringing a unique perspective to the topic.\", \"The book originated from a proposal on usable API design but expanded to cover broader themes of product-thinking and user empathy, taking 18 months to write with diverse inputs.\", \"Hoskins advises engineers to cultivate product-mindedness by consistently asking 'why,' utilizing scenarios, engaging directly with customer support, and proactively assisting Product Managers with use cases.\", \"He also suggests joining customer calls to gain direct user insights and leveraging AI tools like Claude to aggregate user signals from various internal communication and project management platforms.\", \"John Carmack at Oculus is cited as an exemplary product-minded engineer, embodying the principles advocated in the book.\"]}, {\"heading\": \"Excerpt: Chapter 3 - Errors and Warnings\", \"bullets\": [\"An excerpt from Chapter 3, 'Errors and Warnings,' posits that diagnostics serve as a primary product interface, particularly for developers and emerging AI agents.\", \"It argues that errors should be meticulously designed for two distinct audiences: human users, requiring contextual and actionable messages, and programmers, needing typed errors with metadata for automated recovery.\", \"The chapter proposes five specific error categories: System, User's Invalid Argument, Precondition Not Met, Developer's Invalid Argument, and Assertion, providing a structured approach to error classification.\", \"Using a fictional SaaS company, 'Channelz,' the text illustrates how to craft actionable error messages, such as suggesting `#channel-name` when a user incorrectly inputs `@channel-name`.\", \"It advocates for raising errors at the API or UI interface where both system state and user intent are most clearly understood, either through upfront validation or by re-packaging lower-level errors.\", \"A key concept introduced is 'shifting left,' which means providing diagnostics as early as possible in the development or user interaction workflow to prevent deeper issues.\", \"Four techniques for 'shifting left' are detailed: static validations, upfront validations for multi-step processes, providing test environments or 'fakes' like Stripe's test mode, and requesting user confirmations via 'dry runs' or overrideable heuristic warnings.\"]}], \"conclusions_or_recommendations\": [\"The newsletter author strongly recommends Drew Hoskins' book, 'The Product-Minded Engineer,' for its practical insights.\", \"Drew Hoskins notes that while AI was not the book's initial catalyst, the current AI transition makes its subject particularly timely, hoping it helps engineers feel more secure in their evolving roles.\"], \"stance\": \"mixed\", \"cta\": \"The newsletter author is hiring a researcher, with applications closing on January 26. The author also recommends Drew Hoskins' book, 'The Product-Minded Engineer'.\"}}",
+      "source_type": "newsletter",
+      "url": "https://newsletter.pragmaticengineer.com/p/the-product-minded-engineer",
+      "tags": [
+        "pragmatic-engineer",
+        "product-minded-engineer",
+        "software-engineering",
+        "product-management",
+        "ai-impact",
+        "error-handling",
+        "api-design",
+        "developer-experience",
+        "book-summary",
+        "career-development"
+      ],
+      "metadata": {
+        "composite": 86.0,
+        "eval_iter": 10,
+        "eval_branch": "codex/summarization-engine-execution",
+        "eval_source": "newsletter"
+      }
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "yt-effective-public-speakin",
+      "title": "Effective Public Speaking Strategies",
+      "summary": "{\"brief_summary\": \"In this lecture, Patrick Winston argues that patrick winston's core thesis posits that professional success is a direct function of one's ideas, speaking ability, and writing ability, with communication acting as a critical multiplier. The closing takeaway: The video concludes by emphasizing that effective public speaking is not just about content delivery but also about meticulous preparation and adherence to professional standards.\", \"detailed_summary\": \"## Thesis\\n- Patrick Winston's core thesis posits that professional success is a direct function of one's ideas, speaking ability, and writing ability, with communication acting as a critical multiplier. The strategy for any talk must be specifically tailored to achieve a defined goal, such as securing employment, obtaining funding, or effectively teaching a concept. ## 00:00 \u2014 Introduction to Speaking Strategy\\n- Professional success depends on ideas, speaking, and writing, with communication as a key multiplier.\\n- A talk's strategy must align with a specific objective, like getting a job or teaching.\\n- The video will outline methods for structuring and delivering effective presentations. ## 00:05 \u2014 Talk Structure: Beginning\\n- Start a presentation with an \\\"empowering promise\\\" that clearly states what the audience will gain.\\n- Avoid opening with a joke, as it carries high risk for low reward in audience engagement.\\n- The initial moments are crucial for setting expectations and capturing attention. ## 00:10 \u2014 Talk Structure: Middle\\n- The body of a talk should follow a cyclical structure: \\\"Tell them what you're going to say, say it, then tell them what you said.\\\"\\n- This cycle should be repeated approximately five times in a one-hour presentation.\\n- This repetitive structure helps counteract the natural decline in audience attention during the middle of a talk. ## 00:15 \u2014 Talk Structure: End\\n- Do not conclude a talk with a Q&A session, as it relinquishes control over the final impression.\\n- Questions should be taken before the concluding remarks to maintain speaker control.\\n- The final segment should summarize the main contribution, acknowledge collaborators, and present a memorable vision or slogan. ## 00:20 \u2014 Communication Tools: Board (Chalk Talk)\\n- The board is advocated as a \\\"high-bandwidth medium\\\" for communication.\\n- It naturally forces the speaker to slow down, allowing the audience to process information more effectively.\\n- Creating content in real-time on a board provides a persistent visual record and enhances audience retention. ## 00:25 \u2014 Communication Tools: Props\\n- Physical objects serve as highly memorable tools for illustrating concepts.\\n- Using props can make abstract ideas more tangible and engaging for the audience. ## 00:30 \u2014 Communication Tools: Slides (PowerPoint)\\n- Slides, particularly PowerPoint, have potential pitfalls if not used carefully.\\n- Use large fonts to inherently limit the amount of text on each slide.\\n- Slides should be visually sparse, prioritizing images and logos over dense text.\\n- Winston advocates for using prose instead of bullet points and prefers dark backgrounds for slides. ## 00:35 \u2014 Slide Delivery Techniques\\n- Never read the content directly from slides, as the audience can read faster than the speaker.\\n- Avoid using laser pointers, as their movement can betray nervousness.\\n- Instead of a laser pointer, gesture with an open hand to direct audience attention. ## 00:40 \u2014 The 5 'S's for Memorability\\n- To enhance memorability, incorporate a recurring visual icon or Symbol.\\n- Utilize a short, easily repeatable Slogan to reinforce key messages.\\n- Introduce a surprising or unexpected fact to capture audience attention.\\n- Clearly articulate the single most important point, the Salient Idea.\\n- Employ a narrative or Story to illustrate concepts and make them relatable. ## 00:45 \u2014 Persuasion Strategies\\n- Effective persuasion requires convincing the audience that a problem is personally relevant to them.\\n- Vannevar Bush's 1945 report successfully framed the need for the NSF by linking basic research deficits to national security.\\n- Winston framed his AI research as a means to understand human intelligence, broadening its appeal beyond technical audiences. ## 00:50 \u2014 Credibility and Handling Questions\\n- Build credibility by explicitly defining what an idea is not and acknowledging its limitations, a concept referred to as 'building a fence'.\\n- When faced with difficult questions, demonstrating a deep understanding of the topic's limitations is more valuable than guessing an answer.\\n- During his PhD oral exam, Winston explained the fundamental limitations of his thesis when asked a challenging question by Marvin Minsky, rather than attempting to answer directly. ## 00:55 \u2014 Environment and Professionalism\\n- Speakers should always scout the presentation room in advance to understand and manage the physical environment.\\n- Professionalism dictates that a speaker must start and end their presentation precisely on time. ## Closing Takeaway\\n- The video concludes by emphasizing that effective public speaking is not just about content delivery but also about meticulous preparation and adherence to professional standards. Scouting the environment and strict time management are presented as crucial elements for a successful presentation.\"}",
+      "content": "{\"brief_summary\": \"In this lecture, Patrick Winston argues that patrick winston's core thesis posits that professional success is a direct function of one's ideas, speaking ability, and writing ability, with communication acting as a critical multiplier. The closing takeaway: The video concludes by emphasizing that effective public speaking is not just about content delivery but also about meticulous preparation and adherence to professional standards.\", \"detailed_summary\": \"## Thesis\\n- Patrick Winston's core thesis posits that professional success is a direct function of one's ideas, speaking ability, and writing ability, with communication acting as a critical multiplier. The strategy for any talk must be specifically tailored to achieve a defined goal, such as securing employment, obtaining funding, or effectively teaching a concept. ## 00:00 \u2014 Introduction to Speaking Strategy\\n- Professional success depends on ideas, speaking, and writing, with communication as a key multiplier.\\n- A talk's strategy must align with a specific objective, like getting a job or teaching.\\n- The video will outline methods for structuring and delivering effective presentations. ## 00:05 \u2014 Talk Structure: Beginning\\n- Start a presentation with an \\\"empowering promise\\\" that clearly states what the audience will gain.\\n- Avoid opening with a joke, as it carries high risk for low reward in audience engagement.\\n- The initial moments are crucial for setting expectations and capturing attention. ## 00:10 \u2014 Talk Structure: Middle\\n- The body of a talk should follow a cyclical structure: \\\"Tell them what you're going to say, say it, then tell them what you said.\\\"\\n- This cycle should be repeated approximately five times in a one-hour presentation.\\n- This repetitive structure helps counteract the natural decline in audience attention during the middle of a talk. ## 00:15 \u2014 Talk Structure: End\\n- Do not conclude a talk with a Q&A session, as it relinquishes control over the final impression.\\n- Questions should be taken before the concluding remarks to maintain speaker control.\\n- The final segment should summarize the main contribution, acknowledge collaborators, and present a memorable vision or slogan. ## 00:20 \u2014 Communication Tools: Board (Chalk Talk)\\n- The board is advocated as a \\\"high-bandwidth medium\\\" for communication.\\n- It naturally forces the speaker to slow down, allowing the audience to process information more effectively.\\n- Creating content in real-time on a board provides a persistent visual record and enhances audience retention. ## 00:25 \u2014 Communication Tools: Props\\n- Physical objects serve as highly memorable tools for illustrating concepts.\\n- Using props can make abstract ideas more tangible and engaging for the audience. ## 00:30 \u2014 Communication Tools: Slides (PowerPoint)\\n- Slides, particularly PowerPoint, have potential pitfalls if not used carefully.\\n- Use large fonts to inherently limit the amount of text on each slide.\\n- Slides should be visually sparse, prioritizing images and logos over dense text.\\n- Winston advocates for using prose instead of bullet points and prefers dark backgrounds for slides. ## 00:35 \u2014 Slide Delivery Techniques\\n- Never read the content directly from slides, as the audience can read faster than the speaker.\\n- Avoid using laser pointers, as their movement can betray nervousness.\\n- Instead of a laser pointer, gesture with an open hand to direct audience attention. ## 00:40 \u2014 The 5 'S's for Memorability\\n- To enhance memorability, incorporate a recurring visual icon or Symbol.\\n- Utilize a short, easily repeatable Slogan to reinforce key messages.\\n- Introduce a surprising or unexpected fact to capture audience attention.\\n- Clearly articulate the single most important point, the Salient Idea.\\n- Employ a narrative or Story to illustrate concepts and make them relatable. ## 00:45 \u2014 Persuasion Strategies\\n- Effective persuasion requires convincing the audience that a problem is personally relevant to them.\\n- Vannevar Bush's 1945 report successfully framed the need for the NSF by linking basic research deficits to national security.\\n- Winston framed his AI research as a means to understand human intelligence, broadening its appeal beyond technical audiences. ## 00:50 \u2014 Credibility and Handling Questions\\n- Build credibility by explicitly defining what an idea is not and acknowledging its limitations, a concept referred to as 'building a fence'.\\n- When faced with difficult questions, demonstrating a deep understanding of the topic's limitations is more valuable than guessing an answer.\\n- During his PhD oral exam, Winston explained the fundamental limitations of his thesis when asked a challenging question by Marvin Minsky, rather than attempting to answer directly. ## 00:55 \u2014 Environment and Professionalism\\n- Speakers should always scout the presentation room in advance to understand and manage the physical environment.\\n- Professionalism dictates that a speaker must start and end their presentation precisely on time. ## Closing Takeaway\\n- The video concludes by emphasizing that effective public speaking is not just about content delivery but also about meticulous preparation and adherence to professional standards. Scouting the environment and strict time management are presented as crucial elements for a successful presentation.\"}",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=Unzc731iCUY",
+      "tags": [
+        "public-speaking",
+        "communication-skills",
+        "patrick-winston",
+        "mit-opencourseware",
+        "lecture",
+        "presentation-techniques",
+        "career-development",
+        "persuasion",
+        "professionalism",
+        "education"
+      ],
+      "metadata": {}
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "yt-steve-jobs-2005-stanford",
+      "title": "Steve Jobs 2005 Stanford Address",
+      "summary": "{\"brief_summary\": \"This lecture video explains One cannot plan a life path forward but can only \\\"connect the dots\\\" looking backward, requiring trust in. It moves through sections on Connecting the Dots: College, Calligraphy, Macintosh and Love and Loss: Founding and. It also covers Apple and NeXT. Key voices and figures include Steve Jobs and Apple. The main takeaway is The speech concludes.\", \"detailed_summary\": \"## thesis\\n- One cannot plan a life path forward but can only \\\"connect the dots\\\" looking backward, requiring trust in intuition (\\\"gut, destiny, life, karma\\\") to follow curiosity, even when impractical. ## format\\n- lecture ## chapters_or_segments\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Connecting the Dots: College, Calligraphy, Macintosh\\\", \\\"bullets\\\": [\\\"Jobs' biological mother, an unwed graduate student, insisted his adoptive parents be college graduates; his working-class adoptive parents promised he would go to college.\\\", \\\"Jobs dropped out of Reed College after six months, citing the high cost to his parents and his perceived lack of value, but remained on campus as a \\\"drop-in\\\" for another 18 months.\\\", \\\"During this drop-in period, he took a calligraphy class, learning about serif/sans-serif typefaces, kerning, and typography principles he found artistically subtle.\\\", \\\"Ten years later, while designing the first Macintosh, Jobs integrated this knowledge.\\\", \\\"Claim: The Mac was the first computer with beautiful typography, including multiple typefaces and proportionally spaced fonts.\\\", \\\"Causal Chain Claim: Jobs asserts that if he hadn't dropped out and taken the calligraphy class, the Mac would not have had these features. He further claims that since Windows copied the Mac, his decision influenced the typography of all personal computers.\\\"]}\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Love and Loss: Founding and Being Fired from Apple\\\", \\\"bullets\\\": [\\\"At age 20, Jobs co-founded Apple with Steve Wozniak in a garage; within 10 years, it grew into a $2 billion company with over 4,000 employees.\\\", \\\"At age 30, a year after launching the Macintosh, the board of directors sided with the CEO Jobs had hired, and Jobs was fired.\\\", \\\"Jobs described the public firing as \\\"devastating\\\" but claimed the \\\"heaviness of being successful was replaced by the lightness of being a beginner again.\\\"\\\", \\\"He called the next 5 years one of his most creative periods, during which he founded NeXT and Pixar.\\\", \\\"Pixar would go on to create *Toy Story*, the world's first computer-animated feature film.\\\", \\\"During this period, he also met his wife, Laurene, and started his family.\\\", \\\"Apple later acquired NeXT, leading to Jobs' return. He claims the technology developed at NeXT was at the heart of Apple's subsequent \\\"renaissance.\\\"\\\", \\\"His takeaway is that great work requires loving what you do, advising graduates to \\\"Keep looking. Don't settle.\\\"\\\"]}\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Death: Pancreatic Cancer Diagnosis and Mortality\\\", \\\"bullets\\\": [\\\"For 33 years, Jobs asked himself in the mirror each morning, \\\"If today were the last day of my life, would I want to do what I am about to do today?\\\"\\\", \\\"If the answer was \\\"no\\\" for too many consecutive days, he knew he needed to change something.\\\", \\\"Around 2004, a 7:30 AM scan revealed pancreatic cancer. The initial prognosis was an \\\"almost certainly incurable\\\" type, and doctors gave him 3 to 6 months to live.\\\", \\\"A biopsy later that evening revealed it was a very rare, operable form of the cancer. He had the surgery and was fine at the time of the speech.\\\", \\\"He calls death \\\"the single best invention of Life\\\" and \\\"Life's change agent\\\" for clearing out the old.\\\", \\\"He claims remembering you will die is the best way to avoid the \\\"trap of thinking you have something to lose\\\", stating, \\\"You are already naked. There is no reason not to follow your heart.\\\"\\\"]} ## closing_takeaway\\n- The speech concludes with the farewell message from the back cover of the final issue of *The Whole Earth Catalog*: \\\"Stay Hungry. Stay Foolish.\\\"\"}",
+      "content": "{\"brief_summary\": \"This lecture video explains One cannot plan a life path forward but can only \\\"connect the dots\\\" looking backward, requiring trust in. It moves through sections on Connecting the Dots: College, Calligraphy, Macintosh and Love and Loss: Founding and. It also covers Apple and NeXT. Key voices and figures include Steve Jobs and Apple. The main takeaway is The speech concludes.\", \"detailed_summary\": \"## thesis\\n- One cannot plan a life path forward but can only \\\"connect the dots\\\" looking backward, requiring trust in intuition (\\\"gut, destiny, life, karma\\\") to follow curiosity, even when impractical. ## format\\n- lecture ## chapters_or_segments\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Connecting the Dots: College, Calligraphy, Macintosh\\\", \\\"bullets\\\": [\\\"Jobs' biological mother, an unwed graduate student, insisted his adoptive parents be college graduates; his working-class adoptive parents promised he would go to college.\\\", \\\"Jobs dropped out of Reed College after six months, citing the high cost to his parents and his perceived lack of value, but remained on campus as a \\\"drop-in\\\" for another 18 months.\\\", \\\"During this drop-in period, he took a calligraphy class, learning about serif/sans-serif typefaces, kerning, and typography principles he found artistically subtle.\\\", \\\"Ten years later, while designing the first Macintosh, Jobs integrated this knowledge.\\\", \\\"Claim: The Mac was the first computer with beautiful typography, including multiple typefaces and proportionally spaced fonts.\\\", \\\"Causal Chain Claim: Jobs asserts that if he hadn't dropped out and taken the calligraphy class, the Mac would not have had these features. He further claims that since Windows copied the Mac, his decision influenced the typography of all personal computers.\\\"]}\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Love and Loss: Founding and Being Fired from Apple\\\", \\\"bullets\\\": [\\\"At age 20, Jobs co-founded Apple with Steve Wozniak in a garage; within 10 years, it grew into a $2 billion company with over 4,000 employees.\\\", \\\"At age 30, a year after launching the Macintosh, the board of directors sided with the CEO Jobs had hired, and Jobs was fired.\\\", \\\"Jobs described the public firing as \\\"devastating\\\" but claimed the \\\"heaviness of being successful was replaced by the lightness of being a beginner again.\\\"\\\", \\\"He called the next 5 years one of his most creative periods, during which he founded NeXT and Pixar.\\\", \\\"Pixar would go on to create *Toy Story*, the world's first computer-animated feature film.\\\", \\\"During this period, he also met his wife, Laurene, and started his family.\\\", \\\"Apple later acquired NeXT, leading to Jobs' return. He claims the technology developed at NeXT was at the heart of Apple's subsequent \\\"renaissance.\\\"\\\", \\\"His takeaway is that great work requires loving what you do, advising graduates to \\\"Keep looking. Don't settle.\\\"\\\"]}\\n- {\\\"timestamp\\\": \\\"N/A\\\", \\\"title\\\": \\\"Death: Pancreatic Cancer Diagnosis and Mortality\\\", \\\"bullets\\\": [\\\"For 33 years, Jobs asked himself in the mirror each morning, \\\"If today were the last day of my life, would I want to do what I am about to do today?\\\"\\\", \\\"If the answer was \\\"no\\\" for too many consecutive days, he knew he needed to change something.\\\", \\\"Around 2004, a 7:30 AM scan revealed pancreatic cancer. The initial prognosis was an \\\"almost certainly incurable\\\" type, and doctors gave him 3 to 6 months to live.\\\", \\\"A biopsy later that evening revealed it was a very rare, operable form of the cancer. He had the surgery and was fine at the time of the speech.\\\", \\\"He calls death \\\"the single best invention of Life\\\" and \\\"Life's change agent\\\" for clearing out the old.\\\", \\\"He claims remembering you will die is the best way to avoid the \\\"trap of thinking you have something to lose\\\", stating, \\\"You are already naked. There is no reason not to follow your heart.\\\"\\\"]} ## closing_takeaway\\n- The speech concludes with the farewell message from the back cover of the final issue of *The Whole Earth Catalog*: \\\"Stay Hungry. Stay Foolish.\\\"\"}",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=UF8uR6Z6KLc",
+      "tags": [
+        "steve-jobs",
+        "stanford",
+        "commencement",
+        "life-lessons",
+        "entrepreneurship",
+        "apple",
+        "motivation",
+        "career",
+        "death",
+        "lecture"
+      ],
+      "metadata": {}
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "yt-matt-walker-sleep-depriv",
+      "title": "Matt Walker: Sleep Deprivation's Broad Impacts",
+      "summary": "{\"brief_summary\": \"Matt Walker highlights a global \\\"sleep loss epidemic\\\" where two-thirds of adults in industrialized nations fail to meet recommended sleep durations. This widespread sleep deprivation significantly impairs brain function, including memory and cognitive abilities, and has profound negative physiological and genetic consequences.\", \"detailed_summary\": \"Matt Walker highlights a global \\\"sleep loss epidemic\\\" where two-thirds of adults in industrialized nations fail to meet recommended sleep durations. This widespread sleep deprivation significantly impairs brain function, including memory and cognitive abilities, and has profound negative physiological and genetic consequences.\"}",
+      "content": "{\"brief_summary\": \"Matt Walker highlights a global \\\"sleep loss epidemic\\\" where two-thirds of adults in industrialized nations fail to meet recommended sleep durations. This widespread sleep deprivation significantly impairs brain function, including memory and cognitive abilities, and has profound negative physiological and genetic consequences.\", \"detailed_summary\": \"Matt Walker highlights a global \\\"sleep loss epidemic\\\" where two-thirds of adults in industrialized nations fail to meet recommended sleep durations. This widespread sleep deprivation significantly impairs brain function, including memory and cognitive abilities, and has profound negative physiological and genetic consequences.\"}",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=5MuIMqhT8DM",
+      "tags": [
+        "sleep",
+        "neuroscience",
+        "health",
+        "memory",
+        "learning",
+        "sleep-deprivation",
+        "cognitive-function",
+        "immune-system",
+        "cardiovascular-health",
+        "reproductive-health",
+        "gene-expression",
+        "alzheimers-disease",
+        "ted-talk",
+        "public-health",
+        "sleep-hygiene"
+      ],
+      "metadata": {}
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "yt-programming-workflow-is",
+      "title": "Programming Workflow Is Debugging Cycle",
+      "summary": "{\"brief_summary\": \"This walkthrough video explains The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle. It moves through sections on Code Entry with Error and Execution Failure. It also covers Google and Stack Overflow. Key voices and figures include Jombo and Google. The main takeaway is This cycle suggests the core programming skill.\", \"detailed_summary\": \"## thesis\\n- The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle centered on debugging, where a significant portion of time is spent diagnosing and fixing errors using external resources, not writing new code. ## format\\n- walkthrough ## chapters_or_segments\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Code Entry with Error\\\", \\\"bullets\\\": [\\\"A programmer introduces a typo while writing code, e.g., `print(\\\"hello world)`.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Execution Failure\\\", \\\"bullets\\\": [\\\"The code fails, producing a specific error message: `SyntaxError: EOL while scanning string literal`.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Information Retrieval\\\", \\\"bullets\\\": [\\\"The immediate action is to copy the exact error message and search for it on Google.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Solution Sourcing\\\", \\\"bullets\\\": [\\\"The search results lead to a Stack Overflow page, which is used to understand the problem and find a solution.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Implementation of Fix\\\", \\\"bullets\\\": [\\\"The programmer returns to the code and applies the correction by adding the missing closing quotation mark.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Successful Execution\\\", \\\"bullets\\\": [\\\"The corrected code runs as intended.\\\"]} ## demonstrations\\n- Demonstration of introducing a typo, encountering an error, searching for a solution, and applying the fix. ## closing_takeaway\\n- This cycle suggests the core programming skill is not typing speed but a methodical problem-solving approach that relies heavily on searching for and applying existing solutions.\"}",
+      "content": "{\"brief_summary\": \"This walkthrough video explains The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle. It moves through sections on Code Entry with Error and Execution Failure. It also covers Google and Stack Overflow. Key voices and figures include Jombo and Google. The main takeaway is This cycle suggests the core programming skill.\", \"detailed_summary\": \"## thesis\\n- The common perception of programming as rapid, flawless typing is inaccurate. The actual process is an iterative cycle centered on debugging, where a significant portion of time is spent diagnosing and fixing errors using external resources, not writing new code. ## format\\n- walkthrough ## chapters_or_segments\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Code Entry with Error\\\", \\\"bullets\\\": [\\\"A programmer introduces a typo while writing code, e.g., `print(\\\"hello world)`.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Execution Failure\\\", \\\"bullets\\\": [\\\"The code fails, producing a specific error message: `SyntaxError: EOL while scanning string literal`.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Information Retrieval\\\", \\\"bullets\\\": [\\\"The immediate action is to copy the exact error message and search for it on Google.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Solution Sourcing\\\", \\\"bullets\\\": [\\\"The search results lead to a Stack Overflow page, which is used to understand the problem and find a solution.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Implementation of Fix\\\", \\\"bullets\\\": [\\\"The programmer returns to the code and applies the correction by adding the missing closing quotation mark.\\\"]}\\n- {\\\"timestamp\\\": \\\"\\\", \\\"title\\\": \\\"Successful Execution\\\", \\\"bullets\\\": [\\\"The corrected code runs as intended.\\\"]} ## demonstrations\\n- Demonstration of introducing a typo, encountering an error, searching for a solution, and applying the fix. ## closing_takeaway\\n- This cycle suggests the core programming skill is not typing speed but a methodical problem-solving approach that relies heavily on searching for and applying existing solutions.\"}",
+      "source_type": "youtube",
+      "url": "https://www.youtube.com/watch?v=HluANRwPyNo",
+      "tags": [
+        "programming",
+        "workflow",
+        "debugging",
+        "perception-vs-reality",
+        "error-handling",
+        "stackoverflow",
+        "problem-solving",
+        "walkthrough"
+      ],
+      "metadata": {}
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "web-transformative-tools-for",
+      "title": "Transformative Tools for Thought",
+      "summary": "{\"brief_summary\": \"An applied researcher is developing \\\"transformative tools for thought\\\", including an \\\"augmented book\\\", to expand human cognition and creativity. Independently funded by a Patreon community, they are taking \\\"para-academic leave\\\" to co-create \\\"Pico, a conservatory for human attention.\\\" Their work explores post-book interfaces and enabling environments, building on past experience at Apple and Khan Academy.\", \"detailed_summary\": \"## Researcher's Focus and Vision\\n- Applied researcher focused on creating user interfaces that expand human thought and action.\\n- Developing \\\"transformative tools for thought\\\" to produce \\\"alien cognitive and creative powers.\\\"\\n- Current focus is an \\\"augmented book\\\" designed to help people understand, remember, and use what they read. ## Funding and Affiliations\\n- Independently funded by a Patreon community since 2019.\\n- On \\\"para-academic leave\\\" as of late 2025 to help create \\\"Pico, a conservatory for human attention.\\\"\\n- Previously helped build iOS at Apple and led R&D at Khan Academy. ## Key Research Questions and Topics\\n- Explores questions like \\\"what comes after the book?\\\" and \\\"how to create magicians?\\\"\\n- Focuses on enabling environments. ### Published Works\\n- Numerous works, including monthly essays (some patron-only).\\n- Collaborations with Michael Nielsen on an experimental \\\"mnemonic book\\\" and convivial AI-augmented learning. ### Other Research Topics\\n- Designing media to reflect learning processes.\\n- AI-mediated software ecosystems.\\n- Principles for inventing tools for thought.\\n- Networked notes.\\n- Memory systems.\\n- Problem-solving.\\n- Crowdfunding.\\n- Specific projects like Orbit and BookBridge. ## Past R&D at Khan Academy\\n- Involved inventing interactive learning environments with teachers.\\n- Focused on scalable open-ended activities, digital math manipulatives, and social learning designs.\"}",
+      "content": "{\"brief_summary\": \"An applied researcher is developing \\\"transformative tools for thought\\\", including an \\\"augmented book\\\", to expand human cognition and creativity. Independently funded by a Patreon community, they are taking \\\"para-academic leave\\\" to co-create \\\"Pico, a conservatory for human attention.\\\" Their work explores post-book interfaces and enabling environments, building on past experience at Apple and Khan Academy.\", \"detailed_summary\": \"## Researcher's Focus and Vision\\n- Applied researcher focused on creating user interfaces that expand human thought and action.\\n- Developing \\\"transformative tools for thought\\\" to produce \\\"alien cognitive and creative powers.\\\"\\n- Current focus is an \\\"augmented book\\\" designed to help people understand, remember, and use what they read. ## Funding and Affiliations\\n- Independently funded by a Patreon community since 2019.\\n- On \\\"para-academic leave\\\" as of late 2025 to help create \\\"Pico, a conservatory for human attention.\\\"\\n- Previously helped build iOS at Apple and led R&D at Khan Academy. ## Key Research Questions and Topics\\n- Explores questions like \\\"what comes after the book?\\\" and \\\"how to create magicians?\\\"\\n- Focuses on enabling environments. ### Published Works\\n- Numerous works, including monthly essays (some patron-only).\\n- Collaborations with Michael Nielsen on an experimental \\\"mnemonic book\\\" and convivial AI-augmented learning. ### Other Research Topics\\n- Designing media to reflect learning processes.\\n- AI-mediated software ecosystems.\\n- Principles for inventing tools for thought.\\n- Networked notes.\\n- Memory systems.\\n- Problem-solving.\\n- Crowdfunding.\\n- Specific projects like Orbit and BookBridge. ## Past R&D at Khan Academy\\n- Involved inventing interactive learning environments with teachers.\\n- Focused on scalable open-ended activities, digital math manipulatives, and social learning designs.\"}",
+      "source_type": "web",
+      "url": "https://andymatuschak.org/",
+      "tags": [
+        "tools-for-thought",
+        "user-interfaces",
+        "cognitive-enhancement",
+        "augmented-learning",
+        "patreon",
+        "para-academic",
+        "human-attention",
+        "learning-environments"
+      ],
+      "metadata": {
+        "url": "https://andymatuschak.org/",
+        "model_used": [
+          {
+            "role": "dense_verify",
+            "model": "gemini-2.5-pro",
+            "starting_model": "gemini-2.5-pro",
+            "fallback_reason": "gemini-2.5-pro-rate-limited"
+          },
+          {
+            "role": "summarizer",
+            "model": "gemini-2.5-flash",
+            "starting_model": "gemini-2.5-flash",
+            "fallback_reason": null
+          }
+        ],
+        "source_type": "web",
+        "patch_applied": false,
+        "engine_version": "2.0.0",
+        "fallback_reason": "gemini-2.5-pro-rate-limited",
+        "total_latency_ms": 17708,
+        "confidence_reason": "HTML article text extracted",
+        "gemini_pro_tokens": 0,
+        "total_tokens_used": 1171,
+        "is_schema_fallback": false,
+        "structured_payload": {
+          "tags": [
+            "Tools for Thought",
+            "User Interfaces",
+            "Cognitive Enhancement",
+            "Augmented Learning",
+            "Patreon",
+            "Para-academic",
+            "Human Attention",
+            "Learning Environments"
+          ],
+          "mini_title": "Transformative Tools for Thought",
+          "brief_summary": "An applied researcher is developing \"transformative tools for thought,\" including an \"augmented book,\" to expand human cognition and creativity. Independently funded by a Patreon community, they are taking \"para-academic leave\" to co-create \"Pico, a conservatory for human attention.\" Their work explores post-book interfaces and enabling environments, building on past experience at Apple and Khan Academy.",
+          "detailed_summary": [
+            {
+              "bullets": [
+                "Applied researcher focused on creating user interfaces that expand human thought and action.",
+                "Developing \"transformative tools for thought\" to produce \"alien cognitive and creative powers.\"",
+                "Current focus is an \"augmented book\" designed to help people understand, remember, and use what they read."
+              ],
+              "heading": "Researcher's Focus and Vision",
+              "sub_sections": {}
+            },
+            {
+              "bullets": [
+                "Independently funded by a Patreon community since 2019.",
+                "On \"para-academic leave\" as of late 2025 to help create \"Pico, a conservatory for human attention.\"",
+                "Previously helped build iOS at Apple and led R&D at Khan Academy."
+              ],
+              "heading": "Funding and Affiliations",
+              "sub_sections": {}
+            },
+            {
+              "bullets": [
+                "Explores questions like \"what comes after the book?\" and \"how to create magicians?\"",
+                "Focuses on enabling environments."
+              ],
+              "heading": "Key Research Questions and Topics",
+              "sub_sections": {
+                "Published Works": [
+                  "Numerous works, including monthly essays (some patron-only).",
+                  "Collaborations with Michael Nielsen on an experimental \"mnemonic book\" and convivial AI-augmented learning."
+                ],
+                "Other Research Topics": [
+                  "Designing media to reflect learning processes.",
+                  "AI-mediated software ecosystems.",
+                  "Principles for inventing tools for thought.",
+                  "Networked notes.",
+                  "Memory systems.",
+                  "Problem-solving.",
+                  "Crowdfunding.",
+                  "Specific projects like Orbit and BookBridge."
+                ]
+              }
+            },
+            {
+              "bullets": [
+                "Involved inventing interactive learning environments with teachers.",
+                "Focused on scalable open-ended activities, digital math manipulatives, and social learning designs."
+              ],
+              "heading": "Past R&D at Khan Academy",
+              "sub_sections": {}
+            }
+          ]
+        },
+        "cod_iterations_used": 0,
+        "gemini_flash_tokens": 1171,
+        "extraction_confidence": "high",
+        "self_check_missing_count": 0
+      }
+    },
+    {
+      "user_id": "8842e563-ee10-4b8b-bbf2-8af4ba65888e",
+      "node_id": "gh-zk-org-zk",
+      "title": "zk-org/zk",
+      "summary": "{\"brief_summary\": \"zk-org/zk is a command-line tool written in Go for maintaining a plain text Zettelkasten or personal wiki. It processes Markdown notes, including `[[Wikilinks]]`, multiple hashtag formats, and YAML frontmatter, using Go and `mattn/go-sqlite3` for its core functionality and search. Users adopt it by installing pre-built binaries, Homebrew, Nix, Alpine, Arch Linux packages, or building from source (Go 1.21+, `Makefile`).\", \"detailed_summary\": \"## Overview\\n- zk-org/zk is a command-line tool written in Go designed for managing a plain text Zettelkasten. ### Core argument\\n- zk-org/zk is a command-line tool written in Go designed for managing a plain text Zettelkasten. ### Architecture\\n- It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter.\\n- The tool leverages `mattn/go-sqlite3` with `fts5` for advanced search capabilities.\\n- It integrates with LSP-compatible editors through dedicated plugins, enabling features like diagnostics for missing backlinks. ### Stack\\n- Go, mattn/go-sqlite3. ## Features and modules ### Overview\\n- `zk-org/zk` is a command-line tool for maintaining a plain text Zettelkasten or personal wiki.\\n- It is not a note editor or a web server for notes.\\n- Key features include creating notes from templates, advanced search and filtering (tags, links, mentions), and an interactive browser powered by `fzf`.\\n- It supports Markdown, including `[[Wikilinks]]`, multiple hashtag formats (`#hashtags`, `:colon:separated:tags:`, `#multi-word tags#`), and YAML frontmatter.\\n- The tool integrates with any LSP-compatible editor, with specific plugins for Emacs (`zk-emacs`), Neovim 0.8+ (`zk-nvim`), and Visual Studio Code (`zk-vscode`).\\n- Recent releases (e.g., v0.15.2) added a `zk list --missing-backlink` filter and LSP diagnostics for missing backlinks and self-referential links.\\n- Unreleased changes include performance improvements making indexing 35-74% faster and a fix for an LSP crash.\\n- Notable open issues include requests for a `--broken-links` flag (#698) and parsing links in frontmatter (#694).\\n- Related projects include Neuron, Emanote, zk-spaced, and zk-graph-view.\\n- Public surface: /zk, /dev/null, /paths, /summary, zk list --missing-backlink.\\n- Usability signals: Installation via pre-built binaries for macOS and Linux., Installation via Homebrew., Installation via Nix (nixpkgs and a Home Manager module)., Installation via Alpine Linux's `testing` repository., Installation via Arch Linux's official repositories., Building from source requires Go 1.21+ and uses a `Makefile`. ### Architecture / Modules\\n- The tool is written in Go.\\n- It uses a `Makefile` for its build process.\\n- The build process enables CGO for the `mattn/go-sqlite3` dependency.\\n- The `fts5` tag is used for search functionality during the build.\\n- The project maintains `dev` and `main` branches, with contributions branching from `dev`.\\n- The CI pipeline uses 8 GitHub Actions workflows for builds, releases, static analysis (CodeQL), and documentation deployment to GitHub Pages.\\n- Documentation is built with Sphinx and the Furo theme. ### Public API / Interfaces\\n- The primary entry point is the `zk` command-line tool.\\n- Git-style command aliases are supported.\\n- The tool provides an interactive browser powered by `fzf`.\\n- Specific CLI commands and paths include `/zk`, `/dev/null`, `/paths`, and `/summary`.\\n- A `zk list` subcommand supports filtering, such as `zk list --missing-backlink`.\\n- LSP diagnostics are provided for missing backlinks and self-referential links, integrating with LSP-compatible editors.\\n- Public surface: /zk, /dev/null, /paths, /summary, zk list --missing-backlink. ### Operational guidance\\n- Install via pre-built binaries for macOS and Linux.\\n- Install via Homebrew.\\n- Install via Nix (nixpkgs and a Home Manager module).\\n- Install via Alpine Linux's `testing` repository.\\n- Install via Arch Linux's official repositories.\\n- To build from source, Go 1.21+ is required.\\n- The build process uses a `Makefile`.\\n- The `Makefile` enables CGO for `mattn/go-sqlite3` and uses the `fts5` tag for search.\\n- Documentation requirements can be installed via `pip install -r docs/requirements.txt`.\\n- Usability signals: pip install -r docs/requirements.txt, Installation via pre-built binaries for macOS and Linux., Installation via Homebrew., Installation via Nix (nixpkgs and a Home Manager module)., Installation via Alpine Linux's `testing` repository., Installation via Arch Linux's official repositories. ### Tests / Benchmarks / Examples\\n- Go unit tests are executed using `make test`.\\n- End-to-end tests are performed using `tesh` via `make tesh`.\\n- Recent performance improvements have made indexing 35-74% faster.\\n- Usability signals: make test, make tesh. ## Benchmarks and examples\\n- Go unit tests (`make test`) and end-to-end tests using `tesh` (`make tesh`) demonstrate the tool's functionality and correctness.\\n- Recent performance improvements indicate indexing is 35-74% faster. ## Closing remarks\\n- Roadmap: Users adopt it by installing pre-built binaries, Homebrew, Nix, Alpine, Arch Linux packages, or building from source (Go 1.21+, `Makefile`).\"}",
+      "content": "{\"brief_summary\": \"zk-org/zk is a command-line tool written in Go for maintaining a plain text Zettelkasten or personal wiki. It processes Markdown notes, including `[[Wikilinks]]`, multiple hashtag formats, and YAML frontmatter, using Go and `mattn/go-sqlite3` for its core functionality and search. Users adopt it by installing pre-built binaries, Homebrew, Nix, Alpine, Arch Linux packages, or building from source (Go 1.21+, `Makefile`).\", \"detailed_summary\": \"## Overview\\n- zk-org/zk is a command-line tool written in Go designed for managing a plain text Zettelkasten. ### Core argument\\n- zk-org/zk is a command-line tool written in Go designed for managing a plain text Zettelkasten. ### Architecture\\n- It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter.\\n- The tool leverages `mattn/go-sqlite3` with `fts5` for advanced search capabilities.\\n- It integrates with LSP-compatible editors through dedicated plugins, enabling features like diagnostics for missing backlinks. ### Stack\\n- Go, mattn/go-sqlite3. ## Features and modules ### Overview\\n- `zk-org/zk` is a command-line tool for maintaining a plain text Zettelkasten or personal wiki.\\n- It is not a note editor or a web server for notes.\\n- Key features include creating notes from templates, advanced search and filtering (tags, links, mentions), and an interactive browser powered by `fzf`.\\n- It supports Markdown, including `[[Wikilinks]]`, multiple hashtag formats (`#hashtags`, `:colon:separated:tags:`, `#multi-word tags#`), and YAML frontmatter.\\n- The tool integrates with any LSP-compatible editor, with specific plugins for Emacs (`zk-emacs`), Neovim 0.8+ (`zk-nvim`), and Visual Studio Code (`zk-vscode`).\\n- Recent releases (e.g., v0.15.2) added a `zk list --missing-backlink` filter and LSP diagnostics for missing backlinks and self-referential links.\\n- Unreleased changes include performance improvements making indexing 35-74% faster and a fix for an LSP crash.\\n- Notable open issues include requests for a `--broken-links` flag (#698) and parsing links in frontmatter (#694).\\n- Related projects include Neuron, Emanote, zk-spaced, and zk-graph-view.\\n- Public surface: /zk, /dev/null, /paths, /summary, zk list --missing-backlink.\\n- Usability signals: Installation via pre-built binaries for macOS and Linux., Installation via Homebrew., Installation via Nix (nixpkgs and a Home Manager module)., Installation via Alpine Linux's `testing` repository., Installation via Arch Linux's official repositories., Building from source requires Go 1.21+ and uses a `Makefile`. ### Architecture / Modules\\n- The tool is written in Go.\\n- It uses a `Makefile` for its build process.\\n- The build process enables CGO for the `mattn/go-sqlite3` dependency.\\n- The `fts5` tag is used for search functionality during the build.\\n- The project maintains `dev` and `main` branches, with contributions branching from `dev`.\\n- The CI pipeline uses 8 GitHub Actions workflows for builds, releases, static analysis (CodeQL), and documentation deployment to GitHub Pages.\\n- Documentation is built with Sphinx and the Furo theme. ### Public API / Interfaces\\n- The primary entry point is the `zk` command-line tool.\\n- Git-style command aliases are supported.\\n- The tool provides an interactive browser powered by `fzf`.\\n- Specific CLI commands and paths include `/zk`, `/dev/null`, `/paths`, and `/summary`.\\n- A `zk list` subcommand supports filtering, such as `zk list --missing-backlink`.\\n- LSP diagnostics are provided for missing backlinks and self-referential links, integrating with LSP-compatible editors.\\n- Public surface: /zk, /dev/null, /paths, /summary, zk list --missing-backlink. ### Operational guidance\\n- Install via pre-built binaries for macOS and Linux.\\n- Install via Homebrew.\\n- Install via Nix (nixpkgs and a Home Manager module).\\n- Install via Alpine Linux's `testing` repository.\\n- Install via Arch Linux's official repositories.\\n- To build from source, Go 1.21+ is required.\\n- The build process uses a `Makefile`.\\n- The `Makefile` enables CGO for `mattn/go-sqlite3` and uses the `fts5` tag for search.\\n- Documentation requirements can be installed via `pip install -r docs/requirements.txt`.\\n- Usability signals: pip install -r docs/requirements.txt, Installation via pre-built binaries for macOS and Linux., Installation via Homebrew., Installation via Nix (nixpkgs and a Home Manager module)., Installation via Alpine Linux's `testing` repository., Installation via Arch Linux's official repositories. ### Tests / Benchmarks / Examples\\n- Go unit tests are executed using `make test`.\\n- End-to-end tests are performed using `tesh` via `make tesh`.\\n- Recent performance improvements have made indexing 35-74% faster.\\n- Usability signals: make test, make tesh. ## Benchmarks and examples\\n- Go unit tests (`make test`) and end-to-end tests using `tesh` (`make tesh`) demonstrate the tool's functionality and correctness.\\n- Recent performance improvements indicate indexing is 35-74% faster. ## Closing remarks\\n- Roadmap: Users adopt it by installing pre-built binaries, Homebrew, Nix, Alpine, Arch Linux packages, or building from source (Go 1.21+, `Makefile`).\"}",
+      "source_type": "github",
+      "url": "https://github.com/zk-org/zk",
+      "tags": [
+        "gh-zk-org-zk",
+        "python",
+        "cli-tool",
+        "zettelkasten",
+        "cli",
+        "go",
+        "markdown",
+        "lsp",
+        "notes",
+        "wiki"
+      ],
+      "metadata": {
+        "url": "https://github.com/zk-org/zk",
+        "author": "zk-org",
+        "model_used": [
+          {
+            "role": "dense_verify",
+            "model": "gemini-2.5-pro",
+            "starting_model": "gemini-2.5-pro",
+            "fallback_reason": "gemini-2.5-pro-rate-limited"
+          },
+          {
+            "role": "summarizer",
+            "model": "gemini-2.5-flash",
+            "starting_model": "gemini-2.5-flash",
+            "fallback_reason": null
+          }
+        ],
+        "source_type": "github",
+        "patch_applied": false,
+        "engine_version": "2.0.0",
+        "fallback_reason": "gemini-2.5-pro-rate-limited",
+        "total_latency_ms": 17597,
+        "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+        "gemini_pro_tokens": 0,
+        "total_tokens_used": 3173,
+        "is_schema_fallback": false,
+        "structured_payload": {
+          "tags": [
+            "gh-zk-org-zk",
+            "python",
+            "cli-tool",
+            "zettelkasten",
+            "cli",
+            "go",
+            "markdown",
+            "lsp",
+            "notes",
+            "wiki"
+          ],
+          "mini_title": "zk-org/zk",
+          "owner_login": "zk-org",
+          "_dense_verify": {
+            "archetype": "cli_tool",
+            "missing_fact_count": 0
+          },
+          "brief_summary": "zk-org/zk is a command-line tool written in Go for maintaining a plain text Zettelkasten or personal wiki. It processes Markdown notes, including `[[Wikilinks]]`, multiple hashtag formats, and YAML frontmatter, using Go and `mattn/go-sqlite3` for its core functionality and search. Users adopt it by installing pre-built binaries, Homebrew, Nix, Alpine, Arch Linux packages, or building from source (Go 1.21+, `Makefile`).",
+          "detailed_summary": [
+            {
+              "bullets": [
+                "`zk-org/zk` is a command-line tool for maintaining a plain text Zettelkasten or personal wiki.",
+                "It is not a note editor or a web server for notes.",
+                "Key features include creating notes from templates, advanced search and filtering (tags, links, mentions), and an interactive browser powered by `fzf`.",
+                "It supports Markdown, including `[[Wikilinks]]`, multiple hashtag formats (`#hashtags`, `:colon:separated:tags:`, `#multi-word tags#`), and YAML frontmatter.",
+                "The tool integrates with any LSP-compatible editor, with specific plugins for Emacs (`zk-emacs`), Neovim 0.8+ (`zk-nvim`), and Visual Studio Code (`zk-vscode`).",
+                "Recent releases (e.g., v0.15.2) added a `zk list --missing-backlink` filter and LSP diagnostics for missing backlinks and self-referential links.",
+                "Unreleased changes include performance improvements making indexing 35-74% faster and a fix for an LSP crash.",
+                "Notable open issues include requests for a `--broken-links` flag (#698) and parsing links in frontmatter (#694).",
+                "Related projects include Neuron, Emanote, zk-spaced, and zk-graph-view."
+              ],
+              "heading": "Overview",
+              "main_stack": [
+                "Go",
+                "mattn/go-sqlite3"
+              ],
+              "sub_sections": {},
+              "module_or_feature": "Overview",
+              "public_interfaces": [
+                "/zk",
+                "/dev/null",
+                "/paths",
+                "/summary",
+                "zk list --missing-backlink"
+              ],
+              "usability_signals": [
+                "Installation via pre-built binaries for macOS and Linux.",
+                "Installation via Homebrew.",
+                "Installation via Nix (nixpkgs and a Home Manager module).",
+                "Installation via Alpine Linux's `testing` repository.",
+                "Installation via Arch Linux's official repositories.",
+                "Building from source requires Go 1.21+ and uses a `Makefile`.",
+                "pip install -r docs/requirements.txt"
+              ]
+            },
+            {
+              "bullets": [
+                "The tool is written in Go.",
+                "It uses a `Makefile` for its build process.",
+                "The build process enables CGO for the `mattn/go-sqlite3` dependency.",
+                "The `fts5` tag is used for search functionality during the build.",
+                "The project maintains `dev` and `main` branches, with contributions branching from `dev`.",
+                "The CI pipeline uses 8 GitHub Actions workflows for builds, releases, static analysis (CodeQL), and documentation deployment to GitHub Pages.",
+                "Documentation is built with Sphinx and the Furo theme."
+              ],
+              "heading": "Architecture / Modules",
+              "main_stack": [
+                "Go",
+                "mattn/go-sqlite3"
+              ],
+              "sub_sections": {},
+              "module_or_feature": "Architecture / Modules",
+              "public_interfaces": [],
+              "usability_signals": []
+            },
+            {
+              "bullets": [
+                "The primary entry point is the `zk` command-line tool.",
+                "Git-style command aliases are supported.",
+                "The tool provides an interactive browser powered by `fzf`.",
+                "Specific CLI commands and paths include `/zk`, `/dev/null`, `/paths`, and `/summary`.",
+                "A `zk list` subcommand supports filtering, such as `zk list --missing-backlink`.",
+                "LSP diagnostics are provided for missing backlinks and self-referential links, integrating with LSP-compatible editors."
+              ],
+              "heading": "Public API / Interfaces",
+              "main_stack": [],
+              "sub_sections": {},
+              "module_or_feature": "Public API / Interfaces",
+              "public_interfaces": [
+                "/zk",
+                "/dev/null",
+                "/paths",
+                "/summary",
+                "zk list --missing-backlink"
+              ],
+              "usability_signals": []
+            },
+            {
+              "bullets": [
+                "Install via pre-built binaries for macOS and Linux.",
+                "Install via Homebrew.",
+                "Install via Nix (nixpkgs and a Home Manager module).",
+                "Install via Alpine Linux's `testing` repository.",
+                "Install via Arch Linux's official repositories.",
+                "To build from source, Go 1.21+ is required.",
+                "The build process uses a `Makefile`.",
+                "The `Makefile` enables CGO for `mattn/go-sqlite3` and uses the `fts5` tag for search.",
+                "Documentation requirements can be installed via `pip install -r docs/requirements.txt`."
+              ],
+              "heading": "Operational guidance",
+              "main_stack": [],
+              "sub_sections": {},
+              "module_or_feature": "Operational guidance",
+              "public_interfaces": [],
+              "usability_signals": [
+                "pip install -r docs/requirements.txt",
+                "Installation via pre-built binaries for macOS and Linux.",
+                "Installation via Homebrew.",
+                "Installation via Nix (nixpkgs and a Home Manager module).",
+                "Installation via Alpine Linux's `testing` repository.",
+                "Installation via Arch Linux's official repositories.",
+                "Building from source requires Go 1.21+.",
+                "Uses a `Makefile` for building."
+              ]
+            },
+            {
+              "bullets": [
+                "Go unit tests are executed using `make test`.",
+                "End-to-end tests are performed using `tesh` via `make tesh`.",
+                "Recent performance improvements have made indexing 35-74% faster."
+              ],
+              "heading": "Tests / Benchmarks / Examples",
+              "main_stack": [],
+              "sub_sections": {},
+              "module_or_feature": "Tests / Benchmarks / Examples",
+              "public_interfaces": [],
+              "usability_signals": [
+                "make test",
+                "make tesh"
+              ]
+            }
+          ],
+          "_github_archetype": {
+            "reasons": [
+              "cli_tokens=2",
+              "topics_cli"
+            ],
+            "archetype": "cli_tool",
+            "confidence": 0.75
+          },
+          "architecture_overview": "zk-org/zk is a command-line tool written in Go designed for managing a plain text Zettelkasten. It processes Markdown notes, supporting `[[Wikilinks]]`, various hashtag formats, and YAML frontmatter. The tool leverages `mattn/go-sqlite3` with `fts5` for advanced search capabilities. It integrates with LSP-compatible editors through dedicated plugins, enabling features like diagnostics for missing backlinks. The project uses a `Makefile` for its build process and includes Go unit tests and `tesh`",
+          "benchmarks_tests_examples": [
+            "Go unit tests (`make test`) and end-to-end tests using `tesh` (`make tesh`) demonstrate the tool's functionality and correctness.",
+            "Recent performance improvements indicate indexing is 35-74% faster."
+          ]
+        },
+        "cod_iterations_used": 0,
+        "gemini_flash_tokens": 3173,
+        "extraction_confidence": "high",
+        "self_check_missing_count": 0
+      }
+    }
+  ]
+}
