@@ -532,13 +532,31 @@ async def main_async(args) -> int:
     )
     (iter_dir / "scores.md").write_text(scores_md, encoding="utf-8")
 
-    logger.info("wrote %s and %s", eval_path, iter_dir / "scores.md")
+    logger.debug("wrote %s and %s", eval_path, iter_dir / "scores.md")
+    cv = (holistic or {}).get("critic_verdict_distribution", {}) or {}
+    burst_status = (burst or {}).get("by_status", {}) or {}
     logger.info(
-        "composite=%.2f  faithfulness=%.2f  answer_relevancy=%.2f  p95=%.0f ms",
+        "composite=%.2f  faithfulness=%.2f  answer_relevancy=%.2f  "
+        "p50=%.0f ms  p95=%.0f ms  "
+        "gold@1=%.4f  gold@3=%.4f  gold@8=%.4f  "
+        "within_budget=%.4f  refused=%d/%d  "
+        "verdict=supported:%d/partial:%d/unsupported:%d  "
+        "burst=%s",
         result.composite,
         result.faithfulness_score,
         result.answer_relevancy_score,
+        result.latency_p50_ms or 0.0,
         result.latency_p95_ms or 0.0,
+        (holistic or {}).get("gold_at_1", 0.0),
+        (holistic or {}).get("gold_at_3", 0.0),
+        (holistic or {}).get("gold_at_8", 0.0),
+        (holistic or {}).get("within_budget_rate", 0.0),
+        (holistic or {}).get("refused_count", 0),
+        len(aligned_gold),
+        cv.get("supported", 0),
+        cv.get("partial", 0),
+        cv.get("unsupported_no_retry", 0) + cv.get("unsupported", 0),
+        ",".join(f"{k}:{v}" for k, v in sorted(burst_status.items())) or "none",
     )
     return 0
 
@@ -558,6 +576,26 @@ def main(argv: list[str] | None = None) -> int:
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(message)s",
     )
+    # Scoring stage emits one summary line; silence third-party + intermediate
+    # noise (httpx requests, google-genai AFC banner, supabase init, key-pool
+    # rate-limit retries, env-loader chatter). Operators get a clean single
+    # line at INFO; full noise still available via --log-level=DEBUG.
+    for name in (
+        "httpx",
+        "httpcore",
+        "google",
+        "google.genai",
+        "google.generativeai",
+        "google_genai",
+        "supabase",
+        "postgrest",
+        "hpack",
+        "website.core.supabase_kg.client",
+        "website.features.api_key_switching.key_pool",
+        "website.features.api_key_switching",
+        "website.experimental_features.nexus",
+    ):
+        logging.getLogger(name).setLevel(logging.ERROR)
     return asyncio.run(main_async(args))
 
 
