@@ -52,8 +52,43 @@ jobs:
             echo "===== docker ps ====="
             # deploy user is in the docker group — no sudo needed (and the
             # droplet sudoers config has no NOPASSWD rule for `docker`).
-            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
-            echo "===== dmesg unavailable (deploy user lacks privileged access; OOM hints will be empty) ====="
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+            echo "===== docker inspect (OOMKilled / ExitCode / RestartCount) ====="
+            for c in zettelkasten-blue zettelkasten-green caddy; do
+              docker inspect "$c" --format \
+                'name={{.Name}} oom_killed={{.State.OOMKilled}} exit={{.State.ExitCode}} restarts={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' \
+                2>/dev/null || echo "  (no $c container)"
+            done
+            echo "===== docker events (last 6h, oom + die only) ====="
+            docker events --since 6h --until 0m \
+              --filter event=oom --filter event=die --filter event=kill \
+              --format 'time={{.Time}} type={{.Type}} action={{.Action}} actor={{.Actor.Attributes.name}}' \
+              2>/dev/null || true
+            echo "===== cgroup v2 memory.events (OOM counters per-container) ====="
+            for f in /sys/fs/cgroup/system.slice/docker-*.scope/memory.events; do
+              [ -r "$f" ] || continue
+              echo "--- $f ---"
+              cat "$f" 2>/dev/null || true
+            done
+            echo "===== cgroup v2 memory.peak (per-container hi-water) ====="
+            for f in /sys/fs/cgroup/system.slice/docker-*.scope/memory.peak; do
+              [ -r "$f" ] || continue
+              echo "$f: $(cat "$f" 2>/dev/null)"
+            done
+            echo "===== journalctl -k (kernel ring; OOM only, last 6h) ====="
+            # systemd-journal group membership grants kernel-message read; if
+            # not granted this returns an error but doesn't fail the script.
+            journalctl -k --since "6 hours ago" --no-pager 2>&1 \
+              | grep -iE 'oom|out of memory|killed process|invoked oom' \
+              | head -50 \
+              || echo "  (no kernel OOM events found, or journal not readable by deploy user)"
+            echo "===== /var/log/kern.log + /var/log/syslog (OOM grep; if readable) ====="
+            for log in /var/log/kern.log /var/log/syslog; do
+              [ -r "$log" ] || continue
+              echo "--- $log ---"
+              grep -iE 'oom|out of memory|killed process' "$log" 2>/dev/null \
+                | tail -50 || true
+            done
             echo "===== app container logs (--tail $LINES) ====="
             cd /opt/zettelkasten/compose
             docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
