@@ -98,9 +98,10 @@ def apply_class_overrides(
        persons-rule precedence for the lookup step.)
     4. "list/all/every/enumerate" pattern → ``THEMATIC``. Enumerative queries
        want paraphrase fan-out across surface forms.
-    5. Word count ≥ 18 + LLM said ``LOOKUP`` → upgrade to ``MULTI_HOP``.
-       Very long queries with a lookup verdict are nearly always
-       compound questions the router collapsed.
+    5. Word count ≥ 18 + LLM said ``LOOKUP`` AND no named author → upgrade
+       to ``MULTI_HOP``. Single-author lookups (e.g. q3 "Patrick Winston's
+       MIT lecture on…") stay LOOKUP — proper-noun queries don't need
+       sub-question decomposition; fan-out destroys the entity anchor.
     """
     persons = [p for p in (person_entities or []) if isinstance(p, str) and p.strip()]
     if len(persons) >= 2:
@@ -112,7 +113,8 @@ def apply_class_overrides(
     if _ENUMERATE_PATTERN.search(query):
         return QueryClass.THEMATIC, "override_enumerate_pattern"
     word_count = len(query.split())
-    if word_count >= 18 and llm_class is QueryClass.LOOKUP:
+    # iter-04: q3 24-word LOOKUP got upgraded to MULTI_HOP and over-decomposed; skip when ≥1 named author.
+    if word_count >= 18 and llm_class is QueryClass.LOOKUP and not persons:
         return QueryClass.MULTI_HOP, "override_long_query_upgrade"
     return llm_class, None
 

@@ -368,11 +368,15 @@ class RAGOrchestrator:
                 quality_mode=query.quality,
             )
 
-        await self._sessions.append_user_message(
-            session_id=session_id,
-            user_id=user_id,
-            content=query.content,
-        )
+        # iter-04: same defensive pattern as the assistant writeback at line ~825 — persistence is best-effort.
+        try:
+            await self._sessions.append_user_message(
+                session_id=session_id,
+                user_id=user_id,
+                content=query.content,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("user message writeback failed (request continues): %s", exc, exc_info=True)
 
         # iter-03 §B (2026-04-29): pipeline-wide mem-trace. Each stage logs
         # rss_kb at exit so we can compute per-stage deltas for a single
@@ -594,7 +598,15 @@ class RAGOrchestrator:
                 ctx_chars=len(context_xml),
                 used=len(used_candidates),
             )
-        return _RetrievedContext(context_xml=context_xml, used_candidates=used_candidates)
+            # iter-04: drop unused 12-17 candidate blobs + trim heap before synth (swap was 470/1024MB).
+            ctx_result = _RetrievedContext(
+                context_xml=context_xml, used_candidates=used_candidates,
+            )
+            del candidates, ranked
+            from website.api._mem_release import aggressive_release as _ar
+            _ar()
+            _log_rss("pipeline.retrieve_released")
+        return ctx_result
 
     @trace_stage("generate_once")
     async def _generate_once(self, *, query, context_xml: str) -> _GeneratedAnswer:
@@ -703,17 +715,13 @@ class RAGOrchestrator:
         used_candidates = context.used_candidates
         active_generation = generation
 
-        # iter-04 partial-verdict gate: a "partial" with zero citations is
-        # materially equivalent to unsupported (the answer is ungrounded).
-        # Escalate so it goes through the same refusal-aware skip/retry
-        # path. We deliberately do NOT escalate partials with 1+ citation
-        # from any source type — partial-with-evidence is a legitimate UX
-        # state (see test_vague_query_partial_still_returns_answer).
+        # iter-04: escalate partial→unsupported ONLY when retrieval itself was empty (pre-validation).
+        # If pre_validation had candidates but streaming dropped the [id=...] tag, retain partial.
         if verdict == "partial":
             tentative_citations = self._build_citations(context.used_candidates)
-            if not tentative_citations:
+            if not tentative_citations and not pre_validation_candidates:
                 verdict = "unsupported"
-                logger.debug("partial->unsupported escalation: zero citations")
+                logger.debug("partial->unsupported escalation: zero pre-validation candidates")
 
         if verdict == "unsupported":
             # iter-04: feed the ORIGINAL un-substituted generation.content to
@@ -789,6 +797,12 @@ class RAGOrchestrator:
                     verdict = "retry_budget_exceeded"
                     answer_text = _wrap_with_low_confidence_tag(answer_text)
                     replaced_text = answer_text
+                    # iter-04: free retry's stage-1 buffers on cancel — wait_for leaves them dangling.
+                    try:
+                        from website.api._mem_release import aggressive_release as _ar
+                        _ar()
+                    except Exception:  # noqa: BLE001
+                        pass
                     logger.warning(
                         "critic-retry budget exceeded (%.1fs); serving first-pass answer",
                         _RETRY_BUDGET_S,
@@ -799,6 +813,21 @@ class RAGOrchestrator:
                     replaced_text = answer_text
                     logger.info(
                         "critic-retry deja-vu: mutation matrix produced identical params"
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    # iter-04: catch-all so retry-path raise can never 500 — q3/q6/q9/q10 root-cause class.
+                    verdict = "retry_failed"
+                    answer_text = _wrap_with_low_confidence_tag(answer_text)
+                    replaced_text = answer_text
+                    try:
+                        from website.api._mem_release import aggressive_release as _ar
+                        _ar()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    logger.error(
+                        "critic-retry raised (%s); serving first-pass answer with low-confidence tag",
+                        type(exc).__name__,
+                        exc_info=True,
                     )
 
         turn = AnswerTurn(
@@ -814,11 +843,15 @@ class RAGOrchestrator:
             retrieved_node_ids=[candidate.node_id for candidate in used_candidates],
             retrieved_chunk_ids=[candidate.chunk_id for candidate in used_candidates if candidate.chunk_id],
         )
-        await self._sessions.append_assistant_message(
-            session_id=prepared.session_id,
-            user_id=user_id,
-            turn=turn,
-        )
+        # iter-04: writeback never escapes — q9 500 root-cause was Supabase await raising after wait_for cancellation.
+        try:
+            await self._sessions.append_assistant_message(
+                session_id=prepared.session_id,
+                user_id=user_id,
+                turn=turn,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("session writeback failed (turn served, persistence dropped): %s", exc, exc_info=True)
 
         # iter-04 anti-magnet: record a top-1 hit for this Kasten so the
         # next query in this Kasten gets the frequency-prior demotion if

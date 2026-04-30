@@ -145,6 +145,7 @@ class HybridRetriever:
             query_metadata=query_metadata,
             query_class=query_class,
             kasten_freqs=kasten_freqs,
+            effective_nodes=effective_nodes,
         )
 
     async def _resolve_nodes(
@@ -178,6 +179,7 @@ class HybridRetriever:
         query_metadata: QueryMetadata | None = None,
         query_class: QueryClass | None = None,
         kasten_freqs: dict[str, int] | None = None,
+        effective_nodes: list[str] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
@@ -293,6 +295,18 @@ class HybridRetriever:
         # is what prevents one node monopolising the top-K (q5 fix).
         ordered = _xquad_select(ordered, lam=_XQUAD_LAMBDA)
 
+        # iter-04: q5 cross-corpus thematic still misses members because xQuAD's
+        # 0.3 demotion can't overcome a 1.5x score gap. Promote one chunk per Kasten member
+        # to the front for THEMATIC-class queries.
+        if (
+            query_class is QueryClass.THEMATIC
+            and effective_nodes
+            and len(effective_nodes) >= 2
+        ):
+            ordered = _ensure_member_coverage(
+                ordered, member_ids=effective_nodes, min_per_member=1,
+            )
+
         return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
 
 
@@ -336,6 +350,42 @@ def _xquad_select(
         picked.append(chosen)
         picked_node_counts[chosen.node_id] = picked_node_counts.get(chosen.node_id, 0) + 1
     return picked
+
+
+def _ensure_member_coverage(
+    candidates: list[RetrievalCandidate],
+    *,
+    member_ids: list[str],
+    min_per_member: int = 1,
+) -> list[RetrievalCandidate]:
+    """iter-04: THEMATIC diversity floor — promote one chunk per Kasten member
+    to the front of ``candidates`` so the top-K handed to the reranker covers
+    every member that has any retrieved chunk. Members with zero retrieved
+    chunks are silently skipped (cannot promote what isn't there). Members
+    already represented in the top ``len(member_ids) * min_per_member`` slots
+    are left where they are. The order within the promoted block follows
+    score-descending (i.e. the best chunk per member, in score order across
+    members). The remainder of the input list is appended in the order it
+    arrived (xQuAD-ordered)."""
+    if not candidates or not member_ids or min_per_member < 1:
+        return candidates
+    member_set = set(member_ids)
+    # Best chunk per member, in input order (already xQuAD-ranked).
+    promoted_per_member: dict[str, list[RetrievalCandidate]] = {}
+    leftover: list[RetrievalCandidate] = []
+    for cand in candidates:
+        nid = cand.node_id
+        if nid in member_set and len(promoted_per_member.get(nid, [])) < min_per_member:
+            promoted_per_member.setdefault(nid, []).append(cand)
+        else:
+            leftover.append(cand)
+    # Flatten promoted block in descending rrf_score so highest-quality member
+    # picks lead the list (preserves xQuAD's relevance ordering across members).
+    promoted: list[RetrievalCandidate] = []
+    for chunks in promoted_per_member.values():
+        promoted.extend(chunks)
+    promoted.sort(key=lambda c: c.rrf_score, reverse=True)
+    return promoted + leftover
 
 
 def _cap_per_node(

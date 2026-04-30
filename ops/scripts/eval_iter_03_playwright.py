@@ -80,6 +80,17 @@ from playwright.sync_api import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# iter-04 forensics: invoking this file as `python ops/scripts/eval_iter_03_playwright.py`
+# puts ``ops/scripts/`` on sys.path but NOT the repo root, so the post-eval scoring
+# stage at line ~1422 (``from ops.scripts import score_rag_eval``) failed with
+# ``No module named 'ops'``. The 2026-04-30 iter-04 run hit this; verification
+# results were complete but RAGAS/DeepEval/composite metrics never wrote to disk.
+# Bootstrap ROOT here so every later ``import ops.X`` (and any sibling helper
+# the harness gains in future iters) resolves regardless of how the script is
+# invoked.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 # iter-04: paths are derived at runtime from --iter so the same harness can
 # drive iter-03 (legacy), iter-04 (current), or any future iter without
 # editing this file. Default kept at iter-03 for backward compatibility with
