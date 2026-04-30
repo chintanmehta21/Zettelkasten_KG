@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .answer_strength import answer_strength_summary_markdown, build_answer_strength_payload
 from .metrics import mrr, ndcg_at_k, percentile, recall_at_k
 from .types import PageIndexQueryResult
 
@@ -106,10 +107,21 @@ def build_eval_payload(
     total = len(per_query) or 1
     p50_latency_ms = percentile([item["elapsed_ms"] for item in per_query], 50)
     p95_latency_ms = percentile([item["elapsed_ms"] for item in per_query], 95)
+    answer_strength = build_answer_strength_payload(
+        queries=queries,
+        results=results,
+        eval_per_query=per_query,
+    )
+    answer_strength_per_query = {
+        item["query_id"]: item
+        for item in answer_strength["per_query"]
+    }
     return {
         "iter_id": iter_id,
         "total_queries": len(queries),
         "per_query": per_query,
+        "answer_strength": answer_strength["summary"],
+        "answer_strength_per_query": answer_strength_per_query,
         "summary": {
             "recall_at_5": sum(item["recall_at_5"] for item in per_query) / total,
             "mrr": sum(item["mrr"] for item in per_query) / total,
@@ -142,33 +154,56 @@ def write_eval_artifacts(eval_dir: Path, payload: dict) -> None:
         },
     }
     ragas = {
-        "status": "computed_internal_sidecar",
+        "status": "deterministic_proxy_no_external_judges",
         "fake_scores_written": False,
+        "metrics_note": (
+            "RAGAS-style proxies are computed locally from final answer text, citations, "
+            "retrieval rows, and query ground truth. No external judge calls are made."
+        ),
         "per_query": [
             {
                 "query_id": item["query_id"],
-                "faithfulness": 1.0 if item["cited_node_ids"] else 0.0,
+                "faithfulness": payload["answer_strength_per_query"][item["query_id"]]["faithfulness_proxy"],
                 "context_recall": item["recall_at_5"],
-                "context_precision": item["recall_at_5"],
-                "answer_relevancy": item["ndcg_at_5"],
+                "context_precision": item["ndcg_at_5"],
+                "answer_relevancy": payload["answer_strength_per_query"][item["query_id"]]["answer_relevancy_proxy"],
+                "answer_correctness": payload["answer_strength_per_query"][item["query_id"]]["answer_correctness_proxy"],
+                "answer_coverage": payload["answer_strength_per_query"][item["query_id"]]["coverage"],
+                "ragas_proxy_score": payload["answer_strength_per_query"][item["query_id"]]["ragas_proxy_score"],
             }
             for item in payload["per_query"]
         ],
+        "summary": payload["answer_strength"],
     }
     deepeval = {
-        "status": "computed_internal_sidecar",
+        "status": "deterministic_proxy_no_external_judges",
         "fake_scores_written": False,
         "per_query": [
             {
                 "query_id": item["query_id"],
-                "hallucination": 0.0 if item["cited_node_ids"] else 1.0,
+                "hallucination": 1.0 - payload["answer_strength_per_query"][item["query_id"]]["faithfulness_proxy"],
                 "contextual_relevance": item["ndcg_at_5"],
-                "semantic_similarity": item["mrr"],
+                "semantic_similarity": payload["answer_strength_per_query"][item["query_id"]]["answer_correctness_proxy"],
+                "answer_strength": payload["answer_strength_per_query"][item["query_id"]]["overall_strength"],
             }
             for item in payload["per_query"]
         ],
+        "summary": payload["answer_strength"],
     }
     (eval_dir / "timings.json").write_text(json.dumps(timings, indent=2), encoding="utf-8")
+    answer_strength_payload = {
+        "status": "deterministic_proxy_no_external_judges",
+        "fake_scores_written": False,
+        "final_answer_policy": "direct_answer_candidate",
+        "metrics_note": (
+            "RAGAS-style proxies are computed locally from final answer text, citations, "
+            "retrieval rows, and query ground truth. No external judge calls are made."
+        ),
+        "summary": payload["answer_strength"],
+        "per_query": list(payload["answer_strength_per_query"].values()),
+    }
+    (eval_dir / "answer_strength.json").write_text(json.dumps(answer_strength_payload, indent=2), encoding="utf-8")
+    (eval_dir / "answer_strength.md").write_text(answer_strength_summary_markdown(answer_strength_payload), encoding="utf-8")
     (eval_dir / "ragas_sidecar.json").write_text(json.dumps(ragas, indent=2), encoding="utf-8")
     (eval_dir / "deepeval_sidecar.json").write_text(json.dumps(deepeval, indent=2), encoding="utf-8")
     verification = {
@@ -217,6 +252,10 @@ def write_eval_artifacts(eval_dir: Path, payload: dict) -> None:
                 f"- Recall@5: {summary['recall_at_5']:.3f}",
                 f"- MRR: {summary['mrr']:.3f}",
                 f"- NDCG@5: {summary['ndcg_at_5']:.3f}",
+                f"- RAGAS proxy score: {payload['answer_strength']['ragas_proxy_score']:.3f}",
+                f"- Overall answer strength: {payload['answer_strength']['overall_strength']:.3f}",
+                f"- Final-answer coverage: {payload['answer_strength']['coverage']:.3f}",
+                f"- Final-answer faithfulness proxy: {payload['answer_strength']['faithfulness_proxy']:.3f}",
                 f"- p50 total latency: {summary['p50_total_ms']:.1f} ms",
                 f"- p95 total latency: {summary['p95_total_ms']:.1f} ms",
             ]

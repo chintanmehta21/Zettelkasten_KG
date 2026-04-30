@@ -1,4 +1,8 @@
 from website.experimental_features.PageIndex_Rag.config import REPO_ROOT, PageIndexRagConfig, load_config
+from website.experimental_features.PageIndex_Rag.answer_strength import (
+    build_answer_strength_payload,
+    normalize_final_answer,
+)
 from website.experimental_features.PageIndex_Rag.eval_runner import build_eval_payload
 from website.experimental_features.PageIndex_Rag.generator import build_answer_prompt
 from website.experimental_features.PageIndex_Rag.types import AnswerCandidate, EvidenceItem, PageIndexQueryResult
@@ -78,6 +82,52 @@ def test_eval_payload_records_production_fields_and_counts_infra_failures():
     assert payload["summary"]["infra_failures"] == 1
     assert payload["summary"]["end_to_end_gold_at_1"] == 0.5
     assert payload["summary"]["p95_latency_ms"] >= 100.0
+    assert payload["answer_strength"]["ragas_proxy_score"] < 1.0
+
+
+def test_answer_strength_parses_fenced_json_and_scores_coverage():
+    answer = AnswerCandidate(
+        "a1",
+        "direct",
+        '```json\n{"text":"zk is written in Go and uses Markdown notes.","cited_node_ids":["gh-zk-org-zk"],"citations":[]}\n```',
+        (),
+        (),
+    )
+    text, cited, _ = normalize_final_answer(answer)
+    assert text == "zk is written in Go and uses Markdown notes."
+    assert cited == ("gh-zk-org-zk",)
+    result = PageIndexQueryResult(
+        query_id="q1",
+        query="Which language and note format?",
+        retrieved_node_ids=("gh-zk-org-zk",),
+        reranked_node_ids=("gh-zk-org-zk",),
+        evidence=(),
+        answers=(answer, answer, answer),
+        timings_ms={"total_ms": 10.0},
+        memory_rss_mb={},
+    )
+    payload = build_answer_strength_payload(
+        queries=[
+            {
+                "qid": "q1",
+                "text": "Which language and note format?",
+                "expected_primary_citation": "gh-zk-org-zk",
+                "ground_truth": "Go; Markdown.",
+            }
+        ],
+        results=[result],
+        eval_per_query=[
+            {
+                "query_id": "q1",
+                "infra_failure": False,
+                "recall_at_5": 1.0,
+                "ndcg_at_5": 1.0,
+            }
+        ],
+    )
+    assert payload["summary"]["coverage"] == 1.0
+    assert payload["summary"]["citation_grounding"] == 1.0
+    assert payload["summary"]["overall_strength"] > 0.8
 
 
 def test_config_accepts_iter_02_env_overrides(monkeypatch, tmp_path):
