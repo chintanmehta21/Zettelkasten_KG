@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import time
+import traceback
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from uuid import uuid4
@@ -201,6 +202,17 @@ def _dedupe_anchor_entities(values: list[str]) -> list[str]:
     return out[:4]
 
 
+def _clear_exc_locals(exc: BaseException) -> None:
+    """iter-05: clear traceback frame locals after logger.error(..., exc_info=True).
+    CPython retains frame-local refs (turn/query/retry_context) until next gc; thrash root cause."""
+    tb = getattr(exc, "__traceback__", None)
+    if tb is not None:
+        try:
+            traceback.clear_frames(tb)
+        except Exception:  # noqa: BLE001 - best-effort
+            pass
+
+
 def _wrap_with_low_confidence_tag(draft_answer: str) -> str:
     """Append the spec-§3.6 low-confidence inline tag to a draft answer.
 
@@ -377,6 +389,7 @@ class RAGOrchestrator:
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("user message writeback failed (request continues): %s", exc, exc_info=True)
+            _clear_exc_locals(exc)
 
         # iter-03 §B (2026-04-29): pipeline-wide mem-trace. Each stage logs
         # rss_kb at exit so we can compute per-stage deltas for a single
@@ -829,6 +842,7 @@ class RAGOrchestrator:
                         type(exc).__name__,
                         exc_info=True,
                     )
+                    _clear_exc_locals(exc)
 
         turn = AnswerTurn(
             content=answer_text,
@@ -852,6 +866,7 @@ class RAGOrchestrator:
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("session writeback failed (turn served, persistence dropped): %s", exc, exc_info=True)
+            _clear_exc_locals(exc)
 
         # iter-04 anti-magnet: record a top-1 hit for this Kasten so the
         # next query in this Kasten gets the frequency-prior demotion if
