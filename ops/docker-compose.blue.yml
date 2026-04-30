@@ -12,6 +12,11 @@ services:
       # iter-03 §6: models are baked into the image read-only; runtime writes
       # go to /app/runtime via the mount below.
       RAG_DEGRADATION_LOG_DIR: "/app/runtime"
+      # iter-06: trim bounded-queue depth so burst overload sheds via 503+Retry-After
+      # instead of stacking until Cloudflare 524 (iter-05 saw 11×524 / 1×200).
+      # cluster cap = RAG_QUEUE_MAX × workers = 3 × 2 = 6 in-flight + queued.
+      RAG_QUEUE_MAX: "3"
+      RAG_RERANK_CONCURRENCY: "2"
     ports:
       - "127.0.0.1:10000:10000"
     networks:
