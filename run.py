@@ -38,11 +38,13 @@ def main() -> int:
         "--timeout", os.environ.get("GUNICORN_TIMEOUT", "90"),
         "--graceful-timeout", os.environ.get("GUNICORN_GRACEFUL_TIMEOUT", "60"),
         "--keep-alive", os.environ.get("GUNICORN_KEEPALIVE", "5"),
-        # iter-03 mem-bounded §2.7: recycle workers every ~100 requests to
-        # bound drift from leaky deps (psycopg pool, google-genai HTTP buffers).
-        # With FlashRank in master COW (§2.5), restart cost is ~10-50ms only.
+        # iter-05: recycle every ~100±25 requests. iter-03 §2.7 set 100/20;
+        # workflow override briefly hard-pinned 5/2 (debug); iter-05 mem-fixes
+        # (clear_frames + aggressive_release) attack drift at source so the
+        # 5-request belt-and-braces is no longer needed. 25% jitter de-correlates
+        # the two workers' recycle clocks.
         "--max-requests", os.environ.get("GUNICORN_MAX_REQUESTS", "100"),
-        "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "20"),
+        "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "25"),
         # iter-04: cap OS accept-queue. Default gunicorn backlog is 2048
         # which lets the kernel accept 2048 SYNs into a 240 s death-trail
         # under burst load. With 2 workers x (2 sem + 8 queue) = 20 in-

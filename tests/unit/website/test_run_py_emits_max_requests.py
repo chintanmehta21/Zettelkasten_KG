@@ -1,6 +1,7 @@
-"""Iter-03 mem-bounded §2.7: gunicorn must run with --max-requests 100 and
---max-requests-jitter 20 by default so workers recycle every ~100 requests.
-With FlashRank now COW-shared (§2.5), recycle is ~10-50ms — invisible.
+"""Iter-05: gunicorn must run with --max-requests 100 and --max-requests-jitter 25
+by default. Workflow override at .github/workflows/deploy-droplet.yml MUST match
+these values; the prior 5/2 hard-pin was a debug leftover and let drift events
+propagate to gunicorn-recycle storms (1 of 2 workers down every 3-7 reqs).
 """
 from __future__ import annotations
 
@@ -32,7 +33,7 @@ def test_run_py_emits_max_requests_in_argv(monkeypatch):
     assert cmd[idx + 1] == "100"
     assert "--max-requests-jitter" in cmd
     jdx = cmd.index("--max-requests-jitter")
-    assert cmd[jdx + 1] == "20"
+    assert cmd[jdx + 1] == "25"
 
 
 def test_run_py_honors_env_override(monkeypatch):

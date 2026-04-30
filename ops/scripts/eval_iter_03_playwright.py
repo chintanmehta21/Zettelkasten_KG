@@ -1033,7 +1033,13 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
                        queries: list[dict]) -> PhaseReport:
     rep = PhaseReport(phase="rag_qa_chain")
     t_phase = time.time()
+    # iter-05: 3 s cooldown between back-to-back queries. Sustained eval ran 14
+    # adhoc queries with no inter-request gap and pushed swap to 851/1024 MB
+    # cap → worker oom_kill → q9 502 + q13/q14 HTTP 0. Tunable via env.
+    cooldown_s = float(os.environ.get("ZK_EVAL_COOLDOWN_S", "3"))
     for q in queries:
+        if rep.checks and cooldown_s > 0:
+            time.sleep(cooldown_s)
         qid = q["qid"]
         text = q.get("text") or q.get("query")
         quality = q.get("quality") or q.get("class") and (
