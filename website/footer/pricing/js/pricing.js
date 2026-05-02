@@ -8,6 +8,7 @@
   var catalog = null;
   var currentSubscription = null;            // {plan_id, period_id, status,...} or null
   var ACTIVE_SUB_STATUSES = ['active', 'authenticated', 'pending_cancel', 'grace', 'paused'];
+  var PLAN_RANK = { free: 0, basic: 1, max: 2 };
   var selectedPeriods = { basic: 'monthly', max: 'monthly' };
   var selectedPlan = 'basic';
   var customMeter = 'zettel';
@@ -26,6 +27,19 @@
     if (planId === 'free') return !userHasActiveSub();
     return userHasActiveSub() && currentSubscription.plan_id === planId;
   }
+
+  function planChangeKind(targetPlanId) {
+    // 'subscribe' (no active sub), 'upgrade', 'downgrade', or 'current'.
+    if (!userHasActiveSub()) return 'subscribe';
+    var currentRank = PLAN_RANK[currentSubscription.plan_id];
+    var targetRank = PLAN_RANK[targetPlanId];
+    if (currentRank === undefined || targetRank === undefined) return 'subscribe';
+    if (targetRank > currentRank) return 'upgrade';
+    if (targetRank < currentRank) return 'downgrade';
+    return 'current';
+  }
+
+  function titleCase(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
   function syncSlidingIndicator(container, activeSelector) {
     if (!container) return;
@@ -104,7 +118,17 @@
     } else if (plan.id === 'free') {
       cta = '<a class="price-cta muted" href="/home">Start free</a>';
     } else {
-      cta = '<button type="button" class="price-cta" data-product="' + period.id + '" data-kind="subscription" data-amount="' + period.amount + '">Subscribe</button>';
+      var changeKind = planChangeKind(plan.id);
+      var label = 'Subscribe';
+      var changeAttr = '';
+      if (changeKind === 'upgrade') {
+        label = 'Upgrade to ' + titleCase(plan.id);
+        changeAttr = ' data-change-sub="1"';
+      } else if (changeKind === 'downgrade') {
+        label = 'Downgrade to ' + titleCase(plan.id);
+        changeAttr = ' data-change-sub="1"';
+      }
+      cta = '<button type="button" class="price-cta" data-product="' + period.id + '" data-kind="subscription" data-amount="' + period.amount + '"' + changeAttr + '>' + label + '</button>';
     }
 
     return [
@@ -394,10 +418,30 @@
     return currency + ' ' + (amount / 100).toFixed(2);
   }
 
+  function readAuthToken() {
+    try {
+      var raw = window.localStorage && window.localStorage.getItem('zk-auth-token');
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return parsed && parsed.access_token ? parsed.access_token : null;
+    } catch (_) { return null; }
+  }
+
+  async function bootSharedHeader() {
+    // Hand the access token to the shared ZKHeader module so it can fetch
+    // /api/me + render the user's avatar and dropdown — same as user_home
+    // and user_zettels do. Without this call the header renders the empty
+    // fallback glyph and the dropdown JS isn't wired.
+    if (!window.ZKHeader || typeof window.ZKHeader.boot !== 'function') return;
+    if (window.ZKHeader.__booted) return;
+    var token = readAuthToken();
+    try { await window.ZKHeader.boot(token); } catch (_) { /* non-fatal */ }
+  }
+
   async function loadCatalog() {
     var response = await fetch('/api/pricing/catalog');
     catalog = await response.json();
-    await refreshCurrentSubscription();
+    await Promise.all([bootSharedHeader(), refreshCurrentSubscription()]);
     renderSubscriptions();
     renderPacks();
   }
@@ -430,11 +474,24 @@
 
     var productBtn = event.target.closest('[data-product]');
     if (productBtn && window.ZKPricing) {
+      var isChange = productBtn.getAttribute('data-change-sub') === '1';
+      if (isChange) {
+        var currentLabel = currentSubscription && currentSubscription.plan_id
+          ? titleCase(currentSubscription.plan_id) : 'current';
+        var targetCard = productBtn.closest('[data-plan-card]');
+        var targetLabel = targetCard ? titleCase(targetCard.getAttribute('data-plan-card')) : 'new';
+        var ok = window.confirm(
+          'This will cancel your current ' + currentLabel + ' plan and start ' + targetLabel + '. ' +
+          'You\'ll authorise a new UPI Autopay or card mandate. Continue?'
+        );
+        if (!ok) return;
+      }
       window.ZKPricing.openPurchase({
         productId: productBtn.getAttribute('data-product'),
         kind: productBtn.getAttribute('data-kind'),
         expectedAmount: parseInt(productBtn.getAttribute('data-amount') || '', 10),
-        source: 'pricing-page',
+        source: isChange ? 'pricing-page-change' : 'pricing-page',
+        changeSubscription: isChange,
         onResume: function () {
           refreshCurrentSubscription().then(renderSubscriptions);
         }
