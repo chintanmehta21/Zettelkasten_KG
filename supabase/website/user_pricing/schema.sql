@@ -1,97 +1,72 @@
 -- ============================================================================
--- user_pricing — billing & payments schema
+-- user_pricing — Razorpay billing schema (ADDITIVE)
 -- ============================================================================
--- Tables created here back the PricingRepository in
--- website/features/user_pricing/repository.py. The repository falls back to
--- in-memory dicts when Supabase is not configured, so applying this schema
--- is only required for production multi-instance deployments.
+-- The legacy migration `supabase/website/kg_public/migrations/2026-05-01_user_pricing.sql`
+-- already created `pricing_billing_profiles`, `pricing_orders`, and
+-- `pricing_subscriptions` with a different column layout (amount_paise,
+-- provider_order_id, provider_subscription_id, provider_payload, etc.).
 --
--- Apply via:
---   psql "$SUPABASE_DB_URL" -f website/features/user_pricing/schema.sql
+-- This file is **additive only** — it ALTERs those legacy tables to add the
+-- columns the new Razorpay routes need, and CREATEs the genuinely new tables
+-- (balances, plan_cache, payment_events, refunds, disputes). It is safe to
+-- run repeatedly.
+--
+-- Apply via the GH Actions workflow `apply-pricing-schema.yml` (preferred —
+-- the SUPABASE_DB_URL secret stays inside the runner) or manually:
+--   psql "$SUPABASE_DB_URL" -f supabase/website/user_pricing/schema.sql
 -- ============================================================================
 
 create extension if not exists "pgcrypto";
 
--- ── billing_profiles ────────────────────────────────────────────────────────
-create table if not exists public.pricing_billing_profiles (
-    id              uuid primary key default gen_random_uuid(),
-    render_user_id  text not null unique,
-    email           text not null default '',
-    phone           text not null default '',
-    name            text not null default '',
-    created_at      timestamptz not null default now(),
-    updated_at      timestamptz not null default now()
-);
+-- ── pricing_orders — additive columns for the Razorpay flow ────────────────
+alter table public.pricing_orders
+    add column if not exists kind                     text,
+    add column if not exists amount                   bigint,
+    add column if not exists plan_id                  text,
+    add column if not exists period_id                text,
+    add column if not exists razorpay_order_id        text,
+    add column if not exists razorpay_subscription_id text,
+    add column if not exists razorpay_payment_id      text,
+    add column if not exists failure_reason           text,
+    add column if not exists paid_at                  timestamptz;
 
-create index if not exists pricing_billing_profiles_user_idx
-    on public.pricing_billing_profiles (render_user_id);
+-- Backfill `amount` from legacy `amount_paise` for any historical rows so
+-- queries on the new column never see a NULL where data existed.
+update public.pricing_orders
+   set amount = amount_paise
+ where amount is null
+   and amount_paise is not null;
 
--- ── pricing_orders (one row per checkout attempt, packs + subs) ─────────────
-create table if not exists public.pricing_orders (
-    id                          uuid primary key default gen_random_uuid(),
-    payment_id                  text not null unique,
-    render_user_id              text not null,
-    product_id                  text not null,
-    kind                        text not null check (kind in ('pack', 'subscription')),
-    amount                      bigint not null check (amount >= 0),
-    currency                    text not null default 'INR',
-    status                      text not null default 'created'
-                                    check (status in ('created', 'paid', 'failed', 'refunded')),
-    plan_id                     text,
-    period_id                   text,
-    meter                       text,
-    quantity                    integer,
-    razorpay_order_id           text,
-    razorpay_subscription_id    text,
-    razorpay_payment_id         text,
-    failure_reason              text,
-    paid_at                     timestamptz,
-    created_at                  timestamptz not null default now(),
-    updated_at                  timestamptz not null default now()
-);
-
-create index if not exists pricing_orders_user_idx
-    on public.pricing_orders (render_user_id, created_at desc);
-create index if not exists pricing_orders_status_idx
-    on public.pricing_orders (status);
+create index if not exists pricing_orders_kind_idx
+    on public.pricing_orders (kind);
 create index if not exists pricing_orders_rzp_order_idx
     on public.pricing_orders (razorpay_order_id);
 create index if not exists pricing_orders_rzp_payment_idx
     on public.pricing_orders (razorpay_payment_id);
+create index if not exists pricing_orders_rzp_sub_idx
+    on public.pricing_orders (razorpay_subscription_id);
 
--- ── pricing_subscriptions (current subscription per user; one active row) ───
-create table if not exists public.pricing_subscriptions (
-    id                          uuid primary key default gen_random_uuid(),
-    render_user_id              text not null unique,
-    plan_id                     text not null,
-    period_id                   text not null,
-    status                      text not null default 'created'
-                                    check (status in (
-                                        'created', 'authenticated', 'active', 'grace',
-                                        'pending_cancel', 'cancelled', 'paused',
-                                        'halted', 'completed'
-                                    )),
-    current_period_start        timestamptz,
-    current_period_end          timestamptz,
-    cancelled_at                timestamptz,
-    failure_reason              text,
-    total_count                 integer,
-    paid_count                  integer not null default 0,
-    razorpay_subscription_id    text,
-    razorpay_payment_id         text,
-    created_at                  timestamptz not null default now(),
-    updated_at                  timestamptz not null default now()
-);
+-- ── pricing_subscriptions — additive columns for full lifecycle ────────────
+alter table public.pricing_subscriptions
+    add column if not exists period_id                text,
+    add column if not exists total_count              integer,
+    add column if not exists paid_count               integer not null default 0,
+    add column if not exists cancelled_at             timestamptz,
+    add column if not exists failure_reason           text,
+    add column if not exists razorpay_subscription_id text,
+    add column if not exists razorpay_payment_id      text;
+
+update public.pricing_subscriptions
+   set razorpay_subscription_id = provider_subscription_id
+ where razorpay_subscription_id is null
+   and provider_subscription_id is not null;
 
 create index if not exists pricing_subscriptions_rzp_idx
     on public.pricing_subscriptions (razorpay_subscription_id);
-
-create index if not exists pricing_subscriptions_user_idx
-    on public.pricing_subscriptions (render_user_id);
 create index if not exists pricing_subscriptions_status_idx
     on public.pricing_subscriptions (status, current_period_end);
 
--- ── pricing_balances (pack credits per user/meter) ──────────────────────────
+-- ── pricing_balances (NEW — pack credit wallet per user/meter) ─────────────
 create table if not exists public.pricing_balances (
     id              uuid primary key default gen_random_uuid(),
     render_user_id  text not null,
@@ -104,7 +79,7 @@ create table if not exists public.pricing_balances (
 create index if not exists pricing_balances_user_idx
     on public.pricing_balances (render_user_id);
 
--- ── pricing_payment_events (webhook event log w/ idempotency) ───────────────
+-- ── pricing_payment_events (NEW — webhook event log w/ idempotency) ────────
 create table if not exists public.pricing_payment_events (
     id           uuid primary key default gen_random_uuid(),
     event_id     text not null unique,
@@ -119,10 +94,10 @@ create index if not exists pricing_payment_events_payment_idx
 create index if not exists pricing_payment_events_type_idx
     on public.pricing_payment_events (event_type, created_at desc);
 
--- ── pricing_plan_cache (period_id+amount → razorpay_plan_id) ───────────────
--- Razorpay Plans are immutable on amount + interval. We cache by period_id +
--- amount so launch/list price flips mint a new plan rather than reusing an
--- old one with the wrong amount.
+-- ── pricing_plan_cache (NEW — period_id+amount → razorpay_plan_id) ─────────
+-- Razorpay Plans are immutable on amount + interval. We cache by period_id
+-- + amount so launch/list price flips mint a new plan rather than reusing
+-- one with the wrong amount.
 create table if not exists public.pricing_plan_cache (
     id                  uuid primary key default gen_random_uuid(),
     cache_key           text not null unique,   -- "{period_id}:{amount}"
@@ -135,7 +110,7 @@ create table if not exists public.pricing_plan_cache (
 create index if not exists pricing_plan_cache_period_idx
     on public.pricing_plan_cache (period_id, amount);
 
--- ── pricing_refunds (audit trail for refund.* webhook events) ──────────────
+-- ── pricing_refunds (NEW — audit trail for refund.* events) ────────────────
 create table if not exists public.pricing_refunds (
     id                  uuid primary key default gen_random_uuid(),
     razorpay_refund_id  text not null unique,
@@ -156,7 +131,7 @@ create index if not exists pricing_refunds_payment_idx
 create index if not exists pricing_refunds_user_idx
     on public.pricing_refunds (render_user_id);
 
--- ── pricing_disputes (audit trail for payment.dispute.* events) ────────────
+-- ── pricing_disputes (NEW — audit trail for payment.dispute.* events) ──────
 create table if not exists public.pricing_disputes (
     id                  uuid primary key default gen_random_uuid(),
     razorpay_dispute_id text not null unique,
@@ -178,7 +153,7 @@ create index if not exists pricing_disputes_payment_idx
 create index if not exists pricing_disputes_user_idx
     on public.pricing_disputes (render_user_id);
 
--- ── credit-add RPC (atomic upsert for pack fulfillment) ─────────────────────
+-- ── credit-add RPC (atomic upsert for pack fulfillment) ────────────────────
 create or replace function public.pricing_add_pack_credits(
     p_render_user_id text,
     p_meter          text,
@@ -201,7 +176,7 @@ begin
 end;
 $$;
 
--- ── credit-deduct RPC (atomic clamp-at-zero for refund / lost dispute) ──────
+-- ── credit-deduct RPC (clamp-at-zero for refund / lost dispute) ────────────
 create or replace function public.pricing_deduct_pack_credits(
     p_render_user_id text,
     p_meter          text,
@@ -226,7 +201,7 @@ begin
 end;
 $$;
 
--- ── updated_at trigger helper ───────────────────────────────────────────────
+-- ── updated_at trigger helper (idempotent — uses CREATE OR REPLACE) ────────
 create or replace function public.pricing_touch_updated_at()
 returns trigger
 language plpgsql
@@ -252,35 +227,30 @@ create trigger pricing_billing_profiles_touch
     before update on public.pricing_billing_profiles
     for each row execute function public.pricing_touch_updated_at();
 
--- ── RLS — enabled + service-role bypass via JWT role claim ──────────────────
-alter table public.pricing_billing_profiles  enable row level security;
-alter table public.pricing_orders            enable row level security;
-alter table public.pricing_subscriptions     enable row level security;
+drop trigger if exists pricing_balances_touch on public.pricing_balances;
+create trigger pricing_balances_touch
+    before update on public.pricing_balances
+    for each row execute function public.pricing_touch_updated_at();
+
+drop trigger if exists pricing_refunds_touch on public.pricing_refunds;
+create trigger pricing_refunds_touch
+    before update on public.pricing_refunds
+    for each row execute function public.pricing_touch_updated_at();
+
+drop trigger if exists pricing_disputes_touch on public.pricing_disputes;
+create trigger pricing_disputes_touch
+    before update on public.pricing_disputes
+    for each row execute function public.pricing_touch_updated_at();
+
+-- ── RLS — service-role-only (anon clients hit RPCs / endpoints, never SQL) ─
 alter table public.pricing_balances          enable row level security;
 alter table public.pricing_payment_events    enable row level security;
 alter table public.pricing_plan_cache        enable row level security;
 alter table public.pricing_refunds           enable row level security;
 alter table public.pricing_disputes          enable row level security;
 
--- service_role can read/write everything
 do $$
 begin
-    if not exists (
-        select 1 from pg_policies
-        where schemaname = 'public' and tablename = 'pricing_orders' and policyname = 'service_role_all'
-    ) then
-        create policy service_role_all on public.pricing_orders
-            for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
-    end if;
-
-    if not exists (
-        select 1 from pg_policies
-        where schemaname = 'public' and tablename = 'pricing_subscriptions' and policyname = 'service_role_all'
-    ) then
-        create policy service_role_all on public.pricing_subscriptions
-            for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
-    end if;
-
     if not exists (
         select 1 from pg_policies
         where schemaname = 'public' and tablename = 'pricing_balances' and policyname = 'service_role_all'
@@ -294,14 +264,6 @@ begin
         where schemaname = 'public' and tablename = 'pricing_payment_events' and policyname = 'service_role_all'
     ) then
         create policy service_role_all on public.pricing_payment_events
-            for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
-    end if;
-
-    if not exists (
-        select 1 from pg_policies
-        where schemaname = 'public' and tablename = 'pricing_billing_profiles' and policyname = 'service_role_all'
-    ) then
-        create policy service_role_all on public.pricing_billing_profiles
             for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
     end if;
 
