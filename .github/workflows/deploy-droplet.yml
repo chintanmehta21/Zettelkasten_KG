@@ -107,11 +107,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          # TEMP 2026-05-02: LFS bandwidth quota exhausted. Building with LFS
-          # pointer stubs only — reranker ONNX is broken at runtime, but the
-          # rest of the deploy ships (payments, pricing, KG, etc.).
-          # *** REVERT TO `lfs: true` BEFORE NEXT RAG PIPELINE TEST ***
-          lfs: false   # iter-03 §5: pull bge int8 + calibration parquet for docker build
+          lfs: true   # iter-03 §5: pull bge int8 + calibration parquet for docker build
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
