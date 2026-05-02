@@ -1,7 +1,8 @@
-"""Iter-03 §5: the deploy workflow must checkout with lfs: true so the
-runner pulls models/bge-reranker-base-int8.onnx + bge_calibration_pairs.parquet
-before docker build runs. Without lfs:true, COPY models/ in the Dockerfile
-copies pointer files instead of real binaries.
+"""2026-05-03: int8 BGE was migrated from Git LFS to a private HF Hub
+repo (Zettelkasten/bge-reranker). The build-and-push checkout must NOT
+enable LFS (saves ~30s per build, sidesteps LFS quota), and the docker
+build must mount the HF_TOKEN secret so the Dockerfile builder stage
+can pull the model.
 """
 from __future__ import annotations
 
@@ -10,12 +11,23 @@ from pathlib import Path
 WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "deploy-droplet.yml"
 
 
-def test_main_app_checkout_has_lfs_true():
-    """The primary checkout (the one used by docker build) must pull LFS."""
+def test_build_checkout_does_not_enable_lfs():
+    """The docker-build checkout must not enable LFS — model now comes from HF Hub."""
     text = WORKFLOW.read_text(encoding="utf-8")
-    assert "lfs: true" in text, (
-        "deploy-droplet.yml must add 'lfs: true' to the docker-build checkout "
-        "so models/*.onnx + *.parquet are pulled. See spec §5."
+    assert "lfs: true" not in text, (
+        "deploy-droplet.yml must NOT use 'lfs: true' anywhere — the int8 BGE "
+        "reranker was migrated to HF Hub on 2026-05-03 and is fetched at "
+        "docker build time via huggingface_hub. See ops/Dockerfile."
+    )
+
+
+def test_build_passes_hf_token_secret():
+    """build-push action must forward HF_TOKEN as a docker build secret."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "hf_token=${{ secrets.HF_TOKEN }}" in text, (
+        "deploy-droplet.yml must forward HF_TOKEN as a build secret named "
+        "'hf_token' so ops/Dockerfile can `RUN --mount=type=secret,id=hf_token` "
+        "to fetch the int8 BGE reranker from HF Hub."
     )
 
 

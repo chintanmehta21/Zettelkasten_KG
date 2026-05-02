@@ -106,8 +106,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          lfs: true   # iter-03 §5: pull bge int8 + calibration parquet for docker build
+        # 2026-05-03: lfs:false. The int8 BGE reranker was migrated from
+        # Git LFS to a private HF Hub repo (Zettelkasten/bge-reranker) and
+        # is pulled inside the Dockerfile builder stage. Calibration parquet
+        # is still LFS-tracked but is small enough to fetch lazily on demand
+        # and is not consumed during docker build.
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
@@ -132,6 +135,11 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
+          # HF_TOKEN is mounted as a build-time secret in ops/Dockerfile
+          # via `RUN --mount=type=secret,id=hf_token`. Build secrets do
+          # NOT land in any image layer (verified by `docker history`).
+          secrets: |
+            "hf_token=${{ secrets.HF_TOKEN }}"
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false

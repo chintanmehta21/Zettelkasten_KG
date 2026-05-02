@@ -65,3 +65,11 @@ node_modules/
 __MACOSX
 **/.DS_Store
 **/._*
+
+# 2026-05-03: int8 BGE reranker is fetched from HF Hub in the builder stage,
+# not COPY'd from the build context. Excluding it here keeps dev and CI
+# builds consistent: both rely on the HF Hub download as the single source
+# of truth, and local 266 MB onnx never bloats the build context.
+models/bge-reranker-base-int8.onnx
+models/bge-reranker-base.onnx
+models/bge_export/

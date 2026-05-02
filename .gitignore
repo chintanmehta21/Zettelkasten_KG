@@ -87,3 +87,7 @@ __MACOSX
 # are produced by ops/scripts/export_bge_onnx.py - never publish.
 models/bge-reranker-base.onnx
 models/bge_export/
+# 2026-05-03: int8 BGE migrated from Git LFS to private HF Hub repo
+# (Zettelkasten/bge-reranker). Pulled at docker build time. Local copy
+# stays on disk for dev runs but is no longer tracked.
+models/bge-reranker-base-int8.onnx

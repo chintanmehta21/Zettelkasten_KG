@@ -18,6 +18,21 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 RUN python -m compileall -q /opt/venv
 
+# Fetch the int8 BGE reranker from a private HF Hub repo at build time.
+# Migrated out of Git LFS (LFS bandwidth quota became a deploy blocker).
+# HF_TOKEN is mounted as a build secret — never lands in any image layer.
+# Output dir is consumed by the runtime stage via COPY --from=builder below.
+ARG HF_RERANKER_REPO=Zettelkasten/bge-reranker
+ARG HF_RERANKER_FILENAME=bge-reranker-base-int8.onnx
+ENV HF_HUB_DISABLE_TELEMETRY=1
+RUN --mount=type=secret,id=hf_token,required=true \
+    REPO="${HF_RERANKER_REPO}" FNAME="${HF_RERANKER_FILENAME}" \
+    HF_TOKEN="$(cat /run/secrets/hf_token)" \
+    python -c "import os; from huggingface_hub import hf_hub_download; \
+hf_hub_download(repo_id=os.environ['REPO'], filename=os.environ['FNAME'], \
+local_dir='/tmp/hf-models', token=os.environ['HF_TOKEN'])" \
+    && test -s "/tmp/hf-models/${HF_RERANKER_FILENAME}"
+
 # --- Stage 2: runtime -------------------------------------------------------
 FROM python:3.12-slim AS runtime
 
@@ -53,7 +68,12 @@ COPY --chown=appuser:appuser supabase/website/kg_public/migrations/ \
 # the image so /app/models is read-only at runtime. Eliminates the host-state-
 # drift class of bug that defeated iter-03-stale (model file silently missing
 # on the droplet -> lazy fp32 fallback ate 1 GB RSS per worker).
+# 2026-05-03: bge-reranker-base-int8.onnx now comes from HF Hub (private),
+# fetched in the builder stage. Everything else (tokenizer, calibration,
+# FlashRank stage-1) still ships from the repo's models/ dir.
 COPY --chown=appuser:appuser models/ /app/models/
+COPY --from=builder --chown=appuser:appuser \
+     /tmp/hf-models/bge-reranker-base-int8.onnx /app/models/bge-reranker-base-int8.onnx
 
 RUN mkdir -p /app/kg_output /app/bot_data \
     && chown -R appuser:appuser /app/kg_output /app/bot_data
