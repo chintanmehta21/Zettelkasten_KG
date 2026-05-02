@@ -171,7 +171,7 @@
         key: checkoutPayload.key_id,
         amount: checkoutPayload.amount,
         currency: checkoutPayload.currency || 'INR',
-        name: checkoutPayload.name || 'Zettelkasten.in',
+        name: checkoutPayload.name || 'Zettelkasten',
         description: checkoutPayload.description || '',
         // Logo at top-left of the modal. Razorpay accepts an HTTPS URL.
         image: (checkoutPayload.image && /^https?:/.test(checkoutPayload.image))

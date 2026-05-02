@@ -85,6 +85,11 @@ class SubscriptionCancelRequest(BaseModel):
     cancel_at_cycle_end: bool = False
 
 
+class SubscriptionChangeRequest(BaseModel):
+    to_product_id: str
+    expected_amount: int | None = Field(default=None, ge=0)
+
+
 # ───────────────────────── public catalog routes ─────────────────────────
 
 
@@ -340,6 +345,97 @@ async def cancel_subscription(
         cancelled_at=_now_iso(),
     )
     return {"status": new_status, "subscription": _public_subscription(updated or sub)}
+
+
+@router.post("/api/payments/subscriptions/change")
+async def change_subscription(
+    body: SubscriptionChangeRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> dict:
+    """Cancel the user's current subscription (if any) and create a new one
+    for ``to_product_id``. Composes cancel + create from the user's
+    perspective: they authenticate one new mandate in the Razorpay modal
+    that opens after this call returns.
+
+    Razorpay does not support changing a UPI Autopay mandate's debit amount
+    mid-subscription, so an upgrade/downgrade is mechanically a
+    cancel-and-recreate. Webhooks ``subscription.cancelled`` (old) and
+    ``subscription.activated`` (new) fire in sequence — both keyed by
+    ``razorpay_subscription_id``, so order of arrival is safe.
+
+    On partial failure (cancel succeeds, create fails) the old sub is
+    cancelled and the user is left without an active sub — they can retry
+    from /pricing; the next ``/change`` call will see no active sub and
+    fall through to a plain create.
+    """
+    product = find_product(body.to_product_id)
+    if not product or product["kind"] != "subscription":
+        raise HTTPException(status_code=400, detail={"code": "invalid_product", "message": "Choose a valid subscription."})
+    if product.get("plan_id") == "free":
+        raise HTTPException(status_code=400, detail={"code": "free_not_purchasable", "message": "Free tier needs no purchase."})
+    if body.expected_amount is not None and int(body.expected_amount) != int(product["amount"]):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "price_changed",
+                "message": "The displayed price changed. Refresh pricing before checkout.",
+                "expected_amount": body.expected_amount,
+                "actual_amount": product["amount"],
+                "product_id": body.to_product_id,
+            },
+        )
+
+    repo = get_pricing_repository()
+    if repo.is_user_dispute_frozen(user_sub=user["sub"]):
+        raise HTTPException(status_code=409, detail={"code": "account_frozen", "message": "Your account has an open dispute. Contact support."})
+
+    existing = repo.get_subscription(user_sub=user["sub"])
+    active_states = {"active", "authenticated", "pending", "paused", "grace"}
+    is_active = bool(
+        existing
+        and existing.get("status") in active_states
+        and existing.get("razorpay_subscription_id")
+    )
+
+    if is_active and existing.get("period_id") == product["id"]:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "already_on_this_plan", "message": "You're already on this plan."},
+        )
+
+    if is_active:
+        if not is_razorpay_configured():
+            _raise_payments_unavailable()
+        try:
+            client = get_razorpay_client()
+            client.subscription.cancel(
+                existing["razorpay_subscription_id"],
+                {"cancel_at_cycle_end": 0},
+            )
+        except Exception as exc:
+            logger.exception(
+                "Razorpay cancel during plan change failed for %s: %s",
+                existing.get("razorpay_subscription_id"),
+                exc,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail={"code": "payments_provider_error", "message": "Could not change plan. Try again."},
+            ) from exc
+        repo.update_subscription_status(
+            razorpay_subscription_id=existing["razorpay_subscription_id"],
+            status="cancelled",
+            cancelled_at=_now_iso(),
+        )
+
+    return await create_subscription(
+        PaymentCreateRequest(
+            product_id=body.to_product_id,
+            source="change",
+            expected_amount=body.expected_amount,
+        ),
+        user,
+    )
 
 
 @router.get("/api/payments/subscriptions/me")
@@ -806,7 +902,7 @@ def _checkout_payload(
         "key_id": get_razorpay_key_id(),
         "amount": amount,
         "currency": "INR",
-        "name": "Zettelkasten.in",
+        "name": "Zettelkasten",
         "image": "/artifacts/company_logo.svg",
         "description": str(description),
         "product": {
