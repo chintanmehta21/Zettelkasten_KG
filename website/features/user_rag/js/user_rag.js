@@ -484,6 +484,8 @@
     var userNode = createMessageNode('user', content, [], {});
     var assistantNode = createMessageNode('assistant', '', [], {});
     state.lastUserContent = content;
+    var pricingActionId = state.pendingQuestionActionId || ('rag_question:' + Date.now() + ':' + Math.random().toString(36).slice(2));
+    state.pendingQuestionActionId = pricingActionId;
 
     try {
       if (!state.sessionId) {
@@ -501,7 +503,8 @@
         content: content,
         quality: els.qualitySelect.value,
         scope_filter: buildScopeFilter(),
-        stream: true
+        stream: true,
+        client_action_id: pricingActionId
       });
       // Single retry on transient infra failures (502/503/504, fetch reject).
       // The orchestrator and proxy stack occasionally drop the first
@@ -544,6 +547,20 @@
             continue;
           }
           var payload = await safeJson(response);
+          var quotaDetail = payload && payload.detail && payload.detail.code === 'quota_exhausted' ? payload.detail : null;
+          if (quotaDetail && window.ZKPricing) {
+            await window.ZKPricing.openPurchase({
+              detail: quotaDetail,
+              source: 'rag:ask-question',
+              resumeAction: { type: 'ask_rag_question', content: content, sessionId: state.sessionId, clientActionId: pricingActionId },
+              onResume: function () {
+                state.pendingQuestionActionId = pricingActionId;
+                els.input.value = content;
+                els.form.requestSubmit();
+              }
+            });
+            return;
+          }
           var msg = (payload && (payload.detail && (payload.detail.message || payload.detail))) || ('The chat request failed (' + response.status + ').');
           throw new Error(typeof msg === 'string' ? msg : 'The chat request failed.');
         } catch (fetchErr) {
@@ -662,6 +679,7 @@
     } catch (err) {
       rollbackPendingAssistant(assistantNode, userNode, err, content);
     } finally {
+      state.pendingQuestionActionId = null;
       setComposerBusy(false);
     }
   }

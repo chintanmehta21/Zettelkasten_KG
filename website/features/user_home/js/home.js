@@ -715,7 +715,8 @@
     });
   }
 
-  async function addZettel(url, token) {
+  async function addZettel(url, token, existingPricingActionId) {
+    var pricingActionId = existingPricingActionId || ('zettel:' + Date.now() + ':' + Math.random().toString(36).slice(2));
     if (addError) addError.textContent = '';
     // UX-2: immediate progress feedback — disable + spinner label + busy attr.
     var addWrapEl = document.getElementById('add-zettel-wrap');
@@ -793,7 +794,7 @@
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ url: url })
+      body: JSON.stringify({ url: url, client_action_id: pricingActionId })
     });
 
     // Create skeleton now — it'll be revealed seamlessly during shatter
@@ -832,13 +833,24 @@
 
       if (!resp.ok) {
         var errMsg = 'Failed to process URL (HTTP ' + resp.status + ')';
+        var quotaDetail = null;
         try {
           var err = await resp.json();
-          errMsg = err.detail || errMsg;
+          quotaDetail = err.detail && err.detail.code === 'quota_exhausted' ? err.detail : null;
+          errMsg = (err.detail && err.detail.message) || err.detail || errMsg;
         } catch (_parseErr) {
           var rawText = '';
           try { rawText = await resp.text(); } catch (_) {}
           if (rawText) errMsg = rawText.slice(0, 200);
+        }
+        if (quotaDetail && window.ZKPricing) {
+          await window.ZKPricing.openPurchase({
+            detail: quotaDetail,
+            source: 'home:add-zettel',
+            resumeAction: { type: 'add_zettel', url: url, clientActionId: pricingActionId },
+            onResume: function () { return addZettel(url, token, pricingActionId); }
+          });
+          return;
         }
         throw new Error(errMsg);
       }
@@ -1218,6 +1230,8 @@
       var quality = (form.querySelector('input[name="kasten-quality"]:checked') || {}).value || 'fast';
       var desc = (descInput.value || '').trim();
       var scope = (form.querySelector('input[name="kasten-scope"]:checked') || {}).value || 'all';
+      var pricingActionId = form.getAttribute('data-pricing-action-id') || ('kasten:' + Date.now() + ':' + Math.random().toString(36).slice(2));
+      form.setAttribute('data-pricing-action-id', pricingActionId);
 
       var pickedSources = [];
       if (scope === 'source') {
@@ -1243,7 +1257,7 @@
             'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ name: name, description: desc || null, default_quality: quality })
+          body: JSON.stringify({ name: name, description: desc || null, default_quality: quality, client_action_id: pricingActionId })
         });
         if (!resp.ok) {
           var detail = '';
@@ -1251,9 +1265,21 @@
           try { raw = await resp.text(); } catch(_) {}
           try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
           console.error('[create-kasten] failed', resp.status, raw);
+          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
+            await window.ZKPricing.openPurchase({
+              detail: detail,
+              source: 'home:create-kasten',
+              resumeAction: { type: 'create_kasten', name: name, description: desc, scope: scope, clientActionId: pricingActionId },
+              onResume: function () {
+                form.setAttribute('data-pricing-action-id', pricingActionId);
+                form.requestSubmit();
+              }
+            });
+            return;
+          }
           if (resp.status === 409) errEl.textContent = 'A kasten with that name already exists';
           else if (resp.status === 401) errEl.textContent = 'Please sign in again';
-          else errEl.textContent = detail || ('Create failed (' + resp.status + ')');
+          else errEl.textContent = (detail && detail.message) || detail || ('Create failed (' + resp.status + ')');
           return;
         }
         var created = await resp.json();
@@ -1292,6 +1318,7 @@
         submit.removeAttribute('aria-busy');
         submit.textContent = 'Create';
         form.removeAttribute('data-busy');
+        form.removeAttribute('data-pricing-action-id');
       }
     });
   }

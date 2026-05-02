@@ -754,7 +754,8 @@
     }, 2200);
   }
 
-  async function addZettel(url) {
+  async function addZettel(url, existingPricingActionId) {
+    var pricingActionId = existingPricingActionId || ('zettel:' + Date.now() + ':' + Math.random().toString(36).slice(2));
     if (addError) addError.textContent = '';
     if (addSubmitBtn) addSubmitBtn.disabled = true;
     clearDeleteConfirmState();
@@ -779,7 +780,7 @@
         Authorization: 'Bearer ' + _token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ url: url })
+      body: JSON.stringify({ url: url, client_action_id: pricingActionId })
     });
 
     if (addUrlInput) addUrlInput.value = '';
@@ -794,7 +795,17 @@
       var resp = await apiPromise;
       if (!resp.ok) {
         var errBody = await resp.json();
-        throw new Error(errBody.detail || 'Failed to process URL');
+        var quotaDetail = errBody && errBody.detail && errBody.detail.code === 'quota_exhausted' ? errBody.detail : null;
+        if (quotaDetail && window.ZKPricing) {
+          await window.ZKPricing.openPurchase({
+            detail: quotaDetail,
+            source: 'my-zettels:add-zettel',
+            resumeAction: { type: 'add_zettel', url: url, clientActionId: pricingActionId },
+            onResume: function () { return addZettel(url, pricingActionId); }
+          });
+          return;
+        }
+        throw new Error((errBody.detail && errBody.detail.message) || errBody.detail || 'Failed to process URL');
       }
 
       var result = await resp.json();

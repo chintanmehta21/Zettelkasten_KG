@@ -9,114 +9,42 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=20260407a">
-  <link rel="stylesheet" href="/pricing/css/pricing.css?v=20260407a">
+  <link rel="stylesheet" href="/header/css/header.css?v=20260418a">
+  <link rel="stylesheet" href="/user-pricing/css/purchase_launcher.css?v=20260501a">
+  <link rel="stylesheet" href="/pricing/css/pricing.css?v=20260502q">
 </head>
 <body>
-  <div class="pricing-shell">
-    <header class="pricing-header">
-      <a class="pricing-back" href="/home">Back</a>
-      <a class="pricing-brand" href="/">
-        <img src="/artifacts/logo-zettelkasten.svg" alt="" width="28" height="28">
-        <span>Zettelkasten</span>
-      </a>
-    </header>
+  <!--ZK_HEADER-->
 
-    <main>
-      <section class="pricing-hero">
-        <p class="pricing-kicker">Pricing</p>
-        <h1>Choose a pace: recurring or on-demand.</h1>
-        <p>
-          Start with subscription plans for steady capture workflows, or use ad-hoc packs when you only need bursts.
-        </p>
-      </section>
+  <main class="pricing-shell">
+    <section class="pricing-hero">
+      <p class="pricing-kicker">Pricing</p>
+      <h1>Fuel your knowledge system without breaking your flow.</h1>
+      <p>
+        Subscriptions cover steady Zettel, Kasten, and RAG usage. Packs add overflow credits exactly when a workflow needs more room.
+      </p>
+    </section>
 
-      <section class="pricing-switcher" aria-label="Pricing mode">
-        <div class="pricing-tabs" role="tablist">
-          <button class="pricing-tab is-active" role="tab" aria-selected="true" aria-controls="subscription-panel" id="subscription-tab" data-tab="subscription">Subscription</button>
-          <button class="pricing-tab" role="tab" aria-selected="false" aria-controls="adhoc-panel" id="adhoc-tab" data-tab="adhoc">Ad-Hoc</button>
-        </div>
-      </section>
+    <section class="pricing-switcher" aria-label="Pricing mode">
+      <div class="pricing-tabs" role="tablist">
+        <button class="pricing-tab is-active" role="tab" aria-selected="true" aria-controls="subscription-panel" id="subscription-tab" data-tab="subscription">Subscription</button>
+        <button class="pricing-tab" role="tab" aria-selected="false" aria-controls="adhoc-panel" id="adhoc-tab" data-tab="custom">Custom</button>
+      </div>
+    </section>
 
-      <section class="pricing-panel is-active" id="subscription-panel" role="tabpanel" aria-labelledby="subscription-tab">
-        <div class="pricing-grid">
-          <article class="price-card">
-            <p class="price-tier">Starter</p>
-            <p class="price-amount">&#8377;499<span>/month</span></p>
-            <ul>
-              <li>120 summaries per month</li>
-              <li>Personal graph + zettel vault</li>
-              <li>Email support</li>
-            </ul>
-            <a href="/" class="price-cta">Start Starter</a>
-          </article>
-          <article class="price-card featured">
-            <p class="price-tier">Builder</p>
-            <p class="price-amount">&#8377;999<span>/month</span></p>
-            <ul>
-              <li>400 summaries per month</li>
-              <li>Priority model fallback queue</li>
-              <li>Advanced graph filters</li>
-            </ul>
-            <a href="/" class="price-cta">Start Builder</a>
-          </article>
-          <article class="price-card">
-            <p class="price-tier">Studio</p>
-            <p class="price-amount">&#8377;1,999<span>/month</span></p>
-            <ul>
-              <li>1000 summaries per month</li>
-              <li>Shared team workspace</li>
-              <li>Priority support channel</li>
-            </ul>
-            <a href="/" class="price-cta">Start Studio</a>
-          </article>
-        </div>
-      </section>
+    <section class="pricing-panel is-active" id="subscription-panel" role="tabpanel" aria-labelledby="subscription-tab">
+      <div class="pricing-grid" id="subscription-grid" aria-live="polite"></div>
+    </section>
 
-      <section class="pricing-panel" id="adhoc-panel" role="tabpanel" aria-labelledby="adhoc-tab">
-        <div class="pricing-grid adhoc-grid">
-          <article class="price-card">
-            <p class="price-tier">Sprint Pack</p>
-            <p class="price-amount">&#8377;299<span> one-time</span></p>
-            <ul>
-              <li>60 one-time summaries</li>
-              <li>Expires in 45 days</li>
-              <li>Best for focused reading sprints</li>
-            </ul>
-            <a href="/" class="price-cta">Buy Sprint</a>
-          </article>
-          <article class="price-card">
-            <p class="price-tier">Research Pack</p>
-            <p class="price-amount">&#8377;799<span> one-time</span></p>
-            <ul>
-              <li>180 one-time summaries</li>
-              <li>Expires in 90 days</li>
-              <li>Best for project-heavy months</li>
-            </ul>
-            <a href="/" class="price-cta">Buy Research</a>
-          </article>
-          <article class="price-card">
-            <p class="price-tier">Deep Work Pack</p>
-            <p class="price-amount">&#8377;1,499<span> one-time</span></p>
-            <ul>
-              <li>400 one-time summaries</li>
-              <li>Expires in 180 days</li>
-              <li>Best for long-form capture cycles</li>
-            </ul>
-            <a href="/" class="price-cta">Buy Deep Work</a>
-          </article>
-        </div>
-      </section>
-    </main>
+    <section class="pricing-panel" id="adhoc-panel" role="tabpanel" aria-labelledby="adhoc-tab">
+      <div class="pack-groups" id="pack-groups" aria-live="polite"></div>
+    </section>
+  </main>
 
-    <!--ZK_FOOTER-->
-</div>
+  <!--ZK_FOOTER-->
 
-  <script src="/pricing/js/pricing.js?v=20260406i"></script>
+  <script src="/header/js/header.js?v=20260418a"></script>
+  <script src="/user-pricing/js/purchase_launcher.js?v=20260502d"></script>
+  <script src="/pricing/js/pricing.js?v=20260502h"></script>
 </body>
 </html>
-
-
-
-
-
-

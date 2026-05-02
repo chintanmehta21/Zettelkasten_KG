@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field, field_validator
 from website.api.auth import get_current_user
 from website.features.rag_pipeline.service import get_rag_runtime
 from website.features.rag_pipeline.types import SourceType
+from website.features.user_pricing.entitlements import consume_entitlement, require_entitlement
+from website.features.user_pricing.models import Meter
 
 logger = logging.getLogger("website.api.sandbox_routes")
 
@@ -24,6 +26,7 @@ class SandboxCreateRequest(BaseModel):
     icon: str | None = "stack"
     color: str | None = "#14b8a6"
     default_quality: str = "fast"
+    client_action_id: str | None = None
 
     @field_validator("name")
     @classmethod
@@ -195,6 +198,8 @@ async def create_sandbox(
     body: SandboxCreateRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
+    action_id = body.client_action_id or body.name
+    await require_entitlement(Meter.KASTEN, user, action_id=action_id)
     runtime = _runtime_for_user(user)
     try:
         row = await runtime.sandboxes.create_sandbox(
@@ -229,6 +234,7 @@ async def create_sandbox(
         logger.error("create_sandbox returned None row for user=%s name=%s", runtime.kg_user_id, body.name)
         raise HTTPException(status_code=500, detail="Create sandbox returned no row")
 
+    await consume_entitlement(Meter.KASTEN, user, action_id=action_id)
     return {"sandbox": _serialize_sandbox(row)}
 
 

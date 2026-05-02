@@ -17,6 +17,8 @@ from website.api._concurrency import QueueFull, acquire_rerank_slot
 from website.api.auth import get_current_user
 from website.features.rag_pipeline.service import get_rag_runtime, load_example_queries
 from website.features.rag_pipeline.types import ChatQuery, ScopeFilter, SourceType
+from website.features.user_pricing.entitlements import consume_entitlement, require_entitlement
+from website.features.user_pricing.models import Meter
 
 logger = logging.getLogger("website.api.chat_routes")
 
@@ -43,6 +45,7 @@ class ChatMessageRequest(BaseModel):
     quality: str = "fast"
     scope_filter: ScopeFilter = Field(default_factory=ScopeFilter)
     stream: bool = True
+    client_action_id: str | None = None
 
     @field_validator("content")
     @classmethod
@@ -426,6 +429,8 @@ async def create_message(
     session = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    action_id = body.client_action_id or str(session_id)
+    await require_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
 
     if body.stream:
         from website.api._concurrency import _get_state
@@ -449,7 +454,9 @@ async def create_message(
             },
         )
 
-    return await _run_answer(runtime, runtime.kg_user_id, session, body)
+    payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
+    await consume_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
+    return payload
 
 
 @router.post("/adhoc")
@@ -457,6 +464,8 @@ async def adhoc_message(
     body: AdhocChatRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
+    action_id = body.client_action_id or body.content[:160]
+    await require_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
     runtime = _runtime_for_user(user)
     session_id = await runtime.sessions.create_session(
         user_id=runtime.kg_user_id,
@@ -498,6 +507,7 @@ async def adhoc_message(
         )
 
     payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
+    await consume_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
     payload["session"] = _serialize_session(session)
     return payload
 

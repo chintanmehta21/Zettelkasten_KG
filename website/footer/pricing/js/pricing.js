@@ -3,7 +3,31 @@
 
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll('.pricing-tab'));
   var panels = Array.prototype.slice.call(document.querySelectorAll('.pricing-panel'));
-  if (!tabButtons.length || !panels.length) return;
+  var subscriptionGrid = document.getElementById('subscription-grid');
+  var packGroups = document.getElementById('pack-groups');
+  var catalog = null;
+  var selectedPeriods = { basic: 'monthly', max: 'monthly' };
+  var selectedPlan = 'basic';
+  var customMeter = 'zettel';
+  var customQuantity = 10;
+
+  function syncSlidingIndicator(container, activeSelector) {
+    if (!container) return;
+    var active = container.querySelector(activeSelector);
+    if (!active) return;
+    container.style.setProperty('--indicator-x', active.offsetLeft + 'px');
+    container.style.setProperty('--indicator-y', active.offsetTop + 'px');
+    container.style.setProperty('--indicator-w', active.offsetWidth + 'px');
+    container.style.setProperty('--indicator-h', active.offsetHeight + 'px');
+  }
+
+  function syncAllSlidingIndicators() {
+    syncSlidingIndicator(document.querySelector('.pricing-tabs'), '.pricing-tab.is-active');
+    Array.prototype.slice.call(document.querySelectorAll('.period-toggle')).forEach(function (toggle) {
+      syncSlidingIndicator(toggle, '.period-btn.is-active');
+    });
+    syncSlidingIndicator(document.querySelector('.custom-topline'), '.custom-tile.is-active');
+  }
 
   function setActive(tabName) {
     tabButtons.forEach(function (btn) {
@@ -13,9 +37,339 @@
     });
 
     panels.forEach(function (panel) {
-      var id = panel.id === 'subscription-panel' ? 'subscription' : 'adhoc';
+      var id = panel.id === 'subscription-panel' ? 'subscription' : 'custom';
       panel.classList.toggle('is-active', id === tabName);
     });
+
+    syncAllSlidingIndicators();
+  }
+
+  function quotaSection(plan, meter, label) {
+    var quota = plan.quotas[meter] || {};
+    var lines = [];
+    if (quota.daily) lines.push(quota.daily + ' max per day');
+    if (quota.weekly) lines.push(quota.weekly + ' max per week');
+    if (quota.monthly) lines.push(quota.monthly + ' max per month');
+    if (quota.total) lines.push(quota.total + ' max per user');
+    return [
+      '<section class="quota-section">',
+      '<h3>' + label + '</h3>',
+      lines.map(function (line) { return '<p>' + line + '</p>'; }).join(''),
+      '</section>'
+    ].join('');
+  }
+
+  function customLabels() {
+    return {
+      zettel: { title: 'Zettels', note: 'Capture credits' },
+      kasten: { title: 'Kastens', note: 'Workspace credits' },
+      question: { title: 'Questions', note: 'RAG answer credits' }
+    };
+  }
+
+  function planCard(plan) {
+    var periodKeys = Object.keys(plan.periods);
+    var activePeriod = selectedPeriods[plan.id] || periodKeys[0];
+    var period = plan.periods[activePeriod];
+    var buttons = periodKeys.map(function (key) {
+      return '<button type="button" class="period-btn' + (key === activePeriod ? ' is-active' : '') + '" data-plan="' + plan.id + '" data-period="' + key + '" aria-pressed="' + (key === activePeriod ? 'true' : 'false') + '">' + plan.periods[key].label + '</button>';
+    }).join('');
+    var cta = plan.id === 'free'
+      ? '<a class="price-cta muted" href="/home">Start free</a>'
+      : '<button type="button" class="price-cta" data-product="' + period.id + '" data-kind="subscription" data-amount="' + period.amount + '">Subscribe</button>';
+
+    return [
+      '<article class="price-card' + (plan.id === selectedPlan ? ' selected' : '') + (plan.id === 'basic' ? ' featured' : '') + '" data-plan-card="' + plan.id + '">',
+      '<p class="price-tier">' + plan.name + '</p>',
+      '<p class="price-description">' + plan.description + '</p>',
+      '<div class="period-slot">' + (periodKeys.length > 1 ? '<div class="period-toggle" role="group">' + buttons + '</div>' : '') + '</div>',
+      '<div class="price-block">',
+      '<p class="price-amount">' + period.display_amount + '<span>' + (period.months === 1 ? '/month' : '/' + period.months + ' months') + '</span></p>',
+      period.list_amount > period.amount ? '<p class="list-price">' + period.display_list_amount + '</p>' : '<p class="list-price empty">&nbsp;</p>',
+      '</div>',
+      '<div class="quota-list">',
+      quotaSection(plan, 'zettel', 'Zettels'),
+      quotaSection(plan, 'kasten', 'Kastens'),
+      quotaSection(plan, 'rag_question', 'Questions'),
+      '</div>',
+      cta,
+      '</article>'
+    ].join('');
+  }
+
+  function renderSubscriptions() {
+    if (!subscriptionGrid || !catalog) return;
+    subscriptionGrid.innerHTML = ['free', 'basic', 'max'].map(function (id) {
+      return planCard(catalog.plans[id]);
+    }).join('');
+    syncAllSlidingIndicators();
+  }
+
+  function renderPacks() {
+    if (!packGroups || !catalog) return;
+    var labels = customLabels();
+    var meterPacks = catalog.packs[customMeter] || [];
+    var slider = sliderSettings(customMeter);
+    customQuantity = normalizeQuantityForInput(customQuantity, slider);
+    var estimate = estimatePack(meterPacks, customQuantity, slider, customMeter);
+
+    var tiles = Object.keys(labels).map(function (meter) {
+      var active = meter === customMeter;
+      return [
+        '<button type="button" class="custom-tile' + (active ? ' is-active' : '') + '" data-custom-meter="' + meter + '" aria-pressed="' + (active ? 'true' : 'false') + '">',
+        '<span>' + labels[meter].title + '</span>',
+        '<small>' + labels[meter].note + '</small>',
+        '<strong>' + firstPackPrice(meter) + '</strong>',
+        '</button>'
+      ].join('');
+    }).join('');
+
+    packGroups.innerHTML = [
+      '<section class="custom-estimator">',
+      '<div class="custom-topline">',
+      tiles,
+      '</div>',
+      '<div class="custom-control-row">',
+      '<div class="custom-slider-wrap">',
+      '<label class="custom-slider-label" for="custom-count-range">Number of ' + labels[customMeter].title.toLowerCase() + '</label>',
+      '<input id="custom-count-range" class="custom-range" type="range" min="0" max="' + (slider.values.length - 1) + '" step="1" value="' + sliderIndexForQuantity(customQuantity, slider) + '">',
+      '<div class="custom-range-labels">' + slider.labels.map(function (label, index) { return '<span style="left:' + tickPosition(index, slider) + '%">' + label + '</span>'; }).join('') + '</div>',
+      '</div>',
+      '<div class="custom-stepper" aria-label="Custom quantity">',
+      '<button type="button" data-step-qty="-10" aria-label="Decrease quantity">-</button>',
+      '<input id="custom-count-input" type="number" min="' + slider.inputMin + '" step="' + slider.inputStep + '" value="' + estimate.roundedQuantity + '">',
+      '<button type="button" data-step-qty="10" aria-label="Increase quantity">+</button>',
+      '</div>',
+      '</div>',
+      '<div class="custom-bottom">',
+      '<div><span class="estimate-label">Price estimate</span><strong class="estimate-price"><span class="estimate-list">' + estimate.listDisplay + '</span>' + estimate.display + '</strong><p>' + estimate.roundedQuantity + ' ' + labels[customMeter].title.toLowerCase() + ' selected</p></div>',
+      '<button type="button" class="price-cta custom-buy" data-product="' + estimate.productId + '" data-kind="pack" data-amount="' + estimate.amount + '">Buy!</button>',
+      '</div>',
+      '</section>'
+    ].join('');
+    syncAllSlidingIndicators();
+  }
+
+  function syncCustomControls() {
+    var labels = customLabels();
+    var meterPacks = catalog.packs[customMeter] || [];
+    var slider = sliderSettings(customMeter);
+    customQuantity = normalizeQuantityForInput(customQuantity, slider);
+    var estimate = estimatePack(meterPacks, customQuantity, slider, customMeter);
+
+    var sliderLabel = document.querySelector('.custom-slider-label');
+    if (sliderLabel) {
+      sliderLabel.textContent = 'Number of ' + labels[customMeter].title.toLowerCase();
+    }
+
+    var range = document.getElementById('custom-count-range');
+    if (range) {
+      range.setAttribute('max', String(slider.values.length - 1));
+      range.value = String(sliderIndexForQuantity(customQuantity, slider));
+    }
+
+    var rangeLabels = document.querySelector('.custom-range-labels');
+    if (rangeLabels) {
+      rangeLabels.innerHTML = slider.labels.map(function (label, index) {
+        return '<span style="left:' + tickPosition(index, slider) + '%">' + label + '</span>';
+      }).join('');
+    }
+
+    var input = document.getElementById('custom-count-input');
+    if (input) {
+      input.setAttribute('min', String(slider.inputMin));
+      input.setAttribute('step', String(slider.inputStep));
+      input.value = String(estimate.roundedQuantity);
+    }
+
+    var estimatePrice = document.querySelector('.estimate-price');
+    if (estimatePrice) {
+      estimatePrice.innerHTML = '<span class="estimate-list">' + estimate.listDisplay + '</span>' + estimate.display;
+    }
+
+    var estimateText = document.querySelector('.custom-bottom p');
+    if (estimateText) {
+      estimateText.textContent = estimate.roundedQuantity + ' ' + labels[customMeter].title.toLowerCase() + ' selected';
+    }
+
+    var buyButton = document.querySelector('.custom-buy');
+    if (buyButton) {
+      buyButton.setAttribute('data-product', estimate.productId);
+      buyButton.setAttribute('data-amount', estimate.amount);
+    }
+
+    syncAllSlidingIndicators();
+  }
+
+  function updateCustomMeter(meter) {
+    customMeter = meter;
+    customQuantity = sliderSettings(customMeter).inputMin;
+    Array.prototype.slice.call(document.querySelectorAll('[data-custom-meter]')).forEach(function (button) {
+      var active = button.getAttribute('data-custom-meter') === customMeter;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    syncCustomControls();
+  }
+
+  function updateSelectedPlan(planId) {
+    selectedPlan = planId;
+    Array.prototype.slice.call(document.querySelectorAll('[data-plan-card]')).forEach(function (card) {
+      card.classList.toggle('selected', card.getAttribute('data-plan-card') === selectedPlan);
+    });
+  }
+
+  function updateSubscriptionPeriod(periodBtn) {
+    var planId = periodBtn.getAttribute('data-plan');
+    var periodId = periodBtn.getAttribute('data-period');
+    var plan = catalog && catalog.plans && catalog.plans[planId];
+    var period = plan && plan.periods && plan.periods[periodId];
+    var card = periodBtn.closest('[data-plan-card]');
+    if (!plan || !period || !card) return;
+
+    selectedPeriods[planId] = periodId;
+    updateSelectedPlan(planId);
+
+    Array.prototype.slice.call(card.querySelectorAll('[data-period]')).forEach(function (button) {
+      var active = button === periodBtn;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    var priceAmount = card.querySelector('.price-amount');
+    if (priceAmount) {
+      priceAmount.innerHTML = period.display_amount + '<span>' + (period.months === 1 ? '/month' : '/' + period.months + ' months') + '</span>';
+    }
+
+    var listPrice = card.querySelector('.list-price');
+    if (listPrice) {
+      listPrice.classList.toggle('empty', !(period.list_amount > period.amount));
+      listPrice.innerHTML = period.list_amount > period.amount ? period.display_list_amount : '&nbsp;';
+    }
+
+    var cta = card.querySelector('[data-product]');
+    if (cta) {
+      cta.setAttribute('data-product', period.id);
+      cta.setAttribute('data-amount', period.amount);
+    }
+
+    syncAllSlidingIndicators();
+  }
+
+  function firstPackPrice(meter) {
+    var packs = catalog && catalog.packs && catalog.packs[meter] ? catalog.packs[meter] : [];
+    return packs.length ? packs[0].display_amount : '';
+  }
+
+  function sortedPacks(packs) {
+    return packs.slice().sort(function (a, b) { return a.quantity - b.quantity; });
+  }
+
+  function sliderSettings(meter) {
+    var configured = catalog.custom_slider_values && catalog.custom_slider_values[meter];
+    var fallback = meter === 'question'
+      ? [50, 100, 150, 200, 250, 300, 350]
+      : [1, 5, 10, 20, 30, 40, 50];
+    var values = configured && configured.length ? configured : fallback;
+    return sliderFromValues(values, meter === 'question' ? 50 : 1);
+  }
+
+  function sliderFromValues(values, inputStep) {
+    return {
+      values: values,
+      labels: values.map(function (value, index) {
+        return String(value) + (index === values.length - 1 ? '+' : '');
+      }),
+      inputMin: values[0],
+      inputMax: values[values.length - 1],
+      inputStep: inputStep,
+      openStep: values[0] >= 50 ? 50 : 10
+    };
+  }
+
+  function tickPosition(index, slider) {
+    if (slider.values.length <= 1) return 0;
+    return (index / (slider.values.length - 1)) * 100;
+  }
+
+  function sliderIndexForQuantity(quantity, slider) {
+    var normalized = clampQuantityToSlider(quantity, slider);
+    var index = slider.values.indexOf(normalized);
+    return index >= 0 ? index : slider.values.length - 1;
+  }
+
+  function quantityForSliderIndex(index, slider) {
+    var safeIndex = Math.max(0, Math.min(slider.values.length - 1, Number(index) || 0));
+    return slider.values[safeIndex];
+  }
+
+  function clampQuantityToSlider(value, slider) {
+    var raw = Number(value) || slider.inputMin;
+    for (var i = 0; i < slider.values.length; i += 1) {
+      if (raw <= slider.values[i]) return slider.values[i];
+    }
+    return slider.values[slider.values.length - 1];
+  }
+
+  function stepQuantity(currentQuantity, direction, slider) {
+    var current = normalizeQuantityForInput(currentQuantity, slider);
+    if (current >= slider.inputMax) {
+      var next = current + (direction > 0 ? slider.openStep : -slider.openStep);
+      return normalizeQuantityForInput(Math.max(slider.inputMin, next), slider);
+    }
+    var currentIndex = sliderIndexForQuantity(current, slider);
+    var nextIndex = currentIndex + (direction > 0 ? 1 : -1);
+    return quantityForSliderIndex(nextIndex, slider);
+  }
+
+  function normalizeQuantityForInput(value, slider) {
+    var raw = Number(value) || slider.inputMin;
+    if (raw <= slider.inputMax) return clampQuantityToSlider(raw, slider);
+    return Math.ceil(raw / slider.openStep) * slider.openStep;
+  }
+
+  function estimatePack(packs, count, slider, meter) {
+    var rounded = normalizeQuantityForInput(count, slider);
+    if (!packs.length) return { roundedQuantity: rounded, display: '₹0', productId: '' };
+    var sorted = sortedPacks(packs);
+    var exact = sorted.find(function (pack) { return pack.quantity === rounded; });
+    if (exact) {
+      return {
+        roundedQuantity: exact.quantity,
+        amount: exact.amount,
+        listAmount: exact.list_amount,
+        display: exact.display_amount,
+        listDisplay: exact.display_list_amount,
+        productId: exact.id
+      };
+    }
+    var base = sorted.find(function (pack) { return pack.quantity === slider.inputMax; }) || sorted[sorted.length - 1];
+    var amount = extendAmount(base.amount, base.quantity, rounded);
+    var listAmount = extendAmount(base.list_amount, base.quantity, rounded);
+    return {
+      roundedQuantity: rounded,
+      amount: amount,
+      listAmount: listAmount,
+      display: formatEstimate(amount, catalog.currency),
+      listDisplay: formatEstimate(listAmount, catalog.currency),
+      productId: 'custom_' + meter + '_' + rounded
+    };
+  }
+
+  function extendAmount(baseAmount, baseQuantity, quantity) {
+    return Math.ceil((quantity * baseAmount / baseQuantity) / 100) * 100;
+  }
+
+  function formatEstimate(amount, currency) {
+    if (currency === 'INR') return '₹' + Math.round(amount / 100);
+    return currency + ' ' + (amount / 100).toFixed(2);
+  }
+
+  async function loadCatalog() {
+    var response = await fetch('/api/pricing/catalog');
+    catalog = await response.json();
+    renderSubscriptions();
+    renderPacks();
   }
 
   tabButtons.forEach(function (button) {
@@ -23,5 +377,71 @@
       setActive(button.getAttribute('data-tab'));
     });
   });
-})();
 
+  document.addEventListener('click', function (event) {
+    var periodBtn = event.target.closest('[data-period]');
+    if (periodBtn) {
+      updateSubscriptionPeriod(periodBtn);
+      return;
+    }
+
+    var productBtn = event.target.closest('[data-product]');
+    if (productBtn && window.ZKPricing) {
+      window.ZKPricing.openPurchase({
+        productId: productBtn.getAttribute('data-product'),
+        kind: productBtn.getAttribute('data-kind'),
+        expectedAmount: parseInt(productBtn.getAttribute('data-amount') || '', 10),
+        source: 'pricing-page'
+      });
+      return;
+    }
+
+    var card = event.target.closest('[data-plan-card]');
+    if (card) {
+      updateSelectedPlan(card.getAttribute('data-plan-card'));
+      return;
+    }
+
+    var meterBtn = event.target.closest('[data-custom-meter]');
+    if (meterBtn) {
+      updateCustomMeter(meterBtn.getAttribute('data-custom-meter'));
+      return;
+    }
+
+    var stepBtn = event.target.closest('[data-step-qty]');
+    if (stepBtn) {
+      customQuantity = stepQuantity(
+        customQuantity,
+        parseInt(stepBtn.getAttribute('data-step-qty'), 10),
+        sliderSettings(customMeter)
+      );
+      syncCustomControls();
+      return;
+    }
+
+  });
+
+  document.addEventListener('input', function (event) {
+    if (event.target && event.target.id === 'custom-count-range') {
+      customQuantity = quantityForSliderIndex(
+        parseInt(event.target.value || '0', 10) || 0,
+        sliderSettings(customMeter)
+      );
+      syncCustomControls();
+    }
+
+    if (event.target && event.target.id === 'custom-count-input') {
+      customQuantity = normalizeQuantityForInput(
+        parseInt(event.target.value || '10', 10) || 10,
+        sliderSettings(customMeter)
+      );
+      syncCustomControls();
+    }
+  });
+
+  window.addEventListener('resize', syncAllSlidingIndicators);
+
+  loadCatalog().catch(function () {
+    if (subscriptionGrid) subscriptionGrid.innerHTML = '<p class="pricing-error">Pricing could not load. Please refresh.</p>';
+  });
+})();

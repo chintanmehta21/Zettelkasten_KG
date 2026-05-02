@@ -22,6 +22,7 @@ from website.api.nexus import router as nexus_router
 from website.api.routes import router as api_router
 from website.api.sandbox_routes import router as sandbox_router
 from website.features.summarization_engine.api import router as engine_v2_router
+from website.features.user_pricing.routes import router as pricing_router
 from website.features.web_monitor import router as web_monitor_router
 from website.features.web_monitor.App_Errors import notify_app_error
 from website.api.admin_routes import router as admin_router
@@ -39,6 +40,7 @@ USER_ZETTELS_DIR = Path(__file__).parent / "features" / "user_zettels"
 BROWSER_CACHE_DIR = Path(__file__).parent / "features" / "browser_cache"
 USER_KASTENS_DIR = Path(__file__).parent / "features" / "user_kastens"
 USER_RAG_DIR = Path(__file__).parent / "features" / "user_rag"
+USER_PRICING_DIR = Path(__file__).parent / "features" / "user_pricing"
 FOOTER_DIR = Path(__file__).parent / "footer"
 ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
@@ -118,6 +120,7 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(engine_v2_router)
     app.include_router(chat_router)
     app.include_router(sandbox_router)
+    app.include_router(pricing_router)
     app.include_router(web_monitor_router)
     app.include_router(admin_router)
     if nexus_enabled:
@@ -262,6 +265,16 @@ def create_app(lifespan=None) -> FastAPI:
         name="pricing-css",
     )
     app.mount("/pricing/js", StaticFiles(directory=str(PRICING_DIR / "js")), name="pricing-js")
+    app.mount(
+        "/user-pricing/css",
+        StaticFiles(directory=str(USER_PRICING_DIR / "css")),
+        name="user-pricing-css",
+    )
+    app.mount(
+        "/user-pricing/js",
+        StaticFiles(directory=str(USER_PRICING_DIR / "js")),
+        name="user-pricing-js",
+    )
 
     # Shared site header (single source of truth for inner-page header markup)
     app.mount("/header/css", StaticFiles(directory=str(HEADER_DIR / "css")), name="header-css")

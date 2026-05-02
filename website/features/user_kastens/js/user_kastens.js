@@ -262,6 +262,8 @@
       var quality = qualityEl ? qualityEl.value : 'fast';
       var desc = (descInput.value || '').trim();
       var scope = (form.querySelector('input[name="kasten-scope"]:checked') || {}).value || 'all';
+      var pricingActionId = form.getAttribute('data-pricing-action-id') || ('kasten:' + Date.now() + ':' + Math.random().toString(36).slice(2));
+      form.setAttribute('data-pricing-action-id', pricingActionId);
 
       // Validate scope selection early
       var pickedSources = [];
@@ -285,7 +287,7 @@
         var createResp = await fetch('/api/rag/sandboxes', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name, description: desc || null, default_quality: quality })
+          body: JSON.stringify({ name: name, description: desc || null, default_quality: quality, client_action_id: pricingActionId })
         });
         if (!createResp.ok) {
           var raw = '';
@@ -293,9 +295,21 @@
           console.error('[kastens] create failed', createResp.status, raw);
           var detail = '';
           try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
+          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
+            await window.ZKPricing.openPurchase({
+              detail: detail,
+              source: 'my-kastens:create-kasten',
+              resumeAction: { type: 'create_kasten', name: name, description: desc, scope: scope, clientActionId: pricingActionId },
+              onResume: function () {
+                form.setAttribute('data-pricing-action-id', pricingActionId);
+                form.requestSubmit();
+              }
+            });
+            return;
+          }
           if (createResp.status === 409) errEl.textContent = 'A kasten with that name already exists';
           else if (createResp.status === 401) errEl.textContent = 'Please sign in again';
-          else errEl.textContent = detail || ('Create failed (' + createResp.status + ')');
+          else errEl.textContent = (detail && detail.message) || detail || ('Create failed (' + createResp.status + ')');
           return;
         }
         var created = await createResp.json();
@@ -339,6 +353,7 @@
         submit.removeAttribute('aria-busy');
         submit.textContent = 'Create';
         form.removeAttribute('data-busy');
+        form.removeAttribute('data-pricing-action-id');
       }
     });
   }

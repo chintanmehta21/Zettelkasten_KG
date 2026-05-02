@@ -74,15 +74,31 @@
     const submit = async () => {
       const name = (input.value || '').trim();
       if (!name) { input.focus(); return; }
+      const pricingActionId = form.dataset.pricingActionId || ('kasten:' + Date.now() + ':' + Math.random().toString(36).slice(2));
+      form.dataset.pricingActionId = pricingActionId;
       go.disabled = true;
       clearError();
       try {
         const resp = await fetch('/api/rag/sandboxes', {
           method: 'POST',
           headers: Object.assign({ 'Content-Type': 'application/json' }, state.headersFn()),
-          body: JSON.stringify({ name })
+          body: JSON.stringify({ name, client_action_id: pricingActionId })
         });
-        if (!resp.ok) throw new Error('Could not create Kasten (' + resp.status + ')');
+        if (!resp.ok) {
+          let payload = null;
+          try { payload = await resp.json(); } catch (_) {}
+          const detail = payload && payload.detail;
+          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
+            await window.ZKPricing.openPurchase({
+              detail: detail,
+              source: 'knowledge-graph:create-kasten',
+              resumeAction: { type: 'create_kasten', name: name, nodeId: state.node && state.node.id, clientActionId: pricingActionId },
+              onResume: submit
+            });
+            return;
+          }
+          throw new Error((detail && detail.message) || 'Could not create Kasten (' + resp.status + ')');
+        }
         const data = await resp.json();
         const created = data.sandbox || data;
         state.kastens.unshift({ id: created.id, name: created.name, color: created.color });

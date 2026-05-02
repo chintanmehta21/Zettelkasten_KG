@@ -20,6 +20,8 @@ from website.core.persist import (
     get_supabase_scope as _get_supabase,
     persist_summarized_result,
 )
+from website.features.user_pricing.entitlements import consume_entitlement, require_entitlement
+from website.features.user_pricing.models import Meter
 
 logger = logging.getLogger("website.api")
 
@@ -67,6 +69,7 @@ def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
 
 class SummarizeRequest(BaseModel):
     url: str
+    client_action_id: str | None = None
 
     @field_validator("url")
     @classmethod
@@ -444,15 +447,20 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
     logger.info("Summarize request from %s: %s", ip, body.url)
 
     try:
+        action_id = body.client_action_id or body.url
+        await require_entitlement(Meter.ZETTEL, user, action_id=action_id)
         result = await summarize_url(body.url)
         persistence = await persist_summarized_result(
             result,
             user_sub=user["sub"] if user else None,
         )
+        await consume_entitlement(Meter.ZETTEL, user, action_id=action_id)
         if persistence.supabase_saved:
             _graph_cache_global = None
             _graph_cache_global_ts = 0
         return persistence.result
+    except HTTPException:
+        raise
     except ExtractionConfidenceError as exc:
         logger.warning("Extraction too thin for %s: %s", body.url, exc)
         is_youtube = (exc.source_type or "").lower() == "youtube"
