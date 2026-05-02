@@ -154,6 +154,32 @@
       // gives the modal a seamless overlay over zettelkasten.in.
       if (!theme.color) theme.color = '#0d9488';
       if (!theme.backdrop_color) theme.backdrop_color = '#0a0f14';
+      // For subscriptions Razorpay routes UPI through Autopay (e-mandate), which
+      // only supports the `collect` sub-flow (user enters VPA, mandate prompt
+      // opens in their UPI app). intent / qr are one-time-only. Cards become a
+      // recurring mandate via tokenisation. Netbanking is not autopay-eligible
+      // and is filtered out of the subscription block list.
+      // Razorpay docs: razorpay.com/docs/payments/subscriptions/upi-autopay
+      var isRecurring = !!checkoutPayload.subscription_id;
+      var upiFlows = isRecurring ? ['collect'] : ['intent', 'qr', 'collect'];
+      var blocks = {
+        upi: {
+          name: isRecurring ? 'Pay with UPI Autopay' : 'Pay with UPI',
+          instruments: [{ method: 'upi', flows: upiFlows }]
+        },
+        cards: {
+          name: isRecurring ? 'Pay with Card (auto-debit)' : 'Pay with Card',
+          instruments: [{ method: 'card' }]
+        }
+      };
+      var sequence = ['block.upi', 'block.cards'];
+      if (!isRecurring) {
+        blocks.netbanking = {
+          name: 'Pay via Netbanking',
+          instruments: [{ method: 'netbanking' }]
+        };
+        sequence.push('block.netbanking');
+      }
       var options = {
         key: checkoutPayload.key_id,
         amount: checkoutPayload.amount,
@@ -167,32 +193,17 @@
         prefill: checkoutPayload.prefill || {},
         notes: checkoutPayload.notes || {},
         theme: theme,
-        // Indian-first method curation. Each block declares all sub-flows so
-        // the VPA collect textbox sits alongside QR / app intent (default
-        // single-flow behaviour hides the textbox on desktop).
-        // Razorpay docs: razorpay.com/docs/payments/payment-gateway/web-integration/standard/payment-methods/upi/
+        // Indian-first method curation. Each block declares its sub-flows so
+        // the VPA collect textbox sits alongside QR / app intent on one-time
+        // orders, and UPI Autopay shows the VPA collect for subscriptions.
+        // Razorpay docs:
+        //   razorpay.com/docs/payments/payment-gateway/web-integration/standard/payment-methods/upi/
+        //   razorpay.com/docs/payments/subscriptions/upi-autopay
         config: {
           display: {
-            blocks: {
-              upi: {
-                name: 'Pay with UPI',
-                instruments: [
-                  { method: 'upi', flows: ['intent', 'qr', 'collect'] }
-                ]
-              },
-              cards: {
-                name: 'Pay with Card',
-                instruments: [{ method: 'card' }]
-              },
-              netbanking: {
-                name: 'Pay via Netbanking',
-                instruments: [{ method: 'netbanking' }]
-              }
-            },
-            sequence: ['block.upi', 'block.cards', 'block.netbanking'],
-            preferences: {
-              show_default_blocks: true
-            }
+            blocks: blocks,
+            sequence: sequence,
+            preferences: { show_default_blocks: true }
           }
         },
         // Stop Razorpay from auto-retrying via SMS bank-OTP fill (faster real
