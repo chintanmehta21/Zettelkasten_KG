@@ -36,6 +36,9 @@ async def test_billing_profile_update_saves_phone(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_create_pack_order_requires_saved_phone(monkeypatch) -> None:
     class Repo:
+        def is_user_dispute_frozen(self, *, user_sub: str) -> bool:
+            return False
+
         def get_billing_profile(self, *, user_sub: str) -> dict | None:
             return None
 

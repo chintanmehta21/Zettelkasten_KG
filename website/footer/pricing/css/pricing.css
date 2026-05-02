@@ -327,6 +327,77 @@
   color: var(--text-primary);
 }
 
+.price-cta.current {
+  border-color: hsla(172, 66%, 42%, 0.55);
+  background: hsla(172, 66%, 42%, 0.18);
+  color: var(--accent);
+  cursor: default;
+}
+
+.current-plan-row {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.cancel-sub-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-height: 40px;
+  border: 1px solid hsla(0, 70%, 55%, 0.4);
+  background: hsla(0, 70%, 55%, 0.12);
+  color: hsl(0, 80%, 70%);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.cancel-sub-btn:hover,
+.cancel-sub-btn:focus-visible {
+  background: hsla(0, 75%, 55%, 0.22);
+  border-color: hsla(0, 75%, 55%, 0.6);
+  color: hsl(0, 90%, 80%);
+  outline: none;
+}
+
+.cancel-sub-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-sub-btn::after {
+  content: attr(aria-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsla(0, 0%, 8%, 0.95);
+  color: hsl(0, 0%, 92%);
+  border: 1px solid hsla(0, 70%, 55%, 0.45);
+  border-radius: 4px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.cancel-sub-btn:hover::after,
+.cancel-sub-btn:focus-visible::after {
+  opacity: 1;
+}
+
 .custom-estimator {
   border: 1px solid var(--border);
   border-radius: 8px;

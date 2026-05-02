@@ -89,5 +89,93 @@ def verify_webhook_signature(*, body: bytes, signature: str, secret: str | None 
 
 
 def reset_client_cache() -> None:
-    """Test hook — clears the memoized client so env changes take effect."""
-    get_razorpay_client.cache_clear()
+    """Test hook — clears the memoized client so env changes take effect.
+
+    Resilient to monkeypatched test doubles that replace the lru-cached
+    factory with a plain function (which has no ``cache_clear``).
+    """
+    cache_clear = getattr(get_razorpay_client, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+
+
+# ───────────────────────── plan + subscription helpers ─────────────────────────
+
+
+# Razorpay's recurring-period taxonomy: weekly | monthly | yearly. There is no
+# native "quarterly" — quarterly is expressed as monthly with interval=3.
+PERIOD_INTERVAL_MAP: dict[str, tuple[str, int]] = {
+    "monthly": ("monthly", 1),
+    "quarterly": ("monthly", 3),
+    "yearly": ("yearly", 1),
+}
+
+# How many billing cycles to lock in for each period when creating a Razorpay
+# Subscription. After total_count, the sub auto-completes and the user must
+# re-subscribe. These give long horizons so renewal happens transparently:
+#   monthly   * 24  = 2 years of mandate
+#   quarterly *  8  = 2 years of mandate
+#   yearly    *  5  = 5 years of mandate
+PERIOD_TOTAL_COUNT: dict[str, int] = {
+    "monthly": 24,
+    "quarterly": 8,
+    "yearly": 5,
+}
+
+
+def get_or_create_plan(
+    *,
+    period_id: str,
+    amount: int,
+    plan_name: str,
+    plan_description: str,
+    period_label: str,
+) -> str:
+    """Lazy-create a Razorpay Plan for (period_id, amount) and cache the id.
+
+    Razorpay Plans are immutable: amount + interval are fixed at creation.
+    When launch_pricing_enabled flips, the amount changes and we mint a new
+    plan. The cache key (period_id, amount) prevents collisions between
+    list and launch tiers.
+    """
+    if not is_razorpay_configured():
+        raise RuntimeError("Razorpay credentials are not configured")
+
+    if period_label not in PERIOD_INTERVAL_MAP:
+        raise ValueError(f"Unsupported period: {period_label}")
+
+    # Inline import to avoid circular dependency (repository imports this module).
+    from website.features.user_pricing.repository import get_pricing_repository
+
+    repo = get_pricing_repository()
+    cached = repo.get_cached_plan_id(period_id=period_id, amount=int(amount))
+    if cached:
+        return cached
+
+    period, interval = PERIOD_INTERVAL_MAP[period_label]
+    client = get_razorpay_client()
+    plan = client.plan.create(
+        data={
+            "period": period,
+            "interval": interval,
+            "item": {
+                "name": plan_name,
+                "amount": int(amount),
+                "currency": "INR",
+                "description": plan_description,
+            },
+            "notes": {
+                "period_id": period_id,
+                "amount_paise": str(int(amount)),
+                "period_label": period_label,
+            },
+        }
+    )
+    razorpay_plan_id = plan["id"]
+    repo.cache_plan_id(period_id=period_id, amount=int(amount), razorpay_plan_id=razorpay_plan_id)
+    return razorpay_plan_id
+
+
+def total_count_for(period_label: str) -> int:
+    return PERIOD_TOTAL_COUNT.get(period_label, 24)
+

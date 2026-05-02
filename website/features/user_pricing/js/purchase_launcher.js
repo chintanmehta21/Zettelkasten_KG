@@ -144,7 +144,7 @@
 
   function openRazorpayCheckout(checkoutPayload) {
     return new Promise(function (resolve, reject) {
-      if (!checkoutPayload || !checkoutPayload.key_id || !checkoutPayload.order_id) {
+      if (!checkoutPayload || !checkoutPayload.key_id || (!checkoutPayload.order_id && !checkoutPayload.subscription_id)) {
         reject(new Error('Checkout configuration is incomplete.'));
         return;
       }
@@ -153,7 +153,6 @@
         key: checkoutPayload.key_id,
         amount: checkoutPayload.amount,
         currency: checkoutPayload.currency || 'INR',
-        order_id: checkoutPayload.order_id,
         name: checkoutPayload.name || 'Zettelkasten.in',
         description: checkoutPayload.description || '',
         prefill: checkoutPayload.prefill || {},
@@ -172,6 +171,12 @@
           resolve(response);
         }
       };
+      if (checkoutPayload.subscription_id) {
+        options.subscription_id = checkoutPayload.subscription_id;
+        options.recurring = '1';
+      } else {
+        options.order_id = checkoutPayload.order_id;
+      }
       var rzp;
       try {
         rzp = new window.Razorpay(options);
@@ -259,8 +264,8 @@
       verifyResult = await verifyPayment({
         payment_id: checkoutPayload.payment_id,
         razorpay_payment_id: rzpResponse.razorpay_payment_id,
-        razorpay_order_id: rzpResponse.razorpay_order_id || checkoutPayload.order_id,
-        razorpay_subscription_id: rzpResponse.razorpay_subscription_id || null,
+        razorpay_order_id: rzpResponse.razorpay_order_id || checkoutPayload.order_id || null,
+        razorpay_subscription_id: rzpResponse.razorpay_subscription_id || checkoutPayload.subscription_id || null,
         razorpay_signature: rzpResponse.razorpay_signature
       });
     } catch (err) {
@@ -289,10 +294,41 @@
     }
   }
 
+  async function fetchMySubscription() {
+    var token = authToken();
+    if (!token) return { subscription: null };
+    try {
+      return await fetchJson('/api/payments/subscriptions/me', { headers: authHeaders() });
+    } catch (err) {
+      if (err && err.status === 401) return { subscription: null };
+      throw err;
+    }
+  }
+
+  async function cancelMySubscription() {
+    var token = authToken();
+    if (!token) throw new Error('Please sign in to cancel.');
+    try {
+      var result = await fetchJson('/api/payments/subscriptions/cancel', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cancel_at_cycle_end: false })
+      });
+      showToast('Subscription cancelled.', 'success');
+      window.dispatchEvent(new CustomEvent('zk:pricing:cancelled', { detail: result }));
+      return result;
+    } catch (err) {
+      showToast(err.message || 'Could not cancel subscription.', 'error');
+      throw err;
+    }
+  }
+
   window.ZKPricing = window.ZKPricing || {};
   window.ZKPricing.fetchJson = fetchJson;
   window.ZKPricing.hasQuotaDetail = hasQuotaDetail;
   window.ZKPricing.openPurchase = openPurchase;
   window.ZKPricing.resumePendingPurchase = resumePendingPurchase;
   window.ZKPricing.loadRazorpayScript = loadRazorpayScript;
+  window.ZKPricing.fetchMySubscription = fetchMySubscription;
+  window.ZKPricing.cancelMySubscription = cancelMySubscription;
 })();

@@ -24,8 +24,15 @@ logger = logging.getLogger(__name__)
 _MEMORY_PROFILES: dict[str, dict] = {}
 _MEMORY_PAYMENTS: dict[str, dict] = {}
 _MEMORY_BALANCES: dict[str, dict[str, int]] = {}
-_MEMORY_SUBSCRIPTIONS: dict[str, dict] = {}
+_MEMORY_SUBSCRIPTIONS: dict[str, dict] = {}  # keyed by render_user_id (current sub)
+_MEMORY_SUBS_BY_RZP: dict[str, str] = {}      # razorpay_subscription_id -> render_user_id
 _MEMORY_EVENTS: dict[str, dict] = {}
+_MEMORY_REFUNDS: dict[str, dict] = {}         # razorpay_refund_id -> row
+_MEMORY_DISPUTES: dict[str, dict] = {}        # razorpay_dispute_id -> row
+_MEMORY_PLAN_CACHE: dict[str, str] = {}       # "{period_id}:{amount}" -> razorpay_plan_id
+
+# Set of users with an open dispute — fulfillment is paused while in this set.
+_DISPUTE_FROZEN: set[str] = set()
 
 
 def _now_iso() -> str:
@@ -313,6 +320,42 @@ class PricingRepository:
 
     # ───────────────────────── subscriptions ─────────────────────────
 
+    def create_or_update_subscription(
+        self,
+        *,
+        user_sub: str,
+        plan_id: str,
+        period_id: str,
+        razorpay_subscription_id: str,
+        status: str = "created",
+        total_count: int | None = None,
+    ) -> dict:
+        """Insert or refresh the user's current subscription row.
+
+        Used at /api/payments/subscriptions creation time to record the
+        Razorpay subscription before the user authenticates the mandate.
+        """
+        existing = _MEMORY_SUBSCRIPTIONS.get(user_sub) or {}
+        row = {
+            **existing,
+            "render_user_id": user_sub,
+            "plan_id": plan_id,
+            "period_id": period_id,
+            "status": status,
+            "razorpay_subscription_id": razorpay_subscription_id,
+            "total_count": total_count if total_count is not None else existing.get("total_count"),
+            "current_period_start": existing.get("current_period_start") or _now_iso(),
+            "current_period_end": existing.get("current_period_end"),
+            "paid_count": existing.get("paid_count", 0),
+            "updated_at": _now_iso(),
+        }
+        _MEMORY_SUBSCRIPTIONS[user_sub] = row
+        if razorpay_subscription_id:
+            _MEMORY_SUBS_BY_RZP[razorpay_subscription_id] = user_sub
+        if is_supabase_configured():
+            self._supabase_insert("pricing_subscriptions", row, upsert_on="render_user_id")
+        return row
+
     def activate_subscription(
         self,
         *,
@@ -325,24 +368,211 @@ class PricingRepository:
     ) -> dict:
         start = datetime.now(UTC)
         end = start + timedelta(days=int(months) * 30)
+        existing = _MEMORY_SUBSCRIPTIONS.get(user_sub) or {}
         row = {
+            **existing,
             "render_user_id": user_sub,
             "plan_id": plan_id,
             "period_id": period_id,
             "status": "active",
             "current_period_start": start.isoformat(),
             "current_period_end": end.isoformat(),
-            "razorpay_subscription_id": razorpay_subscription_id,
-            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_subscription_id": razorpay_subscription_id or existing.get("razorpay_subscription_id"),
+            "razorpay_payment_id": razorpay_payment_id or existing.get("razorpay_payment_id"),
+            "paid_count": int(existing.get("paid_count") or 0) + 1,
             "updated_at": start.isoformat(),
         }
         _MEMORY_SUBSCRIPTIONS[user_sub] = row
+        if row["razorpay_subscription_id"]:
+            _MEMORY_SUBS_BY_RZP[row["razorpay_subscription_id"]] = user_sub
         if is_supabase_configured():
             self._supabase_insert("pricing_subscriptions", row, upsert_on="render_user_id")
         return row
 
+    def update_subscription_status(
+        self,
+        *,
+        razorpay_subscription_id: str,
+        status: str,
+        current_period_end: str | None = None,
+        cancelled_at: str | None = None,
+        failure_reason: str | None = None,
+    ) -> dict | None:
+        user_sub = _MEMORY_SUBS_BY_RZP.get(razorpay_subscription_id)
+        if not user_sub:
+            return None
+        row = _MEMORY_SUBSCRIPTIONS.get(user_sub)
+        if not row:
+            return None
+        row["status"] = status
+        if current_period_end:
+            row["current_period_end"] = current_period_end
+        if cancelled_at:
+            row["cancelled_at"] = cancelled_at
+        if failure_reason:
+            row["failure_reason"] = failure_reason
+        row["updated_at"] = _now_iso()
+        if is_supabase_configured():
+            self._supabase_update(
+                "pricing_subscriptions",
+                {k: v for k, v in {
+                    "status": status,
+                    "current_period_end": current_period_end,
+                    "cancelled_at": cancelled_at,
+                    "failure_reason": failure_reason,
+                    "updated_at": row["updated_at"],
+                }.items() if v is not None},
+                where=("razorpay_subscription_id", razorpay_subscription_id),
+            )
+        return row
+
     def get_subscription(self, *, user_sub: str) -> dict | None:
         return _MEMORY_SUBSCRIPTIONS.get(user_sub)
+
+    def get_subscription_by_razorpay_id(self, *, razorpay_subscription_id: str) -> dict | None:
+        user_sub = _MEMORY_SUBS_BY_RZP.get(razorpay_subscription_id)
+        return _MEMORY_SUBSCRIPTIONS.get(user_sub) if user_sub else None
+
+    # ────────────────────────── plan cache ──────────────────────────
+
+    def get_cached_plan_id(self, *, period_id: str, amount: int) -> str | None:
+        key = f"{period_id}:{int(amount)}"
+        if key in _MEMORY_PLAN_CACHE:
+            return _MEMORY_PLAN_CACHE[key]
+        if is_supabase_configured():
+            try:
+                from website.core.persist import get_supabase_scope
+
+                scoped = get_supabase_scope()
+                if scoped:
+                    repo, _ = scoped
+                    response = (
+                        repo._client.table("pricing_plan_cache")
+                        .select("razorpay_plan_id")
+                        .eq("cache_key", key)
+                        .limit(1)
+                        .execute()
+                    )
+                    if response.data:
+                        plan_id = response.data[0]["razorpay_plan_id"]
+                        _MEMORY_PLAN_CACHE[key] = plan_id
+                        return plan_id
+            except Exception as exc:
+                logger.warning("Plan cache lookup failed for %s: %s", key, exc)
+        return None
+
+    def cache_plan_id(self, *, period_id: str, amount: int, razorpay_plan_id: str) -> None:
+        key = f"{period_id}:{int(amount)}"
+        _MEMORY_PLAN_CACHE[key] = razorpay_plan_id
+        if is_supabase_configured():
+            self._supabase_insert(
+                "pricing_plan_cache",
+                {
+                    "cache_key": key,
+                    "period_id": period_id,
+                    "amount": int(amount),
+                    "razorpay_plan_id": razorpay_plan_id,
+                },
+                upsert_on="cache_key",
+            )
+
+    # ────────────────────────── refunds ──────────────────────────
+
+    def record_refund(
+        self,
+        *,
+        razorpay_refund_id: str,
+        razorpay_payment_id: str | None,
+        payment_id: str | None,
+        render_user_id: str | None,
+        amount: int,
+        status: str,
+        speed: str | None = None,
+        notes: dict | None = None,
+    ) -> dict:
+        row = {
+            "razorpay_refund_id": razorpay_refund_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "payment_id": payment_id,
+            "render_user_id": render_user_id,
+            "amount": int(amount),
+            "currency": "INR",
+            "status": status,
+            "speed": speed,
+            "notes": notes or {},
+            "updated_at": _now_iso(),
+        }
+        existing = _MEMORY_REFUNDS.get(razorpay_refund_id) or {}
+        if not existing:
+            row["created_at"] = row["updated_at"]
+        merged = {**existing, **row}
+        _MEMORY_REFUNDS[razorpay_refund_id] = merged
+        if is_supabase_configured():
+            self._supabase_insert("pricing_refunds", merged, upsert_on="razorpay_refund_id")
+        return merged
+
+    def deduct_pack_credits(self, *, user_sub: str, meter: str, quantity: int) -> dict[str, int]:
+        wallet = _MEMORY_BALANCES.setdefault(user_sub, {})
+        new_balance = max(0, int(wallet.get(meter, 0)) - int(quantity))
+        wallet[meter] = new_balance
+        if is_supabase_configured():
+            try:
+                from website.core.persist import get_supabase_scope
+
+                scoped = get_supabase_scope(user_id_override=user_sub)
+                if scoped:
+                    repo, _ = scoped
+                    repo._client.rpc(
+                        "pricing_deduct_pack_credits",
+                        {"p_render_user_id": user_sub, "p_meter": meter, "p_quantity": int(quantity)},
+                    ).execute()
+            except Exception as exc:
+                logger.warning("deduct_pack_credits supabase failed for user=%s meter=%s: %s", user_sub, meter, exc)
+        return dict(wallet)
+
+    # ────────────────────────── disputes ──────────────────────────
+
+    def record_dispute(
+        self,
+        *,
+        razorpay_dispute_id: str,
+        razorpay_payment_id: str | None,
+        payment_id: str | None,
+        render_user_id: str | None,
+        amount: int,
+        phase: str,
+        reason_code: str | None = None,
+        payload: dict | None = None,
+    ) -> dict:
+        row = {
+            "razorpay_dispute_id": razorpay_dispute_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "payment_id": payment_id,
+            "render_user_id": render_user_id,
+            "amount": int(amount),
+            "currency": "INR",
+            "phase": phase,
+            "reason_code": reason_code,
+            "payload": payload or {},
+            "updated_at": _now_iso(),
+        }
+        existing = _MEMORY_DISPUTES.get(razorpay_dispute_id) or {}
+        if not existing:
+            row["created_at"] = row["updated_at"]
+        merged = {**existing, **row}
+        _MEMORY_DISPUTES[razorpay_dispute_id] = merged
+        if is_supabase_configured():
+            self._supabase_insert("pricing_disputes", merged, upsert_on="razorpay_dispute_id")
+
+        if render_user_id:
+            if phase in {"created", "under_review", "action_required"}:
+                _DISPUTE_FROZEN.add(render_user_id)
+            elif phase in {"won", "closed"}:
+                _DISPUTE_FROZEN.discard(render_user_id)
+        return merged
+
+    def is_user_dispute_frozen(self, *, user_sub: str) -> bool:
+        return user_sub in _DISPUTE_FROZEN
 
     # ─────────────────── payment_events / idempotency ───────────────────
 
@@ -425,4 +655,9 @@ def reset_memory_state_for_tests() -> None:
     _MEMORY_PAYMENTS.clear()
     _MEMORY_BALANCES.clear()
     _MEMORY_SUBSCRIPTIONS.clear()
+    _MEMORY_SUBS_BY_RZP.clear()
     _MEMORY_EVENTS.clear()
+    _MEMORY_REFUNDS.clear()
+    _MEMORY_DISPUTES.clear()
+    _MEMORY_PLAN_CACHE.clear()
+    _DISPUTE_FROZEN.clear()

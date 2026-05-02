@@ -6,10 +6,26 @@
   var subscriptionGrid = document.getElementById('subscription-grid');
   var packGroups = document.getElementById('pack-groups');
   var catalog = null;
+  var currentSubscription = null;            // {plan_id, period_id, status,...} or null
+  var ACTIVE_SUB_STATUSES = ['active', 'authenticated', 'pending_cancel', 'grace', 'paused'];
   var selectedPeriods = { basic: 'monthly', max: 'monthly' };
   var selectedPlan = 'basic';
   var customMeter = 'zettel';
   var customQuantity = 10;
+
+  function userHasActiveSub() {
+    return Boolean(
+      currentSubscription &&
+      currentSubscription.plan_id &&
+      currentSubscription.plan_id !== 'free' &&
+      ACTIVE_SUB_STATUSES.indexOf(currentSubscription.status) !== -1
+    );
+  }
+
+  function isCurrentPlanCard(planId) {
+    if (planId === 'free') return !userHasActiveSub();
+    return userHasActiveSub() && currentSubscription.plan_id === planId;
+  }
 
   function syncSlidingIndicator(container, activeSelector) {
     if (!container) return;
@@ -74,9 +90,22 @@
     var buttons = periodKeys.map(function (key) {
       return '<button type="button" class="period-btn' + (key === activePeriod ? ' is-active' : '') + '" data-plan="' + plan.id + '" data-period="' + key + '" aria-pressed="' + (key === activePeriod ? 'true' : 'false') + '">' + plan.periods[key].label + '</button>';
     }).join('');
-    var cta = plan.id === 'free'
-      ? '<a class="price-cta muted" href="/home">Start free</a>'
-      : '<button type="button" class="price-cta" data-product="' + period.id + '" data-kind="subscription" data-amount="' + period.amount + '">Subscribe</button>';
+    var cta;
+    if (isCurrentPlanCard(plan.id)) {
+      // User is on this plan today — show "Current Plan" + (paid only) cancel X.
+      var cancelBtn = (plan.id === 'free')
+        ? ''
+        : '<button type="button" class="cancel-sub-btn" data-cancel-sub aria-label="Cancel Subscription!" title="Cancel Subscription!"><span aria-hidden="true">×</span></button>';
+      cta = ''
+        + '<div class="current-plan-row">'
+        + '<span class="price-cta current">Current Plan</span>'
+        + cancelBtn
+        + '</div>';
+    } else if (plan.id === 'free') {
+      cta = '<a class="price-cta muted" href="/home">Start free</a>';
+    } else {
+      cta = '<button type="button" class="price-cta" data-product="' + period.id + '" data-kind="subscription" data-amount="' + period.amount + '">Subscribe</button>';
+    }
 
     return [
       '<article class="price-card' + (plan.id === selectedPlan ? ' selected' : '') + (plan.id === 'basic' ? ' featured' : '') + '" data-plan-card="' + plan.id + '">',
@@ -368,8 +397,22 @@
   async function loadCatalog() {
     var response = await fetch('/api/pricing/catalog');
     catalog = await response.json();
+    await refreshCurrentSubscription();
     renderSubscriptions();
     renderPacks();
+  }
+
+  async function refreshCurrentSubscription() {
+    if (!window.ZKPricing || typeof window.ZKPricing.fetchMySubscription !== 'function') {
+      currentSubscription = null;
+      return;
+    }
+    try {
+      var payload = await window.ZKPricing.fetchMySubscription();
+      currentSubscription = payload && payload.subscription ? payload.subscription : null;
+    } catch (_) {
+      currentSubscription = null;
+    }
   }
 
   tabButtons.forEach(function (button) {
@@ -391,8 +434,27 @@
         productId: productBtn.getAttribute('data-product'),
         kind: productBtn.getAttribute('data-kind'),
         expectedAmount: parseInt(productBtn.getAttribute('data-amount') || '', 10),
-        source: 'pricing-page'
+        source: 'pricing-page',
+        onResume: function () {
+          refreshCurrentSubscription().then(renderSubscriptions);
+        }
       });
+      return;
+    }
+
+    var cancelBtn = event.target.closest('[data-cancel-sub]');
+    if (cancelBtn && window.ZKPricing && typeof window.ZKPricing.cancelMySubscription === 'function') {
+      cancelBtn.disabled = true;
+      var confirmed = window.confirm('Cancel your active subscription? You will keep access until the end of the current period.');
+      if (!confirmed) {
+        cancelBtn.disabled = false;
+        return;
+      }
+      window.ZKPricing.cancelMySubscription()
+        .then(function () { return refreshCurrentSubscription(); })
+        .then(function () { renderSubscriptions(); })
+        .catch(function () { /* toast already shown */ })
+        .finally(function () { cancelBtn.disabled = false; });
       return;
     }
 
