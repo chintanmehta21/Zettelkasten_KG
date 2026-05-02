@@ -177,19 +177,24 @@
         image: (checkoutPayload.image && /^https?:/.test(checkoutPayload.image))
           ? checkoutPayload.image
           : (location.origin + (checkoutPayload.image || '/artifacts/company_logo.svg')),
-        prefill: checkoutPayload.prefill || {},
+        // Pre-select UPI as the default payment method on open — saves the
+        // user one sidebar click. Razorpay honours `prefill.method` when the
+        // method is enabled on the merchant account.
+        prefill: Object.assign({ method: 'upi' }, checkoutPayload.prefill || {}),
         notes: checkoutPayload.notes || {},
         theme: theme,
         // Method curation:
         //   • Subscriptions   → UPI-Autopay (collect) + recurring card mandate
-        //     only; netbanking and intent/qr are not autopay-eligible.
-        //   • One-time orders → curated UPI / Cards / Netbanking / Wallet /
-        //     Pay Later. UPI is a single instrument with all three sub-flows
-        //     (QR / UPI ID / UPI Apps) so Razorpay renders them as tabs.
-        //     show_default_blocks=false hides the auto-recommended bank list.
-        config: {
+        //     only; intent/qr/netbanking aren't autopay-eligible.
+        //   • One-time orders → no override. Razorpay's default block already
+        //     auto-selects UPI on open and renders QR + UPI ID + Apps as
+        //     integrated tabs (industry-standard, fewest clicks). We only
+        //     `hide` Pay-Later + EMI to keep the list to UPI/Card/Netbanking/
+        //     Wallet/More-options, then `prefill.method='upi'` lands the user
+        //     directly on UPI without a sidebar click.
+        config: isRecurring ? {
           display: {
-            blocks: isRecurring ? {
+            blocks: {
               upi: {
                 name: 'Pay with UPI Autopay',
                 instruments: [{ method: 'upi', flows: ['collect'] }]
@@ -198,42 +203,16 @@
                 name: 'Pay with Card (auto-debit)',
                 instruments: [{ method: 'card' }]
               }
-            } : {
-              // VPA-first ordering — `collect` listed first so the UPI ID
-              // textbox is the default expanded sub-row (no extra click for
-              // the most common desktop path). Apps + QR are one-click below.
-              upi: {
-                name: 'UPI',
-                instruments: [
-                  { method: 'upi', flows: ['collect'] },
-                  { method: 'upi', flows: ['intent'] },
-                  { method: 'upi', flows: ['qr'] }
-                ]
-              },
-              cards: {
-                name: 'Card',
-                instruments: [{ method: 'card' }]
-              },
-              wallets: {
-                name: 'Wallet',
-                instruments: [{ method: 'wallet' }]
-              },
-              // Single "More options" row collapses Netbanking / EMI / Pay
-              // Later behind a single dropdown — keeps the primary list to
-              // four items (UPI / Card / Wallet / More options).
-              others: {
-                name: 'More options',
-                instruments: [
-                  { method: 'netbanking' },
-                  { method: 'emi' },
-                  { method: 'paylater' }
-                ]
-              }
             },
-            sequence: isRecurring
-              ? ['block.upi', 'block.cards']
-              : ['block.upi', 'block.cards', 'block.wallets', 'block.others'],
+            sequence: ['block.upi', 'block.cards'],
             preferences: { show_default_blocks: false }
+          }
+        } : {
+          display: {
+            hide: [
+              { method: 'paylater' },
+              { method: 'emi' }
+            ]
           }
         },
         // Stop Razorpay from auto-retrying via SMS bank-OTP fill (faster real
