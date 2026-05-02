@@ -9,12 +9,23 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+import os
+
 from website.features.rag_pipeline.errors import EmptyScopeError
 from website.features.rag_pipeline.query.metadata import QueryMetadata
+from website.features.rag_pipeline.query.router import _COMPARE_PATTERN
 from website.features.rag_pipeline.retrieval.kasten_freq import (
     KastenFrequencyStore,
     compute_frequency_penalty,
 )
+
+# iter-07 Fix B: COMPARE-aware anti-magnet. When the rewritten query contains
+# a compare/vs pattern AND ≥2 person entities, disable the kasten-frequency
+# penalty so legitimate compare-targets aren't stripped (q10 fix:
+# "Steve Jobs and Naval Ravikant" lost Steve Jobs to the magnet penalty).
+_COMPARE_AWARE_ANTIMAGNET_ENABLED = os.environ.get(
+    "RAG_COMPARE_AWARE_ANTIMAGNET_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
 
@@ -272,7 +283,25 @@ class HybridRetriever:
         # this Kasten. Floor of 50 total hits prevents cold-start over-
         # penalisation; cap at 0.5 so a magnet can still rank where genuine
         # signal puts it.
-        if kasten_freqs:
+        # iter-07 Fix B: detect compare-intent — disable anti-magnet for these.
+        compare_intent = False
+        if _COMPARE_AWARE_ANTIMAGNET_ENABLED and query_metadata is not None:
+            authors = list(getattr(query_metadata, "authors", None) or [])
+            if len(authors) >= 2:
+                for variant in (query_variants or []):
+                    if variant and _COMPARE_PATTERN.search(variant):
+                        compare_intent = True
+                        break
+                # Also fire on "X and Y" person-list with no explicit verb,
+                # caught only by author count + a join word in the variants.
+                if not compare_intent:
+                    join_re = re.compile(r"\b(and|both)\b", re.IGNORECASE)
+                    for variant in (query_variants or []):
+                        if variant and join_re.search(variant):
+                            compare_intent = True
+                            break
+
+        if kasten_freqs and not compare_intent:
             total_hits = sum(kasten_freqs.values())
             for candidate in by_key.values():
                 penalty = compute_frequency_penalty(
@@ -281,6 +310,11 @@ class HybridRetriever:
                 )
                 if penalty < 1.0:
                     candidate.rrf_score *= penalty
+        elif compare_intent:
+            _log.debug(
+                "anti-magnet disabled: compare-intent detected (authors=%d)",
+                len(list(getattr(query_metadata, "authors", None) or [])),
+            )
 
         # sorted() is stable: ties preserve insertion order, which mirrors the
         # row order across query variants — critical for deterministic ranking
@@ -303,8 +337,25 @@ class HybridRetriever:
             and effective_nodes
             and len(effective_nodes) >= 2
         ):
+            # iter-07 Fix C: scale the diversity floor by Kasten size.
+            # Small Kastens (≤10 members) need a lower floor so all members
+            # surface for cross-corpus synthesis (q5 fix). Large Kastens keep
+            # the iter-05 floor of 0.05 to avoid q7-style noise promotion.
+            _bump_enabled = os.environ.get(
+                "RAG_THEMATIC_DIVERSITY_BUMP_ENABLED", "true"
+            ).lower() not in ("false", "0", "no", "off")
+            n_members = len(effective_nodes)
+            if _bump_enabled and n_members <= 10:
+                floor = 0.02
+            elif _bump_enabled and n_members <= 20:
+                floor = 0.035
+            else:
+                floor = _DIVERSITY_FLOOR_SCORE_MIN
             ordered = _ensure_member_coverage(
-                ordered, member_ids=effective_nodes, min_per_member=1,
+                ordered,
+                member_ids=effective_nodes,
+                min_per_member=1,
+                score_floor=floor,
             )
 
         return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)

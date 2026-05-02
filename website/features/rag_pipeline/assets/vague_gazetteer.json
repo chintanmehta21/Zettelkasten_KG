@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "version": "iter-07",
+    "purpose": "Static synonym/morphology expansion for VAGUE-class queries with <=4 content tokens. No LLM call. Each entry: token -> list of expansion phrases that should ALSO be searched (BM25 union).",
+    "match": "case-insensitive whole-word match on tokens of the rewritten query"
+  },
+  "commencement": ["graduation", "valedictory", "commencement address", "commencement speech", "stanford 2005"],
+  "wiki": ["personal wiki", "knowledge graph", "zettelkasten", "note-taking", "obsidian"],
+  "speaking": ["public speaking", "lecture", "talk", "presentation", "rhetoric"],
+  "speech": ["talk", "lecture", "address", "speaking"],
+  "sleep": ["sleep deprivation", "insomnia", "rest", "circadian"],
+  "debug": ["debugging", "troubleshoot", "fix bug", "programming workflow"],
+  "debugging": ["debug", "troubleshoot", "fix bug", "programming workflow"],
+  "death": ["mortality", "dying", "end of life", "stanford 2005"],
+  "tools": ["tools for thought", "instruments", "software", "applications"],
+  "thought": ["thinking", "reasoning", "tools for thought"],
+  "engineer": ["engineering", "developer", "programmer", "product-minded"],
+  "newsletter": ["pragmatic engineer", "substack"],
+  "pkm": ["personal knowledge management", "second brain", "zettelkasten"],
+  "graph": ["knowledge graph", "network", "connections"],
+  "note": ["notes", "zettel", "atomic note"],
+  "notes": ["note", "zettel", "atomic note"],
+  "matuschak": ["andy matuschak", "transformative tools for thought"],
+  "walker": ["matt walker", "sleep deprivation"],
+  "jobs": ["steve jobs", "stanford 2005", "commencement"],
+  "winston": ["patrick winston", "public speaking", "mit lecture"],
+  "naval": ["naval ravikant", "meaningful work"]
+}

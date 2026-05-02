@@ -65,6 +65,16 @@ _KG_FIRST_ENABLED = os.environ.get("RAG_KG_FIRST_ENABLED", "true").lower() == "t
 # Tunable via env: RAG_RETRY_BUDGET_S=12.0
 _RETRY_BUDGET_S = float(os.environ.get("RAG_RETRY_BUDGET_S", "12.0"))
 _RETRY_TOP_SCORE_FLOOR = float(os.environ.get("RAG_RETRY_TOP_SCORE_FLOOR", "0.10"))
+# iter-07 Fix A: refusal-regex semantic gate. When retrieval is strong
+# (top rerank ≥ floor) skip the refusal-regex short-circuit so the
+# critic-retry path runs. Fixes q3 (correct retrieval, model said
+# "cannot find specific quotes" → unsupported_no_retry blocked retry).
+_REFUSAL_SEMANTIC_GATE_ENABLED = os.environ.get(
+    "RAG_REFUSAL_SEMANTIC_GATE_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+_REFUSAL_SEMANTIC_GATE_FLOOR = float(
+    os.environ.get("RAG_REFUSAL_SEMANTIC_GATE_FLOOR", "0.5")
+)
 
 # Refusal regex — matches the canonical no-context phrases the synth model
 # produces when grounding is missing. Drawn from REFUSAL_PHRASE plus the
@@ -123,16 +133,31 @@ def _should_skip_retry(
     Returns ``(skip, reason)``. ``reason`` is suitable for the critic verdict
     tag and for tracing.
     """
+    top_score = _top_candidate_score(used_candidates)
     if _has_refusal_phrase(answer_text):
-        return True, "refusal_regex"
+        # iter-07 Fix A: bypass when retrieval is strong — let retry run.
+        if not (
+            _REFUSAL_SEMANTIC_GATE_ENABLED
+            and used_candidates
+            and top_score >= _REFUSAL_SEMANTIC_GATE_FLOOR
+        ):
+            return True, "refusal_regex"
     if not used_candidates:
         return True, "no_candidates"
-    if _top_candidate_score(used_candidates) < _RETRY_TOP_SCORE_FLOOR:
+    if top_score < _RETRY_TOP_SCORE_FLOOR:
         return True, "evaluator_low_score"
     if query_class is QueryClass.VAGUE:
         ent_count = len(metadata.entities or []) + len(metadata.authors or [])
         if ent_count < 2:
-            return True, "vague_low_entity"
+            # iter-07 Fix D: when retrieval is strong (gazetteer expansion
+            # surfaced a high-confidence chunk), let retry run instead of
+            # short-circuiting on entity count alone. Mirrors Fix A's gate.
+            if not (
+                _REFUSAL_SEMANTIC_GATE_ENABLED
+                and used_candidates
+                and top_score >= _REFUSAL_SEMANTIC_GATE_FLOOR
+            ):
+                return True, "vague_low_entity"
     return False, None
 
 

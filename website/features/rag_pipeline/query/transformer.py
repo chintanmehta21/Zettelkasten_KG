@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Iterable
 
 from website.features.rag_pipeline.adapters.pool_factory import get_generation_pool
+from website.features.rag_pipeline.query.vague_expander import expand_vague
 from website.features.rag_pipeline.types import QueryClass
 
 
@@ -34,11 +36,20 @@ class QueryTransformer:
         if cls is QueryClass.LOOKUP:
             return [query]
         if cls is QueryClass.VAGUE:
-            variants = [query, await self._hyde(query)]
+            # iter-07 Fix D: gazetteer expansion (no new LLM call) for short
+            # vague queries. Augments the HyDE variant with deterministic
+            # synonym/morphology variants so BM25 can hit lexically distant
+            # zettels (e.g. "commencement" -> stanford 2005). Fixes q7.
+            gazetteer_variants = expand_vague(query)
+            variants = [query, await self._hyde(query), *gazetteer_variants]
         elif cls is QueryClass.MULTI_HOP:
             variants = [query, *await self._decompose(query, n=3, entities=ents)]
         elif cls is QueryClass.THEMATIC:
-            variants = [query, *await self._multi_query(query, n=3, entities=ents)]
+            # iter-07 Fix C: bump THEMATIC variants 3 → 5 for cross-corpus
+            # synthesis recall (q5 fix). Same single LLM call, larger
+            # max_output_tokens; cost is +2 parallel Supabase searches.
+            _thematic_n = int(os.environ.get("RAG_THEMATIC_MULTIQUERY_N", "5"))
+            variants = [query, *await self._multi_query(query, n=_thematic_n, entities=ents)]
         elif cls is QueryClass.STEP_BACK:
             variants = [query, await self._step_back(query)]
         else:
