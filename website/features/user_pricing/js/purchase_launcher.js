@@ -120,17 +120,23 @@
   }
 
   async function createCheckout(options, productId, productInfo) {
-    var endpoint = productInfo.kind === 'subscription' ? '/api/payments/subscriptions' : '/api/payments/orders';
+    var isChange = !!options.changeSubscription;
+    var endpoint = isChange
+      ? '/api/payments/subscriptions/change'
+      : (productInfo.kind === 'subscription' ? '/api/payments/subscriptions' : '/api/payments/orders');
     var expectedAmount = Number.isFinite(options.expectedAmount) ? options.expectedAmount : productInfo.amount;
+    var body = isChange
+      ? { to_product_id: productId, expected_amount: expectedAmount }
+      : {
+          product_id: productId,
+          source: options.source || 'unknown',
+          expected_amount: expectedAmount,
+          resume_token: options.detail && options.detail.resume_token ? options.detail.resume_token : null
+        };
     return await fetchJson(endpoint, {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({
-        product_id: productId,
-        source: options.source || 'unknown',
-        expected_amount: expectedAmount,
-        resume_token: options.detail && options.detail.resume_token ? options.detail.resume_token : null
-      })
+      body: JSON.stringify(body)
     });
   }
 
@@ -193,12 +199,11 @@
                 instruments: [{ method: 'card' }]
               }
             } : {
+              // VPA-first ordering — `collect` listed first so the UPI ID
+              // textbox is the default expanded sub-row (no extra click for
+              // the most common desktop path). Apps + QR are one-click below.
               upi: {
-                // Three separate instruments → Razorpay renders three rows
-                // ("Pay using UPI ID", "Pay using UPI App", "Show QR Code")
-                // instead of one collapsed instrument that defaults to QR
-                // and hides the VPA textbox / UPI-app picker.
-                name: 'Pay with UPI',
+                name: 'UPI',
                 instruments: [
                   { method: 'upi', flows: ['collect'] },
                   { method: 'upi', flows: ['intent'] },
@@ -206,25 +211,28 @@
                 ]
               },
               cards: {
-                name: 'Pay with Card',
+                name: 'Card',
                 instruments: [{ method: 'card' }]
               },
-              netbanking: {
-                name: 'Netbanking',
-                instruments: [{ method: 'netbanking' }]
-              },
-              wallet: {
-                name: 'Wallets',
+              wallets: {
+                name: 'Wallet',
                 instruments: [{ method: 'wallet' }]
               },
-              paylater: {
-                name: 'Pay Later',
-                instruments: [{ method: 'paylater' }]
+              // Single "More options" row collapses Netbanking / EMI / Pay
+              // Later behind a single dropdown — keeps the primary list to
+              // four items (UPI / Card / Wallet / More options).
+              others: {
+                name: 'More options',
+                instruments: [
+                  { method: 'netbanking' },
+                  { method: 'emi' },
+                  { method: 'paylater' }
+                ]
               }
             },
             sequence: isRecurring
               ? ['block.upi', 'block.cards']
-              : ['block.upi', 'block.cards', 'block.netbanking', 'block.wallet', 'block.paylater'],
+              : ['block.upi', 'block.cards', 'block.wallets', 'block.others'],
             preferences: { show_default_blocks: false }
           }
         },
