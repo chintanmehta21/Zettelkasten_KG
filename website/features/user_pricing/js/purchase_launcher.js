@@ -209,6 +209,21 @@
           }
         } : {
           display: {
+            // Force the UPI ID (collect) sub-flow to render — test-mode QR
+            // is a placeholder (Razorpay only generates scannable QR in
+            // live mode), so users testing with `success@razorpay` need
+            // the VPA textbox. We declare a small custom block alongside
+            // the defaults: show_default_blocks=true keeps Cards / Wallet /
+            // Netbanking visible, and our block adds an explicit "Pay with
+            // UPI ID" entry that Razorpay can't collapse into QR.
+            blocks: {
+              upi_id: {
+                name: 'Pay with UPI ID',
+                instruments: [{ method: 'upi', flows: ['collect'] }]
+              }
+            },
+            sequence: ['block.upi_id'],
+            preferences: { show_default_blocks: true },
             hide: [
               { method: 'paylater' },
               { method: 'emi' }
