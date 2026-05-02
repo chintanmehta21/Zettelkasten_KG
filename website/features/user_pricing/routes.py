@@ -807,6 +807,7 @@ def _checkout_payload(
         "amount": amount,
         "currency": "INR",
         "name": "Zettelkasten.in",
+        "image": "/artifacts/company_logo.svg",
         "description": str(description),
         "product": {
             "id": product["id"],

@@ -149,16 +149,66 @@
         return;
       }
       var settled = false;
+      var theme = checkoutPayload.theme || {};
+      // Match the site's deep dark backdrop instead of Razorpay's default black —
+      // gives the modal a seamless overlay over zettelkasten.in.
+      if (!theme.color) theme.color = '#0d9488';
+      if (!theme.backdrop_color) theme.backdrop_color = '#0a0f14';
       var options = {
         key: checkoutPayload.key_id,
         amount: checkoutPayload.amount,
         currency: checkoutPayload.currency || 'INR',
         name: checkoutPayload.name || 'Zettelkasten.in',
         description: checkoutPayload.description || '',
+        // Logo at top-left of the modal. Razorpay accepts an HTTPS URL.
+        image: (checkoutPayload.image && /^https?:/.test(checkoutPayload.image))
+          ? checkoutPayload.image
+          : (location.origin + (checkoutPayload.image || '/artifacts/company_logo.svg')),
         prefill: checkoutPayload.prefill || {},
         notes: checkoutPayload.notes || {},
-        theme: checkoutPayload.theme || { color: '#0d9488' },
+        theme: theme,
+        // Indian-first method curation. Each block declares all sub-flows so
+        // the VPA collect textbox sits alongside QR / app intent (default
+        // single-flow behaviour hides the textbox on desktop).
+        // Razorpay docs: razorpay.com/docs/payments/payment-gateway/web-integration/standard/payment-methods/upi/
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay with UPI',
+                instruments: [
+                  { method: 'upi', flows: ['intent', 'qr', 'collect'] }
+                ]
+              },
+              cards: {
+                name: 'Pay with Card',
+                instruments: [{ method: 'card' }]
+              },
+              netbanking: {
+                name: 'Pay via Netbanking',
+                instruments: [{ method: 'netbanking' }]
+              }
+            },
+            sequence: ['block.upi', 'block.cards', 'block.netbanking'],
+            preferences: {
+              show_default_blocks: true
+            }
+          }
+        },
+        // Stop Razorpay from auto-retrying via SMS bank-OTP fill (faster real
+        // payments) and let the modal show its own retry button on transient
+        // failures so the user doesn't restart the whole flow.
+        retry: { enabled: true, max_count: 3 },
+        send_sms_hash: true,
+        // Pre-check the "save card" box so RBI-compliant tokenised recurring
+        // billing works on first try without an extra click.
+        remember_customer: true,
         modal: {
+          // Don't dismiss on accidental backdrop / Esc — confirm first so a
+          // half-filled form isn't lost.
+          backdropclose: false,
+          escape: false,
+          confirm_close: true,
           ondismiss: function () {
             if (settled) return;
             settled = true;
