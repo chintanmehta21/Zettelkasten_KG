@@ -194,8 +194,16 @@
               }
             } : {
               upi: {
+                // Three separate instruments → Razorpay renders three rows
+                // ("Pay using UPI ID", "Pay using UPI App", "Show QR Code")
+                // instead of one collapsed instrument that defaults to QR
+                // and hides the VPA textbox / UPI-app picker.
                 name: 'Pay with UPI',
-                instruments: [{ method: 'upi', flows: ['collect', 'intent', 'qr'] }]
+                instruments: [
+                  { method: 'upi', flows: ['collect'] },
+                  { method: 'upi', flows: ['intent'] },
+                  { method: 'upi', flows: ['qr'] }
+                ]
               },
               cards: {
                 name: 'Pay with Card',
