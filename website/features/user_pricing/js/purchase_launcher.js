@@ -209,22 +209,15 @@
           }
         } : {
           display: {
-            // Force the UPI ID (collect) sub-flow to render — test-mode QR
-            // is a placeholder (Razorpay only generates scannable QR in
-            // live mode), so users testing with `success@razorpay` need
-            // the VPA textbox. We declare a small custom block alongside
-            // the defaults: show_default_blocks=true keeps Cards / Wallet /
-            // Netbanking visible, and our block adds an explicit "Pay with
-            // UPI ID" entry that Razorpay can't collapse into QR.
-            blocks: {
-              upi_id: {
-                name: 'Pay with UPI ID',
-                instruments: [{ method: 'upi', flows: ['collect'] }]
-              }
-            },
-            sequence: ['block.upi_id'],
-            preferences: { show_default_blocks: true },
+            // Razorpay-recommended config post 28 Feb 2026 NPCI deprecation
+            // of UPI Collect: hide the collect sub-flow explicitly so the
+            // checkout doesn't render a non-functional VPA textbox. UPI QR
+            // (desktop) and UPI Intent (mobile) remain. Pay-Later + EMI
+            // hidden to keep the sidebar tight.
+            // Razorpay docs:
+            //   /docs/announcements/upi-collect-migration/standard-integration/
             hide: [
+              { method: 'upi', flows: ['collect'] },
               { method: 'paylater' },
               { method: 'emi' }
             ]
