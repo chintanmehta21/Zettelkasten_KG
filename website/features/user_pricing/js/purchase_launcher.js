@@ -155,17 +155,11 @@
       if (!theme.color) theme.color = '#0d9488';
       if (!theme.backdrop_color) theme.backdrop_color = '#0a0f14';
       // For subscriptions Razorpay routes UPI through Autopay (e-mandate), which
-      // only supports the `collect` sub-flow (user enters VPA, mandate prompt
-      // opens in their UPI app). intent / qr are one-time-only. Cards become a
-      // recurring mandate via tokenisation. Netbanking is not autopay-eligible
-      // and is filtered out of the subscription block list.
-      // Razorpay docs: razorpay.com/docs/payments/subscriptions/upi-autopay
-      //
-      // For one-time orders we deliberately do NOT pass `config.display.blocks`
-      // — Razorpay's default UPI block already exposes QR / UPI ID / UPI Apps
-      // as switchable tabs. Overriding it forces a single default flow (QR)
-      // and hides the VPA textbox. Default order in Indian test mode is
-      // already UPI → Cards → Netbanking → EMI/Wallet/PayLater.
+      // only supports the `collect` sub-flow. For one-time orders we expose
+      // QR + UPI ID + UPI Apps as switchable flows inside one curated block.
+      // Razorpay docs:
+      //   razorpay.com/docs/payments/subscriptions/upi-autopay
+      //   razorpay.com/docs/payments/payment-gateway/web-integration/standard/payment-methods/upi/
       var isRecurring = !!checkoutPayload.subscription_id;
       var options = {
         key: checkoutPayload.key_id,
@@ -181,13 +175,15 @@
         notes: checkoutPayload.notes || {},
         theme: theme,
         // Method curation:
-        //   • One-time orders → no override (Razorpay's default block has
-        //     QR/UPI ID/Apps tabs and Indian-first ordering already).
-        //   • Subscriptions   → restrict to UPI-Autopay-collect + recurring
-        //     card mandate; netbanking and intent/qr are not autopay-eligible.
-        config: isRecurring ? {
+        //   • Subscriptions   → UPI-Autopay (collect) + recurring card mandate
+        //     only; netbanking and intent/qr are not autopay-eligible.
+        //   • One-time orders → curated UPI / Cards / Netbanking / Wallet /
+        //     Pay Later. UPI is a single instrument with all three sub-flows
+        //     (QR / UPI ID / UPI Apps) so Razorpay renders them as tabs.
+        //     show_default_blocks=false hides the auto-recommended bank list.
+        config: {
           display: {
-            blocks: {
+            blocks: isRecurring ? {
               upi: {
                 name: 'Pay with UPI Autopay',
                 instruments: [{ method: 'upi', flows: ['collect'] }]
@@ -196,11 +192,34 @@
                 name: 'Pay with Card (auto-debit)',
                 instruments: [{ method: 'card' }]
               }
+            } : {
+              upi: {
+                name: 'Pay with UPI',
+                instruments: [{ method: 'upi', flows: ['collect', 'intent', 'qr'] }]
+              },
+              cards: {
+                name: 'Pay with Card',
+                instruments: [{ method: 'card' }]
+              },
+              netbanking: {
+                name: 'Netbanking',
+                instruments: [{ method: 'netbanking' }]
+              },
+              wallet: {
+                name: 'Wallets',
+                instruments: [{ method: 'wallet' }]
+              },
+              paylater: {
+                name: 'Pay Later',
+                instruments: [{ method: 'paylater' }]
+              }
             },
-            sequence: ['block.upi', 'block.cards'],
+            sequence: isRecurring
+              ? ['block.upi', 'block.cards']
+              : ['block.upi', 'block.cards', 'block.netbanking', 'block.wallet', 'block.paylater'],
             preferences: { show_default_blocks: false }
           }
-        } : undefined,
+        },
         // Stop Razorpay from auto-retrying via SMS bank-OTP fill (faster real
         // payments) and let the modal show its own retry button on transient
         // failures so the user doesn't restart the whole flow.
