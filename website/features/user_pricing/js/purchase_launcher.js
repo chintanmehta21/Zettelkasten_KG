@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  var RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+  var razorpayScriptPromise = null;
+
   function hasQuotaDetail(detail) {
     return Boolean(detail && detail.code === 'quota_exhausted' && detail.meter);
   }
@@ -36,6 +39,40 @@
       throw err;
     }
     return payload;
+  }
+
+  function loadRazorpayScript() {
+    if (typeof window.Razorpay === 'function') return Promise.resolve();
+    if (razorpayScriptPromise) return razorpayScriptPromise;
+    razorpayScriptPromise = new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-zk-razorpay]');
+      if (existing) {
+        existing.addEventListener('load', function () { resolve(); });
+        existing.addEventListener('error', function () { reject(new Error('Razorpay checkout failed to load.')); });
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = RAZORPAY_SCRIPT_URL;
+      script.async = true;
+      script.setAttribute('data-zk-razorpay', '1');
+      script.onload = function () { resolve(); };
+      script.onerror = function () { reject(new Error('Razorpay checkout failed to load.')); };
+      document.head.appendChild(script);
+    });
+    return razorpayScriptPromise;
+  }
+
+  function showToast(message, kind) {
+    try {
+      window.dispatchEvent(new CustomEvent('zk:pricing:toast', {
+        detail: { message: message, kind: kind || 'info' }
+      }));
+    } catch (_) { /* noop */ }
+    if (kind === 'error') {
+      console.error('[pricing]', message);
+    } else {
+      console.info('[pricing]', message);
+    }
   }
 
   function findCatalogProduct(catalog, productId) {
@@ -97,10 +134,61 @@
     });
   }
 
-  function showComingSoonNotice(options) {
-    var message = 'You need more ' + ((options.detail && options.detail.meter) || options.meter || 'credits') + '. Buy credits to continue.';
-    var usePack = window.confirm(message + '\n\nWatch an ad is coming soon and is disabled for now.\n\nContinue to checkout?');
-    return usePack;
+  async function verifyPayment(payload) {
+    return await fetchJson('/api/payments/orders/verify', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    });
+  }
+
+  function openRazorpayCheckout(checkoutPayload) {
+    return new Promise(function (resolve, reject) {
+      if (!checkoutPayload || !checkoutPayload.key_id || !checkoutPayload.order_id) {
+        reject(new Error('Checkout configuration is incomplete.'));
+        return;
+      }
+      var settled = false;
+      var options = {
+        key: checkoutPayload.key_id,
+        amount: checkoutPayload.amount,
+        currency: checkoutPayload.currency || 'INR',
+        order_id: checkoutPayload.order_id,
+        name: checkoutPayload.name || 'Zettelkasten.in',
+        description: checkoutPayload.description || '',
+        prefill: checkoutPayload.prefill || {},
+        notes: checkoutPayload.notes || {},
+        theme: checkoutPayload.theme || { color: '#0d9488' },
+        modal: {
+          ondismiss: function () {
+            if (settled) return;
+            settled = true;
+            reject(Object.assign(new Error('Checkout cancelled.'), { code: 'dismissed' }));
+          }
+        },
+        handler: function (response) {
+          if (settled) return;
+          settled = true;
+          resolve(response);
+        }
+      };
+      var rzp;
+      try {
+        rzp = new window.Razorpay(options);
+      } catch (err) {
+        reject(err);
+        return;
+      }
+      if (rzp && typeof rzp.on === 'function') {
+        rzp.on('payment.failed', function (resp) {
+          if (settled) return;
+          settled = true;
+          var description = resp && resp.error && resp.error.description ? resp.error.description : 'Payment failed.';
+          reject(Object.assign(new Error(description), { code: 'payment_failed', source: resp }));
+        });
+      }
+      rzp.open();
+    });
   }
 
   async function openPurchase(options) {
@@ -122,8 +210,6 @@
       onResume: typeof options.onResume === 'function' ? options.onResume : null
     };
 
-    if (!showComingSoonNotice(options)) return;
-
     var catalog = await fetchJson('/api/pricing/catalog');
     var productId = chooseProductId(options, catalog);
     if (!productId) {
@@ -140,8 +226,59 @@
     }
 
     await ensureBillingProfile();
-    await createCheckout(options, productId, productInfo);
+
+    var checkoutPayload;
+    try {
+      checkoutPayload = await createCheckout(options, productId, productInfo);
+    } catch (err) {
+      showToast(err.message || 'Could not start checkout.', 'error');
+      throw err;
+    }
+
+    try {
+      await loadRazorpayScript();
+    } catch (err) {
+      showToast('Could not load payment provider. Check your connection and retry.', 'error');
+      throw err;
+    }
+
+    var rzpResponse;
+    try {
+      rzpResponse = await openRazorpayCheckout(checkoutPayload);
+    } catch (err) {
+      if (err && err.code === 'dismissed') {
+        showToast('Checkout cancelled.', 'info');
+      } else {
+        showToast(err.message || 'Payment failed.', 'error');
+      }
+      throw err;
+    }
+
+    var verifyResult;
+    try {
+      verifyResult = await verifyPayment({
+        payment_id: checkoutPayload.payment_id,
+        razorpay_payment_id: rzpResponse.razorpay_payment_id,
+        razorpay_order_id: rzpResponse.razorpay_order_id || checkoutPayload.order_id,
+        razorpay_subscription_id: rzpResponse.razorpay_subscription_id || null,
+        razorpay_signature: rzpResponse.razorpay_signature
+      });
+    } catch (err) {
+      showToast('Payment verification failed. Contact support if you were charged.', 'error');
+      throw err;
+    }
+
+    showToast('Payment successful — credits applied.', 'success');
+    window.dispatchEvent(new CustomEvent('zk:pricing:paid', {
+      detail: {
+        payment: verifyResult && verifyResult.payment,
+        productId: productId,
+        kind: productInfo.kind
+      }
+    }));
+
     await resumePendingPurchase();
+    return verifyResult;
   }
 
   async function resumePendingPurchase() {
@@ -157,4 +294,5 @@
   window.ZKPricing.hasQuotaDetail = hasQuotaDetail;
   window.ZKPricing.openPurchase = openPurchase;
   window.ZKPricing.resumePendingPurchase = resumePendingPurchase;
+  window.ZKPricing.loadRazorpayScript = loadRazorpayScript;
 })();
