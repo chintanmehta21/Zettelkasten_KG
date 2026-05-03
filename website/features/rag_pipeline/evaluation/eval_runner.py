@@ -15,6 +15,24 @@ from website.features.rag_pipeline.evaluation.types import (
 )
 
 
+# Per-query mode (RAG_EVAL_RAGAS_PER_QUERY=true) returns this shape; the
+# legacy/batched mode and the existing test mocks return the flat dataset-
+# mean dict. We accept both so the env-gate is a smooth switch and old
+# patches in tests keep working.
+def _is_per_query_shape(d: object) -> bool:
+    return (
+        isinstance(d, dict)
+        and "per_query" in d
+        and "cohort_mean" in d
+        and isinstance(d.get("per_query"), list)
+        and isinstance(d.get("cohort_mean"), dict)
+    )
+
+
+def _is_empty_answer_text(answer: str) -> bool:
+    return not isinstance(answer, str) or answer.strip() == ""
+
+
 # Canonical refusal phrase the orchestrator emits when nothing in the user's
 # Zettels covers a query. Mirrored in stress_fixtures.REFUSAL_PHRASE; kept
 # here as a string literal to avoid an inter-module import cycle.
@@ -91,9 +109,23 @@ class EvalRunner:
 
         ragas_overall: dict[str, float] = {}
         deepeval_overall: dict[str, float] = {}
+        # Per-query records — only populated in per-query mode. In legacy
+        # mode the dataset mean is replicated to every query (old shape).
+        ragas_per_query: list[dict[str, float]] = []
+        deepeval_per_query: list[dict[str, float]] = []
         if ragas_samples:
-            ragas_overall = run_ragas_eval(ragas_samples)
-            deepeval_overall = run_deepeval(ragas_samples)
+            ragas_raw = run_ragas_eval(ragas_samples)
+            deepeval_raw = run_deepeval(ragas_samples)
+            if _is_per_query_shape(ragas_raw):
+                ragas_per_query = list(ragas_raw["per_query"])
+                ragas_overall = dict(ragas_raw["cohort_mean"])
+            else:
+                ragas_overall = dict(ragas_raw)  # legacy flat dict
+            if _is_per_query_shape(deepeval_raw):
+                deepeval_per_query = list(deepeval_raw["per_query"])
+                deepeval_overall = dict(deepeval_raw["cohort_mean"])
+            else:
+                deepeval_overall = dict(deepeval_raw)  # legacy flat dict
 
         any_divergence = False
         if ragas_samples:
@@ -124,13 +156,24 @@ class EvalRunner:
 
         for slot, i in enumerate(answer_idx):
             q, a = queries[i], answers[i]
+            # Per-query mode: each answered query carries its own RAGAS /
+            # DeepEval scores. Legacy/test-mock mode: replicate the cohort
+            # mean to every query (old behaviour).
+            if ragas_per_query:
+                pq_ragas = dict(ragas_per_query[slot])
+            else:
+                pq_ragas = dict(ragas_overall)
+            if deepeval_per_query:
+                pq_deepeval = dict(deepeval_per_query[slot])
+            else:
+                pq_deepeval = dict(deepeval_overall)
             per_query[i] = PerQueryScore(
                 query_id=q.id,
                 retrieved_node_ids=a["retrieved_node_ids"],
                 reranked_node_ids=a["reranked_node_ids"],
                 cited_node_ids=[c["node_id"] for c in a.get("citations", [])],
-                ragas=ragas_overall,
-                deepeval=deepeval_overall,
+                ragas=pq_ragas,
+                deepeval=pq_deepeval,
                 component_breakdown={
                     "retrieval": retrieval_scores_answer[slot],
                     "rerank": rerank_scores_answer[slot],
