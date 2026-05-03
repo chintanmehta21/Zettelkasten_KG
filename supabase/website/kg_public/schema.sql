@@ -523,6 +523,51 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 
+-- ── RPC: rag_resolve_entity_anchors (iter-08 Phase 6 entity anchor) ─────────
+-- Map entity-name list to canonical Kasten member node_ids via fuzzy title
+-- (kg_nodes.name ILIKE %e%) or exact tag membership. Migration:
+-- supabase/website/kg_public/migrations/2026-05-03_rag_entity_anchor.sql.
+CREATE OR REPLACE FUNCTION rag_resolve_entity_anchors(p_sandbox_id uuid, p_entities text[])
+RETURNS TABLE (node_id text)
+LANGUAGE sql STABLE AS $$
+    SELECT DISTINCT n.id AS node_id
+    FROM rag_sandbox_members m
+    JOIN kg_nodes n
+      ON n.id = m.node_id
+     AND n.user_id = m.user_id
+    WHERE m.sandbox_id = p_sandbox_id
+      AND EXISTS (
+        SELECT 1 FROM unnest(p_entities) e
+        WHERE n.name ILIKE '%' || e || '%' OR e = ANY(n.tags)
+      )
+$$;
+
+
+-- ── RPC: rag_one_hop_neighbours (iter-08 Phase 6 entity anchor) ────────────
+-- Return Kasten-scoped 1-hop neighbours of the given anchor node_ids over
+-- kg_links (treated undirected). Used to widen the candidate set so author/
+-- entity-anchored queries pull adjacent zettels for the entity-anchor boost.
+CREATE OR REPLACE FUNCTION rag_one_hop_neighbours(p_sandbox_id uuid, p_anchor_nodes text[])
+RETURNS TABLE (node_id text)
+LANGUAGE sql STABLE AS $$
+    SELECT DISTINCT nbr AS node_id
+    FROM (
+        SELECT CASE WHEN l.source_node_id = ANY(p_anchor_nodes)
+                    THEN l.target_node_id
+                    ELSE l.source_node_id END AS nbr
+        FROM kg_links l
+        JOIN rag_sandbox_members m_anchor
+          ON (m_anchor.node_id = l.source_node_id AND m_anchor.user_id = l.user_id)
+          OR (m_anchor.node_id = l.target_node_id AND m_anchor.user_id = l.user_id)
+        WHERE m_anchor.sandbox_id = p_sandbox_id
+          AND (l.source_node_id = ANY(p_anchor_nodes) OR l.target_node_id = ANY(p_anchor_nodes))
+    ) edges
+    JOIN rag_sandbox_members m_nbr
+      ON m_nbr.node_id = edges.nbr
+     AND m_nbr.sandbox_id = p_sandbox_id
+$$;
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.
