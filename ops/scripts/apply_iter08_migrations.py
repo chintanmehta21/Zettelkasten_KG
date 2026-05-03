@@ -46,6 +46,18 @@ def _is_create_type_already_exists(stderr: str) -> bool:
     return 'type "kg_link_relation" already exists' in stderr.lower()
 
 
+def _wrap_transactional(sql: str) -> str:
+    """Wrap a migration body in BEGIN/COMMIT for atomic apply."""
+    return f"BEGIN;\n{sql}\nCOMMIT;\n"
+
+
+def _is_idempotency_ok(stderr: str) -> bool:
+    """Detect benign already-exists errors so re-runs succeed."""
+    needles = ('already exists', 'duplicate object', 'duplicate column')
+    low = stderr.lower()
+    return any(n in low for n in needles)
+
+
 def main() -> int:
     env = _load_env(ENV_FILE)
     token = env.get("SUPABASE_ACCESS_TOKEN")
@@ -64,7 +76,12 @@ def main() -> int:
         sql = path.read_text(encoding="utf-8")
         print(f"--- {name} ({len(sql)} bytes) ---")
         try:
-            resp = httpx.post(api, json={"query": sql}, headers=headers, timeout=60.0)
+            resp = httpx.post(
+                api,
+                json={"query": _wrap_transactional(sql)},
+                headers=headers,
+                timeout=60.0,
+            )
         except Exception as exc:
             print(f"  EXCEPTION: {exc}")
             failures.append(name)
@@ -80,13 +97,10 @@ def main() -> int:
                 pass
         else:
             text = resp.text or ""
-            # Idempotency: re-applying CREATE TYPE returns 4xx with "already exists"
-            if (
-                name.endswith("_kg_link_relation_enum.sql")
-                and resp.status_code in (400, 409)
-                and _is_create_type_already_exists(text)
-            ):
-                print(f"  SKIP (already applied: {resp.status_code} type exists)")
+            # Idempotency: re-running migrations may surface benign "already exists"
+            # / "duplicate object|column" errors. Treat those as SKIP, not failure.
+            if resp.status_code in (400, 409) and _is_idempotency_ok(text):
+                print(f"  SKIP (already applied: {resp.status_code} idempotency-ok)")
             else:
                 print(f"  FAIL ({resp.status_code}): {text[:400]}")
                 failures.append(name)
