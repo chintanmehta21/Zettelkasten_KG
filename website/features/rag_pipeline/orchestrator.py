@@ -76,6 +76,27 @@ _REFUSAL_SEMANTIC_GATE_FLOOR = float(
     os.environ.get("RAG_REFUSAL_SEMANTIC_GATE_FLOOR", "0.5")
 )
 
+# iter-08 Fix A: when the first-pass critic verdict is ``partial`` AND we
+# already have a gold-tier candidate (top rerank score >= 0.5), short-circuit
+# the unsupported→retry path. iter-07 q4 regressed from ``partial`` (good) to
+# ``unsupported_no_retry`` (bad) because the partial→unsupported escalation
+# triggered retry, retry produced a refusal-shaped answer, and the original
+# partial draft was overwritten. Default on; flip RAG_PARTIAL_NO_RETRY_ENABLED
+# to false for incident rollback.
+_PARTIAL_NO_RETRY_ENABLED = os.environ.get(
+    "RAG_PARTIAL_NO_RETRY_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+_PARTIAL_NO_RETRY_FLOOR = 0.5
+
+# iter-08 Fix B: drop the citations list when the final verdict signals a
+# refusal (``unsupported_no_retry``) or the answer text is the canonical
+# refusal phrase. Prevents the iter-02-era stray citation chip on refused
+# answers. Default on; flip RAG_SUPPRESS_CITATIONS_ON_REFUSAL to false for
+# rollback.
+_SUPPRESS_CITATIONS_ON_REFUSAL = os.environ.get(
+    "RAG_SUPPRESS_CITATIONS_ON_REFUSAL", "true"
+).lower() not in ("false", "0", "no", "off")
+
 # Refusal regex — matches the canonical no-context phrases the synth model
 # produces when grounding is missing. Drawn from REFUSAL_PHRASE plus the
 # observed q5/q9/q10 refusal templates. Case-insensitive.
@@ -127,6 +148,7 @@ def _should_skip_retry(
     used_candidates,
     query_class: "QueryClass",
     metadata: QueryMetadata,
+    first_verdict: str | None = None,
 ) -> tuple[bool, str | None]:
     """Decide whether to short-circuit the unsupported→retry path.
 
@@ -134,6 +156,17 @@ def _should_skip_retry(
     tag and for tracing.
     """
     top_score = _top_candidate_score(used_candidates)
+    # iter-08 Fix A: protect partial-with-gold first-pass answers. When the
+    # critic returned ``partial`` AND retrieval surfaced a gold-tier chunk
+    # (rerank >= 0.5), the partial draft is materially better than any retry
+    # the model has produced in eval. Skip retry to preserve it.
+    if (
+        _PARTIAL_NO_RETRY_ENABLED
+        and first_verdict == "partial"
+        and used_candidates
+        and top_score >= _PARTIAL_NO_RETRY_FLOOR
+    ):
+        return True, "partial_with_gold_skip"
     if _has_refusal_phrase(answer_text):
         # iter-07 Fix A: bypass when retrieval is strong — let retry run.
         if not (
@@ -748,6 +781,11 @@ class RAGOrchestrator:
             context_xml=context.context_xml,
             context_candidates=context.used_candidates,
         )
+        # iter-08 Fix A: capture the pre-escalation critic verdict so the
+        # retry-skip decision can distinguish "first pass was partial with a
+        # gold candidate" (preserve it) from "first pass was a true
+        # unsupported" (retry as before).
+        first_verdict = verdict
 
         replaced_text = None
         used_candidates = context.used_candidates
@@ -775,20 +813,30 @@ class RAGOrchestrator:
                 used_candidates=pre_validation_candidates,
                 query_class=prepared.query_class,
                 metadata=prepared.metadata,
+                first_verdict=first_verdict,
             )
             if skip:
                 # Refusal-aware short-circuit (q9 fix). Don't burn another
                 # ~45s pipeline pass producing the same refusal. The skip
                 # reason ("refusal_regex" | "no_candidates" |
-                # "evaluator_low_score" | "vague_low_entity") is recorded
-                # in details so it surfaces via critic_notes and the
-                # observability span.
-                verdict = "unsupported_no_retry"
+                # "evaluator_low_score" | "vague_low_entity" |
+                # "partial_with_gold_skip") is recorded in details so it
+                # surfaces via critic_notes and the observability span.
                 if not isinstance(details, dict):
                     details = {}
                 details = {**details, "skip_reason": skip_reason}
-                answer_text = _wrap_with_low_confidence_tag(answer_text)
-                replaced_text = answer_text
+                if skip_reason == "partial_with_gold_skip":
+                    # iter-08 Fix A: preserve the partial draft + partial
+                    # verdict. This path fires when first_verdict was
+                    # ``partial`` and we had a gold-tier candidate, so the
+                    # retry would only degrade the answer (q4 regression).
+                    verdict = "partial"
+                    # answer_text and replaced_text intentionally untouched;
+                    # the partial draft is the user-facing answer.
+                else:
+                    verdict = "unsupported_no_retry"
+                    answer_text = _wrap_with_low_confidence_tag(answer_text)
+                    replaced_text = answer_text
                 logger.info(
                     "critic-retry short-circuit: reason=%s qc=%s",
                     skip_reason,
@@ -869,9 +917,17 @@ class RAGOrchestrator:
                     )
                     _clear_exc_locals(exc)
 
+        # iter-08 Fix B: pass verdict + a derived ``refused`` flag down to
+        # the citation builder so refusal-shaped answers don't carry a
+        # stray citation chip. ``refused`` covers the case where the
+        # citation-validation block above swapped answer_text for the
+        # canonical REFUSAL_PHRASE.
+        _refused_flag = answer_text == REFUSAL_PHRASE
         turn = AnswerTurn(
             content=answer_text,
-            citations=self._build_citations(used_candidates),
+            citations=self._build_citations(
+                used_candidates, verdict=verdict, refused=_refused_flag
+            ),
             query_class=prepared.query_class,
             critic_verdict=verdict,
             critic_notes=details.get("critic_error") if isinstance(details, dict) else None,
@@ -971,7 +1027,22 @@ class RAGOrchestrator:
         )
         return retry_context, retry_generation, retry_verdict, retry_details
 
-    def _build_citations(self, candidates) -> list[Citation]:
+    def _build_citations(
+        self,
+        candidates,
+        *,
+        verdict: str | None = None,
+        refused: bool = False,
+    ) -> list[Citation]:
+        # iter-08 Fix B: suppress citations on refused answers. The
+        # ``unsupported_no_retry`` verdict (or an explicit refusal flag from
+        # the caller) signals the user is being shown a refusal — a stray
+        # citation chip there is misleading. Gated behind
+        # RAG_SUPPRESS_CITATIONS_ON_REFUSAL (default on).
+        if _SUPPRESS_CITATIONS_ON_REFUSAL and (
+            refused or verdict == "unsupported_no_retry"
+        ):
+            return []
         by_node = {}
         for candidate in candidates:
             current = by_node.get(candidate.node_id)
