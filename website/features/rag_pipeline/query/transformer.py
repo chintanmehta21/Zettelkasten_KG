@@ -45,10 +45,10 @@ class QueryTransformer:
         elif cls is QueryClass.MULTI_HOP:
             variants = [query, *await self._decompose(query, n=3, entities=ents)]
         elif cls is QueryClass.THEMATIC:
-            # iter-07 Fix C: bump THEMATIC variants 3 → 5 for cross-corpus
-            # synthesis recall (q5 fix). Same single LLM call, larger
-            # max_output_tokens; cost is +2 parallel Supabase searches.
-            _thematic_n = int(os.environ.get("RAG_THEMATIC_MULTIQUERY_N", "5"))
+            # iter-08 Phase 1: revert to n=3 (RES-3: n=5 added zero retrieval
+            # delta on q5, accelerated quota burn). Knob retained for future
+            # A/B once recall is fixed.
+            _thematic_n = int(os.environ.get("RAG_THEMATIC_MULTIQUERY_N", "3"))
             variants = [query, *await self._multi_query(query, n=_thematic_n, entities=ents)]
         elif cls is QueryClass.STEP_BACK:
             variants = [query, await self._step_back(query)]
