@@ -168,14 +168,30 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
         quality=body.quality,
         stream=body.stream,
     )
-    turn = await runtime.orchestrator.answer(query=query, user_id=kg_user_id)
-    await _post_answer_side_effects(
-        runtime,
-        kg_user_id,
-        session,
-        body.content,
-        body.scope_filter.model_dump(),
-    )
+    # iter-09 RES-4: wrap orchestrator.answer in acquire_rerank_slot so the
+    # non-stream /adhoc path actually increments state.depth and can shed
+    # bursts with 503 + Retry-After. Prior wiring only gated the stream path
+    # (chat_routes.py:240), so 12-concurrent burst probes saw depth=0 and
+    # all admitted -> 524/502 instead of 503.
+    try:
+        async with acquire_rerank_slot():
+            turn = await runtime.orchestrator.answer(query=query, user_id=kg_user_id)
+            await _post_answer_side_effects(
+                runtime,
+                kg_user_id,
+                session,
+                body.content,
+                body.scope_filter.model_dump(),
+            )
+    except QueueFull as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "queue_full",
+                "message": "Rerank capacity full; retry shortly.",
+            },
+            headers={"Retry-After": "5"},
+        ) from exc
     return {
         "session_id": session["id"],
         "turn": turn.model_dump(),
