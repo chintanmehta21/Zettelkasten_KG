@@ -503,6 +503,26 @@ CREATE INDEX IF NOT EXISTS idx_kg_kasten_node_freq_kasten
     ON kg_kasten_node_freq(kasten_id);
 
 
+-- ── RPC: rag_kasten_chunk_counts (iter-08 chunk-share anti-magnet) ─────────
+-- Per-Kasten chunk count per member node. Consumer:
+-- website/features/rag_pipeline/retrieval/chunk_share.py applies a
+-- multiplicative damping factor 1/sqrt(chunk_count) to candidate RRF scores
+-- post-fusion, replacing the dead kasten_freq prior (RES-2: floor=50 never
+-- crossed). Migration:
+-- supabase/website/kg_public/migrations/2026-05-03_rag_kasten_chunk_counts.sql.
+CREATE OR REPLACE FUNCTION rag_kasten_chunk_counts(p_sandbox_id uuid)
+RETURNS TABLE (node_id text, chunk_count int)
+LANGUAGE sql STABLE AS $$
+    SELECT m.node_id, count(c.id)::int AS chunk_count
+    FROM rag_sandbox_members m
+    LEFT JOIN kg_node_chunks c
+      ON c.node_id = m.node_id
+     AND c.user_id = m.user_id
+    WHERE m.sandbox_id = p_sandbox_id
+    GROUP BY m.node_id
+$$;
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.
