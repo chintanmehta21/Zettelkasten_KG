@@ -29,7 +29,6 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import re
 import sys
 from pathlib import Path

@@ -16,7 +16,6 @@ from website.features.rag_pipeline.query.metadata import QueryMetadata
 from website.features.rag_pipeline.query.router import _COMPARE_PATTERN
 from website.features.rag_pipeline.retrieval.kasten_freq import (
     KastenFrequencyStore,
-    compute_frequency_penalty,
 )
 from website.features.rag_pipeline.retrieval.chunk_share import (
     ChunkShareStore,

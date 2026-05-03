@@ -8,7 +8,6 @@ while leaving small zettels untouched.
 from __future__ import annotations
 
 import math
-import os
 from typing import Any
 from uuid import UUID
 

@@ -1,0 +1,56 @@
+name: Refresh Schema Manifest (one-shot)
+
+# iter-08: refresh the droplet-side expected_schema.json after a deliberate
+# schema change (Phase 8 added kg_links.relation_type). This workflow simply
+# deletes the stale manifest at $ROOT/data/schema/expected_schema.json so the
+# next deploy's MIGRATION_MANIFEST_AUTOBOOTSTRAP=1 regenerates it from the
+# current live DB schema. The schema-drift gate stays armed — we're refreshing
+# the trust anchor, not disabling the check.
+#
+# Operator runbook: dispatch this workflow once after applying a deliberate
+# schema migration that the gate would flag as "unexpected column".
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: refresh-schema-manifest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    name: SSH delete stale manifest
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: SSH delete + report
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            MANIFEST=/opt/zettelkasten/data/schema/expected_schema.json
+            echo "===== BEFORE ====="
+            ls -la "$MANIFEST" 2>&1 || echo "(already absent)"
+            if [ -f "$MANIFEST" ]; then
+              # Belt-and-braces: keep a timestamped backup in case auto-regen
+              # surprises us. Operator can compare manually post-deploy.
+              cp "$MANIFEST" "${MANIFEST}.preiter08.$(date -u +%Y%m%dT%H%M%SZ).bak"
+              rm -f "$MANIFEST"
+              echo "Stale manifest deleted. Backup retained."
+            else
+              echo "No manifest present — nothing to delete."
+            fi
+            echo "===== AFTER ====="
+            ls -la /opt/zettelkasten/data/schema/ 2>&1 || true
+            echo "===== NEXT STEP ====="
+            echo "Re-run the deploy workflow; MIGRATION_MANIFEST_AUTOBOOTSTRAP=1"
+            echo "will regenerate the manifest from the post-iter-08 live schema."
