@@ -84,6 +84,17 @@ _DEFAULT_MAX_CHUNKS_PER_NODE = 3
 # sort that let one node monopolize the top of the candidate list.
 _XQUAD_LAMBDA = 0.7
 
+# iter-08 Phase 3.2: per-class xQuAD lambda. THEMATIC drops to 0.5 to buy
+# more diversity for cross-corpus synthesis (RES-4); other classes keep 0.7.
+_XQUAD_LAMBDA_DEFAULT = 0.7
+_XQUAD_LAMBDA_BY_CLASS: dict[QueryClass, float] = {
+    QueryClass.THEMATIC: 0.5,
+}
+
+
+def _xquad_lambda_for_class(query_class: QueryClass | None) -> float:
+    return _XQUAD_LAMBDA_BY_CLASS.get(query_class, _XQUAD_LAMBDA_DEFAULT)
+
 # iter-04 consensus-suppress threshold: if a candidate appears in >= this
 # fraction of variants, suppress the per-variant consensus bump (it's a
 # magnet, not a relevance signal). The bump is at line ~169.
@@ -340,7 +351,7 @@ class HybridRetriever:
         # lambda*rel - (1-lambda)*overlap_with_already_picked, where overlap
         # counts node_ids already in the picked set. Diversity-aware ranking
         # is what prevents one node monopolising the top-K (q5 fix).
-        ordered = _xquad_select(ordered, lam=_XQUAD_LAMBDA)
+        ordered = _xquad_select(ordered, lam=_xquad_lambda_for_class(query_class))
 
         # iter-04: q5 cross-corpus thematic still misses members because xQuAD's
         # 0.3 demotion can't overcome a 1.5x score gap. Promote one chunk per Kasten member

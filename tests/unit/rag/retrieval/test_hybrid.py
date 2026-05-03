@@ -403,3 +403,12 @@ def test_cap_per_node_multi_hop_keeps_three():
     capped = _cap_per_node(candidates, QueryClass.MULTI_HOP)
     assert len(capped) == 3
 
+
+# iter-08 Phase 3.2: per-class xQuAD lambda --------------------------------
+
+def test_xquad_lambda_thematic_is_05():
+    from website.features.rag_pipeline.retrieval.hybrid import _xquad_lambda_for_class
+    assert _xquad_lambda_for_class(QueryClass.THEMATIC) == 0.5
+    assert _xquad_lambda_for_class(QueryClass.LOOKUP) == 0.7
+    assert _xquad_lambda_for_class(QueryClass.MULTI_HOP) == 0.7
+
