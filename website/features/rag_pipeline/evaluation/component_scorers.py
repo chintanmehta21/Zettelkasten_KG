@@ -9,7 +9,7 @@ from typing import Sequence
 def chunking_score(
     chunks: Sequence[dict],
     *,
-    target_tokens: int,
+    target_tokens: int | None = None,
     embeddings: Sequence[Sequence[float]] | None = None,
 ) -> float:
     """Score chunking quality on 0-100.
@@ -22,6 +22,12 @@ def chunking_score(
     """
     if not chunks:
         return 0.0
+
+    # iter-08 Phase 2.2: adaptive target_tokens. When None, derive from cohort
+    # median so the scorer doesn't punish chunkers configured for shorter text.
+    if target_tokens is None:
+        token_counts = [c.get("token_count", 0) for c in chunks if c.get("token_count")]
+        target_tokens = int(sorted(token_counts)[len(token_counts) // 2]) if token_counts else 512
 
     # Budget compliance
     budget_ok = sum(

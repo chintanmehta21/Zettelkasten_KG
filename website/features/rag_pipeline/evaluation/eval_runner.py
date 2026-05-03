@@ -207,7 +207,7 @@ class EvalRunner:
         chunk_scores = []
         for node_id, chunks in chunks_per_node.items():
             embs = embeddings_per_node.get(node_id) if embeddings_per_node else None
-            chunk_scores.append(chunking_score(chunks, target_tokens=512, embeddings=embs))
+            chunk_scores.append(chunking_score(chunks, target_tokens=None, embeddings=embs))
         chunking_overall = sum(chunk_scores) / max(len(chunk_scores), 1)
 
         all_retrieval = retrieval_scores_answer + refuse_retrieval_scores

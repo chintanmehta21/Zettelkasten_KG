@@ -70,3 +70,14 @@ def test_boundary_regex_still_rejects_mid_word():
     chunks_bad = [{"text": "Stop mid-Softwa", "token_count": 256}]
     score = chunking_score(chunks_bad, target_tokens=256)
     assert score < 65, f"mid-word boundaries must fail: got {score}"
+
+
+def test_target_tokens_adapts_to_cohort_median():
+    """iter-08 Phase 2.2: target_tokens defaults to cohort median, not 512."""
+    chunks = [
+        {"text": "x", "token_count": 280},
+        {"text": "y", "token_count": 320},
+        {"text": "z", "token_count": 340},
+    ]
+    score = chunking_score(chunks, target_tokens=None)
+    assert 55 <= score <= 65, f"adaptive target should give ~60 here, got {score}"
