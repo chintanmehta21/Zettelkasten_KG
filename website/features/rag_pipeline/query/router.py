@@ -2,14 +2,31 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 from typing import Any
+
+import cachetools
 
 from website.features.rag_pipeline.adapters.pool_factory import get_generation_pool
 from website.features.rag_pipeline.types import QueryClass
 
 _ROUTER_PROMPT = """Classify the user query into exactly one class:\n- lookup\n- vague\n- multi_hop\n- thematic\n- step_back\n\nReturn strict JSON with a single key named class.\n\nQuery: {query}"""
+
+
+# iter-09 RES-6: cache-key invalidator. Bump ON ANY rule change so prior
+# router answers don't leak across iterations.
+ROUTER_VERSION = "v3"
+
+# Process-level shared cache (TTLCache, 24h, 10k entries). Each query is
+# normalised to lowercase + stripped before hashing; the key includes
+# ROUTER_VERSION + kasten_id so multi-tenant deployments don't bleed
+# classifications across Kastens.
+_ROUTER_CACHE: cachetools.TTLCache[str, QueryClass] = cachetools.TTLCache(
+    maxsize=10_000, ttl=86_400
+)
 
 
 # iter-04 vote-table heuristics. Applied as a post-LLM correction layer in
@@ -47,14 +64,44 @@ _SYNTHESIS_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# iter-09 RES-6 new rules. Inserted BEFORE rule 5 (word-count) so a 22-word
+# "summary of …" lookup goes THEMATIC by intent rather than getting
+# upgraded to MULTI_HOP by length.
+_RELATE_PATTERN = re.compile(r"\bhow does .+ relate to .+", re.IGNORECASE)
+_SUMMARY_OF_PATTERN = re.compile(
+    r"\b(summary|summarize|key ideas) of\b", re.IGNORECASE
+)
+
+
+def _cache_enabled() -> bool:
+    return os.environ.get("ROUTER_CACHE_ENABLED", "true").lower() not in (
+        "false", "0", "no", "off",
+    )
+
+
+def _cache_key(version: str, kasten_id: str | None, query: str) -> str:
+    raw = f"{version}|{kasten_id or ''}|{query.strip().lower()}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 
 class QueryRouter:
     """Classify queries into one of the five retrieval classes."""
 
-    def __init__(self, pool: Any | None = None):
+    def __init__(self, pool: Any | None = None, kasten_id: str | None = None):
         self._pool = pool or get_generation_pool()
+        self._kasten_id = kasten_id
 
     async def classify(self, query: str) -> QueryClass:
+        # iter-09 RES-6: read ROUTER_VERSION at call-time so monkeypatched
+        # bumps in tests invalidate the cache as expected. Re-importing
+        # avoids stale module-level capture of the constant.
+        from website.features.rag_pipeline.query import router as _router_mod
+        version = getattr(_router_mod, "ROUTER_VERSION", ROUTER_VERSION)
+        cache_active = _cache_enabled()
+        key = _cache_key(version, self._kasten_id, query) if cache_active else None
+        if cache_active and key in _ROUTER_CACHE:
+            return _ROUTER_CACHE[key]
+
         prompt = _ROUTER_PROMPT.format(query=query)
         try:
             response = await self._pool.generate_content(
@@ -68,9 +115,13 @@ class QueryRouter:
                 label="RAG QueryRouter",
             )
             parsed = json.loads(_coerce_text(response))
-            return _parse_query_class(parsed.get("class", "lookup"))
+            cls = _parse_query_class(parsed.get("class", "lookup"))
         except Exception:
-            return QueryClass.LOOKUP
+            cls = QueryClass.LOOKUP
+
+        if cache_active and key is not None:
+            _ROUTER_CACHE[key] = cls
+        return cls
 
 
 def apply_class_overrides(
@@ -79,7 +130,7 @@ def apply_class_overrides(
     *,
     person_entities: list[str] | None = None,
 ) -> tuple[QueryClass, str | None]:
-    """iter-04 vote-table override layer.
+    """iter-04 vote-table override layer (with iter-09 narrowing).
 
     Returns ``(final_class, reason)``. ``reason`` is ``None`` when no override
     fires (the LLM's class is preserved). When an override fires, ``reason``
@@ -87,21 +138,16 @@ def apply_class_overrides(
 
     Override rules, applied in priority order:
 
-    1. ≥2 distinct person-entities → ``LOOKUP``. Proper-noun lookups need
-       FTS-heavy fusion weights (0.50 fts) so the entity-bearing zettel
-       outranks topic-magnet nodes. q10 fix.
-    2. Synthesis-across-corpus pattern ("across these zettels", "cite at
-       least", "implicit theory", "common theme") → ``THEMATIC``. q5 fix.
-    3. "compare/vs/difference" pattern → ``STEP_BACK``. Comparative queries
-       want broader framing variants, not entity decomposition. (Lower
-       priority than ≥2 persons because "compare X and Y" already implies
-       persons-rule precedence for the lookup step.)
-    4. "list/all/every/enumerate" pattern → ``THEMATIC``. Enumerative queries
-       want paraphrase fan-out across surface forms.
-    5. Word count ≥ 18 + LLM said ``LOOKUP`` AND no named author → upgrade
-       to ``MULTI_HOP``. Single-author lookups (e.g. q3 "Patrick Winston's
-       MIT lecture on…") stay LOOKUP — proper-noun queries don't need
-       sub-question decomposition; fan-out destroys the entity anchor.
+    1. ≥2 distinct person-entities → ``LOOKUP``.
+    2. Synthesis-across-corpus pattern → ``THEMATIC``.
+    3. "compare/vs/difference" pattern → ``STEP_BACK``.
+    4. "list/all/every/enumerate" pattern → ``THEMATIC``.
+    5a (iter-09). 2+ question marks → ``MULTI_HOP``.
+    5b (iter-09). "how does X relate to Y" → ``MULTI_HOP``.
+    5c (iter-09). "summary/summarize/key ideas of" → ``THEMATIC``.
+    6. Word count ≥ 25 + LLM said ``LOOKUP`` AND no named author → upgrade
+       to ``MULTI_HOP``. iter-09: threshold lifted from 18 to 25 so q13/q14
+       short LOOKUP shapes stay LOOKUP.
     """
     persons = [p for p in (person_entities or []) if isinstance(p, str) and p.strip()]
     if len(persons) >= 2:
@@ -112,9 +158,15 @@ def apply_class_overrides(
         return QueryClass.STEP_BACK, "override_compare_pattern"
     if _ENUMERATE_PATTERN.search(query):
         return QueryClass.THEMATIC, "override_enumerate_pattern"
+    # iter-09 new rules
+    if query.count("?") >= 2:
+        return QueryClass.MULTI_HOP, "override_double_question"
+    if _RELATE_PATTERN.search(query):
+        return QueryClass.MULTI_HOP, "override_relate_pattern"
+    if _SUMMARY_OF_PATTERN.search(query):
+        return QueryClass.THEMATIC, "override_summary_of_pattern"
     word_count = len(query.split())
-    # iter-04: q3 24-word LOOKUP got upgraded to MULTI_HOP and over-decomposed; skip when ≥1 named author.
-    if word_count >= 18 and llm_class is QueryClass.LOOKUP and not persons:
+    if word_count >= 25 and llm_class is QueryClass.LOOKUP and not persons:
         return QueryClass.MULTI_HOP, "override_long_query_upgrade"
     return llm_class, None
 
