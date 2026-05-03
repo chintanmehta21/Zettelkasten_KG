@@ -404,6 +404,11 @@ class PricingRepository:
         row = _MEMORY_SUBSCRIPTIONS.get(user_sub)
         if not row:
             return None
+        # Stale-write guard: after a plan change the user_sub row points at
+        # the new subscription. Webhooks for the prior (cancelled) sub_id
+        # must not overwrite the new row.
+        if row.get("razorpay_subscription_id") != razorpay_subscription_id:
+            return None
         row["status"] = status
         if current_period_end:
             row["current_period_end"] = current_period_end
@@ -431,7 +436,12 @@ class PricingRepository:
 
     def get_subscription_by_razorpay_id(self, *, razorpay_subscription_id: str) -> dict | None:
         user_sub = _MEMORY_SUBS_BY_RZP.get(razorpay_subscription_id)
-        return _MEMORY_SUBSCRIPTIONS.get(user_sub) if user_sub else None
+        if not user_sub:
+            return None
+        row = _MEMORY_SUBSCRIPTIONS.get(user_sub)
+        if row and row.get("razorpay_subscription_id") != razorpay_subscription_id:
+            return None
+        return row
 
     # ────────────────────────── plan cache ──────────────────────────
 

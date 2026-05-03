@@ -293,6 +293,106 @@ async def test_cancel_returns_404_when_no_subscription(stub_user, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_change_subscription_cancels_old_and_creates_new(stub_user, saved_profile, fake_client):
+    # Start on basic_monthly and activate it.
+    await routes.create_subscription(
+        routes.PaymentCreateRequest(product_id="basic_monthly", expected_amount=14900),
+        stub_user,
+    )
+    repo = repository.get_pricing_repository()
+    repo.update_subscription_status(razorpay_subscription_id="sub_FAKE_1", status="active")
+
+    # Upgrade to max_monthly. The next subscription.create() should return a new id.
+    fake_client.subscription.sub_id = "sub_FAKE_2"
+    payload = await routes.change_subscription(
+        routes.SubscriptionChangeRequest(to_product_id="max_monthly"),
+        stub_user,
+    )
+
+    assert payload["kind"] == "subscription"
+    assert payload["subscription_id"] == "sub_FAKE_2"
+    assert fake_client.subscription.cancel_calls == [("sub_FAKE_1", {"cancel_at_cycle_end": 0})]
+
+    new_sub = repo.get_subscription(user_sub=stub_user["sub"])
+    assert new_sub["razorpay_subscription_id"] == "sub_FAKE_2"
+    assert new_sub["plan_id"] == "max"
+    # After the change, the new row has been written for sub_FAKE_2; lookups
+    # for the old sub_id resolve to None thanks to the staleness guard so a
+    # late webhook for the cancelled sub cannot corrupt the new row.
+    assert repo.get_subscription_by_razorpay_id(razorpay_subscription_id="sub_FAKE_1") is None
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_no_existing_falls_through_to_create(stub_user, saved_profile, fake_client):
+    payload = await routes.change_subscription(
+        routes.SubscriptionChangeRequest(to_product_id="basic_monthly"),
+        stub_user,
+    )
+    assert payload["subscription_id"] == "sub_FAKE_1"
+    assert fake_client.subscription.cancel_calls == []  # nothing to cancel
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_blocks_same_active_plan(stub_user, saved_profile, fake_client):
+    await routes.create_subscription(
+        routes.PaymentCreateRequest(product_id="basic_monthly", expected_amount=14900),
+        stub_user,
+    )
+    repository.get_pricing_repository().update_subscription_status(
+        razorpay_subscription_id="sub_FAKE_1", status="active"
+    )
+    with pytest.raises(routes.HTTPException) as exc:
+        await routes.change_subscription(
+            routes.SubscriptionChangeRequest(to_product_id="basic_monthly"),
+            stub_user,
+        )
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "already_on_this_plan"
+    assert fake_client.subscription.cancel_calls == []
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_skips_cancel_for_cancelled_existing(stub_user, saved_profile, fake_client):
+    await routes.create_subscription(
+        routes.PaymentCreateRequest(product_id="basic_monthly", expected_amount=14900),
+        stub_user,
+    )
+    repository.get_pricing_repository().update_subscription_status(
+        razorpay_subscription_id="sub_FAKE_1", status="cancelled"
+    )
+
+    fake_client.subscription.sub_id = "sub_FAKE_2"
+    payload = await routes.change_subscription(
+        routes.SubscriptionChangeRequest(to_product_id="max_monthly"),
+        stub_user,
+    )
+    assert payload["subscription_id"] == "sub_FAKE_2"
+    assert fake_client.subscription.cancel_calls == []  # already cancelled, don't re-cancel
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_rejects_free(stub_user, saved_profile, fake_client):
+    with pytest.raises(routes.HTTPException) as exc:
+        await routes.change_subscription(
+            routes.SubscriptionChangeRequest(to_product_id="free"),
+            stub_user,
+        )
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] in {"free_not_purchasable", "invalid_product"}
+
+
+@pytest.mark.asyncio
+async def test_change_subscription_price_mismatch_409(stub_user, saved_profile, fake_client):
+    with pytest.raises(routes.HTTPException) as exc:
+        await routes.change_subscription(
+            routes.SubscriptionChangeRequest(to_product_id="basic_monthly", expected_amount=1),
+            stub_user,
+        )
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "price_changed"
+
+
+@pytest.mark.asyncio
 async def test_my_subscription_returns_null_when_none(stub_user):
     payload = await routes.my_subscription(stub_user)
     assert payload == {"subscription": None}
