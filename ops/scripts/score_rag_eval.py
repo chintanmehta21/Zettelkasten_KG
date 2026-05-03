@@ -362,6 +362,7 @@ def _render_scores_md(
     n_refusal: int,
     holistic: dict[str, Any],
     burst: dict[str, Any] | None,
+    dropped_qids: list[str] | None = None,
 ) -> str:
     cs = eval_result.component_scores
     lines = [
@@ -369,6 +370,15 @@ def _render_scores_md(
         "",
         f"**Composite:** {eval_result.composite:.2f}  (weights={eval_result.weights}, hash={eval_result.weights_hash[:12]})",
         "",
+    ]
+    if dropped_qids:
+        lines += [
+            "## Unscored qids (dropped from scoring)",
+            "",
+            f"- {', '.join(dropped_qids)}",
+            "",
+        ]
+    lines += [
         "## Components",
         f"- chunking:    {cs.chunking:.2f}",
         f"- retrieval:   {cs.retrieval:.2f}",
@@ -504,6 +514,15 @@ async def main_async(args) -> int:
         logger.error("no qid-matched queries; check queries.json/verification join")
         return 1
 
+    # iter-08 Phase 7.G: surface qids that were dropped by the gold↔answer
+    # join. A silent drop hides retrieval-stage failures (Playwright produced
+    # no answer row for the qid) and inflates cohort means. Verified next eval run.
+    all_qids = {g.id for g in gold}
+    scored_qids = {g.id for g in aligned_gold}
+    dropped_qids = sorted(all_qids - scored_qids)
+    if dropped_qids:
+        logger.warning("dropped from scoring: %s", dropped_qids)
+
     n_refusal = sum(1 for g in aligned_gold if g.expected_behavior in ("refuse", "ask_clarification_or_refuse"))
 
     weights, weights_hash = _load_weights()
@@ -525,6 +544,8 @@ async def main_async(args) -> int:
     eval_payload["holistic"] = holistic
     if burst is not None:
         eval_payload["burst"] = burst
+    if dropped_qids:
+        eval_payload["unscored_qids"] = dropped_qids
 
     eval_path = iter_dir / "eval.json"
     eval_path.write_text(
@@ -538,6 +559,7 @@ async def main_async(args) -> int:
         n_refusal=n_refusal,
         holistic=holistic,
         burst=burst,
+        dropped_qids=dropped_qids,
     )
     (iter_dir / "scores.md").write_text(scores_md, encoding="utf-8")
 
