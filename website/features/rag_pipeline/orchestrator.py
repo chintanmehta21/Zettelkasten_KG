@@ -97,6 +97,26 @@ _SUPPRESS_CITATIONS_ON_REFUSAL = os.environ.get(
     "RAG_SUPPRESS_CITATIONS_ON_REFUSAL", "true"
 ).lower() not in ("false", "0", "no", "off")
 
+# iter-08 Phase 5: cite hygiene. Filter _build_citations to ids the LLM
+# actually emitted inline. RES-5: a["contexts"] in eval flows from citations
+# (rag_eval_loop.py:122), so this directly tightens RAGAS context_precision.
+# Default OFF for dark canary deploy.
+_CITE_HYGIENE_ENABLED = os.environ.get(
+    "RAG_CITE_HYGIENE_ENABLED", "false"
+).lower() not in ("false", "0", "no", "off")
+_CITE_HYGIENE_MIN_KEEP = int(os.environ.get("RAG_CITE_HYGIENE_MIN_KEEP", "1"))
+_CITE_HYGIENE_FALLBACK_TOPK = int(os.environ.get("RAG_CITE_HYGIENE_FALLBACK_TOPK", "3"))
+
+_CITED_ID_RE = re.compile(r'\[id\s*=\s*["\']?([a-zA-Z0-9_\-]+)["\']?\]')
+
+
+def _extract_cited_ids(answer: str) -> set[str]:
+    """iter-08 Phase 5: parse LLM-emitted citation tags from answer text."""
+    if not answer:
+        return set()
+    return {m.group(1).strip() for m in _CITED_ID_RE.finditer(answer) if m.group(1).strip()}
+
+
 # Refusal regex — matches the canonical no-context phrases the synth model
 # produces when grounding is missing. Drawn from REFUSAL_PHRASE plus the
 # observed q5/q9/q10 refusal templates. Case-insensitive.
@@ -926,7 +946,10 @@ class RAGOrchestrator:
         turn = AnswerTurn(
             content=answer_text,
             citations=self._build_citations(
-                used_candidates, verdict=verdict, refused=_refused_flag
+                used_candidates,
+                verdict=verdict,
+                refused=_refused_flag,
+                answer_text=answer_text,  # iter-08 Phase 5
             ),
             query_class=prepared.query_class,
             critic_verdict=verdict,
@@ -1008,6 +1031,7 @@ class RAGOrchestrator:
         *,
         verdict: str | None = None,
         refused: bool = False,
+        answer_text: str | None = None,
     ) -> list[Citation]:
         # iter-08 Fix B: suppress citations on refused answers. The
         # ``unsupported_no_retry`` verdict (or an explicit refusal flag from
@@ -1035,6 +1059,18 @@ class RAGOrchestrator:
             key=lambda candidate: candidate.rerank_score if candidate.rerank_score is not None else candidate.rrf_score,
             reverse=True,
         )
+
+        # iter-08 Phase 5: cite-hygiene filter (gated, default OFF).
+        if _CITE_HYGIENE_ENABLED and answer_text:
+            cited_ids = _extract_cited_ids(answer_text)
+            if cited_ids:
+                filtered = [c for c in ranked_candidates if c.node_id in cited_ids]
+                if len(filtered) >= _CITE_HYGIENE_MIN_KEEP:
+                    ranked_candidates = filtered
+                else:
+                    ranked_candidates = ranked_candidates[:_CITE_HYGIENE_FALLBACK_TOPK]
+            # else: LLM cited nothing inline → keep ranked_candidates as today.
+
         return [
             Citation(
                 id=candidate.node_id,
