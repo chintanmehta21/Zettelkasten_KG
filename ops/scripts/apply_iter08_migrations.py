@@ -1,6 +1,6 @@
 """iter-08 one-shot: apply the 3 Supabase migrations via Management API.
 
-Reads SUPABASE_ACCESS_TOKEN from supabase/.env and posts each migration to
+Reads SUPABASE_ACCESS_TOKEN from the root .env and posts each migration to
 /v1/projects/{ref}/database/query. Project ref is parsed from SUPABASE_URL.
 
 Usage:
@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ENV_FILE = REPO_ROOT / "supabase" / ".env"
+ENV_FILE = REPO_ROOT / ".env"
 MIGRATION_DIR = REPO_ROOT / "supabase" / "website" / "kg_public" / "migrations"
 
 MIGRATIONS = [
@@ -51,7 +51,7 @@ def main() -> int:
     token = env.get("SUPABASE_ACCESS_TOKEN")
     url = env.get("SUPABASE_URL")
     if not token or not url:
-        print("ERROR: SUPABASE_ACCESS_TOKEN or SUPABASE_URL missing in supabase/.env")
+        print("ERROR: SUPABASE_ACCESS_TOKEN or SUPABASE_URL missing in root .env")
         return 2
     ref = _project_ref(url)
     api = f"https://api.supabase.com/v1/projects/{ref}/database/query"

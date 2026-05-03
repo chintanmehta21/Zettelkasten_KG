@@ -5,7 +5,7 @@ Usage:
 
 Prerequisites:
     1. Tables must exist in Supabase (run supabase/website/kg_public/schema.sql first)
-    2. Credentials in supabase/.env
+    2. Credentials in root .env (consolidated from former supabase/.env)
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
 
-# Load Supabase credentials
-load_dotenv(ROOT / "supabase" / ".env")
+# Load Supabase credentials from root .env
+load_dotenv(ROOT / ".env")
 
 import httpx
 import os
@@ -267,7 +267,7 @@ def main():
     print()
 
     if not SUPABASE_URL or not SUPABASE_KEY:
-        print("[FAIL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in supabase/.env")
+        print("[FAIL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in root .env")
         sys.exit(1)
 
     # Step 1: Check/apply schema
