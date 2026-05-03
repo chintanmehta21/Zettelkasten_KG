@@ -30,7 +30,12 @@ DB_ONLY_COLUMNS: dict[str, set[str]] = {
     "kg_nodes": {
         "fts",  # generated tsvector column for full-text search; server-side only
     },
-    "kg_links": set(),
+    "kg_links": {
+        # iter-08 Phase 8: enum column for future edge-weighted PageRank.
+        # No Python writer populates it yet; iter-09 will add ingestion logic
+        # and the corresponding KGLink field.
+        "relation_type",
+    },
 }
 
 # Pydantic fields intentionally absent from SQL (e.g. computed/client-only).
