@@ -389,12 +389,14 @@
     return article;
   }
 
-  function buildCitations(citations) {
+  function buildCitations(citations, tentative) {
     var wrapper = document.createElement('div');
     wrapper.className = 'rag-citations';
+    if (tentative) wrapper.classList.add('rag-citations--tentative');
     citations.forEach(function (citation) {
       var chip = document.createElement('span');
       chip.className = 'rag-citation-chip';
+      if (tentative) chip.classList.add('rag-citation-chip--tentative');
       chip.textContent = citation.title || citation.node_id || citation.id;
       wrapper.appendChild(chip);
     });
@@ -770,7 +772,9 @@
     }
     if (payload.type === 'citations') {
       state.currentAssistantCitations = payload.citations || [];
-      replaceCitations(assistantNode, state.currentAssistantCitations);
+      // iter-08 G1: pre-generation event renders shimmer placeholder; final
+      // event in 'done' replaces with the filtered chips.
+      replaceCitations(assistantNode, state.currentAssistantCitations, payload.tentative === true);
       return;
     }
     if (payload.type === 'replace') {
@@ -818,11 +822,11 @@
     }
   }
 
-  function replaceCitations(assistantNode, citations) {
+  function replaceCitations(assistantNode, citations, tentative) {
     var existing = assistantNode.querySelector('.rag-citations');
     if (existing) existing.remove();
     if (!citations || !citations.length) return;
-    assistantNode.appendChild(buildCitations(citations));
+    assistantNode.appendChild(buildCitations(citations, tentative === true));
   }
 
   function renderInlineError(assistantNode, message, retryContent) {

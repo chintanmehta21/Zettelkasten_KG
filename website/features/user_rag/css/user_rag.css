@@ -330,6 +330,25 @@
     font-size: 0.78rem;
 }
 
+/* iter-08 G1: tentative chips shimmer until final citations event lands. */
+.rag-citation-chip--tentative {
+    opacity: 0.55;
+    background: linear-gradient(90deg,
+        rgba(0, 128, 128, 0.08) 25%,
+        rgba(0, 128, 128, 0.16) 50%,
+        rgba(0, 128, 128, 0.08) 75%);
+    background-size: 200% 100%;
+    animation: cite-shimmer 1.4s linear infinite;
+    color: transparent;
+    pointer-events: none;
+    border: 1px dashed rgba(0, 128, 128, 0.35);
+}
+
+@keyframes cite-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
 /* KAS-4: Advanced filters disclosure. */
 .rag-advanced {
     border-top: 1px solid var(--border);

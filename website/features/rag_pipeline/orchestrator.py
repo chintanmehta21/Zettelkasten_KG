@@ -416,9 +416,11 @@ class RAGOrchestrator:
             }
             return
 
+        # iter-08 G1: filtered set comes in the final event
         yield {
             "type": "citations",
             "citations": [citation.model_dump() for citation in self._build_citations(context.used_candidates)],
+            "tentative": True,
         }
 
         generation = None
