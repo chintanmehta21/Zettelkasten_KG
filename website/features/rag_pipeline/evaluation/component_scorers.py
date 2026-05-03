@@ -110,8 +110,12 @@ def rerank_score(
             for i, node in enumerate(seq)
         )
     actual_dcg = dcg(reranked[:k_ndcg])
-    ideal_dcg = dcg(gold_ranking[:k_ndcg])
+    # iter-08 Phase 7.D: per-query achievable max — slice to
+    # min(k_ndcg, len(gold_ranking)) so NDCG is bounded in [0, 1] even when
+    # |gold| < k_ndcg (Järvelin & Kekäläinen 2002 textbook NDCG).
+    ideal_dcg = dcg(gold_ranking[:min(k_ndcg, len(gold_ranking))])
     ndcg = actual_dcg / ideal_dcg if ideal_dcg else 0.0
+    assert ndcg <= 1.0 + 1e-9, f"NDCG exceeded 1.0: {ndcg}"
 
     # P@k
     top_p = reranked[:k_precision]

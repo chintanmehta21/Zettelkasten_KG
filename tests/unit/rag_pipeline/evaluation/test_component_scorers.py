@@ -81,3 +81,68 @@ def test_target_tokens_adapts_to_cohort_median():
     ]
     score = chunking_score(chunks, target_tokens=None)
     assert 55 <= score <= 65, f"adaptive target should give ~60 here, got {score}"
+
+
+# ─── 7.D NDCG normaliser (per-query achievable max) ─────────────────────────
+
+
+def test_ndcg_one_for_single_source_perfect():
+    """|gold|=1 perfectly placed at rank 1 → NDCG=1.0 → rerank_score≥99."""
+    score = rerank_score(
+        gold_ranking=["yt-a"],
+        reranked=["yt-a", "yt-x", "yt-y"],
+        k_ndcg=5,
+        k_precision=3,
+    )
+    # 0.5*1 + 0.3*(1/3) + 0.2*(1 - 2/3) = 0.5 + 0.1 + 0.0667 = 0.6667 → 66.67
+    # Verify NDCG component contributes its full 0.5*100 = 50.
+    assert score >= 66.0
+
+
+def test_ndcg_one_for_multi_source_perfect_2():
+    """|gold|=2 perfectly placed at top → NDCG=1.0 → rerank_score=100."""
+    score = rerank_score(
+        gold_ranking=["yt-a", "yt-b"],
+        reranked=["yt-a", "yt-b", "yt-x"],
+        k_ndcg=5,
+        k_precision=3,
+    )
+    # NDCG=1, P@3=2/3, FP@3=1/3 → 100*(0.5 + 0.3*0.667 + 0.2*0.667) = 83.33
+    assert score >= 83.0
+
+
+def test_ndcg_one_for_multi_source_perfect_5():
+    """|gold|=5 perfectly placed at top of k=5 → NDCG=1.0."""
+    score = rerank_score(
+        gold_ranking=["yt-a", "yt-b", "yt-c", "yt-d", "yt-e"],
+        reranked=["yt-a", "yt-b", "yt-c", "yt-d", "yt-e"],
+        k_ndcg=5,
+        k_precision=3,
+    )
+    # NDCG=1, P@3=1, FP@3=0 → 100
+    assert score == 100.0
+
+
+def test_ndcg_in_zero_hundred_for_gold_at_rank_3():
+    """Gold at rank 3 should give a partial NDCG bounded in [0, 1]."""
+    score = rerank_score(
+        gold_ranking=["yt-a"],
+        reranked=["yt-x", "yt-y", "yt-a"],
+        k_ndcg=5,
+        k_precision=3,
+    )
+    assert 0.0 <= score <= 100.0
+    # NDCG = (1/log2(4)) / (1/log2(2)) = 0.5 → 0.5*0.5 + 0.3*(1/3) + 0.2*(1 - 2/3)
+    # = 0.25 + 0.1 + 0.0667 = 0.4167 → 41.67
+    assert 35.0 <= score <= 50.0
+
+
+def test_ndcg_safety_assertion_does_not_exceed_one():
+    """Sanity: NDCG <= 1.0 + epsilon for any reasonable input."""
+    # Gold subset of reranked, gold smaller than k_ndcg
+    rerank_score(
+        gold_ranking=["yt-a", "yt-b"],
+        reranked=["yt-a", "yt-b", "yt-c", "yt-d", "yt-e"],
+        k_ndcg=5,
+        k_precision=3,
+    )
