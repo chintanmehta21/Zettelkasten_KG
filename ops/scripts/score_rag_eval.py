@@ -447,6 +447,21 @@ def _render_scores_md(
         lines.append(
             f"| {pq.query_id} | {retr:.1f} | {rer:.1f} | {gold_hit} | {len(pq.cited_node_ids)} |"
         )
+    # iter-08 G6: surface measurement-shift caveats so the iter-08 scorecard
+    # is read against the right baseline. Auto-strips for any other iter_id.
+    if iter_id == "iter-08":
+        lines += [
+            "",
+            "## Known measurement shifts vs iter-07",
+            "",
+            "- **NDCG normaliser** (Phase 7.D): per-query `min(k_ndcg, |gold|)`. "
+            "Multi-source queries (q4, q5, q6) score higher under this; the gap "
+            "vs single-source narrows. NOT a rerank regression.",
+            "- **Per-query RAGAS** (`adeafe9`): empty answers (q13/q14 in iter-07) "
+            "no longer pollute cohort means; expect cleaner per-query scores.",
+            "- **Chunking score**: boundary regex relaxed + adaptive target_tokens "
+            "+ real embeddings → 31.94 should rise to ~50-80.",
+        ]
     return "\n".join(lines) + "\n"
 
 
