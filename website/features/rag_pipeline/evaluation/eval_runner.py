@@ -265,10 +265,14 @@ class EvalRunner:
             )
 
         # --- Aggregate component scores ------------------------------------
-        chunk_scores = []
+        # iter-08 Phase 7.E: chunking_score returns None for empty input;
+        # filter those out of the cohort mean instead of zero-cliffing.
+        chunk_scores: list[float] = []
         for node_id, chunks in chunks_per_node.items():
             embs = embeddings_per_node.get(node_id) if embeddings_per_node else None
-            chunk_scores.append(chunking_score(chunks, target_tokens=None, embeddings=embs))
+            s = chunking_score(chunks, target_tokens=None, embeddings=embs)
+            if s is not None:
+                chunk_scores.append(s)
         chunking_overall = sum(chunk_scores) / max(len(chunk_scores), 1)
 
         all_retrieval = retrieval_scores_answer + refuse_retrieval_scores

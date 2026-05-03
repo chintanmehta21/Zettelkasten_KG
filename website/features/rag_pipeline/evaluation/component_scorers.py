@@ -11,7 +11,7 @@ def chunking_score(
     *,
     target_tokens: int | None = None,
     embeddings: Sequence[Sequence[float]] | None = None,
-) -> float:
+) -> float | None:
     """Score chunking quality on 0-100.
 
     Components:
@@ -19,9 +19,13 @@ def chunking_score(
       - Boundary integrity (30%): chunks don't cut mid-word/sentence
       - Coherence (20%): cosine sim of adjacent chunks via embeddings (if provided)
       - Dedup (10%): unique-text rate
+
+    iter-08 Phase 7.E: returns ``None`` when ``chunks`` is empty so callers
+    can filter the no-chunks case out of cohort averages instead of treating
+    it as a 0.0 cliff.
     """
     if not chunks:
-        return 0.0
+        return None
 
     # iter-08 Phase 2.2: adaptive target_tokens. When None, derive from cohort
     # median so the scorer doesn't punish chunkers configured for shorter text.

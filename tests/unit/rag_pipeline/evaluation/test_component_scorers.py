@@ -137,6 +137,12 @@ def test_ndcg_in_zero_hundred_for_gold_at_rank_3():
     assert 35.0 <= score <= 50.0
 
 
+def test_chunking_score_empty_returns_none():
+    """iter-08 Phase 7.E: empty input is sentinel ``None`` so callers can
+    filter the ‘no chunks’ case out instead of averaging in a 0.0 cliff."""
+    assert chunking_score([], target_tokens=256) is None
+
+
 def test_ndcg_safety_assertion_does_not_exceed_one():
     """Sanity: NDCG <= 1.0 + epsilon for any reasonable input."""
     # Gold subset of reranked, gold smaller than k_ndcg
