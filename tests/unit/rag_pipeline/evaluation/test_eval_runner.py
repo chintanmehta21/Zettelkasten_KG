@@ -130,3 +130,45 @@ def test_refusal_regex_matches_known_examples():
     assert _is_refusal_answer("There is no information about Notion in your Kasten.")
     assert _is_refusal_answer("I do not have details on this topic.")
     assert not _is_refusal_answer("Steve Jobs described death as life's change agent.")
+
+
+# ─── 7.C aggregate relevancy ─────────────────────────────────────────────────
+
+
+def test_aggregate_relevancy_equal_weight_per_query():
+    """10 answer queries (relevancy 0.9) + 4 refusal (refusal_score 1.0)
+    must produce 92.857... — equal-weight per query, no double-counting."""
+    from website.features.rag_pipeline.evaluation.eval_runner import (
+        _aggregate_relevancy,
+    )
+
+    answer_relevancies = [0.9] * 10
+    refusal_scores = [1.0] * 4
+    out = _aggregate_relevancy(
+        answer_relevancies=answer_relevancies,
+        refusal_scores=refusal_scores,
+    )
+    assert abs(out - 92.857142857142857) < 1e-6
+
+
+def test_aggregate_relevancy_skips_none_signals():
+    """Queries with no relevancy signal (e.g. eval_failed) are skipped, not
+    treated as zero."""
+    from website.features.rag_pipeline.evaluation.eval_runner import (
+        _aggregate_relevancy,
+    )
+
+    out = _aggregate_relevancy(
+        answer_relevancies=[0.8, None, 0.9],
+        refusal_scores=[],
+    )
+    # mean of [0.8, 0.9] * 100 = 85.0
+    assert abs(out - 85.0) < 1e-9
+
+
+def test_aggregate_relevancy_empty_returns_zero():
+    from website.features.rag_pipeline.evaluation.eval_runner import (
+        _aggregate_relevancy,
+    )
+
+    assert _aggregate_relevancy(answer_relevancies=[], refusal_scores=[]) == 0.0

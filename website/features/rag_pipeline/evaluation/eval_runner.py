@@ -64,6 +64,34 @@ def _is_refusal_answer(text: str) -> bool:
 _REFUSAL_BEHAVIORS = {"refuse", "ask_clarification_or_refuse"}
 
 
+def _aggregate_relevancy(
+    *,
+    answer_relevancies: list[float | None],
+    refusal_scores: list[float | None],
+) -> float:
+    """iter-08 Phase 7.C: equal-weight per-query rollup of answer_relevancy.
+
+    - answer queries contribute ``ragas.answer_relevancy * 100``;
+    - refusal queries contribute ``refusal_score * 100``;
+    - rows with ``None`` (no signal) are skipped, NOT averaged as zero.
+
+    No double-weighting: a sum of per-query scores divided by N, not a
+    weighted blend of two pre-aggregated cohort means.
+    """
+    contributions: list[float] = []
+    for r in answer_relevancies:
+        if r is None:
+            continue
+        contributions.append(float(r) * 100.0)
+    for r in refusal_scores:
+        if r is None:
+            continue
+        contributions.append(float(r) * 100.0)
+    if not contributions:
+        return 0.0
+    return sum(contributions) / len(contributions)
+
+
 def _refusal_query_score(*args) -> float:
     """Phrase-match scoring for queries with expected_behavior in
     {"refuse", "ask_clarification_or_refuse"}: 1.0 if the answer contains the
@@ -272,21 +300,47 @@ class EvalRunner:
         composite = compute_composite(component_scores, self._weights)
 
         # --- Sidecar faithfulness / answer_relevancy (0..100) --------------
-        # Weight RAGAS (0..1) sidecar against per-refusal unit scores.
+        # iter-08 Phase 7.C: equal-weight per-query so eval_failed rows
+        # (which carry no relevancy signal) are skipped instead of being
+        # silently averaged as zero.
         if denom == 0:
             faithfulness_score = 0.0
             answer_relevancy_score = 0.0
         else:
-            f_answer = float(ragas_overall.get("faithfulness", 0.0))
-            ar_answer = float(ragas_overall.get("answer_relevancy", 0.0))
-            f_refuse_sum = sum(refuse_synth_unit)
-            ar_refuse_sum = f_refuse_sum
-            faithfulness_score = (
-                (f_answer * n_answer + f_refuse_sum) / denom
-            ) * 100.0
-            answer_relevancy_score = (
-                (ar_answer * n_answer + ar_refuse_sum) / denom
-            ) * 100.0
+            # Build per-query relevancy/faithfulness signals: pull from the
+            # per-query records when available; fall back to the cohort mean
+            # repeated per answer query (legacy/test-mock mode).
+            if ragas_per_query:
+                # Skip rows with no signal: judge parse-fail (eval_failed=True)
+                # OR empty/refused answer (zeros aren't a valid score).
+                answer_relevancies = []
+                answer_faithfulnesses = []
+                for slot, r in enumerate(ragas_per_query):
+                    i = answer_idx[slot]
+                    ans_text = answers[i].get("answer", "")
+                    if (
+                        bool(r.get("eval_failed", False))
+                        or _is_empty_answer_text(ans_text)
+                    ):
+                        answer_relevancies.append(None)
+                        answer_faithfulnesses.append(None)
+                    else:
+                        answer_relevancies.append(float(r.get("answer_relevancy", 0.0)))
+                        answer_faithfulnesses.append(float(r.get("faithfulness", 0.0)))
+            else:
+                ar_answer = float(ragas_overall.get("answer_relevancy", 0.0))
+                f_answer = float(ragas_overall.get("faithfulness", 0.0))
+                answer_relevancies = [ar_answer] * n_answer
+                answer_faithfulnesses = [f_answer] * n_answer
+
+            answer_relevancy_score = _aggregate_relevancy(
+                answer_relevancies=answer_relevancies,
+                refusal_scores=list(refuse_synth_unit),
+            )
+            faithfulness_score = _aggregate_relevancy(
+                answer_relevancies=answer_faithfulnesses,
+                refusal_scores=list(refuse_synth_unit),
+            )
 
         latency_p50_ms: float | None = None
         latency_p95_ms: float | None = None
