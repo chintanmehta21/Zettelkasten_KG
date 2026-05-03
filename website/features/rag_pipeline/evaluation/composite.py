@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 
 from website.features.rag_pipeline.evaluation.types import ComponentScores
@@ -15,6 +16,13 @@ def compute_composite(scores: ComponentScores, weights: dict[str, float]) -> flo
     total = sum(weights.values())
     if abs(total - 1.0) > 1e-6:
         raise ValueError(f"weights must sum to 1.0; got {total}")
+    # iter-08 Phase 7.F: defence-in-depth — pydantic already rejects NaN/inf/None
+    # via the ge/le constraints, but a non-finite value reaching the weighted sum
+    # would silently poison the composite. Explicit guard makes the contract obvious.
+    for name in ("chunking", "retrieval", "reranking", "synthesis"):
+        v = getattr(scores, name)
+        if v is None or not math.isfinite(v):
+            raise ValueError(f"composite component {name!r} is non-finite: {v!r}")
     return (
         weights["chunking"] * scores.chunking
         + weights["retrieval"] * scores.retrieval

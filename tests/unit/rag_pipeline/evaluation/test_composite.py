@@ -1,3 +1,5 @@
+import math
+
 import pytest
 from pathlib import Path
 
@@ -42,3 +44,37 @@ def test_verify_weights_unchanged_blocks_drift(tmp_path):
     path.write_text("chunking: 0.30\nretrieval: 0.20\nreranking: 0.10\nsynthesis: 0.40\n", encoding="utf-8")
     with pytest.raises(WeightsLockError):
         verify_weights_unchanged(path, locked)
+
+
+def test_composite_raises_on_nan_component():
+    """iter-08 Phase 7.F: NaN component must raise (pydantic-enforced at construction)."""
+    weights = {"chunking": 0.10, "retrieval": 0.25, "reranking": 0.20, "synthesis": 0.45}
+    # Pydantic rejects NaN at construction via ge/le constraints.
+    with pytest.raises(Exception):
+        scores = ComponentScores(
+            chunking=math.nan, retrieval=50.0, reranking=50.0, synthesis=50.0
+        )
+        compute_composite(scores, weights)
+    # Defence-in-depth: bypass pydantic via construct() and confirm
+    # compute_composite still raises on non-finite components.
+    bypass = ComponentScores.model_construct(
+        chunking=math.nan, retrieval=50.0, reranking=50.0, synthesis=50.0
+    )
+    with pytest.raises(ValueError, match="non-finite"):
+        compute_composite(bypass, weights)
+
+
+def test_composite_raises_on_none_component():
+    """iter-08 Phase 7.F: None component must raise (pydantic-enforced at construction)."""
+    weights = {"chunking": 0.10, "retrieval": 0.25, "reranking": 0.20, "synthesis": 0.45}
+    with pytest.raises(Exception):
+        scores = ComponentScores(
+            chunking=None, retrieval=50.0, reranking=50.0, synthesis=50.0
+        )
+        compute_composite(scores, weights)
+    # Defence-in-depth: bypass pydantic and confirm explicit guard catches None.
+    bypass = ComponentScores.model_construct(
+        chunking=None, retrieval=50.0, reranking=50.0, synthesis=50.0
+    )
+    with pytest.raises(ValueError, match="non-finite"):
+        compute_composite(bypass, weights)
