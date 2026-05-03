@@ -12,14 +12,23 @@ import os
 from typing import Any
 from uuid import UUID
 
+from cachetools import TTLCache
+
 
 class ChunkShareStore:
-    def __init__(self, supabase: Any | None = None):
+    def __init__(
+        self,
+        supabase: Any | None = None,
+        *,
+        ttl_seconds: float = 60.0,
+    ):
         if supabase is None:
             from website.core.supabase_kg.client import get_supabase_client
             supabase = get_supabase_client()
         self._supabase = supabase
-        self._cache: dict[str, dict[str, int]] = {}
+        # iter-08 G4: TTLCache so stale chunk-counts auto-recover within ttl.
+        # Mirrors cachetools usage in query/metadata.py:71.
+        self._cache: TTLCache = TTLCache(maxsize=128, ttl=ttl_seconds)
 
     async def get_chunk_counts(self, sandbox_id: UUID | str | None) -> dict[str, int]:
         if sandbox_id is None:
