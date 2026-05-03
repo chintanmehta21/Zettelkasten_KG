@@ -8,10 +8,53 @@ while leaving small zettels untouched.
 from __future__ import annotations
 
 import math
+import os
+import statistics
 from typing import Any
 from uuid import UUID
 
 from cachetools import TTLCache
+
+from website.features.rag_pipeline.types import QueryClass
+
+
+# iter-09 RES-2: classes for which chunk-share normalisation is permitted.
+# LOOKUP / VAGUE / STEP_BACK excluded — see RES-2 rationale.
+_GATED_CLASSES = {QueryClass.THEMATIC, QueryClass.MULTI_HOP}
+# Cold-start floor: chunk-count distribution under 5 nodes is too noisy for a
+# reliable median, skip damping rather than over-penalise small Kastens.
+_COLD_START_MIN = 5
+
+
+def should_apply_chunk_share(
+    query_class: QueryClass,
+    chunk_counts: dict[str, int],
+) -> tuple[bool, str]:
+    """iter-09 RES-2: gate chunk-share normalization on class + per-query magnet ratio.
+
+    Returns ``(apply, reason)``. Reasons: ``class_gate_off`` (env disabled →
+    legacy iter-08 always-on behaviour), ``class_excluded`` (LOOKUP / VAGUE /
+    STEP_BACK), ``cold_start`` (Kasten too small to compute a stable median),
+    ``no_magnet`` (max/median ratio under threshold), ``magnet_detected``.
+    """
+    enabled = os.environ.get(
+        "RAG_CHUNK_SHARE_CLASS_GATE_ENABLED", "true"
+    ).lower() not in ("false", "0", "no", "off")
+    if not enabled:
+        return True, "class_gate_off"
+    if query_class not in _GATED_CLASSES:
+        return False, "class_excluded"
+    if not chunk_counts or len(chunk_counts) < _COLD_START_MIN:
+        return False, "cold_start"
+    counts = list(chunk_counts.values())
+    median = statistics.median(counts)
+    if median <= 0:
+        return False, "cold_start"
+    ratio = max(counts) / median
+    threshold = float(os.environ.get("RAG_CHUNK_SHARE_MAGNET_RATIO", "2.0"))
+    if ratio < threshold:
+        return False, "no_magnet"
+    return True, "magnet_detected"
 
 
 class ChunkShareStore:

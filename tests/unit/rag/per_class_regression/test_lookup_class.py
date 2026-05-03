@@ -32,11 +32,14 @@ async def test_lookup_paraphrase_does_not_canned_refuse(grounded_answer_text) ->
 
 @pytest.mark.asyncio
 async def test_lookup_2nd_pass_unsupported_returns_low_confidence_not_refusal(
-    grounded_answer_text,
+    grounded_answer_text, monkeypatch,
 ) -> None:
     """Spec 2A.2 + 2A.3: q8-style — even when critic stays unsupported on
     retry, the answer is the model's draft + low-confidence tag, NEVER
     a canned refusal."""
+    # iter-09 RES-1: this regression test predates the gold-skip gate. Disable
+    # the new gate so the legacy retry path runs.
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "false")
     orch = build_orchestrator(
         query_class=QueryClass.LOOKUP,
         answer_text=grounded_answer_text,

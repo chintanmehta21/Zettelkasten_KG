@@ -257,7 +257,11 @@ async def test_llm_unavailable_propagates() -> None:
 
 
 @pytest.mark.asyncio
-async def test_unsupported_verdict_triggers_multi_query_retry() -> None:
+async def test_unsupported_verdict_triggers_multi_query_retry(monkeypatch) -> None:
+    # iter-09 RES-1: legacy retry path test predates the gold-skip gate. Disable
+    # the new gate so the candidate (rerank>=0.7, LOOKUP, unsupported) still
+    # routes through retry rather than the iter-09 short-circuit.
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "false")
     retriever = _Retriever(candidates=[_candidate()])
     orchestrator = RAGOrchestrator(
         rewriter=_Rewriter(),
@@ -430,10 +434,12 @@ async def test_empty_context_short_circuits_stream_without_calling_llm() -> None
 
 
 @pytest.mark.asyncio
-async def test_answer_marks_retry_low_confidence_and_appends_details_tag() -> None:
+async def test_answer_marks_retry_low_confidence_and_appends_details_tag(monkeypatch) -> None:
     """Spec 2A.2: when 2nd-pass critic still flags unsupported, the orchestrator
     must return the retry draft annotated with a collapsible low-confidence
     <details> tag — NOT a canned 'Warning: low confidence.' prefix or refusal."""
+    # iter-09 RES-1: keep this test on the legacy retry path.
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "false")
     orchestrator = RAGOrchestrator(
         rewriter=_Rewriter(),
         router=_Router(),
@@ -461,7 +467,9 @@ async def test_answer_marks_retry_low_confidence_and_appends_details_tag() -> No
 
 
 @pytest.mark.asyncio
-async def test_answer_stream_emits_replace_when_retry_changes_answer() -> None:
+async def test_answer_stream_emits_replace_when_retry_changes_answer(monkeypatch) -> None:
+    # iter-09 RES-1: keep this test on the legacy retry path.
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "false")
     orchestrator = RAGOrchestrator(
         rewriter=_Rewriter(),
         router=_Router(),

@@ -20,6 +20,7 @@ from website.features.rag_pipeline.retrieval.kasten_freq import (
 from website.features.rag_pipeline.retrieval.chunk_share import (
     ChunkShareStore,
     compute_chunk_share_penalty,
+    should_apply_chunk_share,
 )
 
 # iter-07 Fix B: COMPARE-aware anti-magnet. When the rewritten query contains
@@ -471,23 +472,36 @@ class HybridRetriever:
                     compare_intent = True
                     break
 
-        # iter-08 Phase 4.2: chunk-share normalization replaces the dead
-        # kasten_freq prior (RES-2: floor=50, never crossed). When compare-
-        # intent is detected the normalization is suppressed so magnets-as-
-        # answers can win.
-        # iter-08 G3: chunk-share runs FIRST (damps chunky magnets), then
-        # anchor boost is applied so KG-anchored neighbours keep the full
-        # +0.05 regardless of chunk count (prior order damped boost by 1/sqrt(n)).
+        # iter-08 Phase 4.2 / iter-09 RES-2: chunk-share normalization with
+        # class+magnet gate. iter-08 always-on behaviour was over-damping
+        # LOOKUP queries (q11/q12/q3 lost rerank score). iter-09 layers a
+        # class gate (THEMATIC/MULTI_HOP only) and a per-query ratio-to-
+        # median magnet detector so the damp only fires when there's an
+        # actual outlier-magnet to penalise. compare_intent still short-
+        # circuits the whole thing.
         chunk_share_enabled = os.environ.get(
             "RAG_CHUNK_SHARE_NORMALIZATION_ENABLED", "true"
         ).lower() not in ("false", "0", "no", "off")
-        if chunk_share_enabled and chunk_counts and not compare_intent:
+        if query_class is not None:
+            should_apply, gate_reason = should_apply_chunk_share(
+                query_class, chunk_counts or {}
+            )
+        else:
+            should_apply, gate_reason = True, "no_query_class"
+        if (
+            chunk_share_enabled
+            and chunk_counts
+            and not compare_intent
+            and should_apply
+        ):
             _apply_chunk_share_normalization(list(by_key.values()), chunk_counts)
         elif compare_intent:
             _log.debug(
                 "chunk-share normalization disabled: compare-intent detected (authors=%d)",
                 len(list(getattr(query_metadata, "authors", None) or [])),
             )
+        else:
+            _log.debug("chunk-share normalization skipped: gate=%s", gate_reason)
 
         if anchor_neighbours:
             _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
