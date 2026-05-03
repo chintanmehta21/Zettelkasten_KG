@@ -143,6 +143,10 @@ class EvalResult(BaseModel):
     # only when the eval driver passes per_query_latencies to evaluate().
     latency_p50_ms: float | None = None
     latency_p95_ms: float | None = None
+    # iter-08 Phase 7.B: count of per-query rows whose RAGAS/DeepEval judge
+    # call failed both attempts. Surfaces in scores.md so a silent rash of
+    # parse failures is visible, not buried in a noisy zero.
+    n_eval_failed: int = 0
 
 
 class KGSnapshot(BaseModel):

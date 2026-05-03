@@ -99,8 +99,10 @@ def _build_judge_prompt(samples: list[dict]) -> str:
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
-def _zero_metrics() -> dict[str, float]:
-    return {name: 0.0 for name in _METRIC_NAMES}
+def _zero_metrics(*, eval_failed: bool = False) -> dict[str, float]:
+    out: dict[str, float] = {name: 0.0 for name in _METRIC_NAMES}
+    out["eval_failed"] = eval_failed  # type: ignore[assignment]
+    return out
 
 
 def _parse_per_sample_rows(text: str) -> list[dict]:
@@ -120,13 +122,14 @@ def _parse_per_sample_rows(text: str) -> list[dict]:
 
 def _row_to_metrics(row: dict | None) -> dict[str, float]:
     if not isinstance(row, dict):
-        return _zero_metrics()
+        return _zero_metrics(eval_failed=True)
     out: dict[str, float] = {}
     for name in _METRIC_NAMES:
         try:
             out[name] = float(row.get(name, 0.0))
         except (TypeError, ValueError):
             out[name] = 0.0
+    out["eval_failed"] = False  # type: ignore[assignment]
     return out
 
 
@@ -209,7 +212,9 @@ def _is_empty_answer(sample: dict) -> bool:
 
 
 async def _judge_one_via_gemini(sample: dict) -> dict[str, float]:
-    """One Gemini-Pro call for a single sample. Used by the per-query path."""
+    """One Gemini-Pro call for a single sample. iter-08 Phase 7.B: retry once
+    with a stricter prompt + JSON mime if the first parse fails; mark
+    ``eval_failed=True`` if both attempts fail."""
     from website.features.api_key_switching import get_key_pool
 
     pool = get_key_pool()
@@ -223,7 +228,27 @@ async def _judge_one_via_gemini(sample: dict) -> dict[str, float]:
     response = result[0] if isinstance(result, tuple) else result
     text = getattr(response, "text", "") or ""
     rows = _parse_per_sample_rows(text)
-    return _row_to_metrics(rows[0] if rows else None)
+    if rows:
+        return _row_to_metrics(rows[0])
+
+    # Retry once with stricter wording + explicit JSON mime.
+    strict_prompt = (
+        "STRICT MODE: previous response was unparseable. "
+        "Return ONLY a single JSON object matching the schema. "
+        "No prose, no markdown fences.\n\n" + prompt
+    )
+    retry = await pool.generate_content(
+        contents=strict_prompt,
+        config={"response_mime_type": "application/json"},
+        starting_model="gemini-2.5-pro",
+        label="rag_eval_ragas_judge_one_retry",
+    )
+    retry_resp = retry[0] if isinstance(retry, tuple) else retry
+    retry_text = getattr(retry_resp, "text", "") or ""
+    retry_rows = _parse_per_sample_rows(retry_text)
+    if retry_rows:
+        return _row_to_metrics(retry_rows[0])
+    return _zero_metrics(eval_failed=True)
 
 
 async def _judge_per_query_async(
@@ -260,10 +285,16 @@ def _run_async(coro):
 
 
 def _cohort_mean(per_query: list[dict[str, float]], samples: list[dict]) -> dict[str, float]:
-    """Mean over only the queries that ANSWERED (skip empty-answer rows)."""
+    """Mean over queries that answered AND whose judge call succeeded.
+
+    iter-08 Phase 7.B: rows flagged ``eval_failed=True`` (both judge attempts
+    returned unparseable JSON) are excluded FIRST, before the empty-answer
+    filter, so a parse failure doesn't dilute the cohort with a zero.
+    """
     rows = [
         scores for scores, sample in zip(per_query, samples)
-        if not _is_empty_answer(sample)
+        if not bool(scores.get("eval_failed", False))
+        and not _is_empty_answer(sample)
     ]
     if not rows:
         return _zero_metrics()
@@ -272,6 +303,11 @@ def _cohort_mean(per_query: list[dict[str, float]], samples: list[dict]) -> dict
         vals = [float(r.get(name, 0.0)) for r in rows]
         means[name] = sum(vals) / len(vals)
     return means
+
+
+def n_eval_failed(per_query: list[dict[str, float]]) -> int:
+    """Count rows that hit the eval_failed=True flag (parse-fail twice)."""
+    return sum(1 for r in per_query if bool(r.get("eval_failed", False)))
 
 
 def run_ragas_eval_per_query(

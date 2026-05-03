@@ -136,6 +136,8 @@ class EvalRunner:
         # mode the dataset mean is replicated to every query (old shape).
         ragas_per_query: list[dict[str, float]] = []
         deepeval_per_query: list[dict[str, float]] = []
+        # iter-08 Phase 7.B: count rows whose judge call hit eval_failed=True.
+        n_eval_failed = 0
         if ragas_samples:
             ragas_raw = run_ragas_eval(ragas_samples)
             deepeval_raw = run_deepeval(ragas_samples)
@@ -149,6 +151,14 @@ class EvalRunner:
                 deepeval_overall = dict(deepeval_raw["cohort_mean"])
             else:
                 deepeval_overall = dict(deepeval_raw)  # legacy flat dict
+            # Tally eval_failed across both judges so the operator sees
+            # judge-failure scale in the summary, not a silent zero.
+            for r in ragas_per_query:
+                if bool(r.get("eval_failed", False)):
+                    n_eval_failed += 1
+            for r in deepeval_per_query:
+                if bool(r.get("eval_failed", False)):
+                    n_eval_failed += 1
 
         any_divergence = False
         if ragas_samples:
@@ -310,4 +320,5 @@ class EvalRunner:
             answer_relevancy_score=answer_relevancy_score,
             latency_p50_ms=latency_p50_ms,
             latency_p95_ms=latency_p95_ms,
+            n_eval_failed=n_eval_failed,
         )
