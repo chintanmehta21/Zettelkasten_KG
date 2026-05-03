@@ -1,6 +1,8 @@
 """Top-level eval orchestrator."""
 from __future__ import annotations
 
+import re
+
 from website.features.rag_pipeline.evaluation.component_scorers import (
     chunking_score, retrieval_score, rerank_score,
 )
@@ -37,6 +39,27 @@ def _is_empty_answer_text(answer: str) -> bool:
 # Zettels covers a query. Mirrored in stress_fixtures.REFUSAL_PHRASE; kept
 # here as a string literal to avoid an inter-module import cycle.
 _REFUSAL_PHRASE = "I can't find that in your Zettels."
+# Backward-compat public alias for any external callers/tests.
+REFUSAL_PHRASE = _REFUSAL_PHRASE
+
+# iter-08 Phase 7.A: regex over key tokens (Decision 4). Handles wording drift
+# (smart-apostrophes, paraphrased refusals like "no information about ...").
+_REFUSAL_REGEX = re.compile(
+    r"\b("
+    r"can[’']?t find|cannot find|no information|no relevant|"
+    r"don[’']?t have|do not have|not found in|not covered in|"
+    r"unable to (?:find|locate|answer)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_refusal_answer(text: str) -> bool:
+    """iter-08 Phase 7.A: regex predicate over canonical + drifted refusals."""
+    if not text:
+        return False
+    return bool(_REFUSAL_REGEX.search(text))
+
 
 _REFUSAL_BEHAVIORS = {"refuse", "ask_clarification_or_refuse"}
 
@@ -57,7 +80,7 @@ def _refusal_query_score(*args) -> float:
     else:
         raise TypeError("_refusal_query_score takes (answer) or (query, answer)")
     raw = str(answer.get("answer") or "")
-    return 1.0 if _REFUSAL_PHRASE in raw else 0.0
+    return 1.0 if _is_refusal_answer(raw) else 0.0
 
 
 class EvalRunner:

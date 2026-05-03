@@ -120,3 +120,13 @@ def test_eval_runner_passes_embeddings_to_chunking_score(monkeypatch):
     assert any(
         c["embeddings"] is not None for c in captured["calls"]
     ), "embeddings_per_node must reach chunking_score"
+
+
+def test_refusal_regex_matches_known_examples():
+    from website.features.rag_pipeline.evaluation.eval_runner import _is_refusal_answer
+    assert _is_refusal_answer("I can't find that in your Zettels.")
+    assert _is_refusal_answer("I cannot find specific quotes for 'verbal punctuation'...")
+    assert _is_refusal_answer("I can’t find that in your Zettels.")
+    assert _is_refusal_answer("There is no information about Notion in your Kasten.")
+    assert _is_refusal_answer("I do not have details on this topic.")
+    assert not _is_refusal_answer("Steve Jobs described death as life's change agent.")
