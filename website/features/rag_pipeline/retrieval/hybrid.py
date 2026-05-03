@@ -38,6 +38,15 @@ _ANCHOR_BOOST_ENABLED = os.environ.get(
 ).lower() not in ("false", "0", "no", "off")
 _ANCHOR_BOOST_AMOUNT = float(os.environ.get("RAG_ANCHOR_BOOST_AMOUNT", "0.05"))
 
+# iter-09 RES-7 / Q10: anchor-seed injection. Pulls best chunks for resolved
+# anchor zettels into the candidate pool with a floor rrf_score so the cross-
+# encoder can decide final rank rather than dropping anchors entirely when the
+# main hybrid search misses them.
+_ANCHOR_SEED_ENABLED = os.environ.get(
+    "RAG_ANCHOR_SEED_INJECTION_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+_ANCHOR_SEED_FLOOR_RRF = float(os.environ.get("RAG_ANCHOR_SEED_FLOOR_RRF", "0.30"))
+
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
 
@@ -219,6 +228,7 @@ class HybridRetriever:
         # expand 1-hop. Boost is applied inside _dedup_and_fuse AFTER chunk-
         # share damping so neighbours keep the full +0.05 regardless of size.
         anchor_neighbours: set[str] = set()
+        anchor_nodes: list[str] = []
         if (
             _ANCHOR_BOOST_ENABLED
             and query_metadata is not None
@@ -237,15 +247,38 @@ class HybridRetriever:
                     (getattr(query_metadata, "authors", None) or [])
                     + (getattr(query_metadata, "entities", None) or [])
                 )
-                anchor_nodes = await resolve_anchor_nodes(
+                anchor_nodes = list(await resolve_anchor_nodes(
                     entities, sandbox_id, self._supabase
-                )
+                ))
                 anchor_neighbours = await get_one_hop_neighbours(
                     anchor_nodes, sandbox_id, self._supabase
                 )
             except Exception as exc:  # noqa: BLE001 — best-effort
                 _log.debug("anchor_boost fetch failed: %s", exc)
                 anchor_neighbours = set()
+                anchor_nodes = []
+
+        # iter-09 RES-7 / Q10: anchor-seed injection. Gated on class + intent so
+        # we only spend the RPC on queries where a missing-from-pool gold node
+        # is plausible (LOOKUP with anchor entity, or compare-intent).
+        anchor_seeds: list[dict] = []
+        if (
+            _ANCHOR_SEED_ENABLED
+            and anchor_nodes
+            and sandbox_id is not None
+            and embeddings
+        ):
+            compare = bool(getattr(query_metadata, "compare_intent", False)) if query_metadata else False
+            n_persons = len(getattr(query_metadata, "authors", None) or []) if query_metadata else 0
+            n_entities = len(getattr(query_metadata, "entities", None) or []) if query_metadata else 0
+            is_lookup = query_class is QueryClass.LOOKUP
+            if compare or (is_lookup and (n_persons + n_entities) >= 1):
+                from website.features.rag_pipeline.retrieval.anchor_seed import (
+                    fetch_anchor_seeds,
+                )
+                anchor_seeds = await fetch_anchor_seeds(
+                    anchor_nodes, sandbox_id, embeddings[0], self._supabase
+                )
 
         return self._dedup_and_fuse(
             results,
@@ -255,6 +288,7 @@ class HybridRetriever:
             chunk_counts=chunk_counts,
             effective_nodes=effective_nodes,
             anchor_neighbours=anchor_neighbours,
+            anchor_seeds=anchor_seeds,
         )
 
     async def _resolve_nodes(
@@ -290,6 +324,7 @@ class HybridRetriever:
         chunk_counts: dict[str, int] | None = None,
         effective_nodes: list[str] | None = None,
         anchor_neighbours: set[str] | None = None,
+        anchor_seeds: list[dict] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
@@ -310,6 +345,29 @@ class HybridRetriever:
                     by_key[key].rrf_score = max(by_key[key].rrf_score, float(row.get("rrf_score") or 0.0))
             for key in seen_in_variant:
                 variant_hits[key] += 1
+
+        # iter-09 RES-7 / Q10: inject anchor-seed candidates. When a seed's
+        # node is already in the pool, bump its rrf_score floor; when missing,
+        # synthesize at the floor so the cross-encoder can decide final rank.
+        if anchor_seeds:
+            for seed in anchor_seeds:
+                nid = seed.get("node_id")
+                if not nid:
+                    continue
+                seed_score = float(seed.get("score") or 0.0)
+                floored = max(seed_score, _ANCHOR_SEED_FLOOR_RRF)
+                # Match an existing chunk row for this node; else synthesize.
+                matching_keys = [k for k in by_key if k[1] == nid]
+                if matching_keys:
+                    for k in matching_keys:
+                        by_key[k].rrf_score = max(by_key[k].rrf_score, floored)
+                else:
+                    seed_row = dict(seed)
+                    seed_row["rrf_score"] = floored
+                    candidate = _row_to_candidate(seed_row)
+                    new_key = (candidate.kind.value, candidate.node_id, candidate.chunk_id)
+                    by_key[new_key] = candidate
+                    variant_hits[new_key] = 0
 
         normalized_variants = [
             _normalize_for_match(v) for v in (query_variants or []) if v and v.strip()
