@@ -412,3 +412,20 @@ def test_xquad_lambda_thematic_is_05():
     assert _xquad_lambda_for_class(QueryClass.LOOKUP) == 0.7
     assert _xquad_lambda_for_class(QueryClass.MULTI_HOP) == 0.7
 
+
+# iter-08 Phase 3.3: text-only compare-intent regex ------------------------
+
+def test_detect_compare_intent_text_only_q10():
+    """iter-08 Phase 3.3: compare-intent fires on 'Steve Jobs and Naval Ravikant' even when authors=[Steve Jobs]."""
+    from website.features.rag_pipeline.retrieval.hybrid import _detect_compare_intent_text_only
+    assert _detect_compare_intent_text_only(
+        "Steve Jobs and Naval Ravikant both speak about meaningful work. Compare their views."
+    ) is True
+
+
+def test_detect_compare_intent_text_only_no_proper_nouns():
+    from website.features.rag_pipeline.retrieval.hybrid import _detect_compare_intent_text_only
+    assert _detect_compare_intent_text_only(
+        "How do databases compare to spreadsheets?"
+    ) is False
+

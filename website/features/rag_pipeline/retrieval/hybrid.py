@@ -95,6 +95,28 @@ _XQUAD_LAMBDA_BY_CLASS: dict[QueryClass, float] = {
 def _xquad_lambda_for_class(query_class: QueryClass | None) -> float:
     return _XQUAD_LAMBDA_BY_CLASS.get(query_class, _XQUAD_LAMBDA_DEFAULT)
 
+
+# iter-08 Phase 3.3: text-only compare-intent detection. Closes iter-07
+# Fix B's "Naval not in Kasten" hole — fires on rewritten-query text alone,
+# independent of metadata.authors count.
+_PROPER_NOUN_RE = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b")
+_COMPARE_JOIN_RE = re.compile(r"\b(and|both)\b", re.IGNORECASE)
+_PROPER_NOUN_BLACKLIST = {
+    "What", "How", "When", "Where", "Why", "The", "A", "An", "This", "That",
+}
+
+
+def _detect_compare_intent_text_only(query: str) -> bool:
+    if not query:
+        return False
+    if not _COMPARE_PATTERN.search(query):
+        # Fall back to "and" + ≥2 proper-noun spans
+        if not _COMPARE_JOIN_RE.search(query):
+            return False
+    proper_nouns = _PROPER_NOUN_RE.findall(query)
+    proper_nouns = [n for n in proper_nouns if n.split()[0] not in _PROPER_NOUN_BLACKLIST]
+    return len(set(proper_nouns)) >= 2
+
 # iter-04 consensus-suppress threshold: if a candidate appears in >= this
 # fraction of variants, suppress the per-variant consensus bump (it's a
 # magnet, not a relevance signal). The bump is at line ~169.
@@ -308,6 +330,8 @@ class HybridRetriever:
         # penalisation; cap at 0.5 so a magnet can still rank where genuine
         # signal puts it.
         # iter-07 Fix B: detect compare-intent — disable anti-magnet for these.
+        # iter-08 Phase 3.3: also fire on text-only signal (q10 fix where
+        # query_metadata.authors only contains 1 of the 2 named people).
         compare_intent = False
         if _COMPARE_AWARE_ANTIMAGNET_ENABLED and query_metadata is not None:
             authors = list(getattr(query_metadata, "authors", None) or [])
@@ -324,6 +348,17 @@ class HybridRetriever:
                         if variant and join_re.search(variant):
                             compare_intent = True
                             break
+        # iter-08 Phase 3.3: text-only fallback covers q10's "Naval not in
+        # Kasten" hole — author-extractor only saw 1 of 2 named people.
+        if (
+            not compare_intent
+            and _COMPARE_AWARE_ANTIMAGNET_ENABLED
+            and query_variants
+        ):
+            for variant in query_variants:
+                if variant and _detect_compare_intent_text_only(variant):
+                    compare_intent = True
+                    break
 
         if kasten_freqs and not compare_intent:
             total_hits = sum(kasten_freqs.values())
