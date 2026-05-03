@@ -460,3 +460,52 @@ def test_anchor_boost_applies_to_neighbours():
     assert candidates[0].rrf_score == 0.55  # a is neighbour
     assert candidates[1].rrf_score == 0.50  # b is not
     assert candidates[2].rrf_score == 0.55  # c is neighbour
+
+
+# iter-08 G3: anchor boost runs AFTER chunk-share ----------------------------
+
+def test_anchor_boost_runs_after_chunk_share_for_chunky_neighbour():
+    """iter-08 G3: chunky anchored neighbour keeps full +0.05 boost,
+    not 0.05/sqrt(16) = 0.0125 that the prior order produced."""
+    from website.features.rag_pipeline.retrieval.hybrid import (
+        _apply_chunk_share_normalization,
+        _apply_anchor_boost,
+    )
+    cands = [_cand("magnet", 1.0)]
+    chunk_counts = {"magnet": 16}
+    neighbours = {"magnet"}
+    # Apply in the iter-08 G3 order: chunk-share first, then anchor boost
+    _apply_chunk_share_normalization(cands, chunk_counts)
+    _apply_anchor_boost(cands, neighbours, boost=0.05)
+    # Expected: 1.0 * (1/sqrt(16)) + 0.05 = 0.25 + 0.05 = 0.30
+    assert abs(cands[0].rrf_score - 0.30) < 0.001, f"got {cands[0].rrf_score}"
+
+
+def test_dedup_and_fuse_applies_chunk_share_before_anchor_boost(monkeypatch):
+    """iter-08 G3: end-to-end — _dedup_and_fuse applies chunk-share then anchor boost.
+
+    A chunky (16-chunk) anchored neighbour should keep the full +0.05 boost
+    rather than have it damped by 1/sqrt(16). End rrf is 0.25 + 0.05 = 0.30,
+    not 0.25 + 0.0125 = 0.2625 (the prior order's behaviour).
+    """
+    from website.features.rag_pipeline.retrieval import hybrid as hybrid_mod
+    monkeypatch.setenv("RAG_CHUNK_SHARE_NORMALIZATION_ENABLED", "true")
+    retriever = HybridRetriever(embedder=_Embedder(), supabase=_Supabase({}))
+    fused = retriever._dedup_and_fuse(
+        [
+            [{
+                "kind": "chunk", "node_id": "magnet", "chunk_id": None, "chunk_idx": 0,
+                "name": "Magnet", "source_type": "web", "url": "u", "content": "c",
+                "tags": [], "metadata": {}, "rrf_score": 1.0,
+            }],
+        ],
+        chunk_counts={"magnet": 16},
+        anchor_neighbours={"magnet"},
+    )
+    # Sanity: anchor-boost feature flag must be on; if disabled in env, skip.
+    if not hybrid_mod._ANCHOR_BOOST_ENABLED:
+        pytest.skip("anchor-boost disabled by env flag")
+    assert len(fused) == 1
+    # Post-G3 order: chunk_share first (1.0 * 0.25 = 0.25), then anchor boost
+    # (+0.05) -> 0.30. Pre-G3 order would yield 1.05 * 0.25 = 0.2625.
+    assert abs(fused[0].rrf_score - 0.30) < 0.001, f"got {fused[0].rrf_score}"

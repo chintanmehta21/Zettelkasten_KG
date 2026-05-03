@@ -216,9 +216,9 @@ class HybridRetriever:
                 _log.debug("chunk_share fetch failed: %s", exc)
                 chunk_counts = {}
 
-        # iter-08 Phase 6: resolve KG anchors from query metadata and expand
-        # 1-hop. Boost is applied inside _dedup_and_fuse before chunk-share
-        # damping so neighbours can survive anti-magnet penalties.
+        # iter-08 Phase 6 / G3: resolve KG anchors from query metadata and
+        # expand 1-hop. Boost is applied inside _dedup_and_fuse AFTER chunk-
+        # share damping so neighbours keep the full +0.05 regardless of size.
         anchor_neighbours: set[str] = set()
         if (
             _ANCHOR_BOOST_ENABLED
@@ -418,11 +418,9 @@ class HybridRetriever:
         # kasten_freq prior (RES-2: floor=50, never crossed). When compare-
         # intent is detected the normalization is suppressed so magnets-as-
         # answers can win.
-        # iter-08 Phase 6: KG entity-anchor boost — applied BEFORE chunk-share
-        # damping so anchored neighbours can survive the anti-magnet penalty.
-        if anchor_neighbours:
-            _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
-
+        # iter-08 G3: chunk-share runs FIRST (damps chunky magnets), then
+        # anchor boost is applied so KG-anchored neighbours keep the full
+        # +0.05 regardless of chunk count (prior order damped boost by 1/sqrt(n)).
         chunk_share_enabled = os.environ.get(
             "RAG_CHUNK_SHARE_NORMALIZATION_ENABLED", "true"
         ).lower() not in ("false", "0", "no", "off")
@@ -433,6 +431,9 @@ class HybridRetriever:
                 "chunk-share normalization disabled: compare-intent detected (authors=%d)",
                 len(list(getattr(query_metadata, "authors", None) or [])),
             )
+
+        if anchor_neighbours:
+            _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
 
         # sorted() is stable: ties preserve insertion order, which mirrors the
         # row order across query variants — critical for deterministic ranking
@@ -486,8 +487,9 @@ def _apply_anchor_boost(
 ) -> None:
     """In-place additive rrf_score bump for candidates 1-hop from a KG anchor.
 
-    iter-08 Phase 6: lightweight boost (default +0.05) applied before the
-    chunk-share normalization so neighbours can survive anti-magnet damping.
+    iter-08 Phase 6 / G3: lightweight boost (default +0.05) applied AFTER
+    chunk-share normalization so anchored neighbours keep the full additive
+    boost regardless of chunk count.
     No-op when neighbour_set empty or feature flag disabled.
     """
     if not neighbour_set or not _ANCHOR_BOOST_ENABLED:
