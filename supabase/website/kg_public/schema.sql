@@ -61,6 +61,16 @@ COMMENT ON COLUMN kg_nodes.tags IS 'Normalized tags for linking and filtering';
 COMMENT ON COLUMN kg_nodes.metadata IS 'Extensible JSON for source-specific extras';
 
 
+-- ── Type: kg_link_relation ──────────────────────────────────────────────────
+-- Edge-type enum for graph-aware retrieval (iter-08 Phase 8). Distinct from
+-- kg_links.relation TEXT which stores the shared-tag label.
+DO $$ BEGIN
+    CREATE TYPE kg_link_relation AS ENUM ('shared_tag', 'cites', 'mentions', 'co_occurs');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+
 -- ── Table: kg_links ─────────────────────────────────────────────────────────
 -- Edges between nodes, scoped to a single user's graph.
 
@@ -70,6 +80,7 @@ CREATE TABLE IF NOT EXISTS kg_links (
     source_node_id  TEXT        NOT NULL,
     target_node_id  TEXT        NOT NULL,
     relation        TEXT        NOT NULL,
+    relation_type   kg_link_relation NOT NULL DEFAULT 'shared_tag',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     -- Composite FKs ensure source/target belong to the same user
@@ -80,8 +91,15 @@ CREATE TABLE IF NOT EXISTS kg_links (
     UNIQUE (user_id, source_node_id, target_node_id, relation)
 );
 
+-- Defensive ALTER for existing databases that pre-date the relation_type column.
+ALTER TABLE kg_links
+    ADD COLUMN IF NOT EXISTS relation_type kg_link_relation NOT NULL DEFAULT 'shared_tag';
+
 COMMENT ON TABLE  kg_links IS 'Knowledge graph edges — shared-tag relationships between nodes';
 COMMENT ON COLUMN kg_links.relation IS 'The shared tag that forms this connection';
+COMMENT ON COLUMN kg_links.relation_type IS
+    'Edge type for graph-aware retrieval. Default shared_tag for back-compat. '
+    'Distinct from kg_links.relation which stores the shared-tag label.';
 
 
 -- ── Indexes ─────────────────────────────────────────────────────────────────
@@ -112,6 +130,10 @@ CREATE INDEX IF NOT EXISTS idx_kg_links_user_source
 
 CREATE INDEX IF NOT EXISTS idx_kg_links_user_target
     ON kg_links (user_id, target_node_id);
+
+-- Edge-type index for graph-aware retrieval (iter-08 Phase 8).
+CREATE INDEX IF NOT EXISTS kg_links_relation_type_idx
+    ON kg_links (relation_type);
 
 
 -- ── Updated-at trigger ──────────────────────────────────────────────────────
