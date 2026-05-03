@@ -13,9 +13,78 @@ import inspect
 
 from website.features.rag_pipeline import orchestrator
 from website.features.rag_pipeline.orchestrator import (
+    _GOLD_RETRIEVED_DETAILS_TAG,
     _LOW_CONFIDENCE_DETAILS_TAG,
+    _should_skip_retry,
     _wrap_with_low_confidence_tag,
 )
+from website.features.rag_pipeline.query.metadata import QueryMetadata
+from website.features.rag_pipeline.types import QueryClass
+
+
+def _cand(score):
+    class C:
+        rerank_score = score
+        rrf_score = score
+    return C()
+
+
+def _meta():
+    return QueryMetadata(authors=[], entities=[])
+
+
+def test_lookup_unsupported_with_high_rerank_skips_retry(monkeypatch):
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true")
+    skip, reason = _should_skip_retry(
+        answer_text="some draft",
+        used_candidates=[_cand(0.85)],
+        query_class=QueryClass.LOOKUP,
+        metadata=_meta(),
+        first_verdict="unsupported",
+    )
+    assert skip is True
+    assert reason == "unsupported_with_gold_skip"
+
+
+def test_lookup_unsupported_with_low_rerank_still_retries(monkeypatch):
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true")
+    skip, reason = _should_skip_retry(
+        answer_text="some draft",
+        used_candidates=[_cand(0.55)],
+        query_class=QueryClass.LOOKUP,
+        metadata=_meta(),
+        first_verdict="unsupported",
+    )
+    assert reason != "unsupported_with_gold_skip"
+
+
+def test_multihop_unsupported_with_high_rerank_does_not_skip(monkeypatch):
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true")
+    skip, reason = _should_skip_retry(
+        answer_text="some draft",
+        used_candidates=[_cand(0.85)],
+        query_class=QueryClass.MULTI_HOP,
+        metadata=_meta(),
+        first_verdict="unsupported",
+    )
+    assert reason != "unsupported_with_gold_skip"
+
+
+def test_unsupported_gate_disabled_via_env(monkeypatch):
+    monkeypatch.setenv("RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "false")
+    skip, reason = _should_skip_retry(
+        answer_text="some draft",
+        used_candidates=[_cand(0.85)],
+        query_class=QueryClass.LOOKUP,
+        metadata=_meta(),
+        first_verdict="unsupported",
+    )
+    assert reason != "unsupported_with_gold_skip"
+
+
+def test_gold_retrieved_tag_constant_distinct_from_low_confidence():
+    assert _GOLD_RETRIEVED_DETAILS_TAG != _LOW_CONFIDENCE_DETAILS_TAG
+    assert "reflects" in _GOLD_RETRIEVED_DETAILS_TAG.lower()
 
 
 def test_low_confidence_tag_appended_to_draft() -> None:

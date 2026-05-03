@@ -88,6 +88,17 @@ _PARTIAL_NO_RETRY_ENABLED = os.environ.get(
 ).lower() not in ("false", "0", "no", "off")
 _PARTIAL_NO_RETRY_FLOOR = 0.5
 
+# iter-09 RES-1: parallel skip gate for unsupported-with-gold (LOOKUP only).
+# Critic flagged unsupported but retrieval surfaced a gold-tier chunk; the
+# first-pass draft is materially better than burning ~12s on retry. Stricter
+# floor (0.7 vs 0.5) since the verdict is harsher than ``partial``.
+_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED = os.environ.get(
+    "RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+_UNSUPPORTED_WITH_GOLD_SKIP_FLOOR = float(
+    os.environ.get("RAG_UNSUPPORTED_WITH_GOLD_SKIP_FLOOR", "0.7")
+)
+
 # iter-08 Fix B: drop the citations list when the final verdict signals a
 # refusal (``unsupported_no_retry``) or the answer text is the canonical
 # refusal phrase. Prevents the iter-02-era stray citation chip on refused
@@ -187,6 +198,21 @@ def _should_skip_retry(
         and top_score >= _PARTIAL_NO_RETRY_FLOOR
     ):
         return True, "partial_with_gold_skip"
+    # iter-09 RES-1: LOOKUP unsupported with gold-tier rerank — surface
+    # first-pass draft with neutral "reflects retrieved sources" tag rather
+    # than burning a 12s retry budget for a verbatim-phrasing miss. Env
+    # checked at call-time so operators can toggle without container restart.
+    _gate_on = os.environ.get(
+        "RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true"
+    ).lower() not in ("false", "0", "no", "off")
+    if (
+        _gate_on
+        and first_verdict == "unsupported"
+        and query_class is QueryClass.LOOKUP
+        and used_candidates
+        and top_score >= _UNSUPPORTED_WITH_GOLD_SKIP_FLOOR
+    ):
+        return True, "unsupported_with_gold_skip"
     if _has_refusal_phrase(answer_text):
         # iter-07 Fix A: bypass when retrieval is strong — let retry run.
         if not (
@@ -252,6 +278,16 @@ _LOW_CONFIDENCE_DETAILS_TAG = (
     "\n\n<details>"
     "<summary>How sure am I?</summary>"
     "Citations don't fully cover this claim. The answer is the model's best draft."
+    "</details>"
+)
+
+# iter-09 RES-1: distinct neutral tag for the gold-retrieved + critic-
+# unsupported skip path. The answer IS grounded in retrieved sources; the
+# critic flagged it for missing literal phrasing rather than missing evidence.
+_GOLD_RETRIEVED_DETAILS_TAG = (
+    "\n\n<details>"
+    "<summary>How sure am I?</summary>"
+    "Answer reflects retrieved sources; some details may be paraphrased rather than quoted verbatim."
     "</details>"
 )
 
@@ -855,6 +891,15 @@ class RAGOrchestrator:
                     verdict = "partial"
                     # answer_text and replaced_text intentionally untouched;
                     # the partial draft is the user-facing answer.
+                elif skip_reason == "unsupported_with_gold_skip":
+                    # iter-09 RES-1: LOOKUP-only sibling of partial-skip.
+                    # Surface the first-pass draft with a neutral "reflects
+                    # sources" tag rather than the negative-valence
+                    # low-confidence tag — the answer is grounded.
+                    verdict = "unsupported_with_gold_skip"
+                    if "<summary>How sure am I?</summary>" not in (answer_text or ""):
+                        answer_text = (answer_text or "") + _GOLD_RETRIEVED_DETAILS_TAG
+                    replaced_text = answer_text
                 else:
                     verdict = "unsupported_no_retry"
                     answer_text = _wrap_with_low_confidence_tag(answer_text)

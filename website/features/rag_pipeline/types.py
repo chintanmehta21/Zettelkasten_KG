@@ -113,6 +113,9 @@ class AnswerTurn(BaseModel):
         "unsupported_no_retry",   # first-pass refusal / low-score / vague-low-entity → retry skipped
         "retry_budget_exceeded",  # retry exceeded RAG_RETRY_BUDGET_S (default 12s)
         "retry_skipped_dejavu",   # retry mutation matrix produced identical params hash
+        # iter-08 / iter-09 gold-tier skip gates (orchestrator.py + RES-1):
+        "partial_with_gold_skip",         # iter-08: partial first-pass with rerank>=0.5, retry skipped
+        "unsupported_with_gold_skip",     # iter-09 RES-1: LOOKUP unsupported with rerank>=0.7, retry skipped
     ]
     critic_notes: str | None = None
     trace_id: str = ""
