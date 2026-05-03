@@ -1130,6 +1130,28 @@ def phase_post_diversification_qa(page: Page, token: str, sandbox_id: str,
     return rep
 
 
+def warmup_ping(page: Page, max_attempts: int = 3, sleep_s: float = 2.0) -> dict:
+    """iter-09 RES-7: hit /api/health to dodge BGE int8 cold-start on first eval query."""
+    last: dict[str, Any] = {"ok": False, "attempts": 0, "elapsed_ms": 0}
+    for i in range(1, max_attempts + 1):
+        t0 = time.monotonic()
+        try:
+            status = page.evaluate("async () => (await fetch('/api/health')).status")
+            last = {
+                "ok": status == 200, "attempts": i, "status": status,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
+            if status == 200:
+                return last
+        except Exception as exc:
+            last = {
+                "ok": False, "attempts": i, "error": type(exc).__name__,
+                "elapsed_ms": int((time.monotonic() - t0) * 1000),
+            }
+        time.sleep(sleep_s)
+    return last
+
+
 def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
                        queries: list[dict]) -> PhaseReport:
     rep = PhaseReport(phase="rag_qa_chain")
@@ -1580,6 +1602,15 @@ def main(argv: list[str] | None = None) -> int:
             _shoot(page, "07b_home_kastens_after_diversify")
         except Exception:
             pass
+
+        # iter-09 RES-7: warm-up ping before Q-A chain to dodge BGE int8 cold-start.
+        warmup = warmup_ping(page)
+        warm_rep = PhaseReport(phase="warmup_ping", duration_ms=warmup.get("elapsed_ms", 0))
+        warm_rep.checks.append(CheckResult(
+            name="warmup", passed=bool(warmup.get("ok")),
+            duration_ms=warmup.get("elapsed_ms", 0), detail=warmup,
+        ))
+        all_reports.append(warm_rep)
 
         # Phase 5: Q-A chain (the centerpiece) — runs against the now-9-member Kasten.
         qa_rep = phase_rag_qa_chain(page, args.token, sandbox["id"], queries)
