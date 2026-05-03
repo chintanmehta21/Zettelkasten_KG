@@ -30,6 +30,15 @@ from website.features.rag_pipeline.retrieval.chunk_share import (
 _COMPARE_AWARE_ANTIMAGNET_ENABLED = os.environ.get(
     "RAG_COMPARE_AWARE_ANTIMAGNET_ENABLED", "true"
 ).lower() not in ("false", "0", "no", "off")
+
+# iter-08 Phase 6: KG entity-anchor boost. When the query carries author/entity
+# metadata, resolve those names to anchor zettels and boost their 1-hop
+# neighbours' rrf_score so anchored multi-hop intents pull related zettels.
+_ANCHOR_BOOST_ENABLED = os.environ.get(
+    "RAG_ANCHOR_BOOST_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+_ANCHOR_BOOST_AMOUNT = float(os.environ.get("RAG_ANCHOR_BOOST_AMOUNT", "0.05"))
+
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
 
@@ -207,6 +216,38 @@ class HybridRetriever:
                 _log.debug("chunk_share fetch failed: %s", exc)
                 chunk_counts = {}
 
+        # iter-08 Phase 6: resolve KG anchors from query metadata and expand
+        # 1-hop. Boost is applied inside _dedup_and_fuse before chunk-share
+        # damping so neighbours can survive anti-magnet penalties.
+        anchor_neighbours: set[str] = set()
+        if (
+            _ANCHOR_BOOST_ENABLED
+            and query_metadata is not None
+            and sandbox_id is not None
+            and (
+                getattr(query_metadata, "authors", None)
+                or getattr(query_metadata, "entities", None)
+            )
+        ):
+            try:
+                from website.features.rag_pipeline.retrieval.entity_anchor import (
+                    resolve_anchor_nodes,
+                    get_one_hop_neighbours,
+                )
+                entities = list(
+                    (getattr(query_metadata, "authors", None) or [])
+                    + (getattr(query_metadata, "entities", None) or [])
+                )
+                anchor_nodes = await resolve_anchor_nodes(
+                    entities, sandbox_id, self._supabase
+                )
+                anchor_neighbours = await get_one_hop_neighbours(
+                    anchor_nodes, sandbox_id, self._supabase
+                )
+            except Exception as exc:  # noqa: BLE001 — best-effort
+                _log.debug("anchor_boost fetch failed: %s", exc)
+                anchor_neighbours = set()
+
         return self._dedup_and_fuse(
             results,
             query_variants=query_variants,
@@ -214,6 +255,7 @@ class HybridRetriever:
             query_class=query_class,
             chunk_counts=chunk_counts,
             effective_nodes=effective_nodes,
+            anchor_neighbours=anchor_neighbours,
         )
 
     async def _resolve_nodes(
@@ -248,6 +290,7 @@ class HybridRetriever:
         query_class: QueryClass | None = None,
         chunk_counts: dict[str, int] | None = None,
         effective_nodes: list[str] | None = None,
+        anchor_neighbours: set[str] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
         variant_hits = {}
@@ -375,6 +418,11 @@ class HybridRetriever:
         # kasten_freq prior (RES-2: floor=50, never crossed). When compare-
         # intent is detected the normalization is suppressed so magnets-as-
         # answers can win.
+        # iter-08 Phase 6: KG entity-anchor boost — applied BEFORE chunk-share
+        # damping so anchored neighbours can survive the anti-magnet penalty.
+        if anchor_neighbours:
+            _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
+
         chunk_share_enabled = os.environ.get(
             "RAG_CHUNK_SHARE_NORMALIZATION_ENABLED", "true"
         ).lower() not in ("false", "0", "no", "off")
@@ -429,6 +477,24 @@ class HybridRetriever:
             )
 
         return _cap_per_node(ordered, query_class=query_class)
+
+
+def _apply_anchor_boost(
+    candidates: list[RetrievalCandidate],
+    neighbour_set: set[str],
+    boost: float = _ANCHOR_BOOST_AMOUNT,
+) -> None:
+    """In-place additive rrf_score bump for candidates 1-hop from a KG anchor.
+
+    iter-08 Phase 6: lightweight boost (default +0.05) applied before the
+    chunk-share normalization so neighbours can survive anti-magnet damping.
+    No-op when neighbour_set empty or feature flag disabled.
+    """
+    if not neighbour_set or not _ANCHOR_BOOST_ENABLED:
+        return
+    for c in candidates:
+        if c.node_id in neighbour_set:
+            c.rrf_score += boost
 
 
 def _apply_chunk_share_normalization(

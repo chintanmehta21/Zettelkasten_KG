@@ -448,3 +448,15 @@ def test_chunk_share_normalization_damps_magnets():
     assert abs(rrf["magnet"] - 0.25) < 0.01
     assert abs(rrf["normal"] - 0.5) < 0.01
     assert abs(rrf["solo"]   - 1.0) < 0.01
+
+
+# iter-08 Phase 6.2: KG entity-anchor boost ----------------------------------
+
+def test_anchor_boost_applies_to_neighbours():
+    from website.features.rag_pipeline.retrieval.hybrid import _apply_anchor_boost
+    candidates = [_cand("a", 0.5), _cand("b", 0.5), _cand("c", 0.5)]
+    neighbours = {"a", "c"}
+    _apply_anchor_boost(candidates, neighbours, boost=0.05)
+    assert candidates[0].rrf_score == 0.55  # a is neighbour
+    assert candidates[1].rrf_score == 0.50  # b is not
+    assert candidates[2].rrf_score == 0.55  # c is neighbour
