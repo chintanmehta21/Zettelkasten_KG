@@ -583,6 +583,107 @@ def api_fetch_json(page: Page, path: str, token: str, *, method: str = "GET",
     })
 
 
+def api_fetch_sse(page: Page, path: str, token: str, *, body: Any,
+                  timeout_ms: int = 120_000) -> dict:
+    """iter-09 RES-5: stream:true fetch + getReader() to capture true p_user_*_ms."""
+    js = """
+    async ({ path, token, body, timeout }) => {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), timeout);
+        const t0 = performance.now();
+        let firstTokenAt = null, lastTokenAt = null, doneAt = null;
+        let turn = null, citations = null, errorPayload = null;
+        let buf = '';
+        const decoder = new TextDecoder('utf-8');
+        try {
+            const r = await fetch(path, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + token,
+                },
+                credentials: 'include',
+                body: JSON.stringify(body),
+                signal: controller.signal,
+            });
+            const status = r.status;
+            if (!r.ok) {
+                const text = await r.text();
+                let parsed;
+                try { parsed = text ? JSON.parse(text) : null; } catch (_) { parsed = null; }
+                return {
+                    ok: false, status,
+                    elapsed_ms: Math.round(performance.now() - t0),
+                    body: parsed, raw: parsed ? null : text,
+                };
+            }
+            const reader = r.body.getReader();
+            outer: while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                while (true) {
+                    const idx = buf.indexOf('\\n\\n');
+                    if (idx < 0) break;
+                    const frame = buf.slice(0, idx);
+                    buf = buf.slice(idx + 2);
+                    if (!frame || frame.startsWith(':')) continue;
+                    let evName = null, dataStr = '';
+                    for (const line of frame.split('\\n')) {
+                        if (line.startsWith('event:')) evName = line.slice(6).trim();
+                        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+                    }
+                    if (!evName) continue;
+                    const now = performance.now();
+                    if (evName === 'token') {
+                        if (firstTokenAt === null) firstTokenAt = now;
+                        lastTokenAt = now;
+                    } else if (evName === 'done') {
+                        doneAt = now;
+                        try {
+                            const payload = dataStr ? JSON.parse(dataStr) : {};
+                            turn = payload.turn || null;
+                            citations = (turn && turn.citations) || null;
+                        } catch (_) {}
+                        break outer;
+                    } else if (evName === 'error') {
+                        try { errorPayload = dataStr ? JSON.parse(dataStr) : { raw: dataStr }; }
+                        catch (_) { errorPayload = { raw: dataStr }; }
+                        break outer;
+                    } else if (evName === 'citations') {
+                        try {
+                            const payload = dataStr ? JSON.parse(dataStr) : {};
+                            citations = payload.citations || payload || null;
+                        } catch (_) {}
+                    }
+                }
+            }
+            const elapsed = Math.round(performance.now() - t0);
+            return {
+                ok: doneAt !== null && errorPayload === null,
+                status,
+                elapsed_ms: elapsed,
+                p_user_first_token_ms: firstTokenAt === null ? null : Math.round(firstTokenAt),
+                p_user_last_token_ms: lastTokenAt === null ? null : Math.round(lastTokenAt),
+                p_user_complete_ms: doneAt === null ? null : Math.round(doneAt),
+                turn, citations, error: errorPayload,
+            };
+        } catch (e) {
+            return {
+                ok: false, status: 0,
+                elapsed_ms: Math.round(performance.now() - t0),
+                error: String(e),
+            };
+        } finally {
+            clearTimeout(t);
+        }
+    }
+    """
+    return page.evaluate(js, {
+        "path": path, "token": token, "body": body, "timeout": timeout_ms,
+    })
+
+
 # ── Phase 1: Public surface (no auth) ───────────────────────────────────────
 
 PUBLIC_PAGES: list[tuple[str, str]] = [
@@ -1050,14 +1151,28 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             quality = "high"
 
         t0 = time.time()
-        resp = api_fetch_json(page, "/api/rag/adhoc", token, method="POST", body={
-            "sandbox_id": sandbox_id,
-            "content": text,
-            "quality": quality,
-            "stream": False,
-            "scope_filter": {},
-            "title": f"{qid}",
-        }, timeout_ms=120_000)
+        # iter-09 RES-5: opt-in SSE harness reader to measure true p_user_*_ms.
+        use_sse = os.environ.get("EVAL_USE_SSE_HARNESS", "true").lower() not in (
+            "false", "0", "no", "off"
+        )
+        if use_sse:
+            resp = api_fetch_sse(page, "/api/rag/adhoc", token, body={
+                "sandbox_id": sandbox_id,
+                "content": text,
+                "quality": quality,
+                "stream": True,
+                "scope_filter": {},
+                "title": f"{qid}",
+            }, timeout_ms=120_000)
+        else:
+            resp = api_fetch_json(page, "/api/rag/adhoc", token, method="POST", body={
+                "sandbox_id": sandbox_id,
+                "content": text,
+                "quality": quality,
+                "stream": False,
+                "scope_filter": {},
+                "title": f"{qid}",
+            }, timeout_ms=120_000)
 
         result: dict[str, Any] = {
             "qid": qid,
@@ -1066,13 +1181,20 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             "text": text,
             "http_status": resp.get("status"),
             "elapsed_ms": resp.get("elapsed_ms"),
+            "p_user_first_token_ms": resp.get("p_user_first_token_ms"),
+            "p_user_last_token_ms": resp.get("p_user_last_token_ms"),
+            "p_user_complete_ms": resp.get("p_user_complete_ms"),
         }
         if not resp.get("ok"):
             result["error"] = resp.get("error") or resp.get("raw") or "unknown"
             result["gold_at_1"] = False
         else:
-            turn = (resp.get("body") or {}).get("turn") or {}
-            citations = turn.get("citations") or []
+            if use_sse:
+                turn = resp.get("turn") or {}
+                citations = turn.get("citations") or resp.get("citations") or []
+            else:
+                turn = (resp.get("body") or {}).get("turn") or {}
+                citations = turn.get("citations") or []
             result["answer"] = turn.get("content", "")
             result["citations"] = [
                 {"id": c.get("id"), "node_id": c.get("node_id"), "title": c.get("title")}
@@ -1084,7 +1206,10 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             result["query_class"] = turn.get("query_class")
             result["latency_ms_server"] = turn.get("latency_ms")
             result["retrieved_node_ids"] = turn.get("retrieved_node_ids", [])
-            result["session_id"] = (resp.get("body") or {}).get("session_id")
+            if use_sse:
+                result["session_id"] = turn.get("session_id") or resp.get("session_id")
+            else:
+                result["session_id"] = (resp.get("body") or {}).get("session_id")
             refused = _is_refusal(result.get("answer", ""))
             expected = _expected_set(q)
             result["refused"] = refused
@@ -1099,7 +1224,11 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             result["over_refusal"] = refused and (q.get("class") != "adversarial-negative") and (qid != "q9")
 
         budget = RAG_HIGH_LATENCY_BUDGET_MS if quality == "high" else RAG_FAST_LATENCY_BUDGET_MS
-        within_budget = (result.get("elapsed_ms") or 0) <= budget
+        # iter-09 RES-5: prefer p_user_complete_ms (TTLT) over elapsed_ms once SSE
+        # harness is on; falls back to elapsed_ms when SSE disabled or upstream
+        # returned non-200 before any frame.
+        budget_ref_ms = result.get("p_user_complete_ms") or result.get("elapsed_ms") or 0
+        within_budget = budget_ref_ms <= budget
         result["within_budget"] = within_budget
         result["budget_ms"] = budget
 
@@ -1291,6 +1420,11 @@ def _qa_summary(qa: PhaseReport) -> dict:
     infra = sum(1 for r in rows if (r.get("http_status") or 0) >= 500)
     elapsed = sorted((r.get("elapsed_ms") or 0) for r in rows)
     p95 = elapsed[int(len(elapsed) * 0.95)] if elapsed else 0
+
+    def _p95(field: str) -> float | None:
+        vals = sorted(v for v in (r.get(field) for r in rows) if isinstance(v, (int, float)))
+        return vals[int(len(vals) * 0.95)] if vals else None
+
     return {
         "total": total,
         "end_to_end_gold_at_1": round(passes / max(total, 1), 4),
@@ -1298,6 +1432,8 @@ def _qa_summary(qa: PhaseReport) -> dict:
         "infra_failures": infra,
         "p95_latency_ms": p95,
         "p95_under_budget": p95 <= P95_LATENCY_BUDGET_MS,
+        "p95_p_user_first_token_ms": _p95("p_user_first_token_ms"),
+        "p95_p_user_complete_ms": _p95("p_user_complete_ms"),
     }
 
 
