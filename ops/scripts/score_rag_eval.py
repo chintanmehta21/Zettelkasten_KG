@@ -140,8 +140,12 @@ async def _fetch_chunks_for_nodes(
     *,
     node_ids: list[str],
     user_id_hint: str | None,
-) -> dict[str, list[dict]]:
-    """Return ``{node_id: [{"content": str, "chunk_idx": int}, ...]}``.
+) -> tuple[dict[str, list[dict]], dict[str, list[list[float]]]]:
+    """Return ``(chunks_per_node, embeddings_per_node)``.
+
+    chunks_per_node: ``{node_id: [{"content": str, "chunk_idx": int, ...}]}``.
+    embeddings_per_node: ``{node_id: [[float], ...]}`` — empty dict when the
+    `kg_node_chunks` table has no embedding column (current schema).
 
     Best-effort: returns empty list per node on any failure. Tries the
     project's standard supabase client first; if that's not configured or
@@ -149,8 +153,9 @@ async def _fetch_chunks_for_nodes(
     using ``SUPABASE_SERVICE_ROLE_KEY``.
     """
     out: dict[str, list[dict]] = {nid: [] for nid in node_ids}
+    embs_out: dict[str, list[list[float]]] = {}
     if not node_ids:
-        return out
+        return out, embs_out
     try:
         from website.core.supabase_kg.client import get_supabase_client
         client = get_supabase_client()
@@ -158,16 +163,19 @@ async def _fetch_chunks_for_nodes(
         logger.warning("supabase client unavailable: %s", exc)
         client = None
     if client is None:
-        return out
+        return out, embs_out
     try:
         # Pull all chunks for all node_ids in one shot (small Kasten => small N).
+        # `kg_node_chunks` schema currently lacks an embedding column; if added
+        # later the SELECT below should be updated to include it and the
+        # embeddings_per_node dict populated below.
         resp = client.table("kg_node_chunks").select(
             "node_id,chunk_idx,content,token_count"
         ).in_("node_id", node_ids).execute()
         rows = resp.data or []
     except Exception as exc:  # noqa: BLE001
         logger.warning("kg_node_chunks fetch failed: %s", exc)
-        return out
+        return out, embs_out
     for row in rows:
         nid = row.get("node_id")
         if nid in out:
@@ -179,7 +187,7 @@ async def _fetch_chunks_for_nodes(
     # Sort per-node by chunk_idx for deterministic context concatenation.
     for nid, chunks in out.items():
         chunks.sort(key=lambda c: c["chunk_idx"])
-    return out
+    return out, embs_out
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -476,7 +484,7 @@ async def main_async(args) -> int:
         d = check.get("detail") or {}
         for nid in d.get("retrieved_node_ids") or []:
             retrieved_union.add(nid)
-    chunks_per_node = await _fetch_chunks_for_nodes(
+    chunks_per_node, embeddings_per_node = await _fetch_chunks_for_nodes(
         node_ids=sorted(retrieved_union),
         user_id_hint=None,
     )
@@ -505,6 +513,7 @@ async def main_async(args) -> int:
         queries=aligned_gold,
         answers=aligned_ans,
         chunks_per_node=chunks_per_node,
+        embeddings_per_node=embeddings_per_node or None,
         per_query_latencies=latencies,
         graph_lift=GraphLift(composite=0.0, retrieval=0.0, reranking=0.0),
     )

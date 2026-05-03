@@ -91,3 +91,32 @@ def test_eval_runner_produces_eval_result():
     assert result.iter_id == "youtube/iter-01"
     assert 0 <= result.composite <= 100
     assert len(result.per_query) == 5
+
+
+def test_eval_runner_passes_embeddings_to_chunking_score(monkeypatch):
+    """iter-08 Phase 2.3: when embeddings_per_node provided, chunking_score receives them."""
+    from website.features.rag_pipeline.evaluation import eval_runner
+
+    captured: dict = {}
+
+    def fake_chunking_score(chunks, target_tokens=None, embeddings=None):
+        captured.setdefault("calls", []).append(
+            {"chunks": chunks, "embeddings": embeddings}
+        )
+        return 75.0
+
+    monkeypatch.setattr(eval_runner, "chunking_score", fake_chunking_score)
+    runner = eval_runner.EvalRunner(
+        weights={"chunking": 0.10, "retrieval": 0.25, "reranking": 0.20, "synthesis": 0.45},
+        weights_hash="abc",
+    )
+    runner.evaluate(
+        iter_id="t/iter-x",
+        queries=[],
+        answers=[],
+        chunks_per_node={"n1": [{"text": "x", "token_count": 256}]},
+        embeddings_per_node={"n1": [[0.1, 0.2], [0.3, 0.4]]},
+    )
+    assert any(
+        c["embeddings"] is not None for c in captured["calls"]
+    ), "embeddings_per_node must reach chunking_score"
