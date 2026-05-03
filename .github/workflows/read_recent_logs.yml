@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tail_lines:
-        description: "Number of log lines to tail"
+        description: "Number of log lines to tail (docker compose logs / caddy access)"
         type: number
         default: 500
       color:
@@ -17,6 +17,19 @@ on:
         type: choice
         options: [auto, blue, green]
         default: auto
+      # iter-09 Task 6 — windowed log retrieval for q5 500 root-cause and other
+      # post-incident triage. `since` accepts journalctl --since formats
+      # (RFC3339, "6 hours ago", "yesterday", etc.). When set, journalctl runs
+      # with --since "$since" --lines $lines instead of the default --since "6
+      # hours ago" + grep filter.
+      lines:
+        description: "journalctl --lines (default 5000 when since is set)"
+        type: number
+        default: 5000
+      since:
+        description: 'journalctl --since (e.g. 2026-05-03T15:48:00Z); empty = default 6h grep window'
+        type: string
+        default: ""
 
 jobs:
   tail:
@@ -46,7 +59,9 @@ jobs:
                 COLOR="$(cat /opt/zettelkasten/ACTIVE_COLOR 2>/dev/null || echo blue)"
             fi
             LINES=${{ inputs.tail_lines }}
-            echo "===== [read_recent_logs] color=$COLOR lines=$LINES ====="
+            JCTL_LINES=${{ inputs.lines }}
+            JCTL_SINCE='${{ inputs.since }}'
+            echo "===== [read_recent_logs] color=$COLOR lines=$LINES jctl_lines=$JCTL_LINES jctl_since=$JCTL_SINCE ====="
             echo "===== free -h ====="
             free -h
             echo "===== docker ps ====="
@@ -114,6 +129,13 @@ jobs:
               | grep -iE 'oom|out of memory|killed process|invoked oom' \
               | head -50 \
               || echo "  (no kernel OOM events found, or journal not readable by deploy user)"
+            if [ -n "$JCTL_SINCE" ]; then
+              echo "===== journalctl windowed (--since '$JCTL_SINCE' --lines $JCTL_LINES) ====="
+              # iter-09 Task 6: full windowed dump (no OOM-only filter). Used to
+              # surface app tracebacks around a known incident timestamp.
+              journalctl --since "$JCTL_SINCE" --lines "$JCTL_LINES" --no-pager 2>&1 \
+                || echo "  (journalctl windowed read failed)"
+            fi
             echo "===== /var/log/kern.log + /var/log/syslog (OOM grep; if readable) ====="
             for log in /var/log/kern.log /var/log/syslog; do
               [ -r "$log" ] || continue
