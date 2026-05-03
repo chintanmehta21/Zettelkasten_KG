@@ -429,3 +429,22 @@ def test_detect_compare_intent_text_only_no_proper_nouns():
         "How do databases compare to spreadsheets?"
     ) is False
 
+
+
+
+# iter-08 Phase 4.2: chunk-share normalization ----------------------------
+
+def test_chunk_share_normalization_damps_magnets():
+    """iter-08 Phase 4.2: candidates with high chunk_count get rrf damped."""
+    from website.features.rag_pipeline.retrieval.hybrid import _apply_chunk_share_normalization
+    candidates = [
+        _cand("magnet", 1.0),  # chunk_count=16 -> factor 0.25 -> rrf 0.25
+        _cand("normal", 1.0),  # chunk_count=4  -> factor 0.5  -> rrf 0.5
+        _cand("solo",   1.0),  # chunk_count=1  -> factor 1.0  -> rrf 1.0
+    ]
+    chunk_counts = {"magnet": 16, "normal": 4, "solo": 1}
+    _apply_chunk_share_normalization(candidates, chunk_counts)
+    rrf = {c.node_id: c.rrf_score for c in candidates}
+    assert abs(rrf["magnet"] - 0.25) < 0.01
+    assert abs(rrf["normal"] - 0.5) < 0.01
+    assert abs(rrf["solo"]   - 1.0) < 0.01

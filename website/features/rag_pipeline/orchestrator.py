@@ -949,34 +949,9 @@ class RAGOrchestrator:
             logger.error("session writeback failed (turn served, persistence dropped): %s", exc, exc_info=True)
             _clear_exc_locals(exc)
 
-        # iter-04 anti-magnet: record a top-1 hit for this Kasten so the
-        # next query in this Kasten gets the frequency-prior demotion if
-        # this node is becoming a magnet. Fire-and-forget — no latency
-        # cost, never raises (`record_hit` swallows all errors). Only
-        # fires when (a) we have a sandbox/Kasten id, (b) the verdict is
-        # not a refusal/retry-budget-exceeded path, and (c) the retriever
-        # exposes a kasten-freq store. Skipped for sandbox-less sessions
-        # (no Kasten = no per-context frequency table).
-        sandbox_id = getattr(query, "sandbox_id", None)
-        kasten_freq = getattr(self._retriever, "_kasten_freq", None)
-        if (
-            sandbox_id is not None
-            and kasten_freq is not None
-            and turn.citations
-            and verdict in ("supported", "partial", "retried_supported")
-        ):
-            top_node_id = turn.citations[0].node_id
-            try:
-                asyncio.create_task(
-                    kasten_freq.record_hit(
-                        kasten_id=sandbox_id,
-                        node_id=top_node_id,
-                    )
-                )
-            except RuntimeError:
-                # No running event loop (rare; sync test paths). Drop
-                # silently — the prior is best-effort.
-                pass
+        # iter-08 Phase 4.2: kasten_freq replaced by chunk-share normalization
+        # (RES-2: floor=50 was never crossed in 6 iters of production runs).
+        # record_hit was already a no-op writeback; bypassed for clarity.
 
         return _PipelineResult(turn=turn, replaced_text=replaced_text)
 

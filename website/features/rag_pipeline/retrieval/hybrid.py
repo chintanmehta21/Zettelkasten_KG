@@ -18,6 +18,10 @@ from website.features.rag_pipeline.retrieval.kasten_freq import (
     KastenFrequencyStore,
     compute_frequency_penalty,
 )
+from website.features.rag_pipeline.retrieval.chunk_share import (
+    ChunkShareStore,
+    compute_chunk_share_penalty,
+)
 
 # iter-07 Fix B: COMPARE-aware anti-magnet. When the rewritten query contains
 # a compare/vs pattern AND ≥2 person entities, disable the kasten-frequency
@@ -129,13 +133,16 @@ class HybridRetriever:
         embedder: Any,
         supabase: Any | None = None,
         *,
-        kasten_freq_store: KastenFrequencyStore | None = None,
+        kasten_freq_store: KastenFrequencyStore | None = None,  # deprecated (iter-08 P4.2)
+        chunk_share_store: ChunkShareStore | None = None,
     ):
         self._supabase = supabase or get_supabase_client()
         self._embedder = embedder
-        # iter-04: anti-magnet per-Kasten frequency prior. Optional; when
-        # None we skip the prior (cold-start / single-Kasten dev paths).
+        # iter-08 P4.2: kasten_freq prior bypassed (RES-2 floor=50 never crossed).
+        # Kept on instance as deprecated attr so orchestrator's getattr lookup is
+        # still safe; the field is no longer consulted in retrieve().
         self._kasten_freq = kasten_freq_store or KastenFrequencyStore(self._supabase)
+        self._chunk_share = chunk_share_store or ChunkShareStore(supabase=self._supabase)
 
     async def retrieve(
         self,
@@ -178,30 +185,34 @@ class HybridRetriever:
             ).execute()
             return response.data or []
 
-        # iter-04: kick off the per-Kasten frequency lookup in parallel with
-        # the hybrid RPCs so it's free latency-wise.
-        freq_task = asyncio.create_task(
-            self._kasten_freq.get_frequencies(sandbox_id)
-        )
+        # iter-08 P4.2: per-Kasten chunk-count fetch parallel with hybrid RPCs.
+        # Replaces dead kasten_freq prior (RES-2 floor=50 never crossed).
+        if self._chunk_share is not None and sandbox_id is not None:
+            counts_task = asyncio.create_task(
+                self._chunk_share.get_chunk_counts(sandbox_id)
+            )
+        else:
+            counts_task = None
 
         results = await asyncio.gather(*[
             _search(query_text, query_vec)
             for query_text, query_vec in zip(query_variants, embeddings)
         ])
 
-        kasten_freqs: dict[str, int] = {}
-        try:
-            kasten_freqs = await freq_task
-        except Exception as exc:  # noqa: BLE001 — best-effort
-            _log.debug("kasten_freq fetch failed: %s", exc)
-            kasten_freqs = {}
+        chunk_counts: dict[str, int] = {}
+        if counts_task is not None:
+            try:
+                chunk_counts = await counts_task
+            except Exception as exc:  # noqa: BLE001 — best-effort
+                _log.debug("chunk_share fetch failed: %s", exc)
+                chunk_counts = {}
 
         return self._dedup_and_fuse(
             results,
             query_variants=query_variants,
             query_metadata=query_metadata,
             query_class=query_class,
-            kasten_freqs=kasten_freqs,
+            chunk_counts=chunk_counts,
             effective_nodes=effective_nodes,
         )
 
@@ -235,7 +246,7 @@ class HybridRetriever:
         query_variants: list[str] | None = None,
         query_metadata: QueryMetadata | None = None,
         query_class: QueryClass | None = None,
-        kasten_freqs: dict[str, int] | None = None,
+        chunk_counts: dict[str, int] | None = None,
         effective_nodes: list[str] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
@@ -360,18 +371,18 @@ class HybridRetriever:
                     compare_intent = True
                     break
 
-        if kasten_freqs and not compare_intent:
-            total_hits = sum(kasten_freqs.values())
-            for candidate in by_key.values():
-                penalty = compute_frequency_penalty(
-                    kasten_freqs.get(candidate.node_id, 0),
-                    total_hits_in_kasten=total_hits,
-                )
-                if penalty < 1.0:
-                    candidate.rrf_score *= penalty
+        # iter-08 Phase 4.2: chunk-share normalization replaces the dead
+        # kasten_freq prior (RES-2: floor=50, never crossed). When compare-
+        # intent is detected the normalization is suppressed so magnets-as-
+        # answers can win.
+        chunk_share_enabled = os.environ.get(
+            "RAG_CHUNK_SHARE_NORMALIZATION_ENABLED", "true"
+        ).lower() not in ("false", "0", "no", "off")
+        if chunk_share_enabled and chunk_counts and not compare_intent:
+            _apply_chunk_share_normalization(list(by_key.values()), chunk_counts)
         elif compare_intent:
             _log.debug(
-                "anti-magnet disabled: compare-intent detected (authors=%d)",
+                "chunk-share normalization disabled: compare-intent detected (authors=%d)",
                 len(list(getattr(query_metadata, "authors", None) or [])),
             )
 
@@ -418,6 +429,21 @@ class HybridRetriever:
             )
 
         return _cap_per_node(ordered, query_class=query_class)
+
+
+def _apply_chunk_share_normalization(
+    candidates: list[RetrievalCandidate],
+    chunk_counts: dict[str, int],
+) -> None:
+    """In-place: damp rrf_score by 1/sqrt(chunk_count_per_node).
+
+    iter-08 Phase 4.2 anti-magnet: replaces the dead kasten_freq prior
+    (RES-2: floor=50 was never crossed in 6 iters of production runs).
+    """
+    for c in candidates:
+        n = chunk_counts.get(c.node_id, 0)
+        if n > 1:
+            c.rrf_score *= compute_chunk_share_penalty(n)
 
 
 def _xquad_select(
