@@ -1,10 +1,13 @@
-"""Per-Kasten node-frequency prior (anti-magnet penalty).
+"""DEPRECATED iter-08 — replaced by chunk_share.py per RES-2.
 
-iter-04 fix for the q5-class failure mode where a single zettel
-(``gh-zk-org-zk`` in the KM Kasten) wins top-1 across many semantically
-unrelated queries because of tag-density coincidence + graph self-seeding.
+The frequency prior was a strict no-op for 6 iters (floor=50, max ~48 hits
+across iter-04→07). hybrid.py:307 no longer consults it. Module retained
+because orchestrator.py and HybridRetriever.__init__ still accept the
+``kasten_freq_store`` kwarg for back-compat. Schedule full deletion in iter-09.
 
-This module exposes:
+Historical context (iter-04): per-Kasten node-frequency prior (anti-magnet
+penalty) for the q5-class failure mode where a single zettel won top-1
+across many semantically unrelated queries.
 
 * :class:`KastenFrequencyStore` — async accessor for ``kg_kasten_node_freq``,
   returning ``{node_id: hit_count}`` for a given Kasten, with a small
