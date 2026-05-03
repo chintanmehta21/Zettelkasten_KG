@@ -290,3 +290,29 @@ def test_long_form_no_prefix_when_title_and_tags_are_empty(monkeypatch) -> None:
     # importantly the body is preserved and we didn't crash.
     assert len(chunks) == 1
     assert "body" in chunks[0].content
+
+
+# iter-08 Phase 2.4 — sentence-snap helper -------------------------------------
+
+
+def test_snap_backtracks_to_period_within_slack() -> None:
+    """iter-08 Phase 2.4: snap to last sentence end within slack window.
+
+    The helper scans the trailing ``slack_chars`` characters of the chunk
+    for a sentence terminator and trims the dangling fragment. Slack here
+    must be wide enough to reach the period before the fragment.
+    """
+    from website.features.rag_pipeline.ingest.chunker import _snap_to_sentence_end
+
+    text = "First sentence. Second sentence. Third senten"
+    # Trailing fragment is "Third senten" (12 chars). Slack must cover it.
+    snapped = _snap_to_sentence_end(text, slack_chars=15)
+    assert snapped == "First sentence. Second sentence."
+
+
+def test_snap_returns_original_when_no_period_in_slack() -> None:
+    from website.features.rag_pipeline.ingest.chunker import _snap_to_sentence_end
+
+    text = "A really long sentence with no terminal punctuation in the slack zone yet"
+    snapped = _snap_to_sentence_end(text, slack_chars=10)
+    assert snapped == text

@@ -2,12 +2,33 @@
 
 from __future__ import annotations
 
+import os
+import re as _re
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from website.features.rag_pipeline.types import ChunkType, SourceType
+
+
+# iter-08 Phase 2.4: snap long-form chunks to sentence boundaries.
+_SENTENCE_END_RE = _re.compile(r"[.!?]")
+
+
+def _snap_to_sentence_end(text: str, slack_chars: int) -> str:
+    """Backtrack the chunk tail to the nearest sentence end within slack."""
+    if not text or len(text) < slack_chars:
+        return text
+    if _re.search(r"[.!?\n]\s*$", text):
+        return text
+    cutoff = max(0, len(text) - slack_chars)
+    last_end = -1
+    for m in _SENTENCE_END_RE.finditer(text[cutoff:]):
+        last_end = cutoff + m.end()
+    if last_end == -1:
+        return text
+    return text[:last_end].rstrip()
 
 try:
     from chonkie import LateChunker, RecursiveChunker, SemanticChunker, TokenChunker
@@ -155,6 +176,26 @@ class ZettelChunker:
                     chunks = self._recursive_chunk(cleaned_text, extra_metadata)
                 except Exception:
                     chunks = self._token_chunk(cleaned_text, extra_metadata)
+            # iter-08 Phase 2.4: snap chunk tails to sentence boundaries so
+            # downstream embedders don't see dangling clauses. Env-gated so
+            # operators can disable per-iteration if needed.
+            snap_enabled = (
+                os.environ.get("RAG_CHUNKER_SENTENCE_SNAP_ENABLED", "true").lower()
+                not in ("false", "0", "no", "off")
+            )
+            if snap_enabled and chunks:
+                snapped: list[Chunk] = []
+                for c in chunks:
+                    slack = max(10, int(len(c.content) * 0.10))
+                    new_text = _snap_to_sentence_end(c.content, slack_chars=slack)
+                    if new_text == c.content:
+                        snapped.append(c)
+                    else:
+                        snapped.append(c.model_copy(update={
+                            "content": new_text,
+                            "token_count": _count_tokens(new_text),
+                        }))
+                chunks = snapped
             return self._prepend_title_prefix(chunks, title, tags, extra_metadata)
 
         chunks = self._recursive_chunk(cleaned_text, extra_metadata)
