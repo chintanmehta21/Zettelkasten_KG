@@ -63,6 +63,19 @@ _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
 # context-assembly stage via a similarity floor (see context/assembler.py).
 _MAX_CHUNKS_PER_NODE = 3
 
+# iter-08 Phase 3.1: class-aware chunks-per-node cap. THEMATIC and LOOKUP
+# get cap=1 (RES-4: kills the 16-chunk yt-effective-public-speakin magnet
+# without hurting cross-source recall). MULTI_HOP and STEP_BACK keep cap=3
+# (genuinely need cross-chunk evidence). VAGUE keeps cap=3 (HyDE wide net).
+_MAX_CHUNKS_PER_NODE_BY_CLASS: dict[QueryClass, int] = {
+    QueryClass.LOOKUP: 1,
+    QueryClass.THEMATIC: 1,
+    QueryClass.MULTI_HOP: 3,
+    QueryClass.STEP_BACK: 3,
+    QueryClass.VAGUE: 3,
+}
+_DEFAULT_MAX_CHUNKS_PER_NODE = 3
+
 # iter-04: xQuAD diversity-by-construction (Abdollahpouri et al. 2017).
 # After all per-candidate score adjustments, we pick top-K slot-by-slot
 # greedy-maximising lambda*rel - (1-lambda)*overlap_with_already_picked,
@@ -358,7 +371,7 @@ class HybridRetriever:
                 score_floor=floor,
             )
 
-        return _cap_per_node(ordered, _MAX_CHUNKS_PER_NODE)
+        return _cap_per_node(ordered, query_class=query_class)
 
 
 def _xquad_select(
@@ -449,18 +462,29 @@ def _ensure_member_coverage(
 
 def _cap_per_node(
     candidates: list[RetrievalCandidate],
-    max_chunks_per_node: int,
+    query_class: QueryClass | int | None = None,
+    cap: int | None = None,
 ) -> list[RetrievalCandidate]:
-    """Keep at most ``max_chunks_per_node`` chunk candidates per ``node_id`` so
-    a single verbose node cannot crowd out the top-K handed to the reranker.
-    Summary-kind candidates are unaffected — one summary + N chunks per node
-    still pass through."""
+    """Keep at most ``cap`` chunk candidates per ``node_id`` so a single verbose
+    node cannot crowd out the top-K handed to the reranker. Summary-kind
+    candidates are unaffected — one summary + N chunks per node still pass
+    through.
+
+    iter-08 Phase 3.1: ``query_class`` selects the cap from
+    ``_MAX_CHUNKS_PER_NODE_BY_CLASS``. Legacy positional callers that passed
+    an int as the second arg still work — ints are treated as ``cap``."""
+    # Backward-compat: legacy callers passed a positional int.
+    if cap is None:
+        if isinstance(query_class, int) and not isinstance(query_class, bool):
+            cap = query_class
+        else:
+            cap = _MAX_CHUNKS_PER_NODE_BY_CLASS.get(query_class, _DEFAULT_MAX_CHUNKS_PER_NODE)
     seen_chunk_count: dict[str, int] = {}
     kept: list[RetrievalCandidate] = []
     for candidate in candidates:
         if candidate.kind is ChunkKind.CHUNK:
             count = seen_chunk_count.get(candidate.node_id, 0)
-            if count >= max_chunks_per_node:
+            if count >= cap:
                 continue
             seen_chunk_count[candidate.node_id] = count + 1
         kept.append(candidate)

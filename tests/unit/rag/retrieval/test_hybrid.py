@@ -4,8 +4,8 @@ from uuid import uuid4
 import pytest
 
 from website.features.rag_pipeline.errors import EmptyScopeError
-from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever
-from website.features.rag_pipeline.types import QueryClass, ScopeFilter, SourceType
+from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever, _cap_per_node
+from website.features.rag_pipeline.types import ChunkKind, QueryClass, RetrievalCandidate, ScopeFilter, SourceType
 
 
 class _RPCResult:
@@ -364,4 +364,42 @@ async def test_multi_hop_weights_boost_graph() -> None:
     payload = supabase.calls[0][1]
     assert payload["p_graph_weight"] == pytest.approx(0.35)
     assert payload["p_graph_weight"] > payload["p_fulltext_weight"]
+
+
+# iter-08 Phase 3.1: class-aware _cap_per_node ----------------------------
+
+def _cand(node_id: str, rrf: float) -> RetrievalCandidate:
+    return RetrievalCandidate(
+        kind=ChunkKind.CHUNK,
+        node_id=node_id,
+        chunk_id=None,
+        chunk_idx=0,
+        name=node_id,
+        source_type=SourceType.WEB,
+        url="https://example.com",
+        content="x",
+        tags=[],
+        metadata={},
+        rrf_score=rrf,
+    )
+
+
+def test_cap_per_node_thematic_caps_at_one():
+    """iter-08 Phase 3.1: THEMATIC keeps only the highest-rrf chunk per node."""
+    candidates = [_cand("a", 0.9), _cand("a", 0.8), _cand("a", 0.7), _cand("b", 0.6)]
+    capped = _cap_per_node(candidates, QueryClass.THEMATIC)
+    assert [c.node_id for c in capped] == ["a", "b"]
+
+
+def test_cap_per_node_lookup_caps_at_one():
+    candidates = [_cand("a", 0.9), _cand("a", 0.8)]
+    capped = _cap_per_node(candidates, QueryClass.LOOKUP)
+    assert len(capped) == 1
+
+
+def test_cap_per_node_multi_hop_keeps_three():
+    """MULTI_HOP needs cross-chunk evidence — cap stays at 3."""
+    candidates = [_cand("a", 0.9), _cand("a", 0.8), _cand("a", 0.7), _cand("a", 0.6)]
+    capped = _cap_per_node(candidates, QueryClass.MULTI_HOP)
+    assert len(capped) == 3
 
