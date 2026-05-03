@@ -91,3 +91,12 @@ models/bge_export/
 # (Zettelkasten/bge-reranker). Pulled at docker build time. Local copy
 # stays on disk for dev runs but is no longer tracked.
 models/bge-reranker-base-int8.onnx
+
+# rag_eval transient outputs — regenerated on every eval run; pollute git
+# status and don't represent source-of-truth. Specs (PLAN.md, RESEARCH.md,
+# baseline.json, queries.json, scores.md, README.md) remain tracked.
+docs/rag_eval/common/**/screenshots/
+docs/rag_eval/common/**/_runs/
+docs/rag_eval/common/**/verification_results.json
+docs/rag_eval/common/**/timing_report.md
+docs/rag_eval/common/**/eval.json
