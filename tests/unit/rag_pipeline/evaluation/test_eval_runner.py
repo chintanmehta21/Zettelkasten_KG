@@ -172,3 +172,18 @@ def test_aggregate_relevancy_empty_returns_zero():
     )
 
     assert _aggregate_relevancy(answer_relevancies=[], refusal_scores=[]) == 0.0
+
+
+def test_trimmed_quantile_excludes_outliers():
+    """iter-08 Phase 7.H: trimmed quantile drops outliers before computing q."""
+    from website.features.rag_pipeline.evaluation.eval_runner import _trimmed_quantile
+    values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 1000]
+    q95_trimmed = _trimmed_quantile(values, 0.95, trim_pct=0.1)
+    assert q95_trimmed < 100
+
+
+def test_trimmed_quantile_falls_through_on_small_cohort():
+    """iter-08 Phase 7.H: cohorts <4 cannot be trimmed; fall through to plain quantile."""
+    from website.features.rag_pipeline.evaluation.eval_runner import _trimmed_quantile, _quantile
+    values = [10.0, 20.0, 1000.0]
+    assert _trimmed_quantile(values, 0.95, trim_pct=0.1) == _quantile(values, 0.95)

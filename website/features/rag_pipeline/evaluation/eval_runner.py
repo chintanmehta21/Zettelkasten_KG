@@ -35,6 +35,33 @@ def _is_empty_answer_text(answer: str) -> bool:
     return not isinstance(answer, str) or answer.strip() == ""
 
 
+def _quantile(values: list[float], q: float) -> float:
+    """Linear-interpolation quantile (q in 0..1). Mirrors prior inline _pct."""
+    if not values:
+        return 0.0
+    samples = sorted(float(x) for x in values)
+    if len(samples) == 1:
+        return samples[0]
+    rank = q * (len(samples) - 1)
+    lo = int(rank)
+    hi = min(lo + 1, len(samples) - 1)
+    frac = rank - lo
+    return samples[lo] * (1 - frac) + samples[hi] * frac
+
+
+def _trimmed_quantile(values: list[float], q: float, trim_pct: float = 0.1) -> float:
+    """iter-08 Phase 7.H: drop the top/bottom trim_pct of samples before
+    computing the quantile so a single 60s outlier in a 10-query cohort
+    doesn't drag p95 to a misleading number. Falls through to plain
+    _quantile when the cohort is too small to trim meaningfully (<4)."""
+    if len(values) < 4:
+        return _quantile(values, q)
+    sorted_vals = sorted(float(x) for x in values)
+    lo = int(len(sorted_vals) * trim_pct)
+    hi = len(sorted_vals) - lo
+    return _quantile(sorted_vals[lo:hi], q)
+
+
 # Canonical refusal phrase the orchestrator emits when nothing in the user's
 # Zettels covers a query. Mirrored in stress_fixtures.REFUSAL_PHRASE; kept
 # here as a string literal to avoid an inter-module import cycle.
@@ -349,21 +376,10 @@ class EvalRunner:
         latency_p50_ms: float | None = None
         latency_p95_ms: float | None = None
         if per_query_latencies:
-            samples = sorted(float(x) for x in per_query_latencies)
-
-            def _pct(p: float) -> float:
-                if not samples:
-                    return 0.0
-                if len(samples) == 1:
-                    return samples[0]
-                rank = (p / 100.0) * (len(samples) - 1)
-                lo = int(rank)
-                hi = min(lo + 1, len(samples) - 1)
-                frac = rank - lo
-                return samples[lo] * (1 - frac) + samples[hi] * frac
-
-            latency_p50_ms = _pct(50.0)
-            latency_p95_ms = _pct(95.0)
+            # iter-08 Phase 7.H: trim 10% off each tail so single-query
+            # outliers (cold-start, 30s timeout retries) don't poison p50/p95.
+            latency_p50_ms = _trimmed_quantile(list(per_query_latencies), 0.50)
+            latency_p95_ms = _trimmed_quantile(list(per_query_latencies), 0.95)
 
         return EvalResult(
             iter_id=iter_id,
