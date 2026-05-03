@@ -50,3 +50,23 @@ def test_rerank_score_penalizes_false_positives():
     reranked = ["yt-x", "yt-y", "yt-z", "yt-a"]
     score = rerank_score(gold_ranking=gold_ranking, reranked=reranked, k_ndcg=5, k_precision=3)
     assert score < 50.0
+
+
+def test_boundary_regex_accepts_soft_endings():
+    """iter-08 Phase 2.1: scorer accepts ),],*,",',|,;,:,>, code-fence, heading."""
+    chunks_soft = [
+        {"text": "Some text ending with citation [1]", "token_count": 256},
+        {"text": "A bullet item ending in italics *emphasis*", "token_count": 256},
+        {"text": "A code block ending\n```", "token_count": 256},
+        {"text": "A heading\n## Done", "token_count": 256},
+        {"text": "Mid-paragraph citation, comma soft-end,", "token_count": 256},
+    ]
+    score = chunking_score(chunks_soft, target_tokens=256)
+    assert score >= 60.0, f"expected >=60 with soft boundaries, got {score}"
+
+
+def test_boundary_regex_still_rejects_mid_word():
+    """iter-08 Phase 2.1: mid-word endings still fail."""
+    chunks_bad = [{"text": "Stop mid-Softwa", "token_count": 256}]
+    score = chunking_score(chunks_bad, target_tokens=256)
+    assert score < 65, f"mid-word boundaries must fail: got {score}"

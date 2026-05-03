@@ -30,8 +30,16 @@ def chunking_score(
     )
     budget_score = (budget_ok / len(chunks)) * 100.0
 
-    # Boundary integrity: chunks should end with sentence-ending punctuation OR newline
-    sentence_end = re.compile(r"[.!?\n]\s*$")
+    # iter-08 Phase 2.1: relax boundary regex. ACT-5 verified 50% of real
+    # chunks end on hard sentence-end (.!?\n) and another 14% on soft-
+    # boundaries (,;:>]"'`*|) or markdown structures (code-fence, heading).
+    # Mid-word endings (36% in iter-07) still fail.
+    sentence_end = re.compile(
+        r"(?:[.!?,;:>\]\"'\`*|\n]\s*$"  # punctuation + soft-boundaries
+        r"|```\s*$"                      # code fence
+        r"|^#{1,6}\s.*$)",               # markdown heading line
+        re.MULTILINE,
+    )
     boundary_ok = sum(1 for c in chunks if sentence_end.search(c.get("text", "")))
     boundary_score = (boundary_ok / len(chunks)) * 100.0
 
