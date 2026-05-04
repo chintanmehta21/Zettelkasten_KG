@@ -47,6 +47,13 @@ _ANCHOR_SEED_ENABLED = os.environ.get(
     "RAG_ANCHOR_SEED_INJECTION_ENABLED", "true"
 ).lower() not in ("false", "0", "no", "off")
 _ANCHOR_SEED_FLOOR_RRF = float(os.environ.get("RAG_ANCHOR_SEED_FLOOR_RRF", "0.30"))
+# iter-10 P4 mitigations:
+#   2. Min entity-length floor — short entities like "AI"/"ML" tag-collide.
+#   3. Hard top-K cap on injected seeds (RPC LIMIT 8 is too generous).
+_ANCHOR_SEED_MIN_ENTITY_LENGTH = int(
+    os.environ.get("RAG_ANCHOR_SEED_MIN_ENTITY_LENGTH", "4")
+)
+_ANCHOR_SEED_TOP_K = int(os.environ.get("RAG_ANCHOR_SEED_TOP_K", "3"))
 
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
@@ -143,6 +150,54 @@ def _detect_compare_intent_text_only(query: str) -> bool:
 # fraction of variants, suppress the per-variant consensus bump (it's a
 # magnet, not a relevance signal). The bump is at line ~169.
 _CONSENSUS_SUPPRESS_FRACTION = 0.5
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class _AnchorSeedDecision:
+    fire: bool
+    reason: str
+
+
+def _should_inject_anchor_seeds(
+    query_class: QueryClass | None,
+    compare_intent: bool,
+    anchor_nodes: set[str] | list[str],
+    entities_resolving: list[str],
+) -> _AnchorSeedDecision:
+    """iter-10 P4: anchor-seed gate after dropping the iter-09 RES-7 re-gate.
+
+    Old re-gate ``(n_persons + n_entities) >= 1`` rejected q10's "Steve Jobs"
+    when NER missed the single-name surname. anchor_nodes being non-empty
+    already proves entity match at the kasten level (RPC INNER JOINs
+    ``kg_nodes.name ILIKE '%' || e || '%' OR e = ANY(n.tags)``), so the count
+    re-gate is double-filtering.
+
+    Defense-in-depth ordering matters:
+      1. ``no_anchor_nodes`` — nothing to seed.
+      2. ``compare_intent`` — short-circuits class checks (multi-LOOKUP shape).
+      3. ``thematic_excluded`` — even if router misclassifies a LOOKUP as
+         THEMATIC, no inject (avoids q5-shape pulling a magnet).
+      4. ``non_lookup`` — only LOOKUP fires (compare-intent already passed).
+      5. ``entity_length_floor`` — short tags like 'AI'/'ML' tag-collide.
+    """
+    if not anchor_nodes:
+        return _AnchorSeedDecision(False, "no_anchor_nodes")
+    if compare_intent:
+        return _AnchorSeedDecision(True, "compare_intent")
+    if query_class is QueryClass.THEMATIC:
+        return _AnchorSeedDecision(False, "thematic_excluded")
+    if query_class is not QueryClass.LOOKUP:
+        return _AnchorSeedDecision(False, "non_lookup")
+    long_enough = [
+        e for e in (entities_resolving or [])
+        if isinstance(e, str) and len(e.strip()) >= _ANCHOR_SEED_MIN_ENTITY_LENGTH
+    ]
+    if not long_enough:
+        return _AnchorSeedDecision(False, "entity_length_floor")
+    return _AnchorSeedDecision(True, "lookup_with_long_entity")
 
 
 class HybridRetriever:
@@ -259,27 +314,48 @@ class HybridRetriever:
                 anchor_neighbours = set()
                 anchor_nodes = []
 
-        # iter-09 RES-7 / Q10: anchor-seed injection. Gated on class + intent so
-        # we only spend the RPC on queries where a missing-from-pool gold node
-        # is plausible (LOOKUP with anchor entity, or compare-intent).
+        # iter-10 P4: anchor-seed injection through pure-function gate.
+        # Drops iter-09 (n_persons + n_entities) >= 1 re-gate (q10 fix);
+        # adds class exclusion, entity-length floor, top-K cap, structured log.
         anchor_seeds: list[dict] = []
         if (
             _ANCHOR_SEED_ENABLED
-            and anchor_nodes
             and sandbox_id is not None
             and embeddings
         ):
             compare = bool(getattr(query_metadata, "compare_intent", False)) if query_metadata else False
-            n_persons = len(getattr(query_metadata, "authors", None) or []) if query_metadata else 0
-            n_entities = len(getattr(query_metadata, "entities", None) or []) if query_metadata else 0
-            is_lookup = query_class is QueryClass.LOOKUP
-            if compare or (is_lookup and (n_persons + n_entities) >= 1):
+            entities_resolving = list(
+                (getattr(query_metadata, "authors", None) or [])
+                + (getattr(query_metadata, "entities", None) or [])
+            ) if query_metadata else []
+            decision = _should_inject_anchor_seeds(
+                query_class=query_class,
+                compare_intent=compare,
+                anchor_nodes=anchor_nodes,
+                entities_resolving=entities_resolving,
+            )
+            if decision.fire:
                 from website.features.rag_pipeline.retrieval.anchor_seed import (
                     fetch_anchor_seeds,
                 )
-                anchor_seeds = await fetch_anchor_seeds(
+                raw_seeds = await fetch_anchor_seeds(
                     anchor_nodes, sandbox_id, embeddings[0], self._supabase
                 )
+                anchor_seeds = sorted(
+                    raw_seeds,
+                    key=lambda r: float(r.get("score") or 0.0),
+                    reverse=True,
+                )[:_ANCHOR_SEED_TOP_K]
+                _log.info(
+                    "anchor_seed_inject reason=%s class=%s n_anchors=%d n_seeds=%d floor=%.2f",
+                    decision.reason,
+                    getattr(query_class, "value", query_class),
+                    len(list(anchor_nodes)),
+                    len(anchor_seeds),
+                    _ANCHOR_SEED_FLOOR_RRF,
+                )
+            else:
+                _log.debug("anchor_seed skipped: %s", decision.reason)
 
         return self._dedup_and_fuse(
             results,
