@@ -13,8 +13,35 @@ Env vars:
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
+
+# iter-10 P8: opportunistic RSS sampling around slot acquire/release. resource
+# is Unix-only (the production droplet). On Windows / non-POSIX hosts the
+# import fails silently and the log emits 0 — the structural log line still
+# carries depth/queue_max which are the more important fields.
+try:
+    import resource as _resource  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover — Windows dev hosts
+    _resource = None  # type: ignore[assignment]
+
+
+_logger = logging.getLogger("rag.concurrency")
+
+_RSS_LOG_ENABLED = os.environ.get(
+    "RAG_SLOT_RSS_LOG_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+
+
+def _rss_kb() -> int:
+    """Resident set size in kB; 0 when sampling is unavailable on this host."""
+    if _resource is None:
+        return 0
+    try:
+        return int(_resource.getrusage(_resource.RUSAGE_SELF).ru_maxrss)
+    except Exception:  # pragma: no cover — defensive
+        return 0
 
 
 def _env_int(name: str, default: int) -> int:
@@ -64,6 +91,7 @@ def _get_state() -> _ConcurrencyState:
 async def acquire_rerank_slot():
     """Acquire a rerank slot or raise :class:`QueueFull` if at capacity."""
     state = _get_state()
+    rss_pre = _rss_kb() if _RSS_LOG_ENABLED else 0
     if state.depth >= state.queue_max:
         raise QueueFull(f"queue depth {state.depth} >= {state.queue_max}")
     state.depth += 1
@@ -72,6 +100,16 @@ async def acquire_rerank_slot():
             yield
     finally:
         state.depth -= 1
+        if _RSS_LOG_ENABLED:
+            rss_post = _rss_kb()
+            # iter-10 P8: catches OOM-precursor patterns under burst. iter-09
+            # droplet logs showed 2 worker SIGKILLs at 780MB / 1GB swap thrash —
+            # pre/post delta surfaces who's consuming pages without pulling
+            # cgroup logs.
+            _logger.info(
+                "slot depth=%d/%d rss_pre_kb=%d rss_post_kb=%d delta_kb=%d",
+                state.depth, state.queue_max, rss_pre, rss_post, rss_post - rss_pre,
+            )
 
 
 def queue_depth() -> int:
