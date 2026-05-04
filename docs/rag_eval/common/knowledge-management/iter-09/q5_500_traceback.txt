@@ -1,0 +1,69 @@
+iter-09 Phase 0 / Task 1 — q5 500 root-cause: HOLD (logs unrecoverable)
+=======================================================================
+
+Target incident: q5 500 at 2026-05-03 15:50:43 UTC (iter-08 eval, GREEN active).
+
+Workflow runs dispatched (post-iter-09 push):
+  - 25300100184 (since=2026-05-03T15:48:00Z, lines=20000)
+      → journalctl rejected the trailing 'Z'; no windowed dump.
+  - 25300120715 (since=2026-05-03 15:48:00, lines=20000)
+      → journalctl windowed succeeded but only surfaced systemd manager
+        events for the deploy user ("Hint: not seeing messages from
+        other users; needs adm/systemd-journal group"). Zero app frames.
+        The default --tail 500 caddy access log only reached back to
+        ~19:58 UTC — 4h after the q5 incident. No 5xx in that window.
+  - 25300161941 (tail_lines=15000)        FAILED — appleboy/ssh-action
+        max-stdout memory budget exceeded.
+  - 25300178666 (tail_lines=5000)         FAILED — same memory cap.
+  - 25300205919 (after workflow patch:    docker compose --since)
+        → docker compose rejected "YYYY-MM-DD HH:MM:SS"; needs RFC3339.
+  - 25300240656 (after workflow patch:    YYYY-MM-DD HH:MM:SS → ...T...)
+        → docker compose --since accepted. Returned BLUE container logs
+          starting 2026-05-04 03:53:56 UTC. Container was just restarted
+          by the iter-09 deploy that flipped active colour to BLUE.
+          Pre-restart stdout (which contained the 15:50:43 q5 500 frame)
+          is gone — docker compose logs do not survive `down/up`.
+
+Conclusion
+----------
+The q5 500 traceback is **unrecoverable from droplet container logs**.
+The deploy that shipped iter-09 wiped the stderr buffer of the container
+that served the iter-08 eval. journalctl has no app frames (deploy user
+is not in systemd-journal/adm groups).
+
+Per PLAN.md Phase 0 / Task 1 / Step 3 + CLAUDE.md guardrails:
+  > If traceback is ambiguous or out-of-process ..., keep q5 in HOLD;
+  > iter-09 stops here for that query.
+
+→ q5 stays in HOLD. Phase 5 / Task 14 remains pending. The iter-09 eval
+   re-run is the next opportunity to reproduce; if q5 500 fires again
+   the post-iter-09 container will retain the traceback (no deploy will
+   intervene) and we can root-cause then.
+
+Hypotheses still on the table (RES-7), not yet evidenced
+--------------------------------------------------------
+  - chunk-share TTL cache returns stale/empty dict → KeyError downstream.
+  - _ensure_member_coverage 5-source THEMATIC + chunk_counts={}
+    returns an unexpected shape.
+  - new iter-08 RPCs (rag_resolve_entity_anchors, rag_one_hop_neighbours,
+    rag_kasten_chunk_counts) — all swallow exceptions to empty set, so
+    RPC failure alone shouldn't 500. Unless one returned malformed data
+    that broke a Pydantic validator downstream.
+
+Mitigation already shipped that may indirectly address q5
+---------------------------------------------------------
+  - iter-09 RES-2 chunk-share class gate now skips damping for LOOKUP
+    and on cold-start (<5 nodes), reducing the surface area where a
+    stale chunk_counts dict could break a downstream consumer.
+  - iter-09 RES-7 anchor-seed RPC is a read-only additive RPC with
+    INNER JOIN sandbox_members, doesn't touch q5's hypothesised paths.
+
+Followup recommendations (out of iter-09 scope)
+-----------------------------------------------
+  - Add the deploy user to the systemd-journal group on the droplet so
+    journalctl windowed dumps actually surface app stderr. One-line
+    sudo change; not safe to do silently per CLAUDE.md.
+  - Pipe app stderr to /opt/zettelkasten/logs/app/ via Docker logging
+    driver (json-file rotated, retain N days) so container restarts
+    don't wipe diagnostic state.
+  - Both items belong in iter-10 ops cleanup if approved.
