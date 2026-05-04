@@ -1266,9 +1266,16 @@ def phase_rag_qa_chain(page: Page, token: str, sandbox_id: str,
             duration_ms=_ms_since(t0),
             detail=result,
         ))
+        # iter-09 RES-5 + side-ask: surface p_user_first_token_ms (TTFT) and
+        # p_user_complete_ms (TTLT) per query so operators can see the actual
+        # browser-perceived timing without grepping verification_results.json.
+        def _fmt(v):
+            return "-" if v is None else f"{int(v)}"
         logger.info(
-            "  %s %s %sms gold@1=%s primary=%s critic=%s budget=%s",
+            "  %s %s elapsed=%sms ttft=%s ttlt=%s gold@1=%s primary=%s critic=%s budget=%s",
             qid, result.get("http_status"), result.get("elapsed_ms"),
+            _fmt(result.get("p_user_first_token_ms")),
+            _fmt(result.get("p_user_complete_ms")),
             result.get("gold_at_1"), result.get("primary_citation"),
             result.get("critic_verdict"), within_budget,
         )
@@ -1447,6 +1454,14 @@ def _qa_summary(qa: PhaseReport) -> dict:
         vals = sorted(v for v in (r.get(field) for r in rows) if isinstance(v, (int, float)))
         return vals[int(len(vals) * 0.95)] if vals else None
 
+    def _avg(field: str) -> float | None:
+        vals = [v for v in (r.get(field) for r in rows) if isinstance(v, (int, float))]
+        return sum(vals) / len(vals) if vals else None
+
+    def _total(field: str) -> float | None:
+        vals = [v for v in (r.get(field) for r in rows) if isinstance(v, (int, float))]
+        return sum(vals) if vals else None
+
     return {
         "total": total,
         "end_to_end_gold_at_1": round(passes / max(total, 1), 4),
@@ -1456,6 +1471,11 @@ def _qa_summary(qa: PhaseReport) -> dict:
         "p95_under_budget": p95 <= P95_LATENCY_BUDGET_MS,
         "p95_p_user_first_token_ms": _p95("p_user_first_token_ms"),
         "p95_p_user_complete_ms": _p95("p_user_complete_ms"),
+        # iter-09 side-ask: avg + total p_user (TTLT / "time the user actually
+        # waits") so operators don't have to compute these from per-query rows.
+        "avg_p_user_complete_ms": _avg("p_user_complete_ms"),
+        "total_p_user_complete_ms": _total("p_user_complete_ms"),
+        "avg_p_user_first_token_ms": _avg("p_user_first_token_ms"),
     }
 
 
@@ -1665,13 +1685,19 @@ def main(argv: list[str] | None = None) -> int:
     _write_timing_report(all_reports, qa_stats, TIMING_LOG_PATH)
     logger.info("wrote %s", RESULTS_PATH)
     logger.info("wrote %s", TIMING_LOG_PATH)
+    def _ms(v):
+        return "-" if v is None else f"{int(v)}"
     logger.info(
-        "DONE total=%sms gold@1=%s over_refusals=%s infra=%s p95=%sms",
+        "DONE total=%sms gold@1=%s over_refusals=%s infra=%s p95=%sms "
+        "p_user_avg=%sms p_user_total=%sms ttft_avg=%sms",
         summary["total_duration_ms"],
         qa_stats["end_to_end_gold_at_1"],
         qa_stats["synthesizer_over_refusals"],
         qa_stats["infra_failures"],
         qa_stats["p95_latency_ms"],
+        _ms(qa_stats.get("avg_p_user_complete_ms")),
+        _ms(qa_stats.get("total_p_user_complete_ms")),
+        _ms(qa_stats.get("avg_p_user_first_token_ms")),
     )
 
     # iter-04: post-Playwright scoring stage. Pulls chunks from Supabase,
