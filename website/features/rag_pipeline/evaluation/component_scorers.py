@@ -80,19 +80,31 @@ def retrieval_score(
     k_recall: int = 10,
     k_hit: int = 5,
 ) -> float:
-    """Score retrieval on 0-100: 0.4*Recall@k + 0.3*MRR + 0.3*Hit@k."""
+    """Score retrieval on 0-100: 0.4*Recall@k + 0.3*MRR + 0.3*Hit@k.
+
+    iter-10 follow-up to ee31c85 (NDCG dedup): the same chunk-level duplicate
+    pattern can also inflate Recall@k above 1.0 when one node has multiple
+    chunks in the retrieved list. Dedupe by first-occurrence and clamp the
+    final score to [0, 100] so downstream ComponentScores validation never
+    sees out-of-range input.
+    """
     if not gold:
         return 0.0
     gold_set = set(gold)
-    top_recall = retrieved[:k_recall]
+    # Preserve order, drop duplicates (chunk-level repeats of the same node).
+    retrieved_unique = list(dict.fromkeys(retrieved))
+    top_recall = retrieved_unique[:k_recall]
     recall_at_k = sum(1 for x in top_recall if x in gold_set) / len(gold_set)
     mrr = 0.0
-    for idx, node in enumerate(retrieved, start=1):
+    for idx, node in enumerate(retrieved_unique, start=1):
         if node in gold_set:
             mrr = 1.0 / idx
             break
-    hit_at_k = 1.0 if any(x in gold_set for x in retrieved[:k_hit]) else 0.0
-    return 100.0 * (0.4 * recall_at_k + 0.3 * mrr + 0.3 * hit_at_k)
+    hit_at_k = 1.0 if any(x in gold_set for x in retrieved_unique[:k_hit]) else 0.0
+    raw = 100.0 * (0.4 * recall_at_k + 0.3 * mrr + 0.3 * hit_at_k)
+    # Clamp defensively: even after dedup, gold sets containing duplicates or
+    # other edge cases shouldn't crash ComponentScores validation.
+    return max(0.0, min(raw, 100.0))
 
 
 def rerank_score(
