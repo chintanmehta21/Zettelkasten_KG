@@ -128,8 +128,11 @@ _BASELINE = {
 
 
 def _make_retriever() -> HybridRetriever:
-    """Stub HybridRetriever — only _dedup_and_fuse is exercised here."""
-    return HybridRetriever(embedder=None, supabase=None)
+    """Stub HybridRetriever — only _dedup_and_fuse is exercised here, so a
+    sentinel-object stands in for both embedder and supabase. Passing ``None``
+    for supabase would trigger the real client init (which CI cannot satisfy
+    without SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)."""
+    return HybridRetriever(embedder=object(), supabase=object())
 
 
 @pytest.mark.parametrize("name,case", list(_BASELINE.items()))
