@@ -161,6 +161,36 @@ class _AnchorSeedDecision:
     reason: str
 
 
+_TIEBREAK_INVERT_CLASSES = (
+    QueryClass.THEMATIC, QueryClass.MULTI_HOP, QueryClass.STEP_BACK,
+)
+
+
+def _tiebreak_key(
+    rrf_score: float,
+    chunk_count: int,
+    chunk_counts: dict[str, int],
+    query_class: QueryClass | None,
+) -> tuple[float, float]:
+    """iter-10 Item 3: deterministic tie-breaker on `chunk_count_quartile`.
+
+    Returned tuple is sorted with reverse=True, so a higher second element
+    wins when rrf_score is tied. The bias is sub-floor (×0.0001) so it can
+    NEVER override real rrf differences — only resolves true ties.
+
+    LOOKUP / VAGUE: prefer higher quartile (chunky relevant zettels).
+    THEMATIC / MULTI_HOP / STEP_BACK: prefer lower quartile (broad coverage).
+    """
+    if not chunk_counts or chunk_count <= 0:
+        return (rrf_score, 0.0)
+    counts = list(chunk_counts.values())
+    n = len(counts)
+    rank = sum(1 for c in counts if c <= chunk_count) / n
+    invert = query_class in _TIEBREAK_INVERT_CLASSES
+    bias = (1.0 - rank) if invert else rank
+    return (rrf_score, bias * 0.0001)
+
+
 def _should_inject_anchor_seeds(
     query_class: QueryClass | None,
     compare_intent: bool,
@@ -582,10 +612,22 @@ class HybridRetriever:
         if anchor_neighbours:
             _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
 
-        # sorted() is stable: ties preserve insertion order, which mirrors the
-        # row order across query variants — critical for deterministic ranking
-        # when multiple candidates land on identical final scores.
-        ordered = sorted(by_key.values(), key=lambda candidate: candidate.rrf_score, reverse=True)
+        # iter-10 Item 3: chunk_count_quartile tie-breaker. Sub-floor bias
+        # (×0.0001) only matters when rrf_score is exactly equal; LOOKUP/VAGUE
+        # prefer chunky relevant zettels, THEMATIC/MULTI_HOP/STEP_BACK prefer
+        # lower quartile for broader coverage. sorted() remains stable for
+        # absolute ties on both axes (insertion order preserved).
+        _ccs = chunk_counts or {}
+        ordered = sorted(
+            by_key.values(),
+            key=lambda candidate: _tiebreak_key(
+                candidate.rrf_score,
+                _ccs.get(candidate.node_id, 0),
+                _ccs,
+                query_class,
+            ),
+            reverse=True,
+        )
 
         # iter-04 xQuAD slot-by-slot selection (Abdollahpouri 2017). Replaces
         # the flat sort with a greedy diversity-by-construction picker:
