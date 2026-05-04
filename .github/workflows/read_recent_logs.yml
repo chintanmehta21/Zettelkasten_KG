@@ -62,6 +62,12 @@ jobs:
             JCTL_LINES=${{ inputs.lines }}
             JCTL_SINCE='${{ inputs.since }}'
             echo "===== [read_recent_logs] color=$COLOR lines=$LINES jctl_lines=$JCTL_LINES jctl_since=$JCTL_SINCE ====="
+            echo "===== compose/.env operational vars (GUNICORN/RAG/no secrets) ====="
+            # iter-10 prep: doc/code drift audit on GUNICORN_TIMEOUT etc. Safe to
+            # dump these — they are operational, not secrets. Greps explicitly
+            # exclude TOKEN/KEY/PASSWORD/SECRET patterns as defence-in-depth.
+            grep -E '^(GUNICORN_|RAG_|EVAL_|ROUTER_)[A-Z_]+=' /opt/zettelkasten/compose/.env 2>/dev/null \
+              | grep -viE 'token|key|password|secret' || echo "  (file unreadable or empty)"
             echo "===== free -h ====="
             free -h
             echo "===== docker ps ====="
