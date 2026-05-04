@@ -648,6 +648,55 @@ $$;
 GRANT EXECUTE ON FUNCTION rag_fetch_anchor_seeds(uuid, text[], vector) TO anon, authenticated;
 
 
+-- ── RPC: rag_dense_recall (iter-10 P5 / Q6,Q7 dense-only fallback) ─────────
+-- Last-resort recall when `rag_hybrid_search` returns zero rows for every
+-- variant AND the kasten has members. Single dense pass scoped to all
+-- effective_nodes so cross-encoder still has SOMETHING to rerank. Server-
+-- gated by RAG_DENSE_FALLBACK_ENABLED + the empty-pool branch in
+-- hybrid.retrieve. Mirrors supabase/website/kg_public/migrations/
+-- 2026-05-05_rag_dense_recall.sql.
+CREATE OR REPLACE FUNCTION rag_dense_recall(
+    p_user_id         uuid,
+    p_effective_nodes text[],
+    p_query_embedding vector(768),
+    p_limit           int DEFAULT 8
+) RETURNS TABLE (
+    kind        text,
+    node_id     text,
+    chunk_id    uuid,
+    chunk_idx   int,
+    name        text,
+    source_type text,
+    url         text,
+    content     text,
+    tags        text[],
+    rrf_score   double precision
+)
+LANGUAGE sql STABLE AS $$
+    SELECT
+        'chunk'::text                                      AS kind,
+        n.id                                               AS node_id,
+        kc.id                                              AS chunk_id,
+        kc.chunk_idx,
+        COALESCE(n.name, n.id)                             AS name,
+        COALESCE(n.source_type, 'web')                     AS source_type,
+        COALESCE(n.url, '')                                AS url,
+        COALESCE(kc.content, '')                           AS content,
+        COALESCE(n.tags, ARRAY[]::text[])                  AS tags,
+        1 - (kc.embedding <=> p_query_embedding)           AS rrf_score
+    FROM kg_node_chunks kc
+    JOIN kg_nodes n
+      ON n.id = kc.node_id
+     AND n.user_id = kc.user_id
+    WHERE n.user_id = p_user_id
+      AND n.id = ANY(p_effective_nodes)
+    ORDER BY kc.embedding <=> p_query_embedding ASC
+    LIMIT p_limit;
+$$;
+
+GRANT EXECUTE ON FUNCTION rag_dense_recall(uuid, text[], vector, int) TO anon, authenticated;
+
+
 -- ── Done ────────────────────────────────────────────────────────────────────
 -- Run this SQL in the Supabase SQL Editor (Dashboard → SQL Editor → New query).
 -- After running, verify tables exist in Table Editor.

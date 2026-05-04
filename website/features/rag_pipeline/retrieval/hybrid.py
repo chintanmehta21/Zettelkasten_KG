@@ -55,6 +55,12 @@ _ANCHOR_SEED_MIN_ENTITY_LENGTH = int(
 )
 _ANCHOR_SEED_TOP_K = int(os.environ.get("RAG_ANCHOR_SEED_TOP_K", "3"))
 
+# iter-10 P5: dense-only kasten-scoped fallback when hybrid fan-out returns
+# zero rows. Guarded by env flag; defensive last-resort path only.
+_DENSE_FALLBACK_ENABLED = os.environ.get(
+    "RAG_DENSE_FALLBACK_ENABLED", "true"
+).lower() not in ("false", "0", "no", "off")
+
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
 from website.core.supabase_kg.client import get_supabase_client
 
@@ -301,6 +307,38 @@ class HybridRetriever:
             _search(query_text, query_vec)
             for query_text, query_vec in zip(query_variants, embeddings)
         ])
+
+        # iter-10 P5: dense-only kasten-scoped fallback for recall miss.
+        # When the hybrid fan-out returns zero rows AND the kasten has members,
+        # run ONE dense pass scoped to all members so q6/q7-shape recall holes
+        # still surface SOMETHING for the cross-encoder. Guarded by env flag;
+        # never the primary path.
+        total_rows = sum(len(r) for r in results)
+        if (
+            _DENSE_FALLBACK_ENABLED
+            and total_rows == 0
+            and effective_nodes
+            and len(effective_nodes) > 0
+            and embeddings
+        ):
+            _log.warning(
+                "dense_fallback_fire scope=%d (hybrid recall=0)", len(effective_nodes)
+            )
+            try:
+                fallback_resp = self._supabase.rpc(
+                    "rag_dense_recall",
+                    {
+                        "p_user_id": str(user_id),
+                        "p_effective_nodes": effective_nodes,
+                        "p_query_embedding": embeddings[0],
+                        "p_limit": min(limit, 8),
+                    },
+                ).execute()
+                fallback_rows = fallback_resp.data or []
+                if fallback_rows:
+                    results = [fallback_rows]
+            except Exception as exc:  # noqa: BLE001 — best-effort fallback
+                _log.warning("dense_fallback_rpc_error %s: %s", type(exc).__name__, exc)
 
         chunk_counts: dict[str, int] = {}
         if counts_task is not None:

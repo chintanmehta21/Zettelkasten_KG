@@ -162,7 +162,11 @@ async def test_graph_depth_is_2_for_thematic() -> None:
         scope_filter=ScopeFilter(source_types=[SourceType.WEB]),
         query_class=QueryClass.THEMATIC,
     )
-    assert supabase.calls[-1][1]["p_graph_depth"] == 2
+    # iter-10: tolerate trailing rag_dense_recall fallback by selecting the
+    # rag_hybrid_search call explicitly instead of the last call overall.
+    hybrid_calls = [c for c in supabase.calls if c[0] == "rag_hybrid_search"]
+    assert hybrid_calls, "expected at least one rag_hybrid_search RPC"
+    assert hybrid_calls[-1][1]["p_graph_depth"] == 2
 
 
 @pytest.mark.asyncio
