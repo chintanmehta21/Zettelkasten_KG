@@ -61,7 +61,27 @@ _DENSE_FALLBACK_ENABLED = os.environ.get(
     "RAG_DENSE_FALLBACK_ENABLED", "true"
 ).lower() not in ("false", "0", "no", "off")
 
+# iter-10 P3 magnet-gate scalar knobs (the QueryClass tuple lives after the
+# types import a few lines down).
+_SCORE_RANK_DEMOTE_FACTOR = float(
+    os.environ.get("RAG_SCORE_RANK_DEMOTE_FACTOR", "0.85")
+)
+_SCORE_RANK_DISPROP_QUARTILES = float(
+    os.environ.get("RAG_SCORE_RANK_DISPROP_QUARTILES", "1.0")
+)
+_TITLE_OVERLAP_DEMOTE_FACTOR = float(
+    os.environ.get("RAG_TITLE_OVERLAP_DEMOTE_FACTOR", "0.95")
+)
+_TITLE_OVERLAP_DEMOTE_FLOOR = float(
+    os.environ.get("RAG_TITLE_OVERLAP_DEMOTE_FLOOR", "0.10")
+)
+
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
+
+# iter-10 P3: score-rank-correlation magnet gate. THEMATIC/STEP_BACK only.
+# NOT applied to LOOKUP (legitimate proper-noun magnets), VAGUE (already
+# gated by vague_low_entity), or MULTI_HOP (loses hop-2 anchors).
+_SCORE_RANK_GATED_CLASSES = (QueryClass.THEMATIC, QueryClass.STEP_BACK)
 from website.core.supabase_kg.client import get_supabase_client
 
 _log = logging.getLogger(__name__)
@@ -170,6 +190,56 @@ class _AnchorSeedDecision:
 _TIEBREAK_INVERT_CLASSES = (
     QueryClass.THEMATIC, QueryClass.MULTI_HOP, QueryClass.STEP_BACK,
 )
+
+
+def _apply_score_rank_demote(
+    candidates: list[RetrievalCandidate],
+    *,
+    query_class: QueryClass | None,
+    query_text: str = "",
+) -> None:
+    """iter-10 P3: in-place rrf_score demote for THEMATIC/STEP_BACK magnets.
+
+    A node is a magnet if its top-1 ranking is disproportionate to its base
+    retrieval percentile. We compute each candidate's percentile of
+    `_base_rrf_score` (rrf BEFORE class boosts) and compare to its current
+    rank percentile (after all boosts). When delta >= disprop_quartiles * 0.25,
+    multiply rrf_score by demote_factor.
+
+    Independently: a `_title_overlap_boost` >= floor triggers a secondary
+    multiplicative damp — catches the "title carries the win" pattern that
+    score-rank misses on small candidate pools.
+
+    Mutates `candidates` in place. LOOKUP / VAGUE / MULTI_HOP bypass.
+    """
+    del query_text  # kept for future signal extension
+    if query_class not in _SCORE_RANK_GATED_CLASSES:
+        return
+    if not candidates or len(candidates) < 4:
+        return
+    base_scores = [
+        float(c.metadata.get("_base_rrf_score", c.rrf_score))
+        for c in candidates
+    ]
+    sorted_base = sorted(base_scores)
+    n = len(base_scores)
+
+    def _percentile(score: float) -> float:
+        return sum(1 for s in sorted_base if s <= score) / n
+
+    current_sorted = sorted(candidates, key=lambda c: c.rrf_score, reverse=True)
+    current_rank = {id(c): (n - i) / n for i, c in enumerate(current_sorted)}
+
+    delta_threshold = _SCORE_RANK_DISPROP_QUARTILES * 0.25
+    for c in candidates:
+        base_pct = _percentile(float(c.metadata.get("_base_rrf_score", c.rrf_score)))
+        rank_pct = current_rank[id(c)]
+        delta = rank_pct - base_pct
+        if delta >= delta_threshold:
+            c.rrf_score *= _SCORE_RANK_DEMOTE_FACTOR
+        title_boost = float(c.metadata.get("_title_overlap_boost", 0.0))
+        if title_boost >= _TITLE_OVERLAP_DEMOTE_FLOOR:
+            c.rrf_score *= _TITLE_OVERLAP_DEMOTE_FACTOR
 
 
 def _tiebreak_key(
@@ -484,7 +554,11 @@ class HybridRetriever:
                 key = (row["kind"], row["node_id"], row.get("chunk_id"))
                 seen_in_variant.add(key)
                 if key not in by_key:
-                    by_key[key] = _row_to_candidate(row)
+                    cand = _row_to_candidate(row)
+                    # iter-10 P3: snapshot the BASE rrf BEFORE any boost so the
+                    # magnet gate can compare base percentile vs post-boost rank.
+                    cand.metadata["_base_rrf_score"] = cand.rrf_score
+                    by_key[key] = cand
                     variant_hits[key] = 0
                 else:
                     by_key[key].rrf_score = max(by_key[key].rrf_score, float(row.get("rrf_score") or 0.0))
@@ -540,6 +614,12 @@ class HybridRetriever:
             boost = _title_match_boost(candidate.name, normalized_variants)
             if boost > 0:
                 candidate.rrf_score += boost
+                # iter-10 P3: track cumulative title-overlap boost so the
+                # secondary magnet damp can fire even when score-rank delta
+                # alone is below threshold (small candidate pools).
+                candidate.metadata["_title_overlap_boost"] = (
+                    candidate.metadata.get("_title_overlap_boost", 0.0) + boost
+                )
             # Sibling consensus — when both a summary and chunk(s) surface for
             # the same node, that cross-kind agreement is a stronger relevance
             # signal than a single stream. Small bump so it nudges, not skews.
@@ -649,6 +729,16 @@ class HybridRetriever:
 
         if anchor_neighbours:
             _apply_anchor_boost(list(by_key.values()), anchor_neighbours)
+
+        # iter-10 P3: score-rank-correlation magnet gate. THEMATIC/STEP_BACK
+        # only. Demotes candidates whose post-boost rank is disproportionate
+        # to their base rrf percentile. Runs AFTER chunk-share + anchor-boost
+        # so it sees the actual final score, BEFORE the tie-breaker sort.
+        _apply_score_rank_demote(
+            list(by_key.values()),
+            query_class=query_class,
+            query_text=(query_variants or [""])[0] if query_variants else "",
+        )
 
         # iter-10 Item 3: chunk_count_quartile tie-breaker. Sub-floor bias
         # (×0.0001) only matters when rrf_score is exactly equal; LOOKUP/VAGUE
