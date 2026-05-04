@@ -146,6 +146,14 @@ jobs:
             echo "===== app container logs (--tail $LINES) ====="
             cd /opt/zettelkasten/compose
             docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
+            if [ -n "$JCTL_SINCE" ]; then
+              echo "===== app container logs (--since '$JCTL_SINCE') ====="
+              # iter-09 Task 6: windowed app log dump for post-incident triage.
+              # Far more useful than tail_lines for known-timestamp incidents
+              # (q5 500 @ 15:50:43 etc) since the journalctl path is blind to
+              # container stdout when deploy is not in systemd-journal group.
+              docker compose -f docker-compose.${COLOR}.yml logs --since "$JCTL_SINCE" 2>&1 | head -2000 || true
+            fi
             echo "===== caddy access (last $LINES) ====="
             # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
             # deploy.sh — readable directly without sudo.
