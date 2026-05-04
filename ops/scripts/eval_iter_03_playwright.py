@@ -663,9 +663,9 @@ def api_fetch_sse(page: Page, path: str, token: str, *, body: Any,
                 ok: doneAt !== null && errorPayload === null,
                 status,
                 elapsed_ms: elapsed,
-                p_user_first_token_ms: firstTokenAt === null ? null : Math.round(firstTokenAt),
-                p_user_last_token_ms: lastTokenAt === null ? null : Math.round(lastTokenAt),
-                p_user_complete_ms: doneAt === null ? null : Math.round(doneAt),
+                p_user_first_token_ms: firstTokenAt === null ? null : Math.round(firstTokenAt - t0),
+                p_user_last_token_ms: lastTokenAt === null ? null : Math.round(lastTokenAt - t0),
+                p_user_complete_ms: doneAt === null ? null : Math.round(doneAt - t0),
                 turn, citations, error: errorPayload,
             };
         } catch (e) {

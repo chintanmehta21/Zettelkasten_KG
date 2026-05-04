@@ -57,3 +57,22 @@ def test_partial_frame_buffer_reassembly():
     out = parse_sse_stream(chunks)
     assert out["p_user_first_token_ms"] is not None
     assert out["p_user_complete_ms"] is not None
+
+
+def test_timing_is_relative_to_fetch_start_not_page_load():
+    """iter-10 P1: regression for the JS-side harness arithmetic bug — the
+    parser MUST return p_user_*_ms relative to per-call fetch t0, not since
+    process / page start. Two back-to-back parses must produce independent
+    measurements; the second is NOT ~50ms larger than the first just because
+    we slept between them.
+    """
+    import time
+
+    chunks_a = [b"event: token\ndata: \"a\"\n\n", b"event: done\ndata: {}\n\n"]
+    chunks_b = [b"event: token\ndata: \"b\"\n\n", b"event: done\ndata: {}\n\n"]
+    out_a = parse_sse_stream(chunks_a)
+    time.sleep(0.05)
+    out_b = parse_sse_stream(chunks_b)
+    assert 0 <= out_a["p_user_complete_ms"] < 100
+    assert 0 <= out_b["p_user_complete_ms"] < 100
+    assert abs(out_b["p_user_complete_ms"] - out_a["p_user_complete_ms"]) < 50
