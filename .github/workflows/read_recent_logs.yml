@@ -147,12 +147,17 @@ jobs:
             cd /opt/zettelkasten/compose
             docker compose -f docker-compose.${COLOR}.yml logs --tail ${LINES} 2>&1 || true
             if [ -n "$JCTL_SINCE" ]; then
-              echo "===== app container logs (--since '$JCTL_SINCE') ====="
+              # docker compose logs accepts RFC3339 / unix-ts / relative duration.
+              # journalctl wants "YYYY-MM-DD HH:MM:SS"; we accept either input
+              # shape and translate "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS"
+              # (Docker treats trailing Z as UTC, no Z = UTC also fine).
+              DOCKER_SINCE="$(echo "$JCTL_SINCE" | sed 's/ /T/')"
+              echo "===== app container logs (--since '$DOCKER_SINCE') ====="
               # iter-09 Task 6: windowed app log dump for post-incident triage.
               # Far more useful than tail_lines for known-timestamp incidents
               # (q5 500 @ 15:50:43 etc) since the journalctl path is blind to
               # container stdout when deploy is not in systemd-journal group.
-              docker compose -f docker-compose.${COLOR}.yml logs --since "$JCTL_SINCE" 2>&1 | head -2000 || true
+              docker compose -f docker-compose.${COLOR}.yml logs --since "$DOCKER_SINCE" 2>&1 | head -2000 || true
             fi
             echo "===== caddy access (last $LINES) ====="
             # /opt/zettelkasten/logs/caddy is owned by deploy:deploy per
