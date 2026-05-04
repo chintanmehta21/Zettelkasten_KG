@@ -153,6 +153,26 @@ async def _post_answer_side_effects(runtime, kg_user_id: UUID, session: dict, pr
         await runtime.sandboxes.touch_sandbox(UUID(session["sandbox_id"]), kg_user_id)
 
 
+async def _safe_side_effects(
+    runtime,
+    kg_user_id: UUID,
+    session: dict,
+    prompt: str,
+    scope_filter: dict,
+) -> None:
+    """iter-10 P2: exception-isolated wrapper for fire-and-forget side effects.
+
+    A failed enrichment task MUST NOT crash the worker or 5xx the response;
+    log and swallow."""
+    try:
+        await _post_answer_side_effects(runtime, kg_user_id, session, prompt, scope_filter)
+    except Exception:  # noqa: BLE001 — best-effort enrichment
+        logger.exception(
+            "post_answer_side_effects failed (recoverable) for session %s",
+            session.get("id"),
+        )
+
+
 async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessageRequest):
     await runtime.sessions.update_session(
         UUID(session["id"]),
@@ -168,21 +188,13 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
         quality=body.quality,
         stream=body.stream,
     )
-    # iter-09 RES-4: wrap orchestrator.answer in acquire_rerank_slot so the
-    # non-stream /adhoc path actually increments state.depth and can shed
-    # bursts with 503 + Retry-After. Prior wiring only gated the stream path
-    # (chat_routes.py:240), so 12-concurrent burst probes saw depth=0 and
-    # all admitted -> 524/502 instead of 503.
+    # iter-09 RES-4 + iter-10 P2: slot wraps orchestrator.answer ONLY.
+    # _post_answer_side_effects is scheduled as asyncio.create_task AFTER the
+    # slot is released so first-message-of-session enrichment (auto-title,
+    # session bookkeeping, sandbox touch) never serializes the rerank queue.
     try:
         async with acquire_rerank_slot():
             turn = await runtime.orchestrator.answer(query=query, user_id=kg_user_id)
-            await _post_answer_side_effects(
-                runtime,
-                kg_user_id,
-                session,
-                body.content,
-                body.scope_filter.model_dump(),
-            )
     except QueueFull as exc:
         raise HTTPException(
             status_code=503,
@@ -192,6 +204,17 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
             },
             headers={"Retry-After": "5"},
         ) from exc
+
+    asyncio.create_task(
+        _safe_side_effects(
+            runtime,
+            kg_user_id,
+            session,
+            body.content,
+            body.scope_filter.model_dump(),
+        )
+    )
+
     return {
         "session_id": session["id"],
         "turn": turn.model_dump(),
@@ -317,19 +340,20 @@ async def _stream_answer(
                 ):
                     produced_any = True
                     if event.get("type") == "done":
-                        try:
-                            await _post_answer_side_effects(
+                        # iter-10 P2: schedule side effects fire-and-forget so
+                        # they don't hold the rerank slot (the outer
+                        # _stream_answer_with_backpressure releases the slot
+                        # when this generator exits — anything still awaited
+                        # here pins it).
+                        asyncio.create_task(
+                            _safe_side_effects(
                                 runtime,
                                 kg_user_id,
                                 session,
                                 body.content,
                                 body.scope_filter.model_dump(),
                             )
-                        except Exception:
-                            logger.exception(
-                                "Post-answer side effect failed for session %s",
-                                session["id"],
-                            )
+                        )
                     yield _sse_encode(event)
                 last_exc = None
                 break

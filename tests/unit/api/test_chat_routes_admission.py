@@ -108,3 +108,109 @@ async def test_run_answer_invokes_orchestrator_inside_slot(monkeypatch) -> None:
     assert payload["turn"] == {"id": "t1"}
     # Slot opened then closed.
     assert slot_active == [True, False]
+
+
+@pytest.mark.asyncio
+async def test_run_answer_releases_slot_before_side_effects_finish(monkeypatch) -> None:
+    """iter-10 P2: post-answer side effects must run AFTER the rerank slot is
+    released. Schedules a slow stub side-effects coroutine; verifies the slot
+    is already released by the time it observes the slot state."""
+    import asyncio
+
+    slot_state: dict = {"in_slot": False}
+
+    @asynccontextmanager
+    async def _tracking_slot():
+        slot_state["in_slot"] = True
+        try:
+            yield
+        finally:
+            slot_state["in_slot"] = False
+
+    monkeypatch.setattr(chat_routes, "acquire_rerank_slot", _tracking_slot)
+
+    runtime = _stub_runtime()
+
+    class _Turn:
+        def model_dump(self) -> dict:
+            return {"id": "t1"}
+
+    async def _answer(*a, **k):
+        return _Turn()
+
+    runtime.orchestrator.answer = _answer
+
+    side_observed: dict = {}
+    side_done = asyncio.Event()
+
+    async def _slow_side_effects(*a, **k):
+        # Sleep so the request handler returns + slot releases first.
+        await asyncio.sleep(0.05)
+        side_observed["slot_held_during"] = slot_state["in_slot"]
+        side_done.set()
+
+    monkeypatch.setattr(chat_routes, "_post_answer_side_effects", _slow_side_effects)
+
+    body = _StubBody()
+    payload = await chat_routes._run_answer(
+        runtime, "00000000-0000-0000-0000-000000000002", _stub_session(), body
+    )
+    # Response returned BEFORE side effects finished.
+    assert payload["session_id"] == "00000000-0000-0000-0000-000000000001"
+    # Wait for the fire-and-forget task to finish observing the slot state.
+    await asyncio.wait_for(side_done.wait(), timeout=2.0)
+    assert side_observed["slot_held_during"] is False, (
+        "Side effects observed slot still held — slot must release BEFORE "
+        "fire-and-forget task body runs."
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_answer_isolates_side_effect_exceptions(monkeypatch, caplog) -> None:
+    """A failing post-answer side effect MUST NOT 5xx the response. The task
+    is best-effort enrichment; failures are logged but the API still returns
+    the answer payload."""
+    import asyncio
+    import logging
+
+    @asynccontextmanager
+    async def _open_slot():
+        yield
+
+    monkeypatch.setattr(chat_routes, "acquire_rerank_slot", _open_slot)
+
+    runtime = _stub_runtime()
+
+    class _Turn:
+        def model_dump(self) -> dict:
+            return {"id": "t1"}
+
+    async def _answer(*a, **k):
+        return _Turn()
+
+    runtime.orchestrator.answer = _answer
+
+    failed = asyncio.Event()
+
+    async def _exploding_side_effects(*a, **k):
+        try:
+            raise RuntimeError("supabase down")
+        finally:
+            failed.set()
+
+    monkeypatch.setattr(chat_routes, "_post_answer_side_effects", _exploding_side_effects)
+
+    body = _StubBody()
+    with caplog.at_level(logging.ERROR, logger="website.api.chat_routes"):
+        payload = await chat_routes._run_answer(
+            runtime, "00000000-0000-0000-0000-000000000002", _stub_session(), body
+        )
+    assert payload["turn"] == {"id": "t1"}
+    await asyncio.wait_for(failed.wait(), timeout=2.0)
+    # Give the exception handler a tick to log.
+    await asyncio.sleep(0.01)
+    assert any(
+        "post_answer_side_effects" in r.message.lower() or
+        "side effect" in r.message.lower()
+        for r in caplog.records
+    ), "Failed side effect must be logged"
