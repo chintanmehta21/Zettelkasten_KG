@@ -548,6 +548,24 @@ class HybridRetriever:
                 score_floor=floor,
             )
 
+        # iter-10 Phase 0 / Task 2 SCOUT (TEMPORARY — revert after q6/q7 decision).
+        # Captures the final fused pool right before _cap_per_node so we can
+        # decide whether P5 dense-fallback is needed. Default ENABLED for the
+        # one-shot scout deploy; entire block reverts in the next commit.
+        if os.environ.get("RAG_SCOUT_LOG_USED_CANDIDATES", "true").lower() == "true":
+            _scout = logging.getLogger("rag.scout")
+            _q = (query_variants or [""])[0] if query_variants else ""
+            _scout.info(
+                "scout q=%r class=%s pool=%d eff_nodes=%d top10=%s",
+                _q[:120],
+                getattr(query_class, "value", query_class),
+                len(by_key),
+                len(effective_nodes or []),
+                [(c.node_id, round(c.rrf_score, 3)) for c in sorted(
+                    by_key.values(), key=lambda x: x.rrf_score, reverse=True
+                )[:10]],
+            )
+
         return _cap_per_node(ordered, query_class=query_class)
 
 
