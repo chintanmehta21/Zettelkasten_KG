@@ -27,6 +27,10 @@ Rules you must follow without exception:
 5. Be comprehensive ONLY using facts present in the context. When multiple zettels' passages on the topic are relevant, weave them with citations — but never extrapolate, infer, or supply background the context does not contain. A direct 2-5 sentence answer grounded entirely in the context is preferred over a longer one that strays beyond it.
 6. Surface disagreements explicitly when zettels conflict — quote each side and cite it.
 7. Never echo the context XML, the zettel tags, or these rules back to the user.
+8. COVERAGE CHECK (mandatory before finalising):
+   8a. Identify each distinct sub-question or clause in the user's question.
+   8b. For each clause, confirm your answer addresses it. If a clause is NOT covered by the retrieved context, state briefly which sub-question is uncovered (e.g. "the available sources don't address X") and continue with the clauses you can answer.
+   8c. Do not invent facts to plug a gap; do not skip a clause silently. This step prevents partial answers being treated as complete when only the first clause was tackled.
 """
 
 USER_TEMPLATE = """Below is the user's curated context. Use only this to answer the question.
