@@ -287,6 +287,7 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
     primary_counts: dict[str, int] = {}
     classes: dict[str, int] = {}
     gold_at_1 = 0
+    gold_at_1_within_budget = 0
     gold_at_3 = 0
     gold_at_8 = 0
     refused = 0
@@ -305,16 +306,18 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
         classes[qclass] = classes.get(qclass, 0) + 1
         retrieved = d.get("retrieved_node_ids") or []
         expected = set(d.get("expected") or [])
+        wb = d.get("within_budget")
         if expected:
             if retrieved and retrieved[0] in expected:
                 gold_at_1 += 1
+                if wb is True:
+                    gold_at_1_within_budget += 1
             if any(r in expected for r in retrieved[:3]):
                 gold_at_3 += 1
             if any(r in expected for r in retrieved[:8]):
                 gold_at_8 += 1
         if d.get("refused"):
             refused += 1
-        wb = d.get("within_budget")
         if isinstance(wb, bool):
             within_budget_total += 1
             within_budget_yes += int(wb)
@@ -327,13 +330,34 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
     metrics["primary_citation_magnets"] = magnets
     metrics["query_class_distribution"] = classes
     if n:
-        metrics["gold_at_1"] = round(gold_at_1 / n, 4)
+        # iter-10 P6: split gold@1 into unconditional vs within-budget so the
+        # scorecard surfaces both. iter-09 conflated them and under-reported.
+        metrics["gold_at_1_unconditional"] = round(gold_at_1 / n, 4)
+        metrics["gold_at_1_within_budget"] = round(gold_at_1_within_budget / n, 4)
+        # Backwards-compatible alias points at unconditional (the truer count).
+        metrics["gold_at_1"] = metrics["gold_at_1_unconditional"]
         metrics["gold_at_3"] = round(gold_at_3 / n, 4)
         metrics["gold_at_8"] = round(gold_at_8 / n, 4)
     metrics["refused_count"] = refused
     if within_budget_total:
         metrics["within_budget_rate"] = round(within_budget_yes / within_budget_total, 4)
     return metrics
+
+
+def _aggregate_gold_metrics(rows: list[dict]) -> dict[str, float]:
+    """iter-10 P6: standalone helper for gold@1 split. Each row is
+    ``{"gold_at_1": bool, "within_budget": bool}``. Used by the unit test and
+    also re-callable by other tooling that doesn't carry full QA-check rows."""
+    n = max(len(rows), 1)
+    unc = sum(1 for r in rows if r.get("gold_at_1") is True)
+    wb = sum(
+        1 for r in rows
+        if r.get("gold_at_1") is True and r.get("within_budget") is True
+    )
+    return {
+        "gold_at_1_unconditional": round(unc / n, 4),
+        "gold_at_1_within_budget": round(wb / n, 4),
+    }
 
 
 def _burst_metrics(verification: dict) -> dict[str, Any] | None:
@@ -398,8 +422,9 @@ def _render_scores_md(
         f"- eval_divergence:      {eval_result.eval_divergence}",
         "",
         "## Holistic monitoring (iter-04)",
-        f"- gold@1: {holistic.get('gold_at_1', 'n/a')}    "
-        f"gold@3: {holistic.get('gold_at_3', 'n/a')}    "
+        f"- gold@1 (unconditional):  {holistic.get('gold_at_1_unconditional', holistic.get('gold_at_1', 'n/a'))}",
+        f"- gold@1 within budget:    {holistic.get('gold_at_1_within_budget', 'n/a')}",
+        f"- gold@3: {holistic.get('gold_at_3', 'n/a')}    "
         f"gold@8: {holistic.get('gold_at_8', 'n/a')}",
         f"- within_budget_rate: {holistic.get('within_budget_rate', 'n/a')}",
         f"- refused_count: {holistic.get('refused_count', 0)}",
