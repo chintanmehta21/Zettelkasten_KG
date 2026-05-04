@@ -280,6 +280,51 @@ class _ScoredCandidate:
 _MMR_LAMBDA = 0.05
 
 
+# iter-10 P9: adaptive percentile floor BEFORE cross-encoder. Class-conditional
+# floor mirrors the droplet's RAG_CONTEXT_FLOOR_* convention; min_keep protects
+# small / cold-start kastens from losing recall to the absolute cutoff.
+def _rerank_input_floor(query_class: QueryClass | None) -> float:
+    if query_class is QueryClass.LOOKUP:
+        return float(os.environ.get("RAG_RERANK_INPUT_FLOOR_LOOKUP", "0.30"))
+    if query_class is QueryClass.THEMATIC:
+        return float(os.environ.get("RAG_RERANK_INPUT_FLOOR_THEMATIC", "0.05"))
+    return float(os.environ.get("RAG_RERANK_INPUT_FLOOR_DEFAULT", "0.10"))
+
+
+def _filter_pre_rerank(
+    candidates: list[RetrievalCandidate],
+    *,
+    query_class: QueryClass | None,
+) -> list[RetrievalCandidate]:
+    """iter-10 P9: drop low-rrf candidates BEFORE BGE int8 sees them.
+
+    Algorithm:
+      1. ``RAG_RERANK_INPUT_FLOOR_ENABLED=false`` → no-op.
+      2. ``len(candidates) <= min_keep`` → return as-is (cold-start protection).
+      3. Apply absolute floor (drop ``rrf < class_floor``).
+      4. Post-floor count < min_keep → percentile fallback (top 70%, but no
+         fewer than ``min_keep``).
+      5. Else → also densify by dropping bottom 30% of those above the floor.
+    """
+    enabled = os.environ.get(
+        "RAG_RERANK_INPUT_FLOOR_ENABLED", "true"
+    ).lower() not in ("false", "0", "no", "off")
+    if not enabled or not candidates:
+        return list(candidates)
+    min_keep = int(os.environ.get("RAG_RERANK_INPUT_MIN_KEEP", "8"))
+    if len(candidates) <= min_keep:
+        return list(candidates)
+    floor = _rerank_input_floor(query_class)
+    by_floor = [c for c in candidates if c.rrf_score >= floor]
+    if len(by_floor) < min_keep:
+        sorted_cands = sorted(candidates, key=lambda c: c.rrf_score, reverse=True)
+        keep_n = max(min_keep, int(len(sorted_cands) * 0.7))
+        return sorted_cands[:keep_n]
+    sorted_above = sorted(by_floor, key=lambda c: c.rrf_score, reverse=True)
+    keep_n = max(min_keep, int(len(sorted_above) * 0.7))
+    return sorted_above[:keep_n]
+
+
 class CascadeReranker:
     """Rerank candidates with a fast shortlist stage and a deeper ONNX stage."""
 
@@ -397,6 +442,14 @@ class CascadeReranker:
         query_class: QueryClass | None = None,
         graph_weight_override: float | None = None,
     ) -> list[RetrievalCandidate]:
+        if not candidates:
+            return []
+
+        # iter-10 P9: pre-rerank adaptive percentile floor. Drops noise BEFORE
+        # the cross-encoder pays the pair-scoring cost. Min-keep protects
+        # cold-start kastens; class-conditional floors mirror the droplet's
+        # RAG_CONTEXT_FLOOR_* convention.
+        candidates = _filter_pre_rerank(candidates, query_class=query_class)
         if not candidates:
             return []
 
