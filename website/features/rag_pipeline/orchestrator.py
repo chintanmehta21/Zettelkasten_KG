@@ -354,6 +354,10 @@ class _PreparedQuery:
 class _RetrievedContext:
     context_xml: str
     used_candidates: list
+    # iter-10 P17: per-stage timing for iter-11 mid-flight abort design.
+    # Captured in _retrieve_context; surfaced via turn.token_counts.stage_timings.
+    t_retrieval_ms: int = 0
+    t_rerank_ms: int = 0
 
 
 @dataclass(slots=True)
@@ -619,14 +623,38 @@ class RAGOrchestrator:
             graph_weight_override=graph_weight_override,
             query_meta=prepared.metadata,
         )
+        # iter-10 P17: capture synth-stage wall time alongside the retrieve /
+        # rerank timestamps already on `context`. iter-11 mid-flight abort
+        # design needs all three to pick safe abort points.
+        _t_synth_start = time.monotonic_ns()
         generation = await self._generate_once(query=query, context_xml=context.context_xml)
-        return await self._finalize_answer(
+        _t_synth_ms = (time.monotonic_ns() - _t_synth_start) // 1_000_000
+        result = await self._finalize_answer(
             query=query,
             user_id=user_id,
             prepared=prepared,
             context=context,
             generation=generation,
         )
+        # Piggy-back on the existing token_counts dict so the wire payload
+        # surfaces stage_timings without a model schema change.
+        try:
+            tc = dict(result.turn.token_counts or {})
+            tc["stage_timings"] = {
+                "t_retrieval_ms": int(context.t_retrieval_ms),
+                "t_rerank_ms": int(context.t_rerank_ms),
+                "t_synth_ms": int(_t_synth_ms),
+            }
+            result.turn.token_counts = tc
+        except Exception:  # noqa: BLE001 — best-effort instrumentation
+            pass
+        logger.info(
+            "stage_timings retrieval=%dms rerank=%dms synth=%dms",
+            int(context.t_retrieval_ms),
+            int(context.t_rerank_ms),
+            int(_t_synth_ms),
+        )
+        return result
 
     @trace_stage("retrieve_context")
     async def _retrieve_context(
@@ -672,6 +700,8 @@ class RAGOrchestrator:
             # _STRONG for tuning.
             _retrieval_fast = int(os.environ.get("RAG_RETRIEVAL_LIMIT_FAST", "20"))
             _retrieval_strong = int(os.environ.get("RAG_RETRIEVAL_LIMIT_STRONG", "25"))
+            # iter-10 P17: per-stage timing for iter-11 mid-flight abort design.
+            _t_retr_start = time.monotonic_ns()
             candidates = await self._retriever.retrieve(
                 user_id=user_id,
                 query_variants=query_variants,
@@ -680,6 +710,7 @@ class RAGOrchestrator:
                 query_class=query_class,
                 limit=_retrieval_fast if query.quality == "fast" else _retrieval_strong,
             )
+            _t_retrieval_ms = (time.monotonic_ns() - _t_retr_start) // 1_000_000
             _log_rss("pipeline.retriever_done", cands=len(candidates))
             # T20: pass query_class through so graph_score activates the
             # dormant T24 usage-edge bonus tier (see graph_score.score).
@@ -689,6 +720,7 @@ class RAGOrchestrator:
                 query_class=query_class,
             )
             _log_rss("pipeline.graph_score_done")
+            _t_rerank_start = time.monotonic_ns()
             ranked = await self._reranker.rerank(
                 query.content,
                 candidates,
@@ -696,6 +728,7 @@ class RAGOrchestrator:
                 query_class=query_class,
                 graph_weight_override=graph_weight_override,
             )
+            _t_rerank_ms = (time.monotonic_ns() - _t_rerank_start) // 1_000_000
             _log_rss("pipeline.rerank_done", ranked=len(ranked))
             # T17: hint the assembler at the LLM tier we will most likely
             # invoke so it can pick a per-tier token budget. Derived from
@@ -729,7 +762,10 @@ class RAGOrchestrator:
             )
             # iter-04: drop unused 12-17 candidate blobs + trim heap before synth (swap was 470/1024MB).
             ctx_result = _RetrievedContext(
-                context_xml=context_xml, used_candidates=used_candidates,
+                context_xml=context_xml,
+                used_candidates=used_candidates,
+                t_retrieval_ms=int(_t_retrieval_ms),
+                t_rerank_ms=int(_t_rerank_ms),
             )
             del candidates, ranked
             from website.api._mem_release import aggressive_release as _ar
