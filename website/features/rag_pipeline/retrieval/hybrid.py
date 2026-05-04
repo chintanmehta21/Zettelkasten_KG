@@ -418,6 +418,20 @@ class HybridRetriever:
                 _log.debug("chunk_share fetch failed: %s", exc)
                 chunk_counts = {}
 
+        # iter-10 P12: surface THEMATIC + empty-counts so the
+        # _ensure_member_coverage path's recovery cost is visible — this
+        # combination is the q5/q7-shape footgun where an over-promoted
+        # member causes the magnet selection seen in iter-09.
+        if (
+            chunk_counts == {}
+            and query_class is QueryClass.THEMATIC
+            and sandbox_id is not None
+        ):
+            _log.warning(
+                "thematic_empty_counts sandbox=%s — _ensure_member_coverage may overcompensate",
+                sandbox_id,
+            )
+
         # iter-08 Phase 6 / G3: resolve KG anchors from query metadata and
         # expand 1-hop. Boost is applied inside _dedup_and_fuse AFTER chunk-
         # share damping so neighbours keep the full +0.05 regardless of size.

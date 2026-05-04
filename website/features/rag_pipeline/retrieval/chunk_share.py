@@ -7,6 +7,7 @@ while leaving small zettels untouched.
 """
 from __future__ import annotations
 
+import logging
 import math
 import os
 import statistics
@@ -16,6 +17,9 @@ from uuid import UUID
 from cachetools import TTLCache
 
 from website.features.rag_pipeline.types import QueryClass
+
+
+_log = logging.getLogger("rag.chunk_share")
 
 
 # iter-09 RES-2: classes for which chunk-share normalisation is permitted.
@@ -77,16 +81,29 @@ class ChunkShareStore:
             return {}
         key = str(sandbox_id)
         if key in self._cache:
+            _log.debug("chunk_counts cache_hit sandbox=%s", key)
             return self._cache[key]
+        # iter-10 P12: surface RPC errors and empty results so q5-class 500s
+        # have actionable forensic context (iter-09 lost the q5 500 traceback
+        # when the deploy restart purged the worker logs).
         try:
+            _log.debug("chunk_counts cache_miss sandbox=%s rpc=rag_kasten_chunk_counts", key)
             response = self._supabase.rpc(
                 "rag_kasten_chunk_counts",
                 {"p_sandbox_id": key},
             ).execute()
             data = response.data or []
-        except Exception:
+        except Exception as exc:
+            _log.warning(
+                "chunk_counts rpc_error sandbox=%s exc=%s", key, type(exc).__name__,
+            )
             data = []
         counts = {row["node_id"]: int(row.get("chunk_count", 0)) for row in data}
+        if not counts:
+            _log.warning(
+                "chunk_counts empty sandbox=%s (suspect member-coverage hole or RPC empty)",
+                key,
+            )
         self._cache[key] = counts
         return counts
 
