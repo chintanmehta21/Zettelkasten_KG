@@ -53,3 +53,51 @@ def test_bias_is_subfloor_so_real_score_diffs_dominate():
     a = _tiebreak_key(0.51,  2, {"a": 2, "b": 12}, QueryClass.LOOKUP)
     b = _tiebreak_key(0.50, 12, {"a": 2, "b": 12}, QueryClass.LOOKUP)
     assert a > b
+
+
+def test_thematic_with_name_overlap_prefers_higher_quartile():
+    """iter-11 Class B: when query verbatim names a zettel
+    (_title_overlap_boost > 0), the THEMATIC chunk-quartile inversion is
+    SKIPPED for that candidate — multi-chunk gold wins ties just like LOOKUP."""
+    a = _tiebreak_key(
+        0.5, 12, {"a": 12, "b": 2}, QueryClass.THEMATIC, title_overlap_boost=0.1
+    )
+    b = _tiebreak_key(
+        0.5, 2, {"a": 12, "b": 2}, QueryClass.THEMATIC, title_overlap_boost=0.0
+    )
+    assert a > b  # higher chunk-count wins because "a" has name-overlap
+
+
+def test_thematic_no_name_overlap_keeps_iter10_inversion():
+    """Sanity: when neither candidate has name-overlap, iter-10 THEMATIC
+    inversion (prefer LOWER chunk-count) still applies."""
+    a = _tiebreak_key(
+        0.5, 12, {"a": 12, "b": 2}, QueryClass.THEMATIC, title_overlap_boost=0.0
+    )
+    b = _tiebreak_key(
+        0.5, 2, {"a": 12, "b": 2}, QueryClass.THEMATIC, title_overlap_boost=0.0
+    )
+    assert b > a
+
+
+def test_lookup_with_name_overlap_unchanged():
+    """LOOKUP already prefers higher quartile; name-overlap just confirms it."""
+    a = _tiebreak_key(
+        0.5, 12, {"a": 12, "b": 2}, QueryClass.LOOKUP, title_overlap_boost=0.1
+    )
+    b = _tiebreak_key(
+        0.5, 2, {"a": 12, "b": 2}, QueryClass.LOOKUP, title_overlap_boost=0.0
+    )
+    assert a > b
+
+
+def test_step_back_with_name_overlap_also_overrides():
+    """STEP_BACK shares the THEMATIC inversion; name-overlap override
+    applies symmetrically so a named-zettel target survives."""
+    a = _tiebreak_key(
+        0.5, 12, {"a": 12, "b": 2}, QueryClass.STEP_BACK, title_overlap_boost=0.1
+    )
+    b = _tiebreak_key(
+        0.5, 2, {"a": 12, "b": 2}, QueryClass.STEP_BACK, title_overlap_boost=0.0
+    )
+    assert a > b

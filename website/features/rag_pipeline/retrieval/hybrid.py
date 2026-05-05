@@ -281,8 +281,10 @@ def _tiebreak_key(
     chunk_count: int,
     chunk_counts: dict[str, int],
     query_class: QueryClass | None,
+    title_overlap_boost: float = 0.0,
 ) -> tuple[float, float]:
-    """iter-10 Item 3: deterministic tie-breaker on `chunk_count_quartile`.
+    """iter-10 Item 3 + iter-11 Class B: deterministic tie-breaker on
+    ``chunk_count_quartile`` with a name-overlap override.
 
     Returned tuple is sorted with reverse=True, so a higher second element
     wins when rrf_score is tied. The bias is sub-floor (×0.0001) so it can
@@ -290,13 +292,22 @@ def _tiebreak_key(
 
     LOOKUP / VAGUE: prefer higher quartile (chunky relevant zettels).
     THEMATIC / MULTI_HOP / STEP_BACK: prefer lower quartile (broad coverage).
+
+    iter-11 Class B: when ``title_overlap_boost > 0`` (query verbatim names
+    this zettel), the THEMATIC-family inversion is BYPASSED for this
+    candidate — name-overlap is a stronger signal of "this is the user's
+    target" than coverage breadth. Net effect: a named multi-chunk gold
+    zettel wins ties just like a LOOKUP candidate would.
     """
     if not chunk_counts or chunk_count <= 0:
         return (rrf_score, 0.0)
     counts = list(chunk_counts.values())
     n = len(counts)
     rank = sum(1 for c in counts if c <= chunk_count) / n
-    invert = query_class in _TIEBREAK_INVERT_CLASSES
+    invert = (
+        query_class in _TIEBREAK_INVERT_CLASSES
+        and title_overlap_boost <= 0.0
+    )
     bias = (1.0 - rank) if invert else rank
     return (rrf_score, bias * 0.0001)
 
@@ -819,6 +830,12 @@ class HybridRetriever:
                 _ccs.get(candidate.node_id, 0),
                 _ccs,
                 query_class,
+                # iter-11 Class B: positive title overlap flips the THEMATIC-
+                # family inversion off for this candidate so a named zettel
+                # wins ties.
+                title_overlap_boost=float(
+                    candidate.metadata.get("_title_overlap_boost", 0.0)
+                ),
             ),
             reverse=True,
         )

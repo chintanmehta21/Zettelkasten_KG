@@ -124,6 +124,35 @@ _BASELINE = {
         "chunk_counts": {"web-author-page": 3, "web-other-page": 1},
         "expected_primary": "web-author-page",
     },
+    # iter-11 Class B fixture: a multi-chunk youtube zettel whose name appears
+    # verbatim in the query MUST win the THEMATIC tiebreak even though the
+    # iter-10 chunk_count_quartile inversion would normally favour the lowest-
+    # quartile competitor. The query mentions "Programming Workflow Is" which
+    # title-matches yt-programming-workflow-is.
+    "thematic_named_zettel": {
+        "class": "thematic",
+        "rows": [
+            _row(
+                "yt-programming-workflow-is",
+                "youtube",
+                0.50,
+                name="Programming Workflow Is",
+            ),
+            _row("nl-other-essay", "newsletter", 0.50),
+            _row("nl-broad-piece", "newsletter", 0.50),
+            _row("nl-scoped-note", "newsletter", 0.50),
+        ],
+        "chunk_counts": {
+            "yt-programming-workflow-is": 12,
+            "nl-other-essay": 5,
+            "nl-broad-piece": 3,
+            "nl-scoped-note": 1,
+        },
+        "query_variants": [
+            "how does the Programming Workflow Is zettel describe day-to-day code"
+        ],
+        "expected_primary": "yt-programming-workflow-is",
+    },
 }
 
 
@@ -144,7 +173,9 @@ def test_class_x_source_baseline_no_regression(name: str, case: dict) -> None:
     qclass = QueryClass(case["class"])
     candidates = retriever._dedup_and_fuse(
         [case["rows"]],
-        query_variants=["any"],
+        # iter-11 Class B: per-case override so the title-overlap boost path
+        # fires for the named-zettel fixture. Other cases keep the placeholder.
+        query_variants=case.get("query_variants") or ["any"],
         query_metadata=None,
         query_class=qclass,
         chunk_counts=case["chunk_counts"],
