@@ -197,26 +197,37 @@ def _apply_score_rank_demote(
     *,
     query_class: QueryClass | None,
     query_text: str = "",
+    anchor_nodes: set[str] | None = None,
 ) -> None:
-    """iter-10 P3: in-place rrf_score demote for THEMATIC/STEP_BACK magnets.
+    """iter-10 P3 + iter-11 Class A: in-place rrf_score demote for
+    THEMATIC/STEP_BACK magnets, with an anchor / title-overlap exemption.
 
     A node is a magnet if its top-1 ranking is disproportionate to its base
     retrieval percentile. We compute each candidate's percentile of
-    `_base_rrf_score` (rrf BEFORE class boosts) and compare to its current
+    ``_base_rrf_score`` (rrf BEFORE class boosts) and compare to its current
     rank percentile (after all boosts). When delta >= disprop_quartiles * 0.25,
     multiply rrf_score by demote_factor.
 
-    Independently: a `_title_overlap_boost` >= floor triggers a secondary
+    Independently: a ``_title_overlap_boost`` >= floor triggers a secondary
     multiplicative damp — catches the "title carries the win" pattern that
     score-rank misses on small candidate pools.
 
-    Mutates `candidates` in place. LOOKUP / VAGUE / MULTI_HOP bypass.
+    iter-11 Class A earned-exemption carve-out: a candidate whose node_id is in
+    ``anchor_nodes`` (the resolved-entity set from
+    ``entity_anchor.resolve_anchor_nodes``) OR whose ``_title_overlap_boost``
+    is > 0 (query verbatim names this zettel) skips BOTH the primary score-rank
+    demote AND the title-overlap secondary demote. Statistical detection still
+    runs for unanchored candidates so unearned magnets (q5-shape) keep getting
+    damped.
+
+    Mutates ``candidates`` in place. LOOKUP / VAGUE / MULTI_HOP bypass.
     """
     del query_text  # kept for future signal extension
     if query_class not in _SCORE_RANK_GATED_CLASSES:
         return
     if not candidates or len(candidates) < 4:
         return
+    anchored = anchor_nodes or set()
     base_scores = [
         float(c.metadata.get("_base_rrf_score", c.rrf_score))
         for c in candidates
@@ -231,15 +242,38 @@ def _apply_score_rank_demote(
     current_rank = {id(c): (n - i) / n for i, c in enumerate(current_sorted)}
 
     delta_threshold = _SCORE_RANK_DISPROP_QUARTILES * 0.25
+    n_demoted = 0
+    n_title_demoted = 0
+    factor_sum = 0.0
     for c in candidates:
+        # iter-11 Class A: earned exemption — anchored entity OR any positive
+        # title overlap.
+        is_anchored = c.node_id in anchored
+        has_title_overlap = float(c.metadata.get("_title_overlap_boost", 0.0)) > 0.0
+        if is_anchored or has_title_overlap:
+            continue
         base_pct = _percentile(float(c.metadata.get("_base_rrf_score", c.rrf_score)))
         rank_pct = current_rank[id(c)]
         delta = rank_pct - base_pct
         if delta >= delta_threshold:
             c.rrf_score *= _SCORE_RANK_DEMOTE_FACTOR
+            n_demoted += 1
+            factor_sum += _SCORE_RANK_DEMOTE_FACTOR
         title_boost = float(c.metadata.get("_title_overlap_boost", 0.0))
         if title_boost >= _TITLE_OVERLAP_DEMOTE_FLOOR:
             c.rrf_score *= _TITLE_OVERLAP_DEMOTE_FACTOR
+            n_title_demoted += 1
+    # iter-11 observability: structured log so iter-12+ can tune demote factor.
+    mean_factor = (factor_sum / n_demoted) if n_demoted else 0.0
+    _log.info(
+        "score_rank_demote class=%s n_cands=%d n_demoted=%d title_demoted=%d mean_factor=%.3f anchored_n=%d",
+        getattr(query_class, "value", query_class),
+        n,
+        n_demoted,
+        n_title_demoted,
+        mean_factor,
+        len(anchored),
+    )
 
 
 def _tiebreak_key(
@@ -532,6 +566,7 @@ class HybridRetriever:
             chunk_counts=chunk_counts,
             effective_nodes=effective_nodes,
             anchor_neighbours=anchor_neighbours,
+            anchor_nodes=set(anchor_nodes) if anchor_nodes else None,
             anchor_seeds=anchor_seeds,
         )
 
@@ -568,6 +603,7 @@ class HybridRetriever:
         chunk_counts: dict[str, int] | None = None,
         effective_nodes: list[str] | None = None,
         anchor_neighbours: set[str] | None = None,
+        anchor_nodes: set[str] | None = None,
         anchor_seeds: list[dict] | None = None,
     ) -> list[RetrievalCandidate]:
         by_key = {}
@@ -767,6 +803,7 @@ class HybridRetriever:
             list(by_key.values()),
             query_class=query_class,
             query_text=(query_variants or [""])[0] if query_variants else "",
+            anchor_nodes=anchor_nodes,
         )
 
         # iter-10 Item 3: chunk_count_quartile tie-breaker. Sub-floor bias

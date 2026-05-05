@@ -100,9 +100,13 @@ def test_multi_hop_NOT_gated():
     assert cands_sorted[0].node_id == "magnet"
 
 
-def test_title_overlap_secondary_demote():
-    """Even within THEMATIC, a candidate whose top-1 win came from
-    title-overlap boost (>=0.10) gets a multiplicative demote."""
+def test_title_overlap_above_floor_is_exempted_iter11():
+    """iter-11 Class A: superseded the iter-10 'title secondary demote on
+    boost>=0.10' behaviour with an earned-exemption carve-out. ANY positive
+    title overlap (including the iter-10 0.15 case) means the user named the
+    zettel verbatim — that's signal, not a magnet to damp. Both the primary
+    score-rank demote and the title secondary demote are skipped.
+    """
     cands = [
         _cand("title-magnet", 0.30, 0.80),
         _cand("a", 0.32, 0.34),
@@ -112,7 +116,7 @@ def test_title_overlap_secondary_demote():
     cands[0].metadata["_title_overlap_boost"] = 0.15
     before = cands[0].rrf_score
     _apply_score_rank_demote(cands, query_class=QueryClass.THEMATIC, query_text="topic")
-    assert cands[0].rrf_score < before
+    assert cands[0].rrf_score == before
 
 
 def test_pool_too_small_skips_gate():
@@ -120,3 +124,66 @@ def test_pool_too_small_skips_gate():
     cands = [_cand("magnet", 0.10, 0.85), _cand("other", 0.50, 0.55)]
     _apply_score_rank_demote(cands, query_class=QueryClass.THEMATIC, query_text="topic")
     assert cands[0].rrf_score == 0.85  # unchanged
+
+
+def test_anchored_candidate_skips_demote():
+    """iter-11 Class A: a candidate whose node_id is in anchor_nodes (the
+    resolved-entity set) MUST NOT be demoted by the score-rank gate, even
+    if it scores as a statistical magnet. The gate damps ONLY 'unearned'
+    magnets; entity-anchored candidates have earned the top-1 slot."""
+    cands = [
+        _cand("legit-magnet", 0.10, 0.65),
+        _cand("real-a", 0.55, 0.60),
+        _cand("real-b", 0.50, 0.55),
+        _cand("real-c", 0.45, 0.50),
+    ]
+    _apply_score_rank_demote(
+        cands,
+        query_class=QueryClass.THEMATIC,
+        query_text="topic",
+        anchor_nodes={"legit-magnet"},
+    )
+    # legit-magnet stays at 0.65 because it's anchored.
+    assert cands[0].rrf_score == 0.65
+
+
+def test_title_overlap_candidate_also_skips_score_rank_demote():
+    """iter-11 Class A: a candidate with _title_overlap_boost > 0 (query
+    verbatim names this zettel) is exempted from BOTH the score-rank
+    primary demote AND the title-overlap secondary demote — title-match
+    is an earned signal."""
+    cands = [
+        _cand("named-magnet", 0.10, 0.65),
+        _cand("real-a", 0.55, 0.60),
+        _cand("real-b", 0.50, 0.55),
+        _cand("real-c", 0.45, 0.50),
+    ]
+    cands[0].metadata["_title_overlap_boost"] = 0.05  # below the 0.10 floor but >0
+    _apply_score_rank_demote(
+        cands,
+        query_class=QueryClass.THEMATIC,
+        query_text="topic",
+        anchor_nodes=set(),
+    )
+    # Score-rank exempts because title boost > 0; title secondary also exempts
+    # for the same reason — both arms covered by the earned-exemption carve-out.
+    assert cands[0].rrf_score == 0.65
+
+
+def test_unanchored_magnet_still_gets_demoted():
+    """Sanity: with anchor_nodes={} and no title boost, the gate still fires
+    on the disproportional candidate (no behaviour change for the iter-10 case)."""
+    cands = [
+        _cand("magnet", 0.10, 0.65),
+        _cand("real-a", 0.55, 0.60),
+        _cand("real-b", 0.50, 0.55),
+        _cand("real-c", 0.45, 0.50),
+    ]
+    _apply_score_rank_demote(
+        cands,
+        query_class=QueryClass.THEMATIC,
+        query_text="topic",
+        anchor_nodes=set(),
+    )
+    cands_sorted = sorted(cands, key=lambda c: c.rrf_score, reverse=True)
+    assert cands_sorted[0].node_id != "magnet"
