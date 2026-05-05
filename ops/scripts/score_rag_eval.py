@@ -294,6 +294,8 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
     within_budget_total = 0
     within_budget_yes = 0
     n = 0
+    n_scored_for_gold = 0  # iter-11 Class E1: excludes expected_empty rows
+    n_not_applicable = 0
     for check in qa_checks:
         d = check.get("detail") or {}
         n += 1
@@ -307,7 +309,13 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
         retrieved = d.get("retrieved_node_ids") or []
         expected = set(d.get("expected") or [])
         wb = d.get("within_budget")
-        if expected:
+        # iter-11 Class E1: rows with no expected citations are refusal-expected
+        # adversarial queries; segregate from gold@1 ratios.
+        expected_empty = not bool(d.get("expected"))
+        if expected_empty:
+            n_not_applicable += 1
+        else:
+            n_scored_for_gold += 1
             if retrieved and retrieved[0] in expected:
                 gold_at_1 += 1
                 if wb is True:
@@ -330,14 +338,16 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
     metrics["primary_citation_magnets"] = magnets
     metrics["query_class_distribution"] = classes
     if n:
-        # iter-10 P6: split gold@1 into unconditional vs within-budget so the
-        # scorecard surfaces both. iter-09 conflated them and under-reported.
-        metrics["gold_at_1_unconditional"] = round(gold_at_1 / n, 4)
-        metrics["gold_at_1_within_budget"] = round(gold_at_1_within_budget / n, 4)
+        # iter-10 P6 + iter-11 Class E1: split gold@1 into unconditional vs
+        # within-budget AND exclude refusal-expected rows from the denominator.
+        denom = max(n_scored_for_gold, 1)
+        metrics["gold_at_1_unconditional"] = round(gold_at_1 / denom, 4)
+        metrics["gold_at_1_within_budget"] = round(gold_at_1_within_budget / denom, 4)
         # Backwards-compatible alias points at unconditional (the truer count).
         metrics["gold_at_1"] = metrics["gold_at_1_unconditional"]
-        metrics["gold_at_3"] = round(gold_at_3 / n, 4)
-        metrics["gold_at_8"] = round(gold_at_8 / n, 4)
+        metrics["gold_at_3"] = round(gold_at_3 / denom, 4)
+        metrics["gold_at_8"] = round(gold_at_8 / denom, 4)
+        metrics["gold_at_1_not_applicable"] = n_not_applicable
     metrics["refused_count"] = refused
     if within_budget_total:
         metrics["within_budget_rate"] = round(within_budget_yes / within_budget_total, 4)
@@ -345,18 +355,28 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
 
 
 def _aggregate_gold_metrics(rows: list[dict]) -> dict[str, float]:
-    """iter-10 P6: standalone helper for gold@1 split. Each row is
-    ``{"gold_at_1": bool, "within_budget": bool}``. Used by the unit test and
-    also re-callable by other tooling that doesn't carry full QA-check rows."""
-    n = max(len(rows), 1)
-    unc = sum(1 for r in rows if r.get("gold_at_1") is True)
+    """iter-10 P6 + iter-11 Class E1: standalone helper for gold@1 split.
+
+    Each row is ``{"gold_at_1": bool, "within_budget": bool, "expected_empty": bool}``.
+    iter-11 Class E1: rows with ``expected_empty=True`` are refusal-expected
+    adversarial queries (e.g. iter-11 q9: "Summarize what this Kasten says
+    about Notion's database features"). The pipeline correctly returns
+    primary=None there, but ``gold_at_1=False`` would mechanically depress the
+    headline metric. We segregate them into ``gold_at_1_not_applicable`` and
+    EXCLUDE them from numerator AND denominator of the ratios.
+    """
+    scored = [r for r in rows if not r.get("expected_empty")]
+    n_na = sum(1 for r in rows if r.get("expected_empty"))
+    n_scored = max(len(scored), 1)
+    unc = sum(1 for r in scored if r.get("gold_at_1") is True)
     wb = sum(
-        1 for r in rows
+        1 for r in scored
         if r.get("gold_at_1") is True and r.get("within_budget") is True
     )
     return {
-        "gold_at_1_unconditional": round(unc / n, 4),
-        "gold_at_1_within_budget": round(wb / n, 4),
+        "gold_at_1_unconditional": round(unc / n_scored, 4),
+        "gold_at_1_within_budget": round(wb / n_scored, 4),
+        "gold_at_1_not_applicable": n_na,
     }
 
 
@@ -424,6 +444,7 @@ def _render_scores_md(
         "## Holistic monitoring (iter-04)",
         f"- gold@1 (unconditional):  {holistic.get('gold_at_1_unconditional', holistic.get('gold_at_1', 'n/a'))}",
         f"- gold@1 within budget:    {holistic.get('gold_at_1_within_budget', 'n/a')}",
+        f"- gold@1 not applicable:   {holistic.get('gold_at_1_not_applicable', 0)} (refusal-expected)",
         f"- gold@3: {holistic.get('gold_at_3', 'n/a')}    "
         f"gold@8: {holistic.get('gold_at_8', 'n/a')}",
         f"- within_budget_rate: {holistic.get('within_budget_rate', 'n/a')}",
