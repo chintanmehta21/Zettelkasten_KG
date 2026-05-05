@@ -509,6 +509,21 @@ class HybridRetriever:
             else:
                 _log.debug("anchor_seed skipped: %s", decision.reason)
 
+        # iter-11 Phase 0 / Task 2 SCOUT (TEMPORARY — remove before final eval).
+        # Disambiguates q10's failure mode: metadata-extraction gap (Mode 1),
+        # resolver gap (Mode 2), or anchor-seed gap (Mode 3). See iter-11
+        # PLAN.md Phase 0 / Task 2 and RESEARCH.md Class C.
+        _scout_log = logging.getLogger("rag.iter11_scout")
+        _scout_log.info(
+            "iter11_scout qid=%s class=%s authors=%r entities=%r anchor_nodes=%r anchor_seeds_n=%d",
+            getattr(query_metadata, "qid", "?") if query_metadata else "?",
+            getattr(query_class, "value", query_class),
+            getattr(query_metadata, "authors", None) if query_metadata else None,
+            getattr(query_metadata, "entities", None) if query_metadata else None,
+            list(anchor_nodes),
+            len(anchor_seeds),
+        )
+
         return self._dedup_and_fuse(
             results,
             query_variants=query_variants,
