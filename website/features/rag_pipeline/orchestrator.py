@@ -709,6 +709,11 @@ class RAGOrchestrator:
                 scope_filter=scope_filter,
                 query_class=query_class,
                 limit=_retrieval_fast if query.quality == "fast" else _retrieval_strong,
+                # iter-11 Phase 1 / Task 2 wiring: thread query_meta into retrieve()
+                # so HybridRetriever's iter-08 anchor-boost gate (resolve_anchor_nodes
+                # -> per-entity union) actually runs in production. Prior iters
+                # silently passed None, short-circuiting the gate (q10 root cause).
+                query_metadata=query_meta,
             )
             _t_retrieval_ms = (time.monotonic_ns() - _t_retr_start) // 1_000_000
             _log_rss("pipeline.retriever_done", cands=len(candidates))
