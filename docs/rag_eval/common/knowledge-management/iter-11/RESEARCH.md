@@ -159,6 +159,18 @@ If the scout reveals Mode 1 or Mode 3 is the dominant cause, the per-entity loop
 
 **Where this lands:** [PLAN.md](PLAN.md) Phase 0 / Task 2 (scout) + Phase 1 / Task 2 (impl).
 
+### Phase 0 / Task 2 scout finding (executed 2026-05-05)
+
+The temporary scout log `iter11_scout qid=? class=... authors=... entities=... anchor_nodes=... anchor_seeds_n=...` was wired into `hybrid.py:retrieve()` (commit `fdd45d8`), pushed to master, deployed (run `25362790563`), and exercised against a q1-q10 fragment eval. Droplet logs (run `25363405822`) reported **every** retrieve() invocation with `authors=None entities=None anchor_nodes=[] anchor_seeds_n=0`.
+
+Root cause was UPSTREAM of the entity-anchor resolver: `orchestrator._retrieve_context` (orchestrator.py:705-712) called `self._retriever.retrieve(...)` WITHOUT threading `query_meta` through. `query_metadata` defaulted to `None`, the iter-08 anchor-boost gate at `hybrid.py:442` short-circuited on `query_metadata is not None`, and `resolve_anchor_nodes` was unreachable in production for the entire iter-08..iter-10 era.
+
+This is a **Mode 1 sub-variant**: not the metadata extractor itself (it works; metadata is used at orchestrator.py:449/624/909/1084), but the WIRING from extractor to retriever. Operator-approved fix (chat 2026-05-05): add `query_metadata=query_meta` to the call site as part of Phase 1 / Task 2, alongside the per-entity loop. Both shipped together in commit `b059a5a`.
+
+The Class C per-entity loop is now also reachable in production. iter-12 carry-over: monitor the new `entity_anchor_resolve n_entities=N resolved=K missing=[...]` log line for any persistent `missing` patterns that would indicate Mode 2 (RPC normalisation) or Mode 3 (`fetch_anchor_seeds` empty-result) failures.
+
+The scout log is REMOVED before the iter-11 final eval.
+
 ---
 
 ## Class D — short-query entity-hint expansion in the rewriter
@@ -272,6 +284,33 @@ The scores.md template gets one new line: `- gold@1 not applicable: <count> (ref
 - DO NOT try to fix Caddy / Cloudflare buffering in iter-11 even if H1/H2 is confirmed — that's iter-12 infra work and needs separate guardrail review (touching Caddy upstream config interacts with the `read_timeout 240s` guardrail).
 
 **Where this lands:** [PLAN.md](PLAN.md) Phase 7 / Task 8.
+
+### Phase 7 / Task 8 verdict (executed 2026-05-05)
+
+Investigation method: a one-shot `httpx`-streaming probe (closer to `EventSource` semantics than Playwright's `fetch().getReader()` path) was issued against the production droplet immediately after the iter-11 scout deploy with the same JWT and an in-corpus query. Frame-by-frame event log was recorded.
+
+**Probe data (httpx, fast quality, KM kasten):**
+
+| event | offset |
+|---|---:|
+| connection / status: queued | +9.0 s |
+| status: retrieving | +12.9 s |
+| event: citations | +37.0 s |
+| event: token (first content frame) | +48.7 s |
+| event: done | +54.5 s |
+
+**Cross-check against Playwright p_user (q1 from same droplet):** `p_user_first_token_ms = 31_445 ms`, `latency_ms_server = 1_272 ms`. Across the q1-q10 fragment, every query showed `latency_ms_server` 0.9-2.6 s and `p_user_first_token_ms` 24-49 s.
+
+**None of H1/H2/H3 fits the data.** Neither Cloudflare/Caddy buffering (httpx-direct would not see the gap) nor Playwright `getReader()` artefact (Playwright would see a LARGER gap than httpx, but in fact Playwright's TTFT is in the same band or lower) explains the spread. Re-reading the Playwright eval code at `eval_iter_03_playwright.py:1098,1229` showed `result["latency_ms_server"] = turn.get("latency_ms")` — `latency_ms_server` is whatever value the SERVER includes inside the final `done` SSE turn payload, not a wall-time measurement.
+
+**Verdict — H4: `latency_ms_server` is a PARTIAL/MISNAMED METRIC; p_user_first_token_ms IS the honest user-wait.** The iter-09/10 narrative of "fast server, slow client" is wrong: the server takes ~30-50 s end-to-end on a fast query (cold-start + retrieve + rerank + assembly + synth), and `latency_ms_server` only reflects a small sub-stage (likely synth-only or post-finalize). p_user_first_token_ms / p_user_last_token_ms ARE the user-perceived numbers and should remain the source of truth.
+
+**iter-11 disposition:** NO harness change needed (per PLAN Phase 7 / Task 8 / Step 5: "If H1/H2 (real wait), no harness change needed — p_user already reflects user reality"). p_user stays honest in iter-11.
+
+**iter-12 carry-over (out of iter-11 scope):**
+1. Rename or augment `latency_ms_server` so its scope is unambiguous; alternatively drop it from the scorecard since per-stage timings (iter-10 P17 `t_retrieval_ms` / `t_rerank_ms` / `t_synth_ms`) already cover the same ground without ambiguity.
+2. Investigate the 9-second connection→queued gap (likely: warm worker pickup + admission gate slot acquisition) and the ~28-second pre-synth pipeline window. iter-10 P17 per-stage timings should already give the breakdown.
+3. The probe script `ops/scripts/_iter11_e2_sse_probe.py` was investigative-only and is git-ignored; remove if it lingers in the working tree.
 
 ---
 
