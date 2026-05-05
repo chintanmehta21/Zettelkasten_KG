@@ -99,6 +99,38 @@ _UNSUPPORTED_WITH_GOLD_SKIP_FLOOR = float(
     os.environ.get("RAG_UNSUPPORTED_WITH_GOLD_SKIP_FLOOR", "0.7")
 )
 
+# iter-11 Class F (operator-approved): per-class additive offset on the
+# critic-skip floors. Cross-corpus THEMATIC / STEP_BACK queries lack single-
+# chunk grounding even when 4-5 zettels collectively support the answer, so
+# the LOOKUP-calibrated 0.5 / 0.7 literals refuse legitimately-grounded
+# cross-corpus answers (q5 root cause). The offset LOWERS the effective
+# floor for THEMATIC / STEP_BACK only — LOOKUP / VAGUE keep the locked
+# literals (CLAUDE.md guardrail). Hard-clamped at _CRITIC_FLOOR_HARD_MIN
+# so an extreme env value cannot disable the gate outright.
+_CRITIC_FLOOR_HARD_MIN = 0.3
+
+
+def _offset_for_class(query_class: "QueryClass | None", env_key: str) -> float:
+    if query_class in (QueryClass.THEMATIC, QueryClass.STEP_BACK):
+        return float(os.environ.get(env_key, "0.0"))
+    return 0.0
+
+
+def _effective_partial_floor(query_class: "QueryClass | None") -> float:
+    offset = _offset_for_class(
+        query_class, "RAG_PARTIAL_NO_RETRY_FLOOR_OFFSET_THEMATIC"
+    )
+    return max(_CRITIC_FLOOR_HARD_MIN, _PARTIAL_NO_RETRY_FLOOR + offset)
+
+
+def _effective_unsupported_with_gold_skip_floor(
+    query_class: "QueryClass | None",
+) -> float:
+    offset = _offset_for_class(
+        query_class, "RAG_UNSUPPORTED_WITH_GOLD_SKIP_FLOOR_OFFSET_THEMATIC"
+    )
+    return max(_CRITIC_FLOOR_HARD_MIN, _UNSUPPORTED_WITH_GOLD_SKIP_FLOOR + offset)
+
 # iter-08 Fix B: drop the citations list when the final verdict signals a
 # refusal (``unsupported_no_retry``) or the answer text is the canonical
 # refusal phrase. Prevents the iter-02-era stray citation chip on refused
@@ -191,11 +223,15 @@ def _should_skip_retry(
     # critic returned ``partial`` AND retrieval surfaced a gold-tier chunk
     # (rerank >= 0.5), the partial draft is materially better than any retry
     # the model has produced in eval. Skip retry to preserve it.
+    # iter-11 Class F: effective floor is class-conditional. LOOKUP / VAGUE
+    # keep the locked 0.5 literal; THEMATIC / STEP_BACK can take an additive
+    # negative offset down to the 0.3 hard floor.
+    _partial_floor = _effective_partial_floor(query_class)
     if (
         _PARTIAL_NO_RETRY_ENABLED
         and first_verdict == "partial"
         and used_candidates
-        and top_score >= _PARTIAL_NO_RETRY_FLOOR
+        and top_score >= _partial_floor
     ):
         return True, "partial_with_gold_skip"
     # iter-09 RES-1: LOOKUP unsupported with gold-tier rerank — surface
@@ -205,12 +241,18 @@ def _should_skip_retry(
     _gate_on = os.environ.get(
         "RAG_UNSUPPORTED_WITH_GOLD_SKIP_ENABLED", "true"
     ).lower() not in ("false", "0", "no", "off")
+    # iter-11 Class F: effective unsupported-skip floor is class-conditional
+    # via the same offset family. The query-class gate stays LOOKUP-only here
+    # by iter-09 design (RES-1: harsher verdict, only safe for single-zettel
+    # lookups). The Class F path provides headroom for future broadening
+    # without changing today's class scope.
+    _skip_floor = _effective_unsupported_with_gold_skip_floor(query_class)
     if (
         _gate_on
         and first_verdict == "unsupported"
         and query_class is QueryClass.LOOKUP
         and used_candidates
-        and top_score >= _UNSUPPORTED_WITH_GOLD_SKIP_FLOOR
+        and top_score >= _skip_floor
     ):
         return True, "unsupported_with_gold_skip"
     if _has_refusal_phrase(answer_text):
