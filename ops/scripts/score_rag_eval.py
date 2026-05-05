@@ -354,6 +354,97 @@ def _holistic_metrics(qa_checks: list[dict]) -> dict[str, Any]:
     return metrics
 
 
+def _decide_iter12_path(metrics: dict) -> dict[str, str]:
+    """iter-11 close: data-driven recommendation for the next iter's fix path.
+
+    Inputs (any subset of):
+        composite                       float, 0..100
+        p95_ms                          int, ms
+        burst_502_rate                  float, 0..1
+        gold_at_1_unconditional         float, 0..1
+        anchor_boost_active             bool — was RAG_ANCHOR_BOOST_ENABLED on
+                                        when the run was captured?
+        t_db_share_of_server_ms         float, 0..1 — fraction of server time
+                                        spent in supabase RPC roundtrips. Only
+                                        available if iter-12 ships per-RPC
+                                        timing instrumentation; absent for now.
+
+    Returns ``{"recommended": <PATH>, "because": <one-line rationale>}``.
+
+    Decision matrix (top match wins; thresholds match Agent 4 research):
+      PATH_A_ROLLBACK     anchor-boost active AND (burst_502 ≥ 0.5 OR p95 ≥ 60s
+                          OR composite < 60). Catches the iter-11 rerun pattern.
+      PATH_C_CTE_COLLAPSE anchor-boost active AND p95 healthy AND burst clean
+                          AND t_db_share_of_server_ms ≥ 0.4. Only meaningful
+                          when iter-12 has shipped per-RPC timing.
+      PATH_B_ASYNC_WRAP   default for the rollback-stable case (iter-10
+                          baseline composite, zero burst issues, anchor-boost
+                          dormant) AND for the async-wrap-validated case
+                          (anchor active, healthy, db-share modest).
+      PATH_A_ROLLBACK     fallback when input metrics are insufficient — the
+                          safest, reversible recommendation.
+    """
+    if not metrics:
+        return {
+            "recommended": "PATH_A_ROLLBACK",
+            "because": "insufficient metrics; default to safest reversible path",
+        }
+    composite = metrics.get("composite")
+    p95 = metrics.get("p95_ms")
+    burst502 = metrics.get("burst_502_rate")
+    anchor_active = bool(metrics.get("anchor_boost_active"))
+    t_db_share = metrics.get("t_db_share_of_server_ms")
+
+    burst_bad = isinstance(burst502, (int, float)) and burst502 >= 0.5
+    p95_bad = isinstance(p95, (int, float)) and p95 >= 60_000
+    composite_bad = isinstance(composite, (int, float)) and composite < 60.0
+    if anchor_active and (burst_bad or p95_bad or composite_bad):
+        reason_bits = []
+        if burst_bad:
+            reason_bits.append(f"burst_502_rate={burst502:.0%}")
+        if p95_bad:
+            reason_bits.append(f"p95={int(p95)}ms")
+        if composite_bad:
+            reason_bits.append(f"composite={composite:.1f}")
+        why = ", ".join(reason_bits)
+        return {
+            "recommended": "PATH_A_ROLLBACK",
+            "because": (
+                f"anchor-boost active is blocking event loop ({why}); "
+                "rollback first, then async-wrap in iter-12"
+            ),
+        }
+    if (
+        anchor_active
+        and not burst_bad
+        and not p95_bad
+        and isinstance(t_db_share, (int, float))
+        and t_db_share >= 0.4
+    ):
+        return {
+            "recommended": "PATH_C_CTE_COLLAPSE",
+            "because": (
+                f"async-wrap validated; db_share={t_db_share:.0%} of server "
+                "time still dominates — collapse 4-5 RPCs into one CTE"
+            ),
+        }
+    if not anchor_active:
+        return {
+            "recommended": "PATH_B_ASYNC_WRAP",
+            "because": (
+                "rollback held stable; iter-12 should ship asyncio.to_thread "
+                "wrapper + sized executor to re-activate anchor-boost safely"
+            ),
+        }
+    return {
+        "recommended": "PATH_B_ASYNC_WRAP",
+        "because": (
+            "anchor-boost active, latency healthy; "
+            "asyncio.to_thread wrap is the architectural destination"
+        ),
+    }
+
+
 def _aggregate_gold_metrics(rows: list[dict]) -> dict[str, float]:
     """iter-10 P6 + iter-11 Class E1: standalone helper for gold@1 split.
 

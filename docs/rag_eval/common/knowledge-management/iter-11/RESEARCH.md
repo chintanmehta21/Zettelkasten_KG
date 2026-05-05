@@ -171,6 +171,64 @@ The Class C per-entity loop is now also reachable in production. iter-12 carry-o
 
 The scout log is REMOVED before the iter-11 final eval.
 
+### Phase 8 / Task 11 final-eval regression and operator-approved rollback (2026-05-05)
+
+Running the final iter-11 eval after deploy + Class F env activation produced a catastrophic regression vs iter-10:
+
+| metric | iter-10 | iter-11 first run |
+|---|---:|---:|
+| composite | 66.10 | **56.38** |
+| gold@1 unconditional | 0.6429 | **0.3846** |
+| gold@1 within-budget | 0.3571 | **0.0000** |
+| within_budget_rate | 0.6429 | **0.0714** |
+| p50 latency | 30 016 ms | **67 972 ms** |
+| p95 latency | 36 135 ms | **101 500 ms** |
+| burst 502 rate | 0.25 | **1.00** |
+
+7/14 queries failed with `HTTP 0 / TypeError: network error` (mid-stream SSE disconnects). `latency_ms_server` jumped from a uniform 1.0-1.7 s in iter-10 to 1.2-37.1 s in iter-11.
+
+**Root cause** (HIGH CONFIDENCE — 4-agent research consensus):
+
+The Phase 1 / Task 2 wiring patch (commit `b059a5a`) flipped four previously-dormant Supabase RPCs from never-fire to always-fire on every entity-bearing query. `entity_anchor.resolve_anchor_nodes` is a per-entity loop that issues one RPC per entity, plus `get_one_hop_neighbours` and `fetch_anchor_seeds`. The `supabase-py` client this repo uses (`website/core/supabase_kg/client.py:13,124` — `SyncClientOptions` / `create_client`) is the **synchronous** variant, so each `await supabase.rpc(...).execute()` blocks the asyncio event loop for the full network round-trip. With 2-3 entities per typical compare-shape query, that is 4-5 sequential blocking RPCs at 150-400 ms each = 0.6-2.0 s of event-loop block per query. While the loop is blocked the rerank semaphore is held, the SSE heartbeat misses sends, and Cloudflare's `dial_timeout` (default 3 s on Caddy upstream) trips on subsequent burst connections. Caddy emits 502, Cloudflare passes it through.
+
+This is the textbook FastAPI sync-in-async failure mode. Citations:
+
+- FastAPI concurrency doc: "a sync function in an async endpoint will block the entire server until it returns" — https://fastapi.tiangolo.com/async/
+- supabase-py async path EXISTS via `acreate_client()` returning `AsyncClient`, but has known maturity bugs (#1306 ClientOptions storage AttributeError, #604 still-open async parity tracker) — https://github.com/supabase/supabase-py
+- Cloudflare 502 vs 524: 502 = "TCP fail / upstream premature close", NOT a response-time timeout — https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-502-504/
+
+**Operator-approved iter-11 close (layered, dashboard-only mode):**
+
+1. Set `RAG_ANCHOR_BOOST_ENABLED=false` on the production droplet `compose/.env`. Restart the active color. Flag is iter-08-pre-existing (`hybrid.py:38`); rollback is one env line, fully reversible.
+2. Re-run the final iter-11 eval against the rollback configuration. Class A / B / D / F retrieval+synthesis fixes remain active because they don't depend on the anchor-boost wiring patch. Class C per-entity loop is dormant — q10 falls back to its iter-10 (still broken) state but does not regress further.
+3. Add a scoring-side decision-gate helper `_decide_iter12_path(metrics)` in `ops/scripts/score_rag_eval.py` that translates measured metrics (composite, p95, burst_502_rate, anchor_boost_active, t_db_share_of_server_ms) into a concrete iter-12 fix-path recommendation. Tested in `tests/unit/ops_scripts/test_score_rag_eval_decision_gate.py`. Per-iter scores.md remains canonical (no fix recommendations); the gate output is consumed by RESEARCH.md and the chat triage dashboard.
+
+**Per-query trade-off matrix from rolling back** (research agent #1):
+
+| query shape | mechanism lost | expected gold@1 delta |
+|---|---|---|
+| LOOKUP w/ named author/entity (q10 / q11 / q14 shape) | anchor zettel + 1-hop +0.05 fusion + anchor-seed inject | 1.0 → ~0.4-0.6 |
+| MULTI_HOP w/ ≥1 named entity | anchor-seed inject (RES-7 / Q10 fix) | 0.8 → ~0.3 |
+| THEMATIC w/ named-entity ≥4 chars | anchor-seed inject floor 0.30 | 0.6 → ~0.4 |
+| VAGUE / pure-thematic (no entities) | none — gate short-circuits | unchanged |
+| LOOKUP w/ entity not in KG | none (resolver returns ∅) | unchanged |
+
+Medium-corpus Kastens (knowledge-management eval shape, ~14 zettels) take the worst hit because the seed-inject was the recall-rescue path for queries where the main hybrid drops the anchor below `limit`. Sparse Kastens (≤7 zettels) are essentially unaffected — the cross-encoder reaches the anchor regardless. Dense Kastens (50+) lose precision, not recall.
+
+**iter-12 carry-over (PLAN to be authored in iter-12, not iter-11):**
+
+- PRIMARY: wrap each sync `supabase.rpc(...).execute()` in `await asyncio.to_thread(...)` AND set `loop.set_default_executor(ThreadPoolExecutor(max_workers=16, thread_name_prefix="supa"))` at app startup. CPython 3.12's default executor is `min(32, cpu_count + 4)` = 5 threads on a 1-vCPU droplet, which is the exact ceiling our 12-concurrent-burst hits at 6 per worker. Explicit sizing pushes the safe ceiling to ~50/process. (research agent #2 — citations: https://docs.python.org/3/library/asyncio-eventloop.html, https://github.com/python/cpython/issues/136157)
+- SECONDARY: collapse the 4-5 RPCs into one `rag_anchor_resolve_full` Postgres function backed by `WITH ORDINALITY` + `CROSS JOIN LATERAL` per-entity subqueries. Caveat: pgvector's HNSW/IVFFlat index will NOT be used when LATERAL passes a *correlated* embedding parameter — must validate via `EXPLAIN ANALYZE` before locking in the design. (research agent #3 — citations: https://www.crunchydata.com/blog/iterators-in-postgresql-with-lateral-joins, https://supabase.com/docs/guides/database/functions)
+- HARNESS MONITORS to add in iter-12 (research agent #4):
+    1. `event_loop_lag_ms` sentinel coroutine in the eval — gates PATH_B safety
+    2. per-RPC `t_db_wait_ms` histogram + `n_db_calls` count — gates PATH_C necessity
+    3. `threadpool_queue_depth` snapshot during burst — gates PATH_B at >50 concurrent
+    4. `anchor_resolve_telemetry` per-query payload — catches Kasten over-pulls
+    5. `burst_502_rate` / `heartbeat_miss_rate` — direct backpressure validation
+- DO NOT migrate to `acreate_client` in iter-12 — open issues (#1306, #604) make it iter-13+ scope.
+
+The `_decide_iter12_path` helper consumes these signals and recommends `PATH_A_ROLLBACK` / `PATH_B_ASYNC_WRAP` / `PATH_C_CTE_COLLAPSE` from data, not memory. iter-12's PLAN is written from whichever path the helper recommends after the iter-11-rollback eval lands.
+
 ---
 
 ## Class D — short-query entity-hint expansion in the rewriter
