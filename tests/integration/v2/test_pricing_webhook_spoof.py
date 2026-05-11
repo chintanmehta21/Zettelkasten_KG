@@ -217,6 +217,148 @@ def test_webhook_spoofed_notes_user_does_not_credit_victim(
     )
 
 
+def test_subscription_activated_webhook_cannot_spoof_owner(
+    app_client, webhook_secret, mint_user
+):
+    """``subscription.activated`` webhook MUST resolve owner from the DB row
+    keyed by ``razorpay_subscription_id`` — NEVER from ``notes.render_user_id``.
+
+    Attack: attacker holds a real Razorpay subscription bound to their UUID.
+    They (or anyone holding the webhook secret) sign a body where
+    ``notes.render_user_id`` is set to the victim's UUID. The handler must
+    activate the subscription on the attacker (DB-bound owner), not the victim.
+    """
+    attacker = mint_user()
+    victim = mint_user()
+
+    from website.features.user_pricing.repository import (
+        get_pricing_repository,
+        reset_memory_state_for_tests,
+    )
+    reset_memory_state_for_tests()
+    repo = get_pricing_repository()
+
+    razorpay_sub_id = f"sub_{uuid.uuid4().hex[:14]}"
+    # Seed an attacker-owned subscription row keyed by razorpay_subscription_id.
+    repo.create_or_update_subscription(
+        user_sub=str(attacker.auth_user_id),
+        plan_id="plan_attacker_monthly",
+        period_id="monthly",
+        razorpay_subscription_id=razorpay_sub_id,
+        status="created",
+    )
+
+    event_id = f"evt_sub_act_spoof_{uuid.uuid4().hex[:10]}"
+    razorpay_payment_id = f"pay_{uuid.uuid4().hex[:14]}"
+    event = {
+        "event": "subscription.activated",
+        "id": event_id,
+        "payload": {
+            "subscription": {
+                "entity": {
+                    "id": razorpay_sub_id,
+                    "notes": {
+                        # Hostile fields — must NOT influence owner attribution.
+                        "render_user_id": str(victim.auth_user_id),
+                        "user_sub": str(victim.auth_user_id),
+                        "plan_id": "plan_attacker_monthly",
+                        "period_id": "monthly",
+                        "months": 1,
+                    },
+                }
+            },
+            "payment": {"entity": {"id": razorpay_payment_id}},
+        },
+    }
+    body = json.dumps(event).encode("utf-8")
+    sig = _sign(body, webhook_secret)
+
+    r = _post_webhook(app_client, body, sig)
+    assert r.status_code in (200, 202), r.text
+
+    # Property: attacker's subscription is now active (owner unchanged).
+    attacker_sub = repo.get_subscription(user_sub=str(attacker.auth_user_id))
+    assert attacker_sub is not None, "attacker subscription row vanished"
+    assert attacker_sub.get("status") == "active", (
+        f"attacker sub not activated; status={attacker_sub.get('status')!r}"
+    )
+    assert attacker_sub.get("razorpay_subscription_id") == razorpay_sub_id
+
+    # Property: victim has ZERO active subscriptions as a result of the spoof.
+    victim_sub = repo.get_subscription(user_sub=str(victim.auth_user_id))
+    assert victim_sub is None or victim_sub.get("status") != "active", (
+        f"WEBHOOK SPOOF CREDITED VICTIM: victim sub state={victim_sub!r}"
+    )
+
+
+def test_subscription_charged_webhook_cannot_spoof_owner(
+    app_client, webhook_secret, mint_user
+):
+    """``subscription.charged`` (renewal) webhook MUST resolve owner from the
+    DB row keyed by ``razorpay_subscription_id`` — NEVER from
+    ``notes.render_user_id``. Same invariant as ``subscription.activated``.
+    """
+    attacker = mint_user()
+    victim = mint_user()
+
+    from website.features.user_pricing.repository import (
+        get_pricing_repository,
+        reset_memory_state_for_tests,
+    )
+    reset_memory_state_for_tests()
+    repo = get_pricing_repository()
+
+    razorpay_sub_id = f"sub_{uuid.uuid4().hex[:14]}"
+    repo.create_or_update_subscription(
+        user_sub=str(attacker.auth_user_id),
+        plan_id="plan_attacker_monthly",
+        period_id="monthly",
+        razorpay_subscription_id=razorpay_sub_id,
+        status="active",
+    )
+
+    event_id = f"evt_sub_chg_spoof_{uuid.uuid4().hex[:10]}"
+    razorpay_payment_id = f"pay_{uuid.uuid4().hex[:14]}"
+    event = {
+        "event": "subscription.charged",
+        "id": event_id,
+        "payload": {
+            "subscription": {
+                "entity": {
+                    "id": razorpay_sub_id,
+                    "notes": {
+                        "render_user_id": str(victim.auth_user_id),
+                        "user_sub": str(victim.auth_user_id),
+                        "plan_id": "plan_attacker_monthly",
+                        "period_id": "monthly",
+                        "months": 1,
+                    },
+                }
+            },
+            "payment": {"entity": {"id": razorpay_payment_id}},
+        },
+    }
+    body = json.dumps(event).encode("utf-8")
+    sig = _sign(body, webhook_secret)
+
+    r = _post_webhook(app_client, body, sig)
+    assert r.status_code in (200, 202), r.text
+
+    # Property: attacker's renewal landed on attacker (paid_count bumped).
+    attacker_sub = repo.get_subscription(user_sub=str(attacker.auth_user_id))
+    assert attacker_sub is not None, "attacker subscription row vanished"
+    assert attacker_sub.get("status") == "active"
+    assert int(attacker_sub.get("paid_count") or 0) >= 1, (
+        f"attacker renewal not credited; paid_count={attacker_sub.get('paid_count')!r}"
+    )
+
+    # Property: victim has ZERO subscription rows.
+    victim_sub = repo.get_subscription(user_sub=str(victim.auth_user_id))
+    assert victim_sub is None or victim_sub.get("status") != "active", (
+        f"WEBHOOK SPOOF CREDITED VICTIM on charged: victim sub={victim_sub!r}"
+    )
+
+
 def test_webhook_unsigned_spoof_rejected_400(app_client, webhook_secret, mint_user):
     """Sanity: a notes-spoofed body WITHOUT a valid signature is rejected at
     the signature gate (400 invalid_signature) — proves the spoof only

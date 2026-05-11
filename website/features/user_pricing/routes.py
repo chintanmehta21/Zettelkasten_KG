@@ -606,6 +606,8 @@ def _h_subscription_authenticated(repo, event, payload) -> str | None:
 
 
 def _h_subscription_activated(repo, event, payload) -> str | None:
+    # WAVE-A P1: owner MUST be derived from DB lookup keyed by razorpay
+    # subscription id — never from notes.render_user_id (caller-controlled).
     sub_entity = (payload.get("subscription") or {}).get("entity") or {}
     notes = sub_entity.get("notes") or {}
     payment_entity = (payload.get("payment") or {}).get("entity") or {}
@@ -613,15 +615,27 @@ def _h_subscription_activated(repo, event, payload) -> str | None:
     months = int(notes.get("months") or 1)
     plan_id = notes.get("plan_id") or ""
     period_id = notes.get("period_id") or ""
-    render_user_id = notes.get("render_user_id") or ""
-    if render_user_id and plan_id:
+    razorpay_sub_id = sub_entity.get("id") or ""
+    existing = (
+        repo.get_subscription_by_razorpay_id(razorpay_subscription_id=razorpay_sub_id)
+        if razorpay_sub_id
+        else None
+    )
+    user_sub = (existing or {}).get("render_user_id") if existing else None
+    if user_sub and plan_id:
         repo.activate_subscription(
-            user_sub=render_user_id,
+            user_sub=user_sub,
             plan_id=plan_id,
             period_id=period_id,
             months=months,
-            razorpay_subscription_id=sub_entity.get("id"),
+            razorpay_subscription_id=razorpay_sub_id,
             razorpay_payment_id=payment_entity.get("id"),
+        )
+    elif razorpay_sub_id:
+        # No DB row → cannot attribute. Log + return 200 so Razorpay does not retry.
+        logger.warning(
+            "subscription.activated: no DB row for razorpay_subscription_id=%s; ignoring (refusing to trust notes.render_user_id)",
+            razorpay_sub_id,
         )
     if pid and payment_entity.get("id"):
         updated = repo.mark_payment_paid(payment_id=pid, razorpay_payment_id=payment_entity["id"])
@@ -631,21 +645,33 @@ def _h_subscription_activated(repo, event, payload) -> str | None:
 
 def _h_subscription_charged(repo, event, payload) -> str | None:
     # Recurring renewal succeeded — extend period_end and bump paid_count.
+    # WAVE-A P1: owner via DB lookup, not notes.render_user_id.
     sub_entity = (payload.get("subscription") or {}).get("entity") or {}
     notes = sub_entity.get("notes") or {}
     payment_entity = (payload.get("payment") or {}).get("entity") or {}
     months = int(notes.get("months") or 1)
-    render_user_id = notes.get("render_user_id") or ""
     plan_id = notes.get("plan_id") or ""
     period_id = notes.get("period_id") or ""
-    if render_user_id and plan_id:
+    razorpay_sub_id = sub_entity.get("id") or ""
+    existing = (
+        repo.get_subscription_by_razorpay_id(razorpay_subscription_id=razorpay_sub_id)
+        if razorpay_sub_id
+        else None
+    )
+    user_sub = (existing or {}).get("render_user_id") if existing else None
+    if user_sub and plan_id:
         repo.activate_subscription(
-            user_sub=render_user_id,
+            user_sub=user_sub,
             plan_id=plan_id,
             period_id=period_id,
             months=months,
-            razorpay_subscription_id=sub_entity.get("id"),
+            razorpay_subscription_id=razorpay_sub_id,
             razorpay_payment_id=payment_entity.get("id"),
+        )
+    elif razorpay_sub_id:
+        logger.warning(
+            "subscription.charged: no DB row for razorpay_subscription_id=%s; ignoring (refusing to trust notes.render_user_id)",
+            razorpay_sub_id,
         )
     return notes.get("payment_id")
 
