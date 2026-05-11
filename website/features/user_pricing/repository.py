@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from website.core.supabase_v2.client import is_v2_configured as is_supabase_configured
 from website.features.user_pricing.models import Meter
