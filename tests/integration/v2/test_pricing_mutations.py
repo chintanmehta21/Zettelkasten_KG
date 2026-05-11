@@ -484,10 +484,10 @@ def test_cancel_at_cycle_end_vs_immediate(app_client, with_billing_profile, monk
     assert calls[1][1] == {"cancel_at_cycle_end": 0}, calls[1]
 
 
-# ─────────────────────── UP-11: get_or_create_plan race ───────────────────────
+# ────────── UP-11: get_or_create_plan serial cache discipline ─────────────────
 
 
-def test_get_or_create_plan_caches_and_no_duplicate_under_serial_burst(monkeypatch):
+def test_get_or_create_plan_serial_cache_discipline(monkeypatch):
     """5 sequential ``get_or_create_plan`` calls for the same (period, amount)
     must trigger ONE Razorpay plan.create — subsequent calls hit the cache.
 
