@@ -89,8 +89,17 @@ def _code_lines(src: str) -> list[str]:
 
 
 def _no_eq_signature(src: str) -> bool:
+    """Detect `==` against `signature` while ignoring `!=` and `===` edges.
+
+    The regex uses negative-look behind/ahead so that `!= signature` and
+    `signature !=` do NOT trigger (those are correct rejection paths), and
+    `=== signature` / `signature ===` (triple-equals — JS-style typos that
+    Python wouldn't compile but defensive anyway) also do not trigger.
+    """
+    import re as _re
+    pattern = _re.compile(r"(?<![!=])==\s*signature\b|\bsignature\s*==(?!=)")
     for line in _code_lines(src):
-        if " == signature" in line or "signature == " in line:
+        if pattern.search(line):
             return False
     return True
 
