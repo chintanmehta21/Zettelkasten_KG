@@ -745,7 +745,12 @@ class PricingRepository:
             self._billing_insert(client, "pricing_disputes", v2_row, upsert_on="razorpay_dispute_id")
 
         if user_sub:
-            if phase in {"created", "under_review", "action_required"}:
+            # `lost` is a freeze-phase: the customer prevailed against the
+            # merchant, so funds will be deducted — keep purchases blocked
+            # until the dispute is formally `closed`. (Phase-3 test surfaced
+            # that `lost` was previously absent from the freeze set, allowing
+            # a lost-disputer to immediately buy more packs.)
+            if phase in {"created", "under_review", "action_required", "lost"}:
                 _DISPUTE_FROZEN.add(user_sub)
             elif phase in {"won", "closed"}:
                 _DISPUTE_FROZEN.discard(user_sub)

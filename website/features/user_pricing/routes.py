@@ -480,6 +480,13 @@ async def verify_order(
         repo.mark_payment_failed(payment_id=body.payment_id, reason="signature_mismatch")
         raise HTTPException(status_code=400, detail={"code": "signature_mismatch", "message": "Payment verification failed."})
 
+    # Replay-safety: a client that re-submits a valid verify (network retry,
+    # browser back-button, double-tap) must NOT double-credit packs or
+    # re-activate a subscription. The webhook layer already gates duplicates
+    # by event_id; this guards the client-callable path with the same intent.
+    if record.get("status") == "paid":
+        return {"status": "paid", "payment": _public_payment(record)}
+
     updated = repo.mark_payment_paid(
         payment_id=body.payment_id,
         razorpay_payment_id=body.razorpay_payment_id,
