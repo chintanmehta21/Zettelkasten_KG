@@ -768,6 +768,17 @@ def _h_refund_processed(repo, event, payload) -> str | None:
     pid = notes.get("payment_id")
     refund_amount = int(refund_entity.get("amount") or 0)
     record = repo.get_payment_record(payment_id=pid) if pid else None
+    # BOLA guard: bind record to the Razorpay-issued payment id from the signed
+    # envelope. notes.payment_id is client-controllable; an attacker holding the
+    # webhook secret could otherwise pivot a refund onto a victim's record.
+    rzp_pay_id = payment_entity.get("id") or refund_entity.get("payment_id")
+    if record and rzp_pay_id and record.get("razorpay_payment_id") and record.get("razorpay_payment_id") != rzp_pay_id:
+        logger.warning(
+            "Refund event id mismatch: notes.payment_id=%s but Razorpay payment_id=%s; rejecting",
+            pid,
+            rzp_pay_id,
+        )
+        return None
     if record:
         # Decrement pack credits proportionally to the refund amount.
         if record.get("kind") == "pack" and record.get("meter") and record.get("quantity"):
@@ -815,10 +826,28 @@ def _dispute_handler(phase: str) -> Callable:
         dispute_entity = (payload.get("payment.dispute") or payload.get("dispute") or {}).get("entity") or {}
         payment_entity = (payload.get("payment") or {}).get("entity") or {}
         notes = payment_entity.get("notes") or {}
+        pid = notes.get("payment_id")
+
+        # BOLA guard (same class as refund.processed): if notes.payment_id
+        # resolves to a record whose stored razorpay_payment_id does NOT match
+        # the Razorpay-issued id in the signed envelope, refuse to act on it.
+        # We must short-circuit BEFORE record_dispute so a spoofed render_user_id
+        # cannot freeze the victim's account via _DISPUTE_FROZEN.
+        rzp_pay_id = payment_entity.get("id") or dispute_entity.get("payment_id")
+        record = repo.get_payment_record(payment_id=pid) if pid else None
+        if record and rzp_pay_id and record.get("razorpay_payment_id") and record.get("razorpay_payment_id") != rzp_pay_id:
+            logger.warning(
+                "Dispute %s event id mismatch: notes.payment_id=%s but Razorpay payment_id=%s; rejecting",
+                phase,
+                pid,
+                rzp_pay_id,
+            )
+            return None
+
         repo.record_dispute(
             razorpay_dispute_id=dispute_entity.get("id") or "",
             razorpay_payment_id=payment_entity.get("id") or dispute_entity.get("payment_id"),
-            payment_id=notes.get("payment_id"),
+            payment_id=pid,
             render_user_id=notes.get("render_user_id"),
             amount=int(dispute_entity.get("amount") or 0),
             phase=phase,
@@ -827,12 +856,11 @@ def _dispute_handler(phase: str) -> Callable:
         )
         # On 'lost', deduct pack credits same as refund processed.
         if phase == "lost":
-            record = repo.get_payment_record(payment_id=notes.get("payment_id")) if notes.get("payment_id") else None
             if record and record.get("kind") == "pack" and record.get("meter") and record.get("quantity"):
                 repo.deduct_pack_credits(
                     user_sub=record["render_user_id"], meter=record["meter"], quantity=int(record["quantity"])
                 )
-        return notes.get("payment_id")
+        return pid
 
     return _h
 

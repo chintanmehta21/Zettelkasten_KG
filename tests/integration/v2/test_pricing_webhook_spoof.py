@@ -205,7 +205,7 @@ def test_webhook_spoofed_notes_user_does_not_credit_victim(
             )
 
     try:
-        victim_rows = asyncio.get_event_loop().run_until_complete(_victim_credit_count())
+        victim_rows = asyncio.run(_victim_credit_count())
     except Exception:
         # If the row never propagated to v2 (memory-only path), the in-memory
         # assertion above already pins the property; skip the DB cross-check.
@@ -356,6 +356,169 @@ def test_subscription_charged_webhook_cannot_spoof_owner(
     victim_sub = repo.get_subscription(user_sub=str(victim.auth_user_id))
     assert victim_sub is None or victim_sub.get("status") != "active", (
         f"WEBHOOK SPOOF CREDITED VICTIM on charged: victim sub={victim_sub!r}"
+    )
+
+
+def test_refund_processed_webhook_cannot_spoof_via_notes_payment_id(
+    app_client, webhook_secret, mint_user, asyncpg_pool
+):
+    """Refund-via-spoofed-notes.payment_id BOLA regression lock.
+
+    Attack scenario (same class as the subscription.activated BOLA fixed in
+    73e760b): an attacker holding the webhook secret signs a ``refund.processed``
+    body where ``notes.payment_id = victim_pid`` but the Razorpay envelope's
+    ``payment.entity.id`` is the attacker's own dummy id. If the handler keys
+    only off ``notes.payment_id`` (DB lookup → victim's record) without
+    cross-checking the envelope-bound Razorpay payment id, it will mark the
+    victim's record refunded and deduct their pack credits.
+
+    Fix asserted: the handler must reject when
+    ``record.razorpay_payment_id != payment.entity.id``. Victim's pack
+    credits must remain untouched.
+    """
+    attacker = mint_user()
+    victim = mint_user()
+
+    from website.features.user_pricing.repository import (
+        get_pricing_repository,
+        reset_memory_state_for_tests,
+        _MEMORY_BALANCES,
+    )
+    reset_memory_state_for_tests()
+    repo = get_pricing_repository()
+
+    # Seed a real victim-owned pack payment, paid via the real flow so the
+    # record carries a victim-bound razorpay_payment_id we can mismatch.
+    victim_pay = _seed_pack_payment(repo, user_sub=str(victim.auth_user_id))
+    victim_pid = victim_pay["payment_id"]
+    victim_order_id = f"order_{uuid.uuid4().hex[:12]}"
+    victim_rzp_pay_id = f"pay_{uuid.uuid4().hex[:14]}"
+    repo.attach_provider_order(payment_id=victim_pid, razorpay_order_id=victim_order_id)
+    repo.mark_payment_paid(payment_id=victim_pid, razorpay_payment_id=victim_rzp_pay_id)
+    # Seed pack credits on victim so we can assert they are NOT decremented.
+    _MEMORY_BALANCES.setdefault(str(victim.auth_user_id), {})["zettels"] = 100
+
+    # Attacker crafts refund.processed with notes.payment_id = VICTIM_PID
+    # but payment.entity.id = some attacker-owned dummy id (NOT victim's
+    # razorpay_payment_id). Signed with the real webhook secret.
+    attacker_rzp_pay_id = f"pay_{uuid.uuid4().hex[:14]}"
+    event_id = f"evt_refund_spoof_{uuid.uuid4().hex[:10]}"
+    event = {
+        "event": "refund.processed",
+        "id": event_id,
+        "payload": {
+            "refund": {
+                "entity": {
+                    "id": f"rfnd_{uuid.uuid4().hex[:12]}",
+                    "payment_id": attacker_rzp_pay_id,
+                    "amount": 9900,
+                    "speed_processed": "normal",
+                }
+            },
+            "payment": {
+                "entity": {
+                    "id": attacker_rzp_pay_id,
+                    "notes": {
+                        # Hostile: notes.payment_id pivots to victim's record.
+                        "payment_id": victim_pid,
+                        "render_user_id": str(victim.auth_user_id),
+                    },
+                }
+            },
+        },
+    }
+    body = json.dumps(event).encode("utf-8")
+    sig = _sign(body, webhook_secret)
+    r = _post_webhook(app_client, body, sig)
+    assert r.status_code in (200, 202), r.text
+
+    # Property: victim's pack credits unchanged.
+    victim_credits = _MEMORY_BALANCES.get(str(victim.auth_user_id), {}).get("zettels")
+    assert victim_credits == 100, (
+        f"Refund spoof DEDUCTED VICTIM credits: expected 100, got {victim_credits!r}"
+    )
+
+    # Property: victim's payment record was NOT marked refunded/failed.
+    rec = repo.get_payment_record(payment_id=victim_pid)
+    assert rec is not None, "victim's payment record vanished"
+    assert rec.get("status") != "failed", (
+        f"Refund spoof flipped victim's payment to failed/refunded: {rec.get('status')!r}"
+    )
+    assert rec.get("status") == "paid", (
+        f"victim's payment status changed unexpectedly: {rec.get('status')!r}"
+    )
+
+
+def test_dispute_lost_webhook_cannot_spoof_via_notes_payment_id(
+    app_client, webhook_secret, mint_user
+):
+    """Dispute.lost-via-spoofed-notes.payment_id BOLA regression lock.
+
+    Same attack class as refund.processed: hostile ``notes.payment_id`` paired
+    with an attacker-owned ``payment.entity.id`` would otherwise let the
+    attacker freeze the victim (``_DISPUTE_FROZEN`` add) and deduct their
+    pack credits via the dispute.lost branch.
+    """
+    attacker = mint_user()
+    victim = mint_user()
+
+    from website.features.user_pricing.repository import (
+        get_pricing_repository,
+        reset_memory_state_for_tests,
+        _MEMORY_BALANCES,
+        _DISPUTE_FROZEN,
+    )
+    reset_memory_state_for_tests()
+    repo = get_pricing_repository()
+
+    victim_pay = _seed_pack_payment(repo, user_sub=str(victim.auth_user_id))
+    victim_pid = victim_pay["payment_id"]
+    victim_order_id = f"order_{uuid.uuid4().hex[:12]}"
+    victim_rzp_pay_id = f"pay_{uuid.uuid4().hex[:14]}"
+    repo.attach_provider_order(payment_id=victim_pid, razorpay_order_id=victim_order_id)
+    repo.mark_payment_paid(payment_id=victim_pid, razorpay_payment_id=victim_rzp_pay_id)
+    _MEMORY_BALANCES.setdefault(str(victim.auth_user_id), {})["zettels"] = 100
+
+    attacker_rzp_pay_id = f"pay_{uuid.uuid4().hex[:14]}"
+    event_id = f"evt_dispute_spoof_{uuid.uuid4().hex[:10]}"
+    event = {
+        "event": "payment.dispute.lost",
+        "id": event_id,
+        "payload": {
+            "payment.dispute": {
+                "entity": {
+                    "id": f"disp_{uuid.uuid4().hex[:12]}",
+                    "payment_id": attacker_rzp_pay_id,
+                    "amount": 9900,
+                    "reason_code": "fraudulent",
+                }
+            },
+            "payment": {
+                "entity": {
+                    "id": attacker_rzp_pay_id,
+                    "notes": {
+                        "payment_id": victim_pid,
+                        "render_user_id": str(victim.auth_user_id),
+                    },
+                }
+            },
+        },
+    }
+    body = json.dumps(event).encode("utf-8")
+    sig = _sign(body, webhook_secret)
+    r = _post_webhook(app_client, body, sig)
+    assert r.status_code in (200, 202), r.text
+
+    # Property: victim NOT in dispute-frozen set.
+    assert str(victim.auth_user_id) not in _DISPUTE_FROZEN, (
+        "Dispute-lost spoof froze victim's account via _DISPUTE_FROZEN"
+    )
+    assert repo.is_user_dispute_frozen(user_sub=str(victim.auth_user_id)) is False
+
+    # Property: victim's pack credits unchanged.
+    victim_credits = _MEMORY_BALANCES.get(str(victim.auth_user_id), {}).get("zettels")
+    assert victim_credits == 100, (
+        f"Dispute-lost spoof DEDUCTED VICTIM credits: expected 100, got {victim_credits!r}"
     )
 
 
