@@ -421,30 +421,73 @@ def _v2_assemble_graph(
             )
 
     links: list[dict] = []
+    seen_links: set[tuple[str, str, str]] = set()  # (src, dst, relation)
     for ws_id in workspace_ids:
         edge_rows = kg_repo.list_workspace_edges(ws_id)
+        if not edge_rows:
+            continue
+        # Resolve the bigint kg_node ids on each edge endpoint to overlay
+        # node ids via kg.chunk_node_mentions -> content.canonical_chunks ->
+        # canonical_zettel_id. Without this join we'd emit self-loops
+        # (PR #7 C1: the prior code resolved only the evidence canonical and
+        # used it for both source and target, so igraph dropped every edge
+        # at analytics.py and the D-KG-1 strength filter was inert).
+        endpoint_ids: set[int] = set()
         for edge in edge_rows:
-            evidence = edge.get("evidence_canonical_zettel_id")
-            # The v2 kg_edges table keys by bigint kg_nodes; without a mention
-            # join we cannot resolve src/dst -> overlay node ids generally. We
-            # only emit edges whose evidence canonical maps to a known overlay
-            # node — sufficient for the dual-path 4.1 surface and forward-
-            # compatible with richer mention joins in later phases.
-            if not evidence:
+            for col in ("src_node_id", "dst_node_id"):
+                try:
+                    endpoint_ids.add(int(edge.get(col)))
+                except (TypeError, ValueError):
+                    continue
+        node_to_zettels = kg_repo.list_node_zettel_mapping(
+            ws_id, sorted(endpoint_ids)
+        )
+
+        def _resolve_overlay_ids(kg_node_id: int) -> list[str]:
+            ids: list[str] = []
+            for zettel_id in node_to_zettels.get(kg_node_id, ()):  # type: ignore[arg-type]
+                overlay = canonical_to_overlay.get(str(zettel_id))
+                if overlay:
+                    ids.append(overlay)
+            return ids
+
+        for edge in edge_rows:
+            try:
+                src_id = int(edge.get("src_node_id"))
+                dst_id = int(edge.get("dst_node_id"))
+            except (TypeError, ValueError):
                 continue
-            target_node = canonical_to_overlay.get(str(evidence))
-            if not target_node:
+            src_overlays = _resolve_overlay_ids(src_id)
+            dst_overlays = _resolve_overlay_ids(dst_id)
+            if not src_overlays or not dst_overlays:
+                # Endpoint node has no mention chunk that maps to one of the
+                # workspace zettels we already loaded — skip rather than fake
+                # a self-loop. The evidence-canonical fallback is intentional
+                # only when src AND dst both resolve through the same zettel.
                 continue
-            links.append(
-                {
-                    "source": target_node,
-                    "target": target_node,
-                    "relation": str(edge.get("relation_type") or "shared_tag"),
-                    "weight": None,
-                    "link_type": "tag",
-                    "description": edge.get("shared_tag_label"),
-                }
-            )
+            relation = str(edge.get("relation_type") or "shared_tag")
+            description = edge.get("shared_tag_label")
+            for src in src_overlays:
+                for dst in dst_overlays:
+                    if src == dst and src_id != dst_id:
+                        # Two different kg_nodes happen to share a canonical
+                        # zettel (multi-mention chunk). Suppress the visual
+                        # self-loop; it has no semantic meaning at this layer.
+                        continue
+                    key = (src, dst, relation)
+                    if key in seen_links:
+                        continue
+                    seen_links.add(key)
+                    links.append(
+                        {
+                            "source": src,
+                            "target": dst,
+                            "relation": relation,
+                            "weight": None,
+                            "link_type": "tag",
+                            "description": description,
+                        }
+                    )
 
     # Use Pydantic to enforce the shape; total_nodes mirrors v1 conventions.
     try:

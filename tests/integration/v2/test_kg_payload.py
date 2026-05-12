@@ -116,6 +116,29 @@ def test_trim_preserves_essential_fields() -> None:
     assert out["nodes"][0] == {"id": "n1", "name": "x", "tags": ["a"], "url": "http://e"}
 
 
+def test_trim_preserves_harmonic_centrality() -> None:
+    """C3-d: harmonic_centrality is the new default-path distance signal,
+    intentionally KEPT on the wire so the frontend can use it as a
+    node-importance signal alongside pagerank. Closeness stays trimmed."""
+    from website.api.routes import _trim_graph_response
+
+    payload = {
+        "nodes": [
+            {
+                "id": "n1",
+                "name": "x",
+                "harmonic_centrality": 0.42,
+                "closeness": 0.7,  # must be dropped
+                "tags": [],
+            },
+        ],
+        "links": [],
+    }
+    out = _trim_graph_response(payload)
+    assert out["nodes"][0]["harmonic_centrality"] == 0.42
+    assert "closeness" not in out["nodes"][0]
+
+
 # ── min_strength filter strict subset ─────────────────────────────────
 
 
@@ -305,3 +328,142 @@ def test_payload_under_300kb_at_1k_nodes(monkeypatch) -> None:
         f"compressed /api/graph payload is {raw_size} bytes at 1k nodes; "
         f"D-KG-8 budget is <300KB"
     )
+
+
+# ── _v2_assemble_graph self-loop regression (PR #7 C1) ────────────────
+
+
+def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None:
+    """Edges in the assembled v2 graph must resolve src/dst via mention join.
+
+    Regression for PR #7 C1: prior code emitted ``source = target = evidence``
+    for every edge, producing universal self-loops that igraph drops at
+    ``analytics.py:78-79`` — leaving PageRank/Louvain with zero edges and
+    rendering the D-KG-1 strength filter inert.
+
+    Fixture: 3 zettels (Z_A, Z_B, Z_C) backed by 3 kg_nodes (N1, N2, N3) plus
+    one cross-mention (chunk of Z_A also mentions N3, which usually maps to
+    Z_C). Edges: N1↔N2 (cross-zettel), N2↔N2 (genuine self-loop). Expect:
+    one A↔B link AND the genuine self-loop preserved when src/dst kg_node
+    ids are equal.
+    """
+    import uuid
+
+    import website.api.routes as routes_module
+
+    workspace_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+
+    # Three canonical zettels, three kg_nodes (one per zettel).
+    z_a, z_b, z_c = (str(uuid.uuid4()) for _ in range(3))
+    n1, n2, n3 = 101, 202, 303
+
+    class _StubContent:
+        def list_workspace_zettels(self, ws_id, *, limit, offset):
+            assert ws_id == workspace_id
+            return [
+                {
+                    "canonical": {
+                        "id": z_a,
+                        "source_type": "web",
+                        "title": "Alpha",
+                        "normalized_url": "https://a",
+                        "publication_date": "2026-01-01",
+                    },
+                    "ai_summary": "alpha summary",
+                    "user_tags": ["tag-a"],
+                },
+                {
+                    "canonical": {
+                        "id": z_b,
+                        "source_type": "web",
+                        "title": "Bravo",
+                        "normalized_url": "https://b",
+                        "publication_date": "2026-01-02",
+                    },
+                    "ai_summary": "bravo summary",
+                    "user_tags": ["tag-b"],
+                },
+                {
+                    "canonical": {
+                        "id": z_c,
+                        "source_type": "web",
+                        "title": "Charlie",
+                        "normalized_url": "https://c",
+                        "publication_date": "2026-01-03",
+                    },
+                    "ai_summary": "charlie summary",
+                    "user_tags": ["tag-c"],
+                },
+            ]
+
+    class _StubKG:
+        def list_workspace_edges(self, ws_id):
+            return [
+                # Cross-zettel edge: N1 (->Z_A) ↔ N2 (->Z_B). Must NOT self-loop.
+                {
+                    "id": 1,
+                    "src_node_id": n1,
+                    "dst_node_id": n2,
+                    "relation_type": "shared_tag",
+                    "shared_tag_label": "shared",
+                    "weight": None,
+                    "evidence_canonical_zettel_id": z_a,
+                },
+                # Genuine self-loop: N2 ↔ N2. src_id == dst_id, src == dst is OK.
+                {
+                    "id": 2,
+                    "src_node_id": n2,
+                    "dst_node_id": n2,
+                    "relation_type": "shared_tag",
+                    "shared_tag_label": "self",
+                    "weight": None,
+                    "evidence_canonical_zettel_id": z_b,
+                },
+            ]
+
+        def list_node_zettel_mapping(self, ws_id, kg_node_ids, *, limit=50000):
+            return {
+                n1: [z_a],
+                n2: [z_b],
+                n3: [z_c],
+            }
+
+    monkeypatch.setattr(
+        routes_module,
+        "get_supabase_v2_scope_for_read",
+        lambda sub: (_StubContent(), profile_id, [workspace_id]),
+    )
+    monkeypatch.setattr(routes_module, "V2KGRepository", _StubKG)
+
+    graph = routes_module._v2_assemble_graph(
+        user_sub=str(uuid.uuid4()), limit=100, offset=0
+    )
+    assert graph is not None
+    nodes_by_id = {n.id: n for n in graph.nodes}
+    assert len(graph.nodes) == 3, f"expected 3 nodes, got {len(graph.nodes)}"
+    assert len(graph.links) >= 2, "expected cross-zettel link + self-loop"
+
+    # Find the cross-zettel link (Alpha <-> Bravo) and assert source != target.
+    cross_links = [
+        link for link in graph.links
+        if link.source != link.target
+    ]
+    assert cross_links, (
+        "v2 graph emitted ZERO non-self-loop links — regression of PR #7 C1 "
+        "where every edge was source=target=evidence."
+    )
+    cross = cross_links[0]
+    assert cross.source != cross.target
+    src_node = nodes_by_id.get(cross.source)
+    dst_node = nodes_by_id.get(cross.target)
+    assert src_node is not None and dst_node is not None
+    assert {src_node.name, dst_node.name} == {"Alpha", "Bravo"}
+
+    # The genuine self-loop (N2 ↔ N2) MUST be preserved when src_id == dst_id.
+    self_loops = [link for link in graph.links if link.source == link.target]
+    assert self_loops, (
+        "expected the genuine N2↔N2 self-loop to be preserved; got none"
+    )
+    self_loop_node = nodes_by_id[self_loops[0].source]
+    assert self_loop_node.name == "Bravo"
