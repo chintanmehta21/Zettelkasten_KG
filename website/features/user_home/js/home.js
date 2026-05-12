@@ -1107,6 +1107,9 @@
         closeSummaryPopup();
         closeAvatarPicker();
         if (avatarDropdown) avatarDropdown.classList.remove('open');
+        // m-8: keep aria-expanded in sync with the visible state so AT users
+        // hear the dropdown collapse when Escape closes it.
+        if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
         if (addZettelDropdown) {
           addZettelDropdown.classList.remove('open');
         }
