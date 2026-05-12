@@ -21,7 +21,15 @@ import httpx
 import pytest
 import respx
 
+from website.features.web_monitor import User_Activity as ua_mod
 from website.features.web_monitor.User_Activity import notify_pricing_visit
+
+
+@pytest.fixture(autouse=True)
+def _reset_pricing_throttle():
+    ua_mod._pricing_seen_at.clear()
+    yield
+    ua_mod._pricing_seen_at.clear()
 
 
 class _StubRequest:

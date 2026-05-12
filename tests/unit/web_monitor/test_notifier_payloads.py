@@ -17,11 +17,23 @@ from typing import Any
 
 import pytest
 
+from website.features.web_monitor import User_Activity as ua_mod
 from website.features.web_monitor.User_Activity import (
     notify_new_signup,
     notify_payment,
     notify_pricing_visit,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_pricing_throttle():
+    """The module-level `_pricing_seen_at` dict survives across tests; clear
+    it so each test sees a fresh throttle window.  Without this the second
+    pricing-visit test in CI ordering may short-circuit on a hit from a
+    prior test and produce zero Slack calls (→ IndexError on calls[0])."""
+    ua_mod._pricing_seen_at.clear()
+    yield
+    ua_mod._pricing_seen_at.clear()
 
 
 def _flatten(payload: dict[str, Any]) -> str:
