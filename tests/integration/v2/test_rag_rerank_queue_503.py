@@ -253,34 +253,20 @@ def test_create_message_stream_returns_503_when_queue_saturated(
 
 def test_admission_gate_does_not_trip_on_empty_queue(v2_app, mint_user):
     """Negative-side assertion: when depth==0, the queue_full path must NOT
-    fire.  We do NOT require a successful 200 here because the downstream
-    chat_routes._serialize_session reads ``row["user_id"]`` (chat_routes.py:87)
-    while v2 ``rag.chat_sessions`` rows expose ``profile_id`` instead — a
-    pre-existing KeyError on the happy path tracked separately (see RP-02
-    report).  The invariant under test is purely: an empty queue must NOT
-    emit a 503/queue_full response."""
+    fire. The previous KeyError xfail block was removed in this commit — the
+    serialize bug it referenced was fixed in 772acee (back-compat shim accepts
+    both v1 and v2 column sets), so the request now reaches a real response."""
     user = mint_user(workspace_count=1)
     from website.api import _concurrency
     _concurrency.reset_for_tests()
     assert _concurrency.queue_depth() == 0
 
     with TestClient(v2_app) as client:
-        try:
-            resp = client.post(
-                "/api/rag/adhoc",
-                headers=_auth(user.jwt),
-                json={"content": "ping", "stream": False},
-            )
-        except KeyError as ke:
-            # The chat_routes _serialize_session KeyError surfaces as an
-            # unhandled exception in TestClient (no exception handler in app).
-            # That bug is orthogonal to the admission-gate contract; record
-            # it and treat the queue-full negative as satisfied because the
-            # request advanced PAST the admission gate.
-            pytest.xfail(
-                f"chat_routes._serialize_session KeyError (orthogonal bug): {ke!r}"
-            )
-            return
+        resp = client.post(
+            "/api/rag/adhoc",
+            headers=_auth(user.jwt),
+            json={"content": "ping", "stream": False},
+        )
 
     if resp.status_code == 503:
         body = resp.text
