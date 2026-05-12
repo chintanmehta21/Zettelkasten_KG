@@ -26,6 +26,35 @@ _BLOCKING_AXE_IMPACTS = {"critical", "serious"}
 
 
 @pytest.mark.e2e
+def test_browser_fixture_chain_imports():
+    """Non-live smoke: prove the dep + fixture chain loads in CI.
+
+    The e2e.yml workflow runs ``pytest -m "not live"`` by default — the
+    full ``authed_browser`` test below is gated behind ``@pytest.mark.live``
+    because it mints a real Supabase user. This non-live counterpart
+    confirms the workflow's chromium install + pytest-playwright plugin +
+    axe-playwright-python + browser-fixtures module all import successfully.
+
+    Together those checks prove the workflow's chromium install + dep
+    install + collection path are healthy — the smoke contract this
+    iteration must lock before module sub-agents commit follow-on tests.
+    """
+    import playwright  # noqa: F401 — import-only smoke
+    import axe_playwright_python  # noqa: F401
+
+    from tests.integration.browser import conftest as browser_conftest
+
+    assert hasattr(browser_conftest, "PLAYWRIGHT_VIEWPORTS")
+    assert set(browser_conftest.PLAYWRIGHT_VIEWPORTS.keys()) == {
+        "mobile",
+        "tablet",
+        "desktop",
+    }
+    assert browser_conftest.PLAYWRIGHT_VIEWPORTS["mobile"]["width"] == 375
+    assert browser_conftest.PLAYWRIGHT_VIEWPORTS["desktop"]["width"] == 1280
+
+
+@pytest.mark.e2e
 @pytest.mark.live
 def test_authed_home_loads_clean(authed_browser, base_url):
     """Open /home authenticated; expect header, no console errors, axe clean."""
