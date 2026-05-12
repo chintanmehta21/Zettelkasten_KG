@@ -30,10 +30,16 @@ jobs:
     # WAVE-D hardening (H-1): authoritative gate. CI image is pre-built with
     # pg_partman so `supabase start` boots clean. Rationale + citations in
     # docs/research/2026-05-12-pg-partman-ci.md.
-    # Hardening A2 (2026-05-12): contents:write so the regen step below can
-    # auto-commit manifest drift back to the PR branch.
+    # 2026-05-12 Iter 8 (research-grounded refactor): dropped the snapshot-
+    # comparison gate from PR CI per industry consensus (Atlas, Flyway,
+    # Bytebase, Supabase Docs all converge: PR CI gates on apply-cleanly +
+    # integration tests; snapshot comparison belongs in nightly drift jobs).
+    # See docs/research/2026-05-12-migration-ci-architecture.md. The auto-
+    # commit-from-CI step (prior Hardening A2) was an explicit anti-pattern
+    # per Atlas "Detect Migrations Drift in CI" guidance — deleted.
+    # contents:read suffices now that nothing pushes back to the branch.
     permissions:
-      contents: write
+      contents: read
       pull-requests: read
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     steps:
@@ -66,17 +72,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r ops/requirements.txt
       - name: Apply _v2 migrations to fresh DB
+        # Iter 8 (2026-05-12, research-grounded): this is now the ONLY gate
+        # in PR-CI for migration correctness. Matches Supabase Docs
+        # ("Testing Overview"), Atlas (`migrate lint` + apply, never snapshot
+        # compare in PR), Flyway/Liquibase/Bytebase consensus. Schema-snapshot
+        # comparison was deleted from this job — it lives in the nightly
+        # v2_drift_check.yml workflow where it belongs (compares prod vs
+        # repo, catches hand-edits to prod). See research doc:
+        # docs/research/2026-05-12-migration-ci-architecture.md.
         env:
           # 2026-05-11: env var name MUST be SUPABASE_V2_DATABASE_URL —
           # apply_migrations.py::_build_dsn(v2=True) reads only this name.
           SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-          MIGRATION_MANIFEST_AUTOBOOTSTRAP: "1"
-          # Hardening A2: apply_migrations runs a verify-after-apply inline
-          # when the manifest exists; on fresh CI the manifest still holds
-          # legacy v1 public.* refs and that verify fails before the
-          # auto-regen step below can fire. Set _REQUIRED=0 so drift is
-          # warn-only HERE; the authoritative verify lives in the explicit
-          # `Verify manifest` step after auto-regen pushes the new file.
+          # MIGRATION_MANIFEST_REQUIRED=0 tells apply_migrations.py's inline
+          # verify-after-apply step "this environment doesn't gate on the
+          # manifest" — exactly the documented escape for fresh-apply CI
+          # (apply_migrations.py line 862 comment + Iter 7 fix at line 871).
+          # Nightly v2_drift_check.yml runs WITHOUT this flag so its
+          # --check-manifest-fresh remains authoritative against prod.
           MIGRATION_MANIFEST_REQUIRED: "0"
         # --skip-files=15_drop_legacy_tables.sql — operator-approved hardening
         # sprint H-1 (2026-05-12). Migration 15 has a 14-day soak guard (file
@@ -87,36 +100,6 @@ jobs:
         run: |
           python ops/scripts/apply_migrations.py --v2 \
             --skip-files=15_drop_legacy_tables.sql
-      - name: Regenerate manifest + auto-commit on drift (PR-only)
-        # Hardening A2 (operator-approved 2026-05-12). expected_schema.json
-        # holds residual v1 public.* refs from pre-Phase-8 snapshot — on a
-        # fresh CI DB those objects don't exist, so --check-manifest-fresh
-        # reports drift. Regenerate against fresh DB; if file changed, commit
-        # back to the PR branch so the next run sees a matching manifest.
-        # Skipped on master pushes (master never auto-commits to itself).
-        if: github.event_name == 'pull_request'
-        env:
-          SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-        run: |
-          set -euo pipefail
-          python ops/scripts/apply_migrations.py --v2 --update-manifest
-          if git diff --quiet supabase/website/_v2/expected_schema.json; then
-            echo "Manifest already matches fresh DB — no commit needed."
-          else
-            echo "Manifest drift detected — committing regenerated file."
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add supabase/website/_v2/expected_schema.json
-            git commit -m "ci(manifest): auto-regenerate expected_schema.json"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-      - name: Verify manifest matches freshly-applied DB
-        env:
-          SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-        run: |
-          # --check-manifest-fresh asserts every _v2/expected_schema.json
-          # entry exists in the connected DB. A non-zero exit blocks merge.
-          python ops/scripts/apply_migrations.py --v2 --check-manifest-fresh
       - name: Stop local Supabase
         if: always()
         run: supabase stop --workdir . --no-backup || true
