@@ -17,7 +17,7 @@ from website.features.web_monitor._country import format_country
         # Cloudflare-specific: XX = anonymous proxy / unknown
         ("XX", "Unknown (XX)"),
         # Unknown 2-letter code falls through with raw code preserved
-        ("ZZ", "<unknown> (ZZ)"),
+        ("ZZ", "Unknown (ZZ)"),
         # Lowercase normalized to upper before lookup
         ("in", "India (IN)"),
         # Whitespace tolerated

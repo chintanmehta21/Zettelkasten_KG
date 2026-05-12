@@ -146,7 +146,7 @@ async def test_notify_pricing_visit_unknown_country(slack_webhook_mock):
     req = _StubRequest(headers={"cf-ipcountry": "ZZ"})
     await notify_pricing_visit(req)
     body = _flatten(rec.calls["SLACK_WEBHOOK_USER_ACTIVITY"][0])
-    assert "<unknown> (ZZ)" in body
+    assert "Unknown (ZZ)" in body
 
 
 # ---------------------------------------------------------------------------

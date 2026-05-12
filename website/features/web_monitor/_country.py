@@ -86,7 +86,7 @@ def format_country(code: str | None) -> str:
     * ``"XX"`` (Cloudflare's anonymous-proxy code) → ``"Unknown (XX)"``
     * ``None`` / ``""`` / ``"-"`` → ``"—"`` (em-dash, matches existing
       ``notify_pricing_visit`` placeholder convention)
-    * unknown 2-letter code → ``"<unknown> (CC)"``
+    * unknown 2-letter code → ``"Unknown (CC)"``
     """
     if not code or code in {"—", "-"}:
         return "—"
@@ -98,7 +98,8 @@ def format_country(code: str | None) -> str:
     name = _COUNTRIES.get(code_u)
     if name:
         return f"{name} ({code_u})"
-    return f"<unknown> ({code_u})"
+    # M-5: drop angle-bracket literal — Slack renders ``<...>`` as a link.
+    return f"Unknown ({code_u})"
 
 
 __all__ = ["format_country"]
