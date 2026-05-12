@@ -81,31 +81,27 @@ def test_validate_url_rejects_private_and_reserved_hosts(url: str) -> None:
     assert validate_url(url) is False, f"private/reserved host accepted: {url!r}"
 
 
-# Known-gap SSRF vectors: short-form loopback ("127.1") and decimal-encoded
-# IPv4 ("2130706433" == 127.0.0.1) parse as valid loopbacks per RFC 3986
-# host syntax on Linux/macOS via inet_aton, but Python's ipaddress.ip_address
-# rejects them and getaddrinfo behaviour is OS-dependent. The current
-# ``_is_private_ip`` does not normalise these forms, so they pass validation
-# on platforms where getaddrinfo refuses them. Documented as xfail so the
-# guardrail is on record without breaking the WAVE-C build; an operator-
-# approved hardening pass should replace ``ipaddress.ip_address`` with
-# ``socket.inet_aton`` (sloppy parse) followed by reject-if-private. Cf.
-# CVE-2017-3735, GHSA-w7rc-rwvf-8q5r for prior-art on this vector.
-@pytest.mark.xfail(
-    reason="SSRF gap: short-form / decimal IPv4 not normalised before is_private check",
-    strict=False,
-)
+# Sloppy IPv4 / IPv6 SSRF vectors: short-form ("127.1"), 32-bit decimal
+# ("2130706433" == 127.0.0.1), octal ("0177.0.0.1"), and hex ("0x7f000001")
+# all parse as 127.0.0.1 via ``socket.inet_aton`` per RFC 3986 host syntax,
+# but Python's ``ipaddress.ip_address`` rejects them. Without canonicalising
+# first the private-IP allowlist is blind to them. The fix in
+# ``website.core.url_utils._canonicalize_host`` runs ``inet_aton`` /
+# ``inet_pton(AF_INET6)`` before the private-IP check. Cf. CVE-2017-3735,
+# GHSA-w7rc-rwvf-8q5r for prior-art on this vector.
 @pytest.mark.parametrize(
     "url",
     [
-        "http://127.1/admin",  # short-form loopback
-        "http://2130706433/",  # 32-bit decimal == 127.0.0.1
-        "http://0177.0.0.1/",  # octal 0177 == 127
-        "http://0x7f.0.0.1/",  # hex 0x7f == 127
+        "http://127.1/admin",          # short-form loopback
+        "http://2130706433/",          # 32-bit decimal == 127.0.0.1
+        "http://0177.0.0.1/",          # octal 0177 == 127
+        "http://0x7f000001/",          # hex 0x7f000001 == 127.0.0.1
+        "http://[::1]/",               # IPv6 loopback
+        "http://[fe80::1]/",           # IPv6 link-local
     ],
 )
-def test_validate_url_known_ssrf_gap_sloppy_ipv4(url: str) -> None:
-    assert validate_url(url) is False, f"sloppy-IPv4 SSRF vector accepted: {url!r}"
+def test_validate_url_blocks_sloppy_ipv4(url: str) -> None:
+    assert validate_url(url) is False, f"sloppy-IPv4/IPv6 SSRF vector accepted: {url!r}"
 
 
 # --- Empty / malformed --------------------------------------------------------
