@@ -1,0 +1,50 @@
+# CI-only Postgres image for migrate-v2-fresh gate.
+#
+# Production Supabase (managed) ships pg_partman 5.3.1 + pg_cron preinstalled.
+# The supabase/postgres CI image, however, omits pg_partman (Supabase
+# Discussion #37986 — "in progress" since Oct 2025). This Dockerfile bakes
+# pg_partman onto the base image so `CREATE EXTENSION pg_partman` in
+# supabase/website/_v2/00_extensions.sql succeeds against a fresh stack.
+#
+# Industry pattern (Atlas + Flyway 2024-2026): extensions are platform
+# concern, install at the image layer, not at apply time.
+#
+# pg_cron: confirmed pre-installed on supabase/postgres (last CI run got past
+# `CREATE EXTENSION pg_cron` before failing on pg_partman), so we do NOT
+# attempt to install it here.
+#
+# Build approach: dual-branch (apt-get for Debian-derived base, apk for
+# Alpine-derived). Whichever package manager the upstream image ships with
+# wins. If neither pre-built package is available on Alpine, fall back to
+# source build. Failures here are LOUD by design — surface at image-build
+# time, never at apply time.
+
+ARG SUPABASE_POSTGRES_TAG=17.6.1.001
+FROM supabase/postgres:${SUPABASE_POSTGRES_TAG}
+
+USER root
+
+RUN set -eux; \
+    if command -v apt-get >/dev/null 2>&1; then \
+      PG_MAJOR="$(pg_config --version | awk '{print $2}' | cut -d. -f1)"; \
+      apt-get update; \
+      apt-get install -y --no-install-recommends "postgresql-${PG_MAJOR}-partman"; \
+      rm -rf /var/lib/apt/lists/*; \
+    elif command -v apk >/dev/null 2>&1; then \
+      PG_MAJOR="$(pg_config --version | awk '{print $2}' | cut -d. -f1)"; \
+      # Try alpine packaged pg_partman first (rare); fall back to source build.
+      apk add --no-cache --virtual .build-deps \
+          git make gcc musl-dev "postgresql${PG_MAJOR}-dev" clang llvm; \
+      git clone --depth 1 --branch v5.3.1 \
+          https://github.com/pgpartman/pg_partman /tmp/pg_partman; \
+      cd /tmp/pg_partman; \
+      make NO_BGW=1 install; \
+      cd /; \
+      rm -rf /tmp/pg_partman; \
+      apk del .build-deps; \
+    else \
+      echo "ERROR: no apt-get or apk in base image — cannot install pg_partman" >&2; \
+      exit 1; \
+    fi
+
+USER postgres
