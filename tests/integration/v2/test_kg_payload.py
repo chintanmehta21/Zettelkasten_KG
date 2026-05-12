@@ -213,7 +213,7 @@ def test_brotli_negotiation_returns_br(monkeypatch) -> None:
     monkeypatch.setattr(
         routes_module,
         "_enrich_graph_with_analytics",
-        lambda d: d,  # skip analytics in this payload-shape test
+        lambda d, **_kw: d,  # skip analytics in this payload-shape test
     )
 
     app = _build_test_app()
@@ -233,7 +233,7 @@ def test_gzip_negotiation_returns_gzip(monkeypatch) -> None:
         "links": [],
     }
     monkeypatch.setattr(routes_module, "get_graph", lambda: big_payload)
-    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d: d)
+    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
 
     app = _build_test_app()
     with TestClient(app) as client:
@@ -264,7 +264,7 @@ def test_payload_trims_embedding_via_endpoint(monkeypatch) -> None:
         "links": [],
     }
     monkeypatch.setattr(routes_module, "get_graph", lambda: payload_with_embeddings)
-    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d: d)
+    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
 
     app = _build_test_app()
     with TestClient(app) as client:
@@ -310,7 +310,7 @@ def test_payload_under_300kb_at_1k_nodes(monkeypatch) -> None:
         ],
     }
     monkeypatch.setattr(routes_module, "get_graph", lambda: fixture)
-    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d: d)
+    monkeypatch.setattr(routes_module, "_enrich_graph_with_analytics", lambda d, **_kw: d)
 
     app = _build_test_app()
     with TestClient(app) as client:
