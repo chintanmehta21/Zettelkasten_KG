@@ -870,7 +870,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             elif manifest_path.exists():
                 drift_rc = _verify_schema(conn, manifest_path)
                 if drift_rc != 0:
-                    rc = 1
+                    if required:
+                        rc = 1
+                    else:
+                        # Hardening A2 (2026-05-12): warn-only path when
+                        # MIGRATION_MANIFEST_REQUIRED=0. CI uses this so the
+                        # auto-regen step downstream can rewrite the manifest
+                        # against the fresh DB before the authoritative
+                        # verify step runs. Comment at line 862 promised this
+                        # behavior; without this branch, drift hard-failed
+                        # the apply step before regen could fire.
+                        logger.warning(
+                            "[migration] schema drift present but MIGRATION_MANIFEST_REQUIRED=0 — continuing (warn-only).",
+                        )
             elif autobootstrap:
                 logger.warning(
                     "[migration] manifest missing — AUTOBOOTSTRAP writing %s. "
