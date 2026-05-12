@@ -179,3 +179,24 @@ def delete_test_user(auth_user_id: uuid.UUID) -> None:
     """Delete the auth user; ON DELETE CASCADE removes profile/workspaces/members."""
     service = get_v2_client()
     service.auth.admin.delete_user(str(auth_user_id))
+
+
+def mint_signup_only_user(*, workspace_count: int = 1) -> MintedUser:
+    """Mint a user via the explicit INSERT branch — used to fire signup hooks.
+
+    Difference from ``mint_test_user_with_workspaces``: the underlying
+    ``core.handle_new_auth_user`` trigger ALWAYS fires for genuine signups
+    (admin.create_user always inserts an auth.users row). The semantic
+    distinction is upstream — ``web_monitor.notify_new_signup`` is wired to
+    that signup pathway and consumers want a fixture that explicitly
+    documents "this user is fresh, no SELECT short-circuit, signup
+    notification will fire".
+
+    Today this is a thin wrapper because ``mint_test_user_with_workspaces``
+    already forces the insert path. The dedicated entrypoint exists so:
+      * Test intent is self-documenting ("we expect notify_new_signup to fire").
+      * If a future iteration adds a SELECT-then-INSERT optimization to the
+        base helper, the signup pathway can branch here without ricocheting
+        through every caller.
+    """
+    return mint_test_user_with_workspaces(workspace_count=workspace_count)
