@@ -71,6 +71,13 @@ jobs:
           # apply_migrations.py::_build_dsn(v2=True) reads only this name.
           SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           MIGRATION_MANIFEST_AUTOBOOTSTRAP: "1"
+          # Hardening A2: apply_migrations runs a verify-after-apply inline
+          # when the manifest exists; on fresh CI the manifest still holds
+          # legacy v1 public.* refs and that verify fails before the
+          # auto-regen step below can fire. Set _REQUIRED=0 so drift is
+          # warn-only HERE; the authoritative verify lives in the explicit
+          # `Verify manifest` step after auto-regen pushes the new file.
+          MIGRATION_MANIFEST_REQUIRED: "0"
         # --skip-files=15_drop_legacy_tables.sql — operator-approved hardening
         # sprint H-1 (2026-05-12). Migration 15 has a 14-day soak guard (file
         # header lines 12-18) that fires by design on fresh stack since
