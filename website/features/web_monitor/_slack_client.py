@@ -7,12 +7,13 @@ distinct ``SLACK_WEBHOOK_*`` env var; no per-channel reinvention.
 
 Design (per docs/research/2026-05-12-slack-backoff.md, D-1 decision):
 
-* ``stamina``-wrapped retry honoring Slack's ``Retry-After`` header on 429.
-  Custom wait function reads the header off ``RateLimited.retry_after`` and
-  caps it at 60 s — Slack's documented incoming-webhook policy never asks
-  for longer than that, but we cap defensively to avoid worker stalls.
-* Default 4 attempts with jittered exponential backoff (stamina's built-in
-  ``wait_jitter`` defeats thundering-herd on multi-worker setups).
+* Single ``stamina``-wrapped retry honoring Slack's ``Retry-After`` header
+  on 429 via the ``on=_backoff_hook`` callable — returning a float from the
+  hook overrides stamina's exp+jitter wait with the server-supplied value
+  (capped at 60 s). Hard cap = _MAX_ATTEMPTS (4); no nested retry layers.
+* Jittered exponential backoff for transient httpx errors (5xx / timeouts /
+  conn-reset) via stamina's built-in ``wait_jitter`` (defeats thundering-
+  herd on multi-worker setups).
 * Bounded concurrent in-flight pool via ``asyncio.Semaphore(8)`` per worker.
   Production droplet runs 2 gunicorn workers, so the global cap is 16 — the
   hard ceiling chosen for the 2 GB / 1 vCPU box. Tasks are strong-ref'd in
@@ -67,27 +68,34 @@ class RateLimited(Exception):
         self.retry_after = retry_after
 
 
-def _wait_for_retry_after(attempt: int, exc: BaseException) -> float | None:
-    """Stamina ``wait`` hook: read Retry-After from RateLimited, else fall through.
+def _backoff_hook(exc: Exception) -> bool | float:
+    """Stamina ``on`` backoff hook — single decision point for retry + wait.
 
-    Returning ``None`` tells stamina to use its built-in exp+jitter backoff
-    (configured below). Returning a float overrides with the server-supplied
-    delay capped at ``_RETRY_AFTER_CAP_SECONDS``.
+    Per stamina 26.x docs the ``on`` callable may return:
+      * False  — do NOT retry (let the exception propagate)
+      * True   — retry using stamina's exp+jitter schedule
+      * float  — retry, overriding the wait with this exact value (seconds)
+
+    We retry on transient httpx errors with exp+jitter, and on RateLimited
+    we return the server-supplied Retry-After (capped) so Slack's polite-
+    client contract is honored without a second outer loop. Net effect:
+    hard cap of ``_MAX_ATTEMPTS`` total attempts — no compounding layers.
     """
-    if isinstance(exc, RateLimited) and exc.retry_after is not None:
+    if isinstance(exc, RateLimited):
+        if exc.retry_after is None:
+            return True
         try:
             return min(float(exc.retry_after), _RETRY_AFTER_CAP_SECONDS)
         except (TypeError, ValueError):
-            return None
-    return None
+            return True
+    return isinstance(exc, httpx.HTTPError)
 
 
-# stamina handles transient httpx errors (timeouts, conn-reset, 5xx) with
-# exp+jitter backoff. 429 / RateLimited is INTENTIONALLY excluded so the
-# outer ``_post_with_explicit_retry_after`` loop can honor the precise
-# Retry-After value Slack returns rather than stamina's static schedule.
+# Single stamina decorator drives all retries. Hard cap = _MAX_ATTEMPTS (4):
+# 1 initial + 3 retries, no nested layers, total worst-case ~min(60s cap, 30s
+# exp ceiling) × 3 = ~3 minutes only if every retry hits the max cap.
 @stamina.retry(
-    on=httpx.HTTPError,
+    on=_backoff_hook,
     attempts=_MAX_ATTEMPTS,
     wait_initial=1.0,
     wait_jitter=2.0,
@@ -121,66 +129,18 @@ async def post_with_retry(
     """POST to Slack with retry + Retry-After honoring. Returns response or None on final failure.
 
     Never raises — callers (App_Errors / DO_Alerts / User_Activity) all want
-    "best effort post, log on failure" semantics. Catches RetryError after
-    the stamina attempts are exhausted, plus any unexpected exception, and
-    returns None so the channel's notifier can log and move on.
-
-    NOTE: we deliberately use the custom ``_wait_for_retry_after`` hook only
-    on RateLimited (429) exceptions; httpx transport errors use stamina's
-    built-in exp+jitter so a Slack-side hiccup doesn't sleep for whatever
-    bogus header an upstream proxy injected.
+    "best effort post, log on failure" semantics. Retry / wait policy lives
+    entirely in the ``_backoff_hook`` passed to stamina; this wrapper just
+    converts the terminal exception into a logged ``None``.
     """
-    # Honor Retry-After by raising RateLimited inside _post_once; stamina's
-    # default wait then applies. To override the wait dynamically we'd need
-    # tenacity's RetryCallState — for now the simple knob is: when we get a
-    # 429 with header, we sleep manually outside the decorator and re-call.
-    # Implementation below: catch the RetryError, return None.
     try:
-        # Special-case: if the first response is 429 with Retry-After we
-        # respect the exact value once before falling into stamina's exp
-        # backoff. This is the documented "polite client" pattern for Slack.
-        # We attempt explicit Retry-After handling for the FIRST retry only,
-        # then defer to stamina for any subsequent 429s.
-        return await _post_with_explicit_retry_after(url, payload, timeout)
+        return await _post_once(url, payload, timeout)
     except (RateLimited, httpx.HTTPError) as exc:
         logger.warning("slack_client: gave up after retries: %s", exc)
         return None
     except Exception:  # noqa: BLE001 — final guard; alerting must never raise
         logger.exception("slack_client: unexpected error during retry chain")
         return None
-
-
-async def _post_with_explicit_retry_after(
-    url: str,
-    payload: dict[str, Any],
-    timeout: float,
-) -> httpx.Response:
-    """Inner helper: drive _post_once, honoring Retry-After explicitly.
-
-    Wraps the stamina-decorated _post_once in an outer loop that catches
-    RateLimited specifically (vs httpx errors) and sleeps for the exact
-    Retry-After before re-invoking. Total attempts capped by _MAX_ATTEMPTS
-    across the combined inner + outer chain.
-
-    Why both layers: stamina's wait config is static at decoration time, so
-    we can't change wait_initial per-call based on response header. The
-    outer loop reads the header and sleeps; the inner stamina decorator
-    handles non-429 transient errors (timeouts, 5xx) with exp+jitter.
-    """
-    outer_attempts_remaining = _MAX_ATTEMPTS
-    while True:
-        try:
-            # _post_once already retries non-429 errors internally via stamina.
-            return await _post_once(url, payload, timeout)
-        except RateLimited as rl:
-            outer_attempts_remaining -= 1
-            if outer_attempts_remaining <= 0:
-                raise
-            wait_s = _wait_for_retry_after(0, rl)
-            if wait_s is None:
-                # No header — let stamina's built-in backoff apply on next iter.
-                wait_s = 1.0
-            await asyncio.sleep(wait_s)
 
 
 def fire_and_forget(coro_fn) -> asyncio.Task | None:

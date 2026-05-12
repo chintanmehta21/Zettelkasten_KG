@@ -64,40 +64,29 @@ async def test_post_retries_on_429_then_succeeds():
 
 
 @pytest.mark.asyncio
-async def test_post_honors_retry_after_header_within_tolerance(monkeypatch):
-    """Retry-After=2 must drive the sleep duration. With stamina in testing
-    mode the explicit asyncio.sleep used by _post_with_explicit_retry_after
-    is the only real sleep — patch it to capture the requested delay."""
-    captured: list[float] = []
+async def test_post_honors_retry_after_header_within_tolerance():
+    """Retry-After=2 must override stamina's exp+jitter via the backoff hook.
 
-    real_sleep = asyncio.sleep
-
-    async def _fake_sleep(delay):
-        captured.append(delay)
-        await real_sleep(0)  # yield once so the loop keeps running
-
-    monkeypatch.setattr(
-        "website.features.web_monitor._slack_client.asyncio.sleep", _fake_sleep
+    Drive the hook directly so we don't depend on stamina's internal sleep
+    pathing (in testing mode stamina zeroes its real sleep but still calls
+    the hook to decide whether to retry). The hook returning 2.0 IS the
+    contract — that float is what stamina uses as the wait override.
+    """
+    from website.features.web_monitor._slack_client import (
+        RateLimited,
+        _backoff_hook,
     )
 
-    with respx.mock(assert_all_called=True) as router:
-        router.post(_TEST_URL).mock(
-            side_effect=[
-                httpx.Response(429, headers={"Retry-After": "2"}),
-                httpx.Response(200, text="ok"),
-            ]
-        )
-        resp = await post_with_retry(_TEST_URL, {"text": "hi"})
-        assert resp is not None
-        assert resp.status_code == 200
+    decision = _backoff_hook(RateLimited(retry_after=2.0))
+    assert decision == 2.0, f"Retry-After=2 not honored by hook: {decision!r}"
 
-    # The Retry-After value (2.0) must appear in the captured sleeps.
-    # ±100ms tolerance is enforced by exact-match here since the helper
-    # passes the parsed float directly to asyncio.sleep (no jitter applied
-    # to Retry-After per spec).
-    assert any(abs(s - 2.0) <= 0.1 for s in captured), (
-        f"Retry-After=2 not honored; captured sleeps: {captured!r}"
-    )
+    # Cap enforcement: a hostile upstream returning Retry-After=600 must be
+    # clamped to _RETRY_AFTER_CAP_SECONDS (60s) so a worker can't be pinned.
+    capped = _backoff_hook(RateLimited(retry_after=600.0))
+    assert capped == 60.0, f"Retry-After cap not enforced: {capped!r}"
+
+    # Missing header => True (use stamina's built-in exp+jitter).
+    assert _backoff_hook(RateLimited(retry_after=None)) is True
 
 
 @pytest.mark.asyncio
@@ -136,8 +125,11 @@ async def test_post_returns_none_on_unexpected_exception(monkeypatch):
     async def _boom(*_, **__):
         raise RuntimeError("synthetic")
 
+    # After B-3 the retry chain is a single stamina-decorated `_post_once`;
+    # patch that to verify the final `except Exception` guard converts an
+    # unexpected error into a None return.
     monkeypatch.setattr(
-        "website.features.web_monitor._slack_client._post_with_explicit_retry_after",
+        "website.features.web_monitor._slack_client._post_once",
         _boom,
     )
     resp = await post_with_retry(_TEST_URL, {"text": "hi"})
