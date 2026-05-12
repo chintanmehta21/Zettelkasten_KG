@@ -46,6 +46,11 @@ logger = logging.getLogger(__name__)
 
 _CACHE_CAP: int = 200
 _CACHE_TTL_SECONDS: float = 30.0
+# SWR window: serve stale up to this many seconds AFTER fresh-TTL expires,
+# while a background task recomputes. p95 cold-miss becomes <100ms (cached
+# stale) + occasional background work — research-recommended pattern for
+# expensive metric endpoints (web.dev SWR, Cloudflare/Fastly precedent).
+_SWR_TTL_SECONDS: float = 300.0
 _UPSTREAM_TIMEOUT_SECONDS: float = 20.0
 
 __all__ = [
@@ -106,10 +111,12 @@ class UserGraphCache:
         *,
         capacity: int = _CACHE_CAP,
         ttl_seconds: float = _CACHE_TTL_SECONDS,
+        swr_ttl_seconds: float = _SWR_TTL_SECONDS,
         timeout_seconds: float = _UPSTREAM_TIMEOUT_SECONDS,
     ) -> None:
         self._capacity = capacity
         self._ttl = ttl_seconds
+        self._swr_ttl = swr_ttl_seconds
         self._timeout = timeout_seconds
         # Ordered for O(1) LRU eviction; key = (user_id, bucket).
         self._store: "OrderedDict[tuple[str, str], tuple[dict, float]]" = OrderedDict()
@@ -174,11 +181,26 @@ class UserGraphCache:
             entry = self._store.get(key)
             if entry is not None:
                 payload, expires_at = entry
-                if not self._expired(expires_at):
-                    # LRU bump on hit.
+                now = self._now()
+                if now <= expires_at:
+                    # FRESH: standard hit, no refresh needed.
                     self._store.move_to_end(key, last=True)
                     return payload
-                # Expired → remove and fall through to reload.
+                # SWR window: stale but still serveable while we refresh in bg.
+                stale_until = expires_at + (self._swr_ttl - self._ttl)
+                if now <= stale_until:
+                    # Serve stale immediately + kick off background refresh
+                    # (idempotent: only one refresh in flight per key).
+                    if key not in self._inflight:
+                        refresh_future = asyncio.get_running_loop().create_future()
+                        self._inflight[key] = refresh_future
+                        # Schedule outside the lock; the task acquires it itself.
+                        asyncio.create_task(
+                            self._background_refresh(key, loader, refresh_future)
+                        )
+                    self._store.move_to_end(key, last=True)
+                    return payload
+                # Beyond SWR window: drop and fall through to cold single-flight.
                 self._store.pop(key, None)
 
             existing = self._inflight.get(key)
@@ -227,6 +249,38 @@ class UserGraphCache:
                 future.set_result(payload)
             self._inflight.pop(key, None)
         return payload
+
+    async def _background_refresh(
+        self,
+        key: tuple[str, str],
+        loader: Callable[[], Awaitable[dict]],
+        future: asyncio.Future,
+    ) -> None:
+        """Background SWR refresh: recompute, publish, never bubble exceptions.
+
+        Same lock-then-resolve-then-pop ordering as the cold path so a follower
+        coalescing on the inflight Future during refresh sees consistent state.
+        Failures are logged but never re-raised — stale entry remains served
+        until the next request triggers another refresh attempt.
+        """
+        try:
+            payload = await asyncio.wait_for(loader(), timeout=self._timeout)
+        except BaseException as exc:
+            async with self._lock:
+                if not future.done():
+                    future.set_exception(
+                        exc if isinstance(exc, Exception) else RuntimeError(str(exc))
+                    )
+                self._inflight.pop(key, None)
+            logger.warning(
+                "graph_cache: SWR background refresh failed for %s: %s", key, exc
+            )
+            return
+        async with self._lock:
+            self._store_set(key, payload)
+            if not future.done():
+                future.set_result(payload)
+            self._inflight.pop(key, None)
 
     def invalidate(self, user_id: str) -> int:
         """Drop ALL bucket entries for ``user_id``. Returns count removed.

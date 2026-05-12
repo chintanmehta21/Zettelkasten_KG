@@ -165,7 +165,11 @@ async def test_lru_cap_honored_under_burst() -> None:
 
 
 async def test_ttl_expiry_triggers_reload() -> None:
-    cache = UserGraphCache(capacity=10, ttl_seconds=0.05)
+    # WAVE-C C3-d hybrid: with default SWR=300s, expiry within that window
+    # is a STALE-serve + bg refresh, not a cold reload. To preserve the
+    # "TTL → cold reload" semantic this test pins, set swr_ttl_seconds = TTL
+    # (no extra stale window). Beyond TTL → cold single-flight path.
+    cache = UserGraphCache(capacity=10, ttl_seconds=0.05, swr_ttl_seconds=0.05)
     user_id = "ttl-user"
     call_count = 0
 
@@ -176,7 +180,7 @@ async def test_ttl_expiry_triggers_reload() -> None:
 
     await cache.get_or_load(user_id, "weak", loader)
     assert call_count == 1
-    # Wait past TTL.
+    # Wait past TTL (also past SWR since they're equal here).
     await asyncio.sleep(0.1)
     await cache.get_or_load(user_id, "weak", loader)
     assert call_count == 2, "expired entry must trigger reload"
@@ -265,3 +269,91 @@ async def test_single_flight_error_path_does_not_n_plus_1() -> None:
     assert all(isinstance(r, _BoomError) for r in results)
     # Inflight slot cleared so subsequent retries work.
     assert cache.inflight_count() == 0
+
+
+# ── SWR (stale-while-revalidate) — D-KG-3 hybrid C3-d ─────────────────────
+
+
+class _ClockCache(UserGraphCache):
+    """Subclass with monkeypatchable monotonic clock for SWR tests.
+
+    Avoids freezegun + asyncio interaction hazards. The cache only reads
+    time via ``self._now()``; overriding it deterministically advances time
+    inside the test without leaking globally.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._test_now = 1000.0
+
+    def _now(self) -> float:
+        return self._test_now
+
+    def advance(self, delta: float) -> None:
+        self._test_now += delta
+
+
+async def test_swr_serves_stale_immediately_and_refreshes_in_background() -> None:
+    """Hybrid C3-d.4+1+SWR: stale entry returned IMMEDIATELY + bg refresh.
+
+    Within the SWR window (30s < age <= 300s), get_or_load must:
+    1. Return the stale payload without awaiting the loader (immediate).
+    2. Schedule a background refresh that updates the cache off-path.
+    Beyond the SWR window (age > 300s) the cold single-flight path is taken.
+    """
+    cache = _ClockCache(ttl_seconds=30.0, swr_ttl_seconds=300.0)
+    user = f"u-{uuid.uuid4().hex[:8]}"
+
+    loader_calls = {"n": 0}
+
+    async def fast_loader() -> dict:
+        loader_calls["n"] += 1
+        return {"v": loader_calls["n"], "loaded_at": cache._test_now}
+
+    # Cold load: populates cache.
+    p1 = await cache.get_or_load(user, "strong", fast_loader)
+    assert p1["v"] == 1
+    assert loader_calls["n"] == 1
+
+    # Advance into the STALE window (45s > 30s TTL, < 300s SWR cap).
+    cache.advance(45.0)
+
+    # SWR hit: returns stale (v=1) immediately, schedules background refresh.
+    p2 = await cache.get_or_load(user, "strong", fast_loader)
+    assert p2["v"] == 1, "SWR must return STALE entry immediately"
+    # Background refresh was scheduled (inflight slot taken).
+    assert cache.inflight_count() == 1
+
+    # Wait for the bg task to complete (it runs the loader + cache update).
+    # Brief sleep ensures the create_task'd coroutine reaches its lock release.
+    for _ in range(10):
+        await asyncio.sleep(0.01)
+        if cache.inflight_count() == 0:
+            break
+
+    # After bg refresh resolves, loader was called a 2nd time + cache updated.
+    assert loader_calls["n"] == 2
+    assert cache.inflight_count() == 0
+    p3 = await cache.get_or_load(user, "strong", fast_loader)
+    assert p3["v"] == 2, "Refreshed entry should now be served"
+    assert loader_calls["n"] == 2, "p3 was a fresh-window hit, no new load"
+
+
+async def test_swr_window_expiry_falls_back_to_cold_load() -> None:
+    """Beyond swr_ttl_seconds the entry is dropped and we cold-load."""
+    cache = _ClockCache(ttl_seconds=30.0, swr_ttl_seconds=300.0)
+    user = f"u-{uuid.uuid4().hex[:8]}"
+    loader_calls = {"n": 0}
+
+    async def loader() -> dict:
+        loader_calls["n"] += 1
+        return {"v": loader_calls["n"]}
+
+    await cache.get_or_load(user, "strong", loader)
+    assert loader_calls["n"] == 1
+
+    # Beyond SWR cap (350s > 300s).
+    cache.advance(350.0)
+    p2 = await cache.get_or_load(user, "strong", loader)
+    assert p2["v"] == 2, "Beyond SWR window must cold-load synchronously"
+    assert loader_calls["n"] == 2
