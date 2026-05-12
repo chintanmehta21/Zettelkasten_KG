@@ -9,25 +9,18 @@ Covers two gaps not handled by the 1c-A backend subagent:
   contract holds via both the explicit insert path the upsert pipeline uses
   *and* the implicit DEFAULT path.
 
-* **KF-EMB-B** — ``find_similar_nodes`` calls the legacy ``match_kg_nodes``
-  RPC. Per CLAUDE.md Phase 8 closeout (2026-05-11) the ``public.kg_*`` tables
-  were dropped, but the RPC body still references ``public.kg_nodes``. The
-  RPC also takes **no** ``model_version`` argument today, so cross-version
-  cosine collisions are not filtered at the storage layer. These tests
-  document the current behaviour as a *finding*:
+* **KF-EMB-B** — ``find_similar_nodes`` calls ``kg.match_kg_nodes`` (ported
+  from the dropped legacy ``public.match_kg_nodes`` in
+  ``supabase/website/_v2/43_port_match_kg_nodes.sql``). The v2 RPC takes a
+  mandatory ``p_model_version`` argument so cross-version cosine collisions
+  are filtered at the storage layer, not at the (silently swallowed)
+  PostgREST error path the legacy RPC fell through. These tests pin:
 
-    1. The RPC signature still accepts only
-       ``(query_embedding, match_threshold, match_count, target_user_id)``.
-    2. The RPC body references a dropped table — invoking it raises a
-       PostgREST error rather than silently returning cross-version matches.
-    3. ``find_similar_nodes`` swallows that error and returns ``[]`` — so the
-       caller cannot accidentally mix model versions today, but only because
-       the RPC is broken, not because of a positive filter.
-
-  Marked ``xfail(strict=False)`` for the "RPC supports model_version filter"
-  test so the suite stays green today but flips RED the moment the v2 RPC
-  ships with a ``model_version`` parameter (the desired end state per the
-  KF-EMB-B spec).
+    1. The v2 RPC signature includes ``p_model_version`` as a parameter.
+    2. ``find_similar_nodes`` returns the matching node when the seeded
+       chunk's model version equals the queried version.
+    3. Chunks with a *different* ``embedding_model_version`` are excluded
+       from results even when their cosine distance would otherwise match.
 
 Both tests are ``@pytest.mark.live`` because they need real Postgres (halfvec
 casts, RPC dispatch). Seeding pattern mirrors
@@ -249,74 +242,224 @@ async def test_canonical_chunks_unknown_model_version_rejected_by_fk(
 # ── KF-EMB-B: model_version filtering on match_kg_nodes ──────────────────
 
 
-async def test_match_kg_nodes_rpc_signature_lacks_model_version_filter(
+async def _seed_kg_node_for_chunk(
+    pool: asyncpg.Pool,
+    *,
+    workspace_id: uuid.UUID,
+    canonical_chunk_id: uuid.UUID,
+    canonical_name: str,
+) -> int:
+    """Insert a kg.kg_nodes row + bridge row in kg.chunk_node_mentions
+    pointing at the seeded chunk. Returns the bigserial node_id.
+
+    Mirrors the seeding pattern in
+    ``tests/integration/v2/test_hybrid_pipeline_e2e._seed_kg_node_with_alias``.
+    """
+    slug = f"{canonical_name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:8]}"
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO kg.kg_nodes (workspace_id, type, canonical_name, slug)
+            VALUES ($1, 'concept', $2, $3)
+            RETURNING id
+            """,
+            workspace_id, canonical_name, slug,
+        )
+        node_id = row["id"]
+        await conn.execute(
+            """
+            INSERT INTO kg.chunk_node_mentions
+                (canonical_chunk_id, kg_node_id, mention_type)
+            VALUES ($1, $2, 'extracted')
+            ON CONFLICT DO NOTHING
+            """,
+            canonical_chunk_id, node_id,
+        )
+    return node_id
+
+
+async def test_match_kg_nodes_rpc_has_model_version_filter(
     asyncpg_pool: asyncpg.Pool,
 ) -> None:
-    """KF-EMB-B: documents current state — ``match_kg_nodes`` does NOT take a
-    ``model_version`` parameter, so it cannot filter cross-version cosine
-    collisions at the storage layer.
-
-    Pinned via ``information_schema.parameters`` so the test flips RED the
-    moment a v2 ``match_kg_nodes`` ships with a ``p_model_version`` argument
-    (the desired end state per the WAVE-C plan).
+    """KF-EMB-B: pins the ported v2 RPC contract — ``kg.match_kg_nodes`` MUST
+    take a ``p_model_version`` argument so cross-version cosine collisions
+    are filtered server-side. If a future migration drops or renames this
+    parameter the test flips RED before the silently-broken filter ships.
     """
     async with asyncpg_pool.acquire() as conn:
         rows = await conn.fetch(
             """
             SELECT parameter_name, data_type
               FROM information_schema.parameters
-             WHERE specific_schema = 'public'
+             WHERE specific_schema = 'kg'
                AND specific_name LIKE 'match_kg_nodes%'
              ORDER BY ordinal_position
             """
         )
     param_names = [r["parameter_name"] for r in rows]
-    # Current state: 4 params, none of them model_version-related.
-    # When the new RPC ships, one of these will be 'p_model_version' or
-    # 'model_version' — flip this test to assert it's present at that point.
-    assert "p_model_version" not in param_names, (
-        f"v2 match_kg_nodes appears to ship model_version filtering; "
-        f"update KF-EMB-B test to assert it filters cross-version vectors. "
+    assert "p_model_version" in param_names, (
+        f"kg.match_kg_nodes is missing the p_model_version filter parameter. "
         f"Current params: {param_names}"
     )
-    assert "model_version" not in param_names, (
-        f"v2 match_kg_nodes appears to ship model_version filtering; "
-        f"update KF-EMB-B test to assert it filters cross-version vectors. "
-        f"Current params: {param_names}"
-    )
+    # Pin the full canonical signature so a future param-rename is caught.
+    assert param_names == [
+        "p_user_id",
+        "p_query_embedding",
+        "p_model_version",
+        "p_match_threshold",
+        "p_match_count",
+        # OUT params (RETURNS TABLE) appear in information_schema.parameters too.
+        "node_id",
+        "score",
+    ], f"unexpected kg.match_kg_nodes signature: {param_names}"
 
 
-async def test_find_similar_nodes_swallows_legacy_rpc_failure(
+async def test_find_similar_nodes_returns_seeded_node(
     asyncpg_pool: asyncpg.Pool,
     mint_user,
 ) -> None:
-    """KF-EMB-B: ``find_similar_nodes`` wraps the (legacy) RPC call in a
-    try/except and returns ``[]`` on failure. After Phase 8 closeout the
-    underlying ``public.kg_nodes`` table is dropped, so the RPC raises a
-    PostgREST error which the helper must absorb — guaranteeing the helper
-    never silently returns cross-version cosine matches today.
+    """KF-EMB-B positive path: seed one chunk + node for a freshly-minted
+    user, then call ``find_similar_nodes`` with an embedding close to the
+    seeded vector. The seeded node MUST appear in results (proving the v2
+    RPC + workspace-resolution + service-role grant all wire up correctly).
     """
     from website.core.supabase_v2.client import get_v2_client
     from website.features.kg_features.embeddings import find_similar_nodes
 
     user = mint_user(workspace_count=1)
-    client = get_v2_client()
-    # 768-dim zero-ish vector (any well-formed payload triggers the RPC call).
-    query_emb = [0.001 + i * 1e-5 for i in range(768)]
+    workspace_id = user.workspace_ids[0]
 
-    result = find_similar_nodes(
-        supabase_client=client,
-        user_id=str(user.auth_user_id),
-        embedding=query_emb,
-        threshold=0.5,
-        limit=10,
-    )
+    cz_id = await _seed_canonical_zettel(asyncpg_pool)
+    try:
+        cc_id = await _insert_chunk_with_version(
+            asyncpg_pool,
+            cz_id=cz_id,
+            chunk_idx=0,
+            seed=0.0,
+            embedding_model_version="gemini-001-mrl-768",
+        )
+        node_id = await _seed_kg_node_for_chunk(
+            asyncpg_pool,
+            workspace_id=workspace_id,
+            canonical_chunk_id=cc_id,
+            canonical_name="kf-emb positive",
+        )
 
-    # Contract per embeddings.py: any failure → empty list, never raise.
-    # This documents today's accidental-safety; flips when the v2 RPC lands.
-    assert isinstance(result, list)
-    assert result == [], (
-        f"find_similar_nodes returned non-empty {result!r} — either the RPC "
-        "was revived or the legacy table re-created. Update KF-EMB-B to "
-        "assert the v2 RPC filters by embedding_model_version."
-    )
+        client = get_v2_client()
+        # Query embedding nearly identical to the seeded one (cosine ~ 1.0).
+        query_emb = [0.001 + i * 1e-5 for i in range(768)]
+
+        result = find_similar_nodes(
+            supabase_client=client,
+            user_id=str(user.auth_user_id),
+            embedding=query_emb,
+            threshold=0.5,
+            limit=10,
+        )
+
+        assert isinstance(result, list) and result, (
+            f"expected at least one match, got {result!r}"
+        )
+        assert any(int(r.get("node_id", -1)) == node_id for r in result), (
+            f"seeded node_id={node_id} not in results: {result!r}"
+        )
+    finally:
+        async with asyncpg_pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM content.canonical_zettels WHERE id = $1", cz_id
+            )
+
+
+async def test_find_similar_nodes_filters_by_model_version(
+    asyncpg_pool: asyncpg.Pool,
+    mint_user,
+) -> None:
+    """KF-EMB-B cross-version isolation: seed two chunks for the same user
+    with the SAME embedding payload but DIFFERENT
+    ``embedding_model_version``s. Calling ``find_similar_nodes`` with the
+    default version must return ONLY the matching-version chunk's node —
+    proving the storage-layer filter excludes cross-version vectors even
+    when their cosine distance would otherwise hit the threshold.
+
+    This requires a second registered model version in
+    ``content.embedding_model_versions`` for the FK to accept the off-version
+    chunk; the test inserts it inside a savepoint and rolls back at teardown
+    so we never leak schema state.
+    """
+    from website.core.supabase_v2.client import get_v2_client
+    from website.features.kg_features.embeddings import find_similar_nodes
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    other_version = f"test-other-{uuid.uuid4().hex[:8]}"
+
+    cz_id = await _seed_canonical_zettel(asyncpg_pool)
+    try:
+        # Register the off-version so the FK accepts the second chunk insert.
+        async with asyncpg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO content.embedding_model_versions
+                    (version_id, dimensions, is_default)
+                VALUES ($1, 768, false)
+                """,
+                other_version,
+            )
+
+        cc_match = await _insert_chunk_with_version(
+            asyncpg_pool,
+            cz_id=cz_id,
+            chunk_idx=0,
+            seed=0.0,
+            embedding_model_version="gemini-001-mrl-768",
+        )
+        cc_other = await _insert_chunk_with_version(
+            asyncpg_pool,
+            cz_id=cz_id,
+            chunk_idx=1,
+            seed=0.0,  # SAME seed → identical cosine, isolation must come from version filter
+            embedding_model_version=other_version,
+        )
+
+        node_match = await _seed_kg_node_for_chunk(
+            asyncpg_pool,
+            workspace_id=workspace_id,
+            canonical_chunk_id=cc_match,
+            canonical_name="match version",
+        )
+        node_other = await _seed_kg_node_for_chunk(
+            asyncpg_pool,
+            workspace_id=workspace_id,
+            canonical_chunk_id=cc_other,
+            canonical_name="other version",
+        )
+
+        client = get_v2_client()
+        query_emb = [0.001 + i * 1e-5 for i in range(768)]
+
+        result = find_similar_nodes(
+            supabase_client=client,
+            user_id=str(user.auth_user_id),
+            embedding=query_emb,
+            threshold=0.5,
+            limit=10,
+            model_version="gemini-001-mrl-768",
+        )
+
+        returned_ids = {int(r.get("node_id", -1)) for r in result}
+        assert node_match in returned_ids, (
+            f"matching-version node {node_match} missing from {result!r}"
+        )
+        assert node_other not in returned_ids, (
+            f"off-version node {node_other} leaked through filter: {result!r}"
+        )
+    finally:
+        async with asyncpg_pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM content.canonical_zettels WHERE id = $1", cz_id
+            )
+            # Best-effort: drop the registered off-version so the test is hermetic.
+            await conn.execute(
+                "DELETE FROM content.embedding_model_versions WHERE version_id = $1",
+                other_version,
+            )
