@@ -210,3 +210,58 @@ def test_get_default_cache_is_singleton() -> None:
     a = get_default_cache()
     b = get_default_cache()
     assert a is b
+
+
+# ── Single-flight error path: no N+1 upstream calls under burst ────────
+
+
+async def test_single_flight_error_path_does_not_n_plus_1() -> None:
+    """50 concurrent callers + upstream raising must yield exactly 1 loader call.
+
+    Regression for PR #7 C2: prior order was `_inflight.pop()` then
+    `future.set_exception()`. A follower entering the gap saw neither a
+    cached entry nor an inflight Future and triggered its own upstream load.
+    The fix swaps the order under one lock acquisition so followers always
+    observe the inflight Future, attach to it, and receive the same exception.
+    """
+    cache = UserGraphCache(capacity=10, ttl_seconds=60.0)
+    user_id = "user-error-coalesce"
+    bucket = "weak"
+    call_count = 0
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    class _BoomError(RuntimeError):
+        pass
+
+    async def slow_broken_loader() -> dict:
+        nonlocal call_count
+        call_count += 1
+        started.set()
+        # Hold so all 50 callers stack on the same inflight Future before we
+        # raise — the burst window is what exposes the race.
+        await release.wait()
+        raise _BoomError("upstream boom")
+
+    async def caller():
+        try:
+            return await cache.get_or_load(user_id, bucket, slow_broken_loader)
+        except _BoomError as exc:
+            return exc
+
+    tasks = [asyncio.create_task(caller()) for _ in range(50)]
+
+    # Wait for the elected loader to be in-flight, then release it.
+    await started.wait()
+    release.set()
+
+    results = await asyncio.gather(*tasks)
+    assert call_count == 1, (
+        f"single-flight error path failed: {call_count} upstream calls "
+        f"(expected 1). Followers raced into a fresh load instead of "
+        f"attaching to the inflight Future."
+    )
+    # All 50 followers got the same exception type.
+    assert all(isinstance(r, _BoomError) for r in results)
+    # Inflight slot cleared so subsequent retries work.
+    assert cache.inflight_count() == 0

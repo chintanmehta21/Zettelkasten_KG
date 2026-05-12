@@ -204,22 +204,28 @@ class UserGraphCache:
         try:
             payload = await asyncio.wait_for(loader(), timeout=self._timeout)
         except BaseException as exc:  # includes asyncio.TimeoutError + cancel
-            # Mark the Future failed for the followers so they all see the
-            # same error rather than a second timeout.
+            # Resolve the Future BEFORE removing it from `_inflight` — both
+            # under the same lock acquisition. If we popped first, a follower
+            # entering between pop() and set_exception() would see neither a
+            # cached entry NOR an inflight Future and would trigger its own
+            # upstream load — N+1 storm under burst with upstream errors.
             async with self._lock:
+                if not future.done():
+                    future.set_exception(
+                        exc if isinstance(exc, Exception) else RuntimeError(str(exc))
+                    )
                 self._inflight.pop(key, None)
-            if not future.done():
-                future.set_exception(
-                    exc if isinstance(exc, Exception) else RuntimeError(str(exc))
-                )
             raise
 
-        # Phase 3: publish + clear inflight under the lock.
+        # Phase 3: publish + resolve Future + clear inflight, all under lock.
+        # Same ordering guarantee as the error path: a follower that grabs the
+        # lock between operations sees either a cached entry OR an inflight
+        # Future, never both empty.
         async with self._lock:
             self._store_set(key, payload)
+            if not future.done():
+                future.set_result(payload)
             self._inflight.pop(key, None)
-        if not future.done():
-            future.set_result(payload)
         return payload
 
     def invalidate(self, user_id: str) -> int:
