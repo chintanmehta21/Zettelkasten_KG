@@ -28,10 +28,10 @@
     // ships #avatar-btn/#avatar-dropdown/#menu-signout — renamed here so a
     // future shell-injection of header on /home cannot silent-collide.
     avatarBtn = document.getElementById('home-avatar-btn');
-    avatarImg = document.getElementById('avatar-img');
-    avatarFallback = document.getElementById('avatar-fallback');
+    avatarImg = document.getElementById('home-avatar-img');
+    avatarFallback = document.getElementById('home-avatar-fallback');
     avatarDropdown = document.getElementById('home-avatar-dropdown');
-    avatarWrap = document.getElementById('avatar-wrap');
+    avatarWrap = document.getElementById('home-avatar-wrap');
     cardGrid = document.getElementById('card-grid');
     emptyState = document.getElementById('empty-state');
     zettelCount = document.getElementById('zettel-count');

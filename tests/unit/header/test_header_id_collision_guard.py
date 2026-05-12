@@ -3,8 +3,11 @@
 The browser-driven HD-05 lives in ``tests/integration/browser/`` and runs
 only with ``--live``. This static counterpart parses the rendered HTML for
 every shell'd route via ASGI transport and asserts the shared-header IDs
-(``avatar-btn`` / ``avatar-dropdown`` / ``menu-signout``) appear at most
-once per page — catching duplicate-ID regressions without a browser.
+(``avatar-btn`` / ``avatar-dropdown`` / ``menu-signout`` /
+``avatar-wrap`` / ``avatar-img`` / ``avatar-fallback``) appear at most
+once per page, AND that the home-only ``home-*`` IDs do NOT leak into
+any non-``/home`` route — catching duplicate-ID regressions and reverse
+namespace leakage without a browser.
 """
 from __future__ import annotations
 
@@ -38,7 +41,27 @@ ALL_ROUTES = [
 
 # IDs declared in the shared header fragment. Any page that injects the
 # fragment AND re-declares one of these inline would create a duplicate.
-SHARED_HEADER_IDS = ["avatar-btn", "avatar-dropdown", "menu-signout"]
+SHARED_HEADER_IDS = [
+    "avatar-btn",
+    "avatar-dropdown",
+    "menu-signout",
+    "avatar-wrap",
+    "avatar-img",
+    "avatar-fallback",
+]
+
+# Home-only IDs introduced by the D-2 namespace fix. These must NEVER appear
+# on any route other than /home — a regression here would mean the home
+# template (or one of its IDs) leaked into the shared header fragment.
+HOME_ONLY_IDS = [
+    "home-avatar-btn",
+    "home-avatar-dropdown",
+    "home-menu-signout",
+    "home-avatar-wrap",
+    "home-avatar-img",
+    "home-avatar-fallback",
+]
+NON_HOME_ROUTES = [r for r in ALL_ROUTES if r != "/home"]
 
 
 @pytest.fixture(scope="module")
@@ -69,4 +92,20 @@ async def test_shared_id_appears_at_most_once(app, path, element_id):
     assert len(hits) <= 1, (
         f"{path}: id=\"{element_id}\" appears {len(hits)} times — "
         f"duplicate-ID collision (HD-05 regression)"
+    )
+
+
+@pytest.mark.parametrize("path", NON_HOME_ROUTES)
+@pytest.mark.parametrize("element_id", HOME_ONLY_IDS)
+async def test_home_only_ids_absent_from_other_routes(app, path, element_id):
+    """The home-* namespace IDs must NOT appear on any non-/home route."""
+    async with _client(app) as client:
+        resp = await client.get(path, headers={"User-Agent": DESKTOP_UA})
+    assert resp.status_code == 200, f"{path}: non-200 {resp.status_code}"
+
+    pattern = re.compile(rf'\bid="{re.escape(element_id)}"')
+    hits = pattern.findall(resp.text)
+    assert len(hits) == 0, (
+        f"{path}: id=\"{element_id}\" appeared {len(hits)} times — "
+        f"home-only ID leaked into a non-/home route (D-2 regression)"
     )
