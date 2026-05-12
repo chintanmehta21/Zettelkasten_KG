@@ -1,7 +1,8 @@
 """M3 — Graph Analytics powered by igraph (D-KG-5 migration).
 
-Computes structural metrics (PageRank, communities, closeness) over the
-knowledge graph so the frontend can visualise importance and clusters.
+Computes structural metrics (PageRank, communities, harmonic centrality)
+over the knowledge graph so the frontend can visualise importance and
+clusters.
 
 Why igraph (per D-KG-5): networkx's pure-python pagerank/louvain are
 O(V·E) with high constants; igraph's C core runs the same algorithms
@@ -10,14 +11,26 @@ surface (``compute_graph_metrics(graph: KGGraph) -> GraphMetrics``) is
 intentionally UNCHANGED — callers in ``website.api.routes`` and the
 backfill scripts must not need to be touched.
 
-Locked decision:
+Locked decisions:
 - ``compute_graph_metrics`` returns the canonical PageRank + Louvain +
-  closeness + components + communities. Betweenness is *NOT* in the
-  default path — it's O(V·E) and the production droplet (2GB/1vCPU)
-  cannot afford it on every /api/graph call. The ``betweenness`` field
-  on the returned dataclass is preserved for backward compatibility
-  but populated with zeros; callers that need it must invoke
-  :func:`compute_expensive_metrics` explicitly.
+  harmonic centrality + components + communities. Betweenness is *NOT*
+  in the default path — it's O(V·E) and the production droplet
+  (2GB/1vCPU) cannot afford it on every /api/graph call. The
+  ``betweenness`` field on the returned dataclass is preserved for
+  backward compatibility but populated with zeros; callers that need
+  it must invoke :func:`compute_expensive_metrics` explicitly.
+- C3-d: closeness was DROPPED from the default path and replaced by
+  harmonic_centrality (Boldi-Vigna). Rationale: (a) harmonic is
+  well-defined on disconnected components which the strong-edge filter
+  routinely creates — closeness collapses on disconnected graphs;
+  (b) it matches Neo4j's primary distance-centrality metric;
+  (c) PKM peers (Logseq, Obsidian Graph) don't render closeness anyway,
+  so we lose nothing on the wire. ``closeness`` field on the dataclass
+  remains for back-compat (zero-populated); use
+  :func:`compute_expensive_metrics` for real closeness.
+- C3-d.1: harmonic uses ``cutoff=3``. PKM graphs have diameter ≈4-6, so
+  cutoff=2 truncates too aggressively; cutoff=3 captures most distance
+  mass while keeping per-source BFS bounded inside the 5k <3s budget.
 - Louvain seed=42 (D-KG-1 reproducibility). We pin both Python's
   ``random.seed(42)`` and igraph's internal RNG via
   ``igraph.set_random_number_generator`` so re-runs are byte-identical.
@@ -43,15 +56,21 @@ logger = logging.getLogger(__name__)
 class GraphMetrics:
     """Computed graph-level and node-level metrics.
 
-    ``betweenness`` is preserved for backward-compat but populated with zeros
-    by :func:`compute_graph_metrics`. Callers that need real betweenness must
-    use :func:`compute_expensive_metrics`.
+    ``betweenness`` AND ``closeness`` are preserved for backward-compat but
+    populated with zeros by :func:`compute_graph_metrics`. Callers that need
+    real values must use :func:`compute_expensive_metrics`.
+
+    C3-d: ``harmonic`` (Boldi-Vigna harmonic centrality) is the new
+    default-path distance metric, replacing closeness on the wire.
     """
 
     pagerank: dict[str, float] = field(default_factory=dict)
     communities: dict[str, int] = field(default_factory=dict)
     betweenness: dict[str, float] = field(default_factory=dict)
     closeness: dict[str, float] = field(default_factory=dict)
+    # C3-d: harmonic_centrality (Boldi-Vigna) — well-defined on disconnected
+    # graphs the strong-edge filter creates; replaces closeness in default path.
+    harmonic: dict[str, float] = field(default_factory=dict)
     num_communities: int = 0
     num_components: int = 0
     computed_at: str = ""
@@ -120,6 +139,13 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
     here (D-KG-5 perf budget — both are O(V·E) and break the 5k <3s budget).
     The fields are populated with zeros for backward compatibility; use
     :func:`compute_expensive_metrics` if you need real values.
+
+    C3-d: ``harmonic`` (Boldi-Vigna harmonic centrality) IS computed in the
+    default path. It replaces closeness on the wire because (a) it stays
+    well-defined on disconnected components, (b) matches Neo4j's primary
+    distance metric, (c) PKM peers don't render closeness anyway. Cost:
+    O(V·(V+E)) like closeness, but igraph's C core keeps it inside the
+    5k <3s budget for our sparse PKM graphs.
     """
     now = datetime.now(timezone.utc).isoformat()
 
@@ -135,6 +161,7 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
             communities={sole: 0},
             betweenness={sole: 0.0},
             closeness={sole: 0.0},
+            harmonic={sole: 0.0},
             num_communities=1,
             num_components=1,
             computed_at=now,
@@ -173,6 +200,39 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         1,
     )
 
+    # ── Harmonic centrality (C3-d.1) ─────────────────────────────────
+    # cutoff=3: PKM graph diameter is typically 4-6, so cutoff=2 truncates
+    # too aggressively while cutoff=3 captures most of the distance mass
+    # (1/1 + 1/2 + 1/3 ≈ 1.83 of the unbounded ≤2.0 ceiling for typical
+    # neighbourhoods) and keeps the C-core BFS bounded for the 5k <3s budget.
+    def _harmonic() -> dict[str, float]:
+        if hasattr(g, "harmonic_centrality"):
+            hc = g.harmonic_centrality(mode="all", cutoff=3, normalized=True)
+            return {nid: float(hc[i]) for i, nid in enumerate(node_ids)}
+        # Fallback: sum(1/d for d in [1..3]) / (n-1) — matches cutoff=3.
+        n = g.vcount()
+        if n <= 1:
+            return {nid: 0.0 for nid in node_ids}
+        sp = g.shortest_paths()
+        denom = float(n - 1)
+        out: dict[str, float] = {}
+        for i, nid in enumerate(node_ids):
+            row = sp[i]
+            s = 0.0
+            for j, d in enumerate(row):
+                if i == j:
+                    continue
+                if d == float("inf") or d == 0 or d > 3:
+                    continue
+                s += 1.0 / d
+            out[nid] = s / denom
+        return out
+
+    harmonic = _safe(
+        "Harmonic centrality", _harmonic,
+        lambda: {nid: 0.0 for nid in node_ids},
+    )
+
     return GraphMetrics(
         pagerank=pagerank,
         communities=communities,
@@ -180,6 +240,7 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         # See compute_expensive_metrics() for real betweenness + closeness.
         betweenness={nid: 0.0 for nid in node_ids},
         closeness={nid: 0.0 for nid in node_ids},
+        harmonic=harmonic,
         num_communities=num_communities,
         num_components=num_components,
         computed_at=now,

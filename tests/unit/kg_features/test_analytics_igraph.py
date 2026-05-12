@@ -61,6 +61,23 @@ def _erdos_renyi_kggraph(n: int, p: float = 0.01, seed: int = 42) -> KGGraph:
     return KGGraph(nodes=nodes, links=links)
 
 
+def _filtered_subgraph(g: KGGraph, fraction: float, seed: int = 42) -> KGGraph:
+    """Deterministically retain ``fraction`` of links to model the strong-edge
+    subgraph produced by C3-d.4 ``min_strength`` filter at runtime.
+
+    KGGraphLink does not carry ``connection_strength`` on the dataclass surface
+    (that field is added downstream in the dict payload), so we model the
+    post-filter graph by sampling the link list directly. fraction=0.3 mirrors
+    a typical ≥0.7 threshold yield on a real PKM graph.
+    """
+    import random
+
+    rng = random.Random(seed)
+    keep = max(1, int(len(g.links) * fraction))
+    chosen = rng.sample(g.links, keep) if g.links else []
+    return KGGraph(nodes=g.nodes, links=chosen)
+
+
 # ── Public surface invariants ──────────────────────────────────────────
 
 
@@ -79,12 +96,36 @@ def test_compute_graph_metrics_signature_unchanged() -> None:
 def test_compute_graph_metrics_default_drops_betweenness_and_closeness() -> None:
     """Default ``compute_graph_metrics`` MUST NOT compute betweenness OR
     closeness — both are O(V·E) and the production droplet (2GB / 1vCPU)
-    cannot afford them on every /api/graph call."""
+    cannot afford them on every /api/graph call.
+
+    C3-d: closeness replaced by harmonic_centrality on the default path
+    (Boldi-Vigna; well-defined on disconnected graphs the strong-edge
+    filter creates). Closeness still populated with zeros for back-compat.
+    """
     g = _erdos_renyi_kggraph(n=100, p=0.05)
     m = compute_graph_metrics(g)
     # All-zero sentinels = "not computed".
     assert all(v == 0.0 for v in m.betweenness.values())
     assert all(v == 0.0 for v in m.closeness.values())
+    # Harmonic centrality IS computed on the default path now.
+    assert m.harmonic, "harmonic_centrality must be populated by default"
+    assert len(m.harmonic) == 100
+    # All values in [0, 1] (igraph normalised harmonic).
+    assert all(0.0 <= v <= 1.0 for v in m.harmonic.values())
+
+
+def test_harmonic_centrality_in_default_path() -> None:
+    """C3-d: harmonic centrality replaces closeness on default path.
+
+    On a 1k-node ER graph: every node has a harmonic value in [0, 1] and
+    at least one node is nonzero (graph is sparsely connected, not empty)."""
+    g = _erdos_renyi_kggraph(n=1000, p=0.005)
+    m = compute_graph_metrics(g)
+    assert len(m.harmonic) == 1000
+    assert all(0.0 <= v <= 1.0 for v in m.harmonic.values())
+    assert any(v > 0.0 for v in m.harmonic.values()), (
+        "expected at least one nonzero harmonic value on a connected ER(1k, 0.005)"
+    )
 
 
 def test_compute_expensive_metrics_returns_betweenness() -> None:
