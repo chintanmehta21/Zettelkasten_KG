@@ -82,12 +82,12 @@ def _wait_for_retry_after(attempt: int, exc: BaseException) -> float | None:
     return None
 
 
-# stamina.retry signature varies by version; we wrap a plain coroutine with
-# the decorator so the call site stays clean. Retry on RateLimited (429) and
-# transient httpx errors (timeout, connection-reset). 5xx is raised as
-# httpx.HTTPStatusError via r.raise_for_status() inside _post_once.
+# stamina handles transient httpx errors (timeouts, conn-reset, 5xx) with
+# exp+jitter backoff. 429 / RateLimited is INTENTIONALLY excluded so the
+# outer ``_post_with_explicit_retry_after`` loop can honor the precise
+# Retry-After value Slack returns rather than stamina's static schedule.
 @stamina.retry(
-    on=(RateLimited, httpx.HTTPError),
+    on=httpx.HTTPError,
     attempts=_MAX_ATTEMPTS,
     wait_initial=1.0,
     wait_jitter=2.0,

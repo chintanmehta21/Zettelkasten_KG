@@ -35,7 +35,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from website.features.web_monitor._slack_client import post_with_retry
 
@@ -171,7 +171,13 @@ async def digitalocean_alert(request: Request) -> dict[str, str]:
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail=f"invalid json: {exc}") from exc
 
-    payload = DOAlertPayload.model_validate(data)
+    # WM-08: cap validation failures at 400 so fuzz / malformed JSON never
+    # escalates into a 5xx (non-object roots like list/string/number arrive
+    # as dicts after json.loads but fail model validation).
+    try:
+        payload = DOAlertPayload.model_validate(data)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid payload: {exc.errors()[:3]}") from exc
 
     expected = os.getenv("DO_ALERT_WEBHOOK_SECRET")
     # WM-03 surgical: constant-time compare blocks timing side-channels that
