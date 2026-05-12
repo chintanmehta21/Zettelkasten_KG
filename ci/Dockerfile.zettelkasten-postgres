@@ -24,27 +24,26 @@ FROM supabase/postgres:${SUPABASE_POSTGRES_TAG}
 
 USER root
 
+# supabase/postgres:17.x is Debian/Ubuntu (noble) — confirmed via CI run
+# 25726242621 (2026-05-12): apt-get is present, apk is not. The stock Ubuntu
+# repos do NOT carry pg_partman; it lives in PGDG (apt.postgresql.org).
+# Add PGDG, then install the prebuilt `postgresql-${PG_MAJOR}-partman` deb.
+# This matches the canonical Atlas/Flyway pattern of using the upstream
+# extension repo rather than source-building per image.
 RUN set -eux; \
-    if command -v apt-get >/dev/null 2>&1; then \
-      PG_MAJOR="$(pg_config --version | awk '{print $2}' | cut -d. -f1)"; \
-      apt-get update; \
-      apt-get install -y --no-install-recommends "postgresql-${PG_MAJOR}-partman"; \
-      rm -rf /var/lib/apt/lists/*; \
-    elif command -v apk >/dev/null 2>&1; then \
-      PG_MAJOR="$(pg_config --version | awk '{print $2}' | cut -d. -f1)"; \
-      # Try alpine packaged pg_partman first (rare); fall back to source build.
-      apk add --no-cache --virtual .build-deps \
-          git make gcc musl-dev "postgresql${PG_MAJOR}-dev" clang llvm; \
-      git clone --depth 1 --branch v5.3.1 \
-          https://github.com/pgpartman/pg_partman /tmp/pg_partman; \
-      cd /tmp/pg_partman; \
-      make NO_BGW=1 install; \
-      cd /; \
-      rm -rf /tmp/pg_partman; \
-      apk del .build-deps; \
-    else \
-      echo "ERROR: no apt-get or apk in base image — cannot install pg_partman" >&2; \
-      exit 1; \
-    fi
+    PG_MAJOR="$(pg_config --version | awk '{print $2}' | cut -d. -f1)"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg lsb-release; \
+    install -d /usr/share/keyrings; \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /usr/share/keyrings/pgdg-archive-keyring.gpg; \
+    CODENAME="$(lsb_release -cs)"; \
+    echo "deb [signed-by=/usr/share/keyrings/pgdg-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends "postgresql-${PG_MAJOR}-partman"; \
+    apt-get purge -y --auto-remove curl gnupg lsb-release; \
+    rm -rf /var/lib/apt/lists/*
 
 USER postgres
