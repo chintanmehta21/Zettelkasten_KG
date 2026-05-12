@@ -120,7 +120,10 @@ def create_app(lifespan=None) -> FastAPI:
     # WAVE-D WM-14: log a warning at boot for each unset SLACK_WEBHOOK_* env
     # var so missing webhook config is visible BEFORE the first event would
     # have fired. Non-fatal — channels degrade to log-only on missing vars.
-    log_web_monitor_env_warnings()
+    # m-3: suppress under pytest so the per-test ``create_app`` calls in the
+    # mocked CI lane don't drown the log stream with stub-env warnings.
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        log_web_monitor_env_warnings()
 
     # WAVE-C 1c-A.4 (D-KG-8): payload compression with Accept-Encoding
     # negotiation. brotli-asgi serves br when supported, falls back to gzip,
