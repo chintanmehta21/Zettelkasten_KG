@@ -598,6 +598,17 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "any migrations. Used by the CI freshness gate."
         ),
     )
+    p.add_argument(
+        "--skip-files",
+        default="",
+        help=(
+            "Comma-separated migration filenames to skip entirely (treated "
+            "as if not present in the directory). CI-only escape hatch for "
+            "migrations that are by-design incompatible with fresh-stack "
+            "apply (e.g. destructive drops behind a soak guard). Production "
+            "deploys never set this — operator-approved per occurrence."
+        ),
+    )
     return p.parse_args(list(argv) if argv is not None else None)
 
 
@@ -696,6 +707,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         applied = _applied_index(conn, v2=args.v2)
         migrations = _list_migrations(directory, v2=args.v2)
+        # --skip-files: drop named migrations from the plan. Used by CI's
+        # fresh-stack job to omit destructive drops whose soak guard fires
+        # on day-0 by design. Each skip is operator-approved per occurrence
+        # — production deploys MUST NOT pass --skip-files.
+        skip_files = {
+            name.strip() for name in args.skip_files.split(",") if name.strip()
+        }
+        if skip_files:
+            before = len(migrations)
+            migrations = [p for p in migrations if p.name not in skip_files]
+            logger.warning(
+                "[migration] --skip-files dropped %d migration(s): %s",
+                before - len(migrations),
+                ", ".join(sorted(skip_files)),
+            )
         total_count = len(migrations)
 
         for path in migrations:

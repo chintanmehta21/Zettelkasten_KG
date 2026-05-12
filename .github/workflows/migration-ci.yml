@@ -66,8 +66,15 @@ jobs:
           # apply_migrations.py::_build_dsn(v2=True) reads only this name.
           SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
           MIGRATION_MANIFEST_AUTOBOOTSTRAP: "1"
+        # --skip-files=15_drop_legacy_tables.sql — operator-approved hardening
+        # sprint H-1 (2026-05-12). Migration 15 has a 14-day soak guard (file
+        # header lines 12-18) that fires by design on fresh stack since
+        # 11_post_install.sql was just applied seconds ago. The legacy public.*
+        # tables don't exist on fresh DB anyway, so dropping them is a no-op
+        # here. Production deploys MUST NOT pass --skip-files.
         run: |
-          python ops/scripts/apply_migrations.py --v2
+          python ops/scripts/apply_migrations.py --v2 \
+            --skip-files=15_drop_legacy_tables.sql
       - name: Verify manifest matches freshly-applied DB
         env:
           SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
