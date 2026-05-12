@@ -30,6 +30,11 @@ jobs:
     # WAVE-D hardening (H-1): authoritative gate. CI image is pre-built with
     # pg_partman so `supabase start` boots clean. Rationale + citations in
     # docs/research/2026-05-12-pg-partman-ci.md.
+    # Hardening A2 (2026-05-12): contents:write so the regen step below can
+    # auto-commit manifest drift back to the PR branch.
+    permissions:
+      contents: write
+      pull-requests: read
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v5
@@ -75,6 +80,29 @@ jobs:
         run: |
           python ops/scripts/apply_migrations.py --v2 \
             --skip-files=15_drop_legacy_tables.sql
+      - name: Regenerate manifest + auto-commit on drift (PR-only)
+        # Hardening A2 (operator-approved 2026-05-12). expected_schema.json
+        # holds residual v1 public.* refs from pre-Phase-8 snapshot — on a
+        # fresh CI DB those objects don't exist, so --check-manifest-fresh
+        # reports drift. Regenerate against fresh DB; if file changed, commit
+        # back to the PR branch so the next run sees a matching manifest.
+        # Skipped on master pushes (master never auto-commits to itself).
+        if: github.event_name == 'pull_request'
+        env:
+          SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+        run: |
+          set -euo pipefail
+          python ops/scripts/apply_migrations.py --v2 --update-manifest
+          if git diff --quiet supabase/website/_v2/expected_schema.json; then
+            echo "Manifest already matches fresh DB — no commit needed."
+          else
+            echo "Manifest drift detected — committing regenerated file."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add supabase/website/_v2/expected_schema.json
+            git commit -m "ci(manifest): auto-regenerate expected_schema.json"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
       - name: Verify manifest matches freshly-applied DB
         env:
           SUPABASE_V2_DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
