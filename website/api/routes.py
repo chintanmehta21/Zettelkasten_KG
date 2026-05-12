@@ -133,17 +133,44 @@ def _trim_graph_response(payload: dict) -> dict:
     return out
 
 
-def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
+def _enrich_graph_with_analytics(
+    graph_dict: dict,
+    min_strength: float | None = None,
+) -> dict:
     """Add PageRank, community, and centrality metrics to graph nodes.
 
     Also normalizes every node's ``summary`` into the canonical JSON envelope
     so the frontend never has to defend against mixed historical shapes.
+
+    C3-d.4: ``min_strength`` is the SUBGRAPH filter for metric computation.
+    When set, links below the threshold are dropped BEFORE building the
+    KGGraph used for metrics, so PageRank / Louvain / harmonic ranks reflect
+    the strong-edge structure the user actually sees — not raw graph spam.
+    Per-bucket caching (D-KG-6) ensures each (user, bucket) pays compute once.
+    Node fields are still written on every node in the original ``graph_dict``;
+    nodes that have no surviving strong edges receive 0 metric values.
     """
     from website.core.summary_normalizer import normalize_graph_nodes
     normalize_graph_nodes(graph_dict)
     try:
         from website.features.kg_features.analytics import compute_graph_metrics
-        kg_graph = KGGraph(**graph_dict)
+        # Build the metric-input graph from the SUBGRAPH the user will see.
+        metrics_input = graph_dict
+        if min_strength is not None:
+            try:
+                threshold = float(min_strength)
+            except (TypeError, ValueError):
+                threshold = 0.0
+            if threshold > 0.0:
+                metrics_input = {
+                    **graph_dict,
+                    "links": [
+                        link for link in graph_dict.get("links", [])
+                        if link.get("connection_strength") is not None
+                        and float(link["connection_strength"]) >= threshold
+                    ],
+                }
+        kg_graph = KGGraph(**metrics_input)
         metrics = compute_graph_metrics(kg_graph)
 
         for node in graph_dict.get("nodes", []):
@@ -151,7 +178,10 @@ def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
             node["pagerank"] = metrics.pagerank.get(nid, 0)
             node["community"] = metrics.communities.get(nid, 0)
             node["betweenness"] = metrics.betweenness.get(nid, 0)
+            # C3-d: harmonic_centrality replaces closeness on the wire.
+            # Closeness still emitted as 0 for back-compat (also trimmed).
             node["closeness"] = metrics.closeness.get(nid, 0)
+            node["harmonic_centrality"] = metrics.harmonic.get(nid, 0)
 
         graph_dict["meta"] = {
             "communities": metrics.num_communities,
@@ -547,7 +577,13 @@ async def graph_data(
             if v2_graph is None:
                 # Sentinel: signal fallthrough by returning empty wrapper.
                 return {"__fallthrough__": True}
-            payload = _enrich_graph_with_analytics(v2_graph.model_dump())
+            # C3-d.4: enrichment computes metrics on the SUBGRAPH the user
+            # will see (links ≥ min_strength), not the raw graph. The post-
+            # enrichment _apply_min_strength_filter still trims the response
+            # links list for the wire payload.
+            payload = _enrich_graph_with_analytics(
+                v2_graph.model_dump(), min_strength=min_strength,
+            )
             payload = _apply_min_strength_filter(payload, min_strength)
             return _trim_graph_response(payload)
 
@@ -569,7 +605,7 @@ async def graph_data(
     if use_cache and _graph_cache_global is not None and (now - _graph_cache_global_ts) < _GRAPH_CACHE_TTL:
         return _graph_cache_global
 
-    result = _enrich_graph_with_analytics(get_graph())
+    result = _enrich_graph_with_analytics(get_graph(), min_strength=min_strength)
     result = _apply_min_strength_filter(result, min_strength)
     result = _trim_graph_response(result)
     if use_cache:
