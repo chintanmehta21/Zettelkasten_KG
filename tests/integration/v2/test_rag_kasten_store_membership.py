@@ -205,24 +205,6 @@ def test_b_bulk_add_to_as_kasten_does_not_persist(
             )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "RP-03 BOLA finding: DELETE /api/rag/sandboxes/{id}/members/{node_id} "
-        "does NOT verify caller owns the Kasten. Route at "
-        "website/api/sandbox_routes.py:637-647 calls "
-        "SandboxStore.remove_member which (memory/sandbox_store.py:138-148) "
-        "discards the workspace_id arg and issues a raw service-role DELETE "
-        "keyed only on (kasten_id, workspace_zettel_id) in "
-        "rag_repository.py:153-166. Any authenticated user can remove "
-        "members from any Kasten. Fix requires JWT-scoped ownership check "
-        "in the route (analogous to bulk_remove_members at "
-        "sandbox_routes.py:650-679) AND a real workspace_id resolution "
-        "step — runtime.kg_user_id is the auth/profile UUID, NOT the "
-        "workspace_id the store API expects. Out of scope for test-only "
-        "subagent; operator approval required."
-    ),
-    strict=True,
-)
 def test_b_cannot_remove_member_of_as_kasten(
     v2_app, mint_user, asyncpg_pool
 ):
