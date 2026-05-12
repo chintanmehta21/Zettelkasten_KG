@@ -41,9 +41,11 @@ Env vars:
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any
 
@@ -59,12 +61,13 @@ router = APIRouter(prefix="/webhooks/monitor", tags=["web_monitor.user_activity"
 
 SLACK_ENV_VAR = "SLACK_WEBHOOK_USER_ACTIVITY"
 
-# Per-IP throttle for pricing-visit alerts. Dict[ip, last_alert_epoch].
-# Bounded by _PRICING_THROTTLE_MAX to cap memory under scan/DoS traffic;
-# when full we evict the oldest entry (O(n) scan is fine at n ≤ 2000).
+# Per-IP throttle for pricing-visit alerts. OrderedDict[ip, last_alert_epoch].
+# Bounded by _PRICING_THROTTLE_MAX (FIFO eviction via popitem(last=False)).
+# M-4: prior dict + min() picked the smallest *value* (oldest timestamp), not
+# the LRU insertion key — switch to OrderedDict + move_to_end for O(1) LRU.
 _PRICING_THROTTLE_SECONDS = 60 * 60       # 1 alert / IP / hour
 _PRICING_THROTTLE_MAX = 2000
-_pricing_seen_at: dict[str, float] = {}
+_pricing_seen_at: "OrderedDict[str, float]" = OrderedDict()
 
 
 # ---------------------------------------------------------------------------
@@ -144,18 +147,30 @@ async def post_to_user_activity(msg: SlackMessage) -> bool:
 
 
 def _client_ip(request: Request) -> str:
-    """Return the real client IP.
+    """Return the real client IP, validated.
 
-    Cloudflare → Caddy → uvicorn. Caddy sets ``X-Forwarded-For`` preserving
-    CF's first-hop IP; fall back to request.client.host if missing (which
-    means we're behind an unexpected proxy chain or called directly).
+    M-3: prefer ``cf-connecting-ip`` (single trusted value Cloudflare sets)
+    over ``X-Forwarded-For`` (attacker-controllable comma-list — a crafted
+    header could grow ``_pricing_seen_at`` toward _PRICING_THROTTLE_MAX in
+    a single burst). Anything that doesn't parse as a real IP collapses to
+    the ``"unknown"`` single-bucket — DoS-safe.
     """
-    fwd = request.headers.get("x-forwarded-for") or request.headers.get(
-        "cf-connecting-ip"
+    raw = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for")
+        or (request.client.host if request.client else None)
     )
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    if not raw:
+        return "unknown"
+    # XFF may be a comma-list; take the first hop.
+    candidate = raw.split(",")[0].strip()
+    if not candidate:
+        return "unknown"
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return "unknown"
+    return candidate
 
 
 def _mask_email(email: str | None) -> str:
@@ -272,13 +287,15 @@ async def notify_pricing_visit(request: Request) -> None:
 
     last = _pricing_seen_at.get(ip)
     if last is not None and (now - last) < _PRICING_THROTTLE_SECONDS:
+        # Touch on access so this IP stays at the LRU tail.
+        _pricing_seen_at.move_to_end(ip)
         return  # throttled
 
-    # Bound the map before insert.
+    # M-4: O(1) FIFO eviction via OrderedDict.popitem(last=False).
     if len(_pricing_seen_at) >= _PRICING_THROTTLE_MAX:
-        oldest_ip = min(_pricing_seen_at, key=_pricing_seen_at.get)  # type: ignore[arg-type]
-        _pricing_seen_at.pop(oldest_ip, None)
+        _pricing_seen_at.popitem(last=False)
     _pricing_seen_at[ip] = now
+    _pricing_seen_at.move_to_end(ip)
 
     ua = (request.headers.get("user-agent") or "—")[:120]
     referer = request.headers.get("referer") or "—"
