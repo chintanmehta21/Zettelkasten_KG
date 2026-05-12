@@ -125,6 +125,16 @@ def _safe(label: str, fn, fallback):
         return fallback() if callable(fallback) else fallback
 
 
+def _compute_with_fallback(compute_fn, fallback_fn, *, label: str):
+    """Back-compat shim for the pre-igraph public API (tests/kg_intelligence/).
+
+    Wraps :func:`_safe` so the legacy call-shape
+    ``_compute_with_fallback(compute, fallback, label=...)`` keeps working
+    after the igraph migration. New callers should use ``_safe`` directly.
+    """
+    return _safe(label, compute_fn, fallback_fn)
+
+
 # ── Metric computation ──────────────────────────────────────────────────────
 
 def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
