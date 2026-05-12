@@ -65,6 +65,34 @@ def _v2_scope_for(user: dict) -> tuple[V2RAGRepository, UUID, UUID] | None:
     return V2RAGRepository(), profile_id, workspace_id
 
 
+def _resolve_caller_workspace_for_kasten(
+    user: dict, kasten_id: UUID
+) -> tuple[V2RAGRepository, UUID]:
+    """Resolve caller's workspace_id and assert kasten ownership.
+
+    BOLA-mitigation helper used by the kasten member-mutation endpoints
+    (remove_member, bulk_remove_members). The auth subject's default
+    workspace is treated as the caller's acting workspace; ownership is
+    proven by ``rag_repo.get_kasten`` (workspace_id-keyed read returns None
+    when the workspace does not own the kasten — equivalent to the share
+    handler's ownership check). Raises 403 in any failure mode so the
+    response cannot reveal whether the kasten exists in another tenant.
+
+    Returns ``(rag_repo, workspace_id)`` on success.
+    """
+    scope = _v2_scope_for(user)
+    if scope is None:
+        # Caller has no v2 workspace; the v2-only delete paths cannot proceed
+        # safely. 403 (vs. 404) keeps the response identical for "kasten does
+        # not exist" and "caller is not the owner" — the share handler uses
+        # the same conservative pattern.
+        raise HTTPException(status_code=403, detail="Forbidden")
+    rag_repo, _profile_id, workspace_id = scope
+    if rag_repo.get_kasten(kasten_id, workspace_id) is None:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return rag_repo, workspace_id
+
+
 def _serialize_kasten_zettel_v2(row: dict) -> dict:
     """Map a row from ``rag.list_kasten_zettels`` RPC into the legacy member shape.
 
