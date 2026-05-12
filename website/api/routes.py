@@ -298,7 +298,6 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
     if use_supabase_v2():
         scope = get_supabase_v2_scope_for_read(user["sub"])
         if scope is not None:
-            from uuid import UUID
             from website.core.supabase_v2.client import get_v2_client
             from website.core.supabase_v2.repositories.core_repository import CoreRepository
 
@@ -345,7 +344,6 @@ async def update_avatar(
     v1 fallback retired: pre-v2, this called ``KGRepository.update_user_avatar``
     against ``public.kg_users``. That table was dropped in Phase 6.
     """
-    from uuid import UUID
     avatar_url = f"/artifacts/avatars/avatar_{body.avatar_id:02d}.svg"
 
     if not _is_supabase_uuid(user.get("sub")):
@@ -390,7 +388,6 @@ def _v2_assemble_graph(
     kg_repo = V2KGRepository()
 
     nodes: list[dict] = []
-    overlay_index: dict[int, dict] = {}  # placeholder; v2 KG tables key by bigint
     canonical_to_overlay: dict[str, str] = {}  # canonical_zettel_id -> frontend node id
 
     for ws_id in workspace_ids:
@@ -513,7 +510,7 @@ async def graph_data(
 
         try:
             cached = await cache.get_or_load(
-                user_sub_or_id := user["sub"], bucket, _load_v2_payload,
+                user["sub"], bucket, _load_v2_payload,
             )
             if not cached.get("__fallthrough__"):
                 return cached
