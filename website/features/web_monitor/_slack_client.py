@@ -177,8 +177,27 @@ def fire_and_forget(coro_fn) -> asyncio.Task | None:
 
 
 def inflight_count() -> int:
-    """Diagnostic accessor for test assertions + healthz."""
+    """Diagnostic accessor for test assertions + healthz.
+
+    Counts tasks scheduled by ``fire_and_forget``, including any still
+    waiting on the semaphore. For "active inside the semaphore" use
+    ``semaphore_inflight_count``.
+    """
     return len(_inflight)
+
+
+def semaphore_inflight_count() -> int:
+    """Count of coroutines currently past ``async with _sem`` (cap = _MAX_INFLIGHT).
+
+    Computed from the semaphore's remaining capacity. Used by burst-stress
+    tests to verify the semaphore actually caps concurrent Slack work — the
+    raw ``inflight_count`` only tells you how many tasks exist, not how many
+    have entered the critical section.
+    """
+    # ``_value`` is asyncio.Semaphore's internal remaining-permit counter; it
+    # is a documented attribute on CPython and is the only zero-cost way to
+    # read current acquisition without instrumenting the call sites.
+    return _MAX_INFLIGHT - _sem._value
 
 
 __all__ = [
@@ -186,4 +205,5 @@ __all__ = [
     "fire_and_forget",
     "RateLimited",
     "inflight_count",
+    "semaphore_inflight_count",
 ]
