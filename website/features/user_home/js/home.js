@@ -24,10 +24,13 @@
   var menuProfile, menuNexus, menuSignout;
 
   function resolveDOM() {
-    avatarBtn = document.getElementById('avatar-btn');
+    // D-2 namespace: home owns its own duplicate avatar markup; header.html
+    // ships #avatar-btn/#avatar-dropdown/#menu-signout — renamed here so a
+    // future shell-injection of header on /home cannot silent-collide.
+    avatarBtn = document.getElementById('home-avatar-btn');
     avatarImg = document.getElementById('avatar-img');
     avatarFallback = document.getElementById('avatar-fallback');
-    avatarDropdown = document.getElementById('avatar-dropdown');
+    avatarDropdown = document.getElementById('home-avatar-dropdown');
     avatarWrap = document.getElementById('avatar-wrap');
     cardGrid = document.getElementById('card-grid');
     emptyState = document.getElementById('empty-state');
@@ -45,7 +48,7 @@
     avatarGrid = document.getElementById('avatar-grid');
     menuProfile = document.getElementById('menu-profile');
     menuNexus = document.getElementById('menu-nexus');
-    menuSignout = document.getElementById('menu-signout');
+    menuSignout = document.getElementById('home-menu-signout');
   }
 
   function setBodyScrollLocked(locked) {
@@ -1013,7 +1016,8 @@
     window.__homeBindEventsCount = (window.__homeBindEventsCount || 0) + 1;
     console.log('[home] bindEvents start, count=' + window.__homeBindEventsCount, { hasBtn: !!avatarBtn, hasDrop: !!avatarDropdown, hasWrap: !!avatarWrap });
     window.__homeBindEventsRan = true;
-    // Avatar dropdown toggle — guard against double-binding with shared header.js (header.js also binds #avatar-btn)
+    // Avatar dropdown toggle — IDs are home-namespaced (D-2) so header.js binds
+    // only header's #avatar-btn; the dataset.zkBound guard remains for re-init safety.
     if (avatarBtn && !avatarBtn.dataset.zkBound) {
       avatarBtn.dataset.zkBound = '1';
       avatarBtn.addEventListener('click', function (e) {
