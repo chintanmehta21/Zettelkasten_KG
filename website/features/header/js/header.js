@@ -203,13 +203,18 @@
   function bindAvatarDropdown() {
     if (!refs.avatarBtn || !refs.avatarDrop || refs.avatarBtn.dataset.zkBound) return;
     refs.avatarBtn.dataset.zkBound = '1';
+    // WCAG 2.2 4.1.2 / WAI-ARIA 1.2 menubutton: aria-expanded mirrors .open state.
     refs.avatarBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      refs.avatarDrop.classList.toggle('open');
+      var nowOpen = refs.avatarDrop.classList.toggle('open');
+      refs.avatarBtn.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
     });
     document.addEventListener('click', function (e) {
       if (refs.avatarWrap && !refs.avatarWrap.contains(e.target)) {
-        refs.avatarDrop.classList.remove('open');
+        if (refs.avatarDrop.classList.contains('open')) {
+          refs.avatarDrop.classList.remove('open');
+          refs.avatarBtn.setAttribute('aria-expanded', 'false');
+        }
       }
     });
   }
