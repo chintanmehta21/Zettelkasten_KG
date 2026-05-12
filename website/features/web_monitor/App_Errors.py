@@ -108,10 +108,15 @@ async def post_to_app_errors(msg: SlackMessage) -> bool:
         logger.error("app_errors: Slack post gave up after retries: %s", msg.title)
         return False
     if not (200 <= response.status_code < 300):
+        # B-4: never log response.text — Slack echoes payload fragments that
+        # may include PII / log-injection content. Status + reason + length
+        # are sufficient for triage; body is fetched only at WARN level in
+        # exceptional debug sessions, never in standard error logging.
         logger.error(
-            "app_errors: Slack post failed (%s): %s",
+            "app_errors: Slack post failed status=%s reason=%s body_len=%s",
             response.status_code,
-            response.text[:200],
+            response.reason_phrase,
+            len(response.text),
         )
         return False
     return True

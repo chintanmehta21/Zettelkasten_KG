@@ -106,10 +106,12 @@ async def post_to_do_alerts(msg: SlackMessage) -> bool:
         logger.error("do_alerts: Slack post gave up after retries: %s", msg.title)
         return False
     if not (200 <= response.status_code < 300):
+        # B-4: drop response.text — Slack body may echo PII / log-injection.
         logger.error(
-            "do_alerts: Slack post failed (%s): %s",
+            "do_alerts: Slack post failed status=%s reason=%s body_len=%s",
             response.status_code,
-            response.text[:200],
+            response.reason_phrase,
+            len(response.text),
         )
         return False
     return True
