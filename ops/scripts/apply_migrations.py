@@ -215,13 +215,22 @@ def _ensure_table(conn, *, v2: bool = False) -> None:
     with conn.cursor() as cur:
         if v2:
             cur.execute("CREATE SCHEMA IF NOT EXISTS core")
+        # Schema must match 00_extensions.sql:14-23 — the INSERT at _apply_one
+        # writes 7 columns including deploy_git_sha/deploy_id/deploy_actor/
+        # runner_hostname. Without these columns the fresh-DB apply trips
+        # `column "deploy_git_sha" of relation "_migrations_applied" does not
+        # exist` on the very first migration insert.
         cur.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {_migration_table(v2)} (
-                name TEXT PRIMARY KEY,
-                applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                checksum TEXT NOT NULL,
-                applied_by TEXT
+                name             TEXT PRIMARY KEY,
+                applied_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+                checksum         TEXT NOT NULL,
+                applied_by       TEXT,
+                deploy_git_sha   TEXT,
+                deploy_id        TEXT,
+                deploy_actor     TEXT,
+                runner_hostname  TEXT
             )
             """
         )
