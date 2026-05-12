@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
+from website.api.graph_cache import bucket_for_strength, get_default_cache
 from website.core.db_version import get_db_schema_version, use_supabase_v2
 from website.core.pipeline import summarize_url
 from website.features.summarization_engine.core.errors import ExtractionConfidenceError
@@ -38,10 +39,99 @@ _rate_store: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10  # requests per minute
 _RATE_WINDOW = 60  # seconds
 
-# In-memory graph cache (30-second TTL)
-_graph_cache: dict | None = None
-_graph_cache_ts: float = 0
-_GRAPH_CACHE_TTL = 30  # seconds
+# In-memory graph cache (30-second TTL).
+# WAVE-C 1c-A.3: the legacy ``_graph_cache`` global was dead code (never
+# populated by the read path; only nulled in mutation handlers). Replaced
+# by a per-user LRU + single-flight wrapper in ``website.api.graph_cache``.
+# ``_graph_cache_global``/``_graph_cache_global_ts`` below remain for the
+# anonymous file-store branch (no per-user keying possible there).
+_GRAPH_CACHE_TTL = 30  # seconds — anonymous file-store branch only
+
+# WAVE-C 1c-A.4 — fields dropped from the wire payload (D-KG-9).
+# Keep node ids, names, summaries, urls, tags, and the trimmed analytics
+# (community, pagerank rounded). Drop verbose/internal fields the frontend
+# does not render, plus everything that could leak embeddings / model info.
+_TRIMMED_NODE_FIELDS: frozenset[str] = frozenset({
+    "embedding",
+    "embedding_model_version",
+    "embedding_dim",
+    "model_version",
+    "score_breakdown",
+    "betweenness",        # raw; expose via /api/graph/expensive only
+    "closeness",          # raw; expose via /api/graph/expensive only
+    "created_at_microseconds",
+})
+_TRIMMED_EDGE_FIELDS: frozenset[str] = frozenset({
+    "embedding_distance",
+    "raw_score",
+    "score_breakdown",
+})
+
+
+def _apply_min_strength_filter(payload: dict, min_strength: float | None) -> dict:
+    """Filter graph links by edge ``connection_strength`` (D-KG-1).
+
+    No-op when ``min_strength`` is None or 0.0 (return all edges). When set,
+    drops links whose connection_strength is missing OR below threshold.
+    Pure: returns a new dict; does not mutate inputs.
+    """
+    if min_strength is None:
+        return payload
+    try:
+        threshold = float(min_strength)
+    except (TypeError, ValueError):
+        return payload
+    if threshold <= 0.0:
+        return payload
+    out = dict(payload)
+    out["links"] = [
+        link for link in payload.get("links", [])
+        if link.get("connection_strength") is not None
+        and float(link["connection_strength"]) >= threshold
+    ]
+    return out
+
+
+def _trim_graph_response(payload: dict) -> dict:
+    """Strip internal/verbose fields from /api/graph payload (D-KG-9).
+
+    KEEP on nodes: id, name, group, summary, tags, url, date, node_date,
+                   pagerank (rounded), community, owner, contributors.
+    KEEP on links: source, target, relation, weight, link_type, description,
+                   connection_strength.
+
+    DROP everything else listed in ``_TRIMMED_*_FIELDS``.
+    """
+    out: dict = {}
+    for key, value in payload.items():
+        if key in ("nodes", "links"):
+            continue
+        out[key] = value
+
+    nodes_out = []
+    for node in payload.get("nodes", []) or []:
+        if not isinstance(node, dict):
+            nodes_out.append(node)
+            continue
+        nd = {k: v for k, v in node.items() if k not in _TRIMMED_NODE_FIELDS}
+        # Round pagerank to 6 sig figs to compress repr without losing rank.
+        if isinstance(nd.get("pagerank"), float):
+            nd["pagerank"] = round(nd["pagerank"], 6)
+        nodes_out.append(nd)
+    out["nodes"] = nodes_out
+
+    links_out = []
+    for link in payload.get("links", []) or []:
+        if not isinstance(link, dict):
+            links_out.append(link)
+            continue
+        ld = {k: v for k, v in link.items() if k not in _TRIMMED_EDGE_FIELDS}
+        if isinstance(ld.get("connection_strength"), float):
+            ld["connection_strength"] = round(ld["connection_strength"], 3)
+        links_out.append(ld)
+    out["links"] = links_out
+    return out
+
 
 def _enrich_graph_with_analytics(graph_dict: dict) -> dict:
     """Add PageRank, community, and centrality metrics to graph nodes.
@@ -367,12 +457,25 @@ def _v2_assemble_graph(
         return KGGraph(nodes=[], links=[], total_nodes=0)
 
 
+def invalidate_user_graph(user_sub: str | None) -> int:
+    """Drop all per-user /api/graph cache entries for ``user_sub``.
+
+    D-KG-7: full-invalidate on summarize / zettel mutation. Safe to call
+    with ``None`` (anonymous mutation; no-op). Returns the number of
+    entries removed.
+    """
+    if not user_sub:
+        return 0
+    return get_default_cache().invalidate(user_sub)
+
+
 @router.get("/graph")
 async def graph_data(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
     view: str | None = None,
     limit: int = 5000,
     offset: int = 0,
+    min_strength: float | None = None,
 ):
     """Return the knowledge graph.
 
@@ -380,8 +483,11 @@ async def graph_data(
     - ?view=my: authenticated user's personal graph
     - ?view=global: explicit global graph (all users combined)
     - ?limit=N&offset=M: pagination (default 5000 nodes, offset 0)
+    - ?min_strength=0.0..1.0: filter edges by D-KG-1 connection_strength.
+      Bucketed for cache efficiency (D-KG-3): strong ≥ 0.7, medium 0.4-0.7,
+      weak < 0.4. Server applies the exact threshold post-load.
     """
-    global _graph_cache, _graph_cache_ts, _graph_cache_global, _graph_cache_global_ts
+    global _graph_cache_global, _graph_cache_global_ts
 
     limit = max(1, min(limit, 10000))
     offset = max(0, offset)
@@ -389,15 +495,29 @@ async def graph_data(
 
     # v2 path: when DB v2 is live AND the caller is a UUID-subject user with
     # workspace memberships, assemble the graph from content/kg v2 tables.
-    # On any miss (not configured, no scope, assembly failure) we fall through
-    # to the file-store global graph (canonical public/anonymous surface).
+    # WAVE-C 1c-A.3: now wrapped in per-user single-flight cache (D-KG-6).
     if use_supabase_v2() and user is not None:
-        try:
+        cache = get_default_cache()
+        bucket = bucket_for_strength(min_strength)
+
+        async def _load_v2_payload() -> dict:
             v2_graph = _v2_assemble_graph(
                 user_sub=user["sub"], limit=limit, offset=offset,
             )
-            if v2_graph is not None:
-                return _enrich_graph_with_analytics(v2_graph.model_dump())
+            if v2_graph is None:
+                # Sentinel: signal fallthrough by returning empty wrapper.
+                return {"__fallthrough__": True}
+            payload = _enrich_graph_with_analytics(v2_graph.model_dump())
+            payload = _apply_min_strength_filter(payload, min_strength)
+            return _trim_graph_response(payload)
+
+        try:
+            cached = await cache.get_or_load(
+                user_sub_or_id := user["sub"], bucket, _load_v2_payload,
+            )
+            if not cached.get("__fallthrough__"):
+                return cached
+            # else fall through to anon file-store path below
         except Exception as exc:
             logger.warning("v2 /api/graph assembly failed, serving file-store: %s", exc)
 
@@ -410,6 +530,8 @@ async def graph_data(
         return _graph_cache_global
 
     result = _enrich_graph_with_analytics(get_graph())
+    result = _apply_min_strength_filter(result, min_strength)
+    result = _trim_graph_response(result)
     if use_cache:
         _graph_cache_global = result
         _graph_cache_global_ts = now
@@ -460,7 +582,7 @@ async def delete_zettel(
     dropped in Phase 6 and the file-store graph is the public/anonymous
     surface, not a user-owned write target. Non-UUID path params get 400.
     """
-    global _graph_cache, _graph_cache_ts, _graph_cache_global, _graph_cache_global_ts
+    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
@@ -483,8 +605,8 @@ async def delete_zettel(
     if not ok:
         raise HTTPException(status_code=404, detail="Zettel not found")
 
-    _graph_cache = None
-    _graph_cache_ts = 0
+    # D-KG-7: full-invalidate per-user cache + anon global cache.
+    invalidate_user_graph(user.get("sub"))
     _graph_cache_global = None
     _graph_cache_global_ts = 0
     return {"status": "ok", "workspace_zettel_id": node_id}
@@ -518,7 +640,7 @@ async def update_zettel(
     ``ai_summary`` in the payload is intentionally redirected into
     ``user_note`` (engine-owned vs user-owned separation).
     """
-    global _graph_cache, _graph_cache_ts, _graph_cache_global, _graph_cache_global_ts
+    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (
@@ -555,8 +677,8 @@ async def update_zettel(
     if not ok:
         raise HTTPException(status_code=404, detail="Zettel not found")
 
-    _graph_cache = None
-    _graph_cache_ts = 0
+    # D-KG-7: full-invalidate per-user cache + anon global cache.
+    invalidate_user_graph(user.get("sub"))
     _graph_cache_global = None
     _graph_cache_global_ts = 0
     return {"status": "ok", "workspace_zettel_id": node_id}
@@ -704,6 +826,8 @@ async def summarize(body: SummarizeRequest, request: Request, user: Annotated[di
         )
         await consume_entitlement(Meter.ZETTEL, user, action_id=action_id)
         if persistence.supabase_saved:
+            # D-KG-7: full-invalidate per-user cache + anon global cache.
+            invalidate_user_graph(user["sub"] if user else None)
             _graph_cache_global = None
             _graph_cache_global_ts = 0
         return persistence.result
