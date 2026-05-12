@@ -2,6 +2,16 @@ name: E2E (Playwright + axe)
 
 # WAVE-D Phase 1: browser-driven E2E + WCAG 2.2 AA audit lane.
 #
+# SCOPE (post-review M-7, 2026-05-12):
+# This workflow runs the ``e2e and not live`` lane ONLY for chromium-install
+# + Playwright-fixture import-smoke. A real browser flow against a live
+# FastAPI surface lives under the ``--live`` lane against staging — there is
+# NO docker-compose lift inside this job yet. Until we add that, do NOT
+# treat the green check on this workflow as a required merge gate beyond
+# "imports resolve + chromium installs". The collect-count sanity step
+# below makes "0 tests collected" loud so pytest's exit-5 cannot silently
+# pass.
+#
 # Decoupled from deploy-droplet.yml on purpose (D-5 research recommendation):
 # browser tests gate MERGE to master, not deploy-from-master. The droplet
 # only receives images that already passed the visual/a11y matrix on a PR
@@ -91,6 +101,31 @@ jobs:
           # of Firefox + WebKit we will never run in CI.
           python -m playwright install --with-deps chromium
 
+      - name: Sanity-check that at least one e2e test would be collected
+        env:
+          GEMINI_API_KEY: "ci-stub"
+          SUPABASE_V2_URL: "https://ci-stub.supabase.co"
+          SUPABASE_V2_ANON_KEY: "ci-stub-anon"
+          SUPABASE_V2_SERVICE_ROLE_KEY: "ci-stub-service"
+          NEXUS_TOKEN_ENCRYPTION_KEY: "7TgtMgeR5dMTnXxW6ULICwhf66A1VpzwuNFuIBqmoe4="
+          E2E_BASE_URL: "http://127.0.0.1:8000"
+        # Surface "0 tests collected" loudly. pytest's exit-5 (no tests)
+        # otherwise looks identical to "ran zero tests, all green" and lets
+        # a marker rename silently turn this lane into a no-op.
+        run: |
+          set -euo pipefail
+          pytest tests/integration/browser/ \
+            -m "e2e and not live" \
+            --strict-markers \
+            --collect-only -q \
+            | tee /tmp/e2e_collected.txt
+          COLLECTED=$(grep -cE '::' /tmp/e2e_collected.txt || true)
+          echo "e2e_collected_count=${COLLECTED}"
+          if [ "${COLLECTED}" -lt 1 ]; then
+            echo "::error::No tests matched 'e2e and not live'. Did a marker rename happen?"
+            exit 1
+          fi
+
       - name: Run browser smoke + matrix tests
         env:
           # Stubs for module-level supabase client construction; the e2e
@@ -108,8 +143,9 @@ jobs:
           E2E_BASE_URL: "http://127.0.0.1:8000"
         run: |
           pytest tests/integration/browser/ \
-            -m "not live" \
-            -q \
+            -m "e2e and not live" \
+            --strict-markers \
+            -v \
             --maxfail=3
 
       # Upload screenshots + axe JSON only on failure — saves runner
