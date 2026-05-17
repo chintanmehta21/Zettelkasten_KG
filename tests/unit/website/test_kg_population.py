@@ -126,6 +126,9 @@ class FakeClient:
         self._candidate_meta = []  # rows for kg.kg_nodes metadata select
         self._next_node_id = 9001
         self.fail_on = None  # (schema, table, op) to raise on
+        # structural fixtures
+        self._chunk_mentions = []  # rows: {kg_node_id, canonical_chunk_id}
+        self._kg_edges = {}  # workspace_id(str) -> [{src_node_id,dst_node_id}]
 
     def schema(self, name):
         return _SchemaProxy(self, name)
@@ -154,6 +157,23 @@ class FakeClient:
         if q._schema == "kg" and q._table == "kg_edges":
             if q._op == "upsert":  # upsert_edge
                 return _Resp([{"id": 7777}])
+            if q._op == "select":  # Adamic-Adar incident-edge fetch
+                ws = q._filters.get("workspace_id")
+                rows = self._kg_edges.get(ws, [])
+                # Respect the .in_(col, seeds) filter the AA query applies.
+                for col in ("src_node_id", "dst_node_id"):
+                    if col in q._filters:
+                        seeds = set(q._filters[col])
+                        rows = [r for r in rows if r[col] in seeds]
+                        break
+                return _Resp(list(rows))
+
+        if q._schema == "kg" and q._table == "chunk_node_mentions":
+            if q._op == "select":  # shared-chunk co-mention fetch
+                ids = set(q._filters.get("kg_node_id", []))
+                return _Resp(
+                    [r for r in self._chunk_mentions if r["kg_node_id"] in ids]
+                )
 
         return _Resp([])
 
@@ -347,6 +367,273 @@ async def test_persist_wiring_fires_task_without_awaiting(monkeypatch):
     await asyncio.wait_for(started.wait(), timeout=1.0)
     released.set()
     await asyncio.sleep(0)  # let the task finish cleanly
+
+
+# --------------------------------------------------------------------------
+# STRUCTURAL signal (D-KG-1 slot restore): shared-chunk + Adamic-Adar
+# --------------------------------------------------------------------------
+
+
+def _client_with_mentions(rows):
+    c = FakeClient()
+    c._chunk_mentions = rows
+    return c
+
+
+def test_shared_chunk_cooccurrence_distinct_overlap():
+    # new=1 shares chunk A & B with cand 10 (2 distinct), chunk A with 20 (1).
+    c = _client_with_mentions([
+        {"kg_node_id": 1, "canonical_chunk_id": "A"},
+        {"kg_node_id": 1, "canonical_chunk_id": "B"},
+        {"kg_node_id": 1, "canonical_chunk_id": "A"},  # dup -> still distinct
+        {"kg_node_id": 10, "canonical_chunk_id": "A"},
+        {"kg_node_id": 10, "canonical_chunk_id": "B"},
+        {"kg_node_id": 20, "canonical_chunk_id": "A"},
+        {"kg_node_id": 30, "canonical_chunk_id": "Z"},  # no overlap
+    ])
+    out = kg_population._shared_chunk_cooccurrence(
+        new_node_id=1, candidate_ids=[10, 20, 30], supabase_client=c
+    )
+    assert out == {10: 2, 20: 1}  # 30 omitted (zero)
+
+
+def test_shared_chunk_cooccurrence_empty_and_no_new_chunks():
+    c = _client_with_mentions([])  # cold mentions table
+    assert kg_population._shared_chunk_cooccurrence(
+        new_node_id=1, candidate_ids=[10], supabase_client=c
+    ) == {}
+    # new node has no chunks -> no overlap possible
+    c2 = _client_with_mentions([{"kg_node_id": 10, "canonical_chunk_id": "A"}])
+    assert kg_population._shared_chunk_cooccurrence(
+        new_node_id=1, candidate_ids=[10], supabase_client=c2
+    ) == {}
+
+
+def test_shared_chunk_cooccurrence_one_bounded_query():
+    c = _client_with_mentions([{"kg_node_id": 1, "canonical_chunk_id": "A"}])
+    c.calls.clear()
+    kg_population._shared_chunk_cooccurrence(
+        new_node_id=1, candidate_ids=list(range(10, 60)), supabase_client=c
+    )
+    cm = [
+        x for x in c.calls
+        if x[0] == "kg" and x[1] == "chunk_node_mentions"
+    ]
+    assert len(cm) == 1  # exactly ONE query regardless of candidate count
+
+
+def test_adamic_adar_idf_weighted_with_degree_guard():
+    # Graph (workspace A): new=1 — w5 — cand=10 ; 1 — w6 — 10.
+    # deg(w5)=4 (rare-ish), deg(w6)=2. Plus a deg-1 leaf that must be skipped.
+    ws = str(_WS_A)
+    edges = [
+        {"src_node_id": 1, "dst_node_id": 5},
+        {"src_node_id": 10, "dst_node_id": 5},
+        {"src_node_id": 5, "dst_node_id": 7},
+        {"src_node_id": 5, "dst_node_id": 8},  # deg(5)=4 (1,10,7,8)
+        {"src_node_id": 1, "dst_node_id": 6},
+        {"src_node_id": 10, "dst_node_id": 6},  # deg(6)=2 (1,10)
+        {"src_node_id": 1, "dst_node_id": 9},
+        {"src_node_id": 10, "dst_node_id": 9},  # deg(9)=2 -> common, counts
+    ]
+    c = FakeClient()
+    c._kg_edges[ws] = edges
+    out = kg_population._adamic_adar(
+        new_node_id=1, candidate_ids=[10], workspace_id=_WS_A,
+        supabase_client=c,
+    )
+    import math as _m
+    expected = 1 / _m.log(4) + 1 / _m.log(2) + 1 / _m.log(2)
+    assert out[10] == pytest.approx(expected, rel=1e-9)
+
+
+def test_adamic_adar_cold_graph_zero():
+    c = FakeClient()  # no edges anywhere
+    assert kg_population._adamic_adar(
+        new_node_id=1, candidate_ids=[10], workspace_id=_WS_A,
+        supabase_client=c,
+    ) == {}
+
+
+def test_adamic_adar_deg_one_only_yields_nothing():
+    # Only common neighbour has degree 1 -> log domain guard -> skipped.
+    ws = str(_WS_A)
+    c = FakeClient()
+    c._kg_edges[ws] = [
+        {"src_node_id": 1, "dst_node_id": 5},
+        {"src_node_id": 10, "dst_node_id": 5},
+    ]  # deg(5)=2 actually (1,10) -> contributes; make a true deg-1 case:
+    c._kg_edges[ws] = [
+        {"src_node_id": 1, "dst_node_id": 5},
+        {"src_node_id": 5, "dst_node_id": 1},  # still deg(5)={1}
+    ]
+    out = kg_population._adamic_adar(
+        new_node_id=1, candidate_ids=[10], workspace_id=_WS_A,
+        supabase_client=c,
+    )
+    assert out == {}  # no common neighbour between 1 and 10
+
+
+def test_adamic_adar_bounded_query_count_constant():
+    # Constant query count regardless of candidate count. With a real common
+    # neighbour the Q3 degree-resolution pair also fires -> 4 selects total
+    # (Q1 src + Q2 dst over seeds, Q3 src + Q3 dst over common neighbours).
+    ws = str(_WS_A)
+    c = FakeClient()
+    c._kg_edges[ws] = [
+        {"src_node_id": 1, "dst_node_id": 5},
+        {"src_node_id": 10, "dst_node_id": 5},
+        {"src_node_id": 5, "dst_node_id": 7},  # deg(5)=3 -> contributes
+    ]
+    c.calls.clear()
+    kg_population._adamic_adar(
+        new_node_id=1, candidate_ids=list(range(10, 80)),
+        workspace_id=_WS_A, supabase_client=c,
+    )
+    edge_q = [
+        x for x in c.calls
+        if x[0] == "kg" and x[1] == "kg_edges" and x[2] == "select"
+    ]
+    assert len(edge_q) == 4  # constant, independent of the 70 candidates
+
+    # No common neighbours -> Q3 short-circuits -> only the 2 seed selects.
+    c2 = FakeClient()
+    c2._kg_edges[ws] = [{"src_node_id": 1, "dst_node_id": 5}]
+    c2.calls.clear()
+    kg_population._adamic_adar(
+        new_node_id=1, candidate_ids=list(range(10, 200)),
+        workspace_id=_WS_A, supabase_client=c2,
+    )
+    edge_q2 = [
+        x for x in c2.calls
+        if x[0] == "kg" and x[1] == "kg_edges" and x[2] == "select"
+    ]
+    assert len(edge_q2) == 2  # still a small constant, candidate-independent
+
+
+def test_structural_map_combination_primary_dominant():
+    # cand 10: cooccur=3, aa large; cand 20: cooccur=0, aa=2.0 (cold-ish).
+    c = _client_with_mentions([
+        {"kg_node_id": 100, "canonical_chunk_id": "A"},
+        {"kg_node_id": 100, "canonical_chunk_id": "B"},
+        {"kg_node_id": 100, "canonical_chunk_id": "C"},
+        {"kg_node_id": 10, "canonical_chunk_id": "A"},
+        {"kg_node_id": 10, "canonical_chunk_id": "B"},
+        {"kg_node_id": 10, "canonical_chunk_id": "C"},
+    ])
+    ws = str(_WS_A)
+    # AA for cand 20 only: 1 -- w (deg 4) -- 20
+    c._kg_edges[ws] = [
+        {"src_node_id": 100, "dst_node_id": 7},
+        {"src_node_id": 20, "dst_node_id": 7},
+        {"src_node_id": 7, "dst_node_id": 8},
+        {"src_node_id": 7, "dst_node_id": 9},  # deg(7)=4
+    ]
+    candidates = [{"node_id": 10}, {"node_id": 20}]
+    cand_meta = {10: {}, 20: {}}
+    structural, sub = kg_population._structural_map(
+        new_key="new", new_node_id=100, candidates=candidates,
+        cand_meta=cand_meta, workspace_id=_WS_A, supabase_client=c,
+    )
+    co10, aa10 = sub[10]
+    co20, aa20 = sub[20]
+    assert co10 == 3 and aa10 == 0.0  # primary only
+    assert co20 == 0 and aa20 == pytest.approx(1 / __import__("math").log(4))
+    # effective(10)=3+round(0.5*0)=3 ; effective(20)=0+round(0.5*aa20)
+    eff20 = 0 + round(kg_population._ADAMIC_AA_WEIGHT * aa20)
+    assert structural["new"]["c10"] == 3
+    assert structural["new"].get("c20", 0) == eff20
+    # symmetric
+    assert structural["c10"]["new"] == 3
+
+
+def test_structural_map_failure_degrades_to_empty(monkeypatch):
+    c = FakeClient()
+    monkeypatch.setattr(
+        kg_population, "_shared_chunk_cooccurrence",
+        lambda **_k: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    structural, sub = kg_population._structural_map(
+        new_key="new", new_node_id=1,
+        candidates=[{"node_id": 10}], cand_meta={10: {}},
+        workspace_id=_WS_A, supabase_client=c,
+    )
+    assert structural == {} and sub == {}  # degrade, no raise
+
+
+@pytest.mark.asyncio
+async def test_hook_populates_structural_in_matched_via():
+    c = FakeClient()
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 10, "score": 0.99}]
+    c._candidate_meta = [
+        {"id": 10, "metadata": {"embedding": [0.1] * 768,
+                                "tags": ["ml", "ai"],
+                                "created_at": "2026-05-17T00:00:00+00:00"}},
+    ]
+    # node upsert returns 9001; share 2 chunks new(9001)<->cand(10).
+    c._chunk_mentions = [
+        {"kg_node_id": 9001, "canonical_chunk_id": "A"},
+        {"kg_node_id": 9001, "canonical_chunk_id": "B"},
+        {"kg_node_id": 10, "canonical_chunk_id": "A"},
+        {"kg_node_id": 10, "canonical_chunk_id": "B"},
+    ]
+    await _run(c)
+    edge = [w for w in c.writes if w[1] == "kg_edges"][0][3]
+    mv = edge["matched_via"]
+    assert mv["structural_shared_chunks"] == 2
+    assert mv["structural_adamic_adar"] == 0.0
+    # squashed: count/(count+2) = 2/4 = 0.5
+    assert mv["structural"] == pytest.approx(0.5)
+    assert {"structural", "structural_shared_chunks",
+            "structural_adamic_adar"} <= set(mv)
+
+
+@pytest.mark.asyncio
+async def test_hook_structural_workspace_isolation_no_leak():
+    """Candidate edges/mentions from workspace B never contribute."""
+    c = FakeClient()
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 10, "score": 0.99}]
+    c._candidate_meta = [
+        {"id": 10, "metadata": {"embedding": [0.1] * 768, "tags": ["ml"],
+                                "created_at": "2026-05-17T00:00:00+00:00"}},
+    ]
+    # Adamic-Adar edges exist ONLY in workspace B -> must NOT be read.
+    c._kg_edges[str(_WS_B)] = [
+        {"src_node_id": 9001, "dst_node_id": 5},
+        {"src_node_id": 10, "dst_node_id": 5},
+    ]
+    await _run(c, workspace_id=_WS_A)
+    # Every kg_edges SELECT must be fenced to workspace A.
+    edge_sel = [
+        f for (s, t, op, _p, f) in c.calls
+        if s == "kg" and t == "kg_edges" and op == "select"
+    ]
+    assert edge_sel and all(
+        f.get("workspace_id") == str(_WS_A) for f in edge_sel
+    )
+    assert all(str(_WS_B) not in str(f) for f in edge_sel)
+    # AA contributed nothing (B edges invisible); edge still written via emb.
+    edge = [w for w in c.writes if w[1] == "kg_edges"][0][3]
+    assert edge["matched_via"]["structural_adamic_adar"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_hook_structural_failure_does_not_raise(monkeypatch):
+    c = FakeClient()
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 10, "score": 0.99}]
+    c._candidate_meta = [
+        {"id": 10, "metadata": {"embedding": [0.1] * 768, "tags": ["ml", "ai"],
+                                "created_at": "2026-05-17T00:00:00+00:00"}},
+    ]
+    monkeypatch.setattr(
+        kg_population, "_adamic_adar",
+        lambda **_k: (_ for _ in ()).throw(RuntimeError("aa boom")),
+    )
+    m = await _run(c)  # must NOT raise; structural degrades to None
+    assert "error" not in m  # pipeline still succeeded
+    edge = [w for w in c.writes if w[1] == "kg_edges"][0][3]
+    assert edge["matched_via"]["structural"] == 0.0
+    assert edge["matched_via"]["structural_shared_chunks"] == 0
 
 
 @pytest.mark.asyncio

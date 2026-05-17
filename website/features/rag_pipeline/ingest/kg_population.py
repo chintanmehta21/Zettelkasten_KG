@@ -34,6 +34,7 @@ writes workspace B's nodes/edges.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from datetime import datetime, timezone
 from uuid import UUID
@@ -44,6 +45,32 @@ logger = logging.getLogger("website.features.rag_pipeline.ingest.kg_population")
 # 10k+ target. Env-overridable (RAG/KG convention) but defaults to a small
 # constant so a misconfig can't explode the per-ingest cost.
 _DEFAULT_TOP_K = 25
+
+# D-KG-1 STRUCTURAL signal restore (see docs/research/phase_b_kg_quality_design.md).
+# PRIMARY = shared-chunk co-mention overlap (kg.chunk_node_mentions); it is the
+# strongest "these two nodes are talked about together" evidence. SECONDARY =
+# Adamic-Adar over kg.kg_edges (IDF-weighted common neighbours), a graded
+# fallback/booster that is the ONLY structural signal on a cold graph (no shared
+# chunks yet) and a light boost when both are present.
+#
+# Combination feeds the unchanged scorer kernel count/(count+2):
+#   effective = shared_chunk_cooccur + round(_ADAMIC_AA_WEIGHT * adamic_adar)
+# _ADAMIC_AA_WEIGHT is conservative (0.5) so AA only nudges the integer "count":
+# a strong AA (~2.0 over several rare common neighbours) contributes round(1.0)=1
+# — i.e. at most "one extra co-mention" worth — keeping shared-chunk overlap
+# dominant whenever it is non-zero, while still letting AA register on a graph
+# that has edges but no shared chunks yet.
+_ADAMIC_AA_WEIGHT = 0.5
+
+# Hard cap on the structural fan-out queries so per-add cost stays a small
+# constant independent of workspace size (D-KG-1 scale guard / index-backed).
+_STRUCTURAL_QUERY_LIMIT = 5000
+
+# Hard cap on the Adamic-Adar common-neighbour set whose true degree we
+# resolve (Q3 IN-list). Keeps the per-add query cost a small constant even
+# for a pathologically dense new node; AA is a secondary signal so a capped
+# neighbour set is an acceptable bounded approximation.
+_AA_NEIGHBOUR_CAP = 500
 
 
 def _top_k() -> int:
@@ -104,6 +131,306 @@ def _temporal_days(a_iso: str | None, b_iso: str | None) -> float:
     return abs((a - b).total_seconds()) / 86400.0
 
 
+def _shared_chunk_cooccurrence(
+    *,
+    new_node_id: int,
+    candidate_ids: list[int],
+    supabase_client,
+) -> dict[int, int]:
+    """PRIMARY structural signal: distinct shared canonical chunks.
+
+    ONE bounded, index-backed query over kg.chunk_node_mentions
+    (supabase/website/_v2/03_kg_schema.sql:48-58, idx_chunk_node_mentions_node)
+    for the new node ∪ its ≤K candidates (≤26 ids). Mirrors the exact
+    ``.in_("kg_node_id", ids)`` pattern in
+    kg_repository.py:145-196 (list_node_zettel_mapping).
+
+    Returns ``{candidate_id: shared_chunk_count}``. Workspace isolation: the
+    table has no workspace column, but every id passed in is already
+    workspace-fenced (the new node is upserted into THIS workspace; candidates
+    are filtered to this workspace's kg_nodes upstream), so no cross-tenant
+    chunk can enter the set.
+    """
+    ids = list({int(new_node_id), *[int(c) for c in candidate_ids]})
+    if len(ids) <= 1:
+        return {}
+    resp = (
+        supabase_client.schema("kg")
+        .table("chunk_node_mentions")
+        .select("kg_node_id,canonical_chunk_id")
+        .in_("kg_node_id", ids)
+        .limit(_STRUCTURAL_QUERY_LIMIT)
+        .execute()
+    )
+    node_chunks: dict[int, set[str]] = {}
+    for row in resp.data or []:
+        try:
+            nid = int(row["kg_node_id"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        cid = row.get("canonical_chunk_id")
+        if cid is None:
+            continue
+        node_chunks.setdefault(nid, set()).add(str(cid))
+    new_chunks = node_chunks.get(int(new_node_id), set())
+    if not new_chunks:
+        return {}
+    out: dict[int, int] = {}
+    for cand in candidate_ids:
+        inter = len(new_chunks & node_chunks.get(int(cand), set()))
+        if inter > 0:
+            out[int(cand)] = inter
+    return out
+
+
+def _adamic_adar(
+    *,
+    new_node_id: int,
+    candidate_ids: list[int],
+    workspace_id: UUID,
+    supabase_client,
+) -> dict[int, float]:
+    """SECONDARY structural signal: Adamic-Adar over kg.kg_edges.
+
+    AA(u,v) = Σ_{w ∈ N(u) ∩ N(v)} 1/log(deg(w)), guarding deg(w) <= 1 (log
+    domain / divide-by-zero). Bounded & workspace-scoped, a small CONSTANT
+    number of index-backed selects (all on idx_kg_edges_workspace_src / _dst,
+    all .limit()-capped, all fenced to ``workspace_id``):
+
+      Q1+Q2: edges where a seed (new node ∪ candidates) is src / dst — gives
+             N(new) and N(cand) for the candidate set (2 selects).
+      Q3:    a src + dst select pair over the *common-neighbour* set only —
+             gives the TRUE degree of each w (2 selects, skipped entirely
+             when there is no common neighbour). Seed-incident edges alone
+             undercount deg(w) (only w's edges that touch a seed are
+             visible), which would inflate 1/log(deg) and wrongly trip the
+             deg<=1 guard. The common-neighbour set is bounded by deg(new)
+             and hard-capped at ``_AA_NEIGHBOUR_CAP``; Q3 is NOT a
+             per-neighbour fan-out, NO recursion, NO all-pairs.
+
+    Total: 4 selects (2 when no common neighbour), candidate-count-indep.
+
+    Cold graph (no edges) → ``{}`` (0 contribution).
+    """
+    seeds = list({int(new_node_id), *[int(c) for c in candidate_ids]})
+    if len(seeds) <= 1:
+        return {}
+    ws = str(workspace_id)
+
+    # Two bounded selects: edges where a seed is the src, and where it is the
+    # dst. Both hit the (workspace_key, src/dst) composite indexes.
+    edges: list[tuple[int, int]] = []
+    for col in ("src_node_id", "dst_node_id"):
+        resp = (
+            supabase_client.schema("kg")
+            .table("kg_edges")
+            .select("src_node_id,dst_node_id")
+            .eq("workspace_id", ws)
+            .in_(col, seeds)
+            .limit(_STRUCTURAL_QUERY_LIMIT)
+            .execute()
+        )
+        for row in resp.data or []:
+            try:
+                s = int(row["src_node_id"])
+                d = int(row["dst_node_id"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            if s == d:
+                continue
+            edges.append((s, d))
+
+    if not edges:
+        return {}
+
+    # Undirected adjacency over the bounded incident-edge set.
+    adj: dict[int, set[int]] = {}
+    for s, d in edges:
+        adj.setdefault(s, set()).add(d)
+        adj.setdefault(d, set()).add(s)
+
+    new_neighbors = adj.get(int(new_node_id), set())
+    if not new_neighbors:
+        return {}
+
+    # Union of all common neighbours across candidates (deduped, capped).
+    common_by_cand: dict[int, set[int]] = {}
+    all_common: set[int] = set()
+    for cand in candidate_ids:
+        cid = int(cand)
+        common = new_neighbors & adj.get(cid, set())
+        if common:
+            common_by_cand[cid] = common
+            all_common |= common
+    if not all_common:
+        return {}
+    # Hard-cap the neighbour fan-out so Q3's IN-list stays a small constant
+    # even for a pathologically dense new node (scale guard).
+    capped_common = set(sorted(all_common)[:_AA_NEIGHBOUR_CAP])
+
+    # Q3: true degree of each common neighbour — one bounded select over
+    # edges incident to the (capped) common-neighbour set, workspace-fenced.
+    deg: dict[int, int] = {}
+    nbr_adj: dict[int, set[int]] = {}
+    common_seeds = list(capped_common)
+    for col in ("src_node_id", "dst_node_id"):
+        resp = (
+            supabase_client.schema("kg")
+            .table("kg_edges")
+            .select("src_node_id,dst_node_id")
+            .eq("workspace_id", ws)
+            .in_(col, common_seeds)
+            .limit(_STRUCTURAL_QUERY_LIMIT)
+            .execute()
+        )
+        for row in resp.data or []:
+            try:
+                s = int(row["src_node_id"])
+                d = int(row["dst_node_id"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            if s == d:
+                continue
+            nbr_adj.setdefault(s, set()).add(d)
+            nbr_adj.setdefault(d, set()).add(s)
+    for w in capped_common:
+        deg[w] = len(nbr_adj.get(w, set()))
+
+    out: dict[int, float] = {}
+    for cid, common in common_by_cand.items():
+        score = 0.0
+        for w in common:
+            if w not in capped_common:
+                continue
+            dw = deg.get(w, 0)
+            if dw <= 1:  # log(1)=0 → undefined IDF weight; skip
+                continue
+            score += 1.0 / math.log(dw)
+        if score > 0.0:
+            out[cid] = score
+    return out
+
+
+def _structural_map(
+    *,
+    new_key: str,
+    new_node_id: int,
+    candidates: list[dict],
+    cand_meta: dict[int, dict],
+    workspace_id: UUID,
+    supabase_client,
+) -> tuple[dict[str, dict[str, int]], dict[int, tuple[int, float]]]:
+    """Build the D-KG-1 ``structural`` arg + per-candidate audit sub-values.
+
+    Returns ``(structural, sub)`` where ``structural`` is the scorer-shaped
+    ``{node_key: {neighbor_key: effective_count}}`` (symmetric) and ``sub`` is
+    ``{cand_id: (shared_chunk_cooccur, adamic_adar)}`` for matched_via.
+
+    Combination: ``effective = cooccur + round(_ADAMIC_AA_WEIGHT * aa)``.
+    Shared-chunk co-mention is PRIMARY (dominant whenever non-zero); AA is the
+    graded fallback that carries the cold/no-shared-chunk case and lightly
+    boosts when both fire. Any failure → empty (caller falls back to
+    structural=None == today's behaviour). NEVER raises.
+    """
+    cand_ids = [int(c["node_id"]) for c in candidates if int(c["node_id"]) in cand_meta]
+    if not cand_ids:
+        return {}, {}
+    try:
+        cooccur = _shared_chunk_cooccurrence(
+            new_node_id=new_node_id,
+            candidate_ids=cand_ids,
+            supabase_client=supabase_client,
+        )
+        aa = _adamic_adar(
+            new_node_id=new_node_id,
+            candidate_ids=cand_ids,
+            workspace_id=workspace_id,
+            supabase_client=supabase_client,
+        )
+    except Exception as exc:  # fire-and-forget: degrade, never raise
+        logger.warning("kg-populate structural signal failed (degrading): %s", exc)
+        return {}, {}
+
+    structural: dict[str, dict[str, int]] = {}
+    sub: dict[int, tuple[int, float]] = {}
+    for cid in cand_ids:
+        co = int(cooccur.get(cid, 0))
+        a = float(aa.get(cid, 0.0))
+        effective = co + round(_ADAMIC_AA_WEIGHT * a)
+        sub[cid] = (co, a)
+        if effective <= 0:
+            continue
+        cand_key = f"c{cid}"
+        structural.setdefault(new_key, {})[cand_key] = effective
+        structural.setdefault(cand_key, {})[new_key] = effective
+    return structural, sub
+
+
+def score_edge(
+    *,
+    a_key: str,
+    a_embedding: list[float],
+    a_tags: list[str],
+    a_created_at_iso: str | None,
+    b_key: str,
+    b_embedding: list[float],
+    b_tags: list[str],
+    b_created_at_iso: str | None,
+    structural_arg: dict | None,
+    structural_sub: tuple[int, float],
+    rpc_score: float | None = None,
+) -> tuple[float, dict]:
+    """Pure D-KG-1 scoring for ONE node pair + its ``matched_via`` provenance.
+
+    Single source of truth shared by the live KG-population hook
+    (``populate_kg_for_zettel``) and the one-shot strength backfill
+    (``ops/scripts/backfill_kg_edge_strength.py``) so the two paths can
+    never diverge. Pure / deterministic: no DB, no network — the caller
+    supplies the already-gathered signals (embeddings, tags, timestamps,
+    and the prebuilt structural arg/sub from ``_structural_map``).
+
+    ``structural_sub`` is ``(shared_chunk_cooccur, adamic_adar)`` for the
+    (a,b) pair (the same tuple ``_structural_map`` returns per candidate).
+    ``rpc_score`` is the optional ``kg.match_kg_nodes`` cosine fallback used
+    only when one side has no stored embedding (live hook path); the
+    backfill path leaves it ``None`` and relies on stored vectors.
+
+    Returns ``(strength, matched_via)`` — byte-identical to the block the
+    hook previously inlined, so wiring it in does not change live behaviour.
+    """
+    from website.features.kg_features import scoring as _sc
+    from website.features.kg_features.scoring import compute_connection_strength
+
+    embeddings_map = {a_key: a_embedding, b_key: b_embedding}
+    tags_map = {a_key: a_tags, b_key: b_tags}
+    tdays = _temporal_days(a_created_at_iso, b_created_at_iso)
+
+    strength = compute_connection_strength(
+        a_key,
+        b_key,
+        embeddings=embeddings_map,
+        tags=tags_map,
+        structural=structural_arg,
+        temporal_days=tdays,
+    )
+
+    emb_sub = _sc._cosine_similarity(a_embedding, b_embedding)
+    if (not a_embedding or not b_embedding) and rpc_score is not None:
+        emb_sub = float(rpc_score)
+    struct_co, struct_aa = structural_sub
+    struct_squashed = _sc._structural_signal(a_key, b_key, structural_arg or {})
+    matched_via = {
+        "embedding": round(emb_sub, 4),
+        "tag": round(_sc._jaccard(a_tags, b_tags), 4),
+        "structural": round(struct_squashed, 4),
+        "structural_shared_chunks": int(struct_co),
+        "structural_adamic_adar": round(float(struct_aa), 4),
+        "temporal": round(_sc._temporal_signal(tdays), 4),
+        "composite": round(strength, 4),
+    }
+    return strength, matched_via
+
+
 async def populate_kg_for_zettel(
     *,
     workspace_id: UUID,
@@ -134,10 +461,7 @@ async def populate_kg_for_zettel(
         generate_embedding,
     )
     from website.features.kg_features.pseudo_tags import derive_pseudo_tags
-    from website.features.kg_features.scoring import (
-        EDGE_CREATION_THRESHOLD,
-        compute_connection_strength,
-    )
+    from website.features.kg_features.scoring import EDGE_CREATION_THRESHOLD
 
     metrics: dict = {"candidates": 0, "scored": 0, "edges": 0, "skipped": False}
 
@@ -253,6 +577,22 @@ async def populate_kg_for_zettel(
         }
 
         new_key = "new"
+
+        # ---- 4b. STRUCTURAL signal (D-KG-1 slot, restored) ------------
+        # Computed ONCE over the whole candidate set (bounded constant
+        # query count, NOT per-candidate). Failure degrades to None ==
+        # pre-restore behaviour; never raises (fire-and-forget hook).
+        structural_map, structural_sub = await asyncio.to_thread(
+            _structural_map,
+            new_key=new_key,
+            new_node_id=node_id,
+            candidates=candidates,
+            cand_meta=cand_meta,
+            workspace_id=workspace_id,
+            supabase_client=supabase_client,
+        )
+        structural_arg = structural_map or None
+
         for cand in candidates:
             cid = int(cand["node_id"])
             cmeta = cand_meta.get(cid)
@@ -266,42 +606,28 @@ async def populate_kg_for_zettel(
             # (already [0,1], free), fall back to stored vectors.
             rpc_score = cand.get("score")
             cand_embedding = list(cmeta.get("embedding") or [])
-            embeddings_map = {new_key: node_embedding, cand_key: cand_embedding}
-            tags_map = {
-                new_key: augmented_tags,
-                cand_key: list(cmeta.get("tags") or []),
-            }
-            tdays = _temporal_days(created_at_iso, cmeta.get("created_at"))
 
-            strength = compute_connection_strength(
-                new_key,
-                cand_key,
-                embeddings=embeddings_map,
-                tags=tags_map,
-                structural=None,  # no co-occurrence store on the v2 path yet
-                temporal_days=tdays,
+            # Single source of truth: the SAME pure scorer the backfill
+            # uses (score_edge), so the live hook and the one-shot strength
+            # backfill can never diverge. Output is byte-identical to the
+            # block this previously inlined.
+            strength, matched_via = score_edge(
+                a_key=new_key,
+                a_embedding=node_embedding,
+                a_tags=augmented_tags,
+                a_created_at_iso=created_at_iso,
+                b_key=cand_key,
+                b_embedding=cand_embedding,
+                b_tags=list(cmeta.get("tags") or []),
+                b_created_at_iso=cmeta.get("created_at"),
+                structural_arg=structural_arg,  # shared-chunk + Adamic-Adar
+                structural_sub=structural_sub.get(cid, (0, 0.0)),
+                rpc_score=rpc_score,
             )
             metrics["scored"] += 1
 
             if strength < EDGE_CREATION_THRESHOLD:
                 continue
-
-            # matched_via: the per-signal sub-scores the scorer composes,
-            # so the edge can be audited/re-explained without recompute.
-            from website.features.kg_features import scoring as _sc
-
-            emb_sub = _sc._cosine_similarity(node_embedding, cand_embedding)
-            if (not node_embedding or not cand_embedding) and rpc_score is not None:
-                emb_sub = float(rpc_score)
-            matched_via = {
-                "embedding": round(emb_sub, 4),
-                "tag": round(
-                    _sc._jaccard(augmented_tags, list(cmeta.get("tags") or [])), 4
-                ),
-                "structural": 0.0,
-                "temporal": round(_sc._temporal_signal(tdays), 4),
-                "composite": round(strength, 4),
-            }
 
             await asyncio.to_thread(
                 lambda cid=cid, mv=matched_via, s=strength: kg.upsert_edge(
