@@ -14,6 +14,8 @@ def test_all_add_zettel_surfaces_use_shared_helper():
     assert "window.ZKAddZettel" in helper_text
     assert "content-type" in helper_text.lower()
     assert "/api/zettels/add" in helper_text
+    assert "/api/zettels/add/document" in helper_text
+    assert "uploadDocument" in helper_text
 
     surfaces = [
         ROOT / "website" / "static" / "js" / "app.js",
@@ -25,6 +27,19 @@ def test_all_add_zettel_surfaces_use_shared_helper():
         assert "ZKAddZettel.add" in text, path
         assert "mode: 'sync'" in text, path
         assert "mode: 'auto'" not in text, path
+
+
+def test_landing_page_exposes_document_upload_paperclip():
+    html = (ROOT / "website" / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "website" / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "website" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+
+    assert 'id="document-input"' in html
+    assert 'id="document-upload-btn"' in html
+    assert "accept=\".pdf,.txt,.md,.markdown,.docx" in html
+    assert "uploadDocument({" in js
+    assert "landing-document" in js
+    assert ".document-upload-btn" in css
 
 
 def test_add_zettel_helper_defaults_to_sync_and_cache_busted():

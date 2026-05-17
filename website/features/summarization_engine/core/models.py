@@ -19,6 +19,7 @@ class SourceType(str, Enum):
     HACKERNEWS = "hackernews"
     LINKEDIN = "linkedin"
     ARXIV = "arxiv"
+    DOCUMENT = "document"
     PODCAST = "podcast"
     TWITTER = "twitter"
     WEB = "web"

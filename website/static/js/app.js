@@ -5,6 +5,8 @@
 
   const form = document.getElementById('summarize-form');
   const urlInput = document.getElementById('url-input');
+  const documentInput = document.getElementById('document-input');
+  const documentUploadBtn = document.getElementById('document-upload-btn');
   const submitBtn = document.getElementById('submit-btn');
   const errorMsg = document.getElementById('error-message');
 
@@ -55,9 +57,9 @@
     section.classList.remove('hidden');
   }
 
-  function startLoading(url) {
+  function startLoading(sourceLabel) {
     showSection(loadingSection);
-    loadingUrl.textContent = url;
+    loadingUrl.textContent = sourceLabel;
     var idx = 0;
     loadingText.textContent = loadingMessages[0];
     loadingInterval = setInterval(function () {
@@ -77,6 +79,15 @@
     if (!url) return 'Please enter a URL';
     if (url.length > 2048) return 'URL is too long (max 2048 characters)';
     if (!url.match(/^https?:\/\/.+/)) return 'URL must start with http:// or https://';
+    return null;
+  }
+
+  function validateDocument(file) {
+    if (!file) return null;
+    var allowed = /\.(pdf|txt|md|markdown|docx)$/i;
+    if (!allowed.test(file.name || '')) return 'Upload PDF, TXT, Markdown, or DOCX';
+    if (file.size > 10 * 1024 * 1024) return 'Document is too large (max 10 MB)';
+    if (file.size <= 0) return 'Document is empty';
     return null;
   }
 
@@ -163,8 +174,13 @@
     resultDetailed.innerHTML = markdownToHtml(data.summary);
 
     // Source link
-    resultLink.href = data.source_url;
-    resultLink.textContent = 'View original \u2197';
+    if (data.source_type === 'document') {
+      resultLink.removeAttribute('href');
+      resultLink.textContent = 'Uploaded document';
+    } else {
+      resultLink.href = data.source_url;
+      resultLink.textContent = 'View original \u2197';
+    }
 
     // Knowledge Graph button
     if (data.node_id) {
@@ -184,6 +200,8 @@
   function reset() {
     showSection(inputSection);
     urlInput.value = '';
+    if (documentInput) documentInput.value = '';
+    if (documentUploadBtn) documentUploadBtn.classList.remove('has-file');
     urlInput.focus();
     errorMsg.textContent = '';
     document.querySelector('.input-wrapper').classList.remove('error');
@@ -244,13 +262,30 @@
     });
   });
 
+  if (documentUploadBtn && documentInput) {
+    documentUploadBtn.addEventListener('click', function () {
+      documentInput.click();
+    });
+
+    documentInput.addEventListener('change', function () {
+      var file = documentInput.files && documentInput.files[0];
+      errorMsg.textContent = '';
+      document.querySelector('.input-wrapper').classList.remove('error');
+      documentUploadBtn.classList.toggle('has-file', Boolean(file));
+      if (file) {
+        urlInput.value = file.name;
+      }
+    });
+  }
+
   // Submit handler
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var url = urlInput.value.trim();
+    var file = documentInput && documentInput.files ? documentInput.files[0] : null;
 
     // Validate
-    var err = validateUrl(url);
+    var err = file ? validateDocument(file) : validateUrl(url);
     if (err) {
       errorMsg.textContent = err;
       document.querySelector('.input-wrapper').classList.add('error');
@@ -265,21 +300,31 @@
 
     var authToken = typeof getAuthToken === 'function' ? getAuthToken() : null;
 
-    if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function') {
+    if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function' || typeof window.ZKAddZettel.uploadDocument !== 'function') {
       stopLoading();
       submitBtn.disabled = false;
       showError('Add Zettel API helper failed to load. Please refresh and try again.');
       return;
     }
 
-    window.ZKAddZettel.add({
-      url: url,
-      token: authToken,
-      clientActionId: window.ZKAddZettel.makeActionId('landing'),
-      persist: true,
-      surface: 'landing',
-      mode: 'sync'
-    })
+    var request = file
+      ? window.ZKAddZettel.uploadDocument({
+        file: file,
+        token: authToken,
+        clientActionId: window.ZKAddZettel.makeActionId('landing-document'),
+        persist: true,
+        surface: 'landing'
+      })
+      : window.ZKAddZettel.add({
+        url: url,
+        token: authToken,
+        clientActionId: window.ZKAddZettel.makeActionId('landing'),
+        persist: true,
+        surface: 'landing',
+        mode: 'sync'
+      });
+
+    request
       .then(function (data) {
         var summary = data.summary || {};
         summary.node_id = data.node_id;
@@ -298,6 +343,10 @@
   // Clear error on input
   urlInput.addEventListener('input', function () {
     errorMsg.textContent = '';
+    if (documentInput && documentInput.files && documentInput.files[0]) {
+      documentInput.value = '';
+      if (documentUploadBtn) documentUploadBtn.classList.remove('has-file');
+    }
     document.querySelector('.input-wrapper').classList.remove('error');
   });
 
