@@ -295,8 +295,8 @@
           console.error('[kastens] create failed', createResp.status, raw);
           var detail = '';
           try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
-          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
-            await window.ZKPricing.openPurchase({
+          if (detail && detail.code === 'quota_exhausted' && window.ZKQuotaGate) {
+            await window.ZKQuotaGate.show({
               detail: detail,
               source: 'my-kastens:create-kasten',
               resumeAction: { type: 'create_kasten', name: name, description: desc, scope: scope, clientActionId: pricingActionId },

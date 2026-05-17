@@ -47,6 +47,7 @@ BROWSER_CACHE_DIR = Path(__file__).parent / "features" / "browser_cache"
 USER_KASTENS_DIR = Path(__file__).parent / "features" / "user_kastens"
 USER_RAG_DIR = Path(__file__).parent / "features" / "user_rag"
 USER_PRICING_DIR = Path(__file__).parent / "features" / "user_pricing"
+FUNCTIONAL_GATES_DIR = Path(__file__).parent / "features" / "functional_gates"
 FOOTER_DIR = Path(__file__).parent / "footer"
 ABOUT_DIR = FOOTER_DIR / "about"
 PRICING_DIR = FOOTER_DIR / "pricing"
@@ -322,6 +323,18 @@ def create_app(lifespan=None) -> FastAPI:
         "/user-pricing/js",
         StaticFiles(directory=str(USER_PRICING_DIR / "js")),
         name="user-pricing-js",
+    )
+    _mount_static_if_exists(
+        app,
+        "/functional-gates/css",
+        FUNCTIONAL_GATES_DIR / "css",
+        "functional-gates-css",
+    )
+    _mount_static_if_exists(
+        app,
+        "/functional-gates/js",
+        FUNCTIONAL_GATES_DIR / "js",
+        "functional-gates-js",
     )
 
     # Shared site header (single source of truth for inner-page header markup)
