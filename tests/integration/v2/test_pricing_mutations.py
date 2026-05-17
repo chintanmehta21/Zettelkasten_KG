@@ -335,28 +335,25 @@ def test_verify_payment_signature_replay_is_idempotent(app_client, with_billing_
 # ─────────────────────── UP-09: subscription change discipline ───────────────────────
 
 
-async def test_subscription_change_does_not_seed_consumption_rows(
+async def test_subscription_change_does_not_seed_usage_counters(
     app_client, with_billing_profile, asyncpg_pool
 ):
-    """``POST /subscriptions/change`` must NEVER insert into pricing_entitlement_consumption.
+    """``POST /subscriptions/change`` must NEVER mutate billing.pricing_usage_counters.
 
-    Pricing-authority rule (CLAUDE.md): no seeding. Counts rows before and
-    after the call — any delta fails the test regardless of HTTP status.
-    The route can legitimately 502 or 400 here (no Razorpay live calls); we
-    are not asserting success, only the no-seed invariant.
+    Phase-9 invariant: subscription plumbing is a Razorpay flow; it must not
+    touch the per-profile usage counter table. Counts rows before and after
+    the call — any delta fails the test regardless of HTTP status.
     """
     user = with_billing_profile(app_client)
 
     async def count() -> int:
         async with asyncpg_pool.acquire() as conn:
             return int(await conn.fetchval(
-                "SELECT COUNT(*) FROM billing.pricing_entitlement_consumption WHERE profile_id = $1",
+                "SELECT COUNT(*) FROM billing.pricing_usage_counters WHERE profile_id = $1",
                 user.profile_id,
             ) or 0)
 
     before = await count()
-    # respx blocks any outbound Razorpay call so a flaky network can never
-    # leak into this test's no-seed assertion.
     with respx.mock(base_url="https://api.razorpay.com", assert_all_called=False) as mocked:
         mocked.post("/v1/plans").mock(return_value=httpx.Response(500))
         mocked.post("/v1/subscriptions").mock(return_value=httpx.Response(500))
@@ -368,8 +365,8 @@ async def test_subscription_change_does_not_seed_consumption_rows(
         )
     after = await count()
     assert after == before, (
-        f"subscription change seeded pricing_entitlement_consumption "
-        f"({before} -> {after}); pricing-authority rule violation"
+        f"subscription change touched billing.pricing_usage_counters "
+        f"({before} -> {after}); subscription flow must be Razorpay-only"
     )
 
 
