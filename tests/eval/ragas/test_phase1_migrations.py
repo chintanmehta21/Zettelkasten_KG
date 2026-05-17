@@ -63,8 +63,10 @@ def test_rag_rpcs_migration_contains_all_required_functions() -> None:
     for fn_name in [
         "rag_resolve_effective_nodes",
         "rag_hybrid_search",
-        "rag_subgraph_for_pagerank",
         "rag_bulk_add_to_sandbox",
         "rag_replace_node_chunks",
     ]:
         assert f"FUNCTION {fn_name}" in sql or f"FUNCTION {fn_name}(" in sql
+    # v2-superseded: legacy unqualified rag_subgraph_for_pagerank was purged
+    # (now rag.subgraph_for_pagerank in _v2/45_*.sql). It must be ABSENT here.
+    assert "CREATE OR REPLACE FUNCTION rag_subgraph_for_pagerank" not in sql

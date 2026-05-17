@@ -55,6 +55,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "42_kg_connection_strength.sql",
         "43_port_match_kg_nodes.sql",
         "44_functional_gates.sql",
+        "45_rag_subgraph_for_pagerank.sql",
     ]
 
 

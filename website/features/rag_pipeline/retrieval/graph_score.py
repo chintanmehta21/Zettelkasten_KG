@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 from typing import Any
@@ -14,6 +15,8 @@ from website.core.supabase_v2.client import get_v2_client
 from website.core.supabase_v2.repositories.rag_repository import RAGRepository
 from website.features.rag_pipeline.retrieval._async_helpers import rpc_call
 
+
+_logger = logging.getLogger(__name__)
 
 _USAGE_EDGES_ENABLED = os.environ.get("RAG_USAGE_EDGES_ENABLED", "true").lower() == "true"
 
@@ -82,11 +85,32 @@ class LocalizedPageRankScorer:
                 candidate.graph_score = 0.0
             return
 
-        response = await rpc_call(self._supabase.rpc(
-            "rag_subgraph_for_pagerank",
-            {"p_user_id": str(user_id), "p_node_ids": node_ids},
-        ))
-        edges = response.data or []
+        # v2 purge (P1-1): schema-qualified call into `rag.subgraph_for_pagerank`
+        # (supabase/website/_v2/45_rag_subgraph_for_pagerank.sql). The legacy
+        # unqualified `rag_subgraph_for_pagerank` was a dropped v1 zombie that
+        # threw on every call, silently degrading centrality to 0.0. Under v2
+        # `candidate.node_id` is the canonical_chunk_id (str) so it maps to the
+        # RPC's `p_chunk_ids uuid[]`; `user_id` is the workspace UUID (rag
+        # pipeline convention, same as search_signal_weights). Failure path
+        # still degrades to 0.0 centrality, but now logs at WARNING instead of
+        # being silently swallowed by the dropped-RPC exception.
+        try:
+            response = await rpc_call(self._supabase.schema("rag").rpc(
+                "subgraph_for_pagerank",
+                {"p_workspace_id": str(user_id), "p_chunk_ids": node_ids},
+            ))
+            edges = response.data or []
+        except Exception as exc:
+            _logger.warning(
+                "graph_score: rag.subgraph_for_pagerank failed (workspace=%s, "
+                "candidates=%d); degrading graph_score to 0.0: %r",
+                user_id,
+                len(node_ids),
+                exc,
+            )
+            for candidate in candidates:
+                candidate.graph_score = 0.0
+            return
 
         graph = nx.Graph()
         graph.add_nodes_from(node_ids)

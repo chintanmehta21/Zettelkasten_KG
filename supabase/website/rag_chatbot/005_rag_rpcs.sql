@@ -283,22 +283,11 @@ COMMENT ON FUNCTION rag_hybrid_search IS
     '5-stream RRF: dense(summary) + dense(chunks) + fts(summary) + fts(chunks) + graph expansion. Returns top-N candidates.';
 
 
--- ── 3. rag_subgraph_for_pagerank ──────────────────────────────────────────
-CREATE OR REPLACE FUNCTION rag_subgraph_for_pagerank(
-    p_user_id    uuid,
-    p_node_ids   text[]
-)
-RETURNS TABLE (source_node_id text, target_node_id text, weight int)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = ''
-SET statement_timeout = '2s'
-AS $$
-    SELECT l.source_node_id, l.target_node_id, COALESCE(l.weight, 5) AS weight
-    FROM public.kg_links l
-    WHERE l.user_id = p_user_id
-      AND l.source_node_id = ANY(p_node_ids)
-      AND l.target_node_id = ANY(p_node_ids);
-$$;
+-- ── 3. rag_subgraph_for_pagerank ── REMOVED (v2-superseded) ───────────────
+-- Superseded by the schema-qualified `rag.subgraph_for_pagerank`
+-- (supabase/website/_v2/45_rag_subgraph_for_pagerank.sql). The legacy
+-- unqualified `public.rag_subgraph_for_pagerank(p_user_id, p_node_ids)`
+-- definition was deleted here; the live DROP is gated at the phase gate.
 
 
 -- ── 4. rag_bulk_add_to_sandbox ────────────────────────────────────────────
@@ -364,12 +353,10 @@ $$;
 -- Permissions
 REVOKE ALL ON FUNCTION rag_resolve_effective_nodes  FROM PUBLIC;
 REVOKE ALL ON FUNCTION rag_hybrid_search            FROM PUBLIC;
-REVOKE ALL ON FUNCTION rag_subgraph_for_pagerank    FROM PUBLIC;
 REVOKE ALL ON FUNCTION rag_bulk_add_to_sandbox      FROM PUBLIC;
 REVOKE ALL ON FUNCTION rag_replace_node_chunks      FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION rag_resolve_effective_nodes TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION rag_hybrid_search           TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION rag_subgraph_for_pagerank   TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION rag_bulk_add_to_sandbox     TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION rag_replace_node_chunks     TO authenticated, service_role;

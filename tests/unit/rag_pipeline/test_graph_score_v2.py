@@ -254,13 +254,26 @@ async def test_score_delegates_to_search_signal_weights_rpc():
     ]
     fake = _Client(edges=edges, signal_weight_rows=signal_rows)
 
-    # Baseline: no query_class → no signal-weight RPC must be called.
+    # Baseline: no query_class → no SEARCH_SIGNAL_WEIGHTS RPC must be called.
+    # The pagerank RPC (subgraph_for_pagerank) legitimately fires every score()
+    # call post P1-1 fix and is intentionally NOT gated by query_class — so we
+    # filter the recorded schema_rpc calls by rpc-name, not the bare kind.
     baseline_candidates = [_candidate("node-1"), _candidate("node-2"), _candidate("node-3")]
     scorer_baseline = LocalizedPageRankScorer(supabase=fake)
     await scorer_baseline.score(user_id=uuid4(), candidates=baseline_candidates)
-    schema_calls_baseline = [c for c in fake.calls if c[0] == "schema_rpc"]
-    assert schema_calls_baseline == [], (
-        f"no signal-weight RPC expected without query_class, got {schema_calls_baseline!r}"
+    signal_calls_baseline = [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "search_signal_weights"
+    ]
+    assert signal_calls_baseline == [], (
+        f"no signal-weight RPC expected without query_class, got {signal_calls_baseline!r}"
+    )
+    # P1-1 lock-in: pagerank centrality RPC must fire regardless of query_class.
+    pagerank_calls_baseline = [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "subgraph_for_pagerank"
+    ]
+    assert pagerank_calls_baseline, (
+        "subgraph_for_pagerank must be called every score() (centrality is "
+        f"query_class-independent), got {fake.calls!r}"
     )
     baseline_scores = {c.node_id: c.graph_score for c in baseline_candidates}
 
@@ -273,15 +286,21 @@ async def test_score_delegates_to_search_signal_weights_rpc():
         candidates=boosted,
         query_class=QueryClass.MULTI_HOP,
     )
-    schema_calls = [c for c in fake2.calls if c[0] == "schema_rpc"]
-    assert schema_calls, "expected schema('rag').rpc(search_signal_weights) under query_class"
+    signal_calls = [
+        c for c in fake2.calls if c[0] == "schema_rpc" and c[2] == "search_signal_weights"
+    ]
+    assert signal_calls, "expected schema('rag').rpc(search_signal_weights) under query_class"
     # Every signal-weight RPC must hit the v2 schema + name + workspace_id binding.
-    for kind, schema_name, rpc_name, params in schema_calls:
+    for kind, schema_name, rpc_name, params in signal_calls:
         assert schema_name == "rag"
         assert rpc_name == "search_signal_weights"
         assert params["p_workspace_id"] == str(workspace_id)
         assert params["p_query_class"] == "multi_hop"
         assert isinstance(params["p_target_chunk_ids"], list)
+    # P1-1 lock-in: pagerank centrality RPC fires here too.
+    assert [
+        c for c in fake2.calls if c[0] == "schema_rpc" and c[2] == "subgraph_for_pagerank"
+    ], "subgraph_for_pagerank must also be called when query_class is set"
     # Boost lifts node-3 above its PageRank-only baseline (sum weight 18 → +ve sigmoid bonus).
     boosted_scores = {c.node_id: c.graph_score for c in boosted}
     assert boosted_scores["node-3"] > baseline_scores["node-3"]
@@ -343,22 +362,30 @@ async def test_score_falls_back_gracefully_when_rpc_raises():
 
 @pytest.mark.asyncio
 async def test_score_no_query_class_skips_signal_weight_lookup():
-    """Backward compat: when query_class not passed, no schema('rag').rpc() call is made."""
+    """Backward compat: when query_class not passed, no search_signal_weights RPC fires.
+
+    Post P1-1, the pagerank RPC (subgraph_for_pagerank) DOES fire every score()
+    call regardless of query_class — centrality is unconditional. Only the
+    usage-edge signal lookup is gated. We assert exactly that split.
+    """
     edges = [
         {"source_node_id": "node-1", "target_node_id": "node-2", "weight": 1.0},
     ]
     candidates = [_candidate("node-1"), _candidate("node-2")]
-    fake = _Client(
-        edges=edges,
-        signal_raise=RuntimeError("must not be called when query_class is None"),
-    )
-    # If schema('rag').rpc were called it would raise — proves we skip the lookup.
+    fake = _Client(edges=edges)
     await LocalizedPageRankScorer(supabase=fake).score(
         user_id=uuid4(), candidates=candidates,
     )
     assert candidates[0].graph_score is not None
     assert candidates[1].graph_score is not None
-    assert [c for c in fake.calls if c[0] == "schema_rpc"] == []
+    # Centrality RPC fired (unconditional)...
+    assert [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "subgraph_for_pagerank"
+    ], "pagerank centrality RPC must run even without query_class"
+    # ...but the usage-edge signal lookup did NOT (query_class-gated).
+    assert [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "search_signal_weights"
+    ] == []
 
 
 @pytest.mark.asyncio
@@ -379,8 +406,13 @@ async def test_score_caches_per_node_signal_weight_lookup():
         candidates=candidates,
         query_class=QueryClass.THEMATIC,
     )
-    schema_rpc_calls = [c for c in fake.calls if c[0] == "schema_rpc"]
+    # Filter to search_signal_weights only — the unconditional pagerank RPC
+    # (subgraph_for_pagerank) also lands in fake.calls post P1-1 and must NOT
+    # pollute the per-node cache-count assertion.
+    signal_rpc_calls = [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "search_signal_weights"
+    ]
     # Two unique node_ids ("node-1", "node-2") → exactly two RPC dispatches.
-    assert len(schema_rpc_calls) == 2, (
-        f"expected 2 unique-node RPCs, got {len(schema_rpc_calls)}: {schema_rpc_calls!r}"
+    assert len(signal_rpc_calls) == 2, (
+        f"expected 2 unique-node signal RPCs, got {len(signal_rpc_calls)}: {signal_rpc_calls!r}"
     )
