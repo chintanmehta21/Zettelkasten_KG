@@ -892,8 +892,8 @@
       refreshMyZettelsBadge(token);
     } catch (e) {
       var quotaDetail = e && e.detail && e.detail.code === 'quota_exhausted' ? e.detail : null;
-      if (quotaDetail && window.ZKPricing) {
-        await window.ZKPricing.openPurchase({
+      if (quotaDetail && window.ZKQuotaGate) {
+        await window.ZKQuotaGate.show({
           detail: quotaDetail,
           source: 'home:add-zettel',
           resumeAction: { type: 'add_zettel', url: url, clientActionId: pricingActionId },
@@ -1260,8 +1260,8 @@
           try { raw = await resp.text(); } catch(_) {}
           try { var j = JSON.parse(raw); detail = (j && (j.detail || j.error)) || ''; } catch (_) {}
           console.error('[create-kasten] failed', resp.status, raw);
-          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
-            await window.ZKPricing.openPurchase({
+          if (detail && detail.code === 'quota_exhausted' && window.ZKQuotaGate) {
+            await window.ZKQuotaGate.show({
               detail: detail,
               source: 'home:create-kasten',
               resumeAction: { type: 'create_kasten', name: name, description: desc, scope: scope, clientActionId: pricingActionId },

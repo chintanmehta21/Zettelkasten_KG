@@ -88,8 +88,8 @@
           let payload = null;
           try { payload = await resp.json(); } catch (_) {}
           const detail = payload && payload.detail;
-          if (detail && detail.code === 'quota_exhausted' && window.ZKPricing) {
-            await window.ZKPricing.openPurchase({
+          if (detail && detail.code === 'quota_exhausted' && window.ZKQuotaGate) {
+            await window.ZKQuotaGate.show({
               detail: detail,
               source: 'knowledge-graph:create-kasten',
               resumeAction: { type: 'create_kasten', name: name, nodeId: state.node && state.node.id, clientActionId: pricingActionId },
