@@ -55,6 +55,20 @@ def _ingest(raw_text: str, tier_used: str) -> IngestResult:
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_entitlement_gate(monkeypatch):
+    """Phase-9 gate is wired on /api/v2/summarize. These tests mock the LLM
+    and run with no Supabase env vars, so the real gate would 500 on a
+    missing client. Replace with a permissive async no-op for this module.
+    """
+    async def _allow(*_args, **_kwargs):
+        return None
+    monkeypatch.setattr(
+        "website.features.summarization_engine.api.routes.require_entitlement",
+        _allow,
+    )
+
+
 def _client() -> TestClient:
     app = FastAPI()
     app.include_router(router)

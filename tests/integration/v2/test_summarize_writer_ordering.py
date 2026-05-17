@@ -158,12 +158,15 @@ async def test_writer_wraps_persist_exception_in_writer_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_route_consumes_entitlement_after_persist_success(monkeypatch):
-    """Patch the four collaborators of the Add Zettel facade
-    and verify the call order:
+async def test_route_atomic_gate_order_phase9(monkeypatch):
+    """Phase-9 contract: ``require_entitlement`` is now the atomic gate (it
+    both reserves AND consumes). The runner no longer calls a separate
+    ``consume_entitlement`` post-persist. Expected call order is:
 
         require_entitlement → summarize_url → persist_summarized_result
-        → consume_entitlement
+
+    A4 decision: no refund on caller failure — the gate already consumed
+    when require returned. See ``website/api/module_runners/summarization.py``.
     """
     from website.api import zettels_routes as routes_mod
     from website.api.module_runners import summarization as runner
@@ -188,8 +191,10 @@ async def test_route_consumes_entitlement_after_persist_success(monkeypatch):
             supabase_node_id=None,
         )
 
+    consume_calls = {"n": 0}
+
     async def fake_consume(*_a, **_kw):
-        order.append("consume")
+        consume_calls["n"] += 1
 
     monkeypatch.setattr(runner, "require_entitlement", fake_require)
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
@@ -227,8 +232,11 @@ async def test_route_consumes_entitlement_after_persist_success(monkeypatch):
         effective_user_id=routes_mod._zoro_user_id(),
     )
 
-    assert order == ["require", "summarize", "persist", "consume"], (
+    assert order == ["require", "summarize", "persist"], (
         f"route call order broken: {order}"
+    )
+    assert consume_calls["n"] == 0, (
+        "Phase-9: separate consume_entitlement must NOT fire — require is atomic."
     )
 
 
