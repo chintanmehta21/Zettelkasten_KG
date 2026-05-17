@@ -17,7 +17,8 @@ def test_source_type_values():
     assert SourceType.GITHUB.value == "github"
     assert SourceType.NEWSLETTER.value == "newsletter"
     assert SourceType.HACKERNEWS.value == "hackernews"
-    assert len(list(SourceType)) == 10
+    assert SourceType.DOCUMENT.value == "document"
+    assert len(list(SourceType)) == 11
 
 
 def test_ingest_result_minimal():

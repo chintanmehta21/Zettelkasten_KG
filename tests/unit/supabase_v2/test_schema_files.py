@@ -55,6 +55,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "42_kg_connection_strength.sql",
         "43_port_match_kg_nodes.sql",
         "44_functional_gates.sql",
+        "45_document_source_type.sql",
     ]
 
 
@@ -106,6 +107,11 @@ def test_search_chunks_and_quota_are_typed_rpcs() -> None:
 def test_search_chunks_excludes_null_embeddings() -> None:
     sql = _sql("02_content_schema.sql")
     assert "AND cc.embedding IS NOT NULL" in sql
+
+
+def test_content_schema_allows_document_source_type() -> None:
+    assert "'document'" in _sql("02_content_schema.sql")
+    assert "'document'" in _sql("45_document_source_type.sql")
 
 
 def test_citation_reaper_ignores_malformed_citation_ids() -> None:

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS content.canonical_zettels (
     normalized_url    text NOT NULL,
     content_hash      bytea NOT NULL,
     source_type       text NOT NULL CHECK (
-        source_type IN ('youtube', 'reddit', 'github', 'twitter', 'substack', 'newsletter', 'medium', 'web', 'generic')
+        source_type IN ('youtube', 'reddit', 'github', 'twitter', 'substack', 'newsletter', 'medium', 'document', 'web', 'generic')
     ),
     title             text,
     body_md           text,

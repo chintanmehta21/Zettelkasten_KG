@@ -1,0 +1,73 @@
+"""Document upload extraction tests."""
+
+from __future__ import annotations
+
+import zipfile
+from io import BytesIO
+
+import pytest
+
+from website.features.summarization_engine.core.models import SourceType
+from website.features.summarization_engine.source_ingest.document import (
+    DocumentUploadError,
+    extract_document_upload,
+)
+
+
+def _docx_bytes(text: str) -> bytes:
+    body = "".join(
+        f"<w:p><w:r><w:t>{part}</w:t></w:r></w:p>"
+        for part in text.split("\n")
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body>{body}</w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", xml)
+    return buffer.getvalue()
+
+
+def test_extract_text_document_upload_builds_document_ingest_result():
+    result = extract_document_upload(
+        filename="zettel-notes.md",
+        content=(
+            b"# Durable notes\n\n"
+            b"Uploaded documents should become canonical zettels with enough body text "
+            b"for summarization and retrieval in the v2 content schema."
+        ),
+        content_type="text/markdown",
+    )
+
+    assert result.source_type == SourceType.DOCUMENT
+    assert result.url == "file-upload://zettel-notes.md"
+    assert result.metadata["filename"] == "zettel-notes.md"
+    assert result.metadata["extension"] == "md"
+    assert "Durable notes" in result.raw_text
+    assert result.extraction_confidence == "high"
+
+
+def test_extract_docx_document_upload_reads_paragraph_text():
+    result = extract_document_upload(
+        filename="research-brief.docx",
+        content=_docx_bytes(
+            "A research brief about semantic retrieval.\n"
+            "It contains enough extracted document text to summarize reliably."
+        ),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+    assert result.source_type == SourceType.DOCUMENT
+    assert "semantic retrieval" in result.raw_text
+    assert result.metadata["docx_paragraph_count"] == 2
+
+
+def test_extract_document_upload_rejects_unsupported_extension():
+    with pytest.raises(DocumentUploadError, match="Unsupported document type"):
+        extract_document_upload(
+            filename="legacy.doc",
+            content=b"Enough body text would be here, but this format is unsupported.",
+            content_type="application/msword",
+        )
