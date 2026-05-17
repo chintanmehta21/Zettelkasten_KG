@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from collections import OrderedDict, defaultdict
 from pathlib import Path
@@ -42,6 +43,11 @@ _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
 _AUTO_ACCEPT_AFTER_SECONDS = 8.0
+_IN_MEMORY_ASYNC_ENABLED = os.getenv("ADD_ZETTEL_IN_MEMORY_ASYNC", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
 _OPERATION_TTL_SECONDS = 15 * 60
 _MAX_OPERATION_RECORDS = 128
 _MAX_IDEMPOTENCY_RECORDS = 128
@@ -49,7 +55,7 @@ _MAX_IDEMPOTENCY_RECORDS = 128
 _IDEMPOTENCY_CACHE: "OrderedDict[tuple[str, str], tuple[float, str, dict[str, Any]]]" = OrderedDict()
 _OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
 _OPERATION_TASKS: dict[str, asyncio.Task] = {}
-_IN_FLIGHT: dict[tuple[str, str], tuple[str, str]] = {}
+_IN_FLIGHT: dict[tuple[str, str], tuple[str, str, asyncio.Task]] = {}
 
 
 class AddZettelRequest(BaseModel):
@@ -222,6 +228,20 @@ def _store_operation_result(
     _IN_FLIGHT.pop(cache_key, None)
 
 
+async def _await_in_flight(
+    *,
+    cache_key: tuple[str, str],
+    request_hash: str,
+    operation_id: str,
+    task: asyncio.Task,
+) -> dict[str, Any]:
+    result = await asyncio.shield(task)
+    _cache_put(cache_key, request_hash, result)
+    _operation_put(operation_id, result)
+    _IN_FLIGHT.pop(cache_key, None)
+    return result
+
+
 def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
     if not persisted:
         return
@@ -279,9 +299,16 @@ async def add_zettel(
         return cached
     in_flight = _IN_FLIGHT.get(cache_key)
     if in_flight is not None:
-        running_hash, operation_id = in_flight
+        running_hash, operation_id, running_task = in_flight
         if running_hash != request_hash:
             return _idempotency_conflict(body.client_action_id)
+        if not _IN_MEMORY_ASYNC_ENABLED:
+            return await _await_in_flight(
+                cache_key=cache_key,
+                request_hash=request_hash,
+                operation_id=operation_id,
+                task=running_task,
+            )
         existing = _operation_get(operation_id)
         if existing is None:
             existing = AddZettelResponse(
@@ -304,8 +331,8 @@ async def add_zettel(
         work = asyncio.create_task(
             _run_add_zettel(body, user=user, effective_user_id=effective_user_id)
         )
-        _IN_FLIGHT[cache_key] = (request_hash, body.client_action_id)
-        if body.mode == "auto":
+        _IN_FLIGHT[cache_key] = (request_hash, body.client_action_id, work)
+        if body.mode == "auto" and _IN_MEMORY_ASYNC_ENABLED:
             try:
                 result = await asyncio.wait_for(asyncio.shield(work), timeout=_AUTO_ACCEPT_AFTER_SECONDS)
             except TimeoutError:

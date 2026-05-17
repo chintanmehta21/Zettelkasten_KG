@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import UUID
@@ -20,6 +21,9 @@ if TYPE_CHECKING:
     from website.core.persist import PersistenceOutcome
 
 from website.core.summary_rendering import render_detailed_summary
+
+if TYPE_CHECKING:
+    from website.core.persist import PersistenceOutcome
 
 _SUMMARIZE_SEMAPHORE = asyncio.Semaphore(2)
 
@@ -227,9 +231,24 @@ def _load_env_file(path: Path) -> None:
         key, value = line.split("=", 1)
         value = value.strip().strip('"').strip("'")
         if key.strip() and key.strip() not in {"", "#"}:
-            import os
-
             os.environ.setdefault(key.strip(), value)
+
+
+def _load_api_env_file(path: Path) -> None:
+    if not path.exists() or os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY"):
+        return
+    keys: list[str] = []
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            _, line = line.split("=", 1)
+        value = line.strip().strip('"').strip("'")
+        if value:
+            keys.append(value)
+    if keys:
+        os.environ.setdefault("GEMINI_API_KEYS", ",".join(keys))
 
 
 def _load_local_env() -> None:
@@ -240,6 +259,8 @@ def _load_local_env() -> None:
         root / "supabase" / ".env",
     ):
         _load_env_file(candidate)
+    _load_api_env_file(root / "api_env")
+    os.environ.setdefault("DB_SCHEMA_VERSION", "v2")
 
 
 def _parse_args() -> argparse.Namespace:

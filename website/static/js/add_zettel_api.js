@@ -67,7 +67,7 @@
         client_action_id: opts.clientActionId || makeActionId(opts.surface),
         persist: opts.persist !== false,
         surface: opts.surface || 'landing',
-        mode: opts.mode || 'auto'
+        mode: opts.mode || 'sync'
       })
     });
 

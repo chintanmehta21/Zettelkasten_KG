@@ -151,7 +151,7 @@
       clientActionId: window.ZKAddZettel.makeActionId('landing'),
       persist: true,
       surface: 'landing',
-      mode: 'auto'
+      mode: 'sync'
     })
     .then(function (data) {
       showResult(data.summary || {});

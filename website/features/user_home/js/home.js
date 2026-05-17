@@ -426,6 +426,7 @@
   }
 
   function renderMarkdownLite(container, markdown) {
+    markdown = normalizeSummaryMarkdown(markdown);
     var lines = String(markdown || '').split(/\r?\n/);
     var paraBuf = [];
     var listStack = null; // { el: <ul>, level: number }
@@ -483,6 +484,10 @@
     }
     flushPara();
     closeList();
+  }
+
+  function normalizeSummaryMarkdown(markdown) {
+    return String(markdown || '').replace(/([^\n])\s+(#{2,6}\s+)/g, '$1\n\n$2');
   }
 
   function tryParseSummaryObject(rawText) {
@@ -797,7 +802,7 @@
       clientActionId: pricingActionId,
       persist: true,
       surface: 'home',
-      mode: 'auto'
+      mode: 'sync'
     });
 
     // Create skeleton now — it'll be revealed seamlessly during shatter

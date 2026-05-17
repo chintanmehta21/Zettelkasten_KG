@@ -80,11 +80,15 @@
     return null;
   }
 
+  function normalizeSummaryMarkdown(text) {
+    return String(text || '').replace(/([^\n])\s+(#{2,6}\s+)/g, '$1\n\n$2');
+  }
+
   // Simple Markdown to HTML converter for summaries
   function markdownToHtml(text) {
     if (!text) return '';
 
-    var html = text
+    var html = normalizeSummaryMarkdown(text)
       // Escape HTML entities first
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -274,7 +278,7 @@
       clientActionId: window.ZKAddZettel.makeActionId('landing'),
       persist: true,
       surface: 'landing',
-      mode: 'auto'
+      mode: 'sync'
     })
       .then(function (data) {
         var summary = data.summary || {};

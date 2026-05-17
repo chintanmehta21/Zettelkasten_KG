@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from website.features.summarization_engine.post_summary_transformation import (
+    transform_detailed_summary_sections,
+)
+
 
 def render_detailed_summary(sections: list[Any]) -> str:
     lines: list[str] = []
-    for section in sections:
+    for section in transform_detailed_summary_sections(sections):
         if lines:
             lines.append("")
         lines.append(f"## {section.heading}")
