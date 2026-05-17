@@ -141,20 +141,36 @@ def test_create_order_price_mismatch_returns_409_price_changed(app_client, with_
     assert route.call_count == 0, "Razorpay must NOT be called on price_changed"
 
 
-def test_create_order_missing_billing_profile_returns_400(app_client, mint_user):
-    """User without a billing profile (no phone) → 400 billing_profile_required."""
+def test_create_order_without_billing_profile_proceeds_to_razorpay(app_client, mint_user):
+    """No stored billing profile must NOT block checkout.
+
+    Phone is collected inside Razorpay's hosted checkout, not via a pre-prompt
+    (the billing schema doesn't even persist phone). A fresh user with no
+    profile must reach the Razorpay order.create call — proven here by the
+    mocked /v1/orders route being hit. The 400 ``billing_profile_required``
+    gate was removed in fix/payment-phone-prompt.
+    """
     user = mint_user()  # fresh — no upsert_billing_profile call
     with respx.mock(base_url="https://api.razorpay.com", assert_all_called=False) as mocked:
-        route = mocked.post("/v1/orders").mock(return_value=httpx.Response(500))
+        route = mocked.post("/v1/orders").mock(
+            return_value=httpx.Response(
+                200,
+                json={"id": "order_qa_phone_fix", "amount": 6900, "currency": "INR"},
+            )
+        )
         r = app_client.post(
             "/api/payments/orders",
             json={"product_id": "zettel_5"},
             headers=_bearer(user.jwt),
         )
-    assert r.status_code == 400, f"got {r.status_code}: {r.text[:200]}"
-    detail = r.json().get("detail") or {}
-    assert detail.get("code") == "billing_profile_required", detail
-    assert route.call_count == 0
+    # Reached Razorpay (no billing_profile_required short-circuit).
+    assert route.call_count == 1, (
+        f"order.create not reached — gate still blocks. status={r.status_code} {r.text[:200]}"
+    )
+    assert r.status_code in (200, 201), f"got {r.status_code}: {r.text[:200]}"
+    body = r.json()
+    # Prefill contact must be empty (Razorpay collects it in-modal).
+    assert body.get("prefill", {}).get("contact", "") == "", body
 
 
 def test_create_order_amount_below_floor_returns_400(app_client, with_billing_profile, monkeypatch):

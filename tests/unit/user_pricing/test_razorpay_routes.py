@@ -413,14 +413,18 @@ async def test_my_subscription_returns_public_view(stub_user, saved_profile, fak
 
 
 @pytest.mark.asyncio
-async def test_create_order_requires_billing_profile(stub_user, fake_client):
-    with pytest.raises(routes.HTTPException) as exc:
-        await routes.create_order(
-            routes.PaymentCreateRequest(product_id="zettel_10"),
-            stub_user,
-        )
-    assert exc.value.status_code == 400
-    assert exc.value.detail["code"] == "billing_profile_required"
+async def test_create_order_without_saved_profile_proceeds(stub_user, fake_client):
+    """fix/payment-phone-prompt: no saved profile must NOT 400.
+
+    The order is created with an auto-provisioned phone-less profile;
+    Razorpay's hosted checkout collects the contact number itself, so
+    prefill.contact is empty."""
+    payload = await routes.create_order(
+        routes.PaymentCreateRequest(product_id="zettel_10"),
+        stub_user,
+    )
+    assert payload.get("order_id"), payload
+    assert payload.get("prefill", {}).get("contact", "") == "", payload
 
 
 @pytest.mark.asyncio

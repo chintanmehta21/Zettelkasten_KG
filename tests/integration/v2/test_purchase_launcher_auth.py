@@ -4,9 +4,11 @@ sibling subscription / cancel endpoints must return a clean 401/403 — never
 
 The launcher (``purchase_launcher.js``) is built around this contract:
 ``authToken()`` returns ``null`` when the user is signed-out, ``authHeaders()``
-omits the ``Authorization`` header, and ``ensureBillingProfile()`` throws a
-``not_authenticated`` error. The route-side counterpart is that
-``get_current_user`` denies the call cleanly — that is what this test pins.
+omits the ``Authorization`` header, and ``ensureSignedIn()`` throws a
+``not_authenticated`` error (fix/payment-phone-prompt renamed the old
+``ensureBillingProfile`` — phone is now collected inside Razorpay, not via a
+pre-prompt). The route-side counterpart is that ``get_current_user`` denies
+the call cleanly — that is what this test pins.
 
 Tier-B (Chrome UX walk-through with DevTools assertions on
 ``localStorage`` and a click-while-logged-out probe) is intentionally
