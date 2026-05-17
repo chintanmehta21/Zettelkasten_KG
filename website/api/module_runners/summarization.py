@@ -143,7 +143,7 @@ async def run_add_zettel_pipeline(
             summary.model_dump(mode="json"),
             user_sub=user_sub,
         )
-        await consume_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
+        # Phase 9: gate consumed atomically in require_entitlement above.
 
     return AddZettelPipelineOutput(
         status="succeeded",

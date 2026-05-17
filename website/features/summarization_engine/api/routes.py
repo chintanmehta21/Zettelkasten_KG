@@ -23,6 +23,8 @@ from website.features.summarization_engine.core.errors import UnsupportedVideoEr
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.core.orchestrator import summarize_url_bundle
 from website.features.summarization_engine.writers.supabase import SupabaseWriter
+from website.features.user_pricing.entitlements import require_entitlement
+from website.features.user_pricing.models import Meter
 
 router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
 
@@ -33,6 +35,15 @@ async def summarize_v2(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     user_id = _user_id(user)
+    # Phase 9 gate: atomic reserve+consume BEFORE the LLM call. Anonymous
+    # callers map to the Zoro sentinel UUID via _user_id (same pool as
+    # /api/zettels/add). require_entitlement is a no-op when user is None
+    # because get_optional_user did not produce a sub.
+    await require_entitlement(
+        Meter.ZETTEL,
+        user if user else {"sub": str(user_id)},
+        action_id=f"v2-summarize-{request.url}",
+    )
     client = _gemini_client()
     try:
         bundle = await summarize_url_bundle(request.url, user_id=user_id, gemini_client=client)

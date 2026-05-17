@@ -511,7 +511,8 @@ async def create_message(
         )
 
     payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
-    await consume_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
+    # Phase 9: gate consumed atomically in require_entitlement; no-op kept
+    # for backward call-shape consistency (see entitlements.consume_entitlement).
     return payload
 
 
@@ -563,7 +564,7 @@ async def adhoc_message(
         )
 
     payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
-    await consume_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
+    # Phase 9: gate consumed atomically in require_entitlement.
     payload["session"] = _serialize_session(session)
     return payload
 
