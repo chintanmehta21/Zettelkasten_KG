@@ -35,7 +35,7 @@ async def test_free_zettel_day_cap_then_blocked(mint_user, asyncpg_pool):
     """Free plan zettel day cap from config; cap+1th call returns ``quota_exhausted``."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet = wallet_meter_for("zettel")
+    wallet = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
     day_cap = caps_for("free", "zettel")["day"]
     assert day_cap is not None, "config drift: free zettel day cap missing"
 
@@ -61,7 +61,7 @@ async def test_reserve_and_consume_is_idempotent(mint_user, asyncpg_pool):
     user = mint_user()
     action_id = f"idem-{uuid.uuid4().hex}"
     caps = _caps_jsonb("free", "zettel")
-    wallet = wallet_meter_for("zettel")
+    wallet = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
 
     async with asyncpg_pool.acquire() as conn:
         first = await conn.fetchval(
@@ -88,7 +88,7 @@ async def test_wallet_fallback_after_plan_exhausted(mint_user, asyncpg_pool):
     """Plan exhausted + wallet credits available → source flips to wallet."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet_meter = wallet_meter_for("zettel")
+    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
     day_cap = caps_for("free", "zettel")["day"]
     assert day_cap is not None
 
@@ -122,7 +122,7 @@ async def test_day_cap_blocks_even_when_week_month_room_remains(mint_user, async
     """min(day, week, month) — exhausting day blocks even if week has room."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet_meter = wallet_meter_for("zettel")
+    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
     cfg = caps_for("free", "zettel")
     assert cfg["day"] < cfg["week"] < cfg["month"]
 
@@ -146,7 +146,7 @@ async def test_day_cap_blocks_even_when_week_month_room_remains(mint_user, async
 async def test_caps_are_runtime_configurable(mint_user, asyncpg_pool):
     """Overriding caps at call-site changes behavior; nothing in the DB pins policy."""
     user = mint_user()
-    wallet_meter = wallet_meter_for("zettel")
+    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
     tight = json.dumps({"day": 1, "week": None, "month": None, "lifetime": None})
     loose = json.dumps({"day": 100, "week": None, "month": None, "lifetime": None})
 
