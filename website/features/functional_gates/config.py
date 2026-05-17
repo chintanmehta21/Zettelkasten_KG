@@ -44,10 +44,15 @@ PLAN_CAPS: Final[Mapping[str, PlanCapMap]] = {
 }
 
 # Pack-credit wallet meter on billing.pricing_balances per feature.
+# Aligned with existing webhook fulfillment path in user_pricing/routes.py
+# (_apply_fulfillment -> add_pack_credits(meter=product["meter"])) and the
+# catalog mapping in user_pricing/catalog.py:105. Editing these strings here
+# WITHOUT updating the catalog/webhook would orphan pack purchases — keep in
+# sync if the pricing module ever renames its meters.
 WALLET_METER: Final[Mapping[str, str]] = {
-    "zettel":       "zettel_credits",
-    "kasten":       "kasten_credits",
-    "rag_question": "rag_question_credits",
+    "zettel":       "zettel",
+    "kasten":       "kasten",
+    "rag_question": "rag_question",
 }
 
 FEATURES: Final[tuple[str, ...]] = ("zettel", "kasten", "rag_question")
