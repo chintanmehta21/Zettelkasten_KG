@@ -2,17 +2,22 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+from website.features.functional_gates import get_functional_gates
 from website.features.summarization_engine.batch.events import ProgressEvent
 from website.features.summarization_engine.batch.input_loader import BatchInputItem, load_batch_input
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.models import BatchRun, BatchRunStatus
 from website.features.summarization_engine.core.orchestrator import summarize_url
 from website.features.summarization_engine.writers.base import BaseWriter
+from website.features.user_pricing.models import Meter
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -71,6 +76,29 @@ class BatchProcessor:
         return [item for item in results if item is not None]
 
     async def _process_item(self, item: BatchInputItem) -> dict[str, Any]:
+        # Phase 9 gate: per-URL atomic reserve+consume BEFORE LLM cost is
+        # incurred. Each URL in the batch counts as one zettel; the gate is
+        # called directly (not via entitlements.require_entitlement) because
+        # this is not an HTTP context and we want structured deny rather
+        # than a 402 raise mid-loop.
+        action_id = f"batch-{self.user_id}-{item.url}"
+        try:
+            decision = await get_functional_gates().reserve_and_consume(
+                profile_id=str(self.user_id),
+                feature=str(Meter.ZETTEL),
+                action_id=action_id,
+            )
+        except Exception as exc:
+            logger.exception("batch gate failed for url=%s: %s", item.url, exc)
+            return {"url": item.url, "status": "failed", "error": f"gate_error: {exc}"}
+        if not decision.allowed:
+            return {
+                "url": item.url,
+                "status": "denied",
+                "reason": decision.reason or "quota_exhausted",
+                "remaining_plan": decision.remaining_plan,
+                "remaining_wallet": decision.remaining_wallet,
+            }
         try:
             result = await summarize_url(item.url, user_id=self.user_id, gemini_client=self.gemini_client)
             writer_results = [await writer.write(result, user_id=self.user_id) for writer in self.writers]

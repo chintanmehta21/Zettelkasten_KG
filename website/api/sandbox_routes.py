@@ -394,7 +394,7 @@ async def create_sandbox(
             logger.error("v2 create_kasten returned None for workspace=%s name=%s", workspace_id, body.name)
             raise HTTPException(status_code=500, detail="Create sandbox returned no row")
 
-        await consume_entitlement(Meter.KASTEN, user, action_id=action_id)
+        # Phase 9: gate consumed atomically in require_entitlement above.
         return {"sandbox": _serialize_kasten_v2(row)}
 
     runtime = _runtime_for_user(user)
@@ -431,7 +431,7 @@ async def create_sandbox(
         logger.error("create_sandbox returned None row for user=%s name=%s", runtime.kg_user_id, body.name)
         raise HTTPException(status_code=500, detail="Create sandbox returned no row")
 
-    await consume_entitlement(Meter.KASTEN, user, action_id=action_id)
+    # Phase 9: gate consumed atomically in require_entitlement above.
     return {"sandbox": _serialize_sandbox(row)}
 
 

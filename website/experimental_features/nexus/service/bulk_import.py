@@ -801,6 +801,43 @@ async def _process_single_artifact(
         )
         return artifact_result, "skipped"
 
+    # Phase 9 gate: per-artifact atomic reserve+consume BEFORE LLM cost.
+    # action_id collapses repeat imports of the same (workspace, provider,
+    # external_id) tuple onto the same ledger row — idempotent across retries.
+    from website.features.functional_gates import get_functional_gates
+    from website.features.user_pricing.models import Meter as _Meter
+    gate_action_id = f"nexus-{workspace_id}-{provider}-{artifact.external_id}"
+    try:
+        gate_decision = await get_functional_gates().reserve_and_consume(
+            profile_id=auth_user_sub,
+            feature=str(_Meter.ZETTEL),
+            action_id=gate_action_id,
+        )
+    except Exception as exc:
+        return _fail_artifact(
+            artifact=artifact,
+            artifact_result=artifact_result,
+            error_message=f"gate_error: {exc}",
+            provider=provider,
+            provider_account_id=provider_account_id,
+            workspace_id=workspace_id,
+            ingest_run_id=ingest_run_id,
+        )
+    if not gate_decision.allowed:
+        artifact_result["status"] = "skipped"
+        artifact_result["reason"] = "quota_exhausted"
+        artifact_result["remaining_plan"] = gate_decision.remaining_plan
+        artifact_result["remaining_wallet"] = gate_decision.remaining_wallet
+        _record_artifact(
+            workspace_id=workspace_id,
+            provider=provider,
+            provider_account_id=provider_account_id,
+            artifact=artifact,
+            ingest_run_id=ingest_run_id,
+            status="skipped",
+        )
+        return artifact_result, "skipped"
+
     try:
         summary_result = await summarize_artifact_url(
             artifact.url,
