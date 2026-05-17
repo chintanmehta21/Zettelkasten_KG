@@ -66,6 +66,26 @@ async def test_batch_processor_stress_uses_bounded_workers(monkeypatch):
         "website.features.summarization_engine.batch.processor.summarize_url",
         fake_summarize,
     )
+
+    # Phase 9: BatchProcessor.process_item now calls the functional gate
+    # per URL. Without Supabase env, get_v2_client() would 500 and every
+    # batch item would land as `status: 'failed'`. Stub the gate factory
+    # to return a permissive allow-all decision so this test exercises
+    # the concurrency contract, not the gate.
+    from website.features.functional_gates import GateDecision
+
+    class _AllowGate:
+        async def reserve_and_consume(self, *, profile_id, feature, action_id, plan=None):
+            return GateDecision(
+                allowed=True, source="plan", reason="ok",
+                remaining_plan=10_000, remaining_wallet=0,
+            )
+
+    monkeypatch.setattr(
+        "website.features.summarization_engine.batch.processor.get_functional_gates",
+        lambda: _AllowGate(),
+    )
+
     payload = "url\n" + "\n".join(f"https://example.com/{index}" for index in range(200))
     result = await BatchProcessor(
         user_id=UUID("00000000-0000-0000-0000-000000000001"),
