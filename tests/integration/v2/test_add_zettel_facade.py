@@ -284,6 +284,7 @@ def test_add_zettel_idempotency_rejects_same_key_different_request(
 
 def test_add_zettel_idempotency_returns_accepted_for_running_duplicate(facade_client):
     client, zettels_routes, _runner = facade_client
+    zettels_routes._IN_MEMORY_ASYNC_ENABLED = True
     payload = {
         "url": "https://example.com/running",
         "client_action_id": "running-click",
@@ -294,15 +295,69 @@ def test_add_zettel_idempotency_returns_accepted_for_running_duplicate(facade_cl
     request_model = zettels_routes.AddZettelRequest.model_validate(payload)
     request_hash = zettels_routes._request_hash(request_model)
     zoro_key = (str(ZORO_AUTH_ID), "running-click")
-    zettels_routes._IN_FLIGHT[zoro_key] = (request_hash, "running-click")
+    async def _pending():
+        await asyncio.sleep(60)
 
-    resp = client.post("/api/zettels/add", json=payload)
+    import asyncio
+    loop = asyncio.new_event_loop()
+    try:
+        task = loop.create_task(_pending())
+        zettels_routes._IN_FLIGHT[zoro_key] = (request_hash, "running-click", task)
+
+        resp = client.post("/api/zettels/add", json=payload)
+    finally:
+        task.cancel()
+        loop.run_until_complete(asyncio.gather(task, return_exceptions=True))
+        loop.close()
+        zettels_routes._IN_MEMORY_ASYNC_ENABLED = False
 
     assert resp.status_code == 202
     assert resp.headers["location"] == "/api/operations/running-click"
     body = resp.json()
     assert body["status"] == "accepted"
     assert body["operation_id"] == "running-click"
+
+
+def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, monkeypatch):
+    client, zettels_routes, runner = facade_client
+    zettels_routes._IN_MEMORY_ASYNC_ENABLED = False
+    calls: list[str] = []
+
+    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
+        calls.append("summarize")
+        return _make_bundle(url)
+
+    async def fake_persist(result, *, user_sub=None, captured_on=None):
+        calls.append("persist")
+        return SimpleNamespace(
+            result=result,
+            file_node_id="web-sync-auto",
+            supabase_node_id="00000000-0000-0000-0000-000000000222",
+            file_saved=True,
+            supabase_saved=True,
+            supabase_duplicate=False,
+            kg_user_id=user_sub,
+        )
+
+    monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
+    monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
+
+    resp = client.post(
+        "/api/zettels/add",
+        json={
+            "url": "https://example.com/auto-sync",
+            "client_action_id": "auto-sync-1",
+            "persist": True,
+            "surface": "home",
+            "mode": "auto",
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "succeeded"
+    assert body.get("status_url") is None
+    assert calls == ["summarize", "persist"]
 
 
 def test_add_zettel_problem_detail_failure_is_json(facade_client, monkeypatch):
