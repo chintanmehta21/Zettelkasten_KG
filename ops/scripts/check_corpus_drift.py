@@ -9,9 +9,6 @@ to open an auto-refresh PR.
 Returns exit 0 (no drift) / 1 (drift detected) / 2 (config / IO error) for
 the workflow to branch on.
 """
-# LEGACY (broken after 2026-05-11): imports website.core.supabase_kg which was retired
-# in Phase 8.0.6. To revive, port get_supabase_client calls to get_v2_client() from
-# website.core.supabase_v2.client. Tracked for follow-up iteration.
 from __future__ import annotations
 
 import argparse
@@ -72,32 +69,20 @@ def detect_drift(
 
 
 def _load_supabase_stats() -> dict[str, Any]:
-    """Pull current corpus stats from Supabase. Imports are lazy so the
-    module loads cleanly in test environments without supabase creds."""
-    from website.core.supabase_kg.client import get_supabase_client
-    client = get_supabase_client()
-    chunks = client.table("chunks").select("source_type,embedding").execute()
-    rows = chunks.data or []
-    chunk_count = len(rows)
-    types: dict[str, int] = {}
-    for r in rows:
-        t = r.get("source_type", "unknown")
-        types[t] = types.get(t, 0) + 1
-    src_dist = {k: v / max(chunk_count, 1) for k, v in types.items()}
-    if chunk_count > 0 and rows[0].get("embedding"):
-        dim = len(rows[0]["embedding"])
-        centroid = [0.0] * dim
-        for r in rows:
-            for i, v in enumerate(r["embedding"]):
-                centroid[i] += v
-        centroid = [c / chunk_count for c in centroid][:8]
-    else:
-        centroid = [0.0] * 8
-    return {
-        "chunk_count": chunk_count,
-        "source_type_distribution": src_dist,
-        "embedding_centroid": centroid,
-    }
+    """Pull current corpus stats from Supabase.
+
+    The legacy implementation read a flat ``public.chunks`` table
+    (source_type + float[] embedding) that was purged with DB v2 (table
+    dropped; v2 stores embeddings as opaque ``halfvec`` and source_type on
+    the parent zettel, with no client-side centroid path). The Supabase
+    input is unavailable until the v2 eval-driver rebuild ships a corpus-
+    stats RPC; use ``--current-json`` with precomputed stats instead.
+    """
+    raise NotImplementedError(
+        "check_corpus_drift._load_supabase_stats: v2 eval-driver rebuild "
+        "pending — legacy slug-keyed public.chunks path purged; see "
+        "rag_eval_v2 (Phase E). Use --current-json instead."
+    )
 
 
 def main() -> int:

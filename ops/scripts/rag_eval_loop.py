@@ -9,15 +9,11 @@ Phase B: verify the cross-LLM blind review stamp -> determinism gate ->
 change-breadth gate -> write improvement_delta.json -> apply KG recommendations
 -> write next_actions.md and diff.md -> git commit.
 """
-# LEGACY (broken after 2026-05-11): imports website.core.supabase_kg which was retired
-# in Phase 8.0.6. To revive, port get_supabase_client calls to get_v2_client() from
-# website.core.supabase_v2.client. Tracked for follow-up iteration.
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
-import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -128,47 +124,21 @@ def _serialize_turn(turn, query) -> dict:
 
 
 def _build_chunks_map(ingest_report: dict, *, user_id: str | None = None) -> dict[str, list[dict]]:
-    """Chunks-per-node map for chunking_score.
+    """Chunks-per-node map for chunking_score (count-stub contract).
 
-    iter-02 fix: fetch real chunk text + token_count from kg_node_chunks so
-    chunking_score can compute boundary integrity, dedup, and budget
-    compliance against actual content. Falls back to stubs if Supabase is
-    not configured (offline tests).
+    Stubs one empty-text chunk per ``chunk_count`` from the ingest report.
+    The legacy real-fetch path (``public.kg_node_chunks`` keyed by
+    (user_id, slug)) was purged with DB v2 — no slug→canonical_zettel_id
+    bridge exists, so a real fetch cannot be reconstructed until the v2
+    eval-driver rebuild lands (see rag_eval_v2 Phase E). ``user_id`` is
+    retained for call-contract stability; both the offline determinism-gate
+    path and any user-scoped caller now get the same count stubs.
     """
+    del user_id  # call-contract parity; no v2 slug-keyed fetch path exists
     out: dict[str, list[dict]] = {}
-    if user_id is None:
-        # Offline / test path: stub by count.
-        for entry in ingest_report.get("per_zettel", []):
-            if entry.get("ok"):
-                out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
-        return out
-
-    try:
-        from website.core.supabase_kg.client import get_supabase_client
-        sb = get_supabase_client()
-        if sb is None:
-            raise RuntimeError("supabase not configured")
-        for entry in ingest_report.get("per_zettel", []):
-            if not entry.get("ok"):
-                continue
-            node_id = entry["node_id"]
-            response = sb.table("kg_node_chunks").select(
-                "chunk_idx, content, token_count"
-            ).eq("user_id", user_id).eq("node_id", node_id).order("chunk_idx").execute()
-            rows = response.data or []
-            out[node_id] = [
-                {
-                    "text": r.get("content") or "",
-                    "token_count": r.get("token_count") or 0,
-                }
-                for r in rows
-            ]
-    except Exception as exc:  # noqa: BLE001
-        # Safety: surface the failure but don't break the eval — fall back to stubs.
-        logging.getLogger(__name__).warning("chunks_map: real fetch failed (%s); using stubs", exc)
-        for entry in ingest_report.get("per_zettel", []):
-            if entry.get("ok"):
-                out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
+    for entry in ingest_report.get("per_zettel", []):
+        if entry.get("ok"):
+            out[entry["node_id"]] = [{"text": ""} for _ in range(entry.get("chunk_count", 0))]
     return out
 
 
@@ -345,164 +315,19 @@ async def _run_phase_a(args: argparse.Namespace) -> dict:
     else:
         queries = load_seed_queries(config_dir / "queries" / args.source / "seed.yaml")
 
-    # 3. Build Kasten + ingest
-    from ops.scripts.lib.rag_eval_kasten import build_kasten, ingest_kasten
-    from website.core.supabase_kg.client import get_supabase_client
-    from website.features.rag_pipeline.service import _build_runtime
-
-    supabase = get_supabase_client()
-    naruto_id = json.loads(
-        (config_dir / "_naruto_baseline.json").read_text(encoding="utf-8")
-    )["user_id"]
-    seed_node_ids = _resolve_seed_node_ids(args.source, args.iter_num)
-    kasten = await build_kasten(
-        source=args.source,
-        iter_num=args.iter_num,
-        user_id=naruto_id,
-        seed_node_ids=seed_node_ids,
-        supabase=supabase,
-        chintan_path=Path("docs/research/Chintan_Testing.md"),
-        output_dir=iter_dir,
+    # 3+. Build Kasten + ingest + KG snapshot + orchestrator run + eval.
+    #
+    # The entire Phase A data layer was built on legacy per-user slug-keyed
+    # surfaces (kg_node_chunks ingest, kg_nodes/kg_links snapshot reads)
+    # dropped by the DB-v2 purge with no slug→canonical UUID bridge. The
+    # legacy path is purged rather than retained behind dead guards; Phase A
+    # cannot run until a workspace/UUID-keyed eval driver exists.
+    del queries  # loaded for the purged path; v2 rebuild will reload via gold_loader
+    raise NotImplementedError(
+        "rag_eval_loop._run_phase_a: v2 eval-driver rebuild pending — legacy "
+        "slug-keyed Kasten/ingest/KG-snapshot path purged; see rag_eval_v2 "
+        "(Phase E)"
     )
-    runtime = _build_runtime(naruto_id)
-    ingest_report = await ingest_kasten(
-        zettels=kasten["zettels"], user_id=naruto_id, runtime=runtime
-    )
-    (iter_dir / "kasten.json").write_text(
-        json.dumps(kasten, indent=2, default=str), encoding="utf-8"
-    )
-    (iter_dir / "ingest.json").write_text(
-        json.dumps(ingest_report, indent=2), encoding="utf-8"
-    )
-
-    # 4. KG snapshot pre-iter
-    from website.features.rag_pipeline.evaluation.kg_snapshot import snapshot_kasten
-
-    all_nodes = (
-        supabase.table("kg_nodes")
-        .select("id, tags")
-        .eq("user_id", naruto_id)
-        .execute()
-        .data
-        or []
-    )
-    all_edges = (
-        supabase.table("kg_links")
-        .select("source_node_id, target_node_id, relation")
-        .eq("user_id", naruto_id)
-        .execute()
-        .data
-        or []
-    )
-    snap = snapshot_kasten(
-        kasten_node_ids=[z["id"] for z in kasten["zettels"]],
-        all_nodes=all_nodes,
-        all_edges=all_edges,
-    )
-    (iter_dir / "kg_snapshot.json").write_text(
-        snap.model_dump_json(indent=2), encoding="utf-8"
-    )
-
-    # 5. Run queries through orchestrator (with-graph + ablated)
-    from website.features.rag_pipeline.types import ChatQuery
-
-    answers: list[dict] = []
-    answers_ablated: list[dict] = []
-    per_query_latencies: list[float] = []
-    for q in queries:
-        chat_q = ChatQuery(content=q.question)
-        turn = await runtime.orchestrator.answer(query=chat_q, user_id=naruto_id)
-        answers.append(_serialize_turn(turn, q))
-        # Capture orchestrator-reported latency for the with-graph path so the
-        # eval result publishes p50/p95 alongside composite/component scores.
-        per_query_latencies.append(float(getattr(turn, "latency_ms", 0) or 0))
-        ablated_turn = await runtime.orchestrator.answer(
-            query=chat_q, user_id=naruto_id, graph_weight_override=0.0
-        )
-        answers_ablated.append(_serialize_turn(ablated_turn, q))
-
-    (iter_dir / "queries.json").write_text(
-        json.dumps([q.model_dump() for q in queries], indent=2, default=str),
-        encoding="utf-8",
-    )
-    (iter_dir / "answers.json").write_text(
-        json.dumps(answers, indent=2, default=str), encoding="utf-8"
-    )
-
-    # 6. Run eval (with graph) + ablation eval -> graph_lift
-    from website.features.rag_pipeline.evaluation.ablation import compute_graph_lift
-    from website.features.rag_pipeline.evaluation.eval_runner import EvalRunner
-
-    chunks_per_node = _build_chunks_map(ingest_report, user_id=str(naruto_id))
-    weights = _read_weights(weights_path)
-    runner = EvalRunner(weights=weights, weights_hash=weights_hash)
-    result_with = runner.evaluate(
-        iter_id=f"{args.source}/iter-{args.iter_num:02d}",
-        queries=queries,
-        answers=answers,
-        chunks_per_node=chunks_per_node,
-        per_query_latencies=per_query_latencies,
-    )
-    result_ablated = runner.evaluate(
-        iter_id=f"{args.source}/iter-{args.iter_num:02d}_ablated",
-        queries=queries,
-        answers=answers_ablated,
-        chunks_per_node=chunks_per_node,
-    )
-    lift = compute_graph_lift(
-        with_graph=result_with.component_scores,
-        ablated=result_ablated.component_scores,
-        weights=weights,
-    )
-    result_with = result_with.model_copy(update={"graph_lift": lift})
-    (iter_dir / "eval.json").write_text(
-        result_with.model_dump_json(indent=2), encoding="utf-8"
-    )
-    (iter_dir / "ablation_eval.json").write_text(
-        result_ablated.model_dump_json(indent=2), encoding="utf-8"
-    )
-
-    # 7. atomic_facts.json
-    atomic = {q.id: q.atomic_facts for q in queries}
-    (iter_dir / "atomic_facts.json").write_text(
-        json.dumps(atomic, indent=2), encoding="utf-8"
-    )
-
-    # 8. KG recommendations
-    from website.features.rag_pipeline.evaluation.kg_recommender import (
-        generate_recommendations,
-    )
-
-    recs = generate_recommendations(
-        queries=[q.model_dump() for q in queries],
-        answers=answers,
-        kasten_edges=all_edges,
-        ragas_per_query={pq.query_id: pq.ragas for pq in result_with.per_query},
-        atomic_facts_per_query=atomic,
-        kasten_nodes=kasten["zettels"],
-    )
-    (iter_dir / "kg_recommendations.json").write_text(
-        json.dumps([r.model_dump() for r in recs], indent=2), encoding="utf-8"
-    )
-
-    # 9. Render human artifacts
-    _render_qa_pairs(iter_dir, queries=queries, answers=answers, per_query=result_with.per_query)
-    _render_scores(iter_dir, eval_result=result_with)
-    _render_kg_changes(iter_dir, recs=recs, snap=snap)
-
-    # 10. Build manual_review_prompt.md
-    from ops.scripts.lib.rag_eval_review import build_review_prompt
-
-    (iter_dir / "manual_review_prompt.md").write_text(
-        build_review_prompt(iter_dir, source=args.source, iter_num=args.iter_num),
-        encoding="utf-8",
-    )
-
-    return {
-        "status": "phase_a_complete",
-        "composite": result_with.composite,
-        "graph_lift_composite": lift.composite,
-    }
 
 
 async def _run_phase_b(args: argparse.Namespace) -> dict:

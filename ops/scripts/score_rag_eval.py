@@ -23,9 +23,6 @@ Exit codes:
     1  — missing inputs
     2  — Supabase fetch failed for >50% of nodes (degraded scoring not useful)
 """
-# LEGACY (broken after 2026-05-11): imports website.core.supabase_kg which was retired
-# in Phase 8.0.6. To revive, port get_supabase_client calls to get_v2_client() from
-# website.core.supabase_v2.client. Tracked for follow-up iteration.
 from __future__ import annotations
 
 import argparse
@@ -43,10 +40,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from website.features.rag_pipeline.evaluation.composite import hash_weights_file
-from website.features.rag_pipeline.evaluation.eval_runner import EvalRunner
-from website.features.rag_pipeline.evaluation.types import GoldQuery, GraphLift
-from website.features.rag_pipeline.observability.kasten_stats import KastenStats
+from website.features.rag_pipeline.evaluation.composite import hash_weights_file  # noqa: E402
+from website.features.rag_pipeline.evaluation.eval_runner import EvalRunner  # noqa: E402
+from website.features.rag_pipeline.evaluation.types import GoldQuery, GraphLift  # noqa: E402
+from website.features.rag_pipeline.observability.kasten_stats import KastenStats  # noqa: E402
 
 WEIGHTS_PATH = ROOT / "docs" / "rag_eval" / "_config" / "composite_weights.yaml"
 
@@ -158,50 +155,15 @@ async def _fetch_chunks_for_nodes(
     """Return ``(chunks_per_node, embeddings_per_node)``.
 
     chunks_per_node: ``{node_id: [{"content": str, "chunk_idx": int, ...}]}``.
-    embeddings_per_node: ``{node_id: [[float], ...]}`` — empty dict when the
-    `kg_node_chunks` table has no embedding column (current schema).
+    embeddings_per_node: ``{node_id: [[float], ...]}``.
 
-    Best-effort: returns empty list per node on any failure. Tries the
-    project's standard supabase client first; if that's not configured or
-    the lookup returns nothing we attempt a service-role REST fallback
-    using ``SUPABASE_SERVICE_ROLE_KEY``.
+    Best-effort, empty-per-node contract: the original slug-keyed fetch path
+    was purged with DB v2 (legacy ``public.kg_node_chunks`` dropped, no v2
+    slug→canonical_zettel_id bridge). Scoring proceeds with empty contexts
+    and ``main_async`` emits its existing "chunk fetch sparse" warning until
+    a v2 eval-driver rebuild lands (see rag_eval_v2 Phase E).
     """
-    out: dict[str, list[dict]] = {nid: [] for nid in node_ids}
-    embs_out: dict[str, list[list[float]]] = {}
-    if not node_ids:
-        return out, embs_out
-    try:
-        from website.core.supabase_kg.client import get_supabase_client
-        client = get_supabase_client()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("supabase client unavailable: %s", exc)
-        client = None
-    if client is None:
-        return out, embs_out
-    try:
-        # Pull all chunks for all node_ids in one shot (small Kasten => small N).
-        # `kg_node_chunks` schema currently lacks an embedding column; if added
-        # later the SELECT below should be updated to include it and the
-        # embeddings_per_node dict populated below.
-        resp = client.table("kg_node_chunks").select(
-            "node_id,chunk_idx,content,token_count"
-        ).in_("node_id", node_ids).execute()
-        rows = resp.data or []
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("kg_node_chunks fetch failed: %s", exc)
-        return out, embs_out
-    for row in rows:
-        nid = row.get("node_id")
-        if nid in out:
-            out[nid].append({
-                "chunk_idx": int(row.get("chunk_idx") or 0),
-                "content": str(row.get("content") or ""),
-                "token_count": int(row.get("token_count") or 0),
-            })
-    # Sort per-node by chunk_idx for deterministic context concatenation.
-    for nid, chunks in out.items():
-        chunks.sort(key=lambda c: c["chunk_idx"])
-    return out, embs_out
+    return {nid: [] for nid in node_ids}, {}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -707,7 +669,7 @@ def _render_scores_md(
     _thr = holistic.get("magnet_threshold", 0.25)
     _static = holistic.get("magnet_threshold_is_static", True)
     _thr_label = (
-        f">= 0.25 (static fallback, n<20)"
+        ">= 0.25 (static fallback, n<20)"
         if _static
         else f">= dynamic threshold {_thr:.2f}"
     )
@@ -931,7 +893,7 @@ def main(argv: list[str] | None = None) -> int:
         "supabase",
         "postgrest",
         "hpack",
-        "website.core.supabase_kg.client",
+        "website.core.supabase_v2.client",
         "website.features.api_key_switching.key_pool",
         "website.features.api_key_switching",
         "website.experimental_features.nexus",

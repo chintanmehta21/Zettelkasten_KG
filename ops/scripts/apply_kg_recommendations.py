@@ -1,7 +1,4 @@
 """Autonomous KG-recommendation applicator with audit logging."""
-# LEGACY (broken after 2026-05-11): imports website.core.supabase_kg which was retired
-# in Phase 8.0.6. To revive, port get_supabase_client calls to get_v2_client() from
-# website.core.supabase_v2.client. Tracked for follow-up iteration.
 from __future__ import annotations
 
 import argparse
@@ -11,7 +8,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -23,51 +19,22 @@ async def apply_recommendations(
     supabase: Any,
     dry_run: bool = False,
 ) -> dict:
-    raw = json.loads(recs_path.read_text(encoding="utf-8"))
-    summary = {"applied_count": 0, "skipped_count": 0, "dry_run": dry_run, "applied": [], "skipped": []}
+    """Apply KG recommendations to the user's Zettel graph.
 
-    for rec in raw:
-        if rec.get("status") != "auto_apply":
-            summary["skipped_count"] += 1
-            summary["skipped"].append({"type": rec.get("type"), "reason": rec.get("status")})
-            continue
-        if dry_run:
-            continue
-
-        rtype = rec["type"]
-        payload = rec.get("payload", {})
-        if rtype == "add_link":
-            supabase.table("kg_links").insert({
-                "user_id": user_id,
-                "source_node_id": payload["from_node"],
-                "target_node_id": payload["to_node"],
-                "relation": payload.get("suggested_relation", "rag_eval_proximity"),
-            }).execute()
-        elif rtype == "add_tag":
-            # Update kg_nodes tags array
-            existing = supabase.table("kg_nodes").select("tags").eq(
-                "user_id", user_id
-            ).eq("id", payload["node_id"]).single().execute().data
-            new_tags = list(set((existing or {}).get("tags", []) + [payload["suggested_tag"]]))
-            supabase.table("kg_nodes").update({"tags": new_tags}).eq(
-                "user_id", user_id).eq("id", payload["node_id"]).execute()
-        elif rtype == "orphan_warning":
-            # Annotation only — no graph mutation
-            existing = supabase.table("kg_nodes").select("metadata").eq(
-                "user_id", user_id).eq("id", payload["node_id"]).single().execute().data
-            md = (existing or {}).get("metadata", {}) or {}
-            md["rag_eval_orphan_flag"] = datetime.now(timezone.utc).isoformat()
-            supabase.table("kg_nodes").update({"metadata": md}).eq(
-                "user_id", user_id).eq("id", payload["node_id"]).execute()
-        else:
-            # merge_nodes / reingest_node only run via --confirm flag (separate code path)
-            summary["skipped_count"] += 1
-            continue
-
-        summary["applied_count"] += 1
-        summary["applied"].append({"type": rtype, "payload": payload})
-
-    return summary
+    The legacy applicator mutated per-user slug-keyed ``public.kg_links`` /
+    ``public.kg_nodes``, both dropped in the DB-v2 purge with no v2
+    equivalent (workspace_zettels is UUID/workspace-scoped with no
+    relation/slug; kg.kg_edges is the unrelated entity graph). The legacy
+    write path is purged rather than retained behind dead skip-loops;
+    re-applying recs requires a v2 KG-recommendation model that does not
+    exist yet. Args are retained for CLI/test call-contract stability.
+    """
+    del recs_path, user_id, supabase, dry_run  # contract parity
+    raise NotImplementedError(
+        "apply_kg_recommendations.apply_recommendations: v2 eval-driver "
+        "rebuild pending — legacy slug-keyed kg_links/kg_nodes write path "
+        "purged; see rag_eval_v2 (Phase E)"
+    )
 
 
 def _changelog_append(path: Path, summary: dict, iter_id: str) -> None:
@@ -91,16 +58,12 @@ def main() -> int:
                         help="Required for merge_nodes / reingest_node application.")
     args = parser.parse_args()
 
-    from website.core.supabase_kg.client import get_supabase_client
-
-    supabase = get_supabase_client()
-    if supabase is None:
-        print("ERROR: Supabase not configured")
-        return 1
-
+    # apply_recommendations raises NotImplementedError (legacy slug-keyed
+    # write path purged with DB v2). No Supabase client is constructed here
+    # because there is no v2 write path to reach.
     recs_path = Path("docs/rag_eval") / args.iter / "kg_recommendations.json"
     summary = asyncio.run(apply_recommendations(
-        recs_path=recs_path, user_id=args.user_id, supabase=supabase, dry_run=args.dry_run,
+        recs_path=recs_path, user_id=args.user_id, supabase=None, dry_run=args.dry_run,
     ))
     print(json.dumps(summary, indent=2))
     if not args.dry_run and summary.get("applied_count", 0) > 0:
