@@ -21,7 +21,6 @@ from fastapi import HTTPException
 
 from website.features.functional_gates import (
     GateDecision,
-    GateError,
     get_functional_gates,
 )
 from website.features.user_pricing.config import PRICING_CONFIG

@@ -11,10 +11,13 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from website.core.persist import PersistenceOutcome
 
 from website.core.summary_rendering import render_detailed_summary
 
