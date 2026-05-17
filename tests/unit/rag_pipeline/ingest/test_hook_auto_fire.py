@@ -7,8 +7,7 @@ without an env override.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -44,10 +43,10 @@ async def test_summarize_persist_schedules_ingest_when_flag_on(monkeypatch):
     import website.features.rag_pipeline.ingest.hook as hook_mod
     monkeypatch.setattr(hook_mod, "ingest_node_chunks", _fake_ingest)
 
-    fake_settings = MagicMock()
-    fake_settings.rag_chunks_enabled = True
-    monkeypatch.setattr(persist_mod, "get_settings", lambda: fake_settings)
-
+    # NOTE: _schedule_rag_chunks does NOT read settings — the rag_chunks_enabled
+    # gate lives inside ingest_node_chunks (the hook), not persist. The prior
+    # monkeypatch of persist.get_settings was stale (persist no longer imports
+    # it post-P1-2; the symbol never affected scheduling) and was removed.
     user_uuid = uuid4()
     payload = {
         "title": "Test Node",
