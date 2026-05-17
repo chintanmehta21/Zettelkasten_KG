@@ -21,7 +21,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user
 from website.core.db_version import use_supabase_v2
@@ -29,7 +29,7 @@ from website.core.persist import get_supabase_v2_scope
 from website.core.supabase_v2.repositories.rag_repository import RAGRepository as V2RAGRepository
 from website.features.rag_pipeline.service import get_rag_runtime
 from website.features.rag_pipeline.types import SourceType
-from website.features.user_pricing.entitlements import consume_entitlement, require_entitlement
+from website.features.user_pricing.entitlements import require_entitlement
 from website.features.user_pricing.models import Meter
 
 logger = logging.getLogger("website.api.sandbox_routes")
