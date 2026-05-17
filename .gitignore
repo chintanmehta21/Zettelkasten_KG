@@ -106,3 +106,6 @@ _iter11_e2_sse_probe.py
 # Eval token + npm noise
 naruto_token.tmp
 package-lock.json
+
+# Untracked scratch dir from local hook scaffolding
+dev/
