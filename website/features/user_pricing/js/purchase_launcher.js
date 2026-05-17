@@ -92,43 +92,22 @@
     return null;
   }
 
-  async function ensureBillingProfile() {
+  async function ensureSignedIn() {
+    // Phone is NOT collected here. Razorpay's hosted checkout collects the
+    // contact number itself inside the payment modal — asking for it via a
+    // separate native prompt before checkout was redundant friction (and the
+    // billing schema doesn't even persist phone, so it was lost anyway).
+    // We only assert the user is signed in; the backend auto-creates a
+    // minimal billing profile on order/subscription creation.
     var token = authToken();
     if (!token) {
-      // Don't navigate here — surface a 401 so the caller can decide whether
-      // to pop an inline login modal (pricing page) or do its own redirect.
+      // Surface a 401 so the caller can decide whether to pop an inline
+      // login modal (pricing page) or do its own redirect.
       var err = new Error('Please sign in to continue checkout.');
       err.status = 401;
       err.code = 'not_authenticated';
       throw err;
     }
-
-    // Use the profile that pricing.js prefetched on page load if available —
-    // saves the click-time GET round-trip when the user has a phone on file.
-    var profile = null;
-    if (window.ZKPricing && window.ZKPricing.cachedProfile && window.ZKPricing.cachedProfile.phone) {
-      profile = window.ZKPricing.cachedProfile;
-    } else {
-      var profilePayload = await fetchJson('/api/pricing/billing-profile', { headers: authHeaders() });
-      profile = profilePayload && profilePayload.profile;
-    }
-    if (profile && profile.phone) return profile;
-
-    // Pages can install window.ZKPricing.promptForPhone to capture the phone
-    // via a styled inline modal; we fall back to window.prompt only when no
-    // page has installed a custom collector.
-    var phone;
-    if (typeof window.ZKPricing.promptForPhone === 'function') {
-      phone = await window.ZKPricing.promptForPhone();
-    } else {
-      phone = window.prompt('Enter your phone number for secure checkout');
-    }
-    if (!phone) throw new Error('Phone number is required for checkout.');
-    return await fetchJson('/api/pricing/billing-profile', {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify({ phone: phone })
-    });
   }
 
   function chooseProductId(options, catalog) {
@@ -331,7 +310,7 @@
       throw new Error('Displayed price changed. Refresh pricing before checkout.');
     }
 
-    await ensureBillingProfile();
+    await ensureSignedIn();
 
     var checkoutPayload;
     try {

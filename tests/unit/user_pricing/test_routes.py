@@ -34,7 +34,13 @@ async def test_billing_profile_update_saves_phone(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_pack_order_requires_saved_phone(monkeypatch) -> None:
+async def test_create_pack_order_auto_creates_profile_no_phone_gate(monkeypatch) -> None:
+    """No stored profile must NOT 400. fix/payment-phone-prompt removed the
+    ``billing_profile_required`` gate — Razorpay collects contact in-modal.
+    A missing profile is auto-created (phone=""); the request proceeds and
+    fails later only because Razorpay is not configured in this unit env."""
+    created = {}
+
     class Repo:
         def is_user_dispute_frozen(self, *, user_sub: str) -> bool:
             return False
@@ -42,13 +48,20 @@ async def test_create_pack_order_requires_saved_phone(monkeypatch) -> None:
         def get_billing_profile(self, *, user_sub: str) -> dict | None:
             return None
 
+        def upsert_billing_profile(self, *, user_sub, email, phone, name=""):
+            created.update(user_sub=user_sub, phone=phone)
+            return {"render_user_id": user_sub, "email": email, "phone": phone, "name": name}
+
     monkeypatch.setattr(routes, "get_pricing_repository", lambda: Repo())
 
     with pytest.raises(routes.HTTPException) as exc:
         await routes.create_order(routes.PaymentCreateRequest(product_id="zettel_10"), {"sub": "user-1"})
 
-    assert exc.value.status_code == 400
-    assert exc.value.detail["code"] == "billing_profile_required"
+    # No phone gate: auto-created with empty phone, then fell through to the
+    # Razorpay-not-configured 503 (proves the 400 short-circuit is gone).
+    assert created == {"user_sub": "user-1", "phone": ""}
+    assert exc.value.status_code == 503
+    assert exc.value.detail["code"] == "payments_not_configured"
 
 
 @pytest.mark.asyncio

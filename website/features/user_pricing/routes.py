@@ -135,9 +135,7 @@ async def create_order(
     if repo.is_user_dispute_frozen(user_sub=user["sub"]):
         raise HTTPException(status_code=409, detail={"code": "account_frozen", "message": "Your account has an open dispute. Contact support."})
 
-    profile = repo.get_billing_profile(user_sub=user["sub"])
-    if not profile or not profile.get("phone"):
-        raise HTTPException(status_code=400, detail={"code": "billing_profile_required", "message": "Add your phone number before checkout."})
+    profile = _ensure_billing_profile(repo, user)
 
     if not is_razorpay_configured():
         _raise_payments_unavailable()
@@ -225,9 +223,7 @@ async def create_subscription(
             },
         )
 
-    profile = repo.get_billing_profile(user_sub=user["sub"])
-    if not profile or not profile.get("phone"):
-        raise HTTPException(status_code=400, detail={"code": "billing_profile_required", "message": "Add your phone number before checkout."})
+    profile = _ensure_billing_profile(repo, user)
 
     if not is_razorpay_configured():
         _raise_payments_unavailable()
@@ -1085,11 +1081,30 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _ensure_billing_profile(repo, user: dict) -> dict:
+    """Return the caller's billing profile, auto-creating a minimal one.
+
+    Phone is intentionally NOT required here. Razorpay's hosted checkout
+    collects the contact number inside the payment modal; the billing
+    schema does not persist phone anyway. A profile row only needs to exist
+    so downstream prefill/notes code has something to read.
+    """
+    profile = repo.get_billing_profile(user_sub=user["sub"])
+    if profile:
+        return profile
+    return repo.upsert_billing_profile(
+        user_sub=user["sub"],
+        email=user.get("email", "") or "",
+        phone="",
+        name=(user.get("user_metadata", {}) or {}).get("full_name", "") or "",
+    )
+
+
 def _customer_details(user: dict, profile: dict) -> dict[str, str]:
     return {
         "customer_id": user["sub"],
         "customer_email": user.get("email", "") or profile.get("email", ""),
-        "customer_phone": profile["phone"],
+        "customer_phone": profile.get("phone", ""),
         "customer_name": profile.get("name", ""),
     }
 
