@@ -1,20 +1,13 @@
-"""UP-16: creating a user must NOT pre-populate entitlement/usage tables.
+"""Per-profile no-seed invariant (Phase-9 update).
 
-Pricing-authority rule (CLAUDE.md): NEVER seed entitlements directly.
-Every new user starts at zero rows in every ``billing.pricing_*`` usage
-table; subscriptions/consumption land only via the real subscribe path or
-real metered actions. If a future migration or trigger auto-seeds a row,
-this test fails and surfaces the violation to the operator.
+Phase-9 functional gates (PR #18) introduce ONE permitted auto-seed:
+``billing.pricing_subscriptions`` gets a single ``plan_id='free'`` row on
+``core.profiles INSERT`` via the trigger ``seed_free_subscription_on_profile``.
+Every other per-profile billing table MUST still start empty for a fresh user.
 
-The tables we sweep (per ``supabase/website/_v2/06_billing_schema.sql``):
-- ``billing.pricing_entitlement_consumption`` (profile_id-scoped usage)
-- ``billing.pricing_subscriptions`` (profile_id-scoped subscription state)
-- ``billing.pricing_balances`` (profile_id-scoped pack credits)
-
-We deliberately do NOT sweep ``billing.pricing_plan_entitlements`` because
-that table is the (immutable) plan-tier definition catalog — it MUST contain
-rows for {free, basic, max}; those rows are global plan rows, not per-user
-state. The no-seed invariant only applies to per-profile state.
+If any of the always-zero tables drift to non-zero, an unauthorised seeding
+path landed and the operator must be surfaced per CLAUDE.md pricing-authority
+rule.
 """
 
 from __future__ import annotations
@@ -24,35 +17,25 @@ import pytest
 pytestmark = pytest.mark.live
 
 
-# Tables that MUST have zero rows for a fresh user. (table, profile_id_column).
+# Tables that MUST have zero rows for a fresh user (per-profile).
 _PER_PROFILE_TABLES = [
-    ("billing.pricing_entitlement_consumption", "profile_id"),
-    ("billing.pricing_subscriptions", "profile_id"),
     ("billing.pricing_balances", "profile_id"),
     ("billing.pricing_billing_profiles", "profile_id"),
     ("billing.pricing_orders", "profile_id"),
     ("billing.pricing_refunds", "profile_id"),
     ("billing.pricing_disputes", "profile_id"),
+    ("billing.pricing_usage_counters", "profile_id"),
+    ("billing.pricing_action_ledger", "profile_id"),
 ]
 
 
-# Tests use ``async def`` so the asyncpg_pool (function-scoped, bound to the
-# pytest-asyncio loop) can be awaited directly. asyncio.run() would create a
-# new loop and trip "Future attached to a different loop".
-async def test_fresh_user_has_no_pricing_rows(mint_user, asyncpg_pool):
-    """A freshly minted user has zero rows in every per-profile pricing table.
-
-    Mints a user, then runs ``SELECT COUNT(*)`` against each per-profile
-    pricing table. Any non-zero row count fails the test with the offending
-    table name + row count, so the operator can pin the seeding source.
-    """
+async def test_fresh_user_has_no_per_profile_billing_rows(mint_user, asyncpg_pool):
+    """A freshly minted user has zero rows in every always-empty billing table."""
     user = mint_user()
 
     counts: dict[str, int] = {}
     async with asyncpg_pool.acquire() as conn:
         for table, pid_col in _PER_PROFILE_TABLES:
-            # f-string for table+column identifiers is safe here: both come
-            # from the in-test allowlist above, not user input.
             row = await conn.fetchval(
                 f"SELECT COUNT(*) FROM {table} WHERE {pid_col} = $1",
                 user.profile_id,
@@ -66,22 +49,27 @@ async def test_fresh_user_has_no_pricing_rows(mint_user, asyncpg_pool):
     )
 
 
-async def test_fresh_user_has_no_active_subscription(mint_user, asyncpg_pool):
-    """Belt-and-braces: no row in pricing_subscriptions of any status.
+async def test_fresh_user_has_exactly_one_free_subscription(mint_user, asyncpg_pool):
+    """Fresh user MUST have exactly one Free subscription (operator-approved auto-seed).
 
-    Catches the case where an auto-subscribe trigger inserts a row at a
-    weaker status the broad COUNT(*) might miss if filtered.
+    Phase-9 contract: ``seed_free_subscription_on_profile`` trigger inserts
+    one ``plan_id='free', status='active'`` row on profile creation. Anything
+    else (zero rows, multiple rows, non-Free plan, non-active status) is a
+    contract violation.
     """
     user = mint_user()
 
     async with asyncpg_pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT status, plan_id FROM billing.pricing_subscriptions "
-            "WHERE profile_id = $1",
+            "SELECT status, plan_id, provider_payload "
+            "FROM billing.pricing_subscriptions WHERE profile_id = $1",
             user.profile_id,
         )
 
-    assert rows == [], (
-        f"Fresh user has subscription row(s): {[dict(r) for r in rows]}. "
-        "Auto-subscribe is explicitly forbidden by pricing-authority rule."
+    assert len(rows) == 1, (
+        f"Fresh user expected exactly 1 subscription; got {len(rows)}: "
+        f"{[dict(r) for r in rows]}"
     )
+    row = rows[0]
+    assert row["plan_id"] == "free", f"expected plan_id='free'; got {row['plan_id']}"
+    assert row["status"] == "active", f"expected status='active'; got {row['status']}"
