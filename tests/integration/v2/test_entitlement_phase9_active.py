@@ -31,21 +31,34 @@ def _caps_jsonb(plan: str, feature: str) -> str:
     return json.dumps(caps_for(plan, feature))
 
 
+def _as_dict(value):
+    """asyncpg returns jsonb as a JSON-encoded str when no codec is registered.
+    Coerce to dict so .key access works in assertions."""
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
+
+
+async def _rpc(conn, sql, *args):
+    return _as_dict(await conn.fetchval(sql, *args))
+
+
+_RESERVE = "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)"
+_SNAPSHOT = "SELECT billing.pricing_get_quota_snapshot($1, 'zettel', $2::jsonb, $3)"
+
+
 async def test_free_zettel_day_cap_then_blocked(mint_user, asyncpg_pool):
     """Free plan zettel day cap from config; cap+1th call returns ``quota_exhausted``."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
+    wallet = wallet_meter_for("zettel")
     day_cap = caps_for("free", "zettel")["day"]
-    assert day_cap is not None, "config drift: free zettel day cap missing"
+    assert day_cap is not None
 
     async with asyncpg_pool.acquire() as conn:
         results = []
         for _ in range(day_cap + 1):
-            r = await conn.fetchval(
-                "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-                user.profile_id, f"act-{uuid.uuid4().hex}", caps, wallet,
-            )
+            r = await _rpc(conn, _RESERVE, user.profile_id, f"act-{uuid.uuid4().hex}", caps, wallet)
             results.append(r)
 
     for r in results[:-1]:
@@ -61,17 +74,11 @@ async def test_reserve_and_consume_is_idempotent(mint_user, asyncpg_pool):
     user = mint_user()
     action_id = f"idem-{uuid.uuid4().hex}"
     caps = _caps_jsonb("free", "zettel")
-    wallet = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
+    wallet = wallet_meter_for("zettel")
 
     async with asyncpg_pool.acquire() as conn:
-        first = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, action_id, caps, wallet,
-        )
-        second = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, action_id, caps, wallet,
-        )
+        first = await _rpc(conn, _RESERVE, user.profile_id, action_id, caps, wallet)
+        second = await _rpc(conn, _RESERVE, user.profile_id, action_id, caps, wallet)
         used_today = await conn.fetchval(
             "SELECT count FROM billing.pricing_usage_counters "
             "WHERE profile_id = $1 AND feature='zettel' AND granularity='day'",
@@ -88,23 +95,19 @@ async def test_wallet_fallback_after_plan_exhausted(mint_user, asyncpg_pool):
     """Plan exhausted + wallet credits available → source flips to wallet."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
+    wallet_meter = wallet_meter_for("zettel")
     day_cap = caps_for("free", "zettel")["day"]
     assert day_cap is not None
 
     async with asyncpg_pool.acquire() as conn:
         for _ in range(day_cap):
-            await conn.fetchval(
-                "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-                user.profile_id, f"pre-{uuid.uuid4().hex}", caps, wallet_meter,
-            )
+            await _rpc(conn, _RESERVE, user.profile_id, f"pre-{uuid.uuid4().hex}", caps, wallet_meter)
         await conn.fetchval(
             "SELECT billing.pricing_add_pack_credits($1, $2, 1)",
             user.profile_id, wallet_meter,
         )
-        wallet_consume = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, f"wallet-{uuid.uuid4().hex}", caps, wallet_meter,
+        wallet_consume = await _rpc(
+            conn, _RESERVE, user.profile_id, f"wallet-{uuid.uuid4().hex}", caps, wallet_meter,
         )
         bal_after = await conn.fetchval(
             "SELECT balance FROM billing.pricing_balances "
@@ -122,20 +125,14 @@ async def test_day_cap_blocks_even_when_week_month_room_remains(mint_user, async
     """min(day, week, month) — exhausting day blocks even if week has room."""
     user = mint_user()
     caps = _caps_jsonb("free", "zettel")
-    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
+    wallet_meter = wallet_meter_for("zettel")
     cfg = caps_for("free", "zettel")
     assert cfg["day"] < cfg["week"] < cfg["month"]
 
     async with asyncpg_pool.acquire() as conn:
         for _ in range(cfg["day"]):
-            await conn.fetchval(
-                "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-                user.profile_id, f"d-{uuid.uuid4().hex}", caps, wallet_meter,
-            )
-        snap = await conn.fetchval(
-            "SELECT billing.pricing_get_quota_snapshot($1, 'zettel', $2::jsonb, $3)",
-            user.profile_id, caps, wallet_meter,
-        )
+            await _rpc(conn, _RESERVE, user.profile_id, f"d-{uuid.uuid4().hex}", caps, wallet_meter)
+        snap = await _rpc(conn, _SNAPSHOT, user.profile_id, caps, wallet_meter)
 
     assert snap["used"]["day"] == cfg["day"]
     assert snap["used"]["week"] == cfg["day"]
@@ -146,23 +143,14 @@ async def test_day_cap_blocks_even_when_week_month_room_remains(mint_user, async
 async def test_caps_are_runtime_configurable(mint_user, asyncpg_pool):
     """Overriding caps at call-site changes behavior; nothing in the DB pins policy."""
     user = mint_user()
-    wallet_meter = wallet_meter_for("zettel")  # resolves to "zettel" — matches add_pack_credits meter
+    wallet_meter = wallet_meter_for("zettel")
     tight = json.dumps({"day": 1, "week": None, "month": None, "lifetime": None})
     loose = json.dumps({"day": 100, "week": None, "month": None, "lifetime": None})
 
     async with asyncpg_pool.acquire() as conn:
-        r1 = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, f"cap-a-{uuid.uuid4().hex}", tight, wallet_meter,
-        )
-        r2 = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, f"cap-b-{uuid.uuid4().hex}", tight, wallet_meter,
-        )
-        r3 = await conn.fetchval(
-            "SELECT billing.pricing_reserve_and_consume($1, 'zettel', $2, $3::jsonb, $4)",
-            user.profile_id, f"cap-c-{uuid.uuid4().hex}", loose, wallet_meter,
-        )
+        r1 = await _rpc(conn, _RESERVE, user.profile_id, f"cap-a-{uuid.uuid4().hex}", tight, wallet_meter)
+        r2 = await _rpc(conn, _RESERVE, user.profile_id, f"cap-b-{uuid.uuid4().hex}", tight, wallet_meter)
+        r3 = await _rpc(conn, _RESERVE, user.profile_id, f"cap-c-{uuid.uuid4().hex}", loose, wallet_meter)
 
     assert r1["allowed"] is True
     assert r2["allowed"] is False and r2["reason"] == "quota_exhausted"
