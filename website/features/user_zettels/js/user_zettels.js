@@ -828,8 +828,8 @@
       }
     } catch (err) {
       var quotaDetail = err && err.detail && err.detail.code === 'quota_exhausted' ? err.detail : null;
-      if (quotaDetail && window.ZKPricing) {
-        await window.ZKPricing.openPurchase({
+      if (quotaDetail && window.ZKQuotaGate) {
+        await window.ZKQuotaGate.show({
           detail: quotaDetail,
           source: 'my-zettels:add-zettel',
           resumeAction: { type: 'add_zettel', url: url, clientActionId: pricingActionId },

@@ -550,8 +550,8 @@
           }
           var payload = await safeJson(response);
           var quotaDetail = payload && payload.detail && payload.detail.code === 'quota_exhausted' ? payload.detail : null;
-          if (quotaDetail && window.ZKPricing) {
-            await window.ZKPricing.openPurchase({
+          if (quotaDetail && window.ZKQuotaGate) {
+            await window.ZKQuotaGate.show({
               detail: quotaDetail,
               source: 'rag:ask-question',
               resumeAction: { type: 'ask_rag_question', content: content, sessionId: state.sessionId, clientActionId: pricingActionId },

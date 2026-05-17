@@ -100,27 +100,19 @@ def test_meter_enum_matches_catalog():
 
 
 @pytest.mark.live
-@pytest.mark.xfail(
-    condition=not PHASE9_LIVE,
-    strict=True,
-    reason="Phase-9 RPC pending — repository.check_entitlement is a fail-open stub",
-)
-def test_free_tier_zettel_monthly_quota_enforced(mint_user):
-    """Free tier monthly zettel quota = 30. The 31st call must 402.
-
-    When Phase 9 enforcement lands, set PRICING_ENFORCEMENT_ENABLED=true and
-    this test must pass. strict=True causes it to FAIL (not xpass) once the
-    env is on — that failure is the prompt to remove this xfail decorator.
+def test_free_tier_zettel_day_cap_enforced(mint_user):
+    """Phase 9 live: Free tier zettel day cap = 2 (min over day/week/month).
+    The 3rd call to /api/zettels/add must 402 with quota_exhausted.
     """
     from fastapi.testclient import TestClient
 
     from website.app import create_app
 
     user = mint_user()
-    quota = EXPECTED_QUOTAS["free"]["zettel"]["monthly"]
+    day_cap = EXPECTED_QUOTAS["free"]["zettel"]["daily"]
     with TestClient(create_app()) as client:
         statuses = []
-        for i in range(quota + 1):
+        for i in range(day_cap + 1):
             r = client.post(
                 "/api/zettels/add",
                 json={
@@ -133,22 +125,17 @@ def test_free_tier_zettel_monthly_quota_enforced(mint_user):
                 headers={"Authorization": f"Bearer {user.jwt}"},
             )
             statuses.append(r.status_code)
-        assert statuses[-1] == 402, (
-            f"Expected 402 on call {quota + 1}; got {statuses[-1]} (all: {statuses})"
-        )
+    assert statuses[-1] == 402, (
+        f"Expected 402 on call {day_cap + 1}; got {statuses[-1]} (all: {statuses})"
+    )
 
 
-@pytest.mark.live
-@pytest.mark.xfail(
-    condition=not PHASE9_LIVE,
-    strict=True,
-    reason="Phase-9 RPC pending — quota enforcement not active",
-)
-def test_basic_tier_zettel_monthly_quota_enforced(mint_user):
-    """Basic tier monthly zettel quota = 50; 51st must 402.
+def test_basic_tier_zettel_quota_requires_real_subscribe():
+    """Basic-tier live enforcement requires a Razorpay subscribe path.
 
-    Requires Phase-9 enforcement AND a real subscribe path to put the user
-    on Basic. Until then this xfails (expected) under the same env gate.
+    Without paid subscription, the user stays on Free; this probe is best
+    covered by a manual e2e against a Basic-tier sandbox user. Kept as a
+    skip marker so the test surface remains visible in pytest output.
     """
     pytest.skip(
         "Live Basic-tier enforcement probe — requires real subscribe path "
