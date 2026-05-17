@@ -43,17 +43,38 @@ class KGRepository:
         row = _first(response.data)
         return int(row["id"])
 
-    def add_edge(
+    def upsert_edge(
         self,
         *,
         workspace_id: UUID,  # non-None; service-role bypasses RLS
         src_node_id: int,
         dst_node_id: int,
         relation_type: str,
+        connection_strength: float | None = None,
+        workspace_strength: float | None = None,
+        global_strength: float | None = None,
+        matched_via: dict | None = None,
+        evidence_canonical_zettel_id: UUID | None = None,
         shared_tag_label: str | None = None,
         weight: float | None = None,
         metadata: dict | None = None,
     ) -> int:
+        """Idempotently write a workspace-scoped KG edge.
+
+        Idempotent on the natural key
+        ``(workspace_id, src_node_id, dst_node_id, relation_type)`` — the
+        ``kg_edges_natural_key`` UNIQUE constraint added in
+        ``_v2/46_kg_two_level_strength.sql``. Re-upserting the same logical
+        edge UPDATES the strength columns in place rather than inserting a
+        duplicate row, so the Phase B scorer pass is replay-safe.
+
+        Workspace isolation: ``workspace_id`` is forced non-NULL and written
+        into the payload AND used as the ON CONFLICT scoping column. Because
+        the natural key is prefixed by ``workspace_id``, an upsert for
+        workspace A can never collide with, update, or surface a row owned by
+        workspace B — the conflict target is per-workspace by construction
+        (service-role bypasses RLS, so this Python guard is the tenant fence).
+        """
         if workspace_id is None:
             raise ValueError(
                 "workspace_id is required (service-role bypasses RLS; "
@@ -64,11 +85,28 @@ class KGRepository:
             "src_node_id": src_node_id,
             "dst_node_id": dst_node_id,
             "relation_type": relation_type,
+            "connection_strength": connection_strength,
+            "workspace_strength": workspace_strength,
+            "global_strength": global_strength,
+            "matched_via": matched_via or {},
+            "evidence_canonical_zettel_id": (
+                str(evidence_canonical_zettel_id)
+                if evidence_canonical_zettel_id is not None
+                else None
+            ),
             "shared_tag_label": shared_tag_label,
             "weight": weight,
             "metadata": metadata or {},
         }
-        response = self._client.schema("kg").table("kg_edges").insert(payload).execute()
+        response = (
+            self._client.schema("kg")
+            .table("kg_edges")
+            .upsert(
+                payload,
+                on_conflict="workspace_id,src_node_id,dst_node_id,relation_type",
+            )
+            .execute()
+        )
         return int(_first(response.data)["id"])
 
     def list_workspace_edges(
@@ -83,13 +121,20 @@ class KGRepository:
         ``KGGraphLink`` rows: src_node_id, dst_node_id, relation_type,
         shared_tag_label, weight, evidence_canonical_zettel_id. Caller is
         responsible for joining src/dst back to the workspace zettels.
+
+        Phase B: ``workspace_strength`` (the per-workspace score that DRIVES
+        RENDERING, _v2/46) and ``connection_strength`` (the 42-era composite,
+        read-path fallback) are now SELECTed. ``global_strength`` is
+        deliberately NOT selected — it is cross-workspace and must never
+        reach the per-user render surface (BOLA isolation).
         """
         response = (
             self._client.schema("kg")
             .table("kg_edges")
             .select(
                 "id,src_node_id,dst_node_id,relation_type,"
-                "shared_tag_label,weight,evidence_canonical_zettel_id"
+                "shared_tag_label,weight,workspace_strength,"
+                "connection_strength,evidence_canonical_zettel_id"
             )
             .eq("workspace_id", str(workspace_id))
             .limit(max(1, limit))

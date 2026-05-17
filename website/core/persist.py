@@ -496,6 +496,7 @@ async def persist_summarized_result(
                 workspace_id=workspace_id,
                 captured_on=captured_on,
                 detailed_summary=detailed_summary,
+                profile_id=profile_id,
             )
         except SupabaseV2PersistError:
             # Already structured + logged at the failure site; re-raise so the
@@ -570,6 +571,7 @@ async def _persist_supabase_v2_zettel(
     workspace_id: UUID,
     captured_on: date,
     detailed_summary: str,
+    profile_id: UUID | None = None,
 ) -> tuple[str, bool, bool]:
     normalized_url = str(payload["source_url"])
     body_md = str(payload.get("raw_text") or detailed_summary or payload.get("summary") or "")
@@ -611,6 +613,17 @@ async def _persist_supabase_v2_zettel(
         chunks=chunks,
     )
     persisted_id = result.workspace_zettel_id or result.canonical_zettel_id
+    # Phase B: fire-and-forget KG-population enrichment. Mirrors the
+    # rag-chunks asyncio.create_task pattern (see _schedule_rag_chunks /
+    # persist.py:670-681). Best-effort: never blocks or fails Add Zettel.
+    _schedule_kg_population(
+        payload=payload,
+        workspace_id=workspace_id,
+        profile_id=profile_id,
+        canonical_zettel_id=result.canonical_zettel_id,
+        title=zettel.title,
+        summary=detailed_summary or body_md,
+    )
     return str(persisted_id), result.workspace_zettel_id is not None, not result.was_new
 
 
@@ -681,6 +694,63 @@ def _schedule_rag_chunks(
         task = asyncio.create_task(_run(), name=f"rag-chunks-{node_id}")
     except RuntimeError:
         logger.debug("No running event loop for RAG chunks on %s", node_id)
+        return
+    task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+
+
+def _schedule_kg_population(
+    *,
+    payload: dict[str, Any],
+    workspace_id: UUID,
+    profile_id: UUID | None,
+    canonical_zettel_id: UUID,
+    title: str,
+    summary: str,
+) -> None:
+    """Phase B: populate kg nodes/edges off the Add Zettel critical path.
+
+    Fire-and-forget, mirroring ``_schedule_rag_chunks`` (the rag-chunks
+    ``asyncio.create_task(... name="rag-chunks-...")`` pattern above). Any
+    failure inside the hook is logged and swallowed — KG population is
+    best-effort enrichment and must NEVER 502 Add Zettel (P1-2 surfaces
+    persist failures; this enrichment is explicitly out of that contract).
+    Requires a resolved owner ``profile_id`` (the ``kg.match_kg_nodes``
+    candidate fence keys off it); anonymous/no-scope writes are skipped.
+    """
+    if profile_id is None:
+        logger.debug("KG population skipped: no resolved profile for %s", canonical_zettel_id)
+        return
+
+    async def _run() -> None:
+        try:
+            from website.core.supabase_v2.client import get_v2_client
+            from website.features.rag_pipeline.ingest.kg_population import (
+                populate_kg_for_zettel,
+            )
+
+            await populate_kg_for_zettel(
+                workspace_id=workspace_id,
+                profile_id=profile_id,
+                canonical_zettel_id=canonical_zettel_id,
+                title=title,
+                summary=summary,
+                tags=list(rewrite_tags(payload.get("tags", []) or [])),
+                url=str(payload.get("source_url") or "") or None,
+                source_type=str(payload.get("source_type") or "web"),
+                supabase_client=get_v2_client(),
+                metadata=dict(payload.get("raw_metadata") or payload.get("metadata") or {}),
+            )
+        except Exception as exc:
+            logger.warning(
+                "Background KG population failed for %s: %s",
+                canonical_zettel_id,
+                exc,
+            )
+
+    try:
+        task = asyncio.create_task(_run(), name=f"kg-populate-{canonical_zettel_id}")
+    except RuntimeError:
+        logger.debug("No running event loop for KG population on %s", canonical_zettel_id)
         return
     task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 

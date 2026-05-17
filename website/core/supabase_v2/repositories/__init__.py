@@ -5,6 +5,7 @@ from .chat_repository import ChatRepository
 from .content_repository import ContentRepository
 from .core_repository import CoreRepository
 from .kg_repository import KGRepository
+from .pipelines_repository import PipelinesRepository
 from .rag_repository import RAGRepository
 from .usage_events_repository import UsageEventsRepository
 
@@ -14,6 +15,7 @@ __all__ = [
     "ContentRepository",
     "CoreRepository",
     "KGRepository",
+    "PipelinesRepository",
     "RAGRepository",
     "UsageEventsRepository",
 ]
