@@ -271,9 +271,21 @@ class ContentRepository:
         return [SearchChunkResult(**row) for row in response.data or []]
 
 
+class EmptyRpcResultError(RuntimeError):
+    """Raised when a PostgREST/RPC response carried zero rows.
+
+    P1-7(b): an empty response from ``content.upsert_canonical_zettel`` (or any
+    ``_first()`` caller) means the write did not land. Previously this was a
+    bare ``RuntimeError`` that the persist layer swallowed into HTTP 200 +
+    ``supabase=false`` — invisible data loss. ``_first()`` still raises; the
+    persist layer now translates this into the surfaced
+    ``SupabaseV2PersistError`` problem+json contract instead of swallowing.
+    """
+
+
 def _first(data):
     if not data:
-        raise RuntimeError("Supabase returned no rows")
+        raise EmptyRpcResultError("Supabase returned no rows")
     if isinstance(data, list):
         return data[0]
     return data

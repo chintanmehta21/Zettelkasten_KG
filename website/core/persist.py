@@ -23,7 +23,7 @@ from uuid import UUID
 
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
 from website.core.db_version import use_supabase_v2
-from website.core.settings import get_settings
+from website.core.supabase_v2.client import is_v2_configured
 from website.core.supabase_v2.models import CanonicalChunkCreate, CanonicalZettelCreate, WorkspaceZettelCreate
 from website.core.supabase_v2.repositories.content_repository import ContentRepository as V2ContentRepository
 from website.core.supabase_v2.repositories.core_repository import CoreRepository as V2CoreRepository
@@ -41,6 +41,25 @@ logger = logging.getLogger("website.core.persist")
 
 _v2_core_repo: V2CoreRepository | None = None
 _v2_content_repo: V2ContentRepository | None = None
+
+
+class SupabaseV2PersistError(RuntimeError):
+    """Raised when a v2-configured Add Zettel persist attempt fails.
+
+    P1-2 fix: when v2 is configured the persist path MUST attempt v2 and, on
+    failure, surface a structured error the route turns into a non-200
+    problem+json response. Previously every exception out of
+    ``_persist_supabase_v2_zettel`` was swallowed with a ``logger.warning`` and
+    Add Zettel returned HTTP 200 with ``supabase=false`` — silent data loss on
+    a broken RPC / schema-cache miss / RLS denial / empty PostgREST result.
+
+    ``detail`` is a short operator-safe string (no secrets, no raw row data);
+    the original exception is chained for log forensics only.
+    """
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
 
 
 @dataclass(slots=True)
@@ -69,7 +88,7 @@ def get_supabase_v2_scope_for_read(
     """
     global _v2_core_repo, _v2_content_repo
 
-    if not use_supabase_v2() or not user_sub:
+    if not _persist_should_attempt_v2() or not user_sub:
         return None
     try:
         profile_id = UUID(str(user_sub))
@@ -105,16 +124,43 @@ def get_supabase_v2_scope_for_read(
         return None
 
 
+def _persist_should_attempt_v2() -> bool:
+    """Per-call decision: should the Add Zettel persist path ATTEMPT v2?
+
+    P1-2 fix. The Add Zettel CLI (``module_runners/summarization.py``) forces
+    ``DB_SCHEMA_VERSION=v2`` before persisting, so ``use_supabase_v2()`` is
+    true there. The FastAPI route process does NOT export that env var, so the
+    same code previously skipped v2 entirely and silently wrote only the file
+    graph. This helper makes the persist path behave like the CLI **whenever
+    v2 credentials are present**, WITHOUT mutating the global
+    ``DB_SCHEMA_VERSION`` default and WITHOUT changing ``use_supabase_v2()``'s
+    definition (both are deliberate prior infra decisions — see
+    ``db_version.py``).
+
+    Returns ``True`` when either the global routing flag is on
+    (``use_supabase_v2()``) OR v2 is configured. When v2 is NOT configured,
+    returns ``False`` and the caller keeps the unchanged file-graph path.
+    """
+    return use_supabase_v2() or is_v2_configured()
+
+
 def get_supabase_v2_scope(user_sub: str | None = None) -> tuple[V2ContentRepository, UUID, UUID] | None:
     """Return ``(content_repo, profile_id, workspace_id)`` for DB v2.
 
     DB v2 is workspace-first and requires a Supabase Auth UUID. Anonymous or
     legacy render-style IDs intentionally fall back to the existing file/v1
     path until the auth migration is complete.
+
+    P1-2: gating is ``_persist_should_attempt_v2()`` (configured-or-flagged),
+    not bare ``use_supabase_v2()``, so the route path attempts v2 exactly when
+    the CLI does. Scope-resolution failures (no UUID subject, no workspace)
+    still fall back to the file path and return ``None`` — those are not
+    persist failures, they are "v2 not applicable for this caller". An actual
+    persist failure is surfaced later via :class:`SupabaseV2PersistError`.
     """
     global _v2_core_repo, _v2_content_repo
 
-    if not use_supabase_v2() or not user_sub:
+    if not _persist_should_attempt_v2() or not user_sub:
         return None
     try:
         profile_id = UUID(str(user_sub))
@@ -451,8 +497,17 @@ async def persist_summarized_result(
                 captured_on=captured_on,
                 detailed_summary=detailed_summary,
             )
+        except SupabaseV2PersistError:
+            # Already structured + logged at the failure site; re-raise so the
+            # route turns it into a non-200 problem+json. No silent fallback.
+            raise
         except Exception as exc:
-            logger.warning("Failed to add zettel to Supabase v2: %s", exc)
+            # P1-2: do NOT swallow. A v2-configured path that fails must be
+            # visible to the caller, not reported as 200 + supabase=false.
+            logger.exception("Failed to add zettel to Supabase v2")
+            raise SupabaseV2PersistError(
+                "Knowledge-graph write failed; the zettel was not saved."
+            ) from exc
 
     # Phase 8.0.3 B+: v1 fallback branch (KGRepository.add_node + semantic
     # auto-link) was removed — v1 ``kg_nodes`` / ``kg_users`` tables were
@@ -475,6 +530,39 @@ async def persist_summarized_result(
     )
 
 
+def _stable_content_hash(payload: dict[str, Any], normalized_url: str) -> bytes:
+    """Deterministic dedup hash for ``(normalized_url, content_hash)``.
+
+    P1-7(a) fix. Previously ``content_hash = sha256(body_md)`` where ``body_md``
+    fell through to the LLM ``detailed_summary``/``summary``. LLM output is
+    non-deterministic, so re-ingesting the same URL produced a different hash,
+    the ``(normalized_url, content_hash)`` ON CONFLICT key in
+    ``content.upsert_canonical_zettel`` missed, and a duplicate canonical row
+    was inserted on every re-ingest.
+
+    The hash now derives ONLY from stable inputs available at persist time:
+    the normalized source URL plus the extracted raw source text
+    (``payload['raw_text']`` when the caller supplies it). It never hashes the
+    LLM summary. Properties:
+
+    * Same URL re-ingested, different LLM wording → identical hash → dedup.
+    * Genuine source-content change (different ``raw_text``) → different hash
+      → a new canonical row, exactly as the dedup contract intends.
+    * When ``raw_text`` is absent (current route DTO does not forward it) the
+      hash is ``sha256(url || "")`` — still fully stable across re-ingests of
+      the same URL, so dedup holds; it simply cannot detect source drift until
+      raw source text is threaded through, which is strictly better than the
+      old always-miss behavior.
+
+    The SQL RPC dedup columns are unchanged; only the Python-side input to
+    ``content_hash`` changed.
+    """
+    raw_source = payload.get("raw_text")
+    raw_source_text = "" if raw_source is None else str(raw_source)
+    fingerprint = f"{normalized_url}\x00{raw_source_text}"
+    return hashlib.sha256(fingerprint.encode("utf-8")).digest()
+
+
 async def _persist_supabase_v2_zettel(
     *,
     payload: dict[str, Any],
@@ -485,7 +573,7 @@ async def _persist_supabase_v2_zettel(
 ) -> tuple[str, bool, bool]:
     normalized_url = str(payload["source_url"])
     body_md = str(payload.get("raw_text") or detailed_summary or payload.get("summary") or "")
-    content_hash = hashlib.sha256(body_md.encode("utf-8")).digest()
+    content_hash = _stable_content_hash(payload, normalized_url)
 
     zettel = CanonicalZettelCreate(
         normalized_url=normalized_url,
