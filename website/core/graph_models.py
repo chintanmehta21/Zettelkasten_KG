@@ -52,6 +52,14 @@ class KGGraphLink(BaseModel):
         le=1.0,
         description="Normalized strength used by /api/graph min_strength filtering",
     )
+    tier: str | None = Field(
+        default=None,
+        description=(
+            "Phase B percentile tier: 'strong'|'medium'|'weak'. Computed "
+            "from the requesting workspace's workspace_strength distribution; "
+            "drives edge color on /knowledge-graph. None on legacy paths."
+        ),
+    )
 
 
 class KGGraph(BaseModel):

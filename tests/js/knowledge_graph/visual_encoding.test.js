@@ -138,6 +138,48 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(APP_SRC).toMatch(/AMBER_HUE_MAX\s*=\s*55/);
   });
 
+  it('EDGE_TIER_COLOR is amber-family, tiered, never blue/purple', () => {
+    const m = APP_SRC.match(
+      /\/\* test-exports:start \*\/([\s\S]*?)\/\* test-exports:end \*\//,
+    );
+    const sandbox = {};
+    new Function('exports', m[1] + '\nexports.c = EDGE_TIER_COLOR;')(sandbox);
+    const c = sandbox.c;
+    for (const t of ['strong', 'medium', 'weak']) {
+      expect(typeof c[t]).toBe('string');
+      const rgba = c[t].match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+))?\)/);
+      expect(rgba, `${t} must be an rgb(a) amber`).toBeTruthy();
+      const r = +rgba[1], g = +rgba[2], b = +rgba[3];
+      const a = rgba[4] === undefined ? 1 : +rgba[4];
+      // Amber: R is the dominant channel, B is the smallest → warm hue.
+      // This structurally excludes blue (B dominant) and purple (R≈B high).
+      expect(r, `${t} R>G`).toBeGreaterThan(g);
+      expect(g, `${t} G>B`).toBeGreaterThan(b);
+      // Convert to HSL hue and assert it sits in the amber band 30..55.
+      const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+      const d = max - min;
+      let h = ((g / 255 - b / 255) / d) % 6;
+      h = Math.round(h * 60); if (h < 0) h += 360;
+      expect(h, `${t} hue ${h} must be amber 30..55`).toBeGreaterThanOrEqual(30);
+      expect(h).toBeLessThanOrEqual(55);
+      c[`__a_${t}`] = a;
+    }
+    // Tiering invariant: strong is the most opaque, weak the faintest.
+    expect(c.__a_strong).toBeGreaterThan(c.__a_medium);
+    expect(c.__a_medium).toBeGreaterThan(c.__a_weak);
+  });
+
+  it('linkColor wires EDGE_TIER_COLOR by link.tier and drops the old blue', () => {
+    // The render callback must key off link.tier and the legacy blue
+    // rgba(100, 130, 200, ...) literal must be gone from app.js.
+    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*link[^\]]*tier[^\]]*\]/);
+    expect(APP_SRC).not.toMatch(/rgba\(\s*100\s*,\s*130\s*,\s*200/);
+    expect(APP_SRC).not.toMatch(/rgba\(\s*160\s*,\s*180\s*,\s*240/);
+    // Width/opacity helpers untouched: still wired to the named helpers.
+    expect(APP_SRC).toMatch(/\.linkWidth\(\s*[^)]*edgeWidthFor[^)]*\)/);
+    expect(APP_SRC).toMatch(/\.linkOpacity\(\s*[^)]*edgeOpacityFor[^)]*\)/);
+  });
+
   it('community hue helper clamps within amber band', () => {
     const m = APP_SRC.match(
       /\/\* test-exports:start \*\/([\s\S]*?)\/\* test-exports:end \*\//,

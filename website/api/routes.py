@@ -363,6 +363,108 @@ _graph_cache_global: dict | None = None
 _graph_cache_global_ts: float = 0
 
 
+# Phase B read-path strength constants.
+#
+# Strength column precedence (per design + verified migrations): the Phase B
+# scorer writes ``workspace_strength`` (_v2/46) which DRIVES RENDERING; the
+# 42-era ``connection_strength`` composite is the read-path fallback for rows
+# the scorer has not reached yet; the legacy ``weight`` column is ALWAYS NULL
+# post-migration and is only kept as a last resort. ``None`` everywhere → a
+# neutral sentinel so an unscored edge never renders as "strong".
+_UNSCORED_STRENGTH_SENTINEL = 0.5  # mid-bucket; matches 42_*.sql backfill intent
+
+# Percentile cutoffs (fraction of the workspace's weighted-edge distribution).
+# Top 25% → strong, next 35% → medium, bottom 40% → weak. Mirrors both
+# improvement reports' "use the workspace distribution, not fixed global
+# cutoffs" guidance.
+_TIER_STRONG_PCTL = 0.75
+_TIER_MEDIUM_PCTL = 0.40
+
+# Small-n fallback: with fewer than this many *weighted* edges a percentile is
+# statistically unstable, so fall back to the fixed D-KG-3 cutoffs referenced
+# in the kg index comment (0.7 strong / 0.4 medium).
+_TIER_MIN_SAMPLE = 20
+_TIER_STRONG_FIXED = 0.7
+_TIER_MEDIUM_FIXED = 0.4
+
+
+def _resolve_edge_strength(edge: dict) -> tuple[float, bool]:
+    """Return ``(strength, was_scored)`` for one kg_edges row.
+
+    Precedence: ``workspace_strength`` (Phase B render driver) →
+    ``connection_strength`` (42-era composite fallback) → legacy ``weight``
+    (always NULL post-migration) → unscored sentinel. ``was_scored`` is
+    ``True`` only when a real per-workspace/composite score was present, so
+    the percentile distribution is built from genuinely-scored edges and an
+    unscored edge can never be tiered "strong".
+    """
+    for col in ("workspace_strength", "connection_strength", "weight"):
+        raw = edge.get(col)
+        if raw is None:
+            continue
+        try:
+            numeric = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if numeric < 0:
+            numeric = 0.0
+        # workspace_strength / connection_strength are [0,1] by CHECK
+        # constraint; legacy weight may be 1-10 → normalise like the prior
+        # _normalize_connection_strength did so behaviour is unchanged.
+        if numeric > 1.0:
+            numeric = min(numeric / 10.0, 1.0)
+        return numeric, col != "weight"
+    return _UNSCORED_STRENGTH_SENTINEL, False
+
+
+def _percentile_threshold(sorted_vals: list[float], fraction: float) -> float:
+    """Value at ``fraction`` quantile of an ascending ``sorted_vals``.
+
+    ``fraction`` in [0,1]; nearest-rank style on the sorted list. Caller
+    guarantees ``sorted_vals`` is non-empty.
+    """
+    if fraction <= 0:
+        return sorted_vals[0]
+    if fraction >= 1:
+        return sorted_vals[-1]
+    idx = int(round(fraction * (len(sorted_vals) - 1)))
+    return sorted_vals[idx]
+
+
+def _build_tier_classifier(scored_strengths: list[float]):
+    """Build a ``strength -> 'strong'|'medium'|'weak'`` classifier.
+
+    Computed ONLY from ``scored_strengths`` — the genuinely-scored edges of
+    ONE workspace (BOLA: the caller passes a single workspace's edges, so the
+    distribution can never leak another tenant's strengths). With < 20
+    scored edges the percentile is unstable → fixed D-KG-3 cutoffs.
+    """
+    n = len(scored_strengths)
+    if n >= _TIER_MIN_SAMPLE:
+        ordered = sorted(scored_strengths)
+        strong_cut = _percentile_threshold(ordered, _TIER_STRONG_PCTL)
+        medium_cut = _percentile_threshold(ordered, _TIER_MEDIUM_PCTL)
+        # Guard degenerate distributions (all-equal) so medium <= strong.
+        if medium_cut > strong_cut:
+            medium_cut = strong_cut
+    else:
+        strong_cut = _TIER_STRONG_FIXED
+        medium_cut = _TIER_MEDIUM_FIXED
+
+    def _classify(strength: float, was_scored: bool) -> str:
+        # An unscored edge is never "strong": it did not participate in the
+        # distribution and its sentinel must not masquerade as a real score.
+        if not was_scored:
+            return "weak"
+        if strength >= strong_cut:
+            return "strong"
+        if strength >= medium_cut:
+            return "medium"
+        return "weak"
+
+    return _classify
+
+
 def _v2_assemble_graph(
     *,
     user_sub: str,
@@ -418,23 +520,23 @@ def _v2_assemble_graph(
     links: list[dict] = []
     seen_links: set[tuple[str, str, str]] = set()  # (src, dst, relation)
 
-    def _normalize_connection_strength(value: object) -> float:
-        if value is None:
-            return 1.0
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return 1.0
-        if numeric <= 0:
-            return 0.0
-        if numeric <= 1:
-            return numeric
-        return min(numeric / 10.0, 1.0)
-
     for ws_id in workspace_ids:
         edge_rows = kg_repo.list_workspace_edges(ws_id)
         if not edge_rows:
             continue
+        # Phase B: resolve each edge's render strength (workspace_strength ->
+        # connection_strength -> legacy weight -> sentinel) and build the
+        # strong/medium/weak tier classifier from THIS workspace's scored
+        # edges only. The classifier never sees another workspace's
+        # strengths — BOLA isolation by construction (one ws per iteration).
+        edge_strengths: dict[int, tuple[float, bool]] = {}
+        scored_strengths: list[float] = []
+        for idx, edge in enumerate(edge_rows):
+            strength, was_scored = _resolve_edge_strength(edge)
+            edge_strengths[idx] = (strength, was_scored)
+            if was_scored:
+                scored_strengths.append(strength)
+        _classify_tier = _build_tier_classifier(scored_strengths)
         # Resolve the bigint kg_node ids on each edge endpoint to overlay
         # node ids via kg.chunk_node_mentions -> content.canonical_chunks ->
         # canonical_zettel_id. Without this join we'd emit self-loops
@@ -460,12 +562,14 @@ def _v2_assemble_graph(
                     ids.append(overlay)
             return ids
 
-        for edge in edge_rows:
+        for idx, edge in enumerate(edge_rows):
             try:
                 src_id = int(edge.get("src_node_id"))
                 dst_id = int(edge.get("dst_node_id"))
             except (TypeError, ValueError):
                 continue
+            strength, was_scored = edge_strengths[idx]
+            tier = _classify_tier(strength, was_scored)
             src_overlays = _resolve_overlay_ids(src_id)
             dst_overlays = _resolve_overlay_ids(dst_id)
             if not src_overlays or not dst_overlays:
@@ -495,9 +599,8 @@ def _v2_assemble_graph(
                             "weight": None,
                             "link_type": "tag",
                             "description": description,
-                            "connection_strength": _normalize_connection_strength(
-                                edge.get("weight")
-                            ),
+                            "connection_strength": strength,
+                            "tier": tier,
                         }
                     )
 
