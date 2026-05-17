@@ -27,30 +27,30 @@ PlanCapMap = Mapping[str, Mapping[str, int | None]]
 #   Max    Z: 30/day, 100/week, 200/month  K: 5/week, 50 lifetime      Q: 500/month
 PLAN_CAPS: Final[Mapping[str, PlanCapMap]] = {
     "free": {
-        "zettel":   {"day": 2,    "week": 10,   "month": 30,  "lifetime": None},
-        "kasten":   {"day": None, "week": None, "month": None, "lifetime": 1},
-        "question": {"day": None, "week": None, "month": 30,  "lifetime": None},
+        "zettel":       {"day": 2,    "week": 10,   "month": 30,  "lifetime": None},
+        "kasten":       {"day": None, "week": None, "month": None, "lifetime": 1},
+        "rag_question": {"day": None, "week": None, "month": 30,  "lifetime": None},
     },
     "basic": {
-        "zettel":   {"day": 5,    "week": 30,   "month": 50,  "lifetime": None},
-        "kasten":   {"day": None, "week": None, "month": None, "lifetime": 5},
-        "question": {"day": None, "week": None, "month": 100, "lifetime": None},
+        "zettel":       {"day": 5,    "week": 30,   "month": 50,  "lifetime": None},
+        "kasten":       {"day": None, "week": None, "month": None, "lifetime": 5},
+        "rag_question": {"day": None, "week": None, "month": 100, "lifetime": None},
     },
     "max": {
-        "zettel":   {"day": 30,   "week": 100,  "month": 200, "lifetime": None},
-        "kasten":   {"day": None, "week": 5,    "month": None, "lifetime": 50},
-        "question": {"day": None, "week": None, "month": 500, "lifetime": None},
+        "zettel":       {"day": 30,   "week": 100,  "month": 200, "lifetime": None},
+        "kasten":       {"day": None, "week": 5,    "month": None, "lifetime": 50},
+        "rag_question": {"day": None, "week": None, "month": 500, "lifetime": None},
     },
 }
 
 # Pack-credit wallet meter on billing.pricing_balances per feature.
 WALLET_METER: Final[Mapping[str, str]] = {
-    "zettel":   "zettel_credits",
-    "kasten":   "kasten_credits",
-    "question": "question_credits",
+    "zettel":       "zettel_credits",
+    "kasten":       "kasten_credits",
+    "rag_question": "rag_question_credits",
 }
 
-FEATURES: Final[tuple[str, ...]] = ("zettel", "kasten", "question")
+FEATURES: Final[tuple[str, ...]] = ("zettel", "kasten", "rag_question")
 GRANULARITIES: Final[tuple[str, ...]] = ("day", "week", "month", "lifetime")
 DEFAULT_PLAN: Final[str] = "free"
 KNOWN_PLANS: Final[frozenset[str]] = frozenset(PLAN_CAPS.keys())
