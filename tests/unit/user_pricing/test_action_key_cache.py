@@ -77,27 +77,37 @@ def test_is_cached_miss_for_unknown_key():
 
 @pytest.mark.asyncio
 async def test_require_entitlement_does_not_bridge_users(monkeypatch):
-    """Two different users hitting the same action_id must each call the repo.
+    """Two different users hitting the same action_id must each call the gate.
 
     Regression-locks the cache-isolation invariant at the require_entitlement
-    boundary (not just the helper) so a future refactor that changes the cache
-    key shape gets caught here too.
+    boundary so a future refactor that changes the cache key shape gets
+    caught here too. Phase-9: gate target is functional_gates, not the
+    pricing repo.
     """
+    import uuid
+    from website.features.functional_gates import GateDecision
+
     entitlements._ALLOWED_ACTIONS.clear()
+    entitlements._CONSUMED_ACTIONS.clear()
 
     calls: list[str] = []
 
-    class Repo:
-        def check_entitlement(self, *, user_sub, meter, action_id):
-            calls.append(user_sub)
-            return True
+    class Gate:
+        async def reserve_and_consume(self, *, profile_id, feature, action_id, plan=None):
+            calls.append(str(profile_id))
+            return GateDecision(
+                allowed=True, source="plan", reason="ok",
+                remaining_plan=10, remaining_wallet=0,
+            )
 
-    monkeypatch.setattr(entitlements, "get_pricing_repository", lambda: Repo())
+    monkeypatch.setattr(entitlements, "get_functional_gates", lambda: Gate())
 
-    await entitlements.require_entitlement(Meter.ZETTEL, {"sub": "user-a"}, action_id="shared-action")
-    await entitlements.require_entitlement(Meter.ZETTEL, {"sub": "user-b"}, action_id="shared-action")
+    user_a = str(uuid.uuid4())
+    user_b = str(uuid.uuid4())
+    await entitlements.require_entitlement(Meter.ZETTEL, {"sub": user_a}, action_id="shared-action")
+    await entitlements.require_entitlement(Meter.ZETTEL, {"sub": user_b}, action_id="shared-action")
 
-    assert calls == ["user-a", "user-b"], (
-        "Two distinct users sharing an action_id MUST both reach the repo — "
-        "cache bridge would shrink calls to ['user-a'] only."
+    assert calls == [user_a, user_b], (
+        "Two distinct users sharing an action_id MUST both reach the gate — "
+        f"cache bridge would shrink calls. Got: {calls}"
     )
