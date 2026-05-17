@@ -20,9 +20,11 @@ Caller contract:
 - ``temporal_days``: float, distance between node creation timestamps in
   days. Exponential decay; 0 days → 1.0; ~30 days → ~0.37.
 
-The scorer's purity makes it cheap to call inline in the per-edge create
-path (``persist_summarized_result``) AND in the offline backfill scripts
-(``ops/scripts/backfill_links.py``).
+Status: pure, currently UNCALLED in production (zero prod importers as of
+the 2026-05-11 DB-v2 purge — only the unit/drift-sentinel tests reference
+it). Retained per locked decision **D-KG-1** for the upcoming KG-quality
+rewire; its purity (no DB / network / global state) is what makes it safe
+to keep dormant and cheap to wire into the per-edge create path later.
 """
 from __future__ import annotations
 
@@ -175,10 +177,11 @@ def percentile_rank(value: float, neighborhood: Sequence[float]) -> float:
 
     Edge cases:
     - Empty / singleton neighborhoods → 0.0 (no relative information).
-    - Used by the scorer's caller to *normalize* candidate scores against
-      the source node's own neighborhood before applying the
-      EDGE_CREATION_THRESHOLD — keeps a sparsely-connected node's edges
-      from being unfairly culled by the global threshold.
+    - Intended (once the D-KG-1 rewire wires this module in) to *normalize*
+      candidate scores against the source node's own neighborhood before
+      applying EDGE_CREATION_THRESHOLD, so a sparsely-connected node's
+      edges aren't unfairly culled by the global threshold. No current
+      production caller.
     """
     if not neighborhood or len(neighborhood) <= 1:
         return 0.0
