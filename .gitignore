@@ -109,3 +109,5 @@ package-lock.json
 
 # Untracked scratch dir from local hook scaffolding
 dev/
+purge_backups/
+zettel_ingest_audit.json
