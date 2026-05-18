@@ -58,7 +58,43 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "45_rag_subgraph_for_pagerank.sql",
         "46_kg_two_level_strength.sql",
         "47_canonical_source_type_arxiv.sql",
+        "48_dedup_canonical_rows.sql",
     ]
+
+
+def test_dedup_canonical_rows_migration_is_transactional_and_guarded() -> None:
+    """D6: the one-off canonical-row dedup migration must be a single
+    BEGIN/COMMIT transaction, must NOT touch any golden-md5 function body,
+    must repoint all three FK children before deleting losers, must add the
+    recurrence guard, and must NOTIFY pgrst. Shape-only (NOT applied here)."""
+    sql = _sql("48_dedup_canonical_rows.sql")
+    upper = sql.upper()
+    # Transactional, all-or-nothing.
+    assert upper.count("BEGIN;") == 1
+    assert upper.rstrip().endswith("COMMIT;")
+    # No function-body edits (golden-md5 RPCs untouched).
+    assert "CREATE OR REPLACE FUNCTION" not in upper
+    # Survivor/keep logic present (chunk-count proxy for the P1-7 hash).
+    assert "_dedup_map" in sql
+    assert "chunk_n DESC" in sql and "created_at DESC" in sql
+    # All three FK children handled before the loser delete.
+    assert "content.canonical_chunks" in sql
+    assert "content.workspace_zettels" in sql
+    assert "kg.kg_edges" in sql
+    assert "evidence_canonical_zettel_id = m.survivor_id" in sql
+    # Loser delete comes AFTER the repoints.
+    loser_delete = sql.index("DELETE FROM content.canonical_zettels")
+    assert loser_delete > sql.index("UPDATE content.canonical_chunks")
+    assert loser_delete > sql.index("UPDATE content.workspace_zettels")
+    assert loser_delete > sql.index("UPDATE kg.kg_edges")
+    # Recurrence guard: idempotent unique index on normalized_url.
+    assert (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_canonical_zettels_url_singleton"
+        in sql
+    )
+    # Idempotent-shaped: every DDL/DML guarded or naturally re-runnable.
+    assert "ON COMMIT DROP" in sql  # temp map auto-cleaned
+    assert "NOTIFY pgrst" in sql
 
 
 def test_v2_schema_declares_expected_tables() -> None:

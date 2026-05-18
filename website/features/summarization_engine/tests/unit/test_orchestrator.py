@@ -170,13 +170,79 @@ async def test_youtube_medium_confidence_passes_through_without_fallback():
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_rejects_thin_content():
-    """Orchestrator raises ExtractionConfidenceError when raw_text is near-empty.
+async def test_orchestrator_quarantines_thin_content_not_rejects(monkeypatch):
+    """OLD->NEW (D7/D8 QUARANTINE-FIRST): pre-fix the orchestrator HARD-
+    REJECTED any near-empty extraction (raised ExtractionConfidenceError,
+    zettel never saved) via the single ``_MIN_CONTENT_CHARS = 50`` gate.
+    Post-fix the gate is 2-signal + quarantine-first: low confidence AND
+    below the per-source floor -> the summary still runs and the zettel
+    persists, but ``ingest_result.metadata["quality_flag"]`` is set to
+    "thin" so the retrieval/KG read side excludes it. The hard-reject tier
+    still exists but is env-gated OFF by default
+    (``RAG_THIN_EXTRACTION_REJECT_ENABLED``)."""
+    monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
+    from website.features.summarization_engine.core.orchestrator import (
+        summarize_url_bundle,
+    )
 
-    This prevents the LLM from hallucinating a summary from insufficient input.
-    Section headers (## Video, ## Transcript, etc.) are stripped before the
-    50-char minimum check, so a result that is *only* headers still fails.
-    """
+    thin_ingest = IngestResult(
+        source_type=SourceType.YOUTUBE,
+        url="https://www.youtube.com/watch?v=thin123",
+        original_url="https://www.youtube.com/watch?v=thin123",
+        raw_text="## Video\nSome Title\n## Transcript\n",
+        extraction_confidence="low",
+        confidence_reason="no transcript available",
+        fetched_at=datetime.now(timezone.utc),
+    )
+    thin_meta = SummaryMetadata(
+        source_type=SourceType.YOUTUBE,
+        url="https://www.youtube.com/watch?v=thin123",
+        extraction_confidence="low",
+        confidence_reason="no transcript available",
+        total_tokens_used=1,
+        gemini_pro_tokens=1,
+        gemini_flash_tokens=0,
+        total_latency_ms=1,
+        cod_iterations_used=1,
+        self_check_missing_count=0,
+        patch_applied=False,
+    )
+    thin_summary = SummaryResult(
+        mini_title="t",
+        brief_summary="b",
+        tags=["a", "b", "c", "d", "e"],
+        detailed_summary=[DetailedSummarySection(heading="H", bullets=["x"])],
+        metadata=thin_meta,
+    )
+
+    mock_ingestor = AsyncMock()
+    mock_ingestor.ingest.return_value = thin_ingest
+    mock_summarizer = AsyncMock()
+    mock_summarizer.summarize.return_value = thin_summary
+
+    with patch(
+        "website.features.summarization_engine.core.orchestrator.get_ingestor"
+    ) as get_ingestor, patch(
+        "website.features.summarization_engine.core.orchestrator.get_summarizer"
+    ) as get_summarizer:
+        get_ingestor.return_value = lambda: mock_ingestor
+        get_summarizer.return_value = lambda client, config: mock_summarizer
+
+        bundle = await summarize_url_bundle(
+            "https://www.youtube.com/watch?v=thin123",
+            user_id=UUID("00000000-0000-0000-0000-000000000001"),
+            gemini_client=AsyncMock(),
+        )
+
+    # NOT raised; persisted but tagged thin for read-side exclusion.
+    assert bundle.ingest_result.metadata.get("quality_flag") == "thin"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_thin_reject_tier_env_flag_restores_raise(monkeypatch):
+    """The hard-reject tier still exists; turning the env flag ON restores
+    the old ExtractionConfidenceError fail-closed behavior."""
+    monkeypatch.setenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", "true")
     from website.features.summarization_engine.core.orchestrator import summarize_url
 
     thin_ingest = IngestResult(

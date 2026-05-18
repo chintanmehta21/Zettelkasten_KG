@@ -94,6 +94,26 @@ class ContentRepository:
             .upsert(payloads, on_conflict="canonical_zettel_id,chunk_idx")
             .execute()
         )
+        # D5: ON CONFLICT(canonical_zettel_id, chunk_idx) upsert never prunes.
+        # A re-ingest that now yields FEWER chunks would leave the old
+        # higher-idx rows orphaned (stale retrieval candidates + dangling
+        # workspace_chunk_membership). Issue a second PostgREST call to delete
+        # every chunk whose idx is >= the fresh chunk count, so chunk_idx
+        # stays a dense 0..N-1 range exactly mirroring the new chunk set.
+        # ON DELETE CASCADE drops the stale membership rows. This mirrors the
+        # safe delete-then-state pattern backfill_rechunk_v2.py proved. The
+        # golden-md5-protected content.upsert_canonical_zettel RPC is NOT
+        # touched. Only runs when chunks were written (empty-list early-return
+        # above preserves the embed-or-skip "leave for backfill" contract —
+        # we must never wipe recoverable rows on a 0-chunk persist).
+        (
+            self._client.schema("content")
+            .table("canonical_chunks")
+            .delete()
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .gte("chunk_idx", len(payloads))
+            .execute()
+        )
         return [UUID(str(row["id"])) for row in response.data or []]
 
     def upsert_workspace_zettel(

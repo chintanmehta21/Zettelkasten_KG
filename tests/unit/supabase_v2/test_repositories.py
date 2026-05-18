@@ -34,6 +34,37 @@ class _Table:
         self.calls.append(("insert", self.schema, self.table, payload, {}))
         return _Execute([payload])
 
+    def delete(self):
+        # D5: upsert_chunks now issues a stale-chunk prune
+        # DELETE ... WHERE canonical_zettel_id=? AND chunk_idx >= N after
+        # the chunk upsert. The fake must accept the chained filter form.
+        self.calls.append(("delete", self.schema, self.table))
+        return _Delete(self.calls, self.schema, self.table)
+
+
+class _Delete:
+    """Chained delete builder: .eq(...).gte(...).execute()."""
+
+    def __init__(self, calls, schema, table):
+        self.calls = calls
+        self.schema = schema
+        self.table = table
+        self._filters: dict = {}
+
+    def eq(self, col, val):
+        self._filters[col] = val
+        return self
+
+    def gte(self, col, val):
+        self._filters[("gte", col)] = val
+        return self
+
+    def execute(self):
+        self.calls.append(
+            ("delete_exec", self.schema, self.table, dict(self._filters))
+        )
+        return _Execute([])
+
 
 class _Schema:
     def __init__(self, calls, schema):

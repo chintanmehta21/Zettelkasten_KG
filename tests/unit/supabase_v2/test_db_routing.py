@@ -34,6 +34,22 @@ class _FakeV2Repo:
 
 @pytest.mark.asyncio
 async def test_persist_routes_to_v2_when_scope_available(monkeypatch) -> None:
+    """CONTRACT CHANGE (old -> new): this previously asserted a SINGLE
+    ``chunks[0].chunk_idx == 0`` and did NOT mock the embedder — it only ever
+    passed against the pre-embedding-fix code that wrote one
+    ``embedding=None`` chunk unconditionally. The persist path now segments
+    the source into MANY chunks via the shared ``build_canonical_chunks``
+    core, and the embed-or-skip contract means a working embedder is required
+    for any chunk to be written (no lying NULL-embedding rows). We mock the
+    batch embed (no live Gemini) and assert the multi-chunk contract:
+    monotonically increasing chunk_idx, each with a 768-d vector."""
+
+    async def _fake_embed(texts):
+        return [[0.01] * 768 for _ in texts]
+
+    monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+
     repo = _FakeV2Repo()
     monkeypatch.setattr(
         persist,
@@ -66,5 +82,8 @@ async def test_persist_routes_to_v2_when_scope_available(monkeypatch) -> None:
     zettel, workspace, chunks = repo.calls[0]
     assert zettel.normalized_url == "https://example.com"
     assert workspace.workspace_id == UUID("00000000-0000-0000-0000-000000000002")
-    assert chunks and chunks[0].chunk_idx == 0
+    assert chunks and len(chunks) >= 1
+    for i, ch in enumerate(chunks):
+        assert ch.chunk_idx == i
+        assert ch.embedding is not None and len(ch.embedding) == 768
 

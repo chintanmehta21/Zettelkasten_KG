@@ -19,6 +19,48 @@ class SourceType(str, Enum):
     MEDIUM = "medium"
     WEB = "web"
     GENERIC = "generic"
+    # D4: mirror every member of the summarization engine's SourceType
+    # (website.features.summarization_engine.core.models.SourceType) EXACTLY
+    # so a real ingest type is never silently coerced to WEB (which loses
+    # provenance + routes through the wrong chunking bucket). A drift guard
+    # test asserts this enum stays a superset; do not remove members without
+    # updating that test.
+    NEWSLETTER = "newsletter"
+    HACKERNEWS = "hackernews"
+    LINKEDIN = "linkedin"
+    ARXIV = "arxiv"
+    PODCAST = "podcast"
+
+
+# D4: long-form vs short-form chunking bucket map, co-located with the enum
+# so the chunker and persist path share one source of truth. Long-form
+# (article/transcript-shaped, segment into many passages): arxiv, newsletter,
+# podcast, youtube, web, substack, medium. Short-form (post/comment-shaped,
+# atomic unless oversize per the chunker's SHORT_FORM size gate): hackernews,
+# linkedin, reddit, twitter, github, generic. Matches the chunker's existing
+# LONG_FORM_SOURCES / SHORT_FORM_SOURCES intent; the chunker remains the
+# authority on segmentation — this map is the documented contract.
+LONG_FORM_SOURCE_TYPES: frozenset[SourceType] = frozenset(
+    {
+        SourceType.ARXIV,
+        SourceType.NEWSLETTER,
+        SourceType.PODCAST,
+        SourceType.YOUTUBE,
+        SourceType.WEB,
+        SourceType.SUBSTACK,
+        SourceType.MEDIUM,
+    }
+)
+SHORT_FORM_SOURCE_TYPES: frozenset[SourceType] = frozenset(
+    {
+        SourceType.HACKERNEWS,
+        SourceType.LINKEDIN,
+        SourceType.REDDIT,
+        SourceType.TWITTER,
+        SourceType.GITHUB,
+        SourceType.GENERIC,
+    }
+)
 
 
 class ChunkKind(str, Enum):

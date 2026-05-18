@@ -26,48 +26,68 @@ def test_rag_chunks_enabled_defaults_to_true():
 
 
 @pytest.mark.asyncio
-async def test_summarize_persist_schedules_ingest_when_flag_on(monkeypatch):
-    """When rag_chunks_enabled is True and a node is freshly added, the
-    ingest_node_chunks hook must be scheduled with the user UUID and node id."""
+async def test_persist_builds_multichunk_inline_not_via_dead_hook(monkeypatch):
+    """CONTRACT CHANGE (old -> new): the old test drove the now-DELETED
+    ``persist._schedule_rag_chunks`` (a dead fire-and-forget scheduler with
+    zero production callers and a node_id-keyed signature mismatch — the
+    RAG+KG root-cause defect). Chunking is now INLINE on the persist path via
+    the shared ``build_canonical_chunks`` core, segmenting the source body
+    into many chunks handed straight to ``upsert_canonical_zettel``. This
+    test pins the new wiring: ``_schedule_rag_chunks`` is gone and a real
+    body produces multiple embedded chunks synchronously."""
+    from datetime import date
+
     from website.core import persist as persist_mod
+    from website.core.supabase_v2.models import CanonicalUpsertResult
+
+    assert not hasattr(persist_mod, "_schedule_rag_chunks"), (
+        "dead RAG-chunk scheduler must be purged"
+    )
+
+    async def _fake_embed(texts):
+        assert texts and all(isinstance(t, str) and t for t in texts)
+        return [[0.01] * 768 for _ in texts]
+
+    monkeypatch.setattr(persist_mod, "embed_chunk_texts", _fake_embed)
+    monkeypatch.setattr(persist_mod, "_schedule_kg_population", lambda **_k: None)
 
     captured = {}
 
-    async def _fake_ingest(*, payload, user_uuid, node_id):
-        captured["payload"] = payload
-        captured["user_uuid"] = user_uuid
-        captured["node_id"] = node_id
-        return 3
+    class _Repo:
+        def upsert_canonical_zettel(self, zettel, *, workspace=None, chunks=None):
+            captured["chunks"] = chunks
+            return CanonicalUpsertResult(
+                canonical_zettel_id=uuid4(),
+                workspace_zettel_id=uuid4(),
+                was_new=True,
+            )
 
-    # Patch the lazy import inside _schedule_rag_chunks._run.
-    import website.features.rag_pipeline.ingest.hook as hook_mod
-    monkeypatch.setattr(hook_mod, "ingest_node_chunks", _fake_ingest)
-
-    # NOTE: _schedule_rag_chunks does NOT read settings — the rag_chunks_enabled
-    # gate lives inside ingest_node_chunks (the hook), not persist. The prior
-    # monkeypatch of persist.get_settings was stale (persist no longer imports
-    # it post-P1-2; the symbol never affected scheduling) and was removed.
-    user_uuid = uuid4()
-    payload = {
-        "title": "Test Node",
-        "summary": "A summary",
-        "raw_text": "Body text",
-        "source_type": "web",
-        "source_url": "https://example.com",
-        "tags": [],
-    }
-
-    # Drive _schedule_rag_chunks directly; it creates a task we await.
-    persist_mod._schedule_rag_chunks(
-        payload=payload, user_uuid=user_uuid, node_id="web-test-node"
+    # OLD->NEW (R1): pre-R1 a long RAW body was the chunk source. Post-R1
+    # the SUMMARY is the primary chunk source, so a long summary must
+    # segment into many chunks (the short raw body is now irrelevant).
+    long_summary = "\n\n".join(
+        f"Paragraph {i}. Naruto trains to master the Rasengan and become "
+        f"Hokage, earning the village's hard-won respect over many arcs. " * 3
+        for i in range(40)
+    )
+    await persist_mod._persist_supabase_v2_zettel(
+        payload={
+            "title": "Test Node",
+            "summary": long_summary,
+            "raw_text": "A short raw body, not the chunk source under R1.",
+            "source_type": "web",
+            "source_url": "https://example.com",
+            "tags": [],
+            "metadata": {},
+        },
+        repo=_Repo(),
+        workspace_id=uuid4(),
+        captured_on=date.today(),
+        detailed_summary=long_summary,
     )
 
-    # Drain the task created in _schedule_rag_chunks.
-    import asyncio
-    pending = [t for t in asyncio.all_tasks() if t.get_name().startswith("rag-chunks-")]
-    assert pending, "expected a rag-chunks-* task to be scheduled"
-    await asyncio.gather(*pending)
-
-    assert captured["user_uuid"] == user_uuid
-    assert captured["node_id"] == "web-test-node"
-    assert captured["payload"]["title"] == "Test Node"
+    assert captured["chunks"] is not None
+    assert len(captured["chunks"]) > 1, "long summary must segment into many chunks"
+    for i, ch in enumerate(captured["chunks"]):
+        assert ch.chunk_idx == i
+        assert ch.embedding is not None and len(ch.embedding) == 768

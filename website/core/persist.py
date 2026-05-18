@@ -130,6 +130,14 @@ class PersistenceOutcome:
     supabase_saved: bool = False
     supabase_duplicate: bool = False
     kg_user_id: str | None = None
+    # D10: the zettel persisted but is NOT cleanly retrievable. Set True when
+    # a NON-EMPTY source yielded ZERO embeddable chunks (batch-embed failure
+    # or chunker produced nothing) — the row is saved (no 500, recoverable
+    # via backfill_rechunk_v2.py) but the caller MUST NOT report a clean
+    # success. ``quality_flag`` names the degradation ("no_chunks"). Mirrors
+    # the P1-2 structured-signal style: visible, not swallowed.
+    degraded: bool = False
+    quality_flag: str | None = None
 
 
 def get_supabase_v2_scope_for_read(
@@ -578,6 +586,17 @@ async def persist_summarized_result(
     payload.pop("raw_metadata", None)
     payload.pop("source_fingerprint_text", None)
 
+    # D10: a non-empty source that yielded ZERO chunks persisted the zettel
+    # but it is NOT retrievable. Surface a degraded signal (set by
+    # _persist_supabase_v2_zettel on the shared payload). Translate the
+    # internal marker into a stable public ``quality_flag`` on both the
+    # outcome and the result dict so the caller/response can show
+    # "persisted but not retrievable (0 chunks)" instead of clean success.
+    degraded = bool(payload.pop("_degraded_no_chunks", False))
+    quality_flag = "no_chunks" if degraded else None
+    if quality_flag:
+        payload["quality_flag"] = quality_flag
+
     return PersistenceOutcome(
         result=payload,
         file_node_id=file_node_id,
@@ -586,6 +605,8 @@ async def persist_summarized_result(
         supabase_saved=supabase_saved,
         supabase_duplicate=supabase_duplicate,
         kg_user_id=kg_user_id,
+        degraded=degraded,
+        quality_flag=quality_flag,
     )
 
 
@@ -681,41 +702,37 @@ async def _persist_supabase_v2_zettel(
         user_tags=list(rewrite_tags(payload.get("tags", []) or [])),
         added_via="website",
     )
-    chunk_text = detailed_summary or body_md
-    chunks: list[CanonicalChunkCreate] = []
-    if chunk_text:
-        # DEFECT FIX: the canonical chunk MUST carry its 768-d embedding.
-        # Previously this row was written with embedding=None but the model
-        # default embedding_model_version='gemini-001-mrl-768' still set —
-        # content.search_chunks filters `cc.embedding IS NOT NULL`, so the
-        # dense retrieval channel had zero vectors and gold@1 collapsed.
-        # Embed inline; on failure DO NOT persist a chunk at all (the column
-        # is NOT NULL DEFAULT model_version, so a NULL-embedding row would
-        # always lie about success). The zettel still persists; the backfill
-        # script recovers the missing vector. This is the same embed path the
-        # backfill reuses — single source of truth, no divergence.
-        embedding = await _embed_chunk_text(chunk_text)
-        if embedding is not None:
-            chunks = [
-                CanonicalChunkCreate(
-                    chunk_idx=0,
-                    content=chunk_text,
-                    content_hash=hashlib.sha256(
-                        chunk_text.encode("utf-8")
-                    ).digest(),
-                    chunk_type="semantic",
-                    token_count=max(1, len(chunk_text.split())),
-                    embedding=embedding,
-                    embedding_model_version=_CHUNK_EMBED_MODEL_VERSION,
-                )
-            ]
-        else:
-            logger.warning(
-                "Chunk embedding failed for %s; persisting zettel WITHOUT a "
-                "chunk row (no silent NULL-embedding+model_version). Recover "
-                "via ops/scripts/backfill_chunk_embeddings.py.",
-                normalized_url,
-            )
+    # ROOT-CAUSE FIX: segment the source text into MANY chunks (was a single
+    # monolithic chunk regardless of body length, starving RAG passage
+    # granularity + KG chunk_node_mentions). build_canonical_chunks is the
+    # shared chunk+embed core also used by the v2 re-chunk backfill so the two
+    # can never diverge. On a batch-embed failure it returns [] and we persist
+    # the zettel WITHOUT chunk rows (preserves the embed-or-skip contract: no
+    # lying NULL-embedding+model_version row); backfill recovers later.
+    chunks = await build_canonical_chunks(payload=payload, detailed_summary=detailed_summary)
+    if not chunks:
+        # D10: distinguish "nothing to chunk" (truly empty source — not a
+        # degradation, there is no retrievable content by definition) from
+        # "had real source text but produced 0 chunks" (batch-embed failure
+        # / chunker yielded nothing — the zettel persists but is NOT
+        # retrievable; the caller must surface a degraded signal, not a
+        # clean 200). We re-derive the selected source text via the same
+        # helper build_canonical_chunks uses so the classification cannot
+        # drift from the actual chunk-source policy.
+        had_source = bool(
+            _choose_chunk_source_text(payload, detailed_summary).strip()
+        )
+        if had_source:
+            payload["_degraded_no_chunks"] = True
+        logger.warning(
+            "No embeddable chunks for %s; persisting zettel WITHOUT chunk "
+            "rows (%s — no silent NULL-embedding+model_version). Recover via "
+            "ops/scripts/backfill_rechunk_v2.py.",
+            normalized_url,
+            "non-empty source but 0 chunks (DEGRADED, not retrievable)"
+            if had_source
+            else "empty source",
+        )
     result = await asyncio.to_thread(
         repo.upsert_canonical_zettel,
         zettel,
@@ -723,9 +740,9 @@ async def _persist_supabase_v2_zettel(
         chunks=chunks,
     )
     persisted_id = result.workspace_zettel_id or result.canonical_zettel_id
-    # Phase B: fire-and-forget KG-population enrichment. Mirrors the
-    # rag-chunks asyncio.create_task pattern (see _schedule_rag_chunks /
-    # persist.py:670-681). Best-effort: never blocks or fails Add Zettel.
+    # Phase B: fire-and-forget KG-population enrichment via
+    # _schedule_kg_population's asyncio.create_task. Best-effort: never
+    # blocks or fails Add Zettel. Now sees the multi-chunk set above.
     _schedule_kg_population(
         payload=payload,
         workspace_id=workspace_id,
@@ -780,33 +797,139 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
 # v2 zettel persist runs through ``_persist_supabase_v2_zettel`` above.
 
 
-def _schedule_rag_chunks(
+# Per-zettel chunk-count safety cap. Mirrors no explicit cap in the chunker
+# itself, so this is a generous defensive ceiling: a pathological ~92k-char
+# body cannot explode the chunk list (and the downstream batch embed / RPC
+# payload) unbounded. Long-form chunks are ~512 tokens (~2k chars), so 200
+# chunks ≈ a ~400k-char body — well past any real article/transcript.
+_MAX_CHUNKS_PER_ZETTEL = 200
+
+
+def _choose_chunk_source_text(payload: dict[str, Any], detailed_summary: str) -> str:
+    """Pick the text the RAG chunker is designed to chunk — SUMMARY-PRIMARY.
+
+    R1 policy (corrects the earlier raw-first intent):
+
+    1. ``content_selection.choose_chunk_source_text(raw_text=payload['raw_text'],
+       summary_text=<summary>)`` — the SUMMARY is the primary chunk source;
+       ``raw_text`` is only a fallback when the summary is empty or a known
+       stub. Rationale: our persisted ``body_md`` summaries are dense and
+       self-contained (numbers, entities, attributed quotes survive),
+       citations resolve to the zettel = the summary, and the route never
+       plumbs raw source text into chunks — so chunking the summary keeps
+       citation/faithfulness coherent (R1 research; RAPTOR ICLR 2024).
+    2. if that yields nothing, ``hook._synthesize_fallback_text`` builds a
+       minimal searchable body from title/channel/tags/description/url so a
+       transcript-less node still gets a chunk instead of zero chunks.
+
+    The summary fed to step 1 is ``detailed_summary or payload['summary']``
+    (= the persisted ``body_md``).
+    """
+    from website.features.rag_pipeline.ingest.content_selection import (
+        choose_chunk_source_text,
+    )
+    from website.features.rag_pipeline.ingest.hook import _synthesize_fallback_text
+
+    summary_text = detailed_summary or str(payload.get("summary") or "")
+    text = choose_chunk_source_text(
+        raw_text=payload.get("raw_text"),
+        summary_text=summary_text,
+    )
+    if not text:
+        text = _synthesize_fallback_text(payload)
+    return text or ""
+
+
+async def build_canonical_chunks(
     *,
     payload: dict[str, Any],
-    user_uuid: UUID,
-    node_id: str,
-) -> None:
-    """Ingest RAG chunks off critical path so Add Zettel returns faster."""
+    detailed_summary: str,
+) -> list[CanonicalChunkCreate]:
+    """Shared chunk+embed core for the inline persist path AND the v2
+    re-chunk backfill (single source of truth — they cannot diverge on
+    source-text selection, chunker, dimensionality, model-version stamp, or
+    the embed-or-skip contract).
 
-    async def _run() -> None:
-        try:
-            from website.features.rag_pipeline.ingest.hook import ingest_node_chunks
+    Pipeline:
+      1. select source text via the chunker's own convention
+         (:func:`_choose_chunk_source_text`);
+      2. segment it with :class:`ZettelChunker` (the real multi-chunk chunker
+         — chonkie, ~512-token long-form chunks, same one the dead hook used);
+      3. enforce :data:`_MAX_CHUNKS_PER_ZETTEL`;
+      4. batch-embed every chunk text in ONE call via
+         :func:`embed_chunk_texts`;
+      5. return ``list[CanonicalChunkCreate]``.
 
-            await ingest_node_chunks(
-                payload=payload,
-                user_uuid=user_uuid,
-                node_id=node_id,
-            )
-        except Exception as exc:
-            logger.warning("Background RAG chunk ingest failed for %s: %s", node_id, exc)
+    Returns ``[]`` when there is no source text OR the batch embed fails.
+    Per the embed-or-skip contract, an embed failure must NEVER yield a
+    NULL-embedding row (the column is NOT NULL DEFAULT model_version, so such
+    a row would always lie about success). The caller persists the zettel
+    without chunk rows and the backfill recovers them.
+    """
+    source_text = _choose_chunk_source_text(payload, detailed_summary)
+    if not source_text.strip():
+        return []
 
+    from website.features.rag_pipeline.ingest.chunker import ZettelChunker
+    from website.features.rag_pipeline.types import SourceType as RagSourceType
+
+    source_type_value = str(payload.get("source_type") or "web").strip().lower()
     try:
-        task = asyncio.create_task(_run(), name=f"rag-chunks-{node_id}")
-    except RuntimeError:
-        logger.debug("No running event loop for RAG chunks on %s", node_id)
-        return
-    task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-    _register_enrichment_task(task)
+        source_type = RagSourceType(source_type_value)
+    except ValueError:
+        # D4: never silently coerce. An unrecognised source-type means the
+        # RAG enum drifted from the summarization enum (the drift-guard test
+        # should have caught it) OR a genuinely new upstream type — either
+        # way it must be observable, not invisible. We still degrade to WEB
+        # so the zettel is chunked instead of lost.
+        logger.warning(
+            "Unknown source_type %r for %s; coercing to RagSourceType.WEB "
+            "(provenance + chunking-bucket fidelity degraded — check the "
+            "RagSourceType drift guard).",
+            source_type_value,
+            payload.get("source_url"),
+        )
+        source_type = RagSourceType.WEB
+
+    chunker = ZettelChunker()
+    chunks = chunker.chunk(
+        source_type=source_type,
+        title=str(payload.get("title") or ""),
+        raw_text=source_text,
+        tags=list(rewrite_tags(payload.get("tags", []) or [])),
+        extra_metadata=dict(payload.get("raw_metadata") or payload.get("metadata") or {}),
+    )
+    if not chunks:
+        return []
+
+    if len(chunks) > _MAX_CHUNKS_PER_ZETTEL:
+        logger.warning(
+            "Chunk count %d exceeds cap %d; truncating to the cap.",
+            len(chunks),
+            _MAX_CHUNKS_PER_ZETTEL,
+        )
+        chunks = chunks[:_MAX_CHUNKS_PER_ZETTEL]
+
+    texts = [c.content for c in chunks]
+    embeddings = await embed_chunk_texts(texts)
+    if embeddings is None:
+        return []
+
+    return [
+        CanonicalChunkCreate(
+            chunk_idx=i,
+            content=ch.content,
+            content_hash=hashlib.sha256(ch.content.encode("utf-8")).digest(),
+            chunk_type=ch.chunk_type.value,
+            start_offset=ch.start_offset,
+            end_offset=ch.end_offset,
+            token_count=ch.token_count or max(1, len(ch.content.split())),
+            embedding=embeddings[i],
+            embedding_model_version=_CHUNK_EMBED_MODEL_VERSION,
+            metadata=dict(ch.metadata or {}),
+        )
+        for i, ch in enumerate(chunks)
+    ]
 
 
 def _schedule_kg_population(
@@ -820,9 +943,8 @@ def _schedule_kg_population(
 ) -> None:
     """Phase B: populate kg nodes/edges off the Add Zettel critical path.
 
-    Fire-and-forget, mirroring ``_schedule_rag_chunks`` (the rag-chunks
-    ``asyncio.create_task(... name="rag-chunks-...")`` pattern above). Any
-    failure inside the hook is logged and swallowed — KG population is
+    Fire-and-forget via ``asyncio.create_task(... name="kg-populate-...")``.
+    Any failure inside the hook is logged and swallowed — KG population is
     best-effort enrichment and must NEVER 502 Add Zettel (P1-2 surfaces
     persist failures; this enrichment is explicitly out of that contract).
     Requires a resolved owner ``profile_id`` (the ``kg.match_kg_nodes``
@@ -913,14 +1035,6 @@ async def embed_chunk_texts(texts: list[str]) -> list[list[float]] | None:
     except Exception as exc:
         logger.warning("Chunk embedding generation failed: %s", exc)
         return None
-
-
-async def _embed_chunk_text(text: str) -> list[float] | None:
-    """Embed a single chunk; ``None`` on any failure (see ``embed_chunk_texts``)."""
-    vectors = await embed_chunk_texts([text])
-    if not vectors:
-        return None
-    return vectors[0]
 
 
 def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:

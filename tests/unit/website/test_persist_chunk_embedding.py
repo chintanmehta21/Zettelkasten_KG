@@ -59,15 +59,27 @@ def _payload() -> dict:
 
 @pytest.mark.asyncio
 async def test_chunk_persisted_with_768d_embedding(monkeypatch) -> None:
-    """FIXED behavior: the chunk handed to the repo carries a 768-d vector
-    and the matching model-version stamp."""
+    """FIXED behavior: every chunk handed to the repo carries a 768-d vector
+    and the matching model-version stamp.
+
+    CONTRACT CHANGE (old -> new): pre-fix this asserted EXACTLY ONE chunk
+    whose text equalled the summary verbatim (the single-monolithic-chunk
+    root-cause bug). Post-fix the persist path segments the source via the
+    real chunker; a short body yields >=1 chunk but each must still carry the
+    embedding + stamp. The single batch-embed call covers every chunk text.
+    Multi-chunk segmentation of long bodies is pinned in
+    test_persist_multichunk.py.
+    """
     fake_vec = [0.01] * 768
+    embed_calls = {"n": 0}
 
     async def _fake_embed(texts):
-        assert texts == ["Naruto is the protagonist who becomes Hokage."]
-        return [fake_vec]
+        embed_calls["n"] += 1
+        assert texts and all(isinstance(t, str) and t for t in texts)
+        return [fake_vec for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
     repo = _CaptureRepo()
     await persist._persist_supabase_v2_zettel(
@@ -78,13 +90,14 @@ async def test_chunk_persisted_with_768d_embedding(monkeypatch) -> None:
         detailed_summary="Naruto is the protagonist who becomes Hokage.",
     )
 
-    assert repo.chunks is not None and len(repo.chunks) == 1
-    chunk = repo.chunks[0]
-    assert chunk.embedding is not None
-    assert len(chunk.embedding) == 768
-    assert chunk.embedding == fake_vec
-    assert chunk.embedding_model_version == persist._CHUNK_EMBED_MODEL_VERSION
-    assert chunk.embedding_model_version == "gemini-001-mrl-768"
+    assert repo.chunks is not None and len(repo.chunks) >= 1
+    assert embed_calls["n"] == 1  # single batch embed for all chunks
+    for chunk in repo.chunks:
+        assert chunk.embedding is not None
+        assert len(chunk.embedding) == 768
+        assert chunk.embedding == fake_vec
+        assert chunk.embedding_model_version == persist._CHUNK_EMBED_MODEL_VERSION
+        assert chunk.embedding_model_version == "gemini-001-mrl-768"
 
 
 @pytest.mark.asyncio
@@ -116,7 +129,14 @@ async def test_embed_failure_writes_no_chunk_row(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_no_chunk_text_no_embed_call(monkeypatch) -> None:
-    """Empty chunk text -> no embed call, no chunk row (unchanged contract)."""
+    """CONTRACT CHANGE (old -> new): pre-fix an empty body+summary produced
+    ZERO chunks. Post-fix the persist path mirrors the chunker's own
+    source-selection convention (the previously-dead ingest/hook.py path),
+    which SYNTHESIZES a minimal searchable body from title/tags so a
+    transcript-less / paywalled node is still retrievable instead of
+    invisible. So with a real title we now expect exactly one synthesized
+    fallback chunk (embedded once). The truly-empty case (no title either)
+    is covered by ``test_truly_empty_payload_yields_zero_chunks`` below."""
     called = {"n": 0}
 
     async def _spy(texts):
@@ -124,6 +144,7 @@ async def test_no_chunk_text_no_embed_call(monkeypatch) -> None:
         return [[0.0] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _spy)
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
     repo = _CaptureRepo()
     payload = _payload()
@@ -133,7 +154,41 @@ async def test_no_chunk_text_no_embed_call(monkeypatch) -> None:
         repo=repo,
         workspace_id=_WORKSPACE,
         captured_on=date.today(),
-        detailed_summary="",  # body_md also empty -> chunk_text == ""
+        detailed_summary="",  # body + summary empty -> title/tag fallback
+    )
+    assert repo.chunks is not None and len(repo.chunks) == 1
+    assert called["n"] == 1
+    assert "Naruto Uzumaki" in repo.chunks[0].content
+
+
+@pytest.mark.asyncio
+async def test_truly_empty_payload_yields_zero_chunks(monkeypatch) -> None:
+    """No body, no summary, no title, no tags, no url -> the synthesized
+    fallback is empty too, so ZERO chunks and ZERO embed calls (the
+    embed-or-skip contract still holds at the floor)."""
+    called = {"n": 0}
+
+    async def _spy(texts):
+        called["n"] += 1
+        return [[0.0] * 768 for _ in texts]
+
+    monkeypatch.setattr(persist, "embed_chunk_texts", _spy)
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+
+    repo = _CaptureRepo()
+    await persist._persist_supabase_v2_zettel(
+        payload={
+            "source_url": "https://example.com/post",
+            "source_type": "web",
+            "title": "",
+            "summary": "",
+            "tags": [],
+            "metadata": {},
+        },
+        repo=repo,
+        workspace_id=_WORKSPACE,
+        captured_on=date.today(),
+        detailed_summary="",
     )
     assert repo.chunks == []
     assert called["n"] == 0
