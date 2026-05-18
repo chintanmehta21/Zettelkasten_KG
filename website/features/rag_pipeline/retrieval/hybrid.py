@@ -121,7 +121,11 @@ _DEMOTE_SLOPE = float(os.environ.get("RAG_SCORE_RANK_DEMOTE_SLOPE", "0.20"))
 # p_match_count UNCHANGED (respects the iter-03 §B 328 MB memory decision).
 # Composes with Phase-D _gap_adapted_weights (operates on raw channel scores,
 # not k) and K3 _top1_top2_gap (scale-invariant ratio); neither asserts k==60.
-_RRF_K = float(os.environ.get("RAG_RRF_K", "24"))
+# MUST be int: the SQL RPC `p_rrf_k` is a Postgres integer param — a float
+# (e.g. 24.0) raises `22P02 invalid input syntax for type integer`, which
+# 500s EVERY retrieval query. The Python re-fusion `1.0/(_RRF_K + float(r))`
+# is unaffected by int vs float.
+_RRF_K = int(os.environ.get("RAG_RRF_K", "24"))
 
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind  # noqa: E402
 

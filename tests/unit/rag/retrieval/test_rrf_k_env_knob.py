@@ -14,18 +14,26 @@ from website.features.rag_pipeline.retrieval import hybrid
 
 
 def test_rrf_k_default_is_24():
-    assert hybrid._RRF_K == 24.0
+    assert hybrid._RRF_K == 24
+
+
+def test_rrf_k_is_int_not_float():
+    """REGRESSION: the SQL RPC ``p_rrf_k`` is a Postgres integer column.
+    A float (e.g. 24.0) raises `22P02 invalid input syntax for type integer`
+    and 500s EVERY retrieval query (caught by iter-03). _RRF_K MUST be int."""
+    assert isinstance(hybrid._RRF_K, int) and not isinstance(hybrid._RRF_K, bool)
 
 
 def test_rrf_k_honors_env_override(monkeypatch):
     monkeypatch.setenv("RAG_RRF_K", "37")
     mod = importlib.reload(hybrid)
     try:
-        assert mod._RRF_K == 37.0
+        assert mod._RRF_K == 37
+        assert isinstance(mod._RRF_K, int)
     finally:
         monkeypatch.delenv("RAG_RRF_K", raising=False)
         importlib.reload(hybrid)
-    assert hybrid._RRF_K == 24.0
+    assert hybrid._RRF_K == 24 and isinstance(hybrid._RRF_K, int)
 
 
 def test_sql_call_site_sends_same_rrf_k_constant():
