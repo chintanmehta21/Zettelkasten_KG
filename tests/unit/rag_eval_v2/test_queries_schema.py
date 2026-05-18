@@ -77,14 +77,27 @@ def test_source_type_breakdown_has_three_plus_types(queries_doc):
     assert len(doc["_meta"]["source_type_breakdown"]) >= 3
 
 
-def test_links_file_has_eight_to_ten_across_three_sources(queries_doc):
-    slug, _doc = queries_doc
+def test_links_file_matches_expanded_corpus_across_three_sources(queries_doc):
+    """links.txt must have exactly one URL per real Kasten member (expanded
+    corpus: psych 9, econ 11) AND its size must equal the sum of the
+    queries.json _meta source_type_breakdown. Still catches a malformed /
+    desynced links file or a breakdown that drifted from the real corpus."""
+    slug, doc = queries_doc
     links = [
         ln.strip()
         for ln in (RAG_EVAL_V2 / slug / "links.txt").read_text(encoding="utf-8").splitlines()
         if ln.strip()
     ]
-    assert 8 <= len(links) <= 10
+    expected = _EXPECTED_MEMBER_COUNT[slug]
+    assert len(links) == expected, (
+        f"{slug}: links.txt has {len(links)} URLs, expected {expected} "
+        f"(real expanded-corpus member count)"
+    )
+    assert sum(doc["_meta"]["source_type_breakdown"].values()) == expected, (
+        f"{slug}: _meta.source_type_breakdown sums to "
+        f"{sum(doc['_meta']['source_type_breakdown'].values())}, expected "
+        f"{expected} (drifted from the real corpus)"
+    )
     # no google.com/search redirect wrappers, no pdf, no oup paywall
     for ln in links:
         assert "google.com/search" not in ln
@@ -154,13 +167,19 @@ def test_expected_primary_citation_typed_per_class(queries_doc):
         assert q["expected_minimum_citations"] >= 1
 
 
-# Representative real ingested titles (verified live 2026-05-18 against
-# rag.list_kasten_zettels). Used to simulate _resolve_expected (title
-# substring -> zettel) WITHOUT a live DB, so the gold-regen contract is
-# guarded in CI: every non-refusal expected substring must hit a real title.
+# Full real ingested member titles for the EXPANDED corpus (live-verified
+# 2026-05-18 against rag.list_kasten_zettels: psych kasten
+# fca95c6b-9797-41e6-9f29-b9a911f79de8 = 9 members; econ kasten
+# 34090364-c731-41ed-abe5-e04ef34701e9 = 11 members). Used to simulate
+# _resolve_expected (title substring -> zettel) WITHOUT a live DB, so the
+# gold-regen contract is guarded in CI: every non-refusal expected substring
+# must hit a real title. Includes the intentional off-topic skeleton members
+# (Silk Road / FORTRESS II / Turán / HN sentence-comprehension) that no query
+# points at — kept so the resolver simulation matches the live title map.
 _REAL_TITLES = {
     "psychedelic-drugs": [
         "DMT History Science Consciousness",
+        "Silk Road's Rise Fall",
         "Microdosing Psilocybin Benefits Practice",
         "r/consciousness explore if perceptual experiential changes",
         "r/philosophy seeks philosophical perspectives personal exper",
@@ -170,6 +189,7 @@ _REAL_TITLES = {
         "r/IAmA first-time heroin risks",
     ],
     "economics": [
+        "BlackRock's Power Universal Ownership",
         "r/AskEconomics first-year economics teacher seeks interestin",
         "Turán Number for Spanning Linear Forests",
         "TheEconomist/big-mac-data",
@@ -177,10 +197,16 @@ _REAL_TITLES = {
         "India's 1991 Economic Reforms Legacy",
         "r/AskHistorians understand Inca Empire described as",
         "Petrodollar System's Potential Erosion",
+        "r/india present new evidence from working",
         "Economic Principles Explained",
         "Analysis of FT Piece: Rethinking Heterodox Policies in Polyc",
     ],
 }
+
+# Live-verified expanded-corpus sizes (rag.list_kasten_zettels, 2026-05-18).
+# The links.txt + queries.json _meta must agree with these or the corpus has
+# silently drifted (the exact regression this suite guards).
+_EXPECTED_MEMBER_COUNT = {"psychedelic-drugs": 9, "economics": 11}
 
 
 def _resolve(needle: str, titles: list[str]) -> str | None:

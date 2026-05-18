@@ -8,13 +8,26 @@
     "members_node_ids_note": "Resolved at runtime by run_eval_v2.py from RAGRepository.list_kasten_zettels(kasten_id) -> canonical_zettel_id list. Empty here because ingestion is operator-gated; the harness writes the resolved list into each iter-N/queries.json copy.",
     "expected_citation_key": "title_substring",
     "expected_citation_key_note": "expected_primary_citation values are case-insensitive title substrings. The harness resolves each to a canonical_zettel_id via list_kasten_zettels title match, then matches answers (whose Citation.node_id is a canonical_chunk_id) after remapping chunk_id -> canonical_zettel_id.",
+    "members_node_ids_resolved": [
+      "675f86d3-a98b-4bfc-860d-93ea33a9cbf4",
+      "cf15d1c2-b9b8-4a14-a0bb-b894c10220a9",
+      "9021e570-ce11-45f0-b73c-77ac3e2984c5",
+      "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38",
+      "19df3a35-8ad8-44c8-b82a-e256ae93a244",
+      "4f930d23-00be-435d-84ae-190bea792d25",
+      "0cdc9bf7-a538-45e3-b1e0-a7bbd3b5138e",
+      "500d08f5-55e1-4066-99b1-2b0030c24214",
+      "50a4ee13-02bd-4e62-862e-551ec267fcce"
+    ],
+    "members_count": 9,
+    "members_node_ids_resolved_note": "Live-read 2026-05-18 via rag.list_kasten_zettels(fca95c6b-9797-41e6-9f29-b9a911f79de8) — REAL expanded corpus (9 members; +1 on-topic-adjacent: YouTube HBTYVVUBAGs 'Silk Road's Rise Fall'). canonical_zettel_id snapshot for audit; the harness still re-resolves at runtime (members_node_ids stays []).",
     "source_type_breakdown": {
-      "youtube": 3,
+      "youtube": 4,
       "reddit": 4,
       "arxiv": 1
     },
-    "gold_regen_note": "Gold regenerated 2026-05-18 against the REAL ingested member titles (rag.list_kasten_zettels). The summarizer assigned descriptive titles unrelated to the guessed gold tokens, so every expected_primary_citation was rewritten to a verified case-insensitive substring of the real title that genuinely answers the query (matched by source link, not by score-gaming). CORPUS DEFECT: the arXiv slot (arxiv link 2011.08892, expected to be a DMT/'Neural Correlates' paper) was ingested as the off-topic physics paper 'FORTRESS II: Software for Spin-2 BECs' — no DMT arXiv zettel exists. q3/q4/q12 (Strangest-Drug / DMT-brain) are repointed to the YouTube 'DMT History Science Consciousness' lecture (link hhjhU5MXZOo, the real DMT-and-brain source) with ground_truth softened to that lecture's actual content. No query points at FORTRESS II.",
-    "link_set_note": "2 medium.com essays (humanparts 'LSD/Tibetan Buddhism cosmic joke', cosmocat27 'Awakening from the Meaning Crisis') were unreachable server-side (anti-bot) and replaced with reachable r/IAmA + r/philosophy threads from kasten1.md. q5/q6/q7/q10 gold rewritten to the new on-topic Reddit sources; 3 source types preserved (youtube/reddit/arxiv), 8 links.",
+    "gold_regen_note": "Gold regenerated 2026-05-18, then re-verified against the EXPANDED REAL corpus (9 members; +1: YouTube HBTYVVUBAGs 'Silk Road's Rise Fall' - a darknet-marketplace history, NOT psychedelic pharmacology, kept as the intentional off-topic skeleton member; no query points at it). Every expected_primary_citation re-confirmed as a verified case-insensitive substring of a REAL current title that genuinely answers its query (no breakage from the expansion - all prior needles still resolve uniquely). CORPUS DEFECT (still present, intentional): the arXiv slot (2011.08892, expected DMT 'Neural Correlates' paper) is the off-topic physics paper 'FORTRESS II: Software for Spin-2 BECs' - no DMT arXiv zettel exists. q3/q4/q12 (Strangest-Drug / DMT-brain) stay repointed to the YouTube 'DMT History Science Consciousness' lecture (the real DMT-and-brain source). No query points at FORTRESS II.",
+    "link_set_note": "2 medium.com essays (humanparts 'LSD/Tibetan Buddhism cosmic joke', cosmocat27 'Awakening from the Meaning Crisis') were unreachable server-side (anti-bot) and replaced with reachable r/IAmA + r/philosophy threads. Corpus later EXPANDED with 1 member (Silk Road YouTube, kept as off-topic skeleton). 3 source types (youtube/reddit/arxiv), 9 members.",
     "ci_gates_summary": {
       "end_to_end_gold_at_1_min": 0.6,
       "synthesizer_grounding_min": 0.85,
