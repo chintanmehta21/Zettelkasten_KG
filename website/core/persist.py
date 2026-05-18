@@ -519,6 +519,7 @@ async def persist_summarized_result(
         payload["node_id"] = file_node_id
     payload.pop("raw_text", None)
     payload.pop("raw_metadata", None)
+    payload.pop("source_fingerprint_text", None)
 
     return PersistenceOutcome(
         result=payload,
@@ -531,35 +532,62 @@ async def persist_summarized_result(
     )
 
 
+def _normalize_source_fingerprint(text: str) -> str:
+    """Minimal whitespace normalization of source text for the dedup hash.
+
+    Collapses every run of ASCII/Unicode whitespace (spaces, tabs, newlines)
+    to a single space and strips ends. This is the ONLY transform applied
+    before hashing: trivially-noisy re-extraction of identical content
+    (re-wrapped lines, added trailing newline, tab↔space drift) yields the
+    same hash, but any material change to the source words still changes it.
+    """
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _stable_content_hash(payload: dict[str, Any], normalized_url: str) -> bytes:
     """Deterministic dedup hash for ``(normalized_url, content_hash)``.
 
-    P1-7(a) fix. Previously ``content_hash = sha256(body_md)`` where ``body_md``
-    fell through to the LLM ``detailed_summary``/``summary``. LLM output is
-    non-deterministic, so re-ingesting the same URL produced a different hash,
-    the ``(normalized_url, content_hash)`` ON CONFLICT key in
+    P1-7(a)+(b) fix. Previously ``content_hash = sha256(body_md)`` where
+    ``body_md`` fell through to the LLM ``detailed_summary``/``summary``. LLM
+    output is non-deterministic, so re-ingesting the same URL produced a
+    different hash, the ``(normalized_url, content_hash)`` ON CONFLICT key in
     ``content.upsert_canonical_zettel`` missed, and a duplicate canonical row
     was inserted on every re-ingest.
 
-    The hash now derives ONLY from stable inputs available at persist time:
-    the normalized source URL plus the extracted raw source text
-    (``payload['raw_text']`` when the caller supplies it). It never hashes the
-    LLM summary. Properties:
+    The hash derives ONLY from stable inputs available at persist time: the
+    normalized source URL plus the **extracted source text** (the pre-summary
+    article/transcript/body fetched by the source ingestor). It never hashes
+    the LLM summary. The source text is read, in priority order, from:
+
+    1. ``payload['source_fingerprint_text']`` — the dedicated key the Add
+       Zettel route now threads from ``IngestResult.raw_text`` (P1-7(b)).
+       Single-purpose: nothing else consumes it, so populating it cannot
+       affect ``body_md`` or RAG chunk-source selection.
+    2. ``payload['raw_text']`` — legacy/back-compat fallback for callers
+       (and existing tests) that still pass the source under ``raw_text``.
+    3. neither present → ``""`` (URL-only hash).
+
+    The chosen text is whitespace-normalized via
+    :func:`_normalize_source_fingerprint` so trivially-noisy re-extraction of
+    identical content does NOT churn the hash, while a material content change
+    still does. Properties:
 
     * Same URL re-ingested, different LLM wording → identical hash → dedup.
-    * Genuine source-content change (different ``raw_text``) → different hash
-      → a new canonical row, exactly as the dedup contract intends.
-    * When ``raw_text`` is absent (current route DTO does not forward it) the
-      hash is ``sha256(url || "")`` — still fully stable across re-ingests of
-      the same URL, so dedup holds; it simply cannot detect source drift until
-      raw source text is threaded through, which is strictly better than the
-      old always-miss behavior.
+    * Genuine source-content change → different hash → a new canonical row,
+      exactly as the dedup contract intends.
+    * Whitespace-only / re-wrap difference in source text → identical hash.
+    * When no source text is available the hash is ``sha256(url || "")`` —
+      still fully stable across re-ingests of the same URL, so dedup holds;
+      it simply cannot detect source drift (strictly better than the old
+      always-miss behavior, and never crashes).
 
     The SQL RPC dedup columns are unchanged; only the Python-side input to
     ``content_hash`` changed.
     """
-    raw_source = payload.get("raw_text")
-    raw_source_text = "" if raw_source is None else str(raw_source)
+    raw_source = payload.get("source_fingerprint_text")
+    if raw_source is None:
+        raw_source = payload.get("raw_text")
+    raw_source_text = "" if raw_source is None else _normalize_source_fingerprint(str(raw_source))
     fingerprint = f"{normalized_url}\x00{raw_source_text}"
     return hashlib.sha256(fingerprint.encode("utf-8")).digest()
 

@@ -208,3 +208,158 @@ async def test_persist_v2_hash_is_url_derived_not_summary(monkeypatch) -> None:
     expected = hashlib.sha256("https://example.com\x00".encode("utf-8")).digest()
     assert captured["hash"] == expected
     assert saved is True
+
+
+# ---- P1-7(b): real extracted source text threaded into the dedup hash -----
+
+
+def test_dedicated_key_drives_hash_same_source_same_hash() -> None:
+    url = "https://example.com/post"
+    src = "Extracted article body paragraph one. Paragraph two."
+    h1 = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": src, "summary": "LLM A"}, url
+    )
+    h2 = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": src, "summary": "LLM B"}, url
+    )
+    assert h1 == h2  # same URL + unchanged source -> dedup despite LLM drift
+
+
+def test_dedicated_key_material_source_change_new_hash() -> None:
+    url = "https://example.com/post"
+    h1 = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "original body text"}, url
+    )
+    h2 = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "materially rewritten body"},
+        url,
+    )
+    assert h1 != h2  # genuine source change -> new canonical row
+
+
+def test_dedicated_key_whitespace_noise_is_normalized() -> None:
+    url = "https://example.com/post"
+    clean = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "alpha beta gamma"}, url
+    )
+    noisy = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "  alpha\n\tbeta   gamma \n"},
+        url,
+    )
+    assert clean == noisy  # re-wrap / trailing-newline churn must NOT change hash
+
+
+def test_dedicated_key_overrides_legacy_raw_text() -> None:
+    url = "https://example.com/post"
+    only_new = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "SRC"}, url
+    )
+    with_both = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "SRC", "raw_text": "STALE"},
+        url,
+    )
+    assert only_new == with_both  # dedicated key wins over raw_text fallback
+
+
+def test_missing_source_text_falls_back_to_url_only_hash() -> None:
+    url = "https://example.com/post"
+    import hashlib as _h
+
+    expected = _h.sha256(f"{url}\x00".encode("utf-8")).digest()
+    assert (
+        persist._stable_content_hash({"source_url": url, "summary": "x"}, url)
+        == expected
+    )
+    # explicit None must not crash and must match the empty fallback
+    assert (
+        persist._stable_content_hash(
+            {"source_url": url, "source_fingerprint_text": None}, url
+        )
+        == expected
+    )
+
+
+def test_summary_dto_threads_ingest_raw_text_into_payload() -> None:
+    """run_add_zettel chain: bundle.ingest_result.raw_text -> DTO ->
+    model_dump payload -> _stable_content_hash. Verified without network."""
+    from website.api.module_runners import summarization as mod
+
+    class _Meta:
+        def __init__(self) -> None:
+            from website.features.summarization_engine.core.models import SourceType
+
+            self.source_type = SourceType.WEB
+            self.url = "https://example.com/post"
+            self.total_tokens_used = 1
+            self.total_latency_ms = 1
+
+        def model_dump(self, **_):
+            return {}
+
+    class _SummaryResult:
+        mini_title = "Title"
+        brief_summary = "brief"
+        detailed_summary: list = []  # empty -> render falls back to brief
+        tags: list[str] = []
+        metadata = _Meta()
+
+    class _Ingest:
+        raw_text = "  Extracted   source\n\nbody.  "
+        metadata: dict = {}
+
+    class _Bundle:
+        summary_result = _SummaryResult()
+        ingest_result = _Ingest()
+
+    dto = mod.summary_dto(_Bundle())
+    assert dto.source_fingerprint_text == "  Extracted   source\n\nbody.  "
+    payload = dto.model_dump(mode="json")
+    assert payload["source_fingerprint_text"] == "  Extracted   source\n\nbody.  "
+    url = payload["source_url"]
+    # The threaded source now drives the hash; whitespace-normalized so a
+    # trivially re-wrapped re-extraction dedups to the same canonical row.
+    h_via_payload = persist._stable_content_hash(payload, url)
+    h_normalized = persist._stable_content_hash(
+        {"source_url": url, "source_fingerprint_text": "Extracted source body."}, url
+    )
+    assert h_via_payload == h_normalized
+
+
+def test_summary_dto_none_raw_text_yields_url_only_hash() -> None:
+    from website.api.module_runners import summarization as mod
+
+    class _Meta:
+        def __init__(self) -> None:
+            from website.features.summarization_engine.core.models import SourceType
+
+            self.source_type = SourceType.WEB
+            self.url = "https://example.com/empty"
+            self.total_tokens_used = 0
+            self.total_latency_ms = 0
+
+        def model_dump(self, **_):
+            return {}
+
+    class _SummaryResult:
+        mini_title = "T"
+        brief_summary = "b"
+        detailed_summary: list = []
+        tags: list[str] = []
+        metadata = _Meta()
+
+    class _Ingest:
+        raw_text = ""  # ingest produced nothing
+        metadata: dict = {}
+
+    class _Bundle:
+        summary_result = _SummaryResult()
+        ingest_result = _Ingest()
+
+    dto = mod.summary_dto(_Bundle())
+    assert dto.source_fingerprint_text is None  # empty -> None, safe fallback
+    payload = dto.model_dump(mode="json")
+    import hashlib as _h
+
+    url = payload["source_url"]
+    expected = _h.sha256(f"{url}\x00".encode("utf-8")).digest()
+    assert persist._stable_content_hash(payload, url) == expected

@@ -40,6 +40,13 @@ class SummaryDTO(BaseModel):
     tokens_used: int
     latency_ms: int
     metadata: dict[str, Any]
+    # P1-7(b): the pre-summary extracted source text (article/transcript/body),
+    # carried so persist's _stable_content_hash can key the canonical dedup
+    # hash on actual source content, not LLM wording. Optional with a safe
+    # default so existing callers/tests constructing SummaryDTO are unaffected;
+    # consumed only by _stable_content_hash and stripped before the row is
+    # written, so it never widens the persisted DTO or any other consumer.
+    source_fingerprint_text: str | None = None
 
 
 class PersistenceDTO(BaseModel):
@@ -180,6 +187,12 @@ def summary_dto(bundle: Any) -> SummaryDTO:
         tokens_used=result.metadata.total_tokens_used,
         latency_ms=result.metadata.total_latency_ms,
         metadata=metadata,
+        # IngestResult.raw_text is the deterministic pre-summary extracted
+        # source (set by the source ingestor before Gemini); None when ingest
+        # produced nothing, so persist's hash safely falls back to URL-only.
+        source_fingerprint_text=(
+            (ingest.raw_text or None) if ingest is not None else None
+        ),
     )
     if ingest is not None:
         summary.metadata.setdefault("raw_metadata", dict(ingest.metadata or {}))
