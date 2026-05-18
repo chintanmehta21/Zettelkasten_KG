@@ -110,6 +110,27 @@ class ContentRepository:
             user_tags=list(wrow.get("user_tags") or []),
         )
 
+    def workspace_links_canonical(self, workspace_id, canonical_zettel_id) -> bool:
+        """True if this workspace already has a live row for this canonical
+        (the same-user no-op case)."""
+        resp = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id")
+            .eq("workspace_id", str(workspace_id))
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        return bool(_first(resp.data) if resp.data else None)
+
+    def link_existing_canonical(self, canonical_zettel_id, workspace) -> UUID:
+        """Idempotently attach an existing canonical to a workspace
+        (cross-user cache-hit). Reuses upsert_workspace_zettel, which conflicts
+        on UNIQUE(workspace_id, canonical_zettel_id) — concurrent/retry safe."""
+        return self.upsert_workspace_zettel(canonical_zettel_id, workspace)
+
     def upsert_chunks(
         self,
         canonical_zettel_id: UUID,
