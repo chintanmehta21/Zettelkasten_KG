@@ -208,11 +208,15 @@ def test_summary_renderers_split_inline_markdown_headings():
         ROOT / "website" / "mobile" / "js" / "summarizer.js",
         ROOT / "website" / "features" / "user_home" / "js" / "home.js",
         ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
+        ROOT / "website" / "mobile" / "js" / "summarizer.js",
     ]
     for path in renderers:
         text = path.read_text(encoding="utf-8")
         assert "function normalizeSummaryMarkdown" in text, path
-        assert r"([^\n])\s+(#{2,6}\s+)" in text, path
+        # Hardened split: inline ATX heading onto its own block.
+        assert r"(\S)[ \t]+(#{2,6})[ \t]+(?=\S)" in text, path
+        # Strip a trailing ``#`` run the model appended to a heading line.
+        assert r"^(#{2,6} .+?)[ \t]+#+[ \t]*$" in text, path
 
 
 def test_add_zettel_surfaces_do_not_call_legacy_summarize_directly():

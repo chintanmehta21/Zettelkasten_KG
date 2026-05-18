@@ -128,16 +128,50 @@ def _split_inline_headings(text: str) -> list[_Part]:
     return [part for part in parts if part.text.strip()]
 
 
-def _find_heading_markers(text: str) -> Iterable[tuple[int, int, int]]:
-    in_code = False
+def _code_span_ranges(text: str) -> list[tuple[int, int]]:
+    """CommonMark code-span ranges: a backtick run of length N is closed only
+    by the next backtick run of the *same* length N. Unterminated runs are
+    literal text (not code), so an odd/leftover backtick — e.g. a code example
+    the LLM split across two bullets — does NOT shield following ``#`` markers.
+    """
+
+    runs: list[tuple[int, int]] = []
     i = 0
     while i < len(text):
-        char = text[i]
-        if char == "`":
-            in_code = not in_code
+        if text[i] == "`":
+            start = i
+            while i < len(text) and text[i] == "`":
+                i += 1
+            runs.append((start, i - start))
+        else:
             i += 1
+
+    ranges: list[tuple[int, int]] = []
+    used = [False] * len(runs)
+    for a in range(len(runs)):
+        if used[a]:
             continue
-        if not in_code and char == "#":
+        a_start, a_len = runs[a]
+        for b in range(a + 1, len(runs)):
+            if used[b]:
+                continue
+            b_start, b_len = runs[b]
+            if b_len == a_len:
+                used[a] = used[b] = True
+                ranges.append((a_start, b_start + b_len))
+                break
+    return ranges
+
+
+def _find_heading_markers(text: str) -> Iterable[tuple[int, int, int]]:
+    code_ranges = _code_span_ranges(text)
+
+    def in_code(pos: int) -> bool:
+        return any(start <= pos < end for start, end in code_ranges)
+
+    i = 0
+    while i < len(text):
+        if text[i] == "#" and not in_code(i):
             level = 0
             while i + level < len(text) and text[i + level] == "#" and level < 6:
                 level += 1

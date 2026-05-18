@@ -75,7 +75,12 @@
 
   function markdownToHTML(md) {
     if (!md) return '';
-    let html = normalizeSummaryMarkdown(md);
+    // Escape HTML first: summaries derive from arbitrary ingested pages, so
+    // raw innerHTML without escaping is a stored-XSS vector.
+    let html = normalizeSummaryMarkdown(md)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     // Code blocks
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
     // Inline code
@@ -99,7 +104,11 @@
   }
 
   function normalizeSummaryMarkdown(text) {
-    return String(text || '').replace(/([^\n])\s+(#{2,6}\s+)/g, '$1\n\n$2');
+    // Parity with the desktop renderers: split an inline ATX heading the model
+    // glued mid-line onto its own block, then drop any trailing ``#``.
+    return String(text || '')
+      .replace(/(\S)[ \t]+(#{2,6})[ \t]+(?=\S)/g, '$1\n\n$2 ')
+      .replace(/^(#{2,6} .+?)[ \t]+#+[ \t]*$/gm, '$1');
   }
 
   function showResult(data) {

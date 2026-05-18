@@ -1854,7 +1854,13 @@
   }
 
   function normalizeSummaryMarkdown(markdown) {
-    return String(markdown || '').replace(/([^\n])\s+(#{2,6}\s+)/g, '$1\n\n$2');
+    // Defense-in-depth (server render is the source of truth): split an inline
+    // ATX heading the model glued mid-line onto its own block, then drop any
+    // trailing ``#`` it appended. Whitespace required on both sides of the
+    // ``#`` run so C#, "#1" and backtick-adjacent `## x` are left alone.
+    return String(markdown || '')
+      .replace(/(\S)[ \t]+(#{2,6})[ \t]+(?=\S)/g, '$1\n\n$2 ')
+      .replace(/^(#{2,6} .+?)[ \t]+#+[ \t]*$/gm, '$1');
   }
 
   function extractSummaryParts(rawSummary) {
