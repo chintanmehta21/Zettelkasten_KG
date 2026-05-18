@@ -1,6 +1,9 @@
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 from website.core.supabase_v2.repositories.content_repository import ContentRepository
+from website.features.functional_gates import reset_for_tests as _reset_fg
+from website.features.functional_gates.dedup_gate import get_url_dedup_gate
 
 
 class _FakeResult:
@@ -79,3 +82,47 @@ def test_link_existing_canonical_delegates_to_upsert_workspace_zettel():
     out = repo.link_existing_canonical(cid, ws)
     assert out == sentinel
     repo.upsert_workspace_zettel.assert_called_once_with(cid, ws)
+
+
+def _gate_repo(found, links):
+    r = MagicMock()
+    r.find_canonical_by_url.return_value = found
+    r.workspace_links_canonical.return_value = links
+    return r
+
+
+def _gate_found():
+    return MagicMock(canonical_zettel_id=uuid4(),
+                     ai_summary='{"brief_summary":"b","detailed_summary":"d"}',
+                     source_type="web", title="T", user_tags=[])
+
+
+def test_gate_fresh_when_no_canonical():
+    _reset_fg()
+    d = get_url_dedup_gate().decide(repo=_gate_repo(None, False),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "fresh"
+    assert d.found is None
+
+
+def test_gate_same_user_noop_when_workspace_links():
+    f = _gate_found()
+    d = get_url_dedup_gate().decide(repo=_gate_repo(f, True),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "same_user_noop"
+    assert d.found is f
+
+
+def test_gate_cross_user_hit_when_canonical_unlinked():
+    f = _gate_found()
+    d = get_url_dedup_gate().decide(repo=_gate_repo(f, False),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "cross_user_hit"
+    assert d.found is f
+
+
+def test_gate_singleton_reused_and_reset():
+    g1 = get_url_dedup_gate()
+    assert get_url_dedup_gate() is g1
+    _reset_fg()
+    assert get_url_dedup_gate() is not g1
