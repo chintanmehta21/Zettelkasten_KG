@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from website.core import url_utils
+from website.core.url_utils import normalize_url
 
 
 def test_normalize_url_strips_tracking_params() -> None:
@@ -46,3 +49,48 @@ def test_resolve_redirects_returns_original_on_timeout(monkeypatch) -> None:
     result = asyncio.run(url_utils.resolve_redirects(original))
 
     assert result == original
+
+
+# Dedup-critical coverage: the URL-dedup gate keys on
+# normalize_url(resolve_redirects(url)), so any pair that should collapse must
+# normalize to the same string. Each pair below was verified against the real
+# normalize_url implementation before being asserted.
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        # scheme/host are lowercased by normalize_url
+        ("https://Example.com/Path", "https://example.com/Path"),
+        # query params are sorted by key
+        ("https://example.com/p?b=2&a=1", "https://example.com/p?a=1&b=2"),
+        # utm_source is in _TRACKING_PARAMS and is stripped
+        ("https://example.com/p?utm_source=x&a=1", "https://example.com/p?a=1"),
+        # fbclid is in _TRACKING_PARAMS and is stripped
+        ("https://example.com/p?fbclid=zzz&a=1", "https://example.com/p?a=1"),
+    ],
+)
+def test_normalize_url_collapses_dedup_equivalent_urls(a: str, b: str) -> None:
+    assert normalize_url(a) == normalize_url(b)
+
+
+@pytest.mark.xfail(
+    reason="normalize_url does not strip default ports: netloc is only "
+    "lowercased, so :443/:80 are retained and these do NOT collapse",
+    strict=True,
+)
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("https://example.com:443/p", "https://example.com/p"),
+        ("http://example.com:80/p", "http://example.com/p"),
+    ],
+)
+def test_normalize_url_default_port_gap(a: str, b: str) -> None:
+    assert normalize_url(a) == normalize_url(b)
+
+
+def test_normalize_url_preserves_distinct_query_meaning() -> None:
+    # Protects the two Zoro iana rows that differ only by a non-tracking
+    # query param — these must NOT collapse to one dedup key.
+    assert normalize_url(
+        "https://www.iana.org/help/example-domains?zk_verif=1"
+    ) != normalize_url("https://www.iana.org/help/example-domains?api_verif=1")
