@@ -19,6 +19,7 @@ def test_all_add_zettel_surfaces_use_shared_helper():
 
     surfaces = [
         ROOT / "website" / "static" / "js" / "app.js",
+        ROOT / "website" / "mobile" / "js" / "summarizer.js",
         ROOT / "website" / "features" / "user_home" / "js" / "home.js",
         ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
     ]
@@ -73,6 +74,59 @@ def test_logged_in_surfaces_expose_document_upload_paperclip():
         assert ".home-add-document-btn" in css, css_path
 
 
+def test_mobile_page_exposes_document_upload_paperclip():
+    html = (ROOT / "website" / "mobile" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "website" / "mobile" / "js" / "summarizer.js").read_text(encoding="utf-8")
+    css = (ROOT / "website" / "mobile" / "css" / "mobile.css").read_text(encoding="utf-8")
+
+    assert 'id="document-input"' in html
+    assert 'id="document-upload-btn"' in html
+    assert "accept=\".pdf,.txt,.md,.markdown,.docx" in html
+    assert 'id="url-input"' in html
+    assert 'id="url-input" placeholder="Paste a URL..." required' not in html
+    assert "uploadDocument({" in js
+    assert "mobile-document" in js
+    assert ".m-document-btn" in css
+
+
+def test_all_add_zettel_frontend_entrypoints_have_document_upload():
+    entrypoints = {
+        "desktop_landing": (
+            ROOT / "website" / "static" / "index.html",
+            ROOT / "website" / "static" / "js" / "app.js",
+            "document-upload-btn",
+            "landing-document",
+        ),
+        "mobile_landing": (
+            ROOT / "website" / "mobile" / "index.html",
+            ROOT / "website" / "mobile" / "js" / "summarizer.js",
+            "document-upload-btn",
+            "mobile-document",
+        ),
+        "home": (
+            ROOT / "website" / "features" / "user_home" / "index.html",
+            ROOT / "website" / "features" / "user_home" / "js" / "home.js",
+            "add-document-btn",
+            "home-document",
+        ),
+        "my_zettels": (
+            ROOT / "website" / "features" / "user_zettels" / "index.html",
+            ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
+            "add-document-btn",
+            "zettels-document",
+        ),
+    }
+
+    for name, (html_path, js_path, button_id, action_id) in entrypoints.items():
+        html = html_path.read_text(encoding="utf-8")
+        js = js_path.read_text(encoding="utf-8")
+        assert f'id="{button_id}"' in html, name
+        assert 'type="file"' in html, name
+        assert "uploadDocument({" in js, name
+        assert action_id in js, name
+        assert "ZKAddZettel.add" in js, name
+
+
 def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     helper = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "mode: opts.mode || 'sync'" in helper
@@ -99,11 +153,18 @@ def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     assert "/home/zettels/js/user_zettels.js?v=20260518a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
+    assert "/m/css/mobile.css?v=20260518a" in (
+        ROOT / "website" / "mobile" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "/m/js/summarizer.js?v=20260518a" in (
+        ROOT / "website" / "mobile" / "index.html"
+    ).read_text(encoding="utf-8")
 
 
 def test_summary_renderers_split_inline_markdown_headings():
     renderers = [
         ROOT / "website" / "static" / "js" / "app.js",
+        ROOT / "website" / "mobile" / "js" / "summarizer.js",
         ROOT / "website" / "features" / "user_home" / "js" / "home.js",
         ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
     ]
@@ -116,6 +177,7 @@ def test_summary_renderers_split_inline_markdown_headings():
 def test_add_zettel_surfaces_do_not_call_legacy_summarize_directly():
     surfaces = [
         ROOT / "website" / "static" / "js" / "app.js",
+        ROOT / "website" / "mobile" / "js" / "summarizer.js",
         ROOT / "website" / "features" / "user_home" / "js" / "home.js",
         ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
     ]

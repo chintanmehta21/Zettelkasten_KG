@@ -114,6 +114,27 @@ def test_document_source_type_is_added_by_forward_migration() -> None:
     assert "'document'" in _sql("45_document_source_type.sql")
 
 
+def test_document_source_type_migration_preserves_current_engine_sources() -> None:
+    migration = _sql("45_document_source_type.sql")
+    for source_type in [
+        "youtube",
+        "reddit",
+        "github",
+        "twitter",
+        "substack",
+        "newsletter",
+        "medium",
+        "hackernews",
+        "linkedin",
+        "arxiv",
+        "podcast",
+        "document",
+        "web",
+        "generic",
+    ]:
+        assert f"'{source_type}'" in migration
+
+
 def test_citation_reaper_ignores_malformed_citation_ids() -> None:
     sql = _sql("02_content_schema.sql")
     assert "c ? 'canonical_chunk_id'" in sql
