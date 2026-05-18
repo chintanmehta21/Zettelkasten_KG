@@ -33,10 +33,19 @@ Single pre-engine **dedup gate** at the top of
 `website/api/module_runners/summarization.py::run_add_zettel_pipeline` (the
 chokepoint every Add-Zettel surface funnels through; same gate also applied in
 `summarization_engine/api/routes.py` `/api/v2/summarize`, before its engine
-call):
+call).
+
+**P1 reorder (verified):** today the pipeline charges `require_entitlement`
+at `module_runners/summarization.py:133` *before* `resolve_redirects` (L135),
+`normalize_url` (L136), and `summarize_url_bundle` (L139). The gate moves
+entitlement to *after* the dedup decision so the same-user no-op never charges.
+
+**P1 dedup key:** the key is `normalize_url(resolve_redirects(url))` — the
+**post-redirect** normalized URL — so shorteners / tracking-param / redirect
+variants converge to one canonical (the pipeline already resolves at L135).
 
 ```
-normalize_url(url)  →  canonical exists for normalized_url?
+key = normalize_url(resolve_redirects(url))   →  canonical exists for key?
   NO  → require_entitlement(user) → summarize_url_bundle → persist new canonical+workspace row   [FRESH]
   YES → user's workspace already has a workspace_zettels row for this canonical?
           YES → return existing DTO; NO entitlement call; NO DB write           [SAME-USER NO-OP]
@@ -55,6 +64,25 @@ Invariants:
 - Response DTO on cache-hit is reconstructed from the existing canonical via the
   same `extract_summary_parts`/render path as fresh → byte-identical wire shape.
   No "cached" indicator exposed (no-infra-disclosure rule).
+
+## P2 hardening (in this PR)
+
+- **Internal counters/logs** at the gate: `fresh`, `same_user_noop`,
+  `cross_user_cache_hit` (tagged `source_type`). Structured logs only —
+  never surfaced in any API DTO (no-infra-disclosure rule). Used to verify the
+  LLM-cost savings and that no-ops behave.
+- **Extend `tests/unit/website/test_url_utils.py`** for dedup-critical
+  `normalize_url` cases: tracking-param strip, scheme/host case, default-port,
+  query-key ordering, trailing slash — since the key is now load-bearing for
+  dedup correctness (over/under-collapse risk).
+
+## Declined (P3 — out of scope, locked)
+
+- Refresh-support fields (`captured_at`/version-driven re-summarize): conflicts
+  with operator-locked "always cache-hit, no refresh path". YAGNI.
+- "same normalized_url, different content_hash" metric and pre/post-normalize
+  shadow-log: future notes only; not built. content_hash already retained for
+  later analytics if needed.
 
 ## Components
 
@@ -104,6 +132,9 @@ is overkill at this scale.
 - Migration: dup-collapse idempotency + child re-point correctness + constraint
   swap; migration-CI gate green.
 - DTO wire-parity: cache-hit response shape == fresh response shape.
+- Dedup key is post-redirect: `resolve_redirects` mocked → key uses resolved URL.
+- Extended `test_url_utils.py` normalize_url cases (P2).
+- Gate emits the three counters with correct labels; none leak into the DTO.
 - Regression: full `pytest`, `ruff`, GitHub checks green before merge.
 
 ## Out of scope
