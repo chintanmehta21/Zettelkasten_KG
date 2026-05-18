@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -23,6 +23,7 @@ from website.api.module_runners.summarization import (
     QualityDTO,
     default_gemini_client,
     persistence_dto,
+    run_add_document_pipeline,
     run_add_zettel_pipeline,
 )
 from website.core.persist import SupabaseV2PersistError
@@ -32,6 +33,7 @@ from website.features.summarization_engine.core.errors import (
     RoutingError,
     UnsupportedVideoError,
 )
+from website.features.summarization_engine.source_ingest.document import DocumentUploadError
 
 logger = logging.getLogger("website.api.zettels")
 router = APIRouter(prefix="/api")
@@ -43,6 +45,7 @@ _ZORO_USER_ID: UUID | None = None
 _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
+_MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
 _AUTO_ACCEPT_AFTER_SECONDS = 8.0
 _IN_MEMORY_ASYNC_ENABLED = os.getenv("ADD_ZETTEL_IN_MEMORY_ASYNC", "").strip().lower() in {
     "1",
@@ -143,6 +146,25 @@ def _request_hash(body: AddZettelRequest) -> str:
     import hashlib
 
     fingerprint = body.model_dump(mode="json")
+    encoded = json.dumps(fingerprint, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _document_request_hash(
+    *,
+    filename: str,
+    content: bytes,
+    persist: bool,
+    surface: str,
+) -> str:
+    import hashlib
+
+    fingerprint = {
+        "filename": filename,
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "persist": persist,
+        "surface": surface,
+    }
     encoded = json.dumps(fingerprint, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -267,6 +289,32 @@ async def _run_add_zettel(
         url=body.url,
         client_action_id=body.client_action_id,
         persist=body.persist,
+        user=user,
+        effective_user_id=effective_user_id,
+        gemini_client_factory=_gemini_client,
+    )
+    persistence = PersistenceDTO.model_validate(result["persistence"])
+    _invalidate_graph(user_sub if user else None, persistence.persisted)
+    return result
+
+
+async def _run_add_document(
+    *,
+    filename: str,
+    content: bytes,
+    content_type: str | None,
+    client_action_id: str,
+    persist: bool,
+    user: dict | None,
+    effective_user_id: UUID,
+) -> dict[str, Any]:
+    user_sub = str(effective_user_id)
+    result = await run_add_document_pipeline(
+        filename=filename,
+        content=content,
+        content_type=content_type,
+        client_action_id=client_action_id,
+        persist=persist,
         user=user,
         effective_user_id=effective_user_id,
         gemini_client_factory=_gemini_client,
@@ -434,6 +482,95 @@ async def add_zettel(
             title="Add Zettel failed",
             detail=f"Failed to process URL: {exc}",
             operation_id=body.client_action_id,
+        )
+
+
+@router.post("/zettels/add/document", response_model=AddZettelResponse)
+async def add_zettel_document(
+    request: Request,
+    file: Annotated[UploadFile, File()],
+    client_action_id: Annotated[str, Form(min_length=1, max_length=160)],
+    persist: Annotated[bool, Form()] = True,
+    surface: Annotated[Literal["landing", "home", "zettels"], Form()] = "landing",
+    user: Annotated[dict | None, Depends(get_optional_user)] = None,
+):
+    _ = surface
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        return _problem(
+            status_code=429,
+            title="Too many Add Zettel requests",
+            detail="Please wait a minute before trying again.",
+            operation_id=client_action_id,
+            type_slug="rate-limited",
+        )
+
+    content = await file.read(_MAX_DOCUMENT_UPLOAD_BYTES + 1)
+    if len(content) > _MAX_DOCUMENT_UPLOAD_BYTES:
+        return _problem(
+            status_code=413,
+            title="Document too large",
+            detail="Upload a document up to 10 MB.",
+            operation_id=client_action_id,
+            type_slug="document-too-large",
+        )
+
+    effective_user_id = _effective_user_id(user)
+    filename = file.filename or "uploaded-document"
+    cache_key = (str(effective_user_id), client_action_id)
+    request_hash = _document_request_hash(
+        filename=filename,
+        content=content,
+        persist=persist,
+        surface=surface,
+    )
+    cached = _cache_get(cache_key, request_hash)
+    if cached is not None:
+        return cached
+
+    try:
+        result = await _run_add_document(
+            filename=filename,
+            content=content,
+            content_type=file.content_type,
+            client_action_id=client_action_id,
+            persist=persist,
+            user=user,
+            effective_user_id=effective_user_id,
+        )
+        _cache_put(cache_key, request_hash, result)
+        _operation_put(client_action_id, result)
+        return result
+    except HTTPException as exc:
+        detail = exc.detail
+        problem_title = "Add Zettel request rejected"
+        type_slug = "request-rejected"
+        if isinstance(detail, dict):
+            problem_title = str(detail.get("message") or detail.get("error") or problem_title)
+            if detail.get("code") == "quota_exhausted":
+                type_slug = "quota-exhausted"
+        return _problem(
+            status_code=exc.status_code,
+            title=problem_title,
+            detail=detail,
+            operation_id=client_action_id,
+            type_slug=type_slug,
+        )
+    except DocumentUploadError as exc:
+        return _problem(
+            status_code=422,
+            title="Invalid document upload",
+            detail=str(exc),
+            operation_id=client_action_id,
+            type_slug="invalid-document",
+        )
+    except Exception as exc:
+        logger.exception("Document Add Zettel failed for %s", filename)
+        return _problem(
+            status_code=500,
+            title="Add Zettel failed",
+            detail=f"Failed to process document: {exc}",
+            operation_id=client_action_id,
         )
 
 

@@ -59,6 +59,13 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "46_kg_two_level_strength.sql",
         "47_canonical_source_type_arxiv.sql",
         "48_dedup_canonical_rows.sql",
+        # master's document-upload migration: my 45-48 are already PROD-applied
+        # so they keep their numbers; the incoming new migration takes the
+        # next free slot 49 (standard migration discipline — never renumber an
+        # already-applied migration). Its source_type CHECK is a SUPERSET of
+        # 47's (includes 'document' + arxiv/hackernews/linkedin/podcast), so
+        # applying it after 47 yields the correct final constraint.
+        "49_document_source_type.sql",
     ]
 
 
@@ -147,6 +154,32 @@ def test_search_chunks_and_quota_are_typed_rpcs() -> None:
 def test_search_chunks_excludes_null_embeddings() -> None:
     sql = _sql("02_content_schema.sql")
     assert "AND cc.embedding IS NOT NULL" in sql
+
+
+def test_document_source_type_is_added_by_forward_migration() -> None:
+    assert "'document'" not in _sql("02_content_schema.sql")
+    assert "'document'" in _sql("49_document_source_type.sql")
+
+
+def test_document_source_type_migration_preserves_current_engine_sources() -> None:
+    migration = _sql("49_document_source_type.sql")
+    for source_type in [
+        "youtube",
+        "reddit",
+        "github",
+        "twitter",
+        "substack",
+        "newsletter",
+        "medium",
+        "hackernews",
+        "linkedin",
+        "arxiv",
+        "podcast",
+        "document",
+        "web",
+        "generic",
+    ]:
+        assert f"'{source_type}'" in migration
 
 
 def test_citation_reaper_ignores_malformed_citation_ids() -> None:

@@ -170,6 +170,65 @@ async def run_add_zettel_pipeline(
     ).model_dump(mode="json")
 
 
+async def run_add_document_pipeline(
+    *,
+    filename: str,
+    content: bytes,
+    content_type: str | None,
+    client_action_id: str,
+    persist: bool,
+    user: dict | None,
+    effective_user_id: UUID,
+    gemini_client_factory: GeminiClientFactory = default_gemini_client,
+) -> dict[str, Any]:
+    """Run Add Zettel end-to-end for an uploaded document."""
+
+    from website.features.summarization_engine.core.budget import budget_scope
+    from website.features.summarization_engine.core.config import load_config
+    from website.features.summarization_engine.core.models import SourceType
+    from website.features.summarization_engine.core.orchestrator import OrchestratedSummary
+    from website.features.summarization_engine.source_ingest.document import (
+        extract_document_upload,
+    )
+    from website.features.summarization_engine.summarization import get_summarizer
+    from website.features.user_pricing.models import Meter
+
+    ingest = extract_document_upload(
+        filename=filename,
+        content=content,
+        content_type=content_type,
+    )
+    user_sub = str(effective_user_id)
+    await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
+
+    config = load_config()
+    source_config = config.sources.get(SourceType.DOCUMENT.value, {})
+    summarizer_cls = get_summarizer(SourceType.DOCUMENT)
+    async with _SUMMARIZE_SEMAPHORE:
+        summarizer = summarizer_cls(gemini_client_factory(), source_config)
+        async with budget_scope(summarizer=SourceType.DOCUMENT.value):
+            summary_result = await summarizer.summarize(ingest)
+
+    bundle = OrchestratedSummary(ingest_result=ingest, summary_result=summary_result)
+    summary = summary_dto(bundle)
+    quality = quality_dto(bundle)
+    outcome: PersistenceOutcome | None = None
+    if persist:
+        payload = summary.model_dump(mode="json")
+        payload["raw_text"] = ingest.raw_text
+        outcome = await persist_summarized_result(payload, user_sub=user_sub)
+
+    return AddZettelPipelineOutput(
+        status="succeeded",
+        operation_id=client_action_id,
+        summary=summary,
+        persistence=persistence_dto(persist, outcome),
+        quality=quality,
+        node_id=outcome.file_node_id if outcome else None,
+        workspace_zettel_id=outcome.supabase_node_id if outcome else None,
+    ).model_dump(mode="json")
+
+
 def summary_dto(bundle: Any) -> SummaryDTO:
     result = bundle.summary_result
     ingest = bundle.ingest_result

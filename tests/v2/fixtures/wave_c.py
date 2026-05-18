@@ -26,11 +26,12 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
-# 10 source-ingest plug-ins per WAVE-C discovery doc (registry-completeness gate).
+# 11 source-ingest plug-ins including uploaded documents.
 SOURCE_INGEST_NAMES: tuple[str, ...] = (
     "arxiv",
+    "document",
     "github",
     "hackernews",
     "linkedin",

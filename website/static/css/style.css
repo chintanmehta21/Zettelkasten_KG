@@ -228,6 +228,49 @@ a:hover {
     box-shadow: 0 0 0 3px hsla(0, 72%, 63%, 0.12);
 }
 
+.document-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.document-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.55rem;
+    height: 2.55rem;
+    flex: 0 0 2.55rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.document-upload-btn svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: currentColor;
+}
+
+.document-upload-btn:hover,
+.document-upload-btn:focus-visible {
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.document-upload-btn.has-file {
+    color: var(--accent);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
 #url-input {
     flex: 1;
     background: transparent;
@@ -489,6 +532,7 @@ a:hover {
 .source-badge.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.08); }
 .source-badge.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
 .source-badge.web { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
+.source-badge.document { color: hsl(172, 45%, 62%); border-color: hsla(172, 45%, 62%, 0.25); background: hsla(172, 45%, 62%, 0.08); }
 
 .result-meta {
     display: flex;
@@ -902,6 +946,11 @@ a:hover {
 
     .source-dropdown {
         width: 100%;
+    }
+
+    .document-upload-btn {
+        width: 100%;
+        flex-basis: auto;
     }
 
     .dropdown-toggle {

@@ -30,12 +30,17 @@ class SourceType(str, Enum):
     LINKEDIN = "linkedin"
     ARXIV = "arxiv"
     PODCAST = "podcast"
+    # Added with the master "document upload source" feature (merge): an
+    # uploaded document is a first-class summarization SourceType, so the
+    # drift guard requires it here too (else it would silently coerce to WEB).
+    DOCUMENT = "document"
 
 
 # D4: long-form vs short-form chunking bucket map, co-located with the enum
 # so the chunker and persist path share one source of truth. Long-form
 # (article/transcript-shaped, segment into many passages): arxiv, newsletter,
-# podcast, youtube, web, substack, medium. Short-form (post/comment-shaped,
+# podcast, youtube, web, substack, medium, document (uploaded files are
+# document-length prose). Short-form (post/comment-shaped,
 # atomic unless oversize per the chunker's SHORT_FORM size gate): hackernews,
 # linkedin, reddit, twitter, github, generic. Matches the chunker's existing
 # LONG_FORM_SOURCES / SHORT_FORM_SOURCES intent; the chunker remains the
@@ -49,6 +54,7 @@ LONG_FORM_SOURCE_TYPES: frozenset[SourceType] = frozenset(
         SourceType.WEB,
         SourceType.SUBSTACK,
         SourceType.MEDIUM,
+        SourceType.DOCUMENT,
     }
 )
 SHORT_FORM_SOURCE_TYPES: frozenset[SourceType] = frozenset(

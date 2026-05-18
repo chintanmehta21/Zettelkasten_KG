@@ -82,8 +82,38 @@
     return pollAccepted(body, headers);
   }
 
+  async function uploadDocument(options) {
+    var opts = options || {};
+    var token = opts.token || '';
+    var headers = {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+
+    var form = new FormData();
+    form.append('file', opts.file);
+    form.append('client_action_id', opts.clientActionId || makeActionId(opts.surface || 'landing-document'));
+    form.append('persist', opts.persist === false ? 'false' : 'true');
+    form.append('surface', opts.surface || 'landing');
+
+    var response = await fetch('/api/zettels/add/document', {
+      method: 'POST',
+      headers: headers,
+      body: form
+    });
+
+    var body = await parseResponse(response);
+    if (!response.ok) {
+      var error = new Error(cleanProblemDetail(body, 'Document upload failed with status ' + response.status));
+      error.status = response.status;
+      error.detail = body && (body.detail || body.error || body);
+      error.problem = body;
+      throw error;
+    }
+    return pollAccepted(body, headers);
+  }
+
   window.ZKAddZettel = {
     add: add,
+    uploadDocument: uploadDocument,
     makeActionId: makeActionId,
     _parseResponse: parseResponse
   };
