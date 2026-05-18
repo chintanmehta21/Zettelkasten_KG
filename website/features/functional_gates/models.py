@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 GateSource = Literal["plan", "wallet", "none"]
+DedupBranch = Literal["fresh", "same_user_noop", "cross_user_hit"]
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,16 @@ class QuotaSnapshot:
     remaining_plan: int
     remaining_wallet: int
     effective_available: int
+
+
+@dataclass(frozen=True)
+class DedupDecision:
+    """URL-dedup gate outcome. ``found`` is the existing canonical lookup
+    (None on fresh). The gate decides the branch only — entitlement + engine
+    are the caller's responsibility per branch (keeps this module FastAPI-free
+    and side-effect-free, matching the FunctionalGates principle)."""
+    branch: DedupBranch
+    found: object | None = None
 
 
 class GateError(Exception):
