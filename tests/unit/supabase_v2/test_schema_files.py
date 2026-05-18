@@ -109,8 +109,8 @@ def test_search_chunks_excludes_null_embeddings() -> None:
     assert "AND cc.embedding IS NOT NULL" in sql
 
 
-def test_content_schema_allows_document_source_type() -> None:
-    assert "'document'" in _sql("02_content_schema.sql")
+def test_document_source_type_is_added_by_forward_migration() -> None:
+    assert "'document'" not in _sql("02_content_schema.sql")
     assert "'document'" in _sql("45_document_source_type.sql")
 
 

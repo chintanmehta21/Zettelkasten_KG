@@ -42,6 +42,37 @@ def test_landing_page_exposes_document_upload_paperclip():
     assert ".document-upload-btn" in css
 
 
+def test_logged_in_surfaces_expose_document_upload_paperclip():
+    surfaces = [
+        (
+            ROOT / "website" / "features" / "user_home" / "index.html",
+            ROOT / "website" / "features" / "user_home" / "js" / "home.js",
+            ROOT / "website" / "features" / "user_home" / "css" / "home.css",
+            "home-document",
+        ),
+        (
+            ROOT / "website" / "features" / "user_zettels" / "index.html",
+            ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
+            ROOT / "website" / "features" / "user_zettels" / "css" / "user_zettels.css",
+            "zettels-document",
+        ),
+    ]
+
+    for html_path, js_path, css_path, action_id in surfaces:
+        html = html_path.read_text(encoding="utf-8")
+        js = js_path.read_text(encoding="utf-8")
+        css = css_path.read_text(encoding="utf-8")
+
+        assert 'id="add-document-input"' in html, html_path
+        assert 'id="add-document-btn"' in html, html_path
+        assert "accept=\".pdf,.txt,.md,.markdown,.docx" in html, html_path
+        assert 'id="add-url-input" class="home-add-input"' in html, html_path
+        assert 'id="add-url-input" class="home-add-input" placeholder="https://…" aria-label="URL to capture" required' not in html
+        assert "uploadDocument({" in js, js_path
+        assert action_id in js, js_path
+        assert ".home-add-document-btn" in css, css_path
+
+
 def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     helper = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "mode: opts.mode || 'sync'" in helper
@@ -55,6 +86,19 @@ def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     for path in pages:
         text = path.read_text(encoding="utf-8")
         assert "/js/add_zettel_api.js?v=20260517a" in text, path
+
+    assert "/home/css/home.css?v=20260518a" in (
+        ROOT / "website" / "features" / "user_home" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "/home/js/home.js?v=20260518a" in (
+        ROOT / "website" / "features" / "user_home" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "/home/zettels/css/user_zettels.css?v=20260518a" in (
+        ROOT / "website" / "features" / "user_zettels" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "/home/zettels/js/user_zettels.js?v=20260518a" in (
+        ROOT / "website" / "features" / "user_zettels" / "index.html"
+    ).read_text(encoding="utf-8")
 
 
 def test_summary_renderers_split_inline_markdown_headings():

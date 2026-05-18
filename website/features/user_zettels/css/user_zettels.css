@@ -966,6 +966,38 @@ body {
     align-items: center;
 }
 
+.home-add-document-input {
+    display: none;
+}
+
+.home-add-document-btn {
+    width: 46px;
+    min-height: 46px;
+    flex: 0 0 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-add-document-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.home-add-document-btn:hover,
+.home-add-document-btn.has-file {
+    border-color: var(--border-focus);
+    background: hsla(172, 50%, 45%, 0.12);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
 .home-add-input {
     flex: 1;
     min-height: 46px;
@@ -1465,6 +1497,7 @@ body {
         flex-direction: column;
     }
 
+    .home-add-document-btn,
     .home-add-input,
     .home-add-submit {
         width: 100%;

@@ -49,6 +49,8 @@
   var addDropdown;
   var addForm;
   var addUrlInput;
+  var addDocumentInput;
+  var addDocumentBtn;
   var addSubmitBtn;
   var addError;
 
@@ -102,6 +104,8 @@
     addDropdown = document.getElementById('add-zettel-dropdown');
     addForm = document.getElementById('add-zettel-form');
     addUrlInput = document.getElementById('add-url-input');
+    addDocumentInput = document.getElementById('add-document-input');
+    addDocumentBtn = document.getElementById('add-document-btn');
     addSubmitBtn = document.getElementById('add-submit-btn');
     addError = document.getElementById('add-error');
 
@@ -141,6 +145,25 @@
       void err;
       return '';
     }
+  }
+
+  function validateDocument(file) {
+    if (!file) return null;
+    var allowed = /\.(pdf|txt|md|markdown|docx)$/i;
+    if (!allowed.test(file.name || '')) return 'Upload PDF, TXT, Markdown, or DOCX';
+    if (file.size > 10 * 1024 * 1024) return 'Document is too large (max 10 MB)';
+    if (file.size <= 0) return 'Document is empty';
+    return null;
+  }
+
+  function clearSelectedDocument() {
+    if (addDocumentInput) addDocumentInput.value = '';
+    if (addDocumentBtn) addDocumentBtn.classList.remove('has-file');
+    if (addUrlInput) addUrlInput.placeholder = 'https://…';
+  }
+
+  function getSelectedDocument() {
+    return addDocumentInput && addDocumentInput.files ? addDocumentInput.files[0] : null;
   }
 
   async function initSupabase() {
@@ -754,8 +777,11 @@
     }, 2200);
   }
 
-  async function addZettel(url, existingPricingActionId) {
-    var pricingActionId = existingPricingActionId || ('zettel:' + Date.now() + ':' + Math.random().toString(36).slice(2));
+  async function addZettel(url, existingPricingActionId, file) {
+    var isDocument = Boolean(file);
+    var pricingActionId = existingPricingActionId || (isDocument && window.ZKAddZettel && typeof window.ZKAddZettel.makeActionId === 'function'
+      ? window.ZKAddZettel.makeActionId('zettels-document')
+      : 'zettel:' + Date.now() + ':' + Math.random().toString(36).slice(2));
     if (addError) addError.textContent = '';
     if (addSubmitBtn) addSubmitBtn.disabled = true;
     clearDeleteConfirmState();
@@ -774,16 +800,25 @@
       listEl.insertBefore(skeleton, listEl.firstChild);
     }
 
-    var apiPromise = window.ZKAddZettel.add({
-      url: url,
-      token: _token,
-      clientActionId: pricingActionId,
-      persist: true,
-      surface: 'zettels',
-      mode: 'sync'
-    });
+    var apiPromise = isDocument
+      ? window.ZKAddZettel.uploadDocument({
+        file: file,
+        token: _token,
+        clientActionId: pricingActionId,
+        persist: true,
+        surface: 'zettels'
+      })
+      : window.ZKAddZettel.add({
+        url: url,
+        token: _token,
+        clientActionId: pricingActionId,
+        persist: true,
+        surface: 'zettels',
+        mode: 'sync'
+      });
 
     if (addUrlInput) addUrlInput.value = '';
+    clearSelectedDocument();
 
     if (dropdownRect && addDropdown && skeleton) {
       await shatterElement(addDropdown, skeleton.getBoundingClientRect(), skeleton);
@@ -803,7 +838,7 @@
         summary: result.summary || result.brief_summary || '',
         description: result.brief_summary || '',
         tags: Array.isArray(result.tags) ? result.tags : [],
-        url: result.source_url || url,
+        url: result.source_url || url || '',
         group: result.source_type || 'web',
         date: result.captured_at || new Date().toISOString().slice(0, 10)
       });
@@ -833,7 +868,7 @@
           detail: quotaDetail,
           source: 'my-zettels:add-zettel',
           resumeAction: { type: 'add_zettel', url: url, clientActionId: pricingActionId },
-          onResume: function () { return addZettel(url, pricingActionId); }
+          onResume: function () { return addZettel(url, pricingActionId, file); }
         });
         return;
       }
@@ -1241,12 +1276,42 @@
       });
     }
 
+    if (addDocumentBtn && addDocumentInput) {
+      addDocumentBtn.addEventListener('click', function () {
+        addDocumentInput.click();
+      });
+      addDocumentInput.addEventListener('change', function () {
+        var file = getSelectedDocument();
+        if (addError) addError.textContent = '';
+        addDocumentBtn.classList.toggle('has-file', Boolean(file));
+        if (addUrlInput && file) {
+          addUrlInput.value = '';
+          addUrlInput.placeholder = file.name || 'Document selected';
+        }
+      });
+    }
+
+    if (addUrlInput) {
+      addUrlInput.addEventListener('input', function () {
+        if (addUrlInput.value.trim()) clearSelectedDocument();
+      });
+    }
+
     if (addForm) {
       addForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var url = addUrlInput ? addUrlInput.value.trim() : '';
-        if (!url) return;
-        addZettel(url);
+        var file = getSelectedDocument();
+        var err = file ? validateDocument(file) : (!url ? 'Please enter a URL or choose a document' : null);
+        if (err) {
+          if (addError) addError.textContent = err;
+          return;
+        }
+        if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function' || typeof window.ZKAddZettel.uploadDocument !== 'function') {
+          if (addError) addError.textContent = 'Add Zettel API helper failed to load. Please refresh and try again.';
+          return;
+        }
+        addZettel(url, null, file);
       });
     }
 
