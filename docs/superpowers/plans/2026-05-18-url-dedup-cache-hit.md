@@ -4,7 +4,7 @@
 
 **Goal:** A known URL never re-runs the summarization engine; cross-user adds link the existing canonical (quota charged, user unaware); same-user re-add is a no-op with no charge.
 
-**Architecture:** A pre-engine dedup gate in `run_add_zettel_pipeline` keyed on `normalize_url(resolve_redirects(url))`. Schema moves to `UNIQUE(content.canonical_zettels.normalized_url)`. Pricing untouched — the existing `require_entitlement` is simply called only on the fresh + cross-user branches. Same gate mirrored in `/api/v2/summarize`.
+**Architecture:** ONE reusable URL-dedup gate in `website/features/functional_gates/` (mirrors the existing `FunctionalGates` pattern: typed result, singleton, FastAPI-free). Keyed on `normalize_url(resolve_redirects(url))`. Every Add-Zettel surface (`run_add_zettel_pipeline`, and `/api/v2/summarize` by delegating to that runner) calls the one gate — no per-route duplication, a change propagates everywhere. Schema moves to `UNIQUE(content.canonical_zettels.normalized_url)`. Pricing untouched — existing `require_entitlement` called only on fresh + cross-user branches.
 
 **Tech Stack:** Python 3.12, FastAPI, Supabase v2 (Postgres, psycopg/RPC), pytest.
 
@@ -19,9 +19,12 @@
 - Modify `supabase/website/_v2/17_content_rpcs.sql` — RPC conflict target → `(normalized_url)`.
 - Create `supabase/website/_v2/45_url_dedup.sql` — collapse dup canonicals, swap UNIQUE constraint.
 - Modify `website/core/supabase_v2/repositories/content_repository.py` — add `find_canonical_by_url`, `link_existing_canonical`.
-- Modify `website/api/module_runners/summarization.py` — reorder + dedup gate + counters.
-- Modify `website/features/summarization_engine/api/routes.py` — mirror gate before engine call.
-- Create `tests/unit/summarization_engine/test_dedup_gate.py` — gate branch tests.
+- Create `website/features/functional_gates/dedup_gate.py` — the ONE reusable URL-dedup gate (`UrlDedupGate` + `get_url_dedup_gate()` singleton).
+- Modify `website/features/functional_gates/models.py` — add `DedupDecision`.
+- Modify `website/features/functional_gates/__init__.py` — export gate + unify `reset_for_tests`.
+- Modify `website/api/module_runners/summarization.py` — call the gate; act per branch.
+- Modify `website/features/summarization_engine/api/routes.py` — delegate `/api/v2/summarize` to `run_add_zettel_pipeline` (same gate, zero duplication).
+- Create `tests/unit/summarization_engine/test_dedup_gate.py` — gate + pipeline branch tests.
 - Modify `tests/unit/website/test_url_utils.py` — P2 normalize_url cases.
 - Create `tests/unit/ops_scripts/test_url_dedup_migration.py` — migration collapse SQL logic test (pure-Python harness against the dedup-collapse query shape).
 
@@ -380,94 +383,285 @@ git commit -m "feat: link_existing_canonical + same-user link detection"
 
 ---
 
-## Task 4: Dedup gate in run_add_zettel_pipeline (reorder + branches + counters)
+## Task 4: Reusable URL-dedup functional gate (website/features/functional_gates/)
+
+> Per operator: the dedup decision lives in `website/features/functional_gates/`
+> as ONE reusable gate (mirrors the existing `FunctionalGates` pattern: typed
+> result model, singleton accessor, NO FastAPI/HTTPException imports). Every
+> endpoint calls this one gate — no per-route duplication.
+
+**Files:**
+- Create: `website/features/functional_gates/dedup_gate.py`
+- Modify: `website/features/functional_gates/models.py` (add `DedupDecision`)
+- Modify: `website/features/functional_gates/__init__.py` (export)
+- Test: `tests/unit/summarization_engine/test_dedup_gate.py` (append)
+
+- [ ] **Step 1: Write the failing tests** (append to `tests/unit/summarization_engine/test_dedup_gate.py`)
+
+```python
+from unittest.mock import MagicMock
+from uuid import uuid4
+
+from website.features.functional_gates.dedup_gate import get_url_dedup_gate
+from website.features.functional_gates import reset_for_tests as _reset_fg
+
+
+def _repo(found, links):
+    r = MagicMock()
+    r.find_canonical_by_url.return_value = found
+    r.workspace_links_canonical.return_value = links
+    return r
+
+
+def _found():
+    return MagicMock(canonical_zettel_id=uuid4(),
+                     ai_summary='{"brief_summary":"b","detailed_summary":"d"}',
+                     source_type="web", title="T", user_tags=[])
+
+
+def test_gate_fresh_when_no_canonical():
+    _reset_fg()
+    d = get_url_dedup_gate().decide(repo=_repo(None, False),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "fresh"
+    assert d.found is None
+
+
+def test_gate_same_user_noop_when_workspace_already_links():
+    f = _found()
+    d = get_url_dedup_gate().decide(repo=_repo(f, True),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "same_user_noop"
+    assert d.found is f
+
+
+def test_gate_cross_user_hit_when_canonical_exists_unlinked():
+    f = _found()
+    d = get_url_dedup_gate().decide(repo=_repo(f, False),
+                                    normalized_url="https://x", workspace_id=uuid4())
+    assert d.branch == "cross_user_hit"
+    assert d.found is f
+
+
+def test_gate_singleton_is_reused():
+    assert get_url_dedup_gate() is get_url_dedup_gate()
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py -k gate -v`
+Expected: FAIL (`website.features.functional_gates.dedup_gate` does not exist).
+
+- [ ] **Step 3: Add the `DedupDecision` model**
+
+In `website/features/functional_gates/models.py`, after the `GateSource` line add `DedupBranch`, and after `class QuotaSnapshot` add the dataclass:
+
+```python
+DedupBranch = Literal["fresh", "same_user_noop", "cross_user_hit"]
+```
+
+```python
+@dataclass(frozen=True)
+class DedupDecision:
+    """URL-dedup gate outcome. ``found`` is the existing canonical lookup
+    (None on fresh). The gate decides the branch only — entitlement + engine
+    are the caller's responsibility per branch (keeps this module FastAPI-free
+    and side-effect-free, matching the FunctionalGates principle)."""
+    branch: "DedupBranch"
+    found: object | None = None
+```
+
+(Confirm `Literal` and `dataclass`/`field` are already imported at the top of `models.py`; they are — used by existing models. Do not duplicate imports.)
+
+- [ ] **Step 4: Create the gate**
+
+Create `website/features/functional_gates/dedup_gate.py`:
+
+```python
+"""URL-dedup functional gate — the ONE place that decides whether an
+Add-Zettel request is a fresh ingest, a same-user no-op, or a cross-user
+cache-hit. Reused by every endpoint (website Add Zettel + /api/v2/summarize)
+so a change here reflects everywhere. Intentionally free of FastAPI /
+engine / entitlement imports: it returns a decision; callers act on it.
+"""
+from __future__ import annotations
+
+import logging
+
+from website.features.functional_gates.models import DedupDecision
+
+logger = logging.getLogger("website.features.functional_gates.dedup")
+
+
+class UrlDedupGate:
+    """Stateless. ``decide`` does two indexed reads via the provided repo
+    (which must expose ``find_canonical_by_url`` and
+    ``workspace_links_canonical``) and classifies the request."""
+
+    def decide(self, *, repo, normalized_url: str, workspace_id) -> DedupDecision:
+        found = repo.find_canonical_by_url(normalized_url)
+        if found is None:
+            logger.info("add_zettel dedup branch=fresh")
+            return DedupDecision(branch="fresh", found=None)
+        if repo.workspace_links_canonical(workspace_id, found.canonical_zettel_id):
+            logger.info(
+                "add_zettel dedup branch=same_user_noop source_type=%s",
+                getattr(found, "source_type", "?"),
+            )
+            return DedupDecision(branch="same_user_noop", found=found)
+        logger.info(
+            "add_zettel dedup branch=cross_user_cache_hit source_type=%s",
+            getattr(found, "source_type", "?"),
+        )
+        return DedupDecision(branch="cross_user_hit", found=found)
+
+
+_singleton: UrlDedupGate | None = None
+
+
+def get_url_dedup_gate() -> UrlDedupGate:
+    """Process-wide singleton (mirrors get_functional_gates())."""
+    global _singleton
+    if _singleton is None:
+        _singleton = UrlDedupGate()
+    return _singleton
+
+
+def _reset_url_dedup_gate_for_tests() -> None:
+    global _singleton
+    _singleton = None
+```
+
+- [ ] **Step 5: Export from the package**
+
+In `website/features/functional_gates/__init__.py`: add to the imports and `__all__` the names `DedupDecision`, `UrlDedupGate`, `get_url_dedup_gate`. Extend the existing `reset_for_tests` so it ALSO resets the dedup-gate singleton (so one reset clears all gate singletons):
+
+```python
+from website.features.functional_gates.dedup_gate import (
+    DedupDecision,
+    UrlDedupGate,
+    get_url_dedup_gate,
+    _reset_url_dedup_gate_for_tests,
+)
+```
+
+and inside the existing `reset_for_tests` body (re-exported from `gates.py`): the package `__init__` should define a wrapper that calls both. Concretely, replace the `reset_for_tests` re-export with:
+
+```python
+from website.features.functional_gates.gates import reset_for_tests as _reset_gates
+
+def reset_for_tests() -> None:
+    _reset_gates()
+    _reset_url_dedup_gate_for_tests()
+```
+
+Add `DedupDecision`, `UrlDedupGate`, `get_url_dedup_gate` to `__all__`.
+
+- [ ] **Step 6: Run tests + ruff**
+
+Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py -v`
+Expected: all pass (Task 2/3 repo tests + the 4 new gate tests).
+Run: `python -m ruff check website tests`
+Expected: `All checks passed!`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add website/features/functional_gates/dedup_gate.py website/features/functional_gates/models.py website/features/functional_gates/__init__.py tests/unit/summarization_engine/test_dedup_gate.py
+git commit -m "feat: reusable url-dedup functional gate"
+```
+
+---
+
+## Task 5: Wire BOTH endpoints to the one gate (no duplication)
+
+> `run_add_zettel_pipeline` is the shared runner for the website Add-Zettel
+> surfaces; `/api/v2/summarize` must delegate to it (or the same gate) so the
+> branch logic exists exactly once.
 
 **Files:**
 - Modify: `website/api/module_runners/summarization.py:119-165`
-- Test: `tests/unit/summarization_engine/test_dedup_gate.py`
+- Modify: `website/features/summarization_engine/api/routes.py` (`summarize_v2`)
+- Test: `tests/unit/summarization_engine/test_dedup_gate.py` (append)
 
-- [ ] **Step 1: Write the failing tests** (append to `test_dedup_gate.py`)
+- [ ] **Step 1: Write the failing tests** (append)
 
 ```python
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, patch
 from website.api.module_runners import summarization as S
 
 
-def _scope(found, links):
-    repo = MagicMock()
-    repo.find_canonical_by_url.return_value = found
-    repo.workspace_links_canonical.return_value = links
-    repo.link_existing_canonical.return_value = uuid4()
-    return (repo, uuid4(), uuid4())  # (content_repo, profile_id, workspace_id)
-
-
-@pytest.mark.asyncio
-async def test_fresh_runs_engine_and_charges_once():
-    with patch("website.core.persist.get_supabase_v2_scope", return_value=_scope(None, False)), \
-         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
-         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
-         patch.object(S, "summarize_url_bundle", new=AsyncMock()) as eng, \
-         patch.object(S, "persist_summarized_result", new=AsyncMock()):
-        eng.return_value = _stub_bundle()
-        await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
-            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
-    assert ent.await_count == 1
-    assert eng.await_count == 1
-
-
-@pytest.mark.asyncio
-async def test_same_user_noop_no_charge_no_engine():
-    found = MagicMock(canonical_zettel_id=uuid4(), ai_summary='{"brief_summary":"b","detailed_summary":"d"}',
-                      source_type="web", title="T", user_tags=[])
-    with patch("website.core.persist.get_supabase_v2_scope", return_value=_scope(found, True)), \
-         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
-         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
-         patch.object(S, "summarize_url_bundle", new=AsyncMock()) as eng:
-        out = await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
-            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
-    assert ent.await_count == 0
-    assert eng.await_count == 0
-    assert out["status"] == "succeeded"
-
-
-@pytest.mark.asyncio
-async def test_cross_user_links_charges_once_no_engine():
-    found = MagicMock(canonical_zettel_id=uuid4(), ai_summary='{"brief_summary":"b","detailed_summary":"d"}',
-                      source_type="web", title="T", user_tags=[])
-    sc = _scope(found, False)  # canonical exists, workspace not linked → cross user
-    with patch("website.core.persist.get_supabase_v2_scope", return_value=sc), \
-         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
-         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
-         patch.object(S, "summarize_url_bundle", new=AsyncMock()) as eng:
-        out = await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
-            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
-    assert ent.await_count == 1
-    assert eng.await_count == 0
-    sc[0].link_existing_canonical.assert_called_once()
-    assert out["status"] == "succeeded"
-```
-
-Add `_stub_bundle` helper at top of the test file:
-
-```python
 def _stub_bundle():
     from types import SimpleNamespace
     md = SimpleNamespace(model_dump=lambda **k: {}, engine_version="2.0.0")
     res = SimpleNamespace(metadata=md, brief_summary="b", detailed_summary=[],
                           model_dump=lambda **k: {})
     return SimpleNamespace(summary_result=res, ingest_result=SimpleNamespace(metadata={}))
+
+
+def _scope(found, links):
+    r = MagicMock()
+    r.find_canonical_by_url.return_value = found
+    r.workspace_links_canonical.return_value = links
+    r.link_existing_canonical.return_value = uuid4()
+    return (r, uuid4(), uuid4())  # (content_repo, profile_id, workspace_id)
+
+
+@pytest.mark.asyncio
+async def test_pipeline_fresh_charges_once_runs_engine():
+    with patch("website.core.persist.get_supabase_v2_scope", return_value=_scope(None, False)), \
+         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
+         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
+         patch.object(S, "summarize_url_bundle", new=AsyncMock(return_value=_stub_bundle())) as eng, \
+         patch.object(S, "persist_summarized_result", new=AsyncMock()):
+        await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
+            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
+    assert ent.await_count == 1 and eng.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_pipeline_same_user_noop_no_charge_no_engine():
+    f = _found()
+    with patch("website.core.persist.get_supabase_v2_scope", return_value=_scope(f, True)), \
+         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
+         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
+         patch.object(S, "summarize_url_bundle", new=AsyncMock()) as eng:
+        out = await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
+            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
+    assert ent.await_count == 0 and eng.await_count == 0
+    assert out["status"] == "succeeded"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_cross_user_links_charges_once_no_engine():
+    f = _found()
+    sc = _scope(f, False)
+    with patch("website.core.persist.get_supabase_v2_scope", return_value=sc), \
+         patch.object(S, "require_entitlement", new=AsyncMock()) as ent, \
+         patch.object(S, "resolve_redirects", new=AsyncMock(return_value="https://r/x")), \
+         patch.object(S, "summarize_url_bundle", new=AsyncMock()) as eng:
+        out = await S.run_add_zettel_pipeline(url="https://x", client_action_id="a",
+            persist=True, user={"sub": str(uuid4())}, effective_user_id=uuid4())
+    assert ent.await_count == 1 and eng.await_count == 0
+    sc[0].link_existing_canonical.assert_called_once()
+    assert out["status"] == "succeeded"
+
+
+def test_v2_summarize_delegates_to_shared_runner_or_gate():
+    import website.features.summarization_engine.api.routes as R
+    text = open(R.__file__, encoding="utf-8").read()
+    assert ("run_add_zettel_pipeline" in text) or ("get_url_dedup_gate" in text)
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py -k "fresh or same_user or cross_user" -v`
-Expected: FAIL (`_dedup_repo` not defined; gate not present).
+Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py -k "pipeline or v2_summarize" -v`
+Expected: FAIL (pipeline not yet wired to the gate).
 
-- [ ] **Step 3: Implement the gate**
+- [ ] **Step 3: Wire `run_add_zettel_pipeline`**
 
-In `website/api/module_runners/summarization.py`, add near the other lazy helpers (after `normalize_url`, ~line 117):
+In `website/api/module_runners/summarization.py`, near the lazy helpers (after `normalize_url`, ~line 117) add:
 
 ```python
 import logging as _logging
@@ -475,16 +669,14 @@ import logging as _logging
 _dedup_log = _logging.getLogger("website.api.add_zettel.dedup")
 ```
 
-> No new repo/workspace resolver is needed. The gate reuses the existing
-> `website.core.persist.get_supabase_v2_scope(user_sub)` (persist.py:108),
-> which returns `(content_repo, profile_id, workspace_id)` resolved exactly as
-> the write path does. It returns `None` for anonymous/non-UUID subjects — in
-> that case the gate is skipped and the FRESH path runs (correct: no v2
-> dedup possible without a workspace). The returned `content_repo` carries the
+> Reuse the existing `website.core.persist.get_supabase_v2_scope(user_sub)`
+> (persist.py:108) → `(content_repo, profile_id, workspace_id)`, resolved
+> exactly as the write path. Returns `None` for anonymous/non-UUID subjects →
+> gate skipped, FRESH path runs (correct). The returned `content_repo` carries
 > `find_canonical_by_url` / `workspace_links_canonical` /
-> `link_existing_canonical` methods added in Tasks 2-3.
+> `link_existing_canonical` from Tasks 2-3.
 
-Replace the body of `run_add_zettel_pipeline` (lines 128-153, from `user_sub =` through the `persist` block) with:
+Replace the body of `run_add_zettel_pipeline` from `user_sub =` through the `persist` block (lines 128-153) with:
 
 ```python
     user_sub = str(effective_user_id)
@@ -492,36 +684,33 @@ Replace the body of `run_add_zettel_pipeline` (lines 128-153, from `user_sub =` 
     normalized = normalize_url(resolved)
 
     from website.core.persist import get_supabase_v2_scope
+    from website.features.functional_gates import get_url_dedup_gate
+    from website.core.supabase_v2.models import WorkspaceZettelCreate
+
     _scope = get_supabase_v2_scope(user_sub)
-    found = None
     if _scope is not None:
         repo, _profile_id, workspace_id = _scope
-        found = repo.find_canonical_by_url(normalized)
-
-    if found is not None:
-        from website.core.supabase_v2.models import WorkspaceZettelCreate
-        if repo.workspace_links_canonical(workspace_id, found.canonical_zettel_id):
-            _dedup_log.info("add_zettel dedup branch=same_user_noop source_type=%s", found.source_type)
-            return _cache_hit_output(found, client_action_id, persist)
-
-        # Cross-user cache-hit: charge exactly like a fresh add, link, no engine.
-        await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
-        repo.link_existing_canonical(
-            found.canonical_zettel_id,
-            WorkspaceZettelCreate(
-                workspace_id=workspace_id,
-                ai_summary=found.ai_summary,
-                ai_summary_engine_version=found.ai_summary_engine_version,
-                user_tags=found.user_tags,
-                added_via="website",
-            ),
+        decision = get_url_dedup_gate().decide(
+            repo=repo, normalized_url=normalized, workspace_id=workspace_id,
         )
-        _dedup_log.info("add_zettel dedup branch=cross_user_cache_hit source_type=%s", found.source_type)
-        return _cache_hit_output(found, client_action_id, persist)
+        if decision.branch == "same_user_noop":
+            return _cache_hit_output(decision.found, client_action_id, persist)
+        if decision.branch == "cross_user_hit":
+            await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
+            repo.link_existing_canonical(
+                decision.found.canonical_zettel_id,
+                WorkspaceZettelCreate(
+                    workspace_id=workspace_id,
+                    ai_summary=decision.found.ai_summary,
+                    ai_summary_engine_version=decision.found.ai_summary_engine_version,
+                    user_tags=decision.found.user_tags,
+                    added_via="website",
+                ),
+            )
+            return _cache_hit_output(decision.found, client_action_id, persist)
 
     # FRESH: charge, then engine, then persist (unchanged behavior).
     await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
-    _dedup_log.info("add_zettel dedup branch=fresh")
     async with _SUMMARIZE_SEMAPHORE:
         bundle = await summarize_url_bundle(
             normalized,
@@ -549,11 +738,11 @@ Replace the body of `run_add_zettel_pipeline` (lines 128-153, from `user_sub =` 
     ).model_dump(mode="json")
 ```
 
-Add the cache-hit DTO builder (module-level, after `quality_dto`):
+Add the cache-hit DTO builder module-level (after `quality_dto`):
 
 ```python
 def _cache_hit_output(found, client_action_id: str, persist: bool) -> dict[str, Any]:
-    """Build the SAME wire shape as a fresh add from an existing canonical's
+    """Same wire shape as a fresh add, rebuilt from the existing canonical's
     stored summary. No 'cached' indicator (no-infra-disclosure)."""
     from website.core.persist import extract_summary_parts
     brief, detailed = extract_summary_parts(found.ai_summary, None)
@@ -581,75 +770,30 @@ def _cache_hit_output(found, client_action_id: str, persist: bool) -> dict[str, 
     ).model_dump(mode="json")
 ```
 
-> Implementer: confirm `SummaryDTO`, `QualityDTO`, `AddZettelPipelineOutput`,
-> `persistence_dto`, `Meter` are already imported/defined in this module
-> (they are — used by the existing body). `extract_summary_parts` is exported
-> from `website/core/persist.py` (verified: `persist.py:357`).
+> Confirm `SummaryDTO`, `QualityDTO`, `AddZettelPipelineOutput`,
+> `persistence_dto`, `Meter`, `PersistenceOutcome` are already imported/defined
+> in this module (they are — used by the existing body). `extract_summary_parts`
+> is exported from `website/core/persist.py:357`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Route `/api/v2/summarize` through the SAME runner**
 
-Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py -v`
-Expected: PASS (all gate tests).
+In `website/features/summarization_engine/api/routes.py`, in the `summarize_v2` handler (`@router.post("/summarize")`): replace its direct `require_entitlement` + `summarize_url_bundle` URL path with a call to `run_add_zettel_pipeline` imported from `website.api.module_runners.summarization`, preserving its existing persistence flag and `UnsupportedVideoError`→422 handling. Do NOT re-implement any branch logic here — delegate so the one gate governs every surface. (Implementer: read the current `summarize_v2` body, match its persist/response contract; map the pipeline output dict back to `SummarizeV2Response` fields it already returns.)
 
-- [ ] **Step 5: Run ruff**
+- [ ] **Step 5: Run tests + ruff**
 
+Run: `python -m pytest tests/unit/summarization_engine/ -k "pipeline or v2_summarize or dedup or gate or route" -v`
+Expected: all pass.
 Run: `python -m ruff check website tests`
 Expected: `All checks passed!`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add website/api/module_runners/summarization.py website/core/persist.py tests/unit/summarization_engine/test_dedup_gate.py
-git commit -m "feat: pre-engine url dedup gate with cache-hit linking"
+git add website/api/module_runners/summarization.py website/features/summarization_engine/api/routes.py tests/unit/summarization_engine/test_dedup_gate.py
+git commit -m "feat: route all add-zettel surfaces through dedup gate"
 ```
 
 ---
-
-## Task 5: Mirror the gate in /api/v2/summarize
-
-**Files:**
-- Modify: `website/features/summarization_engine/api/routes.py`
-- Test: `tests/unit/summarization_engine/test_dedup_gate.py`
-
-- [ ] **Step 1: Write the failing test** (append)
-
-```python
-@pytest.mark.asyncio
-async def test_v2_summarize_uses_dedup_gate_for_known_url(monkeypatch):
-    # The /api/v2/summarize handler must route URL adds through the same
-    # run_add_zettel_pipeline gate (no direct pre-gate engine call).
-    import website.features.summarization_engine.api.routes as R
-    src = R.__file__
-    text = open(src, encoding="utf-8").read()
-    assert "run_add_zettel_pipeline" in text or "find_canonical_by_url" in text
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `python -m pytest tests/unit/summarization_engine/test_dedup_gate.py::test_v2_summarize_uses_dedup_gate_for_known_url -v`
-Expected: FAIL.
-
-- [ ] **Step 3: Route the v2 URL path through the gate**
-
-In `website/features/summarization_engine/api/routes.py`, in `summarize_v2` (the `@router.post("/summarize")` handler ~line 33): replace the direct `require_entitlement` + `summarize_url_bundle` sequence for the URL case with a call to `run_add_zettel_pipeline` (import it from `website.api.module_runners.summarization`), passing `persist=False` if the v2 endpoint must not persist (preserve its current persistence behavior — implementer: check whether the existing handler persists; match it). Keep the `UnsupportedVideoError`/422 handling.
-
-> Rationale: a single gate implementation, one behavior across surfaces (spec
-> requirement). Do not duplicate the branch logic here.
-
-- [ ] **Step 4: Run test + targeted route tests**
-
-Run: `python -m pytest tests/unit/summarization_engine/ -k "v2 or route or dedup" -v`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add website/features/summarization_engine/api/routes.py tests/unit/summarization_engine/test_dedup_gate.py
-git commit -m "feat: route /api/v2/summarize through the dedup gate"
-```
-
----
-
 ## Task 6: P2 — extend normalize_url tests
 
 **Files:**
