@@ -261,9 +261,14 @@ def _create_or_get_kasten(
     except Exception as exc:  # noqa: BLE001 — only dup-name is recoverable here
         lower = str(exc).lower()
         if "duplicate key" in lower or "unique" in lower:
-            for existing in rag_repo.list_kastens(workspace_id, limit=200):
-                if existing.get("name") == name:
-                    return existing
+            # Codex review #3262317336: direct indexed lookup on the
+            # UNIQUE(workspace_id, name) key — scale-proof. The prior
+            # list_kastens(limit=200) scan missed an older same-name row in
+            # workspaces with >200 kastens (ordered by recent usage), wrongly
+            # 5xx-ing a benign re-submit instead of idempotently reusing it.
+            existing = rag_repo.get_kasten_by_name(workspace_id, name)
+            if existing is not None:
+                return existing
             # Raced away (created then deleted between INSERT and SELECT) or a
             # name-normalisation mismatch — re-raise the original so the failure
             # is visible rather than silently returning a wrong Kasten.

@@ -336,7 +336,9 @@ async def test_dup_name_reuses_existing_not_409():
     rag_repo.create_kasten.side_effect = RuntimeError(
         'duplicate key value violates unique constraint "kastens_workspace_id_name_key"'
     )
-    rag_repo.list_kastens.return_value = [_kasten_row("dup", existing_id)]
+    # Codex #3262317336: dup-key recovery now uses the scale-proof direct
+    # get_kasten_by_name lookup, not a capped list_kastens scan.
+    rag_repo.get_kasten_by_name.return_value = _kasten_row("dup", existing_id)
     content_repo = MagicMock()
     p1, p2, p3 = _patched(rag_repo, content_repo)
     with p1, p2, p3:

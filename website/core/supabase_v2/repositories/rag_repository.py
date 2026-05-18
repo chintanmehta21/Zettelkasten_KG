@@ -52,6 +52,25 @@ class RAGRepository:
         )
         return response.data[0] if response.data else None
 
+    def get_kasten_by_name(self, workspace_id: UUID, name: str) -> dict | None:
+        """Direct lookup on the UNIQUE(workspace_id, name) key.
+
+        Used by the create_kasten dup-key idempotency recovery so it works at
+        ANY tenant scale. The prior ``list_kastens(limit=200)`` scan missed an
+        older same-name row in workspaces with >200 kastens (ordered by recent
+        usage), turning a benign re-submit into a 5xx (Codex review
+        #3262317336). This is an indexed single-row equality fetch — no cap.
+        """
+        response = (
+            self._client.schema("rag").table("kastens")
+            .select("*")
+            .eq("workspace_id", str(workspace_id))
+            .eq("name", name)
+            .limit(1)
+            .execute()
+        )
+        return response.data[0] if response.data else None
+
     def list_kastens(self, workspace_id: UUID, limit: int = 50) -> list[dict]:
         response = (
             self._client.schema("rag").table("kastens")
