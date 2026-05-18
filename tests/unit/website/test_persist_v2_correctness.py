@@ -317,7 +317,10 @@ def test_summary_dto_threads_ingest_raw_text_into_payload() -> None:
     dto = mod.summary_dto(_Bundle())
     assert dto.source_fingerprint_text == "  Extracted   source\n\nbody.  "
     payload = dto.model_dump(mode="json")
-    assert payload["source_fingerprint_text"] == "  Extracted   source\n\nbody.  "
+    # P1: source_fingerprint_text is exclude=True — it MUST NOT serialize into
+    # the response payload. The pipeline re-threads it explicitly for dedup.
+    assert "source_fingerprint_text" not in payload
+    payload["source_fingerprint_text"] = dto.source_fingerprint_text
     url = payload["source_url"]
     # The threaded source now drives the hash; whitespace-normalized so a
     # trivially re-wrapped re-extraction dedups to the same canonical row.
@@ -361,6 +364,7 @@ def test_summary_dto_none_raw_text_yields_url_only_hash() -> None:
     dto = mod.summary_dto(_Bundle())
     assert dto.source_fingerprint_text is None  # empty -> None, safe fallback
     payload = dto.model_dump(mode="json")
+    assert "source_fingerprint_text" not in payload  # P1: never serialized
     import hashlib as _h
 
     url = payload["source_url"]
