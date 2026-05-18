@@ -59,30 +59,51 @@ _KASTEN_OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDi
 _KASTEN_OP_TASKS: dict[str, asyncio.Task] = {}
 
 
-def _kasten_op_put(operation_id: str, value: dict[str, Any]) -> None:
-    _KASTEN_OPERATIONS[operation_id] = (time.monotonic(), value)
-    _KASTEN_OPERATIONS.move_to_end(operation_id)
+def _scoped_op_key(user_sub: str, operation_id: str) -> str:
+    """Tenant-scope the in-memory op-store key by the authenticated subject.
+
+    SECURITY (P1, Codex review #3261718805): the store was keyed ONLY by
+    ``operation_id``, which derives from ``client_action_id`` or — when that
+    is absent — the user-supplied Kasten ``name``. Two different authenticated
+    users creating a Kasten with the same name collided on one key: the second
+    user read the first user's accepted/final payload (kasten metadata, failed
+    -link details) and their own create job never ran (the existing-record
+    short-circuit fired). The subject (a UUID, never contains NUL) is prefixed
+    with a NUL separator so an arbitrary ``name`` can never forge another
+    user's key. The external ``operation_id`` in URLs/responses is unchanged;
+    scoping is server-side and enforced on both create and poll.
+    """
+    return f"{user_sub}\x00{operation_id}"
+
+
+def _kasten_op_put(user_sub: str, operation_id: str, value: dict[str, Any]) -> None:
+    key = _scoped_op_key(user_sub, operation_id)
+    _KASTEN_OPERATIONS[key] = (time.monotonic(), value)
+    _KASTEN_OPERATIONS.move_to_end(key)
     while len(_KASTEN_OPERATIONS) > _KASTEN_OP_MAX_RECORDS:
-        old_id, _ = _KASTEN_OPERATIONS.popitem(last=False)
-        old_task = _KASTEN_OP_TASKS.pop(old_id, None)
+        old_key, _ = _KASTEN_OPERATIONS.popitem(last=False)
+        old_task = _KASTEN_OP_TASKS.pop(old_key, None)
         if old_task and not old_task.done():
             old_task.cancel()
 
 
-def _kasten_op_get(operation_id: str) -> dict[str, Any] | None:
-    record = _KASTEN_OPERATIONS.get(operation_id)
+def _kasten_op_get(user_sub: str, operation_id: str) -> dict[str, Any] | None:
+    key = _scoped_op_key(user_sub, operation_id)
+    record = _KASTEN_OPERATIONS.get(key)
     if not record:
         return None
     ts, value = record
     if time.monotonic() - ts > _KASTEN_OP_TTL_SECONDS:
-        _KASTEN_OPERATIONS.pop(operation_id, None)
-        _KASTEN_OP_TASKS.pop(operation_id, None)
+        _KASTEN_OPERATIONS.pop(key, None)
+        _KASTEN_OP_TASKS.pop(key, None)
         return None
-    _KASTEN_OPERATIONS.move_to_end(operation_id)
+    _KASTEN_OPERATIONS.move_to_end(key)
     return value
 
 
-def _store_kasten_op_result(task: asyncio.Task, *, operation_id: str) -> None:
+def _store_kasten_op_result(
+    task: asyncio.Task, *, user_sub: str, operation_id: str
+) -> None:
     try:
         result = task.result()
     except IdempotencyConflict:
@@ -98,8 +119,8 @@ def _store_kasten_op_result(task: asyncio.Task, *, operation_id: str) -> None:
             "operation_id": operation_id,
             "error": str(exc),
         }
-    _kasten_op_put(operation_id, result)
-    _KASTEN_OP_TASKS.pop(operation_id, None)
+    _kasten_op_put(user_sub, operation_id, result)
+    _KASTEN_OP_TASKS.pop(_scoped_op_key(user_sub, operation_id), None)
 
 
 def _is_uuid(value: str | None) -> bool:
@@ -486,7 +507,8 @@ async def create_sandbox(
                 persist=True,
             )
 
-        existing = _kasten_op_get(operation_id)
+        user_sub = str(user["sub"])
+        existing = _kasten_op_get(user_sub, operation_id)
         if existing is not None:
             return JSONResponse(
                 existing,
@@ -500,10 +522,12 @@ async def create_sandbox(
             "operation_id": operation_id,
             "status_url": f"/api/rag/sandboxes/operations/{operation_id}",
         }
-        _kasten_op_put(operation_id, accepted)
-        _KASTEN_OP_TASKS[operation_id] = task
+        _kasten_op_put(user_sub, operation_id, accepted)
+        _KASTEN_OP_TASKS[_scoped_op_key(user_sub, operation_id)] = task
         task.add_done_callback(
-            lambda t: _store_kasten_op_result(t, operation_id=operation_id)
+            lambda t: _store_kasten_op_result(
+                t, user_sub=user_sub, operation_id=operation_id
+            )
         )
         return JSONResponse(
             accepted,
@@ -595,8 +619,14 @@ async def create_kasten_operation_status(
     but reads the create-Kasten store. Auth-gated like every other sandbox
     route. The two-segment path ``sandboxes/operations/{id}`` cannot collide
     with the single-segment ``sandboxes/{sandbox_id}`` route.
+
+    SECURITY (P1, Codex review #3261718805): the lookup is scoped to the
+    authenticated subject, so a user can only ever poll their OWN operation
+    even if they guess/replay another user's operation_id (which can be a
+    plain Kasten name). A foreign id resolves to a different scoped key →
+    404, never a cross-tenant payload read.
     """
-    result = _kasten_op_get(operation_id)
+    result = _kasten_op_get(str(user["sub"]), operation_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Operation not found")
     status_code = 202 if result.get("status") == "accepted" else 200

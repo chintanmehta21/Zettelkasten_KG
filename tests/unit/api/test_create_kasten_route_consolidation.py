@@ -260,3 +260,52 @@ def test_poll_unknown_operation_is_404(monkeypatch):
     client = _app_client(monkeypatch, rag_repo)
     resp = client.get("/api/rag/sandboxes/operations/does-not-exist")
     assert resp.status_code == 404
+
+
+# ── P1 regression (Codex review #3261718805): cross-tenant op-store leak ──
+
+
+def test_op_store_is_tenant_scoped_no_cross_user_leak():
+    """The async create-Kasten op store MUST be keyed by the authenticated
+    subject, not by ``operation_id`` alone (which can be a user-supplied
+    Kasten name). Two users using the SAME operation_id must NOT see each
+    other's record, and each must still read their own."""
+    user_a = "f2105544-b73d-4946-8329-096d82f070d3"
+    user_b = "00000000-0000-0000-0000-0000000000bb"
+    op = "My Research"  # same name → same operation_id for both users
+
+    sandbox_routes._kasten_op_put(user_a, op, {"status": "accepted", "who": "A"})
+    sandbox_routes._kasten_op_put(user_b, op, {"status": "done", "who": "B"})
+
+    a = sandbox_routes._kasten_op_get(user_a, op)
+    b = sandbox_routes._kasten_op_get(user_b, op)
+    assert a is not None and a["who"] == "A", "user A must read their own op"
+    assert b is not None and b["who"] == "B", "user B must read their own op"
+    assert a is not b and a["who"] != b["who"], "records must be isolated"
+
+    # A user who never created this op (or replays another's id) sees nothing.
+    assert sandbox_routes._kasten_op_get("11111111-1111-1111-1111-111111111111", op) is None
+    # Distinct scoped keys actually exist in the store (not one shared key).
+    assert sandbox_routes._scoped_op_key(user_a, op) != sandbox_routes._scoped_op_key(user_b, op)
+    assert len(sandbox_routes._KASTEN_OPERATIONS) == 2
+
+
+def test_poll_endpoint_cannot_read_another_users_operation(monkeypatch):
+    """End-to-end: user B polling user A's operation_id gets 404, never A's
+    payload (the P1 cross-tenant read path)."""
+    rag_repo = MagicMock()
+    app = _build_app(monkeypatch, rag_repo)
+
+    # Seed an operation owned by user A directly in the store.
+    user_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    sandbox_routes._kasten_op_put(
+        user_a, "shared-name", {"status": "done", "secret": "A-only"}
+    )
+
+    # The app's auth override returns NARUTO (≠ user_a) — i.e. "user B".
+    with TestClient(app) as client:
+        resp = client.get("/api/rag/sandboxes/operations/shared-name")
+    assert resp.status_code == 404, (
+        "polling another user's operation_id must 404, not leak their payload"
+    )
+    assert "A-only" not in resp.text
