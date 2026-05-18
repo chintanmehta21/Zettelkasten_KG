@@ -1,4 +1,4 @@
-﻿"""Chunking strategies for RAG ingestion."""
+"""Chunking strategies for RAG ingestion."""
 
 from __future__ import annotations
 

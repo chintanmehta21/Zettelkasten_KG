@@ -1,4 +1,4 @@
-﻿"""Post-generation answer verification."""
+"""Post-generation answer verification."""
 
 from __future__ import annotations
 

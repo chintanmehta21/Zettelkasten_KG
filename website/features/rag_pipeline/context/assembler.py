@@ -1,4 +1,4 @@
-﻿"""Context assembly for grounded generation."""
+"""Context assembly for grounded generation."""
 
 from __future__ import annotations
 

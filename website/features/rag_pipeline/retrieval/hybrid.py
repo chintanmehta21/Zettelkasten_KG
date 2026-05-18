@@ -1,4 +1,4 @@
-﻿"""Hybrid retrieval over Supabase RPCs."""
+"""Hybrid retrieval over Supabase RPCs."""
 
 from __future__ import annotations
 

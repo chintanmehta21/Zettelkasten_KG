@@ -1,4 +1,4 @@
-﻿"""Sandbox and node-picker routes for the user-level RAG experience.
+"""Sandbox and node-picker routes for the user-level RAG experience.
 
 Phase 4.4 (DB v2 purge) — kasten CRUD dual-path:
  * list/create/delete kastens, list-zettels-in-kasten, and add-zettels-to-kasten
