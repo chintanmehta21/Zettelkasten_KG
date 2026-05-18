@@ -72,6 +72,14 @@ _STRUCTURAL_QUERY_LIMIT = 5000
 # neighbour set is an acceptable bounded approximation.
 _AA_NEIGHBOUR_CAP = 500
 
+# Hard cap on the workspace-node row scan for the metadata-embedding kNN
+# fallback (see ``_metadata_embedding_candidates``). The fallback ONLY fires
+# when ``kg.match_kg_nodes`` returns nothing (a chunk-mention-less / cold
+# workspace), and the scan is one workspace-fenced index-backed SELECT
+# returning just ``(id, metadata->embedding)``; the cap keeps the per-node
+# cost a small bounded constant even on the 10k+ target.
+_METADATA_KNN_SCAN_CAP = 2000
+
 
 def _top_k() -> int:
     try:
@@ -431,6 +439,94 @@ def score_edge(
     return strength, matched_via
 
 
+def _metadata_embedding_candidates(
+    *,
+    workspace_id: UUID,
+    node_id: int,
+    node_embedding: list[float],
+    k: int,
+    supabase_client,
+) -> list[dict]:
+    """Workspace-fenced node↔node kNN over ``kg.kg_nodes.metadata.embedding``.
+
+    Fallback candidate selector used ONLY when ``kg.match_kg_nodes`` returns
+    nothing. That RPC scores similarity off ``content.canonical_chunks``
+    reached via ``kg.chunk_node_mentions``; a workspace whose nodes were
+    upserted WITHOUT chunk mentions (or whose chunks have NULL embeddings —
+    observed live for Naruto: 0 chunk_node_mentions, 19 chunks all
+    embedding-NULL) therefore has NO discoverable peers via the RPC even
+    though every node carries a valid 768-d ``metadata.embedding``. This
+    fallback closes that gap by computing cosine directly over the stored
+    node-metadata vectors, so the D-KG-1 edge-create path produces edges on
+    a chunk-mention-less / cold workspace exactly as it does on a normal one.
+
+    Returns the same shape ``find_similar_nodes`` returns —
+    ``[{"node_id": int, "score": float in [0,1]}]`` sorted by descending
+    cosine — so the caller is unchanged. Workspace isolation: the SELECT is
+    fenced to ``workspace_id`` (a peer from another tenant can never appear);
+    the row scan is hard-capped (``_METADATA_KNN_SCAN_CAP``) so the per-node
+    cost stays a bounded constant on the 10k+ target. Never raises — any
+    failure degrades to ``[]`` (== today's behaviour, no edges) so the
+    fire-and-forget hook stays a no-op on failure.
+    """
+    if not node_embedding:
+        return []
+    try:
+        import math as _math
+
+        resp = (
+            supabase_client.schema("kg")
+            .table("kg_nodes")
+            .select("id,metadata")
+            .eq("workspace_id", str(workspace_id))
+            .limit(_METADATA_KNN_SCAN_CAP)
+            .execute()
+        )
+        rows = list(resp.data or [])
+    except Exception as exc:
+        logger.warning(
+            "kg-populate metadata-knn fallback select failed (degrading): %s",
+            exc,
+        )
+        return []
+
+    qa = [float(x) for x in node_embedding]
+    na = _math.sqrt(sum(v * v for v in qa))
+    if na <= 0.0:
+        return []
+
+    scored: list[tuple[float, int]] = []
+    for r in rows:
+        try:
+            rid = int(r["id"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if rid == int(node_id):
+            continue
+        meta = r.get("metadata") or {}
+        emb = meta.get("embedding") or []
+        if not emb or len(emb) != len(qa):
+            continue
+        try:
+            vb = [float(x) for x in emb]
+        except (TypeError, ValueError):
+            continue
+        nb = _math.sqrt(sum(v * v for v in vb))
+        if nb <= 0.0:
+            continue
+        dot = sum(a * b for a, b in zip(qa, vb))
+        cos = dot / (na * nb)
+        # Map real cosine [-1,1] -> [0,1] to match the RPC's score domain
+        # (the scorer kernel re-derives its own embedding signal from the
+        # raw vectors; this score is only used for candidate ordering and
+        # the optional rpc_score fallback path, never as the final signal).
+        score = max(0.0, min(1.0, (cos + 1.0) / 2.0))
+        scored.append((score, rid))
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return [{"node_id": rid, "score": s} for s, rid in scored[:k]]
+
+
 def _score_and_upsert_edges_for_node(
     *,
     workspace_id: UUID,
@@ -477,6 +573,27 @@ def _score_and_upsert_edges_for_node(
     candidates = [
         c for c in candidates if int(c.get("node_id", -1)) != node_id
     ][:k]
+
+    # FALLBACK: ``kg.match_kg_nodes`` scores similarity off
+    # ``content.canonical_chunks`` via ``kg.chunk_node_mentions``. A
+    # workspace whose nodes were upserted WITHOUT chunk mentions (or whose
+    # chunks have NULL embeddings) yields ZERO RPC candidates even though
+    # every node has a valid ``metadata.embedding`` (observed live: Naruto
+    # ws fc336067…, 10 nodes, 0 chunk_node_mentions → 0 edges). When the RPC
+    # finds nothing, discover peers by node↔node cosine over the stored
+    # node-metadata vectors instead. Workspace-fenced + bounded; the live
+    # hook's primary RPC path/contract is untouched (this only runs when the
+    # RPC returned nothing, so a chunk-backed workspace behaves exactly as
+    # before).
+    if not candidates:
+        candidates = _metadata_embedding_candidates(
+            workspace_id=workspace_id,
+            node_id=node_id,
+            node_embedding=node_embedding,
+            k=k,
+            supabase_client=supabase_client,
+        )
+
     metrics["candidates"] = len(candidates)
 
     if not candidates:

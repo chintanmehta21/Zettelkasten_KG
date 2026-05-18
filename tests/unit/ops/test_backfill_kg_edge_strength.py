@@ -53,9 +53,14 @@ class _Query:
         self._gt = {}
         self._is_null = set()
         self._limit = None
+        self._sel = ""
 
-    def select(self, *_a, **_k):
+    def select(self, *cols, **_k):
         self._op = "select"
+        # Record the projected columns so the fake can mirror the real
+        # PostgREST shape (id-only node-batch cursor vs id+metadata scans)
+        # and tests can distinguish the two.
+        self._sel = ",".join(str(c) for c in cols) if cols else ""
         return self
 
     def upsert(self, payload, **_k):
@@ -108,6 +113,11 @@ class _Query:
                 self._limit,
             )
         )
+        # Parallel list (positionally aligned with .calls) carrying the
+        # projected columns, so a test can isolate the id-only node-batch
+        # cursor from the id+metadata fallback scan without widening the
+        # long-standing 8-tuple unpacked across the rest of the suite.
+        self._c.selects.append(self._sel)
         if self._op == "upsert":
             self._c.writes.append(
                 (self._schema, self._table, self._op, self._payload)
@@ -152,6 +162,7 @@ class _RpcQuery:
 class FakeClient:
     def __init__(self):
         self.calls = []
+        self.selects = []  # projected columns, aligned 1:1 with .calls
         self.writes = []
         self.updates = []  # kg_nodes metadata (cold-embedding) updates
         self.rpc_calls = []
@@ -248,6 +259,20 @@ class FakeClient:
                     return _Resp(
                         [n for n in ws_nodes if n["id"] == id_f][
                             : (q._limit or 1)
+                        ]
+                    )
+                # (e) metadata-embedding kNN fallback scan: ws-fenced,
+                # no id filter, projects id+metadata (NOT the id-only
+                # node-batch cursor). Return full node rows so the
+                # in-Python cosine fallback can see embeddings.
+                if "metadata" in (q._sel or ""):
+                    rows = list(ws_nodes)
+                    if q._limit is not None:
+                        rows = rows[: q._limit]
+                    return _Resp(
+                        [
+                            {"id": r["id"], "metadata": r.get("metadata", {})}
+                            for r in rows
                         ]
                     )
                 # (b) node-batch fetch: gt(id) cursor + order + limit.
@@ -602,6 +627,83 @@ def test_create_missing_requires_profile():
     assert [w for w in c.writes if w[2] == "upsert"] == []
 
 
+def test_create_missing_metadata_knn_fallback_when_rpc_empty(_patch_embed):
+    """Reproduces the live Naruto defect + proves the fix.
+
+    Shape observed live (ws fc336067…): 10 kg_nodes each with a valid
+    stored ``metadata.embedding``, ZERO kg_edges, ZERO chunk_node_mentions,
+    and the source chunks' ``content.canonical_chunks.embedding`` all NULL —
+    so ``kg.match_kg_nodes`` (which scores similarity through
+    chunk_node_mentions -> canonical_chunks) returns ``[]`` for every node.
+    Before the fix that meant ``candidates=0`` -> ``edges_created=0``
+    (the operator's "no connections despite many Zettels").
+
+    With the node-metadata-embedding kNN fallback, an empty RPC result
+    falls back to node<->node cosine over the stored metadata vectors, so
+    peers ARE discovered and D-KG-1 edges are created. ``_node`` stores a
+    768-d embedding; two same-embedding nodes -> cosine 1.0 -> strong edge.
+    """
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(100), _node(200)]
+    c.edges[_WS_A] = []
+    # The exact failure trigger: RPC yields NOTHING (no chunk mentions /
+    # NULL chunk embeddings upstream). No chunk_node_mentions seeded either.
+    c.rpc_data["match_kg_nodes"] = []
+
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0
+    edge_writes = [
+        w for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"
+    ]
+    # Fallback discovered the workspace peer -> at least one edge created.
+    assert len(edge_writes) >= 1, (
+        "metadata-knn fallback must create edges when match_kg_nodes is "
+        "empty (the live Naruto no-connections defect)"
+    )
+    p = edge_writes[0][3]
+    assert p["workspace_strength"] >= bf_creation_threshold()
+    assert str(p["workspace_id"]) == _WS_A  # workspace isolation preserved
+    # The fallback ran a ws-fenced id+metadata scan (NOT cross-tenant).
+    knn_scans = [
+        filt
+        for (s, t, op, _pp, filt, _gt, _isn, _lim), sel in zip(
+            c.calls, c.selects
+        )
+        if s == "kg" and t == "kg_nodes" and op == "select"
+        and "metadata" in (sel or "") and "id" not in filt
+    ]
+    assert knn_scans and all(
+        f.get("workspace_id") == _WS_A for f in knn_scans
+    )
+
+
+def test_create_missing_metadata_knn_fallback_is_tenant_fenced(_patch_embed):
+    """The fallback must never pull a peer from another workspace.
+
+    Workspace B has a node whose embedding would match A's query, but the
+    fallback's SELECT is fenced to A's workspace_id, so B's node can never
+    become a candidate / edge endpoint.
+    """
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(100), _node(200)]
+    c.nodes[_WS_B] = [_node(900)]  # would match by embedding if unfenced
+    c.edges[_WS_A] = []
+    c.edges[_WS_B] = []
+    c.rpc_data["match_kg_nodes"] = []  # force the fallback
+
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0
+    edge_writes = [
+        w[3] for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"
+    ]
+    assert edge_writes  # edges were created for A
+    endpoints = {
+        e["src_node_id"] for e in edge_writes
+    } | {e["dst_node_id"] for e in edge_writes}
+    assert 900 not in endpoints  # B's node never crossed the fence
+    assert all(str(e["workspace_id"]) == _WS_A for e in edge_writes)
+
+
 def test_create_missing_creates_edges_for_edgeless_nodes(_patch_embed):
     c = _seed_two_node_edgeless_workspace()
     rc = bf._run(_cm_args(workspace=_WS_A), c, None)
@@ -820,12 +922,18 @@ def test_create_missing_limit_caps_nodes_processed(_patch_embed):
     c.edges[_WS_A] = []
     c.rpc_data["match_kg_nodes"] = []  # no candidates -> 0 edges, still counts
     bf._run(_cm_args(workspace=_WS_A, batch_size=200, limit=5), c, None)
-    # Node-batch fetches must never exceed the cap; <=5 nodes considered.
+    # Node-batch fetches (the id-only resumable cursor) must never exceed
+    # the cap; <=5 nodes considered. The id+metadata kNN fallback scan is a
+    # SEPARATE bounded read (its own _METADATA_KNN_SCAN_CAP) and is excluded
+    # here via the projected-columns list (aligned 1:1 with c.calls).
     node_fetches = [
         lim
-        for (s, t, op, _p, filt, _gt, _isn, lim) in c.calls
+        for (s, t, op, _p, filt, _gt, _isn, lim), sel in zip(
+            c.calls, c.selects
+        )
         if s == "kg" and t == "kg_nodes" and op == "select"
         and "id" not in filt and "workspace_id" in filt
+        and "metadata" not in (sel or "")
     ]
     assert node_fetches and all(
         lim is not None and lim <= 5 for lim in node_fetches
