@@ -48,6 +48,15 @@ class CanonicalUpsertResult(BaseModel):
     was_new: bool
 
 
+class CanonicalLookupResult(BaseModel):
+    canonical_zettel_id: UUID
+    source_type: str
+    title: str | None = None
+    ai_summary: str | None = None
+    ai_summary_engine_version: str | None = None
+    user_tags: list[str] = Field(default_factory=list)
+
+
 class QuotaDebitRequest(BaseModel):
     workspace_id: UUID
     feature: str

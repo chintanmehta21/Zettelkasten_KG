@@ -10,6 +10,7 @@ from supabase import Client
 from website.core.supabase_v2.client import get_v2_client
 from website.core.supabase_v2.models import (
     CanonicalChunkCreate,
+    CanonicalLookupResult,
     CanonicalUpsertResult,
     CanonicalZettelCreate,
     SearchChunkResult,
@@ -70,6 +71,43 @@ class ContentRepository:
             canonical_zettel_id=canonical_id,
             workspace_zettel_id=workspace_zettel_id,
             was_new=was_new,
+        )
+
+    def find_canonical_by_url(
+        self, normalized_url: str
+    ) -> CanonicalLookupResult | None:
+        """Return the canonical for ``normalized_url`` plus one existing
+        ai_summary envelope (any workspace's — engine output is identical),
+        or None. Read-only; backed by UNIQUE(normalized_url)."""
+        cz = (
+            self._client.schema("content")
+            .table("canonical_zettels")
+            .select("id, source_type, title")
+            .eq("normalized_url", normalized_url)
+            .limit(1)
+            .execute()
+        )
+        if not cz.data:
+            return None
+        row = _first(cz.data)
+        canonical_id = UUID(str(row["id"]))
+        wz = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("ai_summary, ai_summary_engine_version, user_tags")
+            .eq("canonical_zettel_id", str(canonical_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        wrow = (_first(wz.data) if wz.data else None) or {}
+        return CanonicalLookupResult(
+            canonical_zettel_id=canonical_id,
+            source_type=str(row.get("source_type") or "web"),
+            title=row.get("title"),
+            ai_summary=wrow.get("ai_summary"),
+            ai_summary_engine_version=wrow.get("ai_summary_engine_version") or "",
+            user_tags=list(wrow.get("user_tags") or []),
         )
 
     def upsert_chunks(
