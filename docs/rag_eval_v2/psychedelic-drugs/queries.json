@@ -10,9 +10,10 @@
     "expected_citation_key_note": "expected_primary_citation values are case-insensitive title substrings. The harness resolves each to a canonical_zettel_id via list_kasten_zettels title match, then matches answers (whose Citation.node_id is a canonical_chunk_id) after remapping chunk_id -> canonical_zettel_id.",
     "source_type_breakdown": {
       "youtube": 3,
-      "reddit": 2,
-      "web": 3
+      "reddit": 4,
+      "web": 1
     },
+    "link_set_note": "2 medium.com essays (humanparts 'LSD/Tibetan Buddhism cosmic joke', cosmocat27 'Awakening from the Meaning Crisis') were unreachable server-side (anti-bot) and replaced with reachable r/IAmA + r/philosophy threads from kasten1.md. q5/q6/q7/q10 gold rewritten to the new on-topic Reddit sources; 3 source types preserved (youtube/reddit/arxiv), 8 links.",
     "ci_gates_summary": {
       "end_to_end_gold_at_1_min": 0.6,
       "synthesizer_grounding_min": 0.85,
@@ -61,13 +62,13 @@
       "qid": "q5",
       "class": "multi_hop",
       "tests": "explicit 2-zettel synthesis — names the two zettels to combine so partials are diagnosable as retriever failures",
-      "text": "The consciousness 'XOR theory' Reddit thread and the Vervaeke 'meaning crisis higher states' summary both touch on how psychedelics change the structure of awareness. How would the XOR-theory framing explain the higher-state experiences Vervaeke describes?",
+      "text": "The consciousness 'XOR theory' Reddit thread and the r/philosophy 'what does philosophy reddit know about drugs' thread both touch on how psychedelics change the structure of awareness and knowledge. How would the XOR-theory framing explain the shifts in awareness the philosophy thread attributes to psychedelics?",
       "expected_primary_citation": [
         "XOR",
-        "Awakening from the Meaning Crisis"
+        "philosophy reddit know about drugs"
       ],
       "expected_minimum_citations": 2,
-      "ground_truth": "The XOR-theory framing treats ordinary perception as a constrained, mutually-exclusive selection over possible realities; psychedelics relax that exclusivity. Vervaeke's higher states (a widened, self-transcending mode of knowing) map onto this as the XOR constraint loosening, letting normally-filtered aspects of awareness co-occur, which is experienced as expanded meaning and reduced ego-bound selection."
+      "ground_truth": "The XOR-theory framing treats ordinary perception as a constrained, mutually-exclusive selection over possible realities; psychedelics relax that exclusivity. The philosophy-drugs thread's discussion of psychedelics altering perception, ego, and what counts as knowledge maps onto this as the XOR constraint loosening — normally-filtered aspects of awareness co-occur, experienced as expanded perspective and reduced ego-bound selection."
     },
     {
       "qid": "q6",
@@ -78,11 +79,11 @@
         "Scientific Problem Solving with Psychedelics",
         "Neural Correlates of the DMT Experience",
         "XOR",
-        "Awakening from the Meaning Crisis",
-        "cosmic-joke"
+        "philosophy reddit know about drugs",
+        "certainty"
       ],
       "expected_minimum_citations": 4,
-      "ground_truth": "Themes: (1) psychedelics as a deliberate problem-solving / insight tool (Fadiman); (2) the altered state has measurable neural correlates, not just subjective report (DMT arXiv); (3) they relax the perceptual selection that defines ordinary reality (XOR theory); (4) they can induce self-transcending higher states tied to meaning (Vervaeke); (5) the LSD/Buddhism essay frames insight as seeing through the constructed, 'cosmic joke' nature of the self."
+      "ground_truth": "Themes: (1) psychedelics as a deliberate problem-solving / insight tool (Fadiman); (2) the altered state has measurable neural correlates, not just subjective report (DMT arXiv); (3) they relax the perceptual selection that defines ordinary reality (XOR theory); (4) the r/philosophy 'what does philosophy reddit know about drugs' thread treats psychedelic experience as philosophically relevant to perception, ego, and knowledge; (5) the 'disrupt the certainty of truth' philosophy thread frames a powerful experience as eroding epistemic certainty about what is real."
     },
     {
       "qid": "q7",
@@ -90,12 +91,12 @@
       "tests": "abstract-from-concrete reasoning — picks an abstraction and asks where else it appears",
       "text": "Several of these zettels suggest psychedelics destabilize a person's sense of a fixed self or fixed reality. Which zettels make that argument, and how does each one frame the destabilization?",
       "expected_primary_citation": [
-        "cosmic-joke",
         "XOR",
-        "certainty"
+        "certainty",
+        "philosophy reddit know about drugs"
       ],
       "expected_minimum_citations": 2,
-      "ground_truth": "The LSD/Tibetan-Buddhism essay frames it as seeing the self as an empty, constructed 'cosmic joke'; the XOR-theory thread frames it as collapsing the exclusive selection that builds a single reality; the 'disrupt the certainty of truth' philosophy thread frames it as eroding epistemic certainty about what is real."
+      "ground_truth": "The XOR-theory thread frames it as collapsing the exclusive selection that builds a single reality; the 'disrupt the certainty of truth' philosophy thread frames it as eroding epistemic certainty about what is real; the r/philosophy 'what does philosophy reddit know about drugs' thread frames it as drug experiences unsettling assumptions about perception, the self, and what can be known."
     },
     {
       "qid": "q8",
@@ -118,11 +119,11 @@
     {
       "qid": "q10",
       "class": "lookup",
-      "tests": "web essay — named-concept extraction (LSD / Tibetan Buddhism)",
-      "text": "In the 'LSD, Tibetan Buddhism, and the Cosmic Joke of Being' essay, what is the 'cosmic joke' and what realization is it pointing at?",
-      "expected_primary_citation": "cosmic-joke",
+      "tests": "Reddit first-person AMA — direct experiential account extraction",
+      "text": "In the r/IAmA 'I did Heroin yesterday' first-person thread, how does the poster describe the drug experience and their reasons or framing for trying it?",
+      "expected_primary_citation": "Heroin yesterday",
       "expected_minimum_citations": 1,
-      "ground_truth": "The 'cosmic joke' is the realization that the separate, solid self one defends so seriously is empty/constructed — the punchline being that there was never a fixed self to protect; LSD and Buddhist practice are framed as two routes to glimpsing this same insight."
+      "ground_truth": "It is a first-person, non-habitual-user account: the poster describes trying the drug out of curiosity and reports the subjective effects and their reflections in the AMA, distinguishing a one-off experiential use from regular drug use rather than offering clinical or pharmacological claims."
     },
     {
       "qid": "q11",

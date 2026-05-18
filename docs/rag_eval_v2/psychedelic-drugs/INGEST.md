@@ -3,7 +3,7 @@
 The harness does **not** ingest. The operator runs this once, then runs the
 offline harness (`docs/rag_eval_v2/scripts/run_eval_v2.py`).
 
-## Curated links (8, >=4 source types)
+## Curated links (8, 3 source types)
 
 | # | source_type | url |
 |---|---|---|
@@ -12,14 +12,21 @@ offline harness (`docs/rag_eval_v2/scripts/run_eval_v2.py`).
 | 3 | youtube | https://www.youtube.com/watch?v=eOGG_5FzlJ4 |
 | 4 | reddit  | https://www.reddit.com/r/consciousness/comments/1izjzk0/if_psychedelics_alter_the_perception_of/ |
 | 5 | reddit  | https://www.reddit.com/r/philosophy/comments/1fzo0f4/psychedelic_experiences_disrupt_the_certainty_of/ |
-| 6 | web/medium | https://humanparts.medium.com/lsd-tibetan-buddhism-and-the-cosmic-joke-of-being-4806b94bbd99 |
-| 7 | web/medium | https://cosmocat27.medium.com/summary-of-awakening-from-the-meaning-crisis-by-john-vervaeke-chapter-11-12-higher-states-of-1a2806d59b9b |
+| 6 | reddit  | https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/ |
+| 7 | reddit  | https://www.reddit.com/r/philosophy/comments/9il3p/what_does_philosophy_reddit_know_about_drugs/ |
 | 8 | web/arxiv | https://arxiv.org/abs/2011.08892 |
 
+Link-set change (Defect 4 fix): the 2 medium.com essays (`humanparts`
+LSD/Tibetan-Buddhism cosmic-joke, `cosmocat27` Awakening-from-the-Meaning-
+Crisis) were unreachable server-side (medium anti-bot) and are replaced with
+two reachable, extractor-handled Reddit threads from `kasten1.md`
+(`r/IAmA 9ke63`, `r/philosophy 9il3p`). `queries.json` q5/q6/q7/q10 gold was
+rewritten to the new sources. 3 source types (youtube/reddit/arxiv), 8 links.
+
 Excluded from `kasten1.md`: every `google.com/search?q=` redirect-wrapper
-(items Others 2-5), the two non-curated Reddit/Web items, and the
+(items Others 2-5), the unreachable Medium items, and the
 `psychedelicspotlight.com` / `microdosinginstitute.com` thin-content pages —
-per the Phase E curation rule (direct YouTube/Reddit/Medium/arXiv only).
+per the Phase E curation rule (direct YouTube/Reddit/arXiv only).
 
 ## Exact operator command (Git Bash, repo root)
 
@@ -46,8 +53,8 @@ python -m website.api.module_runners.create_kasten \
   --links https://www.youtube.com/watch?v=eOGG_5FzlJ4 \
   --links https://www.reddit.com/r/consciousness/comments/1izjzk0/if_psychedelics_alter_the_perception_of/ \
   --links https://www.reddit.com/r/philosophy/comments/1fzo0f4/psychedelic_experiences_disrupt_the_certainty_of/ \
-  --links https://humanparts.medium.com/lsd-tibetan-buddhism-and-the-cosmic-joke-of-being-4806b94bbd99 \
-  --links https://cosmocat27.medium.com/summary-of-awakening-from-the-meaning-crisis-by-john-vervaeke-chapter-11-12-higher-states-of-1a2806d59b9b \
+  --links https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and/ \
+  --links https://www.reddit.com/r/philosophy/comments/9il3p/what_does_philosophy_reddit_know_about_drugs/ \
   --links https://arxiv.org/abs/2011.08892 \
   --load-env
 ```

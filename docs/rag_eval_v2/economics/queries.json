@@ -11,10 +11,12 @@
     "source_type_breakdown": {
       "youtube": 3,
       "reddit": 2,
-      "web": 2,
+      "web": 1,
+      "hackernews": 1,
       "github": 1,
       "substack": 1
     },
+    "link_set_note": "The medium.com 'Microeconomics of the Dark Web' essay was unreachable server-side (anti-bot, 403) and replaced with the reachable Hacker News 'Government Cheese Caves' thread from kasten2.md (on-topic: economics of state intervention/surplus). q5 rewritten to that HN source; q7/q8 citations updated. 6 source types preserved (youtube/reddit/arxiv/hackernews/github/substack), 9 links.",
     "ci_gates_summary": {
       "end_to_end_gold_at_1_min": 0.6,
       "synthesizer_grounding_min": 0.85,
@@ -62,11 +64,11 @@
     {
       "qid": "q5",
       "class": "lookup",
-      "tests": "web essay — dark-web microeconomics named mechanisms",
-      "text": "In 'The Microeconomics of the Dark Web', what economic mechanisms does it identify that let dark-web markets function despite anonymity and lack of legal enforcement?",
-      "expected_primary_citation": "Dark Web",
+      "tests": "Hacker News thread — government cheese / surplus-intervention economics",
+      "text": "In the Hacker News 'Government Cheese Caves' thread, what is the economic story behind the U.S. government cheese stockpile — why did it accumulate and what does the discussion say it illustrates about market intervention?",
+      "expected_primary_citation": "Government Cheese",
       "expected_minimum_citations": 1,
-      "ground_truth": "Reputation systems and buyer reviews substitute for legal trust; escrow services reduce counterparty risk; vendor branding and exit-scam risk shape pricing; and competition plus information asymmetry drive the market structure — classic microeconomics adapted to an anonymous, unenforceable setting."
+      "ground_truth": "The thread explains the cheese caves as a consequence of dairy price supports / subsidies: guaranteeing prices induced overproduction the government then had to buy and warehouse, creating a large surplus stockpile. The discussion uses it as a case study of how price-support intervention distorts supply and produces costly, hard-to-unwind surpluses."
     },
     {
       "qid": "q6",
@@ -87,25 +89,25 @@
       "text": "Across these zettels, what is the implicit theory of how trust, information, or confidence holds an economic system together? Cite at least four sources.",
       "expected_primary_citation": [
         "Petrodollar",
-        "Dark Web",
+        "Government Cheese",
         "1991 Crisis",
         "Inca",
         "Tulip Mania"
       ],
       "expected_minimum_citations": 4,
-      "ground_truth": "Themes: (1) the petrodollar rests on sustained confidence in the dollar; (2) dark-web markets manufacture trust via reputation/escrow absent law; (3) the 1991 crisis shows confidence collapse (reserves, creditor trust) forcing reform; (4) the Inca system substituted state organization and recorded accounting (quipu) for market trust; (5) Tulip Mania shows confidence-driven feedback creating and destroying value."
+      "ground_truth": "Themes: (1) the petrodollar rests on sustained confidence in the dollar; (2) the government-cheese stockpile shows how price-support intervention distorts supply and accumulates costly surpluses; (3) the 1991 crisis shows confidence collapse (reserves, creditor trust) forcing reform; (4) the Inca system substituted state organization and recorded accounting (quipu) for market trust; (5) Tulip Mania shows confidence-driven feedback creating and destroying value."
     },
     {
       "qid": "q8",
       "class": "step_back",
-      "tests": "abstract-from-concrete — picks 'systems that work without conventional money/markets' and asks where it appears",
-      "text": "Some zettels describe economies that function without conventional money or open markets. Which zettels are these and what alternative coordination mechanism does each describe?",
+      "tests": "abstract-from-concrete — picks 'allocation steered by the state rather than free price-setting markets' and asks where it appears",
+      "text": "Some zettels describe resource allocation steered by the state rather than by free price-setting markets. Which zettels are these and what coordination mechanism does each describe?",
       "expected_primary_citation": [
         "Inca",
-        "Dark Web"
+        "Government Cheese"
       ],
       "expected_minimum_citations": 2,
-      "ground_truth": "The Inca thread describes a moneyless labor-tax + state redistribution + quipu-accounting system; the dark-web essay describes markets that exist but route around legal money/enforcement using crypto, escrow, and reputation. Both show coordination achieved without conventional money-and-law institutions."
+      "ground_truth": "The Inca thread describes a moneyless labor-tax (mit'a) + state redistribution + quipu-accounting system that coordinates the economy without markets; the Government Cheese Caves thread describes state price-support intervention overriding the dairy market, with the government buying and warehousing the induced surplus. Both show allocation directed by state organization rather than free market price-setting."
     },
     {
       "qid": "q9",
