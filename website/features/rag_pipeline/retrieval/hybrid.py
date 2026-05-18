@@ -113,6 +113,16 @@ _SCORE_RANK_GAP_BYPASS = float(os.environ.get("RAG_SCORE_RANK_GAP_BYPASS", "1.5"
 # iter-12 Task 32 (R2): percentile-derived demote slope; replaces static 0.85 factor.
 _DEMOTE_SLOPE = float(os.environ.get("RAG_SCORE_RANK_DEMOTE_SLOPE", "0.20"))
 
+# E4 Fix F2 (docs/research/e4_component_fix_proposal.md Finding 1): RRF k.
+# 1/(60+rank) flattens small-corpus ranking (rank-1 vs rank-10 span ~13%); a
+# decisive dense hit is washed out by FTS noise. k=24 sharpens top-rank
+# separation. SINGLE SOURCE OF TRUTH for BOTH fusion sites — the SQL RPC
+# p_rrf_k payload AND the Python re-fusion constant read this. Pool size /
+# p_match_count UNCHANGED (respects the iter-03 §B 328 MB memory decision).
+# Composes with Phase-D _gap_adapted_weights (operates on raw channel scores,
+# not k) and K3 _top1_top2_gap (scale-invariant ratio); neither asserts k==60.
+_RRF_K = float(os.environ.get("RAG_RRF_K", "24"))
+
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind  # noqa: E402
 
 # iter-10 P3: score-rank-correlation magnet gate. THEMATIC/STEP_BACK only.
@@ -665,7 +675,7 @@ class HybridRetriever:
                     "p_query_text": query_text,
                     "p_query_embedding": query_vec,
                     "p_match_count": limit,
-                    "p_rrf_k": 60,
+                    "p_rrf_k": _RRF_K,  # E4 F2: single source of truth (env RAG_RRF_K, default 24)
                     # Pass per-source weights through to the SQL fused score so
                     # the legacy ``rrf_score`` column stays meaningful, but the
                     # downstream Python RRF re-fuses with the graph dimension
@@ -1229,7 +1239,9 @@ class HybridRetriever:
         # ranks, NEVER raw scores). Per-source contribution is 0 when the
         # chunk does not appear in that source's ranked list. Per-class weights
         # come from _WEIGHTS_BY_CLASS (passed in by the caller).
-        _RRF_K = 60.0
+        # E4 F2: k now the module-level _RRF_K (env RAG_RRF_K, default 24) so
+        # the SQL RPC p_rrf_k and this Python re-fusion move together. No local
+        # rebind — the references below resolve to the module constant.
         # Phase D P2-4: query-adaptive mixing. Compute each channel's
         # decisiveness from the in-memory pre-fusion data (no extra retrieval),
         # then nudge ONLY the Python RRF weights. The RPC payload weights were

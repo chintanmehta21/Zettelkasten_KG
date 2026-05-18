@@ -154,10 +154,31 @@ def _resolve_members(rag_repo, kasten_id: UUID) -> list[dict]:
     return out
 
 
+def _heuristic_token_count(text: str) -> int:
+    """Mirror website.features.rag_pipeline.ingest.chunker._count_tokens
+    (max(1, len(text)//4)). Used only when content.canonical_chunks.token_count
+    is NULL so the chunking sub-score's budget term has a real value. Inlined
+    (not imported) to keep this offline harness import-light and the chunker
+    heuristic is a one-liner that has been stable across iters."""
+    return max(1, len(text) // 4)
+
+
 def _fetch_chunks_for_zettels(client, canonical_zettel_ids: list[str]) -> dict[str, list[dict]]:
     """Read content.canonical_chunks for the given canonical zettel ids.
 
-    Returns ``{canonical_zettel_id: [{chunk_idx, content, chunk_id}, ...]}``.
+    Returns ``{canonical_zettel_id: [{chunk_idx, content, text, token_count,
+    chunk_id}, ...]}``.
+
+    E4 Fix F1 (docs/research/e4_component_fix_proposal.md Finding 0): the
+    chunking sub-score (component_scorers.chunking_score) reads ``c["text"]``
+    (boundary integrity) and ``c["token_count"]`` (budget compliance). The
+    pre-fix shape only carried ``content``/``chunk_idx`` so budget + boundary
+    were structurally 0 and chunking was capped ~20 REGARDLESS of real chunk
+    quality. We now also SELECT the real ``token_count`` column (it exists in
+    content.canonical_chunks per supabase/website/_v2/02_content_schema.sql)
+    and expose ``text`` (== content) + ``token_count`` (DB value, falling back
+    to the chunker's max(1,len//4) heuristic when the column is NULL).
+
     Read-only select; chunked IN() to keep the URL bounded.
     """
     by_zettel: dict[str, list[dict]] = {z: [] for z in canonical_zettel_ids}
@@ -169,16 +190,25 @@ def _fetch_chunks_for_zettels(client, canonical_zettel_ids: list[str]) -> dict[s
         resp = (
             client.schema("content")
             .table("canonical_chunks")
-            .select("id,canonical_zettel_id,chunk_idx,content")
+            .select("id,canonical_zettel_id,chunk_idx,content,token_count")
             .in_("canonical_zettel_id", ids)
             .execute()
         )
         for row in resp.data or []:
             zid = str(row.get("canonical_zettel_id"))
+            content = row.get("content") or ""
+            raw_tc = row.get("token_count")
+            token_count = (
+                int(raw_tc) if raw_tc not in (None, "")
+                else _heuristic_token_count(content)
+            )
             by_zettel.setdefault(zid, []).append({
                 "chunk_id": str(row.get("id")),
                 "chunk_idx": int(row.get("chunk_idx") or 0),
-                "content": row.get("content") or "",
+                "content": content,
+                # F1: field names component_scorers.chunking_score reads.
+                "text": content,
+                "token_count": token_count,
             })
     for zid in by_zettel:
         by_zettel[zid].sort(key=lambda c: c["chunk_idx"])
@@ -501,8 +531,19 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
     scores_md = ""
     holistic: dict = {}
     if aligned_gold:
+        # E4 F1: feed REAL chunk text + token_count so EvalRunner's chunking
+        # sub-score (component_scorers.chunking_score) computes budget +
+        # boundary on real chunks instead of being capped ~20 by empty stubs.
         chunks_per_node: dict[str, list[dict]] = {
-            z: [{"content": c["content"], "chunk_idx": c["chunk_idx"]} for c in by_zettel.get(z, [])]
+            z: [
+                {
+                    "text": c["text"],
+                    "token_count": c["token_count"],
+                    "content": c["content"],
+                    "chunk_idx": c["chunk_idx"],
+                }
+                for c in by_zettel.get(z, [])
+            ]
             for z in member_zettel_ids
         }
         runner = EvalRunner(weights=weights, weights_hash=weights_hash)

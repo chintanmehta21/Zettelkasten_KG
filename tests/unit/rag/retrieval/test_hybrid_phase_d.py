@@ -19,10 +19,19 @@ import pytest
 from website.features.rag_pipeline.retrieval.hybrid import (
     HybridRetriever,
     _GAP_CLAMP_DELTA,
+    _RRF_K,
     _channel_gap,
     _gap_adapted_weights,
 )
 from website.features.rag_pipeline.types import QueryClass
+
+# E4 F2: the RRF k denominator is now the env-driven module knob (was a
+# hardcoded 60). These identity tests assert Phase-D *behavior* (the static
+# weight is returned float-EXACT), so derive the expected RRF term from the
+# live _RRF_K constant instead of re-hardcoding a magic number. rank-1 -> K+1,
+# rank-2 -> K+2.
+_K1 = _RRF_K + 1.0
+_K2 = _RRF_K + 2.0
 
 
 class _RPCResult:
@@ -193,12 +202,12 @@ def test_dedup_and_fuse_single_channel_only_is_weight_identity():
         sem_weight=0.55, fts_weight=0.20, graph_weight=0.25,
     )
     by_id = {c.node_id: c for c in fused}
-    # Static sem_weight 0.55 unmodified (identity): rrf == 0.55/(60+rank).
+    # Static sem_weight 0.55 unmodified (identity): rrf == 0.55/(K+rank).
     assert by_id["a"].metadata["_base_rrf_score"] == pytest.approx(
-        0.55 * (1.0 / 61.0), abs=1e-12
+        0.55 * (1.0 / _K1), abs=1e-12
     )
     assert by_id["b"].metadata["_base_rrf_score"] == pytest.approx(
-        0.55 * (1.0 / 62.0), abs=1e-12
+        0.55 * (1.0 / _K2), abs=1e-12
     )
 
 
@@ -220,8 +229,8 @@ def test_dedup_and_fuse_two_channels_peaked_shifts_weights():
         sem_weight=0.55, fts_weight=0.20, graph_weight=0.25,
     )
     by_id = {c.node_id: c for c in fused}
-    # Identity baseline for "a": 0.55/(61) + 0.20/(62).
-    identity_a = 0.55 * (1.0 / 61.0) + 0.20 * (1.0 / 62.0)
+    # Identity baseline for "a": 0.55/(K+1) + 0.20/(K+2).
+    identity_a = 0.55 * (1.0 / _K1) + 0.20 * (1.0 / _K2)
     assert by_id["a"].metadata["_base_rrf_score"] > identity_a
     # Both candidates fused (no drop), scores finite & positive.
     assert all(c.metadata["_base_rrf_score"] > 0 for c in fused)
@@ -246,12 +255,12 @@ def test_d4_fallback_only_candidates_use_rrf_basis():
     by_id = {c.node_id: c for c in fused}
     # Pre-D4 these stayed at the cosine 0.92 / 0.40. Post-D4 they fuse on the
     # sem-channel RRF term with synthesized dense rank (1, 2) at default
-    # sem_weight 0.5: 0.5/(61) and 0.5/(62).
+    # sem_weight 0.5: 0.5/(K+1) and 0.5/(K+2).
     assert by_id["fb1"].metadata["_base_rrf_score"] == pytest.approx(
-        0.5 * (1.0 / 61.0), abs=1e-9
+        0.5 * (1.0 / _K1), abs=1e-9
     )
     assert by_id["fb2"].metadata["_base_rrf_score"] == pytest.approx(
-        0.5 * (1.0 / 62.0), abs=1e-9
+        0.5 * (1.0 / _K2), abs=1e-9
     )
     # Ordering preserved (higher cosine -> better synthesized rank -> higher rrf).
     assert (
@@ -275,10 +284,10 @@ def test_d4_does_not_touch_normal_ranked_candidates():
     by_id = {c.node_id: c for c in fused}
     # Pure sem-channel RRF, static identity weight (single channel -> identity).
     assert by_id["n1"].metadata["_base_rrf_score"] == pytest.approx(
-        0.35 * (1.0 / 61.0), abs=1e-12
+        0.35 * (1.0 / _K1), abs=1e-12
     )
     assert by_id["n2"].metadata["_base_rrf_score"] == pytest.approx(
-        0.35 * (1.0 / 62.0), abs=1e-12
+        0.35 * (1.0 / _K2), abs=1e-12
     )
 
 

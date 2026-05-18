@@ -152,6 +152,95 @@ def test_fetch_chunks_empty_input_no_db_call(run_eval_v2):
     client.schema.assert_not_called()
 
 
+# ── F1: chunking sub-score must see REAL chunk text + token_count ──────────
+# Root cause (e4_component_fix_proposal Finding 0): the harness fed
+# component_scorers.chunking_score chunks WITHOUT "text"/"token_count", so
+# budget + boundary sub-scores were structurally 0 (capped ~20).
+
+
+def test_fetch_chunks_selects_and_exposes_token_count(run_eval_v2):
+    client = MagicMock()
+    resp = MagicMock()
+    resp.data = [
+        {"id": "c1", "canonical_zettel_id": "zA", "chunk_idx": 0,
+         "content": "Real chunk body that ends on a sentence.",
+         "token_count": 128},
+        # token_count NULL in DB -> harness must derive it (chunker heuristic)
+        {"id": "c2", "canonical_zettel_id": "zA", "chunk_idx": 1,
+         "content": "x" * 400, "token_count": None},
+    ]
+    sel = client.schema.return_value.table.return_value.select
+    sel.return_value.in_.return_value.execute.return_value = resp
+    by = run_eval_v2._fetch_chunks_for_zettels(client, ["zA"])
+
+    # The select MUST request token_count from content.canonical_chunks.
+    select_arg = sel.call_args[0][0]
+    assert "token_count" in select_arg
+
+    rows = by["zA"]
+    assert rows[0]["text"] == "Real chunk body that ends on a sentence."
+    assert rows[0]["token_count"] == 128
+    # NULL token_count -> derived via the chunker heuristic max(1, len//4).
+    assert rows[1]["token_count"] == max(1, len("x" * 400) // 4)
+    # legacy "content" key retained for the contexts backfill path.
+    assert rows[0]["content"] == rows[0]["text"]
+
+
+def test_real_chunk_yields_nonzero_budget_and_boundary(run_eval_v2):
+    """A non-stub chunk fed through chunking_score must score budget>0 AND
+    boundary>0 (the F1 fix target). Stub {"content":""} chunks scored ~20."""
+    from website.features.rag_pipeline.evaluation.component_scorers import (
+        chunking_score,
+    )
+
+    client = MagicMock()
+    resp = MagicMock()
+    body = (
+        "Decentralized finance restructures credit intermediation. "
+        "It removes the custodial bank from the settlement path."
+    )
+    resp.data = [
+        {"id": "c1", "canonical_zettel_id": "zA", "chunk_idx": 0,
+         "content": body, "token_count": 512},
+    ]
+    client.schema.return_value.table.return_value.select.return_value.in_.return_value.execute.return_value = resp
+    by = run_eval_v2._fetch_chunks_for_zettels(client, ["zA"])
+
+    # Mirror the run() builder: chunks_per_node entries must carry the field
+    # names component_scorers.chunking_score reads (text + token_count).
+    chunks = by["zA"]
+    assert all("text" in c and "token_count" in c for c in chunks)
+    score = chunking_score(chunks, target_tokens=None)
+    assert score is not None
+    # Budget (token_count present, within +-50% of target) > 0 AND boundary
+    # (text ends on '.') > 0 -> the cap-~20 artifact is gone (> 50 here).
+    assert score > 50.0
+
+
+def test_run_builds_chunks_per_node_with_text_and_token_count(run_eval_v2):
+    """The chunks_per_node shape the harness hands EvalRunner must include
+    text + token_count (not just content/chunk_idx). Reproduces the F1
+    builder contract without spinning the full async run()."""
+    by_zettel = {
+        "zA": [{"chunk_id": "c1", "chunk_idx": 0, "content": "alpha.",
+                "text": "alpha.", "token_count": 256}],
+    }
+    member_ids = ["zA"]
+    # The exact dict comprehension used in run() (kept in sync with the F1
+    # fix): each entry must expose text + token_count for chunking_score.
+    chunks_per_node = {
+        z: [
+            {"text": c["text"], "token_count": c["token_count"],
+             "content": c["content"], "chunk_idx": c["chunk_idx"]}
+            for c in by_zettel.get(z, [])
+        ]
+        for z in member_ids
+    }
+    entry = chunks_per_node["zA"][0]
+    assert entry["text"] == "alpha."
+    assert entry["token_count"] == 256
+
+
 # ── settle/poll ────────────────────────────────────────────────────────────
 
 

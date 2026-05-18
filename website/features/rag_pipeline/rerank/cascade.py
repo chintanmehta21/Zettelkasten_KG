@@ -230,10 +230,15 @@ _score_one._tokenizer = None  # type: ignore[attr-defined]
 # rerank weight back to 0.55 and trim graph to 0.30 for THEMATIC. The KG
 # signal stays strong enough to surface true gold (per iter-02's +28.8 lift)
 # while reducing the probability that the probe's tag-overlap edges win.
+# E4 Fix F3 (docs/research/e4_component_fix_proposal.md Finding 2): factoid
+# classes lift cross-encoder weight so a correctly-top-ranked gold is not
+# outvoted by graph+rrf (classic weighted-fusion dilution; scorer is
+# 0.8-weighted on gold top-3/top-5). MULTI_HOP / STEP_BACK stay graph-heavy
+# by Phase-D design (UNCHANGED). Every tuple sums to exactly 1.0.
 _FUSION_WEIGHTS: dict[QueryClass, tuple[float, float, float]] = {
-    QueryClass.LOOKUP: (0.70, 0.15, 0.15),
-    QueryClass.VAGUE: (0.55, 0.25, 0.20),
-    QueryClass.THEMATIC: (0.55, 0.30, 0.15),  # iter-04: rebalance for probe
+    QueryClass.LOOKUP: (0.80, 0.10, 0.10),   # E4 F3: was (0.70,0.15,0.15)
+    QueryClass.VAGUE: (0.65, 0.20, 0.15),    # E4 F3: was (0.55,0.25,0.20)
+    QueryClass.THEMATIC: (0.62, 0.25, 0.13),  # E4 F3: was (0.55,0.30,0.15)
     QueryClass.MULTI_HOP: (0.40, 0.45, 0.15),
     QueryClass.STEP_BACK: (0.45, 0.40, 0.15),
 }
