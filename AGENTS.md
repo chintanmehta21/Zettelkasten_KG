@@ -1,14 +1,3 @@
-<!--
-  AGENTS.md — AUTO-SYNCED from CLAUDE.md by ops/git-hooks/pre-commit.
-  DO NOT EDIT DIRECTLY. Edit CLAUDE.md instead; this file will regenerate
-  on the next commit that stages CLAUDE.md.
-
-  Why this mirror exists: Codex CLI auto-loads AGENTS.md (the OpenAI /
-  Linux-Foundation cross-tool standard). Claude Code auto-loads CLAUDE.md.
-  Single source of truth (CLAUDE.md) + auto-sync = both LLMs see identical
-  project rules with zero drift.
--->
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -21,7 +10,7 @@ Zettelkasten Website — a FastAPI web app that captures URLs (Reddit, YouTube, 
 **Repo**: https://github.com/chintanmehta21/Zettelkasten_KG
 **Verified sources**: YouTube, GitHub, Newsletter (Substack), Generic (HN/web)
 
-Single interface: a FastAPI web UI (`website/`) with REST API at `/api/summarize` and an interactive 3D knowledge graph at `/knowledge-graph`.
+Single interface: a FastAPI web UI (`website/`) with Add Zettel API at `/api/zettels/add` and an interactive 3D knowledge graph at `/knowledge-graph`.
 
 ## Production Change Discipline
 
@@ -201,13 +190,13 @@ The `Settings` singleton is accessed everywhere via `get_settings()` (lru_cache)
 
 ## Architecture
 
-### Pipeline (the core flow)
+### Add Zettel Pipeline (the core flow)
 
-`website/core/pipeline.py` sequences the full capture: resolve redirects -> normalize URL -> detect source type -> extract content -> Gemini summarise -> build tags -> return structured result. The pipeline is stateless: no disk writes, no dedup updates.
+`website/api/zettels_routes.py` is the website Add Zettel facade. It validates and normalizes URLs, resolves the authenticated user, maps anonymous captures to the canonical Zoro user, calls `website/features/summarization_engine/core/orchestrator.py::summarize_url_bundle`, converts the engine result into the website DTO, then persists through `website/core/persist.py::persist_summarized_result`.
 
 #### API Key Pool & Model Fallback
 
-A centralized `GeminiKeyPool` (`website/features/api_key_switching/`) manages up to 10 API keys with key-first traversal: `key1/gemini-2.5-flash` → `key2/gemini-2.5-flash` → ... → `key1/gemini-2.5-flash-lite` → `key2/gemini-2.5-flash-lite`. On a 429 rate-limit, it tries the next key (same model) before downgrading to the next model tier. Content-aware routing sends short/simple content to `flash-lite` first to preserve `flash` quota for complex content. Keys are loaded from an `api_env` file (one key per line) at project root or `/etc/secrets/api_env` (the secret-file path mounted into the droplet container; the path was originally adopted from Render conventions and carried over), with fallback to `GEMINI_API_KEY` for backward compatibility. If ALL keys/models fail, the pipeline degrades gracefully — returns raw extracted content with `is_raw_fallback=True`. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API.
+A centralized `GeminiKeyPool` (`website/features/api_key_switching/`) manages up to 10 API keys with key-first traversal: `key1/gemini-2.5-flash` → `key2/gemini-2.5-flash` → ... → `key1/gemini-2.5-flash-lite` → `key2/gemini-2.5-flash-lite`. On a 429 rate-limit, it tries the next key (same model) before downgrading to the next model tier. Content-aware routing sends short/simple content to `flash-lite` first to preserve `flash` quota for complex content. Keys are loaded from an `api_env` file (one key per line) at project root or `/etc/secrets/api_env` (the secret-file path mounted into the droplet container; the path was originally adopted from Render conventions and carried over), with fallback to `GEMINI_API_KEY` for backward compatibility. If ALL keys/models fail, the engine surfaces a structured failure to the caller. For YouTube, it can bypass transcript extraction and send the video URL directly to Gemini's video understanding API.
 
 ### Source Extractors
 
@@ -217,13 +206,13 @@ Each source (Reddit, YouTube, GitHub, Newsletter, generic web) is encapsulated i
 
 FastAPI app. Two main pages: a URL summarizer at `/` and a 3D knowledge graph visualizer at `/knowledge-graph`. Mobile browsers auto-redirect to `/m/` (detected via user-agent regex in `website/app.py`).
 
-- `website/api/routes.py` — `POST /api/summarize` with in-memory rate limiting (10 req/min per IP); `GET /api/graph` returns KG data (Supabase-first with 30s TTL cache, file-store fallback); `GET /api/health` (used by container / load balancer health checks)
-- `website/core/pipeline.py` — extraction/summarization pipeline; **stateless**: no disk writes, no dedup updates. Returns a structured dict with title, summary, tags, latency_ms, etc.
+- `website/api/zettels_routes.py` — `POST /api/zettels/add` with typed request/response DTOs, idempotency, bounded concurrency, structured problem responses, and optional 202 status polling.
+- `website/api/routes.py` — `GET /api/graph` returns KG data and `GET /api/health` serves container / load balancer health checks.
 - `website/core/graph_store.py` — thread-safe in-memory store backed by `website/features/knowledge_graph/content/graph.json`. Auto-links new nodes to existing ones based on shared normalized tags. Node IDs use source-type prefixes (`yt-`, `gh-`, `rd-`, `ss-`, `md-`, `web-`) + slugified title.
 
 #### Supabase Knowledge Graph (`website/core/supabase_kg/`)
 
-Optional Supabase-backed KG that replaces the file-based `graph.json` store. When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set (`is_supabase_configured()` returns True), the API dual-writes: every `POST /api/summarize` writes to both the file store and Supabase, and `GET /api/graph` reads from Supabase first.
+Supabase v2 is the canonical user zettel store. Add Zettel persistence writes through `content.canonical_zettels`, `content.workspace_zettels`, and `content.canonical_chunks` via `content.upsert_canonical_zettel`; the file graph remains a public graph mirror/fallback surface.
 
 - `client.py` — Supabase client init via `get_supabase_client()`, gated by `is_supabase_configured()`
 - `models.py` — Pydantic models: `KGNode`, `KGLink`, `KGUser`, `KGGraph` (with Create variants)
@@ -389,3 +378,24 @@ Codex Desktop supports a plugin hook system with the same schema as Claude Code 
 ## Docker
 
 Multi-stage build (`ops/Dockerfile`): Stage 1 installs `ops/requirements.txt` into `/opt/venv` and pre-compiles `.pyc` files for cold-start optimization. Stage 2 copies only the venv and compiled code. Base image: `python:3.12-slim`. Exposes port 10000 (production default). Entry point: `python run.py`. Build with `docker build -f ops/Dockerfile -t zettelkasten-bot .` from the repo root.
+
+## DB v2 Purge — Phase 8 Closeout Complete (2026-05-11)
+
+The DB v2 schema purge Phase 8 closeout is complete. All production code paths run on the v2 schemas (`core, content, kg, rag, pipelines, billing`); legacy `public.kg_*`, `public.rag_*`, `public.chat_*`, `public.summary_batch_*`, `public.nexus_*`, `public.kg_usage_edges*`, `public.kg_kasten_node_freq`, `public.recompute_runs`, `public._migrations_applied`, and the original 5 of 11 `public.pricing_*` tables were dropped in Phase 6 (commit `e168b38`); the remaining 6 `public.pricing_*` tables + 6 RPCs were dropped in Phase 8.0.6 via `supabase/website/_v2/31_drop_legacy_pricing.sql` after the pre-T6 audit confirmed zero live website refs. `website/core/supabase_kg/` directory deleted in the same commit.
+
+**Annotated as LEGACY (broken after 2026-05-11):** 6 `ops/scripts/*` still import the retired `website.core.supabase_kg`; revive by porting `get_supabase_client` calls to `get_v2_client()` from `website.core.supabase_v2.client` in a follow-up iteration.
+
+**Test infrastructure:**
+- `tests/v2/fixtures/users.py` — `mint_test_user_with_workspaces` (now includes `email` field per Phase 8.0-TX)
+- `tests/integration/v2/conftest.py` — `asyncpg_pool`, `mint_user`, `pytest_sessionfinish` cleanup hook
+- 3 known not-live flakes documented (2× quantize_bge_int8, cascade_int8)
+- Cross-tenant denial tests hardened with UUID-leak assertions per OWASP API1:2023 BOLA pattern
+
+**Pricing module:**
+- v2 canonical = `billing.*` schema. `billing.pricing_consume_entitlement` body protected by golden md5.
+- Currently fail-open per operator-locked design; multi-period enforcement is Phase 9 (see `docs/db-v2/phase-9-pricing-enforcement-plan.md`).
+
+**kg_features:**
+- Partial cleanup landed (Phase 8.0-H7): `retrieval, nl_query, entity_extractor` deleted (referenced dropped v1 tables); `analytics, embeddings` retained as pure-compute helpers with CI guard allow-list.
+
+**Final acceptance test (queued):** `docs/db-v2/final-acceptance-test-plan.md` — Claude in Chrome on the live site, ingesting URLs from `docs/research/Chintan_Testing.md` as Naruto.

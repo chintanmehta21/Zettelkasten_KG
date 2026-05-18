@@ -1,4 +1,4 @@
-{
+﻿{
   "iter": "iter-03",
   "site": "https://zettelkasten.in",
   "captured_at": "2026-04-29T16:18:52Z",
@@ -511,7 +511,7 @@
       "duration_ms": 61339,
       "checks": [
         {
-          "name": "POST /api/summarize https://nesslabs.com/personal-knowledge-management",
+          "name": "POST /api/zettels/add https://nesslabs.com/personal-knowledge-management",
           "passed": false,
           "evidence": null,
           "duration_ms": 4477,
@@ -528,7 +528,7 @@
           }
         },
         {
-          "name": "POST /api/summarize https://maggieappleton.com/garden-history",
+          "name": "POST /api/zettels/add https://maggieappleton.com/garden-history",
           "passed": false,
           "evidence": null,
           "duration_ms": 56861,

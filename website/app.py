@@ -56,6 +56,11 @@ SUMMARIZATION_ENGINE_DIR = Path(__file__).parent / "features" / "summarization_e
 HEADER_DIR = Path(__file__).parent / "features" / "header"
 _HEADER_PLACEHOLDER = "<!--ZK_HEADER-->"
 _FOOTER_PLACEHOLDER = "<!--ZK_FOOTER-->"
+_HTML_CACHE_HEADERS = {"Cache-Control": "no-cache, max-age=0, must-revalidate"}
+
+
+def _html_file_response(path: Path) -> FileResponse:
+    return FileResponse(str(path), media_type="text/html", headers=_HTML_CACHE_HEADERS)
 
 
 def _render_with_shell(path: Path) -> HTMLResponse:
@@ -73,7 +78,7 @@ def _render_with_shell(path: Path) -> HTMLResponse:
     if _FOOTER_PLACEHOLDER in html:
         footer_html = (FOOTER_DIR / "footer.html").read_text(encoding="utf-8")
         html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
-    return HTMLResponse(content=html)
+    return HTMLResponse(content=html, headers=_HTML_CACHE_HEADERS)
 
 
 # Backward-compat alias; keep callers working while incrementally migrating.
@@ -380,11 +385,11 @@ def create_app(lifespan=None) -> FastAPI:
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index():
-        return FileResponse(str(MOBILE_DIR / "index.html"))
+        return _html_file_response(MOBILE_DIR / "index.html")
 
     @app.get("/m/knowledge-graph")
     async def mobile_knowledge_graph():
-        return FileResponse(str(MOBILE_DIR / "knowledge-graph.html"))
+        return _html_file_response(MOBILE_DIR / "knowledge-graph.html")
 
     # ── Desktop routes (auto-redirect mobile browsers) ──
     @app.get("/")
@@ -401,7 +406,7 @@ def create_app(lifespan=None) -> FastAPI:
 
     @app.get("/auth/callback")
     async def auth_callback():
-        return FileResponse(str(AUTH_DIR / "callback.html"))
+        return _html_file_response(AUTH_DIR / "callback.html")
 
     @app.get("/home")
     async def home(request: Request):
@@ -439,7 +444,7 @@ def create_app(lifespan=None) -> FastAPI:
 
     @app.get("/summarization-engine")
     async def summarization_engine_dashboard(request: Request):
-        return FileResponse(str(SUMMARIZATION_ENGINE_DIR / "ui" / "index.html"))
+        return _html_file_response(SUMMARIZATION_ENGINE_DIR / "ui" / "index.html")
 
     @app.get("/about")
     async def about(request: Request):

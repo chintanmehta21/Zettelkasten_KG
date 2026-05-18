@@ -1,4 +1,4 @@
-# YouTube Hardening Delta — 2026-04-23
+﻿# YouTube Hardening Delta — 2026-04-23
 
 Status of the five gaps called out in the hardening plan. Each line is either CONFIRMED (gap still exists) or MISMATCH (gap already closed, plan needs revision).
 
@@ -20,7 +20,7 @@ CONFIRMED — no file at website/features/summarization_engine/summarization/com
 
 ## Gap 5 — Frontend render layer supports nested hierarchy
 
-CONFIRMED — `DetailedSummarySection.sub_sections: dict[str, list[str]]` exists at website/features/summarization_engine/core/models.py:50; `_render_detailed_summary` walks `sub_sections` at website/core/pipeline.py:79-81 emitting `### {heading}` markdown; `renderMarkdownLite` parses `## h2 / ### h3 / -` bullets at website/features/user_zettels/js/user_zettels.js:1339-1348.
+CONFIRMED — `DetailedSummarySection.sub_sections: dict[str, list[str]]` exists at website/features/summarization_engine/core/models.py:50; `_render_detailed_summary` walks `sub_sections` at website/api/module_runners/summarization.py:79-81 emitting `### {heading}` markdown; `renderMarkdownLite` parses `## h2 / ### h3 / -` bullets at website/features/user_zettels/js/user_zettels.js:1339-1348.
 
 ## Summary
 

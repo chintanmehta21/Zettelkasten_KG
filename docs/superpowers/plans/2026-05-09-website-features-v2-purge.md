@@ -1,4 +1,4 @@
-# Website-Features v2 Purge — Implementation Plan
+﻿# Website-Features v2 Purge — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1102,7 +1102,7 @@ The backfill scripts at `ops/scripts/refactor_v2/0X_*.py` exist but were never r
 
 ### Task 5.2: Re-ingest the 5 Obsidian export samples
 
-- [ ] **Step 1:** For each URL in `docs/supabase_data/obsidian_export/INDEX.json`, hit `/api/summarize` with a real test user JWT.
+- [ ] **Step 1:** For each URL in `docs/supabase_data/obsidian_export/INDEX.json`, hit `/api/zettels/add` with a real test user JWT.
 - [ ] **Step 2:** Verify `content.workspace_zettels` count grows to 5; `public.kg_nodes` count unchanged (writes go to v2 only when `DB_SCHEMA_VERSION=v2`).
 
 ---

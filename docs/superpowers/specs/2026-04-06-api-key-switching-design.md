@@ -1,4 +1,4 @@
-# API Key Switching — Multi-Key Rotation + Content-Aware Model Routing
+﻿# API Key Switching — Multi-Key Rotation + Content-Aware Model Routing
 
 > **ARCHIVED CONTEXT — pre-migration spec.** This design was written while the app was hosted on Render.com (legacy, no longer used). Any reference below to "Render Secret Files", the Render dashboard, or `*.onrender.com` is historical. The `api_env` file format and the `/etc/secrets/api_env` path described here did carry forward; they are now mounted into the production DigitalOcean droplet container, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -29,7 +29,7 @@ Replace the single `GEMINI_API_KEY` with a pool of up to 10 API keys, rotated au
 
 1. **Single API key**: All 5 Gemini consumers share one `gemini_api_key` from settings. One rate-limit event throttles the entire system.
 
-2. **Lost cooldown state**: The web pipeline (`website/core/pipeline.py:52`) creates a **new `GeminiSummarizer` per request**, so the `self._cooldowns` dict is discarded after each request. If request A gets rate-limited and sets a cooldown, request B (1 second later) has no idea and hits the same rate limit again.
+2. **Lost cooldown state**: The web pipeline (`website/api/module_runners/summarization.py:52`) creates a **new `GeminiSummarizer` per request**, so the `self._cooldowns` dict is discarded after each request. If request A gets rate-limited and sets a cooldown, request B (1 second later) has no idea and hits the same rate limit again.
 
 3. **No content-aware routing**: A 500-word Reddit post and a 15,000-word YouTube transcript both start with `gemini-2.5-flash` (250 RPD limit), wasting premium quota on content that `flash-lite` (1,000 RPD) handles equally well.
 
@@ -45,7 +45,7 @@ Replace the single `GEMINI_API_KEY` with a pool of up to 10 API keys, rotated au
 |---|----------|------|--------------------|----------|
 | 1 | Summarizer | `telegram_bot/pipeline/summarizer.py` | `api_key` constructor arg | 3-model chain, per-instance cooldowns |
 | 2 | Orchestrator | `telegram_bot/pipeline/orchestrator.py:125` | `settings.gemini_api_key` | Delegates to summarizer |
-| 3 | Web Pipeline | `website/core/pipeline.py:53` | `settings.gemini_api_key` | Creates fresh summarizer per request (cooldowns lost) |
+| 3 | Web Pipeline | `website/api/module_runners/summarization.py:53` | `settings.gemini_api_key` | Creates fresh summarizer per request (cooldowns lost) |
 | 4 | Embeddings | `website/features/kg_features/embeddings.py:36` | `settings.gemini_api_key` | Global cooldown, returns `[]` on failure |
 | 5 | NL Query | `website/features/kg_features/nl_query.py:50` | `settings.gemini_api_key` | None — silent failure |
 | 6 | Entity Extractor | `website/features/kg_features/entity_extractor.py:82` | `settings.gemini_api_key` | None — silent failure |
@@ -513,7 +513,7 @@ def get_key_pool() -> GeminiKeyPool:
 - Pass `source_type` to summarizer so it can compute content-aware routing.
 - Everything else unchanged.
 
-### 3. `website/core/pipeline.py`
+### 3. `website/api/module_runners/summarization.py`
 
 **Changes:**
 - Remove `api_key=settings.gemini_api_key` from `GeminiSummarizer()` constructor call.
@@ -708,7 +708,7 @@ def _make_pool_with_mocks(n_keys: int = 3) -> GeminiKeyPool:
 
 5. Update `summarizer.py` to use pool
 6. Update `orchestrator.py` (remove `api_key` arg)
-7. Update `website/core/pipeline.py` (remove `api_key` arg)
+7. Update `website/api/module_runners/summarization.py` (remove `api_key` arg)
 8. Update `embeddings.py` to use pool
 9. Update `nl_query.py` to use pool
 10. Update `entity_extractor.py` to use pool

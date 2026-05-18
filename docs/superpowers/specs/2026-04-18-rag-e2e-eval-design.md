@@ -1,4 +1,4 @@
-# RAG End-to-End Evaluation & Module Refactor Loop — Design
+﻿# RAG End-to-End Evaluation & Module Refactor Loop — Design
 
 **Date:** 2026-04-18
 **Owner:** Chintan
@@ -131,7 +131,7 @@ Each iteration:
 ```
 Naruto captures URL on zettelkasten.in
   → website/api/routes.py::summarize_endpoint
-  → website/core/pipeline.py::summarize_url (produces raw_text + summary)
+  → website/api/module_runners/summarization.py::summarize_url (produces raw_text + summary)
   → persist_summarized_result (nexus/persist.py)
   → _persist_supabase_node
     → rag_chunks_enabled gate

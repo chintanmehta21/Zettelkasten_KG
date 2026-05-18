@@ -1,4 +1,4 @@
-# DB v2 Cutover Runbook
+﻿# DB v2 Cutover Runbook
 
 ## Preconditions
 
@@ -182,7 +182,7 @@ the live production v2 schema at HEAD 0eb35d3. Test URL:
 
 **VERDICT: PURE v2 (writes landed in content.* only) ✓**
 
-Auth: a fresh e2e test user was minted, signed in, posted `/api/summarize`
+Auth: a fresh e2e test user was minted, signed in, posted `/api/zettels/add`
 (HTTP 200), and `/api/graph` returned 1 node. Test-user cleanup raised
 `Database error deleting user` (known CASCADE gap — content.workspace_zettels
 FK blocks `auth.admin.delete_user`; backstop sessionfinish sweep in the

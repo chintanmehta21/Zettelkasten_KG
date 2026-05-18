@@ -1,4 +1,4 @@
-# KG Intelligence Layer — Verification Report
+﻿# KG Intelligence Layer — Verification Report
 
 **Date**: 2026-04-06
 **Verified against**: `docs/superpowers/specs/2026-03-30-kg-intelligence-design.md` + `docs/superpowers/plans/2026-03-30-kg-intelligence.md`
@@ -58,7 +58,7 @@ Overall spec feature completeness is ~65% when weighted by correctness: the scaf
 - Post-processing: normalize IDs (lowercase, strip special chars), UPPER_SNAKE_CASE relationships, validate against allowed types
 - 10s timeout per Gemini call, graceful degradation on failure
 - `existing_types` schema-drift prevention (query Supabase for types already used)
-- Integration: wired into `/api/summarize`, entities stored in `kg_nodes.metadata.entities`
+- Integration: wired into `/api/zettels/add`, entities stored in `kg_nodes.metadata.entities`
 
 #### What Was Found (in code)
 
@@ -125,7 +125,7 @@ All three Pydantic models present (lines 33, 40, 49). `ExtractionConfig` datacla
 - `find_similar_nodes()` via `match_kg_nodes` RPC
 - 60s rate-limit cooldown using global timestamp + `time.monotonic()`
 - Graceful degradation: returns `[]` on failure
-- Integration: embedding generated in `/api/summarize`, stored on node creation, semantic links created via `_semantic_link()`
+- Integration: embedding generated in `/api/zettels/add`, stored on node creation, semantic links created via `_semantic_link()`
 
 #### What Was Found (in code)
 
@@ -170,7 +170,7 @@ CREATE OR REPLACE FUNCTION match_kg_nodes(
 | 1 | 🔴 CRITICAL | **`output_dimensionality=768` NOT passed to API.** Gemini `gemini-embedding-001` defaults to **3072 dims**; returned 3072-dim vector cannot insert into `vector(768)` DB column → every embedding insert will raise pgvector dimension mismatch error. The `_EMBEDDING_DIMS = 768` constant is declared but never referenced in the API call. |
 | 2 | 🔴 CRITICAL | **RPC parameter name mismatch**: Python passes `match_user_id`, SQL function declares `target_user_id`. PostgREST uses named-argument dispatch → every call returns PGRST202 "function not found". Semantic search is completely broken. |
 | 3 | ⚠️ MINOR | 429 detection uses fragile string sniffing (`"429" in str(exc)`) rather than exception type check. |
-| 4 | ⚠️ MINOR | `_semantic_link()` method does not exist in repository. `/api/summarize` generates embedding and UPDATEs the `embedding` column directly, but does NOT create semantic links between similar nodes. Auto-linking on similarity > 0.75 step is missing entirely. |
+| 4 | ⚠️ MINOR | `_semantic_link()` method does not exist in repository. `/api/zettels/add` generates embedding and UPDATEs the `embedding` column directly, but does NOT create semantic links between similar nodes. Auto-linking on similarity > 0.75 step is missing entirely. |
 | 5 | ⚠️ MINOR | Default threshold divergence: Python=0.75 vs SQL `match_threshold DEFAULT 0.7` (non-breaking since Python always passes explicit value). |
 | 6 | ⚠️ COSMETIC | SQL file comment line 18 still references deprecated `text-embedding-004` despite spec explicitly deprecating it. |
 
@@ -553,9 +553,9 @@ HybridSearchResult(
 | `GET /api/graph` enriched with analytics | pagerank, community, betweenness, closeness per node | `_enrich_graph_with_analytics()` L106-127 ✓ | ✅ |
 | `POST /api/graph/query` | NL query, 5/min rate limit | L346, `_QUERY_RATE_LIMIT = 5` L334 ✓ | ✅ |
 | `POST /api/graph/search` | Hybrid retrieval | L376 ✓ | ✅ (but M6 is broken internally) |
-| `POST /api/summarize` | Embedding gen + entity extraction | L458-499 ✓ | ⚠️ no semantic link creation |
-| `/api/summarize` embedding storage | Via KGNodeCreate field | Via direct UPDATE (workaround) | ⚠️ |
-| `/api/summarize` entity task | asyncio.create_task fire-and-forget | L482 ✓ | ✅ |
+| `POST /api/zettels/add` | Embedding gen + entity extraction | L458-499 ✓ | ⚠️ no semantic link creation |
+| `/api/zettels/add` embedding storage | Via KGNodeCreate field | Via direct UPDATE (workaround) | ⚠️ |
+| `/api/zettels/add` entity task | asyncio.create_task fire-and-forget | L482 ✓ | ✅ |
 
 ---
 
@@ -689,7 +689,7 @@ All 6 test files listed in the plan are **missing**. No unit tests were written 
 12. **`entity_extractor.py` L86–104**: add domain-specific few-shot example (React/Meta/Andrew Clark per spec L475–485).
 13. **`entity_extractor.py`**: refactor gleaning loop to use true multi-turn conversation via `contents=[...messages...]`.
 14. **SQL migration**: update `hybrid_kg_search` weight defaults to spec values (0.5/0.3/0.2) for direct callers.
-15. **`repository.py`**: add `_semantic_link()` method and call it after node creation in `/api/summarize` when similarity > 0.75.
+15. **`repository.py`**: add `_semantic_link()` method and call it after node creation in `/api/zettels/add` when similarity > 0.75.
 
 ### Priority 3 — Test coverage
 

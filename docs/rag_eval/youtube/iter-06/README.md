@@ -1,10 +1,10 @@
-# iter-06 — Live Production Browser Flow
+﻿# iter-06 — Live Production Browser Flow
 
 **Date:** 2026-04-25
 **Mode:** Browser-driven (Claude-in-Chrome MCP) on the live `zettelkasten.in` site
 **User:** Naruto (`naruto@zettelkasten.local`, render_user_id `f2105544-b73d-4946-8329-096d82f070d3`, kg_user_id `8842e563-ee10-4b8b-bbf2-8af4ba65888e`)
 **Kasten:** `AI / ML Foundations` (sandbox_id `81397a8f-24e3-4554-94b1-f6c1562fc46c`) — 6 members
-**Differs from iters 01–05:** these were CLI-driven against direct `RAGOrchestrator.answer()` calls; iter-06 hits the production stack end-to-end (auth → /api/summarize ingest → /api/rag/sandboxes Kasten → /api/rag/sessions chat → orchestrator answer → SSE stream).
+**Differs from iters 01–05:** these were CLI-driven against direct `RAGOrchestrator.answer()` calls; iter-06 hits the production stack end-to-end (auth → /api/zettels/add ingest → /api/rag/sandboxes Kasten → /api/rag/sessions chat → orchestrator answer → SSE stream).
 
 The CLI iter-06 best-of code edits (combining iter-03 floor + iter-04 cascade fusion) were **not deployed** before this run; the live droplet is running the iter-04 production code. So this run measures the production state that the user actually sees.
 
@@ -12,7 +12,7 @@ The CLI iter-06 best-of code edits (combining iter-03 floor + iter-04 cascade fu
 
 ## Step 1 — Add fresh Zettel via Naruto's session
 
-URL submitted (via `/api/summarize` since the form button JS handler is broken on the live UI — bypassed via the auth'd JWT in the same browser context):
+URL submitted (via `/api/zettels/add` since the form button JS handler is broken on the live UI — bypassed via the auth'd JWT in the same browser context):
 
 ```
 https://en.wikipedia.org/wiki/Attention_(machine_learning)
@@ -123,7 +123,7 @@ Distractor cluster correctly downranked (≤0.002). Comprehensive answer coverin
 
 ## Production Issues Surfaced (file as separate bugs)
 
-1. **`/api/summarize` POST does not auto-trigger `ingest_node_chunks` on the live droplet.** `rag_chunks_enabled` flag may be off in prod, OR the hook errors silently. Required manual ingest. Affects every fresh user capture if relying on chat to find it.
+1. **`/api/zettels/add` POST does not auto-trigger `ingest_node_chunks` on the live droplet.** `rag_chunks_enabled` flag may be off in prod, OR the hook errors silently. Required manual ingest. Affects every fresh user capture if relying on chat to find it.
 2. **`rag_bulk_add_to_sandbox` RPC returns `added_count=0` even with valid `(user_id, sandbox_id, node_ids)`.** Direct `rag_sandbox_members.insert` works. Likely an SQL function regression.
 3. **`Object of type UUID is not JSON serializable` in the post-stream message persistence step.** Streaming answer reaches the user fine, but the assistant message is not saved to `chat_messages` for later replay — sessions show user-message-only.
 4. **Live droplet form-submit handlers ignore the click on `/home` "Add" button and `/home/kastens` "Create" button.** No network request fires. JS handler is bound to the wrong element or stale ref. Bypassed via direct API in this run.

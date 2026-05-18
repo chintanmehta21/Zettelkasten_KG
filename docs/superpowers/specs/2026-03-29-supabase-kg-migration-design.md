@@ -1,4 +1,4 @@
-# Supabase KG Migration — Full Design Spec
+﻿# Supabase KG Migration — Full Design Spec
 
 **Date:** 2026-03-29
 **Status:** Ready for implementation
@@ -72,7 +72,7 @@ else:
     return get_graph()
 ```
 
-**`POST /api/summarize`:**
+**`POST /api/zettels/add`:**
 ```python
 # After summarization, write to both stores:
 # 1. File store (always — backward compat)
@@ -111,7 +111,7 @@ RLS policies are already in the schema for Phase 2/3. The Python layer already a
 | File | Change |
 |------|--------|
 | `scripts/migrate_graph_to_supabase.py` | **New** — one-time migration script |
-| `website/api/routes.py` | Wire `GET /api/graph` and `POST /api/summarize` to Supabase |
+| `website/api/routes.py` | Wire `GET /api/graph` and `POST /api/zettels/add` to Supabase |
 | `website/core/supabase_kg/repository.py` | Add `add_node_raw()` method for migration (skips auto-link) |
 | `tests/test_supabase_kg.py` | Add tests for raw migration path |
 | `tests/test_website.py` | Update API tests for Supabase fallback logic |
@@ -124,4 +124,4 @@ RLS policies are already in the schema for Phase 2/3. The Python layer already a
 4. `GET /api/graph` falls back to graph.json when Supabase not configured
 5. Full graph loads in < 2 seconds (measured from API response time)
 6. All existing tests pass + new migration tests pass
-7. `POST /api/summarize` dual-writes to both stores
+7. `POST /api/zettels/add` dual-writes to both stores

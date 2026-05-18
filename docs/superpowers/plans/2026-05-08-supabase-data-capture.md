@@ -1,4 +1,4 @@
-# Supabase Data Capture Implementation Plan
+﻿# Supabase Data Capture Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -56,7 +56,7 @@ Bootstrap material for provisioning a new Supabase project after the previous on
 
 - `schemas/` — recursive copy of `supabase/website/` (canonical schema + 23+ migrations + feature schemas). Apply these first to the new project.
 - `file_store_fallback/graph.json` — local file-store fallback (27 nodes / 46 links). Use as a sanity reference when re-ingesting; the new Supabase project will rebuild this from re-summarized URLs.
-- `obsidian_export/corpus/` — one-time markdown seed from the user's Syncthing/Obsidian vault. Re-feed each note's `url` field through `/api/summarize` after the new project is up to rebuild `kg_nodes`. The corpus is preserved as a *data file*, not a live integration.
+- `obsidian_export/corpus/` — one-time markdown seed from the user's Syncthing/Obsidian vault. Re-feed each note's `url` field through `/api/zettels/add` after the new project is up to rebuild `kg_nodes`. The corpus is preserved as a *data file*, not a live integration.
 - `obsidian_export/INDEX.json` — derived index: path / title / url / tags / mtime / sha256.
 - `obsidian_export/STATS.md` — corpus statistics + source-type histogram.
 - `audit/` — captures from iter-12 audit (live env, schema dumps) when present.
@@ -854,7 +854,7 @@ The `kg_users` and `rag_sandbox_members` rows are environment-specific and were 
 
 ## Step 4 — Re-ingest from Obsidian export (optional, one-shot)
 
-For each `url` in `docs/supabase_data/obsidian_export/INDEX.json` that still resolves, re-feed through `/api/summarize` on the running website (against the new project). Since the deferred re-ingestion script (Q3b=X) is not built yet, this is currently a manual loop — adapt the snippet below for your environment:
+For each `url` in `docs/supabase_data/obsidian_export/INDEX.json` that still resolves, re-feed through `/api/zettels/add` on the running website (against the new project). Since the deferred re-ingestion script (Q3b=X) is not built yet, this is currently a manual loop — adapt the snippet below for your environment:
 
 ```bash
 # Git Bash
@@ -866,7 +866,7 @@ for entry in idx:
     if not url:
         continue
     r = requests.post(
-        "https://zettelkasten.in/api/summarize",
+        "https://zettelkasten.in/api/zettels/add",
         json={"url": url, "user_sub": "<your-user-sub>"},
         headers={"Authorization": "Bearer <your-jwt>"},
         timeout=120,

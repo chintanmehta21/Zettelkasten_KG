@@ -1,4 +1,4 @@
-# Render → DigitalOcean Migration Implementation Plan
+﻿# Render → DigitalOcean Migration Implementation Plan
 
 > **ARCHIVED — Historical migration record (legacy, no longer used).** This plan tracked the one-time migration from Render.com to a DigitalOcean droplet. The migration is complete and the droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. **Do not action any Render-related step in this file** — they are preserved for context only. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -78,7 +78,7 @@ ops/
 website/features/api_key_switching/__init__.py
   # Add GEMINI_API_KEYS env var fallback in init_key_pool() (Task 1)
 
-website/core/pipeline.py
+website/api/module_runners/summarization.py
   # Move heavy imports inside summarize_url() for lazy loading (Task 2)
 
 website/experimental_features/nexus/service/persist.py
@@ -323,20 +323,20 @@ git commit -m "feat(key-pool): add GEMINI_API_KEYS env var fallback for non-file
 
 ---
 
-## Task 2: Lazy-import refactor in `website/core/pipeline.py`
+## Task 2: Lazy-import refactor in `website/api/module_runners/summarization.py`
 
 **Files:**
-- Modify: `website/core/pipeline.py:13-17` (the eager imports)
+- Modify: `website/api/module_runners/summarization.py:13-17` (the eager imports)
 - Test: `tests/test_pipeline_lazy_imports.py` (new)
 
-**Context:** Currently, `from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list`, `from telegram_bot.sources import get_extractor`, and `from telegram_bot.sources.registry import detect_source_type` are all imported at module level. This drags `google-genai`, `trafilatura`, `lxml`, `praw`, `yt-dlp`, and the entire extractor plugin registry into memory the moment `website.core.pipeline` is touched — which happens at FastAPI startup. We want these imports moved inside `summarize_url()` so the cold-start RSS is dramatically lower.
+**Context:** Currently, `from telegram_bot.pipeline.summarizer import GeminiSummarizer, build_tag_list`, `from telegram_bot.sources import get_extractor`, and `from telegram_bot.sources.registry import detect_source_type` are all imported at module level. This drags `google-genai`, `trafilatura`, `lxml`, `praw`, `yt-dlp`, and the entire extractor plugin registry into memory the moment `website.api.module_runners.summarization` is touched — which happens at FastAPI startup. We want these imports moved inside `summarize_url()` so the cold-start RSS is dramatically lower.
 
 - [ ] **Step 1: Write the failing test**
 
 Create `tests/test_pipeline_lazy_imports.py`:
 
 ```python
-"""Verify website.core.pipeline does NOT eagerly import heavy modules."""
+"""Verify website.api.module_runners.summarization does NOT eagerly import heavy modules."""
 from __future__ import annotations
 
 import sys
@@ -356,9 +356,9 @@ HEAVY_MODULES = [
 
 
 def test_pipeline_module_does_not_import_heavy_deps():
-    """Importing website.core.pipeline must not pull in heavy modules."""
+    """Importing website.api.module_runners.summarization must not pull in heavy modules."""
     # Drop any pre-existing imports of heavy deps so we measure fresh
-    for mod_name in HEAVY_MODULES + ["website.core.pipeline"]:
+    for mod_name in HEAVY_MODULES + ["website.api.module_runners.summarization"]:
         sys.modules.pop(mod_name, None)
         # Also drop any submodules so a fresh import is forced
         for k in list(sys.modules.keys()):
@@ -366,21 +366,21 @@ def test_pipeline_module_does_not_import_heavy_deps():
                 sys.modules.pop(k, None)
 
     # Import the module under test
-    import website.core.pipeline  # noqa: F401
+    import website.api.module_runners.summarization  # noqa: F401
 
     # None of the heavy modules should now be in sys.modules
     leaked = [m for m in HEAVY_MODULES if m in sys.modules]
     assert leaked == [], (
-        f"website.core.pipeline eagerly imported: {leaked}. "
+        f"website.api.module_runners.summarization eagerly imported: {leaked}. "
         f"Move these imports inside summarize_url()."
     )
 
 
 def test_summarize_url_is_still_callable_after_lazy_refactor():
     """The lazy refactor must not break the public symbol."""
-    import website.core.pipeline
-    assert hasattr(website.core.pipeline, "summarize_url")
-    assert callable(website.core.pipeline.summarize_url)
+    import website.api.module_runners.summarization
+    assert hasattr(website.api.module_runners.summarization, "summarize_url")
+    assert callable(website.api.module_runners.summarization.summarize_url)
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -393,7 +393,7 @@ Expected: `test_pipeline_module_does_not_import_heavy_deps` FAILS — `leaked` i
 
 - [ ] **Step 3: Move the imports inside `summarize_url()`**
 
-Edit `website/core/pipeline.py`. The full new file:
+Edit `website/api/module_runners/summarization.py`. The full new file:
 
 ```python
 """Web-adapted pipeline wrapper.
@@ -493,12 +493,12 @@ Expected: 2 passed.
 pytest -q
 ```
 
-Expected: all green. Pay attention to any test that imports `website.core.pipeline` directly or via `website.api.routes` — they should still work because the symbols are resolved when `summarize_url()` runs, not at import time.
+Expected: all green. Pay attention to any test that imports `website.api.module_runners.summarization` directly or via `website.api.routes` — they should still work because the symbols are resolved when `summarize_url()` runs, not at import time.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add website/core/pipeline.py tests/test_pipeline_lazy_imports.py
+git add website/api/module_runners/summarization.py tests/test_pipeline_lazy_imports.py
 git commit -m "perf(pipeline): lazy-import gemini, trafilatura, extractors for fast cold start"
 ```
 
@@ -573,7 +573,7 @@ async def persist_summarized_result(
     user_sub: str | None = None,
     captured_on: date | None = None,
 ) -> PersistenceOutcome:
-    """Persist a summarize result using the same KG behavior as ``/api/summarize``."""
+    """Persist a summarize result using the same KG behavior as ``/api/zettels/add``."""
 
     payload = dict(result)
 ```
@@ -587,7 +587,7 @@ async def persist_summarized_result(
     user_sub: str | None = None,
     captured_on: date | None = None,
 ) -> PersistenceOutcome:
-    """Persist a summarize result using the same KG behavior as ``/api/summarize``."""
+    """Persist a summarize result using the same KG behavior as ``/api/zettels/add``."""
     # Lazy imports — keep module load cheap by deferring numpy + embedding model
     from website.features.kg_features.embeddings import (
         find_similar_nodes,
@@ -3465,10 +3465,10 @@ curl -fsS -I -H "Accept-Encoding: zstd" https://stage.zettelkasten.in/css/style.
 
 Expected: `content-encoding: zstd` (or `gzip` if your curl doesn't speak zstd).
 
-- [ ] **Step 10: Submit a real test URL through `/api/summarize`**
+- [ ] **Step 10: Submit a real test URL through `/api/zettels/add`**
 
 ```bash
-curl -fsS -X POST https://stage.zettelkasten.in/api/summarize \
+curl -fsS -X POST https://stage.zettelkasten.in/api/zettels/add \
     -H 'Content-Type: application/json' \
     -d '{"url":"https://news.ycombinator.com"}' | head -50
 ```
