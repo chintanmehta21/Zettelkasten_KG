@@ -39,24 +39,25 @@
 -- SAFETY:
 --   * Single transaction (BEGIN/COMMIT) — all-or-nothing.
 --   * Idempotent: re-running after a successful run is a no-op (no group has
---     >1 row once deduped; the recurrence guard index makes a second dup
---     physically impossible at the url level going forward).
+--     >1 row once deduped; post-P1-7 the deterministic content_hash makes the
+--     base UNIQUE(normalized_url, content_hash) ON CONFLICT fire on re-ingest,
+--     so the D6 duplicate class cannot recur).
 --   * Does NOT modify any function body (golden-md5 RPCs untouched).
 --   * NOTIFY pgrst at the end so PostgREST reloads the schema cache.
 --
 -- RECURRENCE GUARD (operator note — read before applying):
---   The base table keeps its UNIQUE(normalized_url, content_hash). The added
---   partial unique index ``uq_canonical_zettels_url_singleton`` enforces
---   one canonical row PER normalized_url. This is intentionally stricter than
---   the base composite key: post-P1-7 a stable URL re-ingest yields the SAME
---   hash so the composite key already dedups; a genuine SOURCE-CONTENT change
---   would (by the P1-7 design) want a new (url, new_hash) row, and this guard
---   would instead force an in-place update of the single row for that URL.
---   That is the desired behavior for this corpus (one canonical artifact per
---   URL; the latest extraction supersedes the prior) and it makes the D6
---   duplicate class structurally impossible to recur. If a future iteration
---   deliberately wants URL-versioned canonical history, drop this index in a
---   later migration with explicit operator approval.
+--   The recurrence guard is the EXISTING base-table UNIQUE(normalized_url,
+--   content_hash) (02_content_schema.sql) — no extra index is added. The D6
+--   duplicate class was caused purely by the pre-P1-7 NON-DETERMINISTIC hash
+--   missing that ON CONFLICT key on every re-ingest. P1-7 made content_hash
+--   deterministic, so a stable-URL re-ingest now yields the SAME hash and the
+--   base composite key dedups at the write path. A genuine SOURCE-CONTENT
+--   change still (by the P1-7 design) versions a new (url, new_hash) row —
+--   URL-versioned canonical history is intentionally PRESERVED (operator
+--   decision 2026-05-18: chose the base composite key over a stricter
+--   UNIQUE(normalized_url) singleton to keep P1-7 versioning intact). This
+--   migration is therefore a pure one-off cleanup of the legacy backlog; it
+--   adds no new structural constraint.
 
 BEGIN;
 
@@ -130,12 +131,12 @@ DELETE FROM content.canonical_zettels cz
  USING _dedup_map m
  WHERE cz.id = m.loser_id;
 
--- ── 6. Recurrence guard: one canonical row per normalized_url ─────────────
---       (idempotent; CONCURRENTLY is not allowed inside a txn so plain
---        CREATE UNIQUE INDEX IF NOT EXISTS — table is low-traffic, this is an
---        operator-gated maintenance window).
-CREATE UNIQUE INDEX IF NOT EXISTS uq_canonical_zettels_url_singleton
-    ON content.canonical_zettels (normalized_url);
+-- ── 6. Recurrence guard ───────────────────────────────────────────────────
+--       NONE added. The existing base-table UNIQUE(normalized_url,
+--       content_hash) is the guard: post-P1-7 the deterministic hash makes
+--       its ON CONFLICT fire on re-ingest. No extra index (operator decision
+--       2026-05-18 — preserve P1-7 URL-versioned history; do not add a
+--       stricter UNIQUE(normalized_url) singleton).
 
 NOTIFY pgrst, 'reload schema';
 

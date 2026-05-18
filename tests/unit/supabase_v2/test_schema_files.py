@@ -65,8 +65,10 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
 def test_dedup_canonical_rows_migration_is_transactional_and_guarded() -> None:
     """D6: the one-off canonical-row dedup migration must be a single
     BEGIN/COMMIT transaction, must NOT touch any golden-md5 function body,
-    must repoint all three FK children before deleting losers, must add the
-    recurrence guard, and must NOTIFY pgrst. Shape-only (NOT applied here)."""
+    must repoint all three FK children before deleting losers, must rely on
+    the EXISTING base UNIQUE(normalized_url, content_hash) as the recurrence
+    guard (no extra index — operator decision 2026-05-18, preserve P1-7
+    URL-versioned history), and must NOTIFY pgrst. Shape-only (NOT applied)."""
     sql = _sql("48_dedup_canonical_rows.sql")
     upper = sql.upper()
     # Transactional, all-or-nothing.
@@ -87,11 +89,11 @@ def test_dedup_canonical_rows_migration_is_transactional_and_guarded() -> None:
     assert loser_delete > sql.index("UPDATE content.canonical_chunks")
     assert loser_delete > sql.index("UPDATE content.workspace_zettels")
     assert loser_delete > sql.index("UPDATE kg.kg_edges")
-    # Recurrence guard: idempotent unique index on normalized_url.
-    assert (
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_canonical_zettels_url_singleton"
-        in sql
-    )
+    # Recurrence guard: NO extra index — the base composite key is the guard
+    # (operator decision 2026-05-18). A stricter url-singleton must NOT exist.
+    assert "uq_canonical_zettels_url_singleton" not in sql
+    assert "CREATE UNIQUE INDEX" not in upper
+    assert "UNIQUE(NORMALIZED_URL,CONTENT_HASH)" in upper.replace(" ", "")
     # Idempotent-shaped: every DDL/DML guarded or naturally re-runnable.
     assert "ON COMMIT DROP" in sql  # temp map auto-cleaned
     assert "NOTIFY pgrst" in sql
