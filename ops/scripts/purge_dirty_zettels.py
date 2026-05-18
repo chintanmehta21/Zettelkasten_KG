@@ -151,12 +151,15 @@ def main() -> int:
                 return 0
 
             # Backup BEFORE delete — the only recovery path for a hard delete.
-            backup_path.write_text(json.dumps(candidates, indent=2), encoding="utf-8")
-            with backup_path.open("rb") as fh:
-                import os
+            # flush + fsync the WRITE handle so the bytes are durable on disk
+            # before any DELETE is issued.
+            import os
 
-                os.fsync(fh.fileno()) if hasattr(os, "fsync") else None
-            logger.info("Backup of %d rows written -> %s", n, backup_path)
+            with backup_path.open("w", encoding="utf-8") as fh:
+                fh.write(json.dumps(candidates, indent=2))
+                fh.flush()
+                os.fsync(fh.fileno())
+            logger.info("Backup of %d rows written + fsynced -> %s", n, backup_path)
 
             ids = [c["id"] for c in candidates]
             cur.execute(
