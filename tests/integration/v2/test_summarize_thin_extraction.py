@@ -1,16 +1,27 @@
-"""SE-03: thin / unreachable extraction MUST raise BEFORE the LLM call.
+"""SE-03: pre-Gemini hard-fail modes MUST raise BEFORE the LLM call.
 
-Two pre-Gemini failure modes are contracted by the orchestrator
-(``website.features.summarization_engine.core.orchestrator.summarize_url_bundle``):
+CONTRACT CHANGE (D7/D8 quarantine-first, 2026-05-18): the old gate
+``_MIN_CONTENT_CHARS = 50`` unconditionally raised ``ExtractionConfidenceError``
+for ANY near-empty extraction regardless of confidence. That had a large
+false-positive blast radius (legit short posts), so it was replaced by a
+2-signal gate: trigger ONLY when ``extraction_confidence == "low"`` AND the
+stripped content is below a per-source floor; confidence in {medium, high}
+is NEVER gated. On trigger the DEFAULT is QUARANTINE (summarize + persist,
+tag ``quality_flag="thin"`` — covered by the unit suite
+``test_orchestrator_quarantine.py``). The hard-REJECT tier (raise before
+Gemini, zettel never saved) still exists but is operator-gated behind
+``RAG_THIN_EXTRACTION_REJECT_ENABLED`` (default OFF).
 
-  * ``ExtractionConfidenceError`` when the ingestor returns < 50 chars of
-    real content after stripping section markers. Gemini is never called.
-  * ``NewsletterURLUnreachable`` when the newsletter ingestor's preflight
-    probe fails. It is re-raised so callers can surface a structured error.
+This integration module's unique value is the anti-pattern guard that the
+``gemini_client`` is NEVER touched on a pre-Gemini *raise* path. That now
+applies to:
 
-Anti-pattern guard: the gemini_client supplied to the orchestrator must
-NEVER be called for these scenarios. We use an exploding stub that raises
-on any attribute access.
+  * ``ExtractionConfidenceError`` — low-confidence + below-floor extraction
+    WITH the operator reject tier enabled. Gemini is never called.
+  * ``NewsletterURLUnreachable`` — newsletter preflight probe failed
+    (unchanged; independent of the thin gate). Re-raised for callers.
+
+We use an exploding stub that raises on any attribute access to prove it.
 """
 from __future__ import annotations
 
@@ -46,9 +57,16 @@ class _StubIngestor:
 
     version = "test-1.0.0"
 
-    def __init__(self, *, raw_text: str = "", raise_exc: Exception | None = None):
+    def __init__(
+        self,
+        *,
+        raw_text: str = "",
+        raise_exc: Exception | None = None,
+        extraction_confidence: str = "medium",
+    ):
         self._raw_text = raw_text
         self._raise = raise_exc
+        self._conf = extraction_confidence
 
     async def ingest(self, url, *, config):
         if self._raise is not None:
@@ -60,7 +78,7 @@ class _StubIngestor:
             raw_text=self._raw_text,
             sections={"Article": self._raw_text},
             metadata={"title": "stub"},
-            extraction_confidence="medium",
+            extraction_confidence=self._conf,
             confidence_reason="stub",
             fetched_at=datetime.now(timezone.utc),
             ingestor_version="test-1.0.0",
@@ -99,10 +117,19 @@ def patched_orchestrator(monkeypatch):
         "x" * 49,
     ],
 )
-async def test_thin_extraction_raises_before_gemini(
-    patched_orchestrator, raw_text
+async def test_low_conf_thin_reject_tier_raises_before_gemini(
+    patched_orchestrator, raw_text, monkeypatch
 ) -> None:
-    patched_orchestrator(_StubIngestor(raw_text=raw_text))
+    """D7/D8 reject tier (operator-gated, RAG_THIN_EXTRACTION_REJECT_ENABLED
+    =true): low-confidence extraction below the per-source floor MUST raise
+    ``ExtractionConfidenceError`` BEFORE Gemini. The stub is forced to
+    ``extraction_confidence="low"`` because the new gate triggers ONLY on
+    low confidence (medium/high are never gated — see the medium test
+    below). Gemini is never called (exploding client proves it)."""
+    monkeypatch.setenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", "true")
+    patched_orchestrator(
+        _StubIngestor(raw_text=raw_text, extraction_confidence="low")
+    )
     with pytest.raises(ExtractionConfidenceError) as ei:
         await summarize_url_bundle(
             "https://example.com/thin",
@@ -111,6 +138,32 @@ async def test_thin_extraction_raises_before_gemini(
             source_type=SourceType.WEB,
         )
     assert ei.value.url == "https://example.com/thin"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raw_text", ["tiny", "x" * 49])
+async def test_medium_conf_thin_is_not_gated_reaches_gemini(
+    patched_orchestrator, raw_text, monkeypatch
+) -> None:
+    """D7/D8 false-positive fix: medium-confidence content below the floor
+    must NOT raise the pre-Gemini reject (the old <50-char hard gate did,
+    killing legit short posts). It is never gated, so the orchestrator
+    proceeds to the summarizer — proven here by the exploding client being
+    reached (``AssertionError`` from Gemini access, NOT
+    ``ExtractionConfidenceError``). Reject tier explicitly ON to show even
+    then medium is exempt."""
+    monkeypatch.setenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", "true")
+    patched_orchestrator(
+        _StubIngestor(raw_text=raw_text, extraction_confidence="medium")
+    )
+    with pytest.raises(AssertionError) as ei:
+        await summarize_url_bundle(
+            "https://example.com/short",
+            user_id=_USER,
+            gemini_client=_ExplodingClient(),
+            source_type=SourceType.WEB,
+        )
+    assert "Gemini was called" in str(ei.value) or "attr=" in str(ei.value)
 
 
 @pytest.mark.asyncio
