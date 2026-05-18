@@ -253,6 +253,70 @@ class ContentRepository:
         )
         return bool(response.data)
 
+    def resolve_workspace_zettel_id(
+        self,
+        *,
+        canonical_zettel_id: UUID,
+        workspace_id: UUID,
+    ) -> UUID | None:
+        """Resolve the live workspace_zettel id for a canonical id in a workspace.
+
+        Phase C dedup-caveat fix: ``AddZettelPipelineOutput.workspace_zettel_id``
+        carries the *canonical* id (not the workspace overlay id) when a link
+        dedups against an existing canonical row. A canonical id must never be
+        sent to ``rag.bulk_add_to_kasten`` (its FK targets
+        ``content.workspace_zettels.id``). This compound-key lookup
+        ``(canonical_zettel_id, workspace_id)`` returns the true overlay id, or
+        ``None`` if the workspace has no non-deleted overlay for that canonical.
+        """
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id")
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .eq("workspace_id", str(workspace_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return None
+        return UUID(str(rows[0]["id"]))
+
+    def resolve_workspace_zettel_id_by_url(
+        self,
+        *,
+        normalized_url: str,
+        workspace_id: UUID,
+    ) -> UUID | None:
+        """Resolve the live workspace_zettel id for a normalized URL in a workspace.
+
+        Phase C dedup-caveat fix (companion to
+        :meth:`resolve_workspace_zettel_id`): the create_kasten runner has the
+        ingested link's normalized URL but cannot reliably tell whether
+        ``AddZettelPipelineOutput.workspace_zettel_id`` is the workspace overlay
+        id or the canonical id (the latter on a dedup hit, ``was_new=False``).
+        Resolving via the canonical URL + workspace compound key guarantees the
+        true ``content.workspace_zettels.id`` is what feeds
+        ``rag.bulk_add_to_kasten`` — never a canonical id. Returns ``None`` if
+        the workspace has no non-deleted overlay for that URL.
+        """
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id,canonical:canonical_zettels!inner(normalized_url)")
+            .eq("workspace_id", str(workspace_id))
+            .eq("canonical.normalized_url", normalized_url)
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return None
+        return UUID(str(rows[0]["id"]))
+
     def search_chunks(
         self,
         *,
