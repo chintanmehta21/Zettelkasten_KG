@@ -12,7 +12,6 @@ supports test-time augmentation (Layer 7) when ``mode='high'``.
 from __future__ import annotations
 
 import asyncio
-import gc
 import json
 import logging
 import os
@@ -27,17 +26,17 @@ def aggressive_release() -> None:
     from website.api._mem_release import aggressive_release as _release
 
     _release()
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import numpy as np
-import onnxruntime as ort
-from flashrank import Ranker, RerankRequest
-from tokenizers import Tokenizer
+import numpy as np  # noqa: E402
+import onnxruntime as ort  # noqa: E402
+from flashrank import Ranker, RerankRequest  # noqa: E402
+from tokenizers import Tokenizer  # noqa: E402
 
-from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger
-from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager
-from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
+from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger  # noqa: E402
+from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager  # noqa: E402
+from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 
@@ -254,7 +253,6 @@ def _resolve_fusion_weights(
     rerank_w, graph_w, rrf_w = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
     if graph_weight_override is not None:
         graph_w = graph_weight_override
-        denom = (rerank_w + rrf_w) if hasattr(_FUSION_WEIGHTS, "get") else 0
         # Use original (rerank_w, rrf_w) ratio from the class table to redistribute.
         orig_rerank, _, orig_rrf = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
         denom = orig_rerank + orig_rrf

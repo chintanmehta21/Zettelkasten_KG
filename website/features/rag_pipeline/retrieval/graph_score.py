@@ -20,6 +20,25 @@ _logger = logging.getLogger(__name__)
 
 _USAGE_EDGES_ENABLED = os.environ.get("RAG_USAGE_EDGES_ENABLED", "true").lower() == "true"
 
+# Phase D P2-5: KG-aware retrieval for THEMATIC / MULTI_HOP. For these two
+# classes ONLY, the localized-PageRank centrality is blended with a bounded
+# in-subgraph proximity term (normalized degree over the SAME induced subgraph
+# already built for PageRank — NO extra DB query). All other classes are
+# byte-identical to the pre-Phase-D behaviour (pure pr_norm). The cold /
+# failure / <2-node / 0-edge degrade contract (graph_score == 0.0) is
+# preserved unchanged.
+_PROX_PR_W: float = 0.7  # PageRank share of the blended graph_score
+_PROX_W: float = 0.3  # in-subgraph proximity share
+_PROX_GATED_CLASSES = (QueryClass.MULTI_HOP, QueryClass.THEMATIC)
+
+
+def _clamp01(value: float) -> float:
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
+
 
 def _usage_weight_bonus(
     rag_repo: RAGRepository,
@@ -127,8 +146,36 @@ class LocalizedPageRankScorer:
         else:
             pagerank = nx.pagerank(graph, alpha=self._damping, weight="weight")
             max_score = max(pagerank.values()) or 1.0
+            # Phase D P2-5: class-gated proximity blend. Resolve the class to a
+            # QueryClass enum (it may arrive as enum, str, or None) and only
+            # enrich for THEMATIC / MULTI_HOP. Every other class falls through
+            # to the byte-identical pure-pr_norm assignment below.
+            _qc: QueryClass | None
+            if isinstance(query_class, QueryClass):
+                _qc = query_class
+            elif isinstance(query_class, str):
+                _qc = next(
+                    (c for c in QueryClass if c.value == query_class), None
+                )
+            else:
+                _qc = None
+            _prox_gated = _qc in _PROX_GATED_CLASSES
+            if _prox_gated:
+                # Bounded proximity over the SAME induced subgraph (no extra
+                # DB call): networkx degree_centrality is normalized to [0, 1]
+                # by (n - 1), so it is a cheap, bounded short-range
+                # connectivity proxy for query-anchor proximity.
+                prox = nx.degree_centrality(graph)
+                max_prox = max(prox.values()) or 1.0
             for candidate in candidates:
-                candidate.graph_score = pagerank.get(candidate.node_id, 0.0) / max_score
+                pr_norm = pagerank.get(candidate.node_id, 0.0) / max_score
+                if _prox_gated:
+                    prox_norm = prox.get(candidate.node_id, 0.0) / max_prox
+                    candidate.graph_score = _clamp01(
+                        _PROX_PR_W * pr_norm + _PROX_W * prox_norm
+                    )
+                else:
+                    candidate.graph_score = pr_norm
 
         # Usage-edge bonus: only applied when query_class is supplied (caller opts in).
         # Cached per target node_id within this call to avoid duplicate DB lookups

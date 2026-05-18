@@ -33,24 +33,24 @@ except Exception:  # pragma: no cover - optional dependency fallback
     def get_client():
         return _DummyLangfuse()
 
-from website.features.rag_pipeline.errors import EmptyScopeError
-from website.features.rag_pipeline.generation.prompts import (
+from website.features.rag_pipeline.errors import EmptyScopeError  # noqa: E402
+from website.features.rag_pipeline.generation.prompts import (  # noqa: E402
     NO_CONTEXT_MARKER,
     REFUSAL_PHRASE,
     SYSTEM_PROMPT,
     USER_TEMPLATE,
 )
-from website.features.rag_pipeline.generation.sanitize import (
+from website.features.rag_pipeline.generation.sanitize import (  # noqa: E402
     has_valid_citation,
     sanitize_answer,
     strip_invalid_citations,
 )
-from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
-from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor
-from website.features.rag_pipeline.query.router import apply_class_overrides
-from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner
-from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
-from website.features.rag_pipeline.retrieval.hybrid import _top1_top2_gap
+from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency  # noqa: E402
+from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor  # noqa: E402
+from website.features.rag_pipeline.query.router import apply_class_overrides  # noqa: E402
+from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner  # noqa: E402
+from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass  # noqa: E402
+from website.features.rag_pipeline.retrieval.hybrid import _top1_top2_gap  # noqa: E402
 
 # T20: env-gated KG-first planner. Defaults on so prod gets the new path,
 # but operators can disable via ``RAG_KG_FIRST_ENABLED=false`` for incident
@@ -256,7 +256,11 @@ def _should_skip_retry(
     """
     top_score = _top_candidate_score(used_candidates)
     # iter-12 Class K3: clear-winner bypass — absolute floors are moot when gap >= 1.5.
-    gap = _top1_top2_gap(used_candidates)
+    # Phase D D2 fix: these are POST-rerank candidates whose meaningful ordering
+    # is final_score (cascade sets it at fuse time), not the raw pre-fusion
+    # rrf_score. Gate the clear-winner skip on final_score so a rerank that
+    # reordered the top-2 does not wrongly short-circuit the retry.
+    gap = _top1_top2_gap(used_candidates, score_key="final_score")
     if gap is not None and gap >= _RETRY_GAP_BYPASS:
         logger.info("retry_skip bypass=clear_winner gap=%.3f", gap)
         return True, "skip_clear_winner"

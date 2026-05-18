@@ -388,6 +388,193 @@ async def test_score_no_query_class_skips_signal_weight_lookup():
     ] == []
 
 
+# ---------------------------------------------------------------------------
+# Phase D P2-5 — class-gated KG-aware proximity blend
+#   graph_score = clamp01(0.7*pr_norm + 0.3*prox_norm) for MULTI_HOP/THEMATIC
+#   pure pr_norm (byte-identical to pre-Phase-D) for every other class
+# ---------------------------------------------------------------------------
+
+import networkx as nx  # noqa: E402
+
+from website.features.rag_pipeline.retrieval.graph_score import (  # noqa: E402
+    _PROX_PR_W,
+    _PROX_W,
+)
+
+# A deterministic 4-node subgraph: node-2 is the hub (degree 3), so its
+# proximity (degree centrality) clearly diverges from pr_norm — proving the
+# blend term is actually applied.
+_PHASE_D_EDGES = [
+    {"source_node_id": "node-1", "target_node_id": "node-2", "weight": 1.0},
+    {"source_node_id": "node-2", "target_node_id": "node-3", "weight": 1.0},
+    {"source_node_id": "node-2", "target_node_id": "node-4", "weight": 1.0},
+]
+
+
+class _PhaseDSchema:
+    """schema('rag') mock that returns subgraph EDGES for the pagerank RPC and
+    [] for search_signal_weights — exercises the real pagerank computation."""
+
+    def __init__(self, calls, edges, raise_exc=None):
+        self._calls = calls
+        self._edges = edges
+        self._raise = raise_exc
+
+    def rpc(self, name, params):
+        self._calls.append(("schema_rpc", "rag", name, params))
+        if name == "subgraph_for_pagerank":
+            return _Execute(self._edges, self._raise)
+        return _Execute([], None)  # search_signal_weights -> no bonus
+
+
+class _PhaseDClient:
+    def __init__(self, *, edges=None, raise_exc=None):
+        self.calls: list = []
+        self._edges = edges or []
+        self._raise = raise_exc
+
+    def schema(self, name):
+        self.calls.append(("schema", name))
+        return _PhaseDSchema(self.calls, self._edges, self._raise)
+
+
+def _pure_pr_norm(edges, node_ids):
+    """Re-implement the EXACT pre-Phase-D formula for byte-identical asserts."""
+    g = nx.Graph()
+    g.add_nodes_from(node_ids)
+    for e in edges:
+        g.add_edge(e["source_node_id"], e["target_node_id"], weight=e.get("weight") or 1.0)
+    pr = nx.pagerank(g, alpha=0.85, weight="weight")
+    mx = max(pr.values()) or 1.0
+    return {n: pr.get(n, 0.0) / mx for n in node_ids}
+
+
+@pytest.mark.parametrize("gated_class", [QueryClass.MULTI_HOP, QueryClass.THEMATIC])
+@pytest.mark.asyncio
+async def test_phase_d_gated_classes_blend_proximity(gated_class):
+    """MULTI_HOP / THEMATIC -> clamp01(0.7*pr + 0.3*prox); value in [0,1] and
+    the hub node's score reflects the proximity term (differs from pure pr)."""
+    node_ids = ["node-1", "node-2", "node-3", "node-4"]
+    cands = [_candidate(n) for n in node_ids]
+    fake = _PhaseDClient(edges=_PHASE_D_EDGES)
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=gated_class,
+    )
+    pure = _pure_pr_norm(_PHASE_D_EDGES, node_ids)
+    g = nx.Graph()
+    g.add_nodes_from(node_ids)
+    for e in _PHASE_D_EDGES:
+        g.add_edge(e["source_node_id"], e["target_node_id"], weight=1.0)
+    prox = nx.degree_centrality(g)
+    mxp = max(prox.values()) or 1.0
+    for c in cands:
+        assert 0.0 <= c.graph_score <= 1.0
+        expected = max(
+            0.0,
+            min(1.0, _PROX_PR_W * pure[c.node_id] + _PROX_W * (prox[c.node_id] / mxp)),
+        )
+        assert c.graph_score == pytest.approx(expected, abs=1e-9)
+    # Blend genuinely differs from the pure-pr baseline for at least one node
+    # whose normalized degree != normalized pagerank (a leaf like node-1: low
+    # degree centrality but a non-trivial pr_norm — proves prox term applied).
+    leaf = next(c for c in cands if c.node_id == "node-1")
+    assert leaf.graph_score != pytest.approx(pure["node-1"], abs=1e-6)
+
+
+@pytest.mark.parametrize(
+    "ungated_class",
+    [QueryClass.LOOKUP, QueryClass.VAGUE, QueryClass.STEP_BACK],
+)
+@pytest.mark.asyncio
+async def test_phase_d_ungated_classes_byte_identical_pure_pr(ungated_class):
+    """LOOKUP / VAGUE / STEP_BACK -> pure pr_norm, byte-identical to pre-Phase-D
+    (no proximity term, no clamp divergence)."""
+    node_ids = ["node-1", "node-2", "node-3", "node-4"]
+    cands = [_candidate(n) for n in node_ids]
+    fake = _PhaseDClient(edges=_PHASE_D_EDGES)
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=ungated_class,
+    )
+    pure = _pure_pr_norm(_PHASE_D_EDGES, node_ids)
+    for c in cands:
+        # Exact equality with the pre-change formula (signal rows empty so the
+        # usage bonus == sigmoid(0)-0.05 == 0.0 exactly, leaving pure pr_norm).
+        assert c.graph_score == pytest.approx(pure[c.node_id], abs=1e-12)
+
+
+@pytest.mark.asyncio
+async def test_phase_d_no_extra_db_call_for_gated_classes():
+    """Proximity reuses the in-memory subgraph: exactly ONE pagerank RPC, no
+    extra retrieval round (same call shape as before Phase D)."""
+    node_ids = ["node-1", "node-2", "node-3", "node-4"]
+    cands = [_candidate(n) for n in node_ids]
+    fake = _PhaseDClient(edges=_PHASE_D_EDGES)
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=QueryClass.MULTI_HOP,
+    )
+    pagerank_calls = [
+        c for c in fake.calls if c[0] == "schema_rpc" and c[2] == "subgraph_for_pagerank"
+    ]
+    assert len(pagerank_calls) == 1, (
+        f"exactly one subgraph RPC expected (no extra DB call for proximity), "
+        f"got {pagerank_calls!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_phase_d_cold_subgraph_degrades_to_zero_for_gated_class():
+    """<2 candidates -> early 0.0 degrade contract preserved even for gated."""
+    cands = [_candidate("only-node")]
+    fake = _PhaseDClient(edges=[])
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=QueryClass.THEMATIC,
+    )
+    assert cands[0].graph_score == 0.0
+
+
+@pytest.mark.asyncio
+async def test_phase_d_zero_edge_subgraph_degrades_to_zero_for_gated_class():
+    """0-edge subgraph -> 0.0 (degrade contract) even for THEMATIC/MULTI_HOP."""
+    cands = [_candidate("node-1"), _candidate("node-2")]
+    fake = _PhaseDClient(edges=[])
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=QueryClass.MULTI_HOP,
+    )
+    for c in cands:
+        assert c.graph_score == 0.0
+
+
+@pytest.mark.asyncio
+async def test_phase_d_rpc_failure_degrades_to_zero_for_gated_class():
+    """subgraph RPC raises -> 0.0 for gated class (failure contract intact)."""
+    class _BoomClient(_Client):
+        def rpc(self, name, params):  # unscoped path unused here
+            raise RuntimeError("boom")
+
+        def schema(self, name):
+            self.calls.append(("schema", name))
+
+            class _S:
+                def rpc(_self, n, p):
+                    self.calls.append(("schema_rpc", name, n, p))
+
+                    class _E:
+                        def execute(_e):
+                            raise RuntimeError("simulated postgrest 5xx")
+
+                    return _E()
+
+            return _S()
+
+    cands = [_candidate("node-1"), _candidate("node-2"), _candidate("node-3")]
+    fake = _BoomClient(edges=_PHASE_D_EDGES)
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uuid4(), candidates=cands, query_class=QueryClass.THEMATIC,
+    )
+    for c in cands:
+        assert c.graph_score == 0.0
+
+
 @pytest.mark.asyncio
 async def test_score_caches_per_node_signal_weight_lookup():
     """Bonus cache: multiple chunk-candidates sharing a node_id → 1 RPC per unique node_id."""
