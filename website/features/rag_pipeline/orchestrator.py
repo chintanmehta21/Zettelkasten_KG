@@ -241,6 +241,103 @@ def _top_candidate_score(used_candidates) -> float:
     return best
 
 
+# ---------------------------------------------------------------------------
+# F5 — calibrated pre-synthesis off-topic/insufficient-context abstention gate
+# Spec: docs/research/e4_component_fix_proposal.md §Finding 5.
+# Reads the cross-encoder's calibrated sigmoid relevance prob
+# (RetrievalCandidate.rerank_score, [0,1], None on RRF fallback — set in
+# rerank/cascade.py). Composes with Phase-D/K3 (independent: never reads
+# RRF k or fusion weights). Default OBSERVE-ONLY -> zero behavior change.
+# ---------------------------------------------------------------------------
+
+
+def _abstain_floor_enabled() -> bool:
+    """Master flag. Default false = OBSERVE-ONLY (log, never abstain)."""
+    return os.environ.get("RAG_ABSTAIN_FLOOR_ENABLED", "false").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _abstain_floor_for_class(query_class: "QueryClass | None") -> float:
+    """Per-class abstention floor.
+
+    Override knob: ``RAG_ABSTAIN_FLOOR_<CLASS>`` (CLASS = QueryClass name
+    upper, e.g. ``RAG_ABSTAIN_FLOOR_LOOKUP``). Default for each class is
+    ``0.5 * <cascade per-class ordering threshold>`` — the same per-class
+    value the reranker uses for ordering (cascade ``_THRESHOLDS`` /
+    ``_threshold_for_class``); cascade default 0.50 -> floor default 0.25.
+
+    cascade._THRESHOLDS is read (never mutated) so test/env patching of the
+    threshold table flows through and the read-only contract on cascade.py
+    holds.
+    """
+    name = getattr(query_class, "name", None) or str(query_class or "DEFAULT")
+    name = name.upper()
+    env_key = f"RAG_ABSTAIN_FLOOR_{name}"
+    raw = os.environ.get(env_key)
+    if raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            logger.warning(
+                "rag_abstain_floor invalid %s=%r — using default", env_key, raw
+            )
+    # Resolve cascade's per-class ordering threshold (default 0.50). Import
+    # the module lazily so a cascade import cycle / load fault degrades to a
+    # safe default instead of breaking the synth path.
+    try:
+        from website.features.rag_pipeline.rerank import cascade as _cascade
+
+        cls_value = getattr(query_class, "value", None)
+        thresholds = _cascade._THRESHOLDS
+        ordering = float(
+            thresholds.get(
+                cls_value, thresholds.get("default", 0.50)
+            )
+        )
+    except Exception:  # noqa: BLE001 - any cascade fault -> conservative default
+        ordering = 0.50
+    return 0.5 * ordering
+
+
+@dataclass(slots=True)
+class _AbstainDecision:
+    evaluated: bool          # False when a carve-out skipped the gate
+    would_abstain: bool      # True iff (evaluated and top < floor)
+    top: float | None        # max calibrated rerank_score, or None
+    floor: float
+    n_candidates: int
+
+
+def _evaluate_abstain_floor(
+    used_candidates, query_class: "QueryClass | None"
+) -> _AbstainDecision:
+    """Pure decision: should synthesis be abstained on relevance grounds?
+
+    Carve-outs (skip the gate, never abstain):
+      * No calibrated score (``top is None``) — reranker fell back to RRF;
+        never gate on uncalibrated RRF.
+      * ``len(used_candidates) <= 1`` — cold-start carve-out, mirrors
+        cascade ``_filter_pre_rerank`` min-keep.
+    """
+    cands = list(used_candidates or [])
+    floor = _abstain_floor_for_class(query_class)
+    if len(cands) <= 1:
+        return _AbstainDecision(False, False, None, floor, len(cands))
+    calibrated = [
+        c.rerank_score
+        for c in cands
+        if getattr(c, "rerank_score", None) is not None
+    ]
+    top = max(calibrated) if calibrated else None
+    if top is None:
+        return _AbstainDecision(False, False, None, floor, len(cands))
+    return _AbstainDecision(True, top < floor, float(top), floor, len(cands))
+
+
 def _should_skip_retry(
     *,
     answer_text: str,
@@ -740,7 +837,12 @@ class RAGOrchestrator:
         # rerank timestamps already on `context`. iter-11 mid-flight abort
         # design needs all three to pick safe abort points.
         _t_synth_start = time.monotonic_ns()
-        generation = await self._generate_once(query=query, context_xml=context.context_xml)
+        generation = await self._generate_once(
+            query=query,
+            context_xml=context.context_xml,
+            used_candidates=context.used_candidates,
+            query_class=prepared.query_class,
+        )
         _t_synth_ms = (time.monotonic_ns() - _t_synth_start) // 1_000_000
         result = await self._finalize_answer(
             query=query,
@@ -892,9 +994,41 @@ class RAGOrchestrator:
         return ctx_result
 
     @trace_stage("generate_once")
-    async def _generate_once(self, *, query, context_xml: str) -> _GeneratedAnswer:
+    async def _generate_once(
+        self,
+        *,
+        query,
+        context_xml: str,
+        used_candidates=None,
+        query_class: "QueryClass | None" = None,
+    ) -> _GeneratedAnswer:
         if NO_CONTEXT_MARKER in context_xml:
             return _empty_context_refusal()
+        # F5: calibrated pre-synthesis off-topic/insufficient-context
+        # abstention gate. Placed immediately after the NO_CONTEXT refusal
+        # so it reuses the same _empty_context_refusal() sink (refusal,
+        # citation-suppressed, eval refused=True). Carve-outs and the
+        # per-class floor live in _evaluate_abstain_floor. ``used_candidates``
+        # defaults to None so legacy callers/tests are unaffected (gate
+        # skipped — no candidates). Composes with Phase-D/K3 (reads only the
+        # calibrated rerank_score, never RRF k / fusion weights).
+        decision = _evaluate_abstain_floor(used_candidates, query_class)
+        if decision.evaluated and decision.would_abstain:
+            _enabled = _abstain_floor_enabled()
+            logger.warning(
+                "rag_abstain_floor query_class=%s top=%.4f floor=%.4f "
+                "n=%d would_abstain=true enforced=%s",
+                getattr(query_class, "value", query_class),
+                decision.top,
+                decision.floor,
+                decision.n_candidates,
+                str(_enabled).lower(),
+            )
+            if _enabled:
+                # ENABLED: structurally prevent grounding on off-topic chunks
+                # by skipping the LLM call entirely.
+                return _empty_context_refusal()
+            # OBSERVE-ONLY (default): logged above; proceed exactly as today.
         user_prompt = USER_TEMPLATE.format(
             context_xml=context_xml,
             user_query=query.content,
@@ -1255,7 +1389,10 @@ class RAGOrchestrator:
             query_meta=prepared.metadata,
         )
         retry_generation = await self._generate_once(
-            query=query, context_xml=retry_context.context_xml
+            query=query,
+            context_xml=retry_context.context_xml,
+            used_candidates=retry_context.used_candidates,
+            query_class=retry_qc,
         )
         retry_verdict, retry_details = await self._critic.verify(
             answer_text=retry_generation.content,
