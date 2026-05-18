@@ -56,6 +56,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "43_port_match_kg_nodes.sql",
         "44_functional_gates.sql",
         "45_document_source_type.sql",
+        "46_url_dedup.sql",
     ]
 
 
