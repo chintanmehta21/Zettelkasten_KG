@@ -811,3 +811,142 @@ async def test_persist_wiring_skips_when_no_profile():
         title="T",
         summary="S",
     )
+
+
+# --------------------------------------------------------------------------
+# Shared core + existing-node entrypoint (backfill reuse). These prove the
+# refactor that extracted _score_and_upsert_edges_for_node did NOT change
+# the live hook's behaviour (every hook test above still passes unchanged),
+# and that populate_kg_edges_for_existing_node runs the SAME core.
+# --------------------------------------------------------------------------
+
+
+def test_shared_core_is_what_the_hook_calls():
+    """The live hook delegates steps 4-5 to the shared core (single source
+    of truth with the backfill). Asserting the call site exists guards the
+    refactor against silent divergence."""
+    import inspect
+
+    src = inspect.getsource(kg_population.populate_kg_for_zettel)
+    assert "_score_and_upsert_edges_for_node" in src, (
+        "live hook must call the shared scoring core (no inlined copy)"
+    )
+    # And the existing-node entrypoint reuses the SAME core.
+    src2 = inspect.getsource(
+        kg_population.populate_kg_edges_for_existing_node
+    )
+    assert "_score_and_upsert_edges_for_node" in src2
+
+
+def _node_row(nid, *, emb=0.1, tags=("ml", "ai"), name="Existing",
+              created="2026-05-17T00:00:00+00:00", embedding=True):
+    md = {"tags": list(tags), "created_at": created}
+    if embedding:
+        md["embedding"] = [emb] * 768
+    return {"id": nid, "canonical_name": name, "metadata": md,
+            "created_at": created}
+
+
+def test_existing_node_creates_edges_from_warm_node():
+    c = FakeClient()
+    # Single-node load + candidate-meta both come from _candidate_meta here.
+    c._candidate_meta = [
+        _node_row(100),  # the node we backfill
+        _node_row(200),  # its strong-match peer
+    ]
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 200, "score": 0.99}]
+    m = kg_population.populate_kg_edges_for_existing_node(
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        kg_node_id=100,
+        supabase_client=c,
+    )
+    assert m["edges"] >= 1 and not m.get("error")
+    edge = [w for w in c.writes if w[1] == "kg_edges"][0][3]
+    assert edge["workspace_strength"] >= scoring.EDGE_CREATION_THRESHOLD
+    assert edge["src_node_id"] == 100 and edge["dst_node_id"] == 200
+    assert edge["global_strength"] is None
+    # No originating zettel for an existing-node pass -> evidence NULL.
+    assert edge["evidence_canonical_zettel_id"] is None
+    assert {"structural", "structural_shared_chunks",
+            "structural_adamic_adar"} <= set(edge["matched_via"])
+
+
+def test_existing_node_cold_regenerates_embedding(monkeypatch):
+    calls = {"n": 0}
+
+    def _gen(*_a, **_k):
+        calls["n"] += 1
+        return [0.1] * 768
+
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding", _gen
+    )
+    c = FakeClient()
+    c._candidate_meta = [
+        _node_row(100, embedding=False),  # cold: no stored embedding
+        _node_row(200),
+    ]
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 200, "score": 0.99}]
+    m = kg_population.populate_kg_edges_for_existing_node(
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        kg_node_id=100,
+        supabase_client=c,
+    )
+    assert calls["n"] == 1  # embedding regenerated for the cold node
+    # Regenerated vector persisted back into kg_nodes.metadata.
+    upd = [w for w in c.writes if w[1] == "kg_nodes" and w[2] == "update"]
+    assert upd and upd[0][3]["metadata"]["embedding"] == [0.1] * 768
+    assert m["edges"] >= 1
+
+
+def test_existing_node_cold_no_embedding_skips(monkeypatch):
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding",
+        lambda *_a, **_k: [],  # generation unavailable
+    )
+    c = FakeClient()
+    c._candidate_meta = [_node_row(100, embedding=False)]
+    m = kg_population.populate_kg_edges_for_existing_node(
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        kg_node_id=100,
+        supabase_client=c,
+    )
+    assert m["skipped"] is True and m["edges"] == 0
+    assert [w for w in c.writes if w[1] == "kg_edges"] == []
+
+
+def test_existing_node_not_in_workspace_skips_no_leak():
+    c = FakeClient()
+    c._candidate_meta = []  # node id resolves to nothing in workspace A
+    m = kg_population.populate_kg_edges_for_existing_node(
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        kg_node_id=999,
+        supabase_client=c,
+    )
+    assert m["skipped"] is True
+    # The node-load SELECT was fenced to workspace A (never B).
+    sel = [
+        f for (s, t, op, _p, f) in c.calls
+        if s == "kg" and t == "kg_nodes" and op == "select"
+    ]
+    assert sel and all(f.get("workspace_id") == str(_WS_A) for f in sel)
+    assert all(str(_WS_B) not in str(f) for f in sel)
+
+
+def test_existing_node_never_raises_on_internal_error():
+    c = FakeClient()
+    # Strong-match peer present so an edge upsert is actually attempted.
+    c._candidate_meta = [_node_row(100), _node_row(200)]
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 200, "score": 0.99}]
+    c.fail_on = ("kg", "kg_edges", "upsert")  # blow up at edge write
+    m = kg_population.populate_kg_edges_for_existing_node(
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        kg_node_id=100,
+        supabase_client=c,
+    )  # MUST NOT raise (per-node isolation contract)
+    assert "error" in m

@@ -431,6 +431,141 @@ def score_edge(
     return strength, matched_via
 
 
+def _score_and_upsert_edges_for_node(
+    *,
+    workspace_id: UUID,
+    profile_id: UUID,
+    node_id: int,
+    node_embedding: list[float],
+    node_tags: list[str],
+    node_created_at_iso: str,
+    supabase_client,
+    metrics: dict,
+    evidence_canonical_zettel_id: UUID | None,
+) -> dict:
+    """Bounded candidate selection + D-KG-1 scoring + edge upsert for ONE node.
+
+    SINGLE SOURCE OF TRUTH for steps 3b-5 of the live ingest hook. Both the
+    fire-and-forget hook (``populate_kg_for_zettel``) and the one-shot
+    existing-node backfill (``populate_kg_edges_for_existing_node``) call
+    THIS function so the two paths can never diverge. Synchronous (callers
+    wrap it in ``asyncio.to_thread`` exactly as the prior inlined block was
+    wrapped at each Supabase round-trip — net behaviour byte-identical to the
+    pre-refactor hook body).
+
+    Workspace isolation: ``find_similar_nodes`` is keyed off the owner
+    ``profile_id`` (its workspace fence); the candidate-metadata SELECT and
+    every structural query are fenced to ``workspace_id``; ``upsert_edge``
+    forces a non-NULL ``workspace_id``. Mutates + returns ``metrics``.
+    """
+    from website.core.supabase_v2.repositories.kg_repository import KGRepository
+    from website.features.kg_features.embeddings import find_similar_nodes
+    from website.features.kg_features.scoring import EDGE_CREATION_THRESHOLD
+
+    kg = KGRepository(supabase_client)
+
+    k = _top_k()
+    candidates = find_similar_nodes(
+        supabase_client,
+        str(profile_id),  # match_kg_nodes resolves owner -> workspaces
+        node_embedding,
+        0.0,  # collect K nearest; D-KG-1 owns the create cutoff
+        k,
+    )
+    # Drop the node itself + hard-cap at K (defensive — the RPC already
+    # LIMITs, but never score more than K candidates).
+    candidates = [
+        c for c in candidates if int(c.get("node_id", -1)) != node_id
+    ][:k]
+    metrics["candidates"] = len(candidates)
+
+    if not candidates:
+        return metrics
+
+    # Batch-load candidate scoring inputs from kg_nodes.metadata, fenced to
+    # THIS workspace (tenant isolation: never reads workspace B).
+    cand_ids = [int(c["node_id"]) for c in candidates]
+    meta_resp = (
+        supabase_client.schema("kg")
+        .table("kg_nodes")
+        .select("id,metadata")
+        .eq("workspace_id", str(workspace_id))
+        .in_("id", cand_ids)
+        .execute()
+    )
+    cand_meta = {
+        int(r["id"]): (r.get("metadata") or {})
+        for r in (meta_resp.data or [])
+    }
+
+    new_key = "new"
+
+    # STRUCTURAL signal (D-KG-1 slot). Computed ONCE over the whole candidate
+    # set (bounded constant query count, NOT per-candidate). Failure degrades
+    # to None == pre-restore behaviour; never raises.
+    structural_map, structural_sub = _structural_map(
+        new_key=new_key,
+        new_node_id=node_id,
+        candidates=candidates,
+        cand_meta=cand_meta,
+        workspace_id=workspace_id,
+        supabase_client=supabase_client,
+    )
+    structural_arg = structural_map or None
+
+    for cand in candidates:
+        cid = int(cand["node_id"])
+        cmeta = cand_meta.get(cid)
+        if cmeta is None:
+            # Candidate not in this workspace's kg_nodes -> isolation
+            # guard; skip (never cross-tenant).
+            continue
+        cand_key = f"c{cid}"
+
+        # D-KG-1 inputs. Embedding signal: prefer the RPC cosine score
+        # (already [0,1], free), fall back to stored vectors.
+        rpc_score = cand.get("score")
+        cand_embedding = list(cmeta.get("embedding") or [])
+
+        strength, matched_via = score_edge(
+            a_key=new_key,
+            a_embedding=node_embedding,
+            a_tags=node_tags,
+            a_created_at_iso=node_created_at_iso,
+            b_key=cand_key,
+            b_embedding=cand_embedding,
+            b_tags=list(cmeta.get("tags") or []),
+            b_created_at_iso=cmeta.get("created_at"),
+            structural_arg=structural_arg,  # shared-chunk + Adamic-Adar
+            structural_sub=structural_sub.get(cid, (0, 0.0)),
+            rpc_score=rpc_score,
+        )
+        metrics["scored"] += 1
+
+        if strength < EDGE_CREATION_THRESHOLD:
+            continue
+
+        kg.upsert_edge(
+            workspace_id=workspace_id,
+            src_node_id=node_id,
+            dst_node_id=cid,
+            relation_type=_RELATION_TYPE,
+            connection_strength=round(strength, 3),
+            # workspace_strength = D-KG-1 over WORKSPACE-scoped data
+            # (candidates come from the owner's workspaces only).
+            workspace_strength=round(strength, 3),
+            # global_strength left NULL: cross-workspace scoring would need
+            # an expensive all-tenant scan; design says NULL is acceptable
+            # (stored-for-future, never rendered).
+            global_strength=None,
+            matched_via=matched_via,
+            evidence_canonical_zettel_id=evidence_canonical_zettel_id,
+        )
+        metrics["edges"] += 1
+
+    return metrics
+
+
 async def populate_kg_for_zettel(
     *,
     workspace_id: UUID,
@@ -457,11 +592,9 @@ async def populate_kg_for_zettel(
         PipelinesRepository,
     )
     from website.features.kg_features.embeddings import (
-        find_similar_nodes,
         generate_embedding,
     )
     from website.features.kg_features.pseudo_tags import derive_pseudo_tags
-    from website.features.kg_features.scoring import EDGE_CREATION_THRESHOLD
 
     metrics: dict = {"candidates": 0, "scored": 0, "edges": 0, "skipped": False}
 
@@ -535,119 +668,26 @@ async def populate_kg_for_zettel(
             )
             return metrics
 
-        k = _top_k()
-        candidates = await asyncio.to_thread(
-            find_similar_nodes,
-            supabase_client,
-            str(profile_id),  # match_kg_nodes resolves owner -> workspaces
-            node_embedding,
-            0.0,  # collect K nearest; D-KG-1 owns the create cutoff
-            k,
-        )
-        # Drop the just-created node + hard-cap at K (defensive — the RPC
-        # already LIMITs, but never score more than K candidates).
-        candidates = [
-            c for c in candidates if int(c.get("node_id", -1)) != node_id
-        ][:k]
-        metrics["candidates"] = len(candidates)
-
-        if not candidates:
-            await asyncio.to_thread(
-                pipelines.finish_run,
-                run_id=run_id,
-                status="succeeded",
-                metrics=metrics,
-            )
-            return metrics
-
-        # Batch-load candidate scoring inputs from kg_nodes.metadata, fenced
-        # to THIS workspace (tenant isolation: never reads workspace B).
-        cand_ids = [int(c["node_id"]) for c in candidates]
-        meta_resp = await asyncio.to_thread(
-            lambda: supabase_client.schema("kg")
-            .table("kg_nodes")
-            .select("id,metadata")
-            .eq("workspace_id", str(workspace_id))
-            .in_("id", cand_ids)
-            .execute()
-        )
-        cand_meta = {
-            int(r["id"]): (r.get("metadata") or {})
-            for r in (meta_resp.data or [])
-        }
-
-        new_key = "new"
-
-        # ---- 4b. STRUCTURAL signal (D-KG-1 slot, restored) ------------
-        # Computed ONCE over the whole candidate set (bounded constant
-        # query count, NOT per-candidate). Failure degrades to None ==
-        # pre-restore behaviour; never raises (fire-and-forget hook).
-        structural_map, structural_sub = await asyncio.to_thread(
-            _structural_map,
-            new_key=new_key,
-            new_node_id=node_id,
-            candidates=candidates,
-            cand_meta=cand_meta,
+        # ---- 4+5. Bounded candidate scoring + edge upsert -------------
+        # Delegated to the shared synchronous core (single source of truth
+        # with the existing-node backfill, so the two paths can never
+        # diverge). One to_thread around the whole bounded-constant
+        # sequence preserves the prior "never block the loop on Supabase
+        # I/O" contract; the produced metrics / candidate cap / isolation /
+        # threshold gating / edge payloads are byte-identical to the block
+        # this previously inlined (proven by this module's unit suite).
+        await asyncio.to_thread(
+            _score_and_upsert_edges_for_node,
             workspace_id=workspace_id,
+            profile_id=profile_id,
+            node_id=node_id,
+            node_embedding=node_embedding,
+            node_tags=augmented_tags,
+            node_created_at_iso=created_at_iso,
             supabase_client=supabase_client,
+            metrics=metrics,
+            evidence_canonical_zettel_id=canonical_zettel_id,
         )
-        structural_arg = structural_map or None
-
-        for cand in candidates:
-            cid = int(cand["node_id"])
-            cmeta = cand_meta.get(cid)
-            if cmeta is None:
-                # Candidate not in this workspace's kg_nodes -> isolation
-                # guard; skip (never cross-tenant).
-                continue
-            cand_key = f"c{cid}"
-
-            # D-KG-1 inputs. Embedding signal: prefer the RPC cosine score
-            # (already [0,1], free), fall back to stored vectors.
-            rpc_score = cand.get("score")
-            cand_embedding = list(cmeta.get("embedding") or [])
-
-            # Single source of truth: the SAME pure scorer the backfill
-            # uses (score_edge), so the live hook and the one-shot strength
-            # backfill can never diverge. Output is byte-identical to the
-            # block this previously inlined.
-            strength, matched_via = score_edge(
-                a_key=new_key,
-                a_embedding=node_embedding,
-                a_tags=augmented_tags,
-                a_created_at_iso=created_at_iso,
-                b_key=cand_key,
-                b_embedding=cand_embedding,
-                b_tags=list(cmeta.get("tags") or []),
-                b_created_at_iso=cmeta.get("created_at"),
-                structural_arg=structural_arg,  # shared-chunk + Adamic-Adar
-                structural_sub=structural_sub.get(cid, (0, 0.0)),
-                rpc_score=rpc_score,
-            )
-            metrics["scored"] += 1
-
-            if strength < EDGE_CREATION_THRESHOLD:
-                continue
-
-            await asyncio.to_thread(
-                lambda cid=cid, mv=matched_via, s=strength: kg.upsert_edge(
-                    workspace_id=workspace_id,
-                    src_node_id=node_id,
-                    dst_node_id=cid,
-                    relation_type=_RELATION_TYPE,
-                    connection_strength=round(s, 3),
-                    # workspace_strength = D-KG-1 over WORKSPACE-scoped data
-                    # (candidates come from the owner's workspaces only).
-                    workspace_strength=round(s, 3),
-                    # global_strength left NULL: cross-workspace scoring
-                    # would need an expensive all-tenant scan; design says
-                    # NULL is acceptable (stored-for-future, never rendered).
-                    global_strength=None,
-                    matched_via=mv,
-                    evidence_canonical_zettel_id=canonical_zettel_id,
-                )
-            )
-            metrics["edges"] += 1
 
         await asyncio.to_thread(
             pipelines.finish_run,
@@ -678,4 +718,158 @@ async def populate_kg_for_zettel(
             )
         except Exception as fin_exc:  # pragma: no cover - best effort
             logger.warning("kg-populate run finalize failed: %s", fin_exc)
+        return metrics
+
+
+def populate_kg_edges_for_existing_node(
+    *,
+    workspace_id: UUID,
+    profile_id: UUID,
+    kg_node_id: int,
+    supabase_client,
+) -> dict:
+    """Create the missing edges for ONE already-existing kg node.
+
+    Why this exists (operator-reported, verified live): the create_kasten
+    CLI used to cancel the fire-and-forget ``populate_kg_for_zettel`` task at
+    loop teardown, so ~10 Naruto kg_nodes were upserted but their candidate
+    scoring / edge-upsert step never ran (10 kg_nodes, 0 kg_edges). The
+    teardown race is fixed for FUTURE ingests (persist drain), but re-ingest
+    is idempotent (``pipelines.pipeline_runs(kind='kg_extract')`` dedup), so
+    those existing nodes stay edgeless forever. This entrypoint runs the
+    EXACT same scoring+upsert core the live hook runs, but seeded from an
+    existing node id instead of a freshly-persisted zettel.
+
+    Synchronous (the one-shot backfill is a sync script) and pure-delegating:
+    it reuses ``_score_and_upsert_edges_for_node`` — the SAME shared core the
+    live hook calls — so the backfill and the hook can never diverge.
+
+    Cold node: existing nodes may have been upserted with an empty embedding
+    (``metadata.embedding == []``). kNN candidate selection needs a vector,
+    so we regenerate it from the node's stored title/tags (``canonical_name``
+    + ``metadata.tags``) and persist it back into ``metadata`` (best-effort)
+    so future passes / the live hook reuse it. If embedding generation is
+    unavailable (rate-limit / quota / network → empty list), the node is
+    skipped gracefully with ``metrics['skipped']=True`` — never crashes the
+    batch.
+
+    Workspace isolation: the node-metadata SELECT is fenced to
+    ``workspace_id`` (a node id from another tenant resolves to nothing →
+    treated as missing/skip); every downstream query/write in the shared
+    core is workspace-fenced. Returns a metrics dict
+    (``{candidates, scored, edges, skipped}`` + optional ``error``); never
+    raises (per-node isolation is the caller's contract, but we also guard
+    here so one bad node cannot abort the batch).
+    """
+    from website.features.kg_features.embeddings import generate_embedding
+
+    metrics: dict = {
+        "candidates": 0,
+        "scored": 0,
+        "edges": 0,
+        "skipped": False,
+    }
+    try:
+        # ---- Load this existing node's scoring inputs, ws-fenced --------
+        resp = (
+            supabase_client.schema("kg")
+            .table("kg_nodes")
+            .select("id,canonical_name,metadata,created_at")
+            .eq("workspace_id", str(workspace_id))
+            .eq("id", int(kg_node_id))
+            .limit(1)
+            .execute()
+        )
+        rows = list(resp.data or [])
+        if not rows:
+            # Not in this workspace (or gone) -> isolation guard; skip.
+            logger.info(
+                "kg-backfill node id=%s not in workspace %s; skipping",
+                kg_node_id,
+                workspace_id,
+            )
+            metrics["skipped"] = True
+            return metrics
+
+        row = rows[0]
+        meta = dict(row.get("metadata") or {})
+        node_tags = [
+            str(t).strip()
+            for t in (meta.get("tags") or [])
+            if str(t).strip()
+        ]
+        # Prefer metadata.created_at (what the hook stores); fall back to
+        # the row's created_at so temporal still has a signal.
+        node_created_at_iso = meta.get("created_at") or row.get("created_at")
+
+        node_embedding = list(meta.get("embedding") or [])
+        if not node_embedding:
+            # Cold node: regenerate from stored title + tags (the same
+            # text shape the hook embeds: "title\n\ncontent"; here the
+            # node has no summary, so title + tags is the available signal).
+            canonical_name = str(row.get("canonical_name") or "").strip()
+            embed_input = "\n\n".join(
+                p for p in (canonical_name, " ".join(node_tags)) if p
+            ).strip()[:2000]
+            node_embedding = (
+                generate_embedding(embed_input) if embed_input else []
+            )
+            if not node_embedding:
+                # Embedding unavailable (quota/network) -> skip gracefully.
+                logger.info(
+                    "kg-backfill node id=%s has no embedding and "
+                    "regeneration unavailable; skipping",
+                    kg_node_id,
+                )
+                metrics["skipped"] = True
+                return metrics
+            # Persist the regenerated vector back so future passes / the
+            # live hook reuse it (best-effort: a write failure must not
+            # block edge creation — the in-memory vector is enough now).
+            try:
+                meta["embedding"] = node_embedding
+                supabase_client.schema("kg").table("kg_nodes").update(
+                    {"metadata": meta}
+                ).eq("workspace_id", str(workspace_id)).eq(
+                    "id", int(kg_node_id)
+                ).execute()
+            except Exception as exc:  # pragma: no cover - best effort
+                logger.warning(
+                    "kg-backfill node id=%s embedding persist failed "
+                    "(continuing with in-memory vector): %s",
+                    kg_node_id,
+                    exc,
+                )
+
+        # ---- Same scoring + edge-upsert core the live hook runs ---------
+        _score_and_upsert_edges_for_node(
+            workspace_id=workspace_id,
+            profile_id=profile_id,
+            node_id=int(kg_node_id),
+            node_embedding=node_embedding,
+            node_tags=node_tags,
+            node_created_at_iso=node_created_at_iso,
+            supabase_client=supabase_client,
+            metrics=metrics,
+            # Existing node has no single originating zettel for THIS pass;
+            # leave evidence NULL (the column is nullable; the live hook
+            # sets it only because it has the just-ingested zettel id).
+            evidence_canonical_zettel_id=None,
+        )
+        logger.info(
+            "kg-backfill node id=%s ws=%s candidates=%d edges=%d",
+            kg_node_id,
+            workspace_id,
+            metrics["candidates"],
+            metrics["edges"],
+        )
+        return metrics
+    except Exception as exc:
+        logger.warning(
+            "kg-backfill node id=%s ws=%s failed: %s",
+            kg_node_id,
+            workspace_id,
+            exc,
+        )
+        metrics["error"] = type(exc).__name__
         return metrics

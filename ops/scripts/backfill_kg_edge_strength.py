@@ -61,11 +61,36 @@ workspace-fenced:
 Total ≤ 7 statements/edge, candidate-count-independent, NO all-pairs, NO
 unbounded scan. Bounded batches via ``--batch-size`` (default 200).
 
+Mode ``--create-missing`` (operator-reported, verified live):
+The default mode above only UPDATES strength on EXISTING edges. A separate
+failure leaves a workspace with kg_nodes but ZERO kg_edges: the create_kasten
+CLI used to cancel the fire-and-forget ``populate_kg_for_zettel`` task at loop
+teardown, so the node was upserted but its candidate-scoring / edge-upsert
+step never ran (observed: Naruto, ~10 kg_nodes, 0 kg_edges). The teardown race
+is fixed for FUTURE ingests (persist drain), but re-ingest is idempotent
+(``pipelines.pipeline_runs(kind='kg_extract')`` dedup) so the already-created
+nodes stay edgeless forever. ``--create-missing`` enumerates a workspace's
+kg_nodes and, per node, runs the EXACT same scoring+upsert logic the live
+hook runs by reusing
+``website.features.rag_pipeline.ingest.kg_population.populate_kg_edges_for_existing_node``
+(which delegates to ``_score_and_upsert_edges_for_node`` — the SAME shared
+core the live hook calls, so backfill and hook can never diverge). It needs
+the owner profile to key the ``kg.match_kg_nodes`` kNN RPC: pass
+``--profile <uuid>`` (or ``--user``, an alias) — for Naruto:
+``--profile f2105544-b73d-4946-8329-096d82f070d3``.
+
 Run (operator-gated step — this script is BUILD-only; do NOT run in CI):
+    # Strength backfill (default mode: UPDATE existing edges only)
     SUPABASE_V2_URL=... SUPABASE_V2_SERVICE_ROLE_KEY=... \
         python ops/scripts/backfill_kg_edge_strength.py \
         [--workspace <uuid>] [--batch-size 200] [--limit N] \
         [--force] [--dry-run]
+
+    # Create the missing edges for an existing workspace's nodes
+    SUPABASE_V2_URL=... SUPABASE_V2_SERVICE_ROLE_KEY=... \
+        python ops/scripts/backfill_kg_edge_strength.py --create-missing \
+        --workspace <uuid> --profile <owner-profile-uuid> \
+        [--batch-size 200] [--limit N] [--force] [--dry-run]
 """
 from __future__ import annotations
 
@@ -121,12 +146,36 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--force",
         action="store_true",
-        help="Re-score edges that already have a non-NULL workspace_strength.",
+        help=(
+            "Default mode: re-score edges that already have a non-NULL "
+            "workspace_strength. --create-missing mode: re-process nodes "
+            "that already have outgoing edges (re-score them too)."
+        ),
     )
     p.add_argument(
         "--dry-run",
         action="store_true",
         help="Compute + report counts/sample; perform ZERO writes.",
+    )
+    p.add_argument(
+        "--create-missing",
+        action="store_true",
+        help=(
+            "CREATE the missing edges for an existing workspace's kg_nodes "
+            "(reuses the live KG-population scoring core). Use for a "
+            "workspace that has kg_nodes but 0 kg_edges. Requires --profile."
+        ),
+    )
+    p.add_argument(
+        "--profile",
+        "--user",
+        dest="profile",
+        default=None,
+        help=(
+            "Owner profile uuid that keys the kg.match_kg_nodes kNN RPC "
+            "(required for --create-missing). Naruto: "
+            "f2105544-b73d-4946-8329-096d82f070d3."
+        ),
     )
     return p.parse_args(list(argv) if argv is not None else None)
 
@@ -405,7 +454,290 @@ def _process_workspace(
     return seen, written, failed, sample
 
 
+def _list_node_workspace_ids(sb: Any, only: str | None) -> list[str]:
+    """Distinct workspace_ids that own at least one kg NODE.
+
+    ``--create-missing`` targets workspaces that have nodes but possibly NO
+    edges, so we page ``kg.kg_nodes.workspace_id`` (not ``kg_edges`` — the
+    edgeless-workspace case is the entire point). ``--workspace`` short-
+    circuits to the operator's single id (still fenced everywhere
+    downstream). NULL workspace_id rows are excluded.
+    """
+    if only:
+        return [only]
+    seen: list[str] = []
+    seen_set: set[str] = set()
+    offset = 0
+    page = 1000
+    while True:
+        resp = (
+            sb.schema("kg")
+            .table("kg_nodes")
+            .select("workspace_id")
+            .order("workspace_id")
+            .range(offset, offset + page - 1)
+            .execute()
+        )
+        rows = list(resp.data or [])
+        if not rows:
+            break
+        for r in rows:
+            ws = r.get("workspace_id")
+            if ws and str(ws) not in seen_set:
+                seen_set.add(str(ws))
+                seen.append(str(ws))
+        if len(rows) < page:
+            break
+        offset += page
+    return seen
+
+
+def _fetch_node_batch(
+    sb: Any,
+    workspace_id: str,
+    *,
+    batch_size: int,
+    after_id: int,
+) -> list[dict]:
+    """Next batch of this workspace's kg_nodes, ordered by id (resumable).
+
+    Workspace-fenced. ``after_id`` is a strict id cursor so the loop always
+    advances even in --dry-run (no writes) — it can never re-fetch the same
+    head forever. We only need the id here; the heavy metadata read happens
+    inside the reused population core (single round-trip per candidate set).
+    """
+    resp = (
+        sb.schema("kg")
+        .table("kg_nodes")
+        .select("id")
+        .eq("workspace_id", workspace_id)
+        .gt("id", after_id)
+        .order("id")
+        .limit(batch_size)
+        .execute()
+    )
+    return list(resp.data or [])
+
+
+def _node_has_edges(sb: Any, workspace_id: str, node_id: int) -> bool:
+    """True if this node already has >=1 outgoing edge (resumability skip).
+
+    ONE bounded, workspace-fenced, index-backed select (``limit(1)`` on
+    ``idx_kg_edges_workspace_src``). Without ``--force`` a node that already
+    has edges is skipped, so an interrupted --create-missing run resumes
+    cheaply and a re-run is idempotent at the node granularity (the edge
+    upsert is itself idempotent on the natural key, so this is belt-and-
+    braces, not the only guard).
+    """
+    resp = (
+        sb.schema("kg")
+        .table("kg_edges")
+        .select("id")
+        .eq("workspace_id", workspace_id)
+        .eq("src_node_id", int(node_id))
+        .limit(1)
+        .execute()
+    )
+    return bool(resp.data)
+
+
+def _process_workspace_create_missing(
+    sb: Any,
+    workspace_id: str,
+    profile_id: UUID,
+    args: argparse.Namespace,
+    remaining_cap: int | None,
+) -> tuple[int, int, int, int, list[dict]]:
+    """Create missing edges for one workspace's nodes.
+
+    Returns ``(seen, skipped, edges, failed, sample)``. ``seen`` counts
+    nodes considered; ``skipped`` counts nodes skipped (already-edged
+    without --force, cold-no-embedding, or not-in-workspace); ``edges`` is
+    the total edges created; ``failed`` counts nodes whose processing
+    raised (isolated — never aborts the batch).
+    """
+    from website.features.rag_pipeline.ingest.kg_population import (
+        populate_kg_edges_for_existing_node,
+    )
+
+    ws_uuid = UUID(workspace_id)
+    seen = 0
+    skipped = 0
+    edges = 0
+    failed = 0
+    after_id = 0
+    sample: list[dict] = []
+
+    while True:
+        if remaining_cap is not None and remaining_cap - seen <= 0:
+            break
+        fetch_size = args.batch_size
+        if remaining_cap is not None:
+            fetch_size = min(fetch_size, remaining_cap - seen)
+        if fetch_size <= 0:
+            break
+
+        nodes = _fetch_node_batch(
+            sb, workspace_id, batch_size=fetch_size, after_id=after_id
+        )
+        if not nodes:
+            break
+
+        for n in nodes:
+            seen += 1
+            node_id = int(n["id"])
+            after_id = max(after_id, node_id)
+
+            try:
+                # Resumability / idempotency at node granularity: skip a
+                # node that already has edges unless --force.
+                if not args.force and _node_has_edges(
+                    sb, workspace_id, node_id
+                ):
+                    skipped += 1
+                    continue
+
+                if args.dry_run:
+                    # Dry-run: compute candidates/edges WITHOUT writing.
+                    # populate_kg_edges_for_existing_node writes through
+                    # KGRepository.upsert_edge, so for a true zero-write
+                    # dry-run we cannot call it directly. Instead we report
+                    # the node as "would process" — the live scorer is
+                    # deterministic and already unit-covered; a dry-run
+                    # exercising the kNN/score path here would WRITE edges.
+                    # So dry-run = enumerate + count only (ZERO writes).
+                    if len(sample) < 5:
+                        sample.append(
+                            {"workspace": workspace_id, "node_id": node_id}
+                        )
+                    continue
+
+                m = populate_kg_edges_for_existing_node(
+                    workspace_id=ws_uuid,
+                    profile_id=profile_id,
+                    kg_node_id=node_id,
+                    supabase_client=sb,
+                )
+                if m.get("error"):
+                    failed += 1
+                    continue
+                if m.get("skipped"):
+                    skipped += 1
+                    continue
+                edges += int(m.get("edges", 0))
+                if len(sample) < 5:
+                    sample.append(
+                        {
+                            "workspace": workspace_id,
+                            "node_id": node_id,
+                            "candidates": m.get("candidates", 0),
+                            "edges": m.get("edges", 0),
+                        }
+                    )
+            except Exception:
+                # Per-node isolation: one bad node must not abort the batch.
+                failed += 1
+                logger.exception(
+                    "node id=%s ws=%s create-missing failed; skipping",
+                    node_id,
+                    workspace_id,
+                )
+
+        if len(nodes) < fetch_size:
+            break
+
+    return seen, skipped, edges, failed, sample
+
+
+def _run_create_missing(args: argparse.Namespace, sb: Any) -> int:
+    if not args.profile:
+        logger.error(
+            "--create-missing requires --profile <owner-profile-uuid> "
+            "(keys the kg.match_kg_nodes kNN RPC). Aborting."
+        )
+        return 2
+    try:
+        profile_id = UUID(str(args.profile))
+    except (TypeError, ValueError):
+        logger.error("--profile is not a valid uuid: %s", args.profile)
+        return 2
+
+    workspace_ids = _list_node_workspace_ids(sb, args.workspace)
+    if not workspace_ids:
+        logger.info("no workspace-scoped kg nodes found; nothing to do")
+        return 0
+
+    logger.info(
+        "create-missing start: workspaces=%d profile=%s dry_run=%s "
+        "force=%s batch_size=%d",
+        len(workspace_ids),
+        profile_id,
+        args.dry_run,
+        args.force,
+        args.batch_size,
+    )
+
+    t_seen = t_skipped = t_edges = t_failed = 0
+    all_samples: list[dict] = []
+
+    for ws in workspace_ids:
+        remaining_cap = None
+        if args.limit is not None:
+            remaining_cap = args.limit - t_seen
+            if remaining_cap <= 0:
+                logger.info("hit --limit cap of %d; stopping", args.limit)
+                break
+
+        seen, skipped, edges, failed, sample = (
+            _process_workspace_create_missing(
+                sb, ws, profile_id, args, remaining_cap
+            )
+        )
+        t_seen += seen
+        t_skipped += skipped
+        t_edges += edges
+        t_failed += failed
+        if len(all_samples) < 5:
+            all_samples.extend(sample[: 5 - len(all_samples)])
+        logger.info(
+            "workspace %s: nodes=%d skipped=%d edges_created=%d failed=%d",
+            ws,
+            seen,
+            skipped,
+            edges,
+            failed,
+        )
+
+    if args.dry_run:
+        logger.info(
+            "dry-run summary: would process %d nodes across %d workspaces "
+            "(skipped=%d already-edged/cold, ZERO writes performed)",
+            t_seen,
+            len(workspace_ids),
+            t_skipped,
+        )
+        for s in all_samples:
+            logger.info("dry-run sample: %s", s)
+    else:
+        logger.info(
+            "create-missing complete: nodes=%d skipped=%d edges_created=%d "
+            "failed=%d workspaces=%d",
+            t_seen,
+            t_skipped,
+            t_edges,
+            t_failed,
+            len(workspace_ids),
+        )
+        for s in all_samples:
+            logger.info("sample: %s", s)
+
+    return 1 if t_failed else 0
+
+
 def _run(args: argparse.Namespace, sb: Any, repo: Any) -> int:
+    if args.create_missing:
+        return _run_create_missing(args, sb)
+
     workspace_ids = _list_workspace_ids(sb, args.workspace)
     if not workspace_ids:
         logger.info("no workspace-scoped kg edges found; nothing to backfill")

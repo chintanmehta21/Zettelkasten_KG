@@ -63,6 +63,11 @@ class _Query:
         self._payload = payload
         return self
 
+    def update(self, payload):
+        self._op = "update"
+        self._payload = payload
+        return self
+
     def eq(self, col, val):
         self._filters[col] = val
         return self
@@ -107,6 +112,18 @@ class _Query:
             self._c.writes.append(
                 (self._schema, self._table, self._op, self._payload)
             )
+        if self._op == "update":
+            # Kept separate from ``writes`` so the existing 4-tuple unpack
+            # in older tests stays valid; create-missing tests assert on the
+            # workspace fence of the cold-embedding metadata persist here.
+            self._c.updates.append(
+                (
+                    self._schema,
+                    self._table,
+                    self._payload,
+                    dict(self._filters),
+                )
+            )
         return self._c._respond(self)
 
 
@@ -118,7 +135,8 @@ class _SchemaProxy:
     def table(self, name):
         return _Query(self._c, self._schema, name)
 
-    def rpc(self, name, params):  # pragma: no cover - backfill uses no RPC
+    def rpc(self, name, params):
+        self._c.rpc_calls.append((self._schema, name, params))
         return _RpcQuery(self._c, name)
 
 
@@ -128,13 +146,16 @@ class _RpcQuery:
         self._name = name
 
     def execute(self):
-        return _Resp([])
+        return _Resp(self._c.rpc_data.get(self._name, []))
 
 
 class FakeClient:
     def __init__(self):
         self.calls = []
         self.writes = []
+        self.updates = []  # kg_nodes metadata (cold-embedding) updates
+        self.rpc_calls = []
+        self.rpc_data: dict[str, list] = {}
         # workspace_id(str) -> list[edge dict]
         self.edges: dict[str, list[dict]] = {}
         # workspace_id(str) -> list[node dict {id, metadata, created_at}]
@@ -160,6 +181,17 @@ class FakeClient:
                     ]
                     return _Resp(rows)
                 rows = list(self.edges.get(ws, []))
+                # _node_has_edges: workspace + single src_node_id eq (scalar,
+                # NOT a list) + limit(1). Distinguish from the AA fetch
+                # (which uses .in_(col, [...]) -> list) by value type.
+                src_f = q._filters.get("src_node_id")
+                if src_f is not None and not isinstance(src_f, list):
+                    hit = [
+                        r for r in rows if r.get("src_node_id") == src_f
+                    ]
+                    return _Resp(
+                        [{"id": r.get("id", 1)} for r in hit[: (q._limit or 1)]]
+                    )
                 # Adamic-Adar incident-edge fetch carries src/dst in_ filter.
                 if "src_node_id" in q._filters or "dst_node_id" in q._filters:
                     for col in ("src_node_id", "dst_node_id"):
@@ -191,16 +223,41 @@ class FakeClient:
                 return _Resp(rows)
 
         if q._schema == "kg" and q._table == "kg_nodes":
+            if q._op == "update":
+                return _Resp([{"id": q._filters.get("id")}])
             if q._op == "select":
                 ws = q._filters.get("workspace_id")
-                ids = set(q._filters.get("id", []))
-                return _Resp(
-                    [
-                        n
-                        for n in self.nodes.get(ws, [])
-                        if n["id"] in ids
+                # (a) workspace discovery scan: no ws filter, no id filter.
+                if ws is None and "id" not in q._filters:
+                    rows = [
+                        {"workspace_id": w}
+                        for w, ns in self.nodes.items()
+                        for _ in ns
                     ]
-                )
+                    return _Resp(rows)
+                ws_nodes = list(self.nodes.get(ws, []))
+                id_f = q._filters.get("id")
+                # (c) candidate-metadata batch: .in_("id", [..]) -> list.
+                if isinstance(id_f, list):
+                    ids = set(id_f)
+                    return _Resp(
+                        [n for n in ws_nodes if n["id"] in ids]
+                    )
+                # (d) single-node load: .eq("id", node_id) -> scalar.
+                if id_f is not None:
+                    return _Resp(
+                        [n for n in ws_nodes if n["id"] == id_f][
+                            : (q._limit or 1)
+                        ]
+                    )
+                # (b) node-batch fetch: gt(id) cursor + order + limit.
+                rows = ws_nodes
+                if "id" in q._gt:
+                    rows = [r for r in rows if r["id"] > q._gt["id"]]
+                rows = sorted(rows, key=lambda r: r["id"])
+                if q._limit is not None:
+                    rows = rows[: q._limit]
+                return _Resp([{"id": r["id"]} for r in rows])
 
         if q._schema == "kg" and q._table == "chunk_node_mentions":
             if q._op == "select":
@@ -290,6 +347,8 @@ def _args(**over):
         limit=None,
         force=False,
         dry_run=False,
+        create_missing=False,
+        profile=None,
     )
     base.update(over)
     return bf.argparse.Namespace(**base)
@@ -489,3 +548,296 @@ def bf_creation_threshold():
     from website.features.kg_features import scoring
 
     return scoring.EDGE_CREATION_THRESHOLD
+
+
+# --------------------------------------------------------------------------
+# --create-missing mode: CREATE edges for an existing workspace's nodes
+# (operator-reported: Naruto has kg_nodes but 0 kg_edges).
+# --------------------------------------------------------------------------
+
+import pytest  # noqa: E402
+
+_PROFILE = str(UUID("00000000-0000-0000-0000-000000000001"))
+
+
+@pytest.fixture
+def _patch_embed(monkeypatch):
+    """Deterministic embedding so the kNN/score path runs offline."""
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding",
+        lambda *_a, **_k: [0.1] * 768,
+    )
+
+
+def _node(nid, *, emb=0.1, tags=("ml", "ai"), name="N",
+          created="2026-05-17T00:00:00+00:00", embedding=True):
+    md = {"tags": list(tags), "created_at": created}
+    if embedding:
+        md["embedding"] = [emb] * 768
+    return {"id": nid, "canonical_name": name, "metadata": md,
+            "created_at": created}
+
+
+def _cm_args(**over):
+    return _args(create_missing=True, profile=_PROFILE, **over)
+
+
+def _seed_two_node_edgeless_workspace(ws=_WS_A):
+    """Two strong-match nodes, ZERO edges (the Naruto failure shape)."""
+    c = FakeClient()
+    c.nodes[ws] = [_node(100), _node(200)]
+    c.edges[ws] = []  # edgeless: the whole point
+    # match_kg_nodes returns each node's peer as a candidate.
+    c.rpc_data["match_kg_nodes"] = [
+        {"node_id": 100, "score": 0.99},
+        {"node_id": 200, "score": 0.99},
+    ]
+    return c
+
+
+def test_create_missing_requires_profile():
+    c = _seed_two_node_edgeless_workspace()
+    rc = bf._run(_args(create_missing=True, workspace=_WS_A), c, None)
+    assert rc == 2  # hard-fail: no --profile -> cannot key the kNN RPC
+    assert [w for w in c.writes if w[2] == "upsert"] == []
+
+
+def test_create_missing_creates_edges_for_edgeless_nodes(_patch_embed):
+    c = _seed_two_node_edgeless_workspace()
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0
+    edge_writes = [
+        w for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"
+    ]
+    assert len(edge_writes) >= 1
+    p = edge_writes[0][3]
+    # D-KG-1 wired: strength >= creation threshold + matched_via populated.
+    assert p["workspace_strength"] >= bf_creation_threshold()
+    assert p["connection_strength"] == p["workspace_strength"]
+    assert p["global_strength"] is None
+    mv = p["matched_via"]
+    assert set(mv) >= {
+        "embedding", "tag", "structural",
+        "structural_shared_chunks", "structural_adamic_adar",
+        "temporal", "composite",
+    }
+    # Existing-node pass: no single originating zettel -> evidence NULL.
+    assert p["evidence_canonical_zettel_id"] is None
+
+
+def test_create_missing_idempotent_skips_already_edged(_patch_embed):
+    c = _seed_two_node_edgeless_workspace()
+    bf._run(_cm_args(workspace=_WS_A), c, None)
+    # Reflect created edges back so node 100 now "has edges".
+    c.edges[_WS_A] = [
+        {"id": 1, "src_node_id": 100, "dst_node_id": 200,
+         "relation_type": "co_occurs", "workspace_strength": 0.9},
+        {"id": 2, "src_node_id": 200, "dst_node_id": 100,
+         "relation_type": "co_occurs", "workspace_strength": 0.9},
+    ]
+    c.writes.clear()
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0
+    # Both nodes already have an outgoing edge -> skipped, no new writes.
+    assert [w for w in c.writes if w[1] == "kg_edges"] == []
+
+
+def test_create_missing_force_reprocesses_edged_nodes(_patch_embed):
+    c = _seed_two_node_edgeless_workspace()
+    c.edges[_WS_A] = [
+        {"id": 1, "src_node_id": 100, "dst_node_id": 200,
+         "relation_type": "co_occurs", "workspace_strength": 0.9},
+    ]
+    # Without --force: node 100 has an edge -> skipped (node 200 has none).
+    bf._run(_cm_args(workspace=_WS_A), c, None)
+    base = len([w for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"])
+    c.writes.clear()
+    # With --force: every node re-processed/re-scored.
+    rc = bf._run(_cm_args(workspace=_WS_A, force=True), c, None)
+    assert rc == 0
+    forced = len([w for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"])
+    assert forced >= base
+
+
+def test_create_missing_no_duplicate_edges_natural_key(_patch_embed):
+    c = _seed_two_node_edgeless_workspace()
+    bf._run(_cm_args(workspace=_WS_A, force=True), c, None)
+    bf._run(_cm_args(workspace=_WS_A, force=True), c, None)
+    # Every upsert targets the (ws,src,dst,relation) natural key — the real
+    # KGRepository.upsert_edge uses on_conflict so re-runs UPDATE in place.
+    for s, t, op, p in c.writes:
+        if t == "kg_edges" and op == "upsert":
+            assert op == "upsert"  # never a raw insert -> no dup rows
+            assert str(p["workspace_id"]) == _WS_A
+
+
+def test_create_missing_dry_run_zero_writes(_patch_embed):
+    c = _seed_two_node_edgeless_workspace()
+    rc = bf._run(_cm_args(workspace=_WS_A, dry_run=True), c, None)
+    assert rc == 0
+    assert [w for w in c.writes if w[2] == "upsert"] == []
+    assert c.updates == []  # not even the cold-embedding persist
+
+
+def test_create_missing_workspace_isolation_no_uuid_leak(_patch_embed):
+    c = _seed_two_node_edgeless_workspace(ws=_WS_A)
+    # Workspace B has its own nodes/edges that must NEVER be touched.
+    c.nodes[_WS_B] = [_node(500), _node(600)]
+    c.edges[_WS_B] = []
+    c.rpc_data["match_kg_nodes"] = [{"node_id": 100, "score": 0.99}]
+    bf._run(_cm_args(workspace=_WS_A), c, None)
+
+    # Every kg read filter that carries a workspace_id is workspace A only.
+    for s, t, op, _p, filt, _gt, _isn, _lim in c.calls:
+        if s == "kg" and "workspace_id" in filt:
+            assert filt["workspace_id"] == _WS_A
+            assert _WS_B not in str(filt)
+    # Every write payload carries workspace A only; never B.
+    for s, t, op, payload in c.writes:
+        if s == "kg" and isinstance(payload, dict):
+            assert str(payload.get("workspace_id")) == _WS_A
+            assert _WS_B not in str(payload)
+    # Workspace B nodes (500/600) never appear as an edge endpoint.
+    for w in c.writes:
+        if w[1] == "kg_edges" and isinstance(w[3], dict):
+            assert w[3].get("src_node_id") not in (500, 600)
+            assert w[3].get("dst_node_id") not in (500, 600)
+
+
+def test_create_missing_cold_node_regenerates_and_persists_embedding(
+    _patch_embed,
+):
+    c = FakeClient()
+    # Node 100 has NO stored embedding (the cold case) -> regenerate.
+    c.nodes[_WS_A] = [
+        _node(100, embedding=False),
+        _node(200),
+    ]
+    c.edges[_WS_A] = []
+    c.rpc_data["match_kg_nodes"] = [
+        {"node_id": 100, "score": 0.99},
+        {"node_id": 200, "score": 0.99},
+    ]
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0
+    # Regenerated vector persisted back into kg_nodes.metadata, ws-fenced.
+    persists = [
+        u for u in c.updates if u[1] == "kg_nodes"
+    ]
+    assert persists
+    schema, table, payload, filt = persists[0]
+    assert filt["workspace_id"] == _WS_A
+    assert payload["metadata"]["embedding"] == [0.1] * 768
+    # Edges still created for the (now-warm) cold node.
+    assert [w for w in c.writes if w[1] == "kg_edges" and w[2] == "upsert"]
+
+
+def test_create_missing_cold_node_no_embedding_skips_gracefully(monkeypatch):
+    # Embedding generation unavailable (quota/network) -> empty list.
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding",
+        lambda *_a, **_k: [],
+    )
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(100, embedding=False)]
+    c.edges[_WS_A] = []
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    assert rc == 0  # skipped node is NOT a failure
+    # No edge written, no metadata persisted, batch not crashed.
+    assert [w for w in c.writes if w[1] == "kg_edges"] == []
+    assert c.updates == []
+
+
+def test_create_missing_per_node_failure_isolated_exit_nonzero(
+    _patch_embed, monkeypatch
+):
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(100), _node(200)]
+    c.edges[_WS_A] = []
+    # Both nodes are each other's strong-match candidate (200 must still get
+    # an edge after 100's processing is poisoned).
+    c.rpc_data["match_kg_nodes"] = [
+        {"node_id": 100, "score": 0.99},
+        {"node_id": 200, "score": 0.99},
+    ]
+
+    import website.features.rag_pipeline.ingest.kg_population as kgp
+
+    real = kgp._score_and_upsert_edges_for_node
+
+    def _boom(**kw):
+        if int(kw["node_id"]) == 100:
+            raise RuntimeError("poison node")
+        return real(**kw)
+
+    monkeypatch.setattr(kgp, "_score_and_upsert_edges_for_node", _boom)
+    rc = bf._run(_cm_args(workspace=_WS_A), c, None)
+    # One node failed -> non-zero exit, but node 200 still processed.
+    assert rc == 1
+    edged_src = {
+        w[3]["src_node_id"]
+        for w in c.writes
+        if w[1] == "kg_edges" and w[2] == "upsert"
+    }
+    assert 100 not in edged_src
+    assert 200 in edged_src
+
+
+def test_create_missing_bounded_query_count_per_node(_patch_embed):
+    """Per node the query cost is a small CONSTANT (reuses the hook's
+    <=K kNN + <=5 structural-fanout bound), candidate-count-independent."""
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(1)]
+    c.edges[_WS_A] = []
+    # kNN returns MANY candidates; per-node cost must stay constant.
+    c.rpc_data["match_kg_nodes"] = [
+        {"node_id": i, "score": 0.5} for i in range(2, 80)
+    ]
+    c.nodes[_WS_A].extend(_node(i) for i in range(2, 80))
+    c.calls.clear()
+    bf._run(_cm_args(workspace=_WS_A, limit=1), c, None)
+    # kg_edges SELECTs for THIS node: Adamic-Adar fan-out is a small const
+    # (<=4 incident-edge selects) + 1 _node_has_edges check. NEVER O(cands).
+    edge_sel = [
+        x for x in c.calls
+        if x[0] == "kg" and x[1] == "kg_edges" and x[2] == "select"
+    ]
+    assert len(edge_sel) <= 6  # 1 has-edges + <=4 AA + slack; const
+    # Exactly ONE chunk_node_mentions query regardless of candidate count.
+    cm = [
+        x for x in c.calls
+        if x[0] == "kg" and x[1] == "chunk_node_mentions"
+    ]
+    assert len(cm) <= 1
+    # match RPC keyed off the owner profile (its workspace fence).
+    rpc = [p for (s, n, p) in c.rpc_calls if n == "match_kg_nodes"]
+    assert rpc and rpc[0]["p_user_id"] == _PROFILE
+
+
+def test_create_missing_limit_caps_nodes_processed(_patch_embed):
+    c = FakeClient()
+    c.nodes[_WS_A] = [_node(i) for i in range(1, 21)]
+    c.edges[_WS_A] = []
+    c.rpc_data["match_kg_nodes"] = []  # no candidates -> 0 edges, still counts
+    bf._run(_cm_args(workspace=_WS_A, batch_size=200, limit=5), c, None)
+    # Node-batch fetches must never exceed the cap; <=5 nodes considered.
+    node_fetches = [
+        lim
+        for (s, t, op, _p, filt, _gt, _isn, lim) in c.calls
+        if s == "kg" and t == "kg_nodes" and op == "select"
+        and "id" not in filt and "workspace_id" in filt
+    ]
+    assert node_fetches and all(
+        lim is not None and lim <= 5 for lim in node_fetches
+    )
+
+
+def test_create_missing_invalid_profile_uuid_aborts():
+    c = _seed_two_node_edgeless_workspace()
+    rc = bf._run(
+        _args(create_missing=True, workspace=_WS_A, profile="not-a-uuid"),
+        c,
+        None,
+    )
+    assert rc == 2
+    assert [w for w in c.writes if w[2] == "upsert"] == []
