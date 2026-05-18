@@ -818,17 +818,18 @@ def _choose_chunk_source_text(payload: dict[str, Any], detailed_summary: str) ->
        citations resolve to the zettel = the summary, and the route never
        plumbs raw source text into chunks — so chunking the summary keeps
        citation/faithfulness coherent (R1 research; RAPTOR ICLR 2024).
-    2. if that yields nothing, ``hook._synthesize_fallback_text`` builds a
-       minimal searchable body from title/channel/tags/description/url so a
-       transcript-less node still gets a chunk instead of zero chunks.
+    2. if that yields nothing, ``content_selection.synthesize_fallback_text``
+       builds a minimal searchable body from title/channel/tags/description/
+       url so a transcript-less node still gets a chunk instead of zero
+       chunks.
 
     The summary fed to step 1 is ``detailed_summary or payload['summary']``
     (= the persisted ``body_md``).
     """
     from website.features.rag_pipeline.ingest.content_selection import (
         choose_chunk_source_text,
+        synthesize_fallback_text,
     )
-    from website.features.rag_pipeline.ingest.hook import _synthesize_fallback_text
 
     summary_text = detailed_summary or str(payload.get("summary") or "")
     text = choose_chunk_source_text(
@@ -836,7 +837,7 @@ def _choose_chunk_source_text(payload: dict[str, Any], detailed_summary: str) ->
         summary_text=summary_text,
     )
     if not text:
-        text = _synthesize_fallback_text(payload)
+        text = synthesize_fallback_text(payload)
     return text or ""
 
 
