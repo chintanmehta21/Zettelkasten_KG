@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import urllib.parse
 
 import pytest
 
@@ -72,20 +73,35 @@ def test_normalize_url_collapses_dedup_equivalent_urls(a: str, b: str) -> None:
     assert normalize_url(a) == normalize_url(b)
 
 
-@pytest.mark.xfail(
-    reason="normalize_url does not strip default ports: netloc is only "
-    "lowercased, so :443/:80 are retained and these do NOT collapse",
-    strict=True,
-)
 @pytest.mark.parametrize(
     ("a", "b"),
     [
+        # scheme-default ports are stripped so they dedup against the
+        # port-less form (closes the prior dedup blind spot).
         ("https://example.com:443/p", "https://example.com/p"),
         ("http://example.com:80/p", "http://example.com/p"),
+        ("https://Example.com:443/P?b=2&a=1", "https://example.com/P?a=1&b=2"),
     ],
 )
-def test_normalize_url_default_port_gap(a: str, b: str) -> None:
+def test_normalize_url_strips_scheme_default_port(a: str, b: str) -> None:
     assert normalize_url(a) == normalize_url(b)
+
+
+@pytest.mark.parametrize(
+    ("url", "expected_netloc"),
+    [
+        # non-default ports MUST be preserved (distinct resources)
+        ("https://example.com:8443/p", "example.com:8443"),
+        ("http://example.com:8080/p", "example.com:8080"),
+        # cross-scheme: :80 under https / :443 under http are NOT defaults
+        ("https://example.com:80/p", "example.com:80"),
+        ("http://example.com:443/p", "example.com:443"),
+        # port-like substrings in path must not be touched
+        ("https://example.com/a:443", "example.com"),
+    ],
+)
+def test_normalize_url_keeps_non_default_ports(url: str, expected_netloc: str) -> None:
+    assert urllib.parse.urlparse(normalize_url(url)).netloc == expected_netloc
 
 
 def test_normalize_url_preserves_distinct_query_meaning() -> None:
