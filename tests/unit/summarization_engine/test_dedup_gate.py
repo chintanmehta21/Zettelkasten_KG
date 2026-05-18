@@ -3,18 +3,39 @@ from uuid import uuid4
 from website.core.supabase_v2.repositories.content_repository import ContentRepository
 
 
+class _FakeResult:
+    data = None
+
+
 class _FakeQuery:
-    def __init__(self, rows): self._rows = rows
-    def schema(self, *_a, **_k): return self
-    def table(self, *_a, **_k): return self
-    def select(self, *_a, **_k): return self
-    def eq(self, *_a, **_k): return self
-    def is_(self, *_a, **_k): return self
-    def limit(self, *_a, **_k): return self
-    def order(self, *_a, **_k): return self
+    def __init__(self, rows):
+        self._rows = rows
+
+    def schema(self, *_a, **_k):
+        return self
+
+    def table(self, *_a, **_k):
+        return self
+
+    def select(self, *_a, **_k):
+        return self
+
+    def eq(self, *_a, **_k):
+        return self
+
+    def is_(self, *_a, **_k):
+        return self
+
+    def limit(self, *_a, **_k):
+        return self
+
+    def order(self, *_a, **_k):
+        return self
+
     def execute(self):
-        class R: pass
-        r = R(); r.data = self._rows; return r
+        result = _FakeResult()
+        result.data = self._rows
+        return result
 
 
 def test_find_canonical_by_url_returns_none_when_absent():
