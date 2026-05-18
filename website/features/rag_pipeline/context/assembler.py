@@ -89,7 +89,17 @@ class ContextAssembler:
                 return float(_os.environ.get("RAG_CONTEXT_FLOOR_SYNTH", "0.05"))
             return float(_os.environ.get("RAG_CONTEXT_FLOOR_DEFAULT", "0.10"))
 
-        _MIN_KEEP_LOOKUP = int(_os.environ.get("RAG_CONTEXT_MIN_KEEP_LOOKUP", "1"))
+        # C#5: LOOKUP double-floor fix. The pre-rerank rrf floor
+        # (cascade._rerank_input_floor LOOKUP=0.30) and this context floor
+        # (LOOKUP=0.30) compose multiplicatively; against rrf~0.06 /
+        # rerank~0.007 a single-chunk LOOKUP collapsed to 1 candidate, so
+        # lookup synthesis had no cross-zettel substrate. Raise the LOOKUP
+        # context min-keep floor to 3 (env-overridable) so >=3 candidates
+        # survive even when individual rerank scores fall below the floor.
+        # Touches NO protected knob (RRF/_RRF_K/cascade floors unchanged);
+        # composes with Phase-D + F5 + per-class regression guards because
+        # min-keep only RAISES the retained-count floor, never lowers it.
+        _MIN_KEEP_LOOKUP = int(_os.environ.get("RAG_CONTEXT_MIN_KEEP_LOOKUP", "3"))
         _MIN_KEEP_SYNTH = int(_os.environ.get("RAG_CONTEXT_MIN_KEEP_SYNTH", "5"))
 
         # Use the explicit query_class kwarg when the orchestrator passes it

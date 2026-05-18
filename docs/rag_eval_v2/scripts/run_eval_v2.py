@@ -521,7 +521,20 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
             logger.warning("%s FAILED: %s", qid, exc)
 
     # ── Score (legacy composite + reused holistic) ─────────────────────────
-    gold = _build_gold_queries(queries_json, expected_overrides)
+    # C#1: _build_gold_queries now returns (gold, unscorable_qids). A query
+    # that declared a non-empty expected_primary_citation but whose needle
+    # resolved to no ingested zettel (expected_overrides[qid] == []) is a
+    # RESOLUTION FAILURE, not a refusal — segregated here so it is excluded
+    # from the composite + holistic and surfaced loudly, instead of being
+    # silently scored as a (right/wrong) refusal.
+    gold, unscorable_qids = _build_gold_queries(queries_json, expected_overrides)
+    if unscorable_qids:
+        logger.warning(
+            "C#1: %d query(ies) UNSCORABLE — declared expected citation "
+            "resolved to no ingested zettel (NOT refusals): %s",
+            len(unscorable_qids), unscorable_qids,
+        )
+    _unscorable_set = set(unscorable_qids)
     by_gid = {g.id: g for g in gold}
     aligned_gold = [by_gid[qid] for qid in answers_by_qid if qid in by_gid]
     aligned_ans = [answers_by_qid[g.id] for g in aligned_gold]
@@ -556,8 +569,12 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
             graph_lift=GraphLift(composite=0.0, retrieval=0.0, reranking=0.0),
         )
         # Build qa_checks-shaped rows so the reused holistic helper works.
+        # C#1: skip unscorable (resolution-failure) qids so they do not
+        # pollute gold@k / refusal ratios as silent refusals.
         qa_checks = []
         for qid, rec in answers_by_qid.items():
+            if qid in _unscorable_set:
+                continue
             qa_checks.append({"name": qid, "detail": {
                 "qid": qid,
                 "critic_verdict": rec["_meta"]["critic_verdict"],
@@ -584,9 +601,12 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
             holistic=holistic,
             burst=None,
             dropped_qids=sorted({g.id for g in gold} - {g.id for g in aligned_gold}),
+            unscorable_qids=unscorable_qids,
         )
         composite_payload = result.model_dump(mode="json")
         composite_payload["holistic"] = holistic
+        if unscorable_qids:
+            composite_payload["unscorable_qids"] = unscorable_qids
     else:
         logger.warning("no scored queries (all failed?) — writing diagnostics only")
 

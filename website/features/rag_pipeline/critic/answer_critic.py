@@ -47,12 +47,23 @@ class AnswerCritic:
                 label="rag_critic",
             )
         except Exception as exc:
-            return "supported", {"critic_error": str(exc)}
+            # C#4: fail CLOSED, not open. A critic outage previously returned
+            # "supported", silently passing every answer during an outage. We
+            # now return "unsupported" — the only verdict the orchestrator
+            # state machine (orchestrator.py:1148) treats conservatively
+            # (retry/abstain, never a clean pass). ``details["critic_error"]``
+            # is preserved so eval/scoring/observability can distinguish an
+            # outage from a genuine unsupported verdict (the orchestrator
+            # passes verdict through unchanged when it short-circuits, so the
+            # error flag is the only outage signal downstream).
+            return "unsupported", {"critic_error": str(exc)}
 
         try:
             parsed = json.loads(_coerce_text(raw))
         except json.JSONDecodeError:
-            return "supported", {"critic_error": "unparseable"}
+            # C#4: unparseable judge output is an outage class too — fail
+            # closed for the same reason as the exception path above.
+            return "unsupported", {"critic_error": "unparseable"}
 
         verdict = parsed.get("verdict", "supported")
         if verdict not in {"supported", "partial", "unsupported"}:

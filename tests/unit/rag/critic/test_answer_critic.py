@@ -57,7 +57,12 @@ def test_bad_citation_detector_flags_ids_not_in_context() -> None:
 
 
 @pytest.mark.asyncio
-async def test_critic_failure_defaults_to_supported_with_error_note() -> None:
+async def test_critic_failure_fails_closed_with_error_note() -> None:
+    """C#4 (old->new): a critic exception used to return "supported"
+    (fail-open — an outage silently passed every answer). It must now fail
+    CLOSED with verdict "unsupported" (the only verdict the orchestrator
+    treats conservatively) while still surfacing details["critic_error"] so
+    an outage is distinguishable from a genuine unsupported."""
     class _Pool:
         async def generate_content(self, contents, **kwargs):
             raise RuntimeError("boom")
@@ -67,8 +72,42 @@ async def test_critic_failure_defaults_to_supported_with_error_note() -> None:
         context_xml="<context></context>",
         context_candidates=[_candidate("node-1")],
     )
+    assert verdict == "unsupported"
+    assert details["critic_error"] == "boom"
+
+
+@pytest.mark.asyncio
+async def test_critic_unparseable_judge_output_fails_closed() -> None:
+    """C#4: unparseable judge JSON is an outage class — fail closed with
+    verdict "unsupported" and critic_error="unparseable", never "supported"."""
+    class _Pool:
+        async def generate_content(self, contents, **kwargs):
+            return "this is not json at all {{"
+
+    verdict, details = await AnswerCritic(pool=_Pool()).verify(
+        answer_text="Answer",
+        context_xml="<context></context>",
+        context_candidates=[_candidate("node-1")],
+    )
+    assert verdict == "unsupported"
+    assert details["critic_error"] == "unparseable"
+
+
+@pytest.mark.asyncio
+async def test_critic_normal_supported_path_unchanged() -> None:
+    """C#4 regression: the happy path (judge returns valid supported JSON)
+    must be byte-identical to pre-C#4 behavior — no fail-closed leakage."""
+    class _Pool:
+        async def generate_content(self, contents, **kwargs):
+            return '{"verdict":"supported","unsupported_claims":[],"bad_citations":[]}'
+
+    verdict, details = await AnswerCritic(pool=_Pool()).verify(
+        answer_text="Answer [node-1]",
+        context_xml="<context></context>",
+        context_candidates=[_candidate("node-1")],
+    )
     assert verdict == "supported"
-    assert "critic_error" in details
+    assert "critic_error" not in details
 
 
 def test_critic_prompt_contains_semantic_equivalence_leniency() -> None:

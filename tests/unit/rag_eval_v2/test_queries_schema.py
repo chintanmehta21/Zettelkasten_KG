@@ -134,7 +134,13 @@ def test_build_gold_queries_accepts_every_query(queries_doc):
         q["qid"]: (["z-fake-gold"] if q["class"] != "adversarial" else [])
         for q in doc["queries"]
     }
-    gold = _build_gold_queries(doc, overrides)
+    # C#1 (old->new): _build_gold_queries now returns (gold, unscorable_qids).
+    # With overrides supplied for every non-adversarial query and adversarial
+    # queries declaring an empty expected (declared refusal), there are NO
+    # resolution failures here, so unscorable must be empty and len(gold)
+    # still == len(queries).
+    gold, unscorable = _build_gold_queries(doc, overrides)
+    assert unscorable == []
     assert len(gold) == len(doc["queries"])
     by_id = {g.id: g for g in gold}
     for q in doc["queries"]:

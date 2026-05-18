@@ -1104,6 +1104,11 @@ class HybridRetriever:
         # the kasten members), so a non-empty scope_filter.node_ids degrades
         # gracefully to the unfiltered kasten member list.
         del user_id  # v2 RPC authorises via kasten ownership + JWT.
+        # C#3: defensive None-guard. The annotation says ScopeFilter but some
+        # callers pass None; the .node_ids/.tags/.source_types derefs below
+        # would AttributeError. Treat absent filter as an empty filter.
+        if scope_filter is None:
+            scope_filter = ScopeFilter()
         if sandbox_id is None and not any(
             [scope_filter.node_ids, scope_filter.tags, scope_filter.source_types]
         ):

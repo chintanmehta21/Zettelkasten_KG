@@ -94,8 +94,42 @@ def _split_atomic_facts(ground_truth: str) -> list[str]:
     return parts or [text]
 
 
-def _build_gold_queries(queries_json: dict, expected_overrides: dict[str, list[str]]) -> list[GoldQuery]:
+def _declares_citation(primary: Any) -> bool:
+    """True iff the query INTENTIONALLY names an expected primary citation.
+
+    C#1: this is the declared-vs-failed discriminator. A query that declares
+    a non-empty ``expected_primary_citation`` (string or list) is asserting
+    "a correct answer should cite X". An absent / None / empty-string /
+    empty-list value is a DECLARED refusal (the query intentionally has no
+    expected citation — only q11-class adversarial/refusal queries).
+    """
+    if primary is None:
+        return False
+    if isinstance(primary, str):
+        return bool(primary.strip())
+    if isinstance(primary, (list, tuple)):
+        return any(isinstance(x, str) and x.strip() for x in primary)
+    return bool(primary)
+
+
+def _build_gold_queries(
+    queries_json: dict,
+    expected_overrides: dict[str, list[str]],
+) -> tuple[list[GoldQuery], list[str]]:
+    """Build GoldQuery objects, returning ``(gold, unscorable_qids)``.
+
+    C#1: a query whose ``expected_primary_citation`` is a non-empty needle
+    but which resolved to ZERO gold ids is a RESOLUTION FAILURE (the title
+    substring matched no ingested zettel) — NOT a refusal. It used to be
+    silently reclassified ``expected_behavior="refuse"`` and scored as a
+    (right/wrong) refusal, mis-scoring a query that should have been
+    answered. We now segregate those qids into ``unscorable_qids`` so the
+    caller can EXCLUDE them from the composite + holistic and surface them
+    loudly in the scorecard. Declared refusals (empty/absent expected) are
+    still legitimately scored as refusals (unchanged behavior).
+    """
     out: list[GoldQuery] = []
+    unscorable_qids: list[str] = []
     for q in queries_json.get("queries", []):
         qid = q.get("qid")
         if not qid:
@@ -106,18 +140,46 @@ def _build_gold_queries(queries_json: dict, expected_overrides: dict[str, list[s
         # to expected_primary_citation, then to empty (for refusal queries).
         expected_from_results = expected_overrides.get(qid)
         primary = q.get("expected_primary_citation")
+        declares_citation = _declares_citation(primary)
+        # C#1 declared-vs-failed discriminator. ``resolution_attempted`` is
+        # True iff the caller ran title->zettel resolution for this qid (the
+        # harness adds EVERY qid to expected_overrides; the v1 scorer adds
+        # every qid present in qa_checks). When resolution WAS attempted, an
+        # empty result for a query that declared a citation is a RESOLUTION
+        # FAILURE — the raw-needle fallback below must NOT mask it (pretending
+        # the unresolved title string is itself a gold zettel id is exactly
+        # the silent-refuse bug). When resolution was NOT attempted (qid
+        # absent from overrides — legacy v1 queries.json with literal node-id
+        # citations), the raw-string fallback is still legitimate.
+        resolution_attempted = qid in expected_overrides
         if expected_from_results:
             gold_ids = list(dict.fromkeys(expected_from_results))
+        elif declares_citation and resolution_attempted:
+            # Declared a citation, resolution ran, resolved to nothing.
+            gold_ids = []
         elif isinstance(primary, list) and primary:
-            # Multi-source synthesis queries (q4/q5/q6) declare gold as a list.
+            # Legacy: multi-source queries declaring literal node ids as a
+            # list (no resolution step for this qid).
             gold_ids = [str(x) for x in primary if isinstance(x, str) and x]
         elif isinstance(primary, str) and primary:
+            # Legacy: a literal node-id string (no resolution step).
             gold_ids = [primary]
         else:
             gold_ids = []
+        if not gold_ids and declares_citation:
+            # C#1 RESOLUTION FAILURE: the query declared an expected citation
+            # but the needle resolved to nothing (title-substring miss /
+            # un-ingested gold). This is NOT a refusal — refuse-scoring it
+            # would mis-score a should-have-answered query. Exclude it from
+            # all scoring; the caller surfaces it as an explicit
+            # "unresolved/unscorable" line so the data defect is impossible
+            # to miss instead of being silently counted as a refusal.
+            unscorable_qids.append(qid)
+            continue
         # GoldQuery requires min_length=1 on gold_node_ids/gold_ranking. For
-        # refusal-expected queries we register the qid with a sentinel id so
-        # the scorer can find it in `_REFUSAL_BEHAVIORS` and sidestep RAGAS.
+        # DECLARED-refusal queries (empty/absent expected) we register the qid
+        # with a sentinel id so the scorer finds it in `_REFUSAL_BEHAVIORS`
+        # and sidesteps RAGAS — this remains correct refusal scoring.
         expected_behavior = "refuse" if not gold_ids else "answer"
         if not gold_ids:
             gold_ids = ["__refuse__"]
@@ -131,7 +193,7 @@ def _build_gold_queries(queries_json: dict, expected_overrides: dict[str, list[s
             atomic_facts=atomic_facts,
             expected_behavior=expected_behavior,
         ))
-    return out
+    return out, unscorable_qids
 
 
 def _extract_qa_checks(verification: dict) -> list[dict]:
@@ -582,6 +644,7 @@ def _render_scores_md(
     holistic: dict[str, Any],
     burst: dict[str, Any] | None,
     dropped_qids: list[str] | None = None,
+    unscorable_qids: list[str] | None = None,
 ) -> str:
     cs = eval_result.component_scores
     lines = [
@@ -590,6 +653,24 @@ def _render_scores_md(
         f"**Composite:** {eval_result.composite:.2f}  (weights={eval_result.weights}, hash={eval_result.weights_hash[:12]})",
         "",
     ]
+    if unscorable_qids:
+        # C#1: loud, impossible-to-miss surface. These declared an expected
+        # citation that resolved to no ingested zettel — a DATA defect, not a
+        # refusal. They are excluded from composite + holistic; the run stays
+        # usable but the defect is front-and-centre.
+        lines += [
+            f"## ⚠️ {len(unscorable_qids)} UNRESOLVED / UNSCORABLE quer"
+            f"{'y' if len(unscorable_qids) == 1 else 'ies'} (C#1)",
+            "",
+            "These declared an `expected_primary_citation` that resolved to "
+            "**no ingested zettel** (title-substring miss / un-ingested gold). "
+            "They are a DATA defect, NOT refusals — excluded from the "
+            "composite and holistic so they cannot be silently mis-scored as "
+            "refusals. Fix the queryset or re-ingest the gold zettels.",
+            "",
+            f"- {', '.join(unscorable_qids)}",
+            "",
+        ]
     if dropped_qids:
         lines += [
             "## Unscored qids (dropped from scoring)",
@@ -597,6 +678,16 @@ def _render_scores_md(
             f"- {', '.join(dropped_qids)}",
             "",
         ]
+    lines += [
+        "> _Retrieval sub-score note (C#6): the harness feeds the orchestrator's "
+        "post-rerank `retrieved_node_ids` (orchestrator does not expose the "
+        "pre-rerank candidate set) into BOTH the retrieval and rerank "
+        "sub-scores. The retrieval sub-score therefore measures **post-cascade "
+        "recall** (rerank survival), not recall over the full pre-rerank "
+        "candidate set — true retrieval recall is understated by an unknown "
+        "margin. Treat retrieval vs rerank deltas as diagnostic, not absolute._",
+        "",
+    ]
     lines += [
         "## Components",
         f"- chunking:    {cs.chunking:.2f}",
@@ -755,7 +846,13 @@ async def main_async(args) -> int:
         if qid and isinstance(expected, list):
             expected_overrides[qid] = [str(x) for x in expected if isinstance(x, str)]
 
-    gold = _build_gold_queries(queries_json, expected_overrides)
+    gold, unscorable_qids = _build_gold_queries(queries_json, expected_overrides)
+    if unscorable_qids:
+        logger.warning(
+            "C#1: %d query(ies) UNSCORABLE — declared an expected citation "
+            "that resolved to no ingested zettel (NOT counted as refusals): %s",
+            len(unscorable_qids), unscorable_qids,
+        )
 
     # Kasten members + every retrieved node across queries — feed all into
     # chunks_per_node so chunking_score sees the full Kasten universe.
@@ -809,7 +906,14 @@ async def main_async(args) -> int:
     )
 
     kasten_slug = queries_json.get("_meta", {}).get("kasten_slug", "")
-    holistic = _holistic_metrics(qa_checks, kasten_slug=kasten_slug)
+    # C#1: exclude resolution-failure (unscorable) qids from holistic too —
+    # they must not pollute gold@k / refusal ratios as silent refusals.
+    _unscorable_set = set(unscorable_qids)
+    holistic_checks = [
+        c for c in qa_checks
+        if ((c.get("detail") or {}).get("qid") or c.get("name")) not in _unscorable_set
+    ]
+    holistic = _holistic_metrics(holistic_checks, kasten_slug=kasten_slug)
     burst = _burst_metrics(verification)
 
     eval_payload = result.model_dump(mode="json")
@@ -818,6 +922,8 @@ async def main_async(args) -> int:
         eval_payload["burst"] = burst
     if dropped_qids:
         eval_payload["unscored_qids"] = dropped_qids
+    if unscorable_qids:
+        eval_payload["unscorable_qids"] = unscorable_qids
 
     eval_path = iter_dir / "eval.json"
     eval_path.write_text(
@@ -832,6 +938,7 @@ async def main_async(args) -> int:
         holistic=holistic,
         burst=burst,
         dropped_qids=dropped_qids,
+        unscorable_qids=unscorable_qids,
     )
     (iter_dir / "scores.md").write_text(scores_md, encoding="utf-8")
 
