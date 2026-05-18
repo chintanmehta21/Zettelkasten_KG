@@ -1,6 +1,8 @@
 """Integration tests for content.upsert_canonical_zettel (Phase 1.C).
 
-Covers the SECURITY DEFINER RPC shipped in `_v2/17_content_rpcs.sql`. Round-2
+Covers the SECURITY DEFINER RPC, now a repeatable migration at
+`_v2/repeatable/R__content_rpcs.sql` (was `_v2/17_content_rpcs.sql` before the
+PR #25 URL-dedup ON CONFLICT change forced repeatable-promotion). Round-2
 R2.6 mandates `ON CONFLICT DO UPDATE SET normalized_url = EXCLUDED.normalized_url`
 (no-op self-assign) so the row is returned with xmax=0 for the inserter and
 xmax!=0 for losers under concurrent contention. The race test (10 concurrent

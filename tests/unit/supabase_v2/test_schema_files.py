@@ -31,7 +31,6 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "13_v2_kasten_rpcs.sql",
         "15_drop_legacy_tables.sql",
         "16_nexus_tokens.sql",
-        "17_content_rpcs.sql",
         "19_enriched_search_rpc.sql",
         "20_hybrid_search_rpc.sql",
         "21_resolve_effective_nodes_rpc.sql",
@@ -63,6 +62,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "45_rag_subgraph_for_pagerank.sql",
         "46_kg_two_level_strength.sql",
         "46_url_dedup.sql",
+        "47_migrate_17_to_repeatable.sql",
     ]
 
 
