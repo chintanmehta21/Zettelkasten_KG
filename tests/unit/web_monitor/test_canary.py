@@ -9,7 +9,7 @@ Covers the 4 invariants from docs/research/2026-05-12-canary-heartbeat.md:
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest

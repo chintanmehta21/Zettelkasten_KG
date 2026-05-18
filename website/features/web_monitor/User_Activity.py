@@ -49,7 +49,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, HTTPException, Request, status
 
 from website.features.web_monitor._country import format_country

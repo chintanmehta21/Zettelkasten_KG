@@ -15,6 +15,25 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+from website.features.rag_pipeline.errors import EmptyScopeError
+from website.features.rag_pipeline.generation.prompts import (
+    NO_CONTEXT_MARKER,
+    REFUSAL_PHRASE,
+    SYSTEM_PROMPT,
+    USER_TEMPLATE,
+)
+from website.features.rag_pipeline.generation.sanitize import (
+    has_valid_citation,
+    sanitize_answer,
+    strip_invalid_citations,
+)
+from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency
+from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor
+from website.features.rag_pipeline.query.router import apply_class_overrides
+from website.features.rag_pipeline.retrieval.hybrid import _top1_top2_gap
+from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner
+from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -32,25 +51,6 @@ except Exception:  # pragma: no cover - optional dependency fallback
 
     def get_client():
         return _DummyLangfuse()
-
-from website.features.rag_pipeline.errors import EmptyScopeError  # noqa: E402
-from website.features.rag_pipeline.generation.prompts import (  # noqa: E402
-    NO_CONTEXT_MARKER,
-    REFUSAL_PHRASE,
-    SYSTEM_PROMPT,
-    USER_TEMPLATE,
-)
-from website.features.rag_pipeline.generation.sanitize import (  # noqa: E402
-    has_valid_citation,
-    sanitize_answer,
-    strip_invalid_citations,
-)
-from website.features.rag_pipeline.observability import record_generation_cost, trace_stage, track_latency  # noqa: E402
-from website.features.rag_pipeline.query.metadata import QueryMetadata, QueryMetadataExtractor  # noqa: E402
-from website.features.rag_pipeline.query.router import apply_class_overrides  # noqa: E402
-from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner  # noqa: E402
-from website.features.rag_pipeline.types import AnswerTurn, Citation, QueryClass  # noqa: E402
-from website.features.rag_pipeline.retrieval.hybrid import _top1_top2_gap  # noqa: E402
 
 # T20: env-gated KG-first planner. Defaults on so prod gets the new path,
 # but operators can disable via ``RAG_KG_FIRST_ENABLED=false`` for incident

@@ -1,4 +1,4 @@
-# KG Intelligence Layer — Implementation Plan
+﻿# KG Intelligence Layer — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1161,7 +1161,7 @@ In `website/api/routes.py`, modify `graph_data()` (line 83-108). After `result =
             }
 ```
 
-- [ ] **Step 3: Add embedding + entity extraction to POST /api/summarize**
+- [ ] **Step 3: Add embedding + entity extraction to POST /api/zettels/add**
 
 In `website/api/routes.py`, in the `summarize()` handler (line 111-172), after `result = await summarize_url(body.url)` (line 123) and before the file-store `add_node()` call (line 127), add:
 
@@ -1411,7 +1411,7 @@ python scripts/backfill_embeddings.py
 
 Spawn a subagent to measure all endpoint latencies against deployed Render instance:
 - `GET /api/graph`: budget <2s
-- `POST /api/summarize`: budget <30s
+- `POST /api/zettels/add`: budget <30s
 - `POST /api/graph/query`: budget <5s
 - `POST /api/graph/search`: budget <1s
 

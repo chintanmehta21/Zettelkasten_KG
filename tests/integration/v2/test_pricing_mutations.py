@@ -28,7 +28,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import uuid
-from typing import Any
 
 import pytest
 import respx

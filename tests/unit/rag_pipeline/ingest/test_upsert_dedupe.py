@@ -11,11 +11,11 @@ from uuid import UUID
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="v1 upsert_chunks surface (kg_node_chunks) retired in Phase 2.5; replaced by tests/unit/rag_pipeline/test_ingest_upsert_v2.py")
-
 from website.features.rag_pipeline.ingest.chunker import Chunk
 from website.features.rag_pipeline.ingest.upsert import upsert_chunks
 from website.features.rag_pipeline.types import ChunkType
+
+pytestmark = pytest.mark.skip(reason="v1 upsert_chunks surface (kg_node_chunks) retired in Phase 2.5; replaced by tests/unit/rag_pipeline/test_ingest_upsert_v2.py")
 
 
 USER_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -111,7 +111,7 @@ async def test_second_call_with_same_chunks_inserts_zero():
     chunks = _make_chunks()
 
     with patch("website.features.rag_pipeline.ingest.upsert.get_supabase_client", return_value=fake):
-        first = await upsert_chunks(user_id=USER_ID, node_id=NODE_ID, chunks=chunks, embedder=embedder)
+        await upsert_chunks(user_id=USER_ID, node_id=NODE_ID, chunks=chunks, embedder=embedder)
         second = await upsert_chunks(user_id=USER_ID, node_id=NODE_ID, chunks=chunks, embedder=embedder)
 
     # First call must have inserted exactly len(chunks) rows

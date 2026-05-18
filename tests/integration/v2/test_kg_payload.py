@@ -10,6 +10,7 @@ the upstream graph loader. Avoids any Supabase round-trip (these are NOT
 """
 from __future__ import annotations
 
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -156,8 +157,8 @@ def test_min_strength_filter_strict_subset() -> None:
     assert len(weak["links"]) == 4, "min_strength=0.0 returns everything"
     assert len(strong["links"]) == 1
     # Strong is a strict subset.
-    strong_keys = {(lk["source"], lk["target"]) for lk in strong["links"]}
-    weak_keys = {(lk["source"], lk["target"]) for lk in weak["links"]}
+    strong_keys = {(link["source"], link["target"]) for link in strong["links"]}
+    weak_keys = {(link["source"], link["target"]) for link in weak["links"]}
     assert strong_keys.issubset(weak_keys)
 
 

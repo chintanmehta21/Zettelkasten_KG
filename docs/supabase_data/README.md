@@ -1,4 +1,4 @@
-# Supabase Data Capture
+﻿# Supabase Data Capture
 
 Bootstrap material for provisioning a new Supabase project after the previous one was banned (DNS pulled).
 
@@ -6,7 +6,7 @@ Bootstrap material for provisioning a new Supabase project after the previous on
 
 - `schemas/` — recursive copy of `supabase/website/` (canonical schema + 23+ migrations + feature schemas). Apply these first to the new project.
 - `file_store_fallback/graph.json` — local file-store fallback (27 nodes / 46 links). Use as a sanity reference when re-ingesting; the new Supabase project will rebuild this from re-summarized URLs.
-- `obsidian_export/corpus/` — one-time markdown seed from the user's Syncthing/Obsidian vault. Re-feed each note's `url` field through `/api/summarize` after the new project is up to rebuild `kg_nodes`. The corpus is preserved as a *data file*, not a live integration.
+- `obsidian_export/corpus/` — one-time markdown seed from the user's Syncthing/Obsidian vault. Re-feed each note's `url` field through `/api/zettels/add` after the new project is up to rebuild `kg_nodes`. The corpus is preserved as a *data file*, not a live integration.
 - `obsidian_export/INDEX.json` — derived index: path / title / url / tags / mtime / sha256.
 - `obsidian_export/STATS.md` — corpus statistics + source-type histogram.
 - `audit/` — captures from iter-12 audit (live env, schema dumps) when present.

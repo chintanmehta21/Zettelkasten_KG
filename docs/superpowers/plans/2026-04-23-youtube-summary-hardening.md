@@ -1,4 +1,4 @@
-# YouTube Summary Hardening Implementation Plan
+﻿# YouTube Summary Hardening Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -28,7 +28,7 @@ This plan is YouTube-only. Reddit, GitHub, and Newsletter get their own plans af
 - `docs/summary_eval/youtube/final_scorecard.md` — acceptance gates.
 - `docs/summary_eval/youtube/edit_ledger.json` — file-level change record.
 - `website/features/summarization_engine/core/models.py` — `DetailedSummarySection` already supports `sub_sections: dict[str, list[str]]`. The layout module will exploit this; no model changes needed.
-- `website/core/pipeline.py` — `_render_detailed_summary` already walks `sub_sections` and emits `### heading\n- bullet` markdown. Confirms the UI path.
+- `website/api/module_runners/summarization.py` — `_render_detailed_summary` already walks `sub_sections` and emits `### heading\n- bullet` markdown. Confirms the UI path.
 
 **Files we will create:**
 - `website/features/summarization_engine/summarization/youtube/layout.py` — new module: `compose_youtube_detailed(payload: YouTubeStructuredPayload) -> list[DetailedSummarySection]`. Pulls composition out of `common/structured.py` so it is testable without importing the extractor.
@@ -69,7 +69,7 @@ This plan is YouTube-only. Reddit, GitHub, and Newsletter get their own plans af
 - Read: `website/features/summarization_engine/summarization/youtube/schema.py` full file.
 - Read: `website/features/summarization_engine/summarization/youtube/prompts.py` full file.
 - Read: `website/features/summarization_engine/core/models.py` lines 45–55 (`DetailedSummarySection`).
-- Read: `website/core/pipeline.py` lines 47–82 (`_to_legacy_response`, `_render_detailed_summary`).
+- Read: `website/api/module_runners/summarization.py` lines 47–82 (`_to_legacy_response`, `_render_detailed_summary`).
 - Read: `website/features/user_zettels/js/user_zettels.js` lines 1275–1368 (`renderDualSummary`, `renderMarkdownLite`).
 
 - [ ] **Step 1: Produce a written delta against the plan's assumptions**
@@ -277,7 +277,7 @@ git commit -m "test: add composed youtube layout contract"
 # website/features/summarization_engine/summarization/youtube/layout.py
 """Dynamic composition of YouTube DetailedSummarySection hierarchy.
 
-The renderer (website/core/pipeline.py::_render_detailed_summary) converts
+The renderer (website/api/module_runners/summarization.py::_render_detailed_summary) converts
 ``DetailedSummarySection`` + ``sub_sections`` into ``## h2`` / ``### h3`` /
 ``-`` bullet markdown, which the frontend's renderMarkdownLite parses
 directly. Keeping layout logic here — not in common/structured.py — means
@@ -1025,7 +1025,7 @@ renderMarkdownLite) contains:
 """
 from __future__ import annotations
 
-from website.core.pipeline import _render_detailed_summary
+from website.api.module_runners.summarization import _render_detailed_summary
 from website.features.summarization_engine.summarization.youtube.layout import (
     compose_youtube_detailed,
 )
@@ -1121,7 +1121,7 @@ from __future__ import annotations
 
 import re
 
-from website.core.pipeline import _render_detailed_summary
+from website.api.module_runners.summarization import _render_detailed_summary
 from website.features.summarization_engine.summarization.youtube.layout import (
     compose_youtube_detailed,
 )

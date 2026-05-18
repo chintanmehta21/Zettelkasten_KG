@@ -1,4 +1,4 @@
-# Render → DigitalOcean Migration — Manual Setup Walkthrough
+﻿# Render → DigitalOcean Migration — Manual Setup Walkthrough
 
 > **ARCHIVED — Historical migration walkthrough (legacy, no longer used).** This document captured the one-time browser/SSH walkthrough for cutting over from Render.com to the DigitalOcean droplet. The migration is complete; Render is no longer used. The DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. **Do not execute any "pause Render" / "delete Render" / Render-dashboard step below** — they are preserved for context. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -1178,7 +1178,7 @@ Run each command from your local Windows bash. If any fails, **STOP** and diagno
 
 - [ ] **23.9** Post a real summarise request:
   ```bash
-  curl -fsS -X POST https://stage.zettelkasten.in/api/summarize \
+  curl -fsS -X POST https://stage.zettelkasten.in/api/zettels/add \
       -H 'Content-Type: application/json' \
       -d '{"url":"https://news.ycombinator.com"}' | head -50
   ```

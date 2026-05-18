@@ -33,7 +33,6 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 from fastapi import APIRouter
 
 from website.features.web_monitor._slack_client import post_with_retry

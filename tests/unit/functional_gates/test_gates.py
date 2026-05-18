@@ -166,8 +166,10 @@ async def test_reserve_and_consume_passes_caps_for_resolved_plan():
     # Sequence: first call resolves the plan -> 'max', second call is the
     # reserve_and_consume; verify the caps payload matches Max zettel caps.
     client = MagicMock()
-    plan_resp = MagicMock(); plan_resp.data = "max"
-    consume_resp = MagicMock(); consume_resp.data = {
+    plan_resp = MagicMock()
+    plan_resp.data = "max"
+    consume_resp = MagicMock()
+    consume_resp.data = {
         "allowed": True, "source": "plan", "reason": "ok",
         "remaining_plan": 29, "remaining_wallet": 0,
     }

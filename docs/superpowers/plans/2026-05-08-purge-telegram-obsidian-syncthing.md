@@ -1,4 +1,4 @@
-# Purge Telegram, Obsidian, and Syncthing Implementation Plan
+﻿# Purge Telegram, Obsidian, and Syncthing Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -683,12 +683,12 @@ Expected: no matches.
 Find:
 ```
 result into the knowledge graph. Every ingest path (Telegram bot, website
-``/api/summarize``, eval register scripts, future callers) should call
+``/api/zettels/add``, eval register scripts, future callers) should call
 :func:`persist_summarized_result`.
 ```
 Replace with:
 ```
-result into the knowledge graph. Every ingest path (website ``/api/summarize``,
+result into the knowledge graph. Every ingest path (website ``/api/zettels/add``,
 eval register scripts, future callers) should call
 :func:`persist_summarized_result`.
 ```
@@ -907,7 +907,7 @@ Pure-library summarization engine that ingests URLs from 9 content sources and p
 - Single writer: `SupabaseWriter` (writes the structured summary into `kg_nodes.summary`).
 
 ## Integration
-- `/api/v2/summarize` and `/api/v2/batch*` endpoints alongside existing `/api/summarize`
+- `/api/v2/summarize` and `/api/v2/batch*` endpoints alongside existing `/api/zettels/add`
 - Reuses `website/features/api_key_switching/key_pool.py`
 
 See `docs/superpowers/specs/2026-04-10-summarization-engine-v2-design.md` for full design.
@@ -935,7 +935,7 @@ Zettelkasten Capture Bot — a Telegram bot that captures URLs (Reddit, YouTube,
 **Obsidian KG**: `C:\Users\LENOVO\Documents\Syncthing\Obsidian\KG`
 **Verified sources**: YouTube, GitHub, Newsletter (Substack), Generic (HN/web)
 
-Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with REST API at `/api/summarize` and an interactive 3D knowledge graph at `/knowledge-graph`.
+Two interfaces: Telegram bot (primary) and a FastAPI web UI (`website/`) with REST API at `/api/zettels/add` and an interactive 3D knowledge graph at `/knowledge-graph`.
 ```
 Replace with:
 ```markdown
@@ -947,7 +947,7 @@ Zettelkasten Website — a FastAPI web app that captures URLs (Reddit, YouTube, 
 **Repo**: https://github.com/chintanmehta21/Zettelkasten_KG
 **Verified sources**: YouTube, GitHub, Newsletter (Substack), Generic (HN/web)
 
-Single interface: a FastAPI web UI (`website/`) with REST API at `/api/summarize` and an interactive 3D knowledge graph at `/knowledge-graph`.
+Single interface: a FastAPI web UI (`website/`) with REST API at `/api/zettels/add` and an interactive 3D knowledge graph at `/knowledge-graph`.
 ```
 
 - [ ] **Step 2: Replace the `## Commands` section**
@@ -1275,7 +1275,7 @@ Expected: 200/200/200.
 Optional (full-stack write path — only if the operator wants to spend a Gemini call):
 ```bash
 # Replace <jwt> with a fresh Naruto JWT
-curl -X POST https://zettelkasten.in/api/summarize \
+curl -X POST https://zettelkasten.in/api/zettels/add \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com", "user_sub": "<naruto-sub>"}'

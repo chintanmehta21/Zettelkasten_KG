@@ -1,4 +1,4 @@
-# Summarization Engine Plan 12 — Production Self-Monitoring Eval Endpoint
+﻿# Summarization Engine Plan 12 — Production Self-Monitoring Eval Endpoint
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -24,7 +24,7 @@
 ## Critical safety constraints
 
 ### 1. Rate limiting per IP
-60 req/hr per IP enforced via existing FastAPI rate-limit middleware pattern (see `website/api/routes.py` `/api/summarize` rate-limit). Prevents the endpoint from becoming a free Gemini-pool siphon.
+60 req/hr per IP enforced via existing FastAPI rate-limit middleware pattern (see `website/api/routes.py` `/api/zettels/add` rate-limit). Prevents the endpoint from becoming a free Gemini-pool siphon.
 
 ### 2. Authentication required
 Only authenticated users (Supabase bearer token, via existing `get_optional_user` → tightened to `get_required_user` for this route). Anonymous calls return 401.

@@ -1,4 +1,4 @@
-# DB Refactor Implementation Plan (rev. 2 — post-audit)
+﻿# DB Refactor Implementation Plan (rev. 2 — post-audit)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -532,7 +532,7 @@ def post_fork(server, worker):
 
 ## Phase 4 — API + Retrieval Updates (Days 10-13)
 
-### Task 4.1: Update `/api/summarize` to canonical-then-overlay
+### Task 4.1: Update `/api/zettels/add` to canonical-then-overlay
 
 Same as rev 1 Task 4.1. Use `client.schema(...).table(...)` form.
 

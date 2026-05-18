@@ -1,4 +1,4 @@
-# Post-Login Home Page — Design Spec
+﻿# Post-Login Home Page — Design Spec
 
 **Date**: 2026-04-01
 **Status**: Draft
@@ -81,7 +81,7 @@ Identical to landing page header positioning:
   - Right: chevron (toggles URL input dropdown)
   - Dropdown contains: source type selector + URL input + "Add" submit button
   - Reuses existing source type options: YouTube, GitHub, Reddit, Newsletter, Web
-  - Submits to `POST /api/summarize` with Bearer token
+  - Submits to `POST /api/zettels/add` with Bearer token
   - On success: re-fetches graph, new card animates in
   - On error: inline error message in dropdown
 - Card grid (CSS Grid, `auto-fill`, `minmax(240px, 1fr)`):
@@ -145,7 +145,7 @@ Updates `kg_users.avatar_url` in Supabase for the authenticated user.
 
 **`GET /api/me`** — already returns `avatar_url`. No changes needed.
 
-**`POST /api/summarize`** — already supports authenticated requests. No changes needed.
+**`POST /api/zettels/add`** — already supports authenticated requests. No changes needed.
 
 **`GET /api/graph?view=my`** — already returns user-scoped graph. No changes needed.
 
@@ -207,7 +207,7 @@ PUT /api/me/avatar
 
 
 Add Zettel:
-    URL input → POST /api/summarize (Bearer token)
+    URL input → POST /api/zettels/add (Bearer token)
              → Re-fetch GET /api/graph?view=my
              → New card in grid
 ```
@@ -218,7 +218,7 @@ Add Zettel:
 |----------|----------|
 | `/api/me` returns 401 | Redirect to `/` |
 | `/api/graph?view=my` fails | Show empty state with retry button |
-| `POST /api/summarize` fails | Show error message in Add Zettel dropdown |
+| `POST /api/zettels/add` fails | Show error message in Add Zettel dropdown |
 | Avatar SVG 404 | Show initials fallback (CSS circle + first letter) |
 | No zettels yet | Empty state: "No zettels yet" + prompt to add first |
 

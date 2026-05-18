@@ -29,7 +29,6 @@ project. Cleanup runs via the auth-user CASCADE in the conftest fixture.
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 import asyncpg
 import pytest

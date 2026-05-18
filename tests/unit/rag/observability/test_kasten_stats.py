@@ -1,5 +1,4 @@
 """iter-12 Class K4: per-Kasten bootstrap stats tests."""
-import pytest
 
 
 def test_bootstrap_returns_static_fallback_below_n_min():

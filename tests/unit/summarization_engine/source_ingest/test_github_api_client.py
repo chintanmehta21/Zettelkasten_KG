@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, patch
 
 from website.features.summarization_engine.source_ingest.github.api_client import (
     GitHubApiClient,
-    RepoSignals,
 )
 
 

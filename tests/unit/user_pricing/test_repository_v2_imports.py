@@ -28,8 +28,8 @@ pytestmark = pytest.mark.skip(
     )
 )
 
-import inspect
-from pathlib import Path
+import inspect  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 # Import lazily inside test bodies — the v2-purge closeout removed the
 # ``is_supabase_configured`` alias from the repository module, so a top-level

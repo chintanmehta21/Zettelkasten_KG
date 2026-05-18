@@ -1,4 +1,4 @@
-# KG Intelligence Layer — Native Design Spec
+﻿# KG Intelligence Layer — Native Design Spec
 
 **Date**: 2026-03-30
 **Status**: Draft v4 — pending user approval
@@ -13,7 +13,7 @@ Add six intelligence capabilities to the existing Supabase-backed knowledge grap
 
 **Performance envelope (hard constraints):**
 - `GET /api/graph` — under **2 seconds** (currently ~150ms via `kg_graph_view`)
-- Full summarize workflow (`POST /api/summarize`) — under **30 seconds** end-to-end
+- Full summarize workflow (`POST /api/zettels/add`) — under **30 seconds** end-to-end
 - Incremental overhead per module — budgeted and measured via latency subagent
 - Backend must remain featherweight for mobile web (no heavy imports on cold start)
 
@@ -26,7 +26,7 @@ Add six intelligence capabilities to the existing Supabase-backed knowledge grap
 ## Architecture Overview
 
 ```
-                     POST /api/summarize
+                     POST /api/zettels/add
                             |
               +-------------+-------------+
               v                           v
@@ -544,7 +544,7 @@ Add ONLY new entities and relationships not already captured.
 - Type validation in post-processing (drop non-conforming)
 - Future: add `confidence: float` field to `ExtractedEntity`/`ExtractedRelationship`
 
-**Integration point:** Called from `routes.py` `/api/summarize` AFTER `summarize_url()` returns. Runs on `brief_summary` (200-500 tokens, no chunking needed).
+**Integration point:** Called from `routes.py` `/api/zettels/add` AFTER `summarize_url()` returns. Runs on `brief_summary` (200-500 tokens, no chunking needed).
 
 **Latency budget:** Step 1 (~1.5s) + Step 2 (~1s) + Step 3 gleaning (~1.5s) = **~4s total** with gleaning, ~2.5s without. Runs in parallel with M2 embedding generation. Each Gemini call uses a 10-second `timeout` parameter on the `generate_content()` call as a circuit-breaker; if any step exceeds it, skip remaining steps and return partial results.
 
@@ -937,10 +937,10 @@ Three streams:
 
 ---
 
-## Integration: Updated `/api/summarize` Pipeline
+## Integration: Updated `/api/zettels/add` Pipeline
 
 ```
-POST /api/summarize { url }
+POST /api/zettels/add { url }
   |
   +-- 1. summarize_url(url)                      [existing, ~8-15s]
   |
@@ -970,7 +970,7 @@ Total: ~15-20s (within 30s budget)
 |-----------|---------|-------|--------|--------|
 | `GET /api/graph` (hit) | ~1ms | ~1ms | < 2s | OK |
 | `GET /api/graph` (miss) | ~150ms | ~155-230ms (+NetworkX) | < 2s | OK |
-| `POST /api/summarize` | ~8-15s | ~15-20s (+M1 parallel, +M2) | < 30s | OK |
+| `POST /api/zettels/add` | ~8-15s | ~15-20s (+M1 parallel, +M2) | < 30s | OK |
 | `POST /graph/query` | N/A | ~2.5s | < 5s | OK |
 | `POST /graph/search` | N/A | ~350ms | < 1s | OK |
 | RPC: `find_neighbors` | N/A | ~100ms (network) | < 500ms | OK |
@@ -981,7 +981,7 @@ Total: ~15-20s (within 30s budget)
 | RPC: `similar_nodes` | N/A | ~100ms (network) | < 500ms | OK |
 | Cold start | ~200ms | ~250ms (+networkx) | < 500ms | OK |
 
-**Latency verification:** After each module, spawn a subagent that calls each endpoint 10x, measures p50/p95/p99, compares against budget, flags violations. Runs in Phase 4 against deployed Render instance (not localhost) to capture real network conditions. For `/api/summarize`, measure incremental overhead (compare with/without intelligence modules). If any endpoint exceeds budget, the implementing agent must optimize before completion.
+**Latency verification:** After each module, spawn a subagent that calls each endpoint 10x, measures p50/p95/p99, compares against budget, flags violations. Runs in Phase 4 against deployed Render instance (not localhost) to capture real network conditions. For `/api/zettels/add`, measure incremental overhead (compare with/without intelligence modules). If any endpoint exceeds budget, the implementing agent must optimize before completion.
 
 ---
 
@@ -1034,7 +1034,7 @@ Phase 2 (depends on M2):
   +-- M6: Hybrid Retrieval
 
 Phase 3 (integration):
-  +-- Wire into /api/summarize pipeline
+  +-- Wire into /api/zettels/add pipeline
   +-- Enrich /api/graph with analytics
   +-- Add /graph/query and /graph/search endpoints
 

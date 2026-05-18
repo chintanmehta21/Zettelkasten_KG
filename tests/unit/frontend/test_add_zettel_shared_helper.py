@@ -1,10 +1,13 @@
 """Regression tests for the shared Add Zettel frontend caller."""
 from __future__ import annotations
 
+import re
+import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2].parent
+ADD_ZETTEL_ASSET_VERSION = "20260518b"
 
 
 def test_all_add_zettel_surfaces_use_shared_helper():
@@ -139,24 +142,62 @@ def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260517a" in text, path
+        assert f"/js/add_zettel_api.js?v={ADD_ZETTEL_ASSET_VERSION}" in text, path
+
+
+def test_add_zettel_pages_reference_fresh_surface_scripts():
+    pages_to_scripts = {
+        ROOT / "website" / "static" / "index.html": f"/js/app.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        ROOT / "website" / "mobile" / "index.html": f"/m/js/summarizer.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        ROOT
+        / "website"
+        / "features"
+        / "user_home"
+        / "index.html": f"/home/js/home.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        ROOT
+        / "website"
+        / "features"
+        / "user_zettels"
+        / "index.html": f"/home/zettels/js/user_zettels.js?v={ADD_ZETTEL_ASSET_VERSION}",
+    }
+    stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
+
+    for page, expected_script in pages_to_scripts.items():
+        text = page.read_text(encoding="utf-8")
+        assert expected_script in text, page
+        add_zettel_script_refs = [
+            match
+            for match in re.findall(r'<script\s+src="([^"]+)"', text)
+            if any(
+                path in match
+                for path in (
+                    "/js/add_zettel_api.js",
+                    "/js/app.js",
+                    "/m/js/summarizer.js",
+                    "/home/js/home.js",
+                    "/home/zettels/js/user_zettels.js",
+                )
+            )
+        ]
+        for stale_version in stale_add_zettel_versions:
+            assert not any(stale_version in ref for ref in add_zettel_script_refs), page
 
     assert "/home/css/home.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260518a" in (
+    assert "/home/js/home.js?v=20260518b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260518a" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260518b" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/m/js/summarizer.js?v=20260518a" in (
+    assert "/m/js/summarizer.js?v=20260518b" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
 
@@ -167,11 +208,15 @@ def test_summary_renderers_split_inline_markdown_headings():
         ROOT / "website" / "mobile" / "js" / "summarizer.js",
         ROOT / "website" / "features" / "user_home" / "js" / "home.js",
         ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js",
+        ROOT / "website" / "mobile" / "js" / "summarizer.js",
     ]
     for path in renderers:
         text = path.read_text(encoding="utf-8")
         assert "function normalizeSummaryMarkdown" in text, path
-        assert r"([^\n])\s+(#{2,6}\s+)" in text, path
+        # Hardened split: inline ATX heading onto its own block.
+        assert r"(\S)[ \t]+(#{2,6})[ \t]+(?=\S)" in text, path
+        # Strip a trailing ``#`` run the model appended to a heading line.
+        assert r"^(#{2,6} .+?)[ \t]+#+[ \t]*$" in text, path
 
 
 def test_add_zettel_surfaces_do_not_call_legacy_summarize_directly():
@@ -186,4 +231,41 @@ def test_add_zettel_surfaces_do_not_call_legacy_summarize_directly():
         for path in surfaces
         if ("/api/" + "summarize") in path.read_text(encoding="utf-8")
     ]
+    assert offenders == []
+
+
+def test_retired_legacy_summarize_pipeline_has_no_tracked_references():
+    forbidden_terms = [
+        "/api/" + "summarize",
+        "website/core/" + "pipeline.py",
+        "website.core." + "pipeline",
+    ]
+    tracked = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    text_suffixes = {
+        ".html",
+        ".js",
+        ".json",
+        ".md",
+        ".py",
+        ".sql",
+        ".toml",
+        ".txt",
+        ".yaml",
+        ".yml",
+    }
+    offenders: list[str] = []
+    for relative in tracked:
+        path = ROOT / relative
+        if path.suffix.lower() not in text_suffixes:
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if any(term in text for term in forbidden_terms):
+            offenders.append(relative)
+
     assert offenders == []

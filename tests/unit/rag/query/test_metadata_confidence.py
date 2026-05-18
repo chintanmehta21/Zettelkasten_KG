@@ -1,5 +1,4 @@
 """iter-12 Task 29 R6: confidence floor + cap-3 tests."""
-import pytest
 
 
 def test_filter_drops_low_confidence():

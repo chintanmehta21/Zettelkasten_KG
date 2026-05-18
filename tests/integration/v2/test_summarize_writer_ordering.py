@@ -21,11 +21,9 @@ NOT alter SQL bodies. We just record call ordering at the Python boundary.
 """
 from __future__ import annotations
 
-import asyncio
 import uuid
-from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

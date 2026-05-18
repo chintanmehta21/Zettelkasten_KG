@@ -16,6 +16,17 @@ import json
 import logging
 import os
 import threading
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np  # noqa: E402
+import onnxruntime as ort  # noqa: E402
+from flashrank import Ranker, RerankRequest  # noqa: E402
+from tokenizers import Tokenizer  # noqa: E402
+
+from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger  # noqa: E402
+from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager  # noqa: E402
+from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate  # noqa: E402
 
 
 def aggressive_release() -> None:
@@ -26,17 +37,6 @@ def aggressive_release() -> None:
     from website.api._mem_release import aggressive_release as _release
 
     _release()
-from dataclasses import dataclass  # noqa: E402
-from pathlib import Path  # noqa: E402
-
-import numpy as np  # noqa: E402
-import onnxruntime as ort  # noqa: E402
-from flashrank import Ranker, RerankRequest  # noqa: E402
-from tokenizers import Tokenizer  # noqa: E402
-
-from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger  # noqa: E402
-from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager  # noqa: E402
-from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 

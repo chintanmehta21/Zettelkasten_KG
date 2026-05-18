@@ -1,4 +1,4 @@
-# API Key Switching Implementation Plan
+﻿# API Key Switching Implementation Plan
 
 > **ARCHIVED CONTEXT — pre-migration plan.** Written while the app was hosted on Render.com (legacy, no longer used). Any "Render Secret Files" / Render-dashboard step is historical. The `api_env` file format and `/etc/secrets/api_env` path are still used, but mounted into the DigitalOcean droplet container today, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -25,7 +25,7 @@
 | Create | `tests/test_routing.py` | Tests for content-aware model selection |
 | Modify | `telegram_bot/pipeline/summarizer.py` | Replace self-managed client/cooldowns with pool delegation |
 | Modify | `telegram_bot/pipeline/orchestrator.py:124-127` | Remove `api_key=` arg from GeminiSummarizer constructor |
-| Modify | `website/core/pipeline.py:52-55` | Remove `api_key=` arg, pass routing hints |
+| Modify | `website/api/module_runners/summarization.py:52-55` | Remove `api_key=` arg, pass routing hints |
 | Modify | `website/features/kg_features/embeddings.py` | Replace `_get_genai_client()` + global cooldown with pool |
 | Modify | `website/features/kg_features/nl_query.py:46-50` | Replace `_get_genai_client()` with pool |
 | Modify | `website/features/kg_features/entity_extractor.py:78-82` | Replace `_get_genai_client()` with pool |
@@ -1301,7 +1301,7 @@ git commit -m "refactor(summarizer): delegate to GeminiKeyPool for key/model rot
 
 **Files:**
 - Modify: `telegram_bot/pipeline/orchestrator.py:124-127`
-- Modify: `website/core/pipeline.py:52-55`
+- Modify: `website/api/module_runners/summarization.py:52-55`
 
 - [ ] **Step 1: Update orchestrator.py**
 
@@ -1318,9 +1318,9 @@ At `telegram_bot/pipeline/orchestrator.py:124-127`, change the `GeminiSummarizer
 
 Remove the `api_key=settings.gemini_api_key` argument. The pool handles keys.
 
-- [ ] **Step 2: Update website/core/pipeline.py**
+- [ ] **Step 2: Update website/api/module_runners/summarization.py**
 
-At `website/core/pipeline.py:52-55`, change:
+At `website/api/module_runners/summarization.py:52-55`, change:
 
 ```python
     # Phase 5: summarize via Gemini
@@ -1340,7 +1340,7 @@ Expected: All tests PASS. (These tests mock `get_settings()` and `GeminiSummariz
 - [ ] **Step 4: Commit**
 
 ```bash
-git add telegram_bot/pipeline/orchestrator.py website/core/pipeline.py
+git add telegram_bot/pipeline/orchestrator.py website/api/module_runners/summarization.py
 git commit -m "refactor(pipeline): remove api_key arg from summarizer construction"
 ```
 

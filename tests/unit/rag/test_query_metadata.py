@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from website.features.rag_pipeline.query.metadata import (
-    QueryMetadata,
     QueryMetadataExtractor,
 )
 from website.features.rag_pipeline.types import QueryClass, SourceType

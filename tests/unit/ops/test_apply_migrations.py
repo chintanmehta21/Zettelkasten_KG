@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from types import SimpleNamespace, ModuleType
-from unittest.mock import MagicMock, patch
+from types import ModuleType
 
 import pytest
 

@@ -24,7 +24,7 @@ class PageIndexAdapter:
     ) -> None:
         try:
             from pageindex import PageIndexClient
-        except Exception as exc:  # pragma: no cover - env-specific
+        except Exception:  # pragma: no cover - env-specific
             PageIndexClient = _PageIndexMarkdownApiClient if api_mode == "markdown_api" and api_key else _LocalMarkdownPageIndexClient
         self.workspace = workspace
         self.workspace.mkdir(parents=True, exist_ok=True)

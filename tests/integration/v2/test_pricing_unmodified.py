@@ -12,7 +12,6 @@ If any test in this file fails, an unauthorised pricing edit landed. Revert and 
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 from pathlib import Path
 

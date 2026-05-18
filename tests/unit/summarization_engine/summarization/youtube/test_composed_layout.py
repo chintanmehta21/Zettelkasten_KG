@@ -8,7 +8,6 @@ closing_takeaway. No section emits JSON-stringified ChapterBullet payloads.
 """
 from __future__ import annotations
 
-import pytest
 
 from website.features.summarization_engine.summarization.youtube.layout import (
     compose_youtube_detailed,

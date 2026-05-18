@@ -24,6 +24,7 @@ from uuid import UUID
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
 from website.core.db_version import use_supabase_v2
 from website.core.supabase_v2.client import is_v2_configured
+from website.core.settings import get_settings  # noqa: F401 - legacy test patch hook
 from website.core.supabase_v2.models import CanonicalChunkCreate, CanonicalZettelCreate, WorkspaceZettelCreate
 from website.core.supabase_v2.repositories.content_repository import ContentRepository as V2ContentRepository
 from website.core.supabase_v2.repositories.core_repository import CoreRepository as V2CoreRepository

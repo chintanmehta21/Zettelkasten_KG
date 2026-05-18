@@ -55,55 +55,15 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "42_kg_connection_strength.sql",
         "43_port_match_kg_nodes.sql",
         "44_functional_gates.sql",
+        "45_document_source_type.sql",
+        # PR #23 KG-scoring migrations (already prod-applied under these
+        # names; NOT renumbered per migration discipline). They are
+        # independent of master's source_type/url_dedup migrations and sort
+        # deterministically between them via the glob.
         "45_rag_subgraph_for_pagerank.sql",
         "46_kg_two_level_strength.sql",
-        "47_canonical_source_type_arxiv.sql",
-        "48_dedup_canonical_rows.sql",
-        # master's document-upload migration: my 45-48 are already PROD-applied
-        # so they keep their numbers; the incoming new migration takes the
-        # next free slot 49 (standard migration discipline — never renumber an
-        # already-applied migration). Its source_type CHECK is a SUPERSET of
-        # 47's (includes 'document' + arxiv/hackernews/linkedin/podcast), so
-        # applying it after 47 yields the correct final constraint.
-        "49_document_source_type.sql",
+        "46_url_dedup.sql",
     ]
-
-
-def test_dedup_canonical_rows_migration_is_transactional_and_guarded() -> None:
-    """D6: the one-off canonical-row dedup migration must be a single
-    BEGIN/COMMIT transaction, must NOT touch any golden-md5 function body,
-    must repoint all three FK children before deleting losers, must rely on
-    the EXISTING base UNIQUE(normalized_url, content_hash) as the recurrence
-    guard (no extra index — operator decision 2026-05-18, preserve P1-7
-    URL-versioned history), and must NOTIFY pgrst. Shape-only (NOT applied)."""
-    sql = _sql("48_dedup_canonical_rows.sql")
-    upper = sql.upper()
-    # Transactional, all-or-nothing.
-    assert upper.count("BEGIN;") == 1
-    assert upper.rstrip().endswith("COMMIT;")
-    # No function-body edits (golden-md5 RPCs untouched).
-    assert "CREATE OR REPLACE FUNCTION" not in upper
-    # Survivor/keep logic present (chunk-count proxy for the P1-7 hash).
-    assert "_dedup_map" in sql
-    assert "chunk_n DESC" in sql and "created_at DESC" in sql
-    # All three FK children handled before the loser delete.
-    assert "content.canonical_chunks" in sql
-    assert "content.workspace_zettels" in sql
-    assert "kg.kg_edges" in sql
-    assert "evidence_canonical_zettel_id = m.survivor_id" in sql
-    # Loser delete comes AFTER the repoints.
-    loser_delete = sql.index("DELETE FROM content.canonical_zettels")
-    assert loser_delete > sql.index("UPDATE content.canonical_chunks")
-    assert loser_delete > sql.index("UPDATE content.workspace_zettels")
-    assert loser_delete > sql.index("UPDATE kg.kg_edges")
-    # Recurrence guard: NO extra index — the base composite key is the guard
-    # (operator decision 2026-05-18). A stricter url-singleton must NOT exist.
-    assert "uq_canonical_zettels_url_singleton" not in sql
-    assert "CREATE UNIQUE INDEX" not in upper
-    assert "UNIQUE(NORMALIZED_URL,CONTENT_HASH)" in upper.replace(" ", "")
-    # Idempotent-shaped: every DDL/DML guarded or naturally re-runnable.
-    assert "ON COMMIT DROP" in sql  # temp map auto-cleaned
-    assert "NOTIFY pgrst" in sql
 
 
 def test_v2_schema_declares_expected_tables() -> None:
@@ -157,17 +117,12 @@ def test_search_chunks_excludes_null_embeddings() -> None:
 
 
 def test_document_source_type_is_added_by_forward_migration() -> None:
-    # Reconciled design (merge of master's document-upload feature with this
-    # PR's source_type work): the base 02 CHECK carries the COMPLETE emitted
-    # list (fresh-install correctness — same pattern already used for arxiv),
-    # AND the forward migration 49 re-adds 'document' idempotently for
-    # already-deployed DBs. Both must contain it.
-    assert "'document'" in _sql("02_content_schema.sql")
-    assert "'document'" in _sql("49_document_source_type.sql")
+    assert "'document'" not in _sql("02_content_schema.sql")
+    assert "'document'" in _sql("45_document_source_type.sql")
 
 
 def test_document_source_type_migration_preserves_current_engine_sources() -> None:
-    migration = _sql("49_document_source_type.sql")
+    migration = _sql("45_document_source_type.sql")
     for source_type in [
         "youtube",
         "reddit",

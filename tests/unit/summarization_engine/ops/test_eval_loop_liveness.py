@@ -20,7 +20,8 @@ def test_filter_all_live_returns_all_in_live_bucket(monkeypatch):
         "https://example.substack.com/p/post-b",
         "https://example.substack.com/p/post-c",
     ]
-    probe = lambda batch: {u: (True, "ok") for u in batch}
+    def probe(batch):
+        return {u: (True, "ok") for u in batch}
     live, dead = _filter_live_urls(urls, probe=probe)
     assert live == urls
     assert dead == []
@@ -38,7 +39,8 @@ def test_filter_mixed_live_and_dead(monkeypatch):
         "https://example.com/dead": (False, "dead"),
         "https://example.com/alive-2": (True, "ok"),
     }
-    probe = lambda batch: verdicts
+    def probe(batch):
+        return verdicts
     live, dead = _filter_live_urls(urls, probe=probe)
     assert live == [
         "https://example.com/alive-1",
@@ -70,7 +72,8 @@ def test_filter_raises_on_non_list():
 def test_filter_raises_when_probe_omits_verdict(monkeypatch):
     monkeypatch.delenv("EVAL_SKIP_LIVENESS", raising=False)
     urls = ["https://example.com/a", "https://example.com/b"]
-    probe = lambda batch: {urls[0]: (True, "ok")}  # missing url[1]
+    def probe(batch):
+        return {urls[0]: (True, "ok")}  # missing url[1]
     with pytest.raises(RuntimeError, match="probe returned no verdict"):
         _filter_live_urls(urls, probe=probe)
 
@@ -165,7 +168,8 @@ def test_skip_liveness_env_isolated(monkeypatch):
     """Sanity: after monkeypatch removes the env var, normal probe runs."""
     monkeypatch.delenv("EVAL_SKIP_LIVENESS", raising=False)
     assert os.environ.get("EVAL_SKIP_LIVENESS") is None
-    probe = lambda batch: {u: (False, "dead") for u in batch}
+    def probe(batch):
+        return {u: (False, "dead") for u in batch}
     live, dead = _filter_live_urls(["https://example.com/x"], probe=probe)
     assert live == []
     assert dead == ["https://example.com/x"]

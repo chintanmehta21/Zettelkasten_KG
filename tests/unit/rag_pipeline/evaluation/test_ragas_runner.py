@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from website.features.rag_pipeline.evaluation.ragas_runner import (
     _METRIC_NAMES,

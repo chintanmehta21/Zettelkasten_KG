@@ -13,7 +13,6 @@ import httpx
 import pytest
 import respx
 
-from website.features.web_monitor import App_Errors as ae_mod
 from website.features.web_monitor import DO_Alerts as do_mod
 from website.features.web_monitor import User_Activity as ua_mod
 from website.features.web_monitor.App_Errors import (

@@ -1,6 +1,4 @@
-from unittest.mock import patch, AsyncMock, MagicMock
-from pathlib import Path
-import asyncio
+from unittest.mock import patch
 
 from website.features.rag_pipeline.evaluation.eval_runner import EvalRunner
 from website.features.rag_pipeline.evaluation.types import GoldQuery

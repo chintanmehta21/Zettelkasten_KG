@@ -1,4 +1,4 @@
-# Nexus Design Specification (Experimental)
+﻿# Nexus Design Specification (Experimental)
 
 > **ARCHIVED CONTEXT — pre-migration spec.** This design was written while the app was hosted on Render.com (legacy, no longer used). Any reference below to "Render env" / "Render environment variables" should be read as the production environment generally — those secrets now live in the DigitalOcean droplet's container env (via `--env-file` and the `/etc/secrets/*` mounts), not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -85,7 +85,7 @@ For Google/YouTube connect, use Google OAuth with account hinting and consent fl
 4. Provider-specific ingest module fetches artifact payloads.
 5. Artifact payloads are transformed into Nexus ingest items (provider-local model only).
 6. Bulk summarizer processes items using current summarization path + `gemini-2.5-flash-lite` default model.
-7. Each summary is persisted through the same KG insertion path used by `/api/summarize`.
+7. Each summary is persisted through the same KG insertion path used by `/api/zettels/add`.
 8. UI shows per-item success/failure and imported Zettel count.
 
 ### 5.2 Component boundaries
@@ -292,7 +292,7 @@ Scopes:
 
 ### 10.1 Reuse path
 
-Nexus imports must reuse existing summarize + graph persistence behavior from current `/api/summarize` path. Implementation will extract this persistence behavior into a reusable service function and call it from both:
+Nexus imports must reuse existing summarize + graph persistence behavior from current `/api/zettels/add` path. Implementation will extract this persistence behavior into a reusable service function and call it from both:
 1. Existing manual summarize endpoint.
 2. Nexus bulk import endpoint.
 
@@ -359,7 +359,7 @@ Add `Nexus` menu item in avatar dropdowns on:
 1. Unit tests for provider OAuth URL generation and callback token exchange parsing.
 2. Unit tests for bulk summarization batching and partial failure handling.
 3. API tests for Nexus endpoints auth/validation/rate limiting.
-4. Regression tests ensuring `/api/summarize` unchanged behavior after persistence refactor.
+4. Regression tests ensuring `/api/zettels/add` unchanged behavior after persistence refactor.
 5. Frontend smoke checks for dropdown links and Nexus page loading.
 
 ---

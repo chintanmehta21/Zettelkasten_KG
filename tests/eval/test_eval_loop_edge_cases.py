@@ -27,9 +27,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from ops.scripts.lib import artifacts, churn_ledger, git_helper, phases
-from ops.scripts.lib.links_parser import parse_links_file
-from ops.scripts.lib.state_detector import IterationState, detect_iteration_state
+from ops.scripts.lib import artifacts, churn_ledger, git_helper, phases  # noqa: E402
+from ops.scripts.lib.links_parser import parse_links_file  # noqa: E402
+from ops.scripts.lib.state_detector import IterationState, detect_iteration_state  # noqa: E402
 
 
 # ── state detector edge cases ────────────────────────────────────────────────

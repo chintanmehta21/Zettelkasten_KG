@@ -1,4 +1,4 @@
-# New Supabase Project Migration Runbook
+﻿# New Supabase Project Migration Runbook
 
 This is the bootstrap procedure for a fresh Supabase project after the previous one was banned. Follow in order.
 
@@ -36,7 +36,7 @@ The `kg_users` and `rag_sandbox_members` rows are environment-specific and were 
 
 ## Step 4 — Re-ingest from Obsidian export (optional, one-shot)
 
-For each `url` in `docs/supabase_data/obsidian_export/INDEX.json` that still resolves, re-feed through `/api/summarize` on the running website (against the new project). Since the deferred re-ingestion script is not built yet, this is currently a manual loop — adapt the snippet below for your environment:
+For each `url` in `docs/supabase_data/obsidian_export/INDEX.json` that still resolves, re-feed through `/api/zettels/add` on the running website (against the new project). Since the deferred re-ingestion script is not built yet, this is currently a manual loop — adapt the snippet below for your environment:
 
 ```bash
 # Git Bash
@@ -48,7 +48,7 @@ for entry in idx:
     if not url:
         continue
     r = requests.post(
-        "https://zettelkasten.in/api/summarize",
+        "https://zettelkasten.in/api/zettels/add",
         json={"url": url, "user_sub": "<your-user-sub>"},
         headers={"Authorization": "Bearer <your-jwt>"},
         timeout=120,

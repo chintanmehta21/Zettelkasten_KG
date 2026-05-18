@@ -35,7 +35,6 @@ def _erdos_renyi_kggraph(n: int, p: float = 0.01, seed: int = 42) -> KGGraph:
     number of edges and samples directly, avoiding the O(n²) all-pairs
     rejection loop that dominates fixture build time at n=5k+.
     """
-    import math
     import random
 
     rng = random.Random(seed)
@@ -126,6 +125,14 @@ def test_harmonic_centrality_in_default_path() -> None:
     assert any(v > 0.0 for v in m.harmonic.values()), (
         "expected at least one nonzero harmonic value on a connected ER(1k, 0.005)"
     )
+
+
+def test_dense_graph_skips_harmonic_to_keep_request_path_bounded() -> None:
+    """Dense request-path graphs should not spend seconds on distance centrality."""
+    g = _erdos_renyi_kggraph(n=1000, p=0.01)
+    m = compute_graph_metrics(g)
+    assert len(m.harmonic) == 1000
+    assert all(v == 0.0 for v in m.harmonic.values())
 
 
 def test_compute_expensive_metrics_returns_betweenness() -> None:

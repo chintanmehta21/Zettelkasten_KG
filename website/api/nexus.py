@@ -17,7 +17,6 @@ from website.api.auth import get_current_user, get_optional_user
 from website.core.supabase_v2.client import is_v2_configured as is_supabase_configured
 from website.experimental_features.nexus.service.bulk_import import (
     disconnect_provider_account,
-    get_provider_account,
     list_import_runs,
     list_provider_accounts,
     provider_handler_available,

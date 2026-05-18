@@ -49,6 +49,8 @@ from website.core.graph_models import KGGraph
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_HARMONIC_MAX_EDGES = 3_000
+
 
 # ── Data model ──────────────────────────────────────────────────────────────
 
@@ -216,6 +218,13 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
     # (1/1 + 1/2 + 1/3 ≈ 1.83 of the unbounded ≤2.0 ceiling for typical
     # neighbourhoods) and keeps the C-core BFS bounded for the 5k <3s budget.
     def _harmonic() -> dict[str, float]:
+        if g.ecount() > _DEFAULT_HARMONIC_MAX_EDGES:
+            logger.info(
+                "Skipping harmonic centrality for graph with %s nodes and %s edges",
+                g.vcount(),
+                g.ecount(),
+            )
+            return {nid: 0.0 for nid in node_ids}
         if hasattr(g, "harmonic_centrality"):
             hc = g.harmonic_centrality(mode="all", cutoff=3, normalized=True)
             return {nid: float(hc[i]) for i, nid in enumerate(node_ids)}

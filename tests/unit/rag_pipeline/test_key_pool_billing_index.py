@@ -9,9 +9,7 @@ the file in place.
 """
 from __future__ import annotations
 
-from unittest.mock import patch
 
-import pytest
 
 from website.features.api_key_switching.key_pool import GeminiKeyPool
 

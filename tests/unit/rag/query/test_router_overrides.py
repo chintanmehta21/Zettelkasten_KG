@@ -1,5 +1,4 @@
 """iter-09 RES-6: router rule-5 narrowing + new override rules."""
-import pytest
 from website.features.rag_pipeline.query.router import apply_class_overrides
 from website.features.rag_pipeline.types import QueryClass
 

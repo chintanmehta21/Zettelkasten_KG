@@ -118,6 +118,14 @@ def normalize_url(url: str) -> str:
 
     scheme = parsed.scheme.lower()
     netloc = parsed.netloc.lower()
+    # Strip the scheme-default port so an explicit :443/:80 dedups against the
+    # port-less form (URL-identity dedup correctness). endswith on the netloc
+    # only — never touches path/query, preserves non-default ports and
+    # userinfo (e.g. user@host:443), and is safe for "host:4430"/"host:880".
+    if scheme == "https" and netloc.endswith(":443"):
+        netloc = netloc[:-4]
+    elif scheme == "http" and netloc.endswith(":80"):
+        netloc = netloc[:-3]
 
     query_params = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
     filtered = [(k, v) for k, v in query_params if k.lower() not in _TRACKING_PARAMS]

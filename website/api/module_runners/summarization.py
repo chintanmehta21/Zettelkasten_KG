@@ -137,11 +137,36 @@ async def run_add_zettel_pipeline(
     from website.features.user_pricing.models import Meter
 
     user_sub = str(effective_user_id)
-    await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
-
     resolved = await resolve_redirects(url)
     normalized = normalize_url(resolved)
 
+    from website.core.persist import get_supabase_v2_scope
+    from website.features.functional_gates import get_url_dedup_gate
+    from website.core.supabase_v2.models import WorkspaceZettelCreate
+
+    _scope = get_supabase_v2_scope(user_sub)
+    if _scope is not None:
+        repo, _profile_id, workspace_id = _scope
+        decision = get_url_dedup_gate().decide(
+            repo=repo, normalized_url=normalized, workspace_id=workspace_id,
+        )
+        if decision.branch == "same_user_noop":
+            return _cache_hit_output(decision.found, client_action_id, persist)
+        if decision.branch == "cross_user_hit":
+            await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
+            repo.link_existing_canonical(
+                decision.found.canonical_zettel_id,
+                WorkspaceZettelCreate(
+                    workspace_id=workspace_id,
+                    ai_summary=decision.found.ai_summary,
+                    ai_summary_engine_version=decision.found.ai_summary_engine_version,
+                    user_tags=decision.found.user_tags,
+                    added_via="website",
+                ),
+            )
+            return _cache_hit_output(decision.found, client_action_id, persist)
+
+    await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
     async with _SUMMARIZE_SEMAPHORE:
         bundle = await summarize_url_bundle(
             normalized,
@@ -273,6 +298,35 @@ def quality_dto(bundle: Any) -> QualityDTO:
         confidence_reason=reason,
         quality_signals={"input_chars": raw_text_len, "source_tier": source_tier},
     )
+
+
+def _cache_hit_output(found, client_action_id: str, persist: bool) -> dict[str, Any]:
+    """Same wire shape as a fresh add, rebuilt from the existing canonical's
+    stored summary. No 'cached' indicator (no-infra-disclosure)."""
+    from website.core.persist import extract_summary_parts
+    brief, detailed = extract_summary_parts(found.ai_summary, None)
+    summary = SummaryDTO(
+        title=found.title or "",
+        summary=detailed or brief,
+        brief_summary=brief,
+        detailed_summary=detailed or brief,
+        tags=list(found.user_tags),
+        source_type=found.source_type,
+        source_url="",
+        one_line_summary=brief,
+        tokens_used=0,
+        latency_ms=0,
+        metadata={},
+    )
+    return AddZettelPipelineOutput(
+        status="succeeded",
+        operation_id=client_action_id,
+        summary=summary,
+        persistence=persistence_dto(persist, None),
+        quality=QualityDTO(confidence="succeeded"),
+        node_id=None,
+        workspace_zettel_id=str(found.canonical_zettel_id),
+    ).model_dump(mode="json")
 
 
 def persistence_dto(requested: bool, outcome: Any | None) -> PersistenceDTO:

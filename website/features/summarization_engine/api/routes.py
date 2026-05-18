@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sse_starlette.sse import EventSourceResponse
 
 from website.api.auth import get_optional_user
+from website.api.module_runners.summarization import run_add_zettel_pipeline
 from website.features.api_key_switching.key_pool import (
     GeminiKeyPool,
     _load_keys_from_file,
@@ -18,13 +19,9 @@ from website.features.api_key_switching.key_pool import (
 from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request, SummarizeV2Response
 from website.features.summarization_engine.batch.processor import BatchProcessor, progress_stream
 from website.features.summarization_engine.core.config import load_config
-from website.features.summarization_engine.core.confidence import grade as grade_confidence
 from website.features.summarization_engine.core.errors import UnsupportedVideoError
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
-from website.features.summarization_engine.core.orchestrator import summarize_url_bundle
 from website.features.summarization_engine.writers.supabase import SupabaseWriter
-from website.features.user_pricing.entitlements import require_entitlement
-from website.features.user_pricing.models import Meter
 
 router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
 
@@ -35,18 +32,17 @@ async def summarize_v2(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     user_id = _user_id(user)
-    # Phase 9 gate: atomic reserve+consume BEFORE the LLM call. Anonymous
-    # callers map to the Zoro sentinel UUID via _user_id (same pool as
-    # /api/zettels/add). require_entitlement is a no-op when user is None
-    # because get_optional_user did not produce a sub.
-    await require_entitlement(
-        Meter.ZETTEL,
-        user if user else {"sub": str(user_id)},
-        action_id=f"v2-summarize-{request.url}",
-    )
-    client = _gemini_client()
+    # Single dedup gate + entitlement + engine + persistence all live in the
+    # shared runner so /api/zettels/add and /api/v2/summarize cannot diverge.
+    # Anonymous callers map to the Zoro sentinel UUID via _user_id.
     try:
-        bundle = await summarize_url_bundle(request.url, user_id=user_id, gemini_client=client)
+        out = await run_add_zettel_pipeline(
+            url=request.url,
+            client_action_id=f"v2-summarize-{request.url}",
+            persist=request.write_to_supabase,
+            user=user if user else {"sub": str(user_id)},
+            effective_user_id=user_id,
+        )
     except UnsupportedVideoError as exc:
         # H4/T7: preflight hard-fail (private/removed/livestream/premiere/members-only).
         # Distinct from H2's post-chain 422 (metadata_only + <500 chars).
@@ -60,15 +56,13 @@ async def summarize_v2(
                 "quality_signals": {"input_chars": 0, "source_tier": "preflight_refused"},
             },
         )
-    result = bundle.summary_result
 
+    quality = out.get("quality") or {}
+    conf = quality.get("confidence")
+    reason = quality.get("confidence_reason")
+    quality_signals = quality.get("quality_signals") or {}
     # H2/C4: two-tier hallucination prevention. Insufficient content + metadata-only
     # tier -> HTTP 422 refusal (mirrors OpenAI structured-outputs refusal pattern).
-    ingest_meta = bundle.ingest_result.metadata or {}
-    source_tier = str(ingest_meta.get("tier_used") or "")
-    raw_text_len = len(bundle.ingest_result.raw_text or "")
-    conf, reason = grade_confidence(raw_text_len=raw_text_len, source_tier=source_tier)
-    quality_signals = {"input_chars": raw_text_len, "source_tier": source_tier}
     if conf == "insufficient":
         raise HTTPException(
             status_code=422,
@@ -80,13 +74,14 @@ async def summarize_v2(
             },
         )
 
-    writers = []
+    persistence = out.get("persistence") or {}
+    writers: list[dict] = []
     if request.write_to_supabase:
-        writers.append(await SupabaseWriter().write(result, user_id=user_id))
+        writers.append(persistence)
     return SummarizeV2Response(
-        summary=result.model_dump(mode="json"),
+        summary=out.get("summary") or {},
         writers=writers,
-        confidence=conf,
+        confidence="high" if conf == "high" else "low",
         confidence_reason=reason or None,
         quality_signals=quality_signals,
     )

@@ -13,15 +13,20 @@ from website.features.summarization_engine.core.errors import UnsupportedVideoEr
 
 @pytest.fixture(autouse=True)
 def _stub_entitlement_gate(monkeypatch):
-    """Phase-9 gate is wired on /api/v2/summarize. These tests mock the LLM
-    and run with no Supabase env vars, so the real gate would 500 on a
-    missing client. Replace with a permissive async no-op for this module.
+    """/api/v2/summarize now delegates to the shared add-zettel runner so the
+    one dedup gate governs it. The entitlement gate + engine live in the
+    runner module; patch there. No Supabase env -> v2 scope is None so the
+    fresh path runs (engine is mocked below).
     """
     async def _allow(*_args, **_kwargs):
         return None
     monkeypatch.setattr(
-        "website.features.summarization_engine.api.routes.require_entitlement",
+        "website.api.module_runners.summarization.require_entitlement",
         _allow,
+    )
+    monkeypatch.setattr(
+        "website.core.persist.get_supabase_v2_scope",
+        lambda *_a, **_k: None,
     )
 
 
@@ -31,8 +36,8 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
-@patch("website.features.summarization_engine.api.routes._gemini_client")
-@patch("website.features.summarization_engine.api.routes.summarize_url_bundle")
+@patch("website.api.module_runners.summarization.default_gemini_client")
+@patch("website.api.module_runners.summarization.summarize_url_bundle")
 def test_unsupported_video_private_returns_422(mock_bundle, mock_client):
     async def _raise(*a, **kw):
         raise UnsupportedVideoError(reason="private", url="https://youtube.com/watch?v=abc")
@@ -52,8 +57,8 @@ def test_unsupported_video_private_returns_422(mock_bundle, mock_client):
     assert detail["quality_signals"]["input_chars"] == 0
 
 
-@patch("website.features.summarization_engine.api.routes._gemini_client")
-@patch("website.features.summarization_engine.api.routes.summarize_url_bundle")
+@patch("website.api.module_runners.summarization.default_gemini_client")
+@patch("website.api.module_runners.summarization.summarize_url_bundle")
 def test_unsupported_video_livestream_returns_422(mock_bundle, mock_client):
     async def _raise(*a, **kw):
         raise UnsupportedVideoError(

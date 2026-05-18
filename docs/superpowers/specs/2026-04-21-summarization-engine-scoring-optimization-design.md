@@ -1,4 +1,4 @@
-# Summarization Engine Scoring Optimization — Design
+﻿# Summarization Engine Scoring Optimization — Design
 
 **Status:** Approved for implementation planning
 **Date:** 2026-04-21
@@ -836,7 +836,7 @@ Any step failure → `status=error` in `next_actions.md` + non-zero exit.
 3. **Reserved off-limits** during iteration loops:
    - `website/features/summarization_engine/evaluator/` — if buggy, Codex opens a dedicated "evaluator fix" commit outside the iteration cycle and bumps `PROMPT_VERSION` in `evaluator/prompts.py` if the fix changed any prompt text.
    - `telegram_bot/**` — entire legacy pipeline off-limits during this program (see non-goals in Section 1).
-   - `website/api/routes.py` — the `/api/summarize` and `/api/v2/summarize` route declarations stay stable. Only the summarization engine internals change.
+   - `website/api/routes.py` — the `/api/zettels/add` and `/api/v2/summarize` route declarations stay stable. Only the summarization engine internals change.
    - `website/features/api_key_switching/` — changes allowed only for the key-role extension in Phase 0; after that, off-limits during iteration loops.
    - `docs/summary_eval/<source>/iter-<N>/manual_review.md` — Codex's output only, written once per iteration during the between-phases Codex step. The CLI NEVER writes or overwrites this file (only reads it in Phase B). The CLI never submits `manual_review.md` content to Gemini. This is the cross-model isolation boundary (§3.7).
 4. **Rubric editing constraint.** `docs/summary_eval/_config/rubric_<source>.yaml` may be edited only to fix misspecifications, not to soften grading. Concretely, the following rubric edits are forbidden during iteration:

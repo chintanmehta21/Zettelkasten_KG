@@ -10,15 +10,12 @@ Covers:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
-import pytest
 
 from website.features.summarization_engine.core.config import EngineConfig
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
-    StructuredSummaryPayload,
 )
 
 

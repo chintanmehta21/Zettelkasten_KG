@@ -1,5 +1,3 @@
-from pathlib import Path
-import pytest
 
 from ops.scripts.lib.rag_eval_state import detect_state, IterState
 
