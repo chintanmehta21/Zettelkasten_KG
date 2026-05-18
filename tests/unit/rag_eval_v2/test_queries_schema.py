@@ -132,6 +132,88 @@ def test_build_gold_queries_accepts_every_query(queries_doc):
             assert g.expected_behavior in ("refuse", "ask_clarification_or_refuse")
 
 
+def test_expected_primary_citation_typed_per_class(queries_doc):
+    """Every non-refusal query has a non-empty str|list[str] expected; every
+    refusal query has an empty expected. Guards the iter-regen contract."""
+    _slug, doc = queries_doc
+    for q in doc["queries"]:
+        exp = q["expected_primary_citation"]
+        if q["class"] == "adversarial":
+            assert exp == [], f"{q['qid']}: refusal must have empty expected"
+            assert q["expected_minimum_citations"] == 0
+            continue
+        if isinstance(exp, list):
+            assert exp, f"{q['qid']}: list expected must be non-empty"
+            assert all(isinstance(e, str) and e.strip() for e in exp), (
+                f"{q['qid']}: every list expected must be a non-empty str"
+            )
+        else:
+            assert isinstance(exp, str) and exp.strip(), (
+                f"{q['qid']}: scalar expected must be a non-empty str"
+            )
+        assert q["expected_minimum_citations"] >= 1
+
+
+# Representative real ingested titles (verified live 2026-05-18 against
+# rag.list_kasten_zettels). Used to simulate _resolve_expected (title
+# substring -> zettel) WITHOUT a live DB, so the gold-regen contract is
+# guarded in CI: every non-refusal expected substring must hit a real title.
+_REAL_TITLES = {
+    "psychedelic-drugs": [
+        "DMT History Science Consciousness",
+        "Microdosing Psilocybin Benefits Practice",
+        "r/consciousness explore if perceptual experiential changes",
+        "r/philosophy seeks philosophical perspectives personal exper",
+        "Psychedelics Problem-Solving Research",
+        "r/philosophy argue psychedelic experiences fundamentally dis",
+        "FORTRESS II: Software for Spin-2 BECs",
+        "r/IAmA first-time heroin risks",
+    ],
+    "economics": [
+        "r/AskEconomics first-year economics teacher seeks interestin",
+        "Turán Number for Spanning Linear Forests",
+        "TheEconomist/big-mac-data",
+        "Critique of Sentence Comprehension Test",
+        "India's 1991 Economic Reforms Legacy",
+        "r/AskHistorians understand Inca Empire described as",
+        "Petrodollar System's Potential Erosion",
+        "Economic Principles Explained",
+        "Analysis of FT Piece: Rethinking Heterodox Policies in Polyc",
+    ],
+}
+
+
+def _resolve(needle: str, titles: list[str]) -> str | None:
+    """Mirror run_eval_v2._resolve_expected's per-needle case-insensitive
+    title-substring match (first hit wins)."""
+    n = needle.strip().lower()
+    for t in titles:
+        if n and n in t.lower():
+            return t
+    return None
+
+
+def test_every_non_refusal_expected_resolves_against_real_titles(queries_doc):
+    """Regression guard for the iter-resolve-[] bug: every non-refusal
+    expected substring must match a real ingested title; refusal queries
+    must resolve to nothing."""
+    slug, doc = queries_doc
+    titles = _REAL_TITLES[slug]
+    for q in doc["queries"]:
+        exp = q["expected_primary_citation"]
+        needles = exp if isinstance(exp, list) else ([exp] if exp else [])
+        hits = [t for n in needles if (t := _resolve(n, titles))]
+        if q["class"] == "adversarial":
+            assert not needles and not hits, (
+                f"{slug} {q['qid']}: refusal must resolve to nothing"
+            )
+        else:
+            assert len(hits) == len(needles) and len(hits) >= 1, (
+                f"{slug} {q['qid']}: expected {needles!r} -> {hits!r} "
+                f"(all must match a real ingested title)"
+            )
+
+
 def test_baseline_score_json_present_and_legacy_mapped(queries_doc):
     slug, _doc = queries_doc
     bs = json.loads(
