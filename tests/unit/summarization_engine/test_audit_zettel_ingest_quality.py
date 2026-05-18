@@ -26,10 +26,14 @@ def test_clean_latest_engine_well_formed() -> None:
     assert classify(_env("## Heading\n- a real bullet"), "2.0.0") == "clean"
 
 
-def test_legacy_version_is_dirty() -> None:
+def test_legacy_version_only_for_explicit_non_empty_marker() -> None:
+    # Explicit non-latest marker => legacy.
+    assert classify(_env("## Heading\n- ok"), "legacy-v1-backfill") == "legacy_version"
     assert classify(_env("## Heading\n- ok"), "1.4.0") == "legacy_version"
-    assert classify(_env("## Heading\n- ok"), "") == "legacy_version"
-    assert classify(_env("## Heading\n- ok"), None) == "legacy_version"
+    # Empty/null version is the normal website state, NOT legacy: judged on
+    # content (well-formed here => clean).
+    assert classify(_env("## Heading\n- ok"), "") == "clean"
+    assert classify(_env("## Heading\n- ok"), None) == "clean"
 
 
 def test_malformed_payloads() -> None:

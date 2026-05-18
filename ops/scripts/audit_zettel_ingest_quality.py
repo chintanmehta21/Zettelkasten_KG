@@ -6,8 +6,9 @@ ingested it. Writes a JSON report + a candidate-id list. **Never mutates data.**
 Taxonomy (mutually exclusive, first match wins):
     clean            engine 2.0.0, JSON envelope, non-empty detailed,
                      no inline-heading leak, detailed != brief fallback
-    legacy_version   ai_summary_engine_version != "2.0.0" (old engine /
-                     migration / null) -> not ingested by the latest engine
+    legacy_version   ai_summary_engine_version is a non-empty marker that is
+                     not the latest engine (e.g. 'legacy-v1-backfill'). EMPTY
+                     version is NOT legacy (website path never stamps it).
     malformed        ai_summary null/empty or not the JSON envelope shape
     markdown_leak    latest engine but normalize_markdown_headings() would
                      change detailed_summary (inline ## / ### leaked)
@@ -124,7 +125,13 @@ def _is_reserved(normalized_url: str | None, keep: set[str]) -> bool:
 
 
 def classify(ai_summary: str | None, engine_version: str | None) -> str:
-    if (engine_version or "").strip() != LATEST_ENGINE_VERSION:
+    # The website Add-Zettel write path does not stamp ai_summary_engine_version
+    # (persist.py writes "" when the payload omits it), so an EMPTY version is
+    # the normal state and says nothing about ingest quality. Only an explicit
+    # non-empty marker that is not the latest engine (e.g. 'legacy-v1-backfill')
+    # is a genuine legacy ingest. Everything else is judged on content health.
+    ev = (engine_version or "").strip()
+    if ev and ev != LATEST_ENGINE_VERSION:
         return "legacy_version"
     if not ai_summary or not ai_summary.strip():
         return "malformed"
