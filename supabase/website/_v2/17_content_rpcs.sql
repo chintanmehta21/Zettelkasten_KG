@@ -26,7 +26,7 @@ BEGIN
             p_normalized_url, p_content_hash, p_source_type, p_title,
             p_body_md, p_publication_date, p_source_metadata
         )
-        ON CONFLICT (normalized_url, content_hash)
+        ON CONFLICT (normalized_url)
         DO UPDATE SET normalized_url = EXCLUDED.normalized_url
         RETURNING canonical_zettels.id, (xmax = 0) AS was_new;
 END $$;
