@@ -36,5 +36,9 @@ def test_select_filters_by_owner_email_only() -> None:
     sql = _mod._SELECT
     assert "p.email LIKE %s" in sql
     assert "content.workspace_zettels" in sql
-    # Must not accidentally filter/keep by anything that could spare e2e rows.
-    assert "deleted_at" not in sql  # delete ALL e2e rows incl. soft-deleted
+    # Owner email is the ONLY WHERE predicate — no deleted_at filter, so ALL
+    # e2e rows (incl. soft-deleted) are removed. deleted_at appears only as a
+    # selected reporting column, never in a WHERE clause.
+    where = sql.split("WHERE", 1)[1]
+    assert "deleted_at" not in where
+    assert where.strip().startswith("p.email LIKE %s")
