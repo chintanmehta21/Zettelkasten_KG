@@ -682,15 +682,40 @@ async def _persist_supabase_v2_zettel(
         added_via="website",
     )
     chunk_text = detailed_summary or body_md
-    chunks = [
-        CanonicalChunkCreate(
-            chunk_idx=0,
-            content=chunk_text,
-            content_hash=hashlib.sha256(chunk_text.encode("utf-8")).digest(),
-            chunk_type="semantic",
-            token_count=max(1, len(chunk_text.split())),
-        )
-    ] if chunk_text else []
+    chunks: list[CanonicalChunkCreate] = []
+    if chunk_text:
+        # DEFECT FIX: the canonical chunk MUST carry its 768-d embedding.
+        # Previously this row was written with embedding=None but the model
+        # default embedding_model_version='gemini-001-mrl-768' still set —
+        # content.search_chunks filters `cc.embedding IS NOT NULL`, so the
+        # dense retrieval channel had zero vectors and gold@1 collapsed.
+        # Embed inline; on failure DO NOT persist a chunk at all (the column
+        # is NOT NULL DEFAULT model_version, so a NULL-embedding row would
+        # always lie about success). The zettel still persists; the backfill
+        # script recovers the missing vector. This is the same embed path the
+        # backfill reuses — single source of truth, no divergence.
+        embedding = await _embed_chunk_text(chunk_text)
+        if embedding is not None:
+            chunks = [
+                CanonicalChunkCreate(
+                    chunk_idx=0,
+                    content=chunk_text,
+                    content_hash=hashlib.sha256(
+                        chunk_text.encode("utf-8")
+                    ).digest(),
+                    chunk_type="semantic",
+                    token_count=max(1, len(chunk_text.split())),
+                    embedding=embedding,
+                    embedding_model_version=_CHUNK_EMBED_MODEL_VERSION,
+                )
+            ]
+        else:
+            logger.warning(
+                "Chunk embedding failed for %s; persisting zettel WITHOUT a "
+                "chunk row (no silent NULL-embedding+model_version). Recover "
+                "via ops/scripts/backfill_chunk_embeddings.py.",
+                normalized_url,
+            )
     result = await asyncio.to_thread(
         repo.upsert_canonical_zettel,
         zettel,
@@ -840,6 +865,62 @@ def _schedule_kg_population(
         return
     task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
     _register_enrichment_task(task)
+
+
+# Chunk embedding model-version stamp. Must match the row default in
+# content.embedding_model_versions(is_default=true) and the schema column
+# default in _v2/02_content_schema.sql (halfvec(768)). Single constant so the
+# inline ingest path and the backfill script can never diverge on the stamp.
+_CHUNK_EMBED_MODEL_VERSION = "gemini-001-mrl-768"
+
+
+async def embed_chunk_texts(texts: list[str]) -> list[list[float]] | None:
+    """Embed chunk texts via the shared Gemini key pool (768-d RETRIEVAL_DOCUMENT).
+
+    Single source of truth for canonical-chunk embedding, reused by BOTH the
+    inline Add-Zettel persist path (``_persist_supabase_v2_zettel``) and the
+    backfill script (``ops/scripts/backfill_chunk_embeddings.py``) so the two
+    can never diverge on model / dimensionality / task type.
+
+    Returns the list of 768-d vectors, or ``None`` if embedding failed or the
+    returned dimensionality is wrong (caller must then NOT persist a chunk row
+    with a model_version implying success — see the call site).
+    """
+    if not texts:
+        return []
+    try:
+        from website.features.rag_pipeline.adapters.pool_factory import (
+            get_embedding_pool,
+        )
+        from website.features.rag_pipeline.ingest.embedder import (
+            DIM as _EMBED_DIM,
+        )
+        from website.features.rag_pipeline.ingest.embedder import ChunkEmbedder
+
+        embedder = ChunkEmbedder(pool=get_embedding_pool())
+        vectors = await embedder.embed(texts)
+        if len(vectors) != len(texts) or any(
+            len(v) != _EMBED_DIM for v in vectors
+        ):
+            logger.warning(
+                "Chunk embed returned %d vectors (want %d) / wrong dim; "
+                "treating as failure (no NULL-embedding chunk written).",
+                len(vectors),
+                len(texts),
+            )
+            return None
+        return vectors
+    except Exception as exc:
+        logger.warning("Chunk embedding generation failed: %s", exc)
+        return None
+
+
+async def _embed_chunk_text(text: str) -> list[float] | None:
+    """Embed a single chunk; ``None`` on any failure (see ``embed_chunk_texts``)."""
+    vectors = await embed_chunk_texts([text])
+    if not vectors:
+        return None
+    return vectors[0]
 
 
 def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:
