@@ -26,7 +26,11 @@ from website.api.module_runners.summarization import (
     run_add_document_pipeline,
     run_add_zettel_pipeline,
 )
-from website.core.persist import SupabaseV2PersistError
+from website.core.persist import (
+    SupabaseV2PersistError,
+    extract_summary_parts,
+    get_supabase_v2_scope_for_read,
+)
 from website.core.url_utils import validate_url
 from website.features.summarization_engine.core.errors import (
     ExtractionConfidenceError,
@@ -586,3 +590,104 @@ async def operation_status(operation_id: str):
             type_slug="operation-not-found",
         )
     return JSONResponse(result, status_code=202 if result.get("status") == "accepted" else 200)
+
+
+class ZettelListItem(BaseModel):
+    id: str
+    title: str
+    brief_summary: str
+    detailed_summary: str
+    tags: list[str]
+    source_type: str
+    source_url: str
+    added_at: str
+    published_at: str
+
+
+class ZettelListResponse(BaseModel):
+    zettels: list[ZettelListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("/zettels", response_model=ZettelListResponse)
+async def list_zettels(
+    user: Annotated[dict | None, Depends(get_optional_user)] = None,
+    limit: int = 5000,
+    offset: int = 0,
+):
+    """Dedicated per-user Zettel list (v2). Distinct from /api/graph?view=my
+    (the 3D knowledge-graph). ``id`` is the workspace_zettel UUID so the
+    existing DELETE/PATCH /api/zettels/{id} contract works directly.
+    """
+    if user is None:
+        return _problem(
+            status_code=401,
+            title="Authentication required",
+            detail="Sign in to view your Zettels.",
+            operation_id="",
+            type_slug="unauthenticated",
+        )
+
+    limit = max(1, min(int(limit), 10000))
+    offset = max(0, int(offset))
+
+    scope = get_supabase_v2_scope_for_read(user.get("sub"))
+    if scope is None:
+        return JSONResponse(
+            {"zettels": [], "total": 0, "limit": limit, "offset": offset}
+        )
+    content_repo, _profile_id, workspace_ids = scope
+
+    items: list[dict] = []
+    seen_canonical: set[str] = set()
+    try:
+        for ws_id in workspace_ids:
+            rows = content_repo.list_workspace_zettels(
+                ws_id, limit=limit, offset=offset
+            )
+            for row in rows:
+                canonical = row.get("canonical") or {}
+                canonical_id = str(
+                    canonical.get("id") or row.get("canonical_zettel_id") or ""
+                )
+                if not canonical_id or canonical_id in seen_canonical:
+                    continue
+                seen_canonical.add(canonical_id)
+                brief, detailed = extract_summary_parts(
+                    row.get("ai_summary"), None
+                )
+                items.append(
+                    {
+                        "id": str(row.get("id") or ""),
+                        "title": str(canonical.get("title") or "Untitled"),
+                        "brief_summary": brief or "",
+                        "detailed_summary": detailed or "",
+                        "tags": list(row.get("user_tags") or []),
+                        "source_type": str(
+                            canonical.get("source_type") or "web"
+                        ).lower(),
+                        "source_url": str(
+                            canonical.get("normalized_url") or ""
+                        ),
+                        "added_at": str(row.get("created_at") or ""),
+                        "published_at": str(
+                            canonical.get("publication_date") or ""
+                        ),
+                    }
+                )
+    except Exception:
+        logger.exception("list_zettels failed; returning empty list")
+        return JSONResponse(
+            {"zettels": [], "total": 0, "limit": limit, "offset": offset}
+        )
+
+    return JSONResponse(
+        {
+            "zettels": items,
+            "total": len(items),
+            "limit": limit,
+            "offset": offset,
+        }
+    )
