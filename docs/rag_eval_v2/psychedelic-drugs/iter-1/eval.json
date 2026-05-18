@@ -1,0 +1,401 @@
+{
+  "iter_id": "iter-1",
+  "component_scores": {
+    "chunking": 20.0,
+    "retrieval": 8.333333333333334,
+    "reranking": 20.0,
+    "synthesis": 59.291666666666664
+  },
+  "composite": 34.764583333333334,
+  "weights": {
+    "chunking": 0.1,
+    "retrieval": 0.25,
+    "reranking": 0.2,
+    "synthesis": 0.45
+  },
+  "weights_hash": "c2d3783e5c0b9171f956ce61f70b11b375adbfe2ccf76ea1a8181092d16bd96d",
+  "graph_lift": {
+    "composite": 0.0,
+    "retrieval": 0.0,
+    "reranking": 0.0
+  },
+  "per_query": [
+    {
+      "query_id": "q1",
+      "retrieved_node_ids": [
+        "4f930d23-00be-435d-84ae-190bea792d25",
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "reranked_node_ids": [
+        "4f930d23-00be-435d-84ae-190bea792d25",
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "cited_node_ids": [
+        "4f930d23-00be-435d-84ae-190bea792d25",
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.6,
+        "context_precision": 0.5,
+        "context_recall": 0.8,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.55,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.75,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "q2",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q3",
+      "retrieved_node_ids": [
+        "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38"
+      ],
+      "reranked_node_ids": [
+        "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38"
+      ],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "q4",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q5",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q6",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q7",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q8",
+      "retrieved_node_ids": [
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "reranked_node_ids": [
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "cited_node_ids": [
+        "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+      ],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.9,
+        "hallucination": 0.0,
+        "contextual_relevance": 1.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    },
+    {
+      "query_id": "q9",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q10",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.0,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.0,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 20.0
+      }
+    },
+    {
+      "query_id": "q11",
+      "retrieved_node_ids": [],
+      "reranked_node_ids": [],
+      "cited_node_ids": [],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "answer_correctness": 1.0
+      },
+      "deepeval": {
+        "semantic_similarity": 1.0,
+        "hallucination": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 100.0,
+        "rerank": 100.0
+      }
+    },
+    {
+      "query_id": "q12",
+      "retrieved_node_ids": [
+        "675f86d3-a98b-4bfc-860d-93ea33a9cbf4"
+      ],
+      "reranked_node_ids": [
+        "675f86d3-a98b-4bfc-860d-93ea33a9cbf4"
+      ],
+      "cited_node_ids": [
+        "675f86d3-a98b-4bfc-860d-93ea33a9cbf4"
+      ],
+      "ragas": {
+        "faithfulness": 1.0,
+        "answer_correctness": 0.5,
+        "context_precision": 0.5,
+        "context_recall": 0.2,
+        "answer_relevancy": 1.0,
+        "eval_failed": 0.0
+      },
+      "deepeval": {
+        "semantic_similarity": 0.85,
+        "hallucination": 0.0,
+        "contextual_relevance": 0.9,
+        "eval_failed": 0.0
+      },
+      "component_breakdown": {
+        "retrieval": 0.0,
+        "rerank": 0.0
+      }
+    }
+  ],
+  "eval_divergence": false,
+  "faithfulness_score": 100.0,
+  "answer_relevancy_score": 100.0,
+  "latency_p50_ms": 2359.0,
+  "latency_p95_ms": 5912.65,
+  "n_eval_failed": 0,
+  "holistic": {
+    "n_queries": 12,
+    "critic_verdict_distribution": {
+      "supported": 11,
+      "unsupported_no_retry": 1
+    },
+    "magnet_threshold": 0.25,
+    "magnet_threshold_is_static": true,
+    "primary_citation_distribution": {
+      "4f930d23-00be-435d-84ae-190bea792d25": 1,
+      "9021e570-ce11-45f0-b73c-77ac3e2984c5": 1,
+      "675f86d3-a98b-4bfc-860d-93ea33a9cbf4": 1
+    },
+    "primary_citation_magnets": {},
+    "query_class_distribution": {
+      "lookup": 10,
+      "thematic": 1,
+      "vague": 1
+    },
+    "gold_at_1_unconditional": 0.0,
+    "gold_at_1_within_budget": 0.0,
+    "gold_at_1": 0.0,
+    "gold_at_3": 0.0,
+    "gold_at_8": 0.0,
+    "gold_at_1_not_applicable": 12,
+    "refused_count": 1,
+    "within_budget_rate": 1.0,
+    "accuracy_user_visible": 0.0,
+    "retrieval_recall_at_1": 0.0,
+    "over_refusal_rate": 0.0,
+    "under_refusal_rate": 0.0,
+    "per_class_breakdown": {
+      "lookup": {
+        "accuracy_user_visible": 0.0,
+        "gold_at_1_unconditional": 0.0,
+        "gold_at_1_within_budget": 0.0,
+        "retrieval_recall_at_1": 0.0,
+        "over_refusal_rate": 0.0,
+        "under_refusal_rate": 0.0,
+        "gold_at_1_not_applicable": 10
+      },
+      "thematic": {
+        "accuracy_user_visible": 0.0,
+        "gold_at_1_unconditional": 0.0,
+        "gold_at_1_within_budget": 0.0,
+        "retrieval_recall_at_1": 0.0,
+        "over_refusal_rate": 0.0,
+        "under_refusal_rate": 0.0,
+        "gold_at_1_not_applicable": 1
+      },
+      "vague": {
+        "accuracy_user_visible": 0.0,
+        "gold_at_1_unconditional": 0.0,
+        "gold_at_1_within_budget": 0.0,
+        "retrieval_recall_at_1": 0.0,
+        "over_refusal_rate": 0.0,
+        "under_refusal_rate": 0.0,
+        "gold_at_1_not_applicable": 1
+      }
+    }
+  }
+}

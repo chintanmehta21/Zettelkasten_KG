@@ -1,0 +1,155 @@
+[
+  {
+    "qid": "q1",
+    "class": "lookup",
+    "text": "In James Fadiman's MAPS talk on scientific problem solving with psychedelics, what protocol or setting does he describe for using psychedelics to solve technical or creative problems?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [
+      "4f930d23-00be-435d-84ae-190bea792d25",
+      "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+    ],
+    "actual_primary_citation": "4f930d23-00be-435d-84ae-190bea792d25",
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 2125,
+    "answer_preview": "Dr. James Fadiman's research on scientific problem-solving with psychedelics involved specific controlled conditions [id=\"a0e84625-b89a-4d98-85a5-6f51e38eaaf5\"]. The study interchangeably used synthetic substances such as LSD (100 mics) and mescaline (200mg), emphasizing that set"
+  },
+  {
+    "qid": "q2",
+    "class": "lookup",
+    "text": "In the 'Science of Micro-dosing: Tested for 28 DAYS' video, what dosing schedule and duration did the experiment use, and what was the headline outcome?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 1311,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q3",
+    "class": "lookup",
+    "text": "According to the 'Neural Correlates of the DMT Experience' arXiv paper, what neural or EEG signatures are associated with the DMT state?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [
+      "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38"
+    ],
+    "actual_primary_citation": null,
+    "critic_verdict": "unsupported_no_retry",
+    "query_class": "lookup",
+    "latency_ms": 6328,
+    "answer_preview": "I can't find that in your Zettels.\n\n<details><summary>How sure am I?</summary>Citations don't fully cover this claim. The answer is the model's best draft.</details>"
+  },
+  {
+    "qid": "q4",
+    "class": "lookup",
+    "text": "What makes the substance covered in 'The Strangest Drug Ever Studied' so unusual according to that video?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 2359,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q5",
+    "class": "multi_hop",
+    "text": "The consciousness 'XOR theory' Reddit thread and the r/philosophy 'what does philosophy reddit know about drugs' thread both touch on how psychedelics change the structure of awareness and knowledge. How would the XOR-theory framing explain the shifts in awareness the philosophy thread attributes to psychedelics?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 4110,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q6",
+    "class": "thematic",
+    "text": "Across these zettels, what is the implicit view of how psychedelics relate to knowledge, truth, or insight? Cite at least four sources.",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "thematic",
+    "latency_ms": 3702,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q7",
+    "class": "step_back",
+    "text": "Several of these zettels suggest psychedelics destabilize a person's sense of a fixed self or fixed reality. Which zettels make that argument, and how does each one frame the destabilization?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "vague",
+    "latency_ms": 1764,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q8",
+    "class": "vague",
+    "text": "Anything about microdosing?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [
+      "9021e570-ce11-45f0-b73c-77ac3e2984c5"
+    ],
+    "actual_primary_citation": "9021e570-ce11-45f0-b73c-77ac3e2984c5",
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 1343,
+    "answer_preview": "Microdosing involves taking 5-10% of a regular dose of psychoactive substances, such as psilocybin, intermittently for personal improvement, rather than to induce psychedelic experiences [id=\"3fe9d5d3-9fb0-4bb2-925b-306da433a42c\"]. Dr. James Fadiman coined the term \"microdosing\" "
+  },
+  {
+    "qid": "q9",
+    "class": "lookup",
+    "text": "In the philosophy Reddit thread about psychedelic experiences disrupting the certainty of truth, what is the core argument about how a psychedelic experience changes someone's relationship to 'truth'?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 2359,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q10",
+    "class": "lookup",
+    "text": "In the r/IAmA 'I did Heroin yesterday' first-person thread, how does the poster describe the drug experience and their reasons or framing for trying it?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 5405,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q11",
+    "class": "adversarial",
+    "text": "Summarize what this Kasten says about the Phase 3 clinical trial results for MDMA-assisted therapy for PTSD.",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 11718,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q12",
+    "class": "vague",
+    "text": "DMT brain?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [
+      "675f86d3-a98b-4bfc-860d-93ea33a9cbf4"
+    ],
+    "actual_primary_citation": "675f86d3-a98b-4bfc-860d-93ea33a9cbf4",
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 2000,
+    "answer_preview": "DMT's neurobiological mechanisms are not fully understood, but its molecular structure, which includes an indole ring, allows it to bind to serotonin receptors in the brain [id=\"46aff720-55ab-4774-b3b6-8c33c9ca4c7b\"]. DMT appears to disrupt the brain's hierarchical organization, "
+  }
+]
