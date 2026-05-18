@@ -231,12 +231,12 @@
 
   async function loadZettels() {
     try {
-      var resp = await fetch('/api/graph?view=my', {
+      var resp = await fetch('/api/zettels', {
         headers: { Authorization: 'Bearer ' + _token }
       });
-      var graph = await resp.json();
-      var nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
-      _allNodes = nodes.map(normalizeNode);
+      var data = await resp.json();
+      var zettels = Array.isArray(data.zettels) ? data.zettels : [];
+      _allNodes = zettels.map(normalizeNode);
     } catch (err) {
       console.error('[user_zettels] Failed to load zettels:', err);
       _allNodes = [];
@@ -247,39 +247,27 @@
     applyFilters();
   }
 
-  function normalizeNode(node) {
-    var source = normalizeSource(node.group || node.source_type || 'web');
-    var summaryParts = extractSummaryParts(node.summary || '');
-    if (node.description) {
-      var descriptionParts = extractSummaryParts(node.description || '');
-      if (!summaryParts.brief || summaryParts.brief === summaryParts.detailed) {
-        summaryParts.brief = descriptionParts.brief || summaryParts.brief;
-      }
-      if (!summaryParts.detailed || summaryParts.detailed === summaryParts.brief) {
-        summaryParts.detailed = descriptionParts.detailed || summaryParts.detailed;
-      }
-      if (!summaryParts.detailedStructured && descriptionParts.detailedStructured) {
-        summaryParts.detailedStructured = descriptionParts.detailedStructured;
-      }
-    }
-    var cleanTags = (Array.isArray(node.tags) ? node.tags : [])
+  function normalizeNode(z) {
+    var source = normalizeSource(z.source_type || 'web');
+    var cleanTags = (Array.isArray(z.tags) ? z.tags : [])
       .map(normalizeTag)
       .filter(Boolean);
-
+    var brief = z.brief_summary || '';
+    var detailed = z.detailed_summary || brief;
     return {
-      id: node.id || createLocalNodeId(node.name || node.title || 'zettel'),
-      title: (node.name || node.title || 'Untitled').trim(),
-      summary: summaryParts.brief,
-      briefSummary: summaryParts.brief,
-      detailedSummary: summaryParts.detailed,
-      detailedStructured: summaryParts.detailedStructured || null,
+      id: z.id || createLocalNodeId(z.title || 'zettel'),
+      title: (z.title || 'Untitled').trim(),
+      summary: brief,
+      briefSummary: brief,
+      detailedSummary: detailed,
+      detailedStructured: null,
       tags: uniqueStrings(cleanTags),
-      normalizedTags: uniqueStrings(cleanTags.map(function (tag) { return tag.toLowerCase(); })),
-      url: (node.url || '').trim(),
-      date: normalizeCaptureDate(node.date || node.node_date || node.captured_at || node.created_at || ''),
+      normalizedTags: uniqueStrings(cleanTags.map(function (t) { return t.toLowerCase(); })),
+      url: (z.source_url || '').trim(),
+      date: normalizeCaptureDate(z.added_at || ''),
       source: source,
       sourceLabel: sourceLabel(source),
-      summaryLength: summaryParts.detailed.length || summaryParts.brief.length
+      summaryLength: detailed.length || brief.length
     };
   }
 

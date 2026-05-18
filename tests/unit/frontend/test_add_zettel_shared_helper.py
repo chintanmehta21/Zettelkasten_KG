@@ -291,3 +291,13 @@ def test_retired_legacy_summarize_pipeline_has_no_tracked_references():
             offenders.append(relative)
 
     assert offenders == []
+
+
+def test_list_pages_use_dedicated_zettels_endpoint_not_graph():
+    uz = (ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js").read_text(encoding="utf-8")
+    assert "/api/zettels'" in uz or '"/api/zettels"' in uz, "user_zettels must call /api/zettels"
+    assert "/api/graph?view=my" not in uz, "user_zettels must not use the graph endpoint for the list"
+    home = (ROOT / "website" / "features" / "user_home" / "js" / "home.js").read_text(encoding="utf-8")
+    assert "/api/graph?view=my" not in home, "home.js must not use the graph endpoint for list/badge"
+    kg = (ROOT / "website" / "features" / "knowledge_graph" / "js" / "app.js").read_text(encoding="utf-8")
+    assert "/api/graph" in kg, "the 3D /knowledge-graph viz must still use /api/graph"
