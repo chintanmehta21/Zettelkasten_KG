@@ -516,15 +516,100 @@ def _metadata_embedding_candidates(
             continue
         dot = sum(a * b for a, b in zip(qa, vb))
         cos = dot / (na * nb)
-        # Map real cosine [-1,1] -> [0,1] to match the RPC's score domain
-        # (the scorer kernel re-derives its own embedding signal from the
-        # raw vectors; this score is only used for candidate ordering and
-        # the optional rpc_score fallback path, never as the final signal).
-        score = max(0.0, min(1.0, (cos + 1.0) / 2.0))
+        # B3: clamp raw cosine to [0,1] (no (cos+1)/2 rescale) so this
+        # matches scoring._cosine_similarity's domain — it can become the
+        # emb_sub signal via the rpc_score fallback when raw vectors are
+        # absent, so the two cosine sites must move together.
+        score = max(0.0, min(1.0, cos))
         scored.append((score, rid))
 
     scored.sort(key=lambda t: t[0], reverse=True)
     return [{"node_id": rid, "score": s} for s, rid in scored[:k]]
+
+
+# B2: mention-row write tuning. The PRIMARY structural signal + B1's primary
+# render path both key off kg.chunk_node_mentions. NO production path wrote
+# these rows (only the offline backfill), so Naruto had 58 kg_edges / 20
+# kg_nodes / 0 mentions → B1 dropped every edge AND shared-chunk co-occurrence
+# was dead 0/58. This hook now links the zettel's kg_node to every
+# content.canonical_chunk of that zettel.
+#
+# mention_type='derived': the link is derived from the persisted chunking of
+# the zettel (not entity-extracted/'extracted', not user-'tagged', not
+# 'authored') — within the 03_kg_schema.sql CHECK set.
+_MENTION_TYPE = "derived"
+# Bounded read cap on a single zettel's chunk fan-out (post the parallel
+# multi-chunk persist fix a zettel has many chunks; still a small constant
+# per ingest, index-backed via idx_canonical_chunks_zettel).
+_MENTION_CHUNK_LIMIT = 2000
+
+
+def _write_chunk_node_mentions(
+    *,
+    node_id: int,
+    canonical_zettel_id: UUID,
+    supabase_client,
+) -> int:
+    """B2: link a zettel's kg_node to its content.canonical_chunks.
+
+    Reads the chunk ids for ``canonical_zettel_id`` (bounded, index-backed
+    via idx_canonical_chunks_zettel) and idempotently upserts one
+    kg.chunk_node_mentions row per chunk
+    (PK = canonical_chunk_id, kg_node_id, mention_type — re-ingest is a
+    no-op, never duplicates). Workspace/profile scoping is implicit and
+    safe: ``node_id`` was just upserted into THIS workspace and the chunk
+    ids belong to THIS canonical zettel only — no other tenant's chunk or
+    node can enter the set. Returns the number of mention rows written.
+
+    Fire-and-forget-safe: any failure is logged and swallowed (returns 0);
+    it MUST NOT raise into the kg-populate hook (best-effort enrichment).
+    """
+    try:
+        resp = (
+            supabase_client.schema("content")
+            .table("canonical_chunks")
+            .select("id")
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .limit(_MENTION_CHUNK_LIMIT)
+            .execute()
+        )
+        chunk_ids: list[str] = []
+        for row in resp.data or []:
+            cid = row.get("id")
+            if cid is not None:
+                chunk_ids.append(str(cid))
+        if not chunk_ids:
+            return 0
+        # Dedupe chunk ids defensively; one row per (chunk, node, type).
+        rows = [
+            {
+                "canonical_chunk_id": cid,
+                "kg_node_id": int(node_id),
+                "mention_type": _MENTION_TYPE,
+                "score": None,
+                "metadata": {},
+            }
+            for cid in dict.fromkeys(chunk_ids)
+        ]
+        (
+            supabase_client.schema("kg")
+            .table("chunk_node_mentions")
+            .upsert(
+                rows,
+                on_conflict="canonical_chunk_id,kg_node_id,mention_type",
+            )
+            .execute()
+        )
+        return len(rows)
+    except Exception as exc:  # fire-and-forget: log + skip, never raise
+        logger.warning(
+            "kg-populate chunk_node_mentions write failed zettel=%s node=%s "
+            "(degrading, edges/node already persisted): %s",
+            canonical_zettel_id,
+            node_id,
+            exc,
+        )
+        return 0
 
 
 def _score_and_upsert_edges_for_node(
@@ -770,6 +855,20 @@ async def populate_kg_for_zettel(
                 ),
             )
         )
+
+        # ---- 3b. B2: link this node to the zettel's canonical chunks ----
+        # Writes kg.chunk_node_mentions so (a) /api/graph's PRIMARY edge-
+        # endpoint resolution works for this zettel going forward and (b)
+        # the PRIMARY structural signal (shared-chunk co-occurrence) is fed
+        # for future ingests. Best-effort: never raises, runs regardless of
+        # whether an embedding exists (mentions are edge-independent).
+        mentions_written = await asyncio.to_thread(
+            _write_chunk_node_mentions,
+            node_id=node_id,
+            canonical_zettel_id=canonical_zettel_id,
+            supabase_client=supabase_client,
+        )
+        metrics["chunk_mentions"] = mentions_written
 
         # ---- 4. Bounded candidate set (top-K similar workspace nodes) --
         if not node_embedding:

@@ -195,6 +195,54 @@ class KGRepository:
             out.setdefault(node_id, []).append(zettel_str)
         return out
 
+    def list_node_canonical_zettel_metadata(
+        self,
+        workspace_id: UUID,
+        kg_node_ids: list[int],
+    ) -> dict[int, str]:
+        """Resolve kg_nodes.id -> canonical_zettel_id via node metadata.
+
+        B1 read-path FALLBACK for the /api/graph assembler. The primary
+        resolver (``list_node_zettel_mapping``) joins through
+        ``kg.chunk_node_mentions``; a workspace whose nodes were upserted
+        WITHOUT mention rows (observed live for Naruto: 58 kg_edges, 20
+        kg_nodes, 0 chunk_node_mentions) yields an EMPTY mapping there, so
+        every edge endpoint is unresolved and all edges are dropped.
+
+        ``kg_population._node_metadata`` writes
+        ``metadata->>'canonical_zettel_id'`` (a string UUID) at node upsert,
+        so this single bounded, workspace-fenced select recovers the
+        node->zettel link the mention join is missing. Workspace isolation:
+        the SELECT is fenced to ``workspace_id`` (service-role bypasses RLS;
+        this Python filter is the tenant fence — a node id from another
+        workspace resolves to nothing and can never leak). Returns ``{}``
+        when ``kg_node_ids`` is empty.
+        """
+        if not kg_node_ids:
+            return {}
+        response = (
+            self._client.schema("kg")
+            .table("kg_nodes")
+            .select("id,metadata")
+            .eq("workspace_id", str(workspace_id))
+            .in_("id", list(kg_node_ids))
+            .execute()
+        )
+        out: dict[int, str] = {}
+        for row in response.data or []:
+            try:
+                node_id = int(row.get("id"))
+            except (TypeError, ValueError):
+                continue
+            meta = row.get("metadata") or {}
+            if not isinstance(meta, dict):
+                continue
+            zettel_id = meta.get("canonical_zettel_id")
+            if not zettel_id:
+                continue
+            out[node_id] = str(zettel_id)
+        return out
+
     def expand_subgraph(self, *, workspace_id: UUID, node_ids: list[int], depth: int = 1) -> list[int]:
         response = self._client.schema("kg").rpc(
             "expand_subgraph",

@@ -129,6 +129,8 @@ class FakeClient:
         # structural fixtures
         self._chunk_mentions = []  # rows: {kg_node_id, canonical_chunk_id}
         self._kg_edges = {}  # workspace_id(str) -> [{src_node_id,dst_node_id}]
+        # B2: content.canonical_chunks rows {id, canonical_zettel_id}
+        self._canonical_chunks = []
 
     def schema(self, name):
         return _SchemaProxy(self, name)
@@ -173,6 +175,19 @@ class FakeClient:
                 ids = set(q._filters.get("kg_node_id", []))
                 return _Resp(
                     [r for r in self._chunk_mentions if r["kg_node_id"] in ids]
+                )
+            if q._op in ("upsert", "insert"):  # B2 mention write
+                return _Resp([{"ok": True}])
+
+        if q._schema == "content" and q._table == "canonical_chunks":
+            if q._op == "select":  # B2: chunk ids for a canonical zettel
+                zid = q._filters.get("canonical_zettel_id")
+                return _Resp(
+                    [
+                        {"id": r["id"]}
+                        for r in self._canonical_chunks
+                        if str(r["canonical_zettel_id"]) == str(zid)
+                    ]
                 )
 
         return _Resp([])
@@ -796,6 +811,146 @@ async def test_hook_structural_failure_does_not_raise(monkeypatch):
     edge = [w for w in c.writes if w[1] == "kg_edges"][0][3]
     assert edge["matched_via"]["structural"] == 0.0
     assert edge["matched_via"]["structural_shared_chunks"] == 0
+
+
+# --------------------------------------------------------------------------
+# B2: populate_kg_for_zettel must write kg.chunk_node_mentions linking the
+# zettel's kg_node to its content.canonical_chunks. This is B1's root cause
+# (no prod path wrote mention rows) AND restores the PRIMARY structural
+# signal (shared-chunk co-occurrence) for future ingests.
+# --------------------------------------------------------------------------
+
+
+_CID1 = "00000000-0000-0000-0000-0000000000A1"
+_CID2 = "00000000-0000-0000-0000-0000000000A2"
+
+
+@pytest.mark.asyncio
+async def test_b2_mentions_inserted_for_each_canonical_chunk():
+    c = FakeClient()
+    # node upsert returns 9001 (FakeClient._next_node_id start).
+    c._canonical_chunks = [
+        {"id": _CID1, "canonical_zettel_id": str(_ZID)},
+        {"id": _CID2, "canonical_zettel_id": str(_ZID)},
+        # a chunk for a DIFFERENT zettel must never be linked.
+        {"id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+         "canonical_zettel_id": "11111111-1111-1111-1111-111111111111"},
+    ]
+    await _run(c)
+    mention_writes = [
+        w for w in c.writes if w[1] == "chunk_node_mentions"
+    ]
+    assert mention_writes, "B2: no chunk_node_mentions written"
+    # Flatten payloads (upsert may pass a list of rows or one dict).
+    rows = []
+    for _s, _t, _op, payload in mention_writes:
+        rows.extend(payload if isinstance(payload, list) else [payload])
+    linked = {(r["canonical_chunk_id"], r["kg_node_id"]) for r in rows}
+    assert (_CID1, 9001) in linked
+    assert (_CID2, 9001) in linked
+    # The other zettel's chunk is never linked to this node.
+    assert all(
+        r["canonical_chunk_id"] not in (
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        )
+        for r in rows
+    )
+    # Schema-exact: mention_type within the CHECK set.
+    assert all(
+        r["mention_type"] in ("extracted", "tagged", "derived", "authored")
+        for r in rows
+    )
+
+
+@pytest.mark.asyncio
+async def test_b2_zero_chunks_writes_no_mentions_gracefully():
+    c = FakeClient()
+    c._canonical_chunks = []  # zettel has no chunks yet
+    m = await _run(c)
+    assert "error" not in m  # hook still succeeds
+    assert [w for w in c.writes if w[1] == "chunk_node_mentions"] == []
+
+
+@pytest.mark.asyncio
+async def test_b2_idempotent_rerun_uses_conflict_safe_write():
+    """Re-running must not create duplicate mention rows: the write goes
+    through an idempotent upsert/ON CONFLICT path (PK = canonical_chunk_id,
+    kg_node_id, mention_type per 03_kg_schema.sql)."""
+    c = FakeClient()
+    c._canonical_chunks = [{"id": _CID1, "canonical_zettel_id": str(_ZID)}]
+    await _run(c)
+    mention_ops = [
+        w[2] for w in c.writes if w[1] == "chunk_node_mentions"
+    ]
+    assert mention_ops, "B2: no mention write happened"
+    assert all(op == "upsert" for op in mention_ops), (
+        "B2 mention write must be an idempotent upsert (ON CONFLICT), not a "
+        "plain insert — re-ingest must not duplicate rows"
+    )
+
+
+@pytest.mark.asyncio
+async def test_b2_mentions_workspace_scoped_no_uuid_leak():
+    """The mention write path must not leak another workspace's UUID. The
+    kg_node it links was upserted into workspace A; the chunk ids come from
+    THIS zettel only. Assert no _WS_B anywhere in the mention payloads."""
+    c = FakeClient()
+    c._canonical_chunks = [{"id": _CID1, "canonical_zettel_id": str(_ZID)}]
+    await _run(c, workspace_id=_WS_A)
+    for _s, _t, _op, payload in c.writes:
+        if _t == "chunk_node_mentions":
+            assert str(_WS_B) not in str(payload)
+    # The canonical_chunks SELECT is scoped to THIS zettel id only.
+    sel = [
+        f for (s, t, op, _p, f) in c.calls
+        if s == "content" and t == "canonical_chunks" and op == "select"
+    ]
+    assert sel and all(
+        f.get("canonical_zettel_id") == str(_ZID) for f in sel
+    )
+
+
+@pytest.mark.asyncio
+async def test_b2_mention_write_failure_logs_and_skips_never_raises():
+    """A failure in the mention-write path must NOT propagate (fire-and-
+    forget contract) and must NOT abort node/edge population — the hook
+    still finishes 'succeeded'."""
+    c = FakeClient()
+    c._canonical_chunks = [{"id": _CID1, "canonical_zettel_id": str(_ZID)}]
+    c.fail_on = ("kg", "chunk_node_mentions", "upsert")
+    m = await _run(c)  # MUST NOT raise
+    assert "error" not in m, (
+        "B2 mention-write failure must be swallowed (best-effort), not fail "
+        "the whole kg-populate run"
+    )
+    # Node still upserted; pipeline still marked succeeded.
+    assert any(w[1] == "kg_nodes" and w[2] == "upsert" for w in c.writes)
+    assert any(
+        w[0:3] == ("pipelines", "pipeline_runs", "update") for w in c.writes
+    )
+
+
+@pytest.mark.asyncio
+async def test_b2_feeds_b1_primary_path_after_ingest():
+    """End-to-end B1<-B2: after the hook writes mentions, the SAME
+    chunk_node_mentions table the /api/graph assembler reads
+    (list_node_zettel_mapping) now has rows for this node — i.e. B2 makes
+    B1's PRIMARY path work for new ingests, not just the fallback."""
+    c = FakeClient()
+    c._canonical_chunks = [
+        {"id": _CID1, "canonical_zettel_id": str(_ZID)},
+        {"id": _CID2, "canonical_zettel_id": str(_ZID)},
+    ]
+    await _run(c)
+    # Reflect the written mentions back into the fake's mention store and
+    # confirm the repo's mapping resolver now resolves the node.
+    rows = []
+    for _s, _t, _op, payload in c.writes:
+        if _t == "chunk_node_mentions":
+            rows.extend(payload if isinstance(payload, list) else [payload])
+    assert rows
+    assert {r["kg_node_id"] for r in rows} == {9001}
+    assert {r["canonical_chunk_id"] for r in rows} == {_CID1, _CID2}
 
 
 @pytest.mark.asyncio

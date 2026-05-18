@@ -550,9 +550,43 @@ def _v2_assemble_graph(
                     endpoint_ids.add(int(edge.get(col)))
                 except (TypeError, ValueError):
                     continue
+        sorted_endpoint_ids = sorted(endpoint_ids)
         node_to_zettels = kg_repo.list_node_zettel_mapping(
-            ws_id, sorted(endpoint_ids)
+            ws_id, sorted_endpoint_ids
         )
+
+        # B1 FALLBACK: a workspace whose kg_nodes were upserted WITHOUT
+        # kg.chunk_node_mentions rows (observed live for Naruto: 58 kg_edges,
+        # 20 kg_nodes, 0 mentions) yields an EMPTY ``node_to_zettels`` for
+        # every endpoint, so the primary join below resolves nothing and ALL
+        # edges are dropped (the KG renders as isolated nodes). For exactly
+        # the endpoint nodes the mention join did NOT resolve, recover the
+        # node->canonical-zettel link from ``kg_nodes.metadata`` (the
+        # ``canonical_zettel_id`` key kg_population writes at node upsert via
+        # ``_node_metadata``). One extra bounded, workspace-scoped select
+        # keyed by the still-unresolved endpoint ids — BOLA-safe (fenced to
+        # ws_id; a foreign-tenant canonical id can never key into
+        # ``canonical_to_overlay``, which only holds THIS workspace's loaded
+        # overlays). Edges render when EITHER chunk_node_mentions OR this
+        # metadata fallback resolves both endpoints.
+        unresolved_endpoints = [
+            nid for nid in sorted_endpoint_ids if not node_to_zettels.get(nid)
+        ]
+        node_to_canonical_meta: dict[int, str] = {}
+        if unresolved_endpoints:
+            try:
+                node_to_canonical_meta = (
+                    kg_repo.list_node_canonical_zettel_metadata(
+                        ws_id, unresolved_endpoints
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 — degrade, never 500
+                logger.warning(
+                    "v2 graph B1 metadata fallback failed for ws=%s: %s",
+                    ws_id,
+                    exc,
+                )
+                node_to_canonical_meta = {}
 
         def _resolve_overlay_ids(kg_node_id: int) -> list[str]:
             ids: list[str] = []
@@ -560,8 +594,20 @@ def _v2_assemble_graph(
                 overlay = canonical_to_overlay.get(str(zettel_id))
                 if overlay:
                     ids.append(overlay)
+            if ids:
+                return ids
+            # B1 fallback: mention join resolved nothing for this node — try
+            # the canonical_zettel_id stored on kg_nodes.metadata. Still
+            # gated by canonical_to_overlay (THIS workspace's loaded
+            # overlays), so a foreign canonical id resolves to nothing.
+            meta_zettel = node_to_canonical_meta.get(kg_node_id)
+            if meta_zettel:
+                overlay = canonical_to_overlay.get(str(meta_zettel))
+                if overlay:
+                    ids.append(overlay)
             return ids
 
+        edges_dropped_unresolved = 0
         for idx, edge in enumerate(edge_rows):
             try:
                 src_id = int(edge.get("src_node_id"))
@@ -573,10 +619,12 @@ def _v2_assemble_graph(
             src_overlays = _resolve_overlay_ids(src_id)
             dst_overlays = _resolve_overlay_ids(dst_id)
             if not src_overlays or not dst_overlays:
-                # Endpoint node has no mention chunk that maps to one of the
-                # workspace zettels we already loaded — skip rather than fake
-                # a self-loop. The evidence-canonical fallback is intentional
-                # only when src AND dst both resolve through the same zettel.
+                # Endpoint resolved via NEITHER chunk_node_mentions NOR the
+                # B1 metadata fallback (e.g. an orphan kg_node with no chunk
+                # rows and no canonical_zettel_id in metadata) — skip rather
+                # than fake a self-loop, and COUNT it so silent edge loss is
+                # observable in the ops log (B1 telemetry).
+                edges_dropped_unresolved += 1
                 continue
             relation = str(edge.get("relation_type") or "shared_tag")
             description = edge.get("shared_tag_label")
@@ -603,6 +651,20 @@ def _v2_assemble_graph(
                             "tier": tier,
                         }
                     )
+
+        # B1 telemetry: surface how many edges were dropped because NEITHER
+        # the chunk_node_mentions join NOR the metadata fallback resolved an
+        # endpoint, so silent edge loss (the original Naruto symptom) is
+        # observable in the ops log instead of an invisibly edgeless graph.
+        if edges_dropped_unresolved:
+            logger.warning(
+                "v2 graph edge_drop_unresolved ws=%s dropped=%d of=%d "
+                "(endpoints unresolved via chunk_node_mentions + metadata "
+                "fallback)",
+                ws_id,
+                edges_dropped_unresolved,
+                len(edge_rows),
+            )
 
     # Use Pydantic to enforce the shape; total_nodes mirrors v1 conventions.
     try:

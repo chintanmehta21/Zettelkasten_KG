@@ -10,9 +10,6 @@ the upstream graph loader. Avoids any Supabase round-trip (these are NOT
 """
 from __future__ import annotations
 
-import gzip
-import json
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -159,8 +156,8 @@ def test_min_strength_filter_strict_subset() -> None:
     assert len(weak["links"]) == 4, "min_strength=0.0 returns everything"
     assert len(strong["links"]) == 1
     # Strong is a strict subset.
-    strong_keys = {(l["source"], l["target"]) for l in strong["links"]}
-    weak_keys = {(l["source"], l["target"]) for l in weak["links"]}
+    strong_keys = {(lk["source"], lk["target"]) for lk in strong["links"]}
+    weak_keys = {(lk["source"], lk["target"]) for lk in weak["links"]}
     assert strong_keys.issubset(weak_keys)
 
 
@@ -185,7 +182,6 @@ def test_min_strength_filter_drops_null_strength() -> None:
 def test_brotli_negotiation_returns_br(monkeypatch) -> None:
     """Accept-Encoding: br ⇒ Content-Encoding: br on a >1KB response."""
     import website.api.routes as routes_module
-    from website.core.graph_models import KGGraph
 
     # Stub out get_graph() to return a payload large enough to compress.
     big_payload = {
@@ -543,3 +539,266 @@ def test_v2_graph_links_emit_connection_strength_for_default_filter(monkeypatch)
     assert payload["links"][0]["connection_strength"] == pytest.approx(0.82)
     filtered = routes_module._apply_min_strength_filter(payload, 0.7)
     assert len(filtered["links"]) == 1
+
+
+# ── B1: kg_nodes.metadata.canonical_zettel_id fallback resolution ─────
+
+
+def _b1_stub_content(workspace_id, zettels):
+    """Build a _StubContent yielding the given (canonical_id, title) zettels."""
+
+    class _StubContent:
+        def list_workspace_zettels(self, ws_id, *, limit, offset):
+            assert ws_id == workspace_id
+            return [
+                {
+                    "canonical": {
+                        "id": zid,
+                        "source_type": "web",
+                        "title": title,
+                        "normalized_url": f"https://{title.lower()}",
+                        "publication_date": "2026-01-01",
+                    },
+                    "ai_summary": f"{title} summary",
+                    "user_tags": [],
+                }
+                for zid, title in zettels
+            ]
+
+    return _StubContent()
+
+
+def test_b1_edges_render_via_metadata_fallback_when_mentions_empty(monkeypatch):
+    """B1 — the exact Naruto failure: edges exist, chunk_node_mentions is
+    empty, kg_nodes.metadata carries canonical_zettel_id. ALL edges must
+    resolve via the metadata fallback and render (NOT all be dropped).
+    """
+    import uuid
+
+    import website.api.routes as routes_module
+
+    workspace_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    z_a, z_b = (str(uuid.uuid4()) for _ in range(2))
+    n1, n2 = 101, 202
+
+    content = _b1_stub_content(workspace_id, [(z_a, "Alpha"), (z_b, "Bravo")])
+
+    class _StubKG:
+        def list_workspace_edges(self, ws_id):
+            return [
+                {
+                    "id": 1,
+                    "src_node_id": n1,
+                    "dst_node_id": n2,
+                    "relation_type": "co_occurs",
+                    "shared_tag_label": "naruto",
+                    "weight": None,
+                    "workspace_strength": 0.81,
+                    "connection_strength": 0.81,
+                    "evidence_canonical_zettel_id": z_a,
+                }
+            ]
+
+        def list_node_zettel_mapping(self, ws_id, kg_node_ids, *, limit=50000):
+            # Naruto: 0 chunk_node_mentions rows -> empty mapping.
+            return {}
+
+        def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
+            assert ws_id == workspace_id
+            assert set(kg_node_ids) == {n1, n2}
+            return {n1: z_a, n2: z_b}
+
+    monkeypatch.setattr(
+        routes_module,
+        "get_supabase_v2_scope_for_read",
+        lambda sub: (content, profile_id, [workspace_id]),
+    )
+    monkeypatch.setattr(routes_module, "V2KGRepository", _StubKG)
+
+    graph = routes_module._v2_assemble_graph(
+        user_sub=str(uuid.uuid4()), limit=100, offset=0
+    )
+    assert graph is not None
+    assert len(graph.nodes) == 2
+    assert len(graph.links) == 1, (
+        "B1 regression: edge dropped because chunk_node_mentions empty — "
+        "metadata fallback must resolve it"
+    )
+    link = graph.links[0]
+    nodes_by_id = {n.id: n for n in graph.nodes}
+    assert {nodes_by_id[link.source].name, nodes_by_id[link.target].name} == {
+        "Alpha",
+        "Bravo",
+    }
+
+
+def test_b1_mentions_take_precedence_when_present(monkeypatch):
+    """When chunk_node_mentions DO resolve an endpoint, the existing path is
+    used unchanged (metadata fallback only fills the gaps)."""
+    import uuid
+
+    import website.api.routes as routes_module
+
+    workspace_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    z_a, z_b = (str(uuid.uuid4()) for _ in range(2))
+    n1, n2 = 101, 202
+
+    content = _b1_stub_content(workspace_id, [(z_a, "Alpha"), (z_b, "Bravo")])
+    meta_calls = {"n": 0}
+
+    class _StubKG:
+        def list_workspace_edges(self, ws_id):
+            return [
+                {
+                    "id": 1,
+                    "src_node_id": n1,
+                    "dst_node_id": n2,
+                    "relation_type": "co_occurs",
+                    "shared_tag_label": "shared",
+                    "weight": None,
+                    "workspace_strength": 0.9,
+                    "connection_strength": 0.9,
+                    "evidence_canonical_zettel_id": z_a,
+                }
+            ]
+
+        def list_node_zettel_mapping(self, ws_id, kg_node_ids, *, limit=50000):
+            return {n1: [z_a], n2: [z_b]}
+
+        def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
+            meta_calls["n"] += 1
+            return {}
+
+    monkeypatch.setattr(
+        routes_module,
+        "get_supabase_v2_scope_for_read",
+        lambda sub: (content, profile_id, [workspace_id]),
+    )
+    monkeypatch.setattr(routes_module, "V2KGRepository", _StubKG)
+
+    graph = routes_module._v2_assemble_graph(
+        user_sub=str(uuid.uuid4()), limit=100, offset=0
+    )
+    assert graph is not None
+    assert len(graph.links) == 1
+    # Mentions resolved everything -> metadata fallback never queried.
+    assert meta_calls["n"] == 0, (
+        "metadata fallback must not run when chunk_node_mentions resolves all "
+        "endpoints (keep existing behavior + avoid an extra query)"
+    )
+
+
+def test_b1_unresolved_edge_still_skipped_and_counted(monkeypatch, caplog):
+    """An edge whose endpoint resolves via NEITHER mentions NOR metadata is
+    still skipped (no fake self-loop) AND counted in drop telemetry."""
+    import logging
+    import uuid
+
+    import website.api.routes as routes_module
+
+    workspace_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    z_a = str(uuid.uuid4())
+    n1, n_orphan = 101, 999
+
+    content = _b1_stub_content(workspace_id, [(z_a, "Alpha")])
+
+    class _StubKG:
+        def list_workspace_edges(self, ws_id):
+            return [
+                {
+                    "id": 1,
+                    "src_node_id": n1,
+                    "dst_node_id": n_orphan,  # never resolves
+                    "relation_type": "co_occurs",
+                    "shared_tag_label": "x",
+                    "weight": None,
+                    "workspace_strength": 0.7,
+                    "connection_strength": 0.7,
+                    "evidence_canonical_zettel_id": z_a,
+                }
+            ]
+
+        def list_node_zettel_mapping(self, ws_id, kg_node_ids, *, limit=50000):
+            return {}
+
+        def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
+            return {n1: z_a}  # n_orphan absent
+
+    monkeypatch.setattr(
+        routes_module,
+        "get_supabase_v2_scope_for_read",
+        lambda sub: (content, profile_id, [workspace_id]),
+    )
+    monkeypatch.setattr(routes_module, "V2KGRepository", _StubKG)
+
+    with caplog.at_level(logging.WARNING, logger="website.api"):
+        graph = routes_module._v2_assemble_graph(
+            user_sub=str(uuid.uuid4()), limit=100, offset=0
+        )
+    assert graph is not None
+    assert len(graph.links) == 0, "orphan-endpoint edge must be skipped"
+    # Telemetry: the unresolved drop is observable (counter logged).
+    assert any(
+        "unresolved" in r.message.lower() or "edge_drop" in r.message.lower()
+        for r in caplog.records
+    ), "unresolved edge drop must be logged as telemetry"
+
+
+def test_b1_metadata_fallback_is_bola_safe(monkeypatch):
+    """The metadata-fallback resolver must only ever map an edge endpoint to
+    an overlay zettel id the assembler already loaded for THIS workspace. A
+    foreign-workspace canonical id returned by a buggy/hostile mapping is
+    never emitted as a node/link (no cross-tenant leak)."""
+    import uuid
+
+    import website.api.routes as routes_module
+
+    workspace_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    z_a = str(uuid.uuid4())
+    z_foreign = str(uuid.uuid4())  # belongs to another tenant
+    n1, n2 = 101, 202
+
+    content = _b1_stub_content(workspace_id, [(z_a, "Alpha")])
+
+    class _StubKG:
+        def list_workspace_edges(self, ws_id):
+            return [
+                {
+                    "id": 1,
+                    "src_node_id": n1,
+                    "dst_node_id": n2,
+                    "relation_type": "co_occurs",
+                    "shared_tag_label": "x",
+                    "weight": None,
+                    "workspace_strength": 0.8,
+                    "connection_strength": 0.8,
+                    "evidence_canonical_zettel_id": z_a,
+                }
+            ]
+
+        def list_node_zettel_mapping(self, ws_id, kg_node_ids, *, limit=50000):
+            return {}
+
+        def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
+            # n2 maps to a canonical id that is NOT in this workspace's
+            # loaded overlay set -> must NOT resolve / leak.
+            return {n1: z_a, n2: z_foreign}
+
+    monkeypatch.setattr(
+        routes_module,
+        "get_supabase_v2_scope_for_read",
+        lambda sub: (content, profile_id, [workspace_id]),
+    )
+    monkeypatch.setattr(routes_module, "V2KGRepository", _StubKG)
+
+    graph = routes_module._v2_assemble_graph(
+        user_sub=str(uuid.uuid4()), limit=100, offset=0
+    )
+    assert graph is not None
+    # z_foreign never loaded as a node; the edge cannot resolve dst -> skipped.
+    assert len(graph.links) == 0
+    assert all(z_foreign[:8] not in n.id for n in graph.nodes)
