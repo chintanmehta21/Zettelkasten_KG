@@ -157,7 +157,12 @@ def test_search_chunks_excludes_null_embeddings() -> None:
 
 
 def test_document_source_type_is_added_by_forward_migration() -> None:
-    assert "'document'" not in _sql("02_content_schema.sql")
+    # Reconciled design (merge of master's document-upload feature with this
+    # PR's source_type work): the base 02 CHECK carries the COMPLETE emitted
+    # list (fresh-install correctness — same pattern already used for arxiv),
+    # AND the forward migration 49 re-adds 'document' idempotently for
+    # already-deployed DBs. Both must contain it.
+    assert "'document'" in _sql("02_content_schema.sql")
     assert "'document'" in _sql("49_document_source_type.sql")
 
 
