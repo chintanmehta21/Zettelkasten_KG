@@ -9,7 +9,7 @@ by this unit test.
 
 from pathlib import Path
 
-MIG = Path("supabase/website/_v2/45_url_dedup.sql")
+MIG = Path("supabase/website/_v2/46_url_dedup.sql")
 
 
 def test_migration_exists_and_is_well_formed():
