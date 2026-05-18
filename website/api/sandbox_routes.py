@@ -509,10 +509,24 @@ async def create_sandbox(
 
         user_sub = str(user["sub"])
         existing = _kasten_op_get(user_sub, operation_id)
-        if existing is not None:
+        # SECURITY/CORRECTNESS (P1, Codex review #3261831595): only a
+        # genuinely IN-FLIGHT duplicate (status == "accepted") is
+        # short-circuited — return 202 so the client polls the existing op
+        # instead of spawning a redundant task. A TERMINAL record
+        # (failed/completed) is deliberately NOT replayed here: idempotent
+        # replay of an identical body, the changed-body conflict
+        # (IdempotencyConflict), and retry-after-failure are ALL owned by
+        # run_create_kasten_pipeline (_request_hash + _IDEMPOTENCY_CACHE +
+        # _IN_FLIGHT) — the single authoritative idempotency layer. The old
+        # blanket replay bypassed it (re-POST with different links inside the
+        # 15-min TTL returned a stale success/accepted and skipped ingestion;
+        # a failed op was un-retryable until TTL expiry). Falling through lets
+        # the runner re-evaluate: identical → cached replay; changed body →
+        # recorded conflict; prior failure → fresh retry.
+        if existing is not None and existing.get("status") == "accepted":
             return JSONResponse(
                 existing,
-                status_code=202 if existing.get("status") == "accepted" else 200,
+                status_code=202,
                 headers={"Location": f"/api/rag/sandboxes/operations/{operation_id}", "Retry-After": "3"},
             )
 

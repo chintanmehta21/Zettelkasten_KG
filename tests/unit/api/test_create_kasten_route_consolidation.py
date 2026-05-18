@@ -309,3 +309,60 @@ def test_poll_endpoint_cannot_read_another_users_operation(monkeypatch):
         "polling another user's operation_id must 404, not leak their payload"
     )
     assert "A-only" not in resp.text
+
+
+# ── P1 regression (Codex review #3261831595): idempotency not bypassed ──
+
+
+def test_terminal_failed_op_is_not_replayed_retry_runs(monkeypatch):
+    """A pre-existing FAILED op record (same operation_id, within TTL) must
+    NOT short-circuit the route — the request falls through so
+    run_create_kasten_pipeline can retry (failures are never cached by the
+    runner). The stale failed payload must NOT be returned."""
+    async def _stub_pipeline(*_a, **_kw):
+        return {"status": "succeeded", "operation_id": "cak-retry", "fresh": True}
+
+    monkeypatch.setattr(
+        sandbox_routes, "run_create_kasten_pipeline", _stub_pipeline
+    )
+    rag_repo = MagicMock()
+    with _app_client_persistent(monkeypatch, rag_repo) as client:
+        # Seed a stale TERMINAL failed record for this user+operation_id.
+        sandbox_routes._kasten_op_put(
+            str(NARUTO), "cak-retry",
+            {"status": "failed", "operation_id": "cak-retry", "error": "STALE"},
+        )
+        resp = client.post(
+            "/api/rag/sandboxes",
+            json={"name": "n", "links": ["https://x.example.com/"],
+                  "client_action_id": "cak-retry"},
+        )
+    assert resp.status_code == 202, "must start a fresh run, not replay failed"
+    body = resp.json()
+    assert body.get("status") == "accepted"
+    assert body.get("error") != "STALE", "stale failed payload must NOT leak"
+
+
+def test_inflight_accepted_op_is_short_circuited(monkeypatch):
+    """A genuinely IN-FLIGHT (accepted) duplicate IS short-circuited with 202
+    pointing at the existing op (don't spawn a redundant task)."""
+    async def _stub_pipeline(*_a, **_kw):
+        return {"status": "succeeded", "operation_id": "cak-inflight"}
+
+    monkeypatch.setattr(
+        sandbox_routes, "run_create_kasten_pipeline", _stub_pipeline
+    )
+    rag_repo = MagicMock()
+    with _app_client_persistent(monkeypatch, rag_repo) as client:
+        sandbox_routes._kasten_op_put(
+            str(NARUTO), "cak-inflight",
+            {"status": "accepted", "operation_id": "cak-inflight",
+             "status_url": "/api/rag/sandboxes/operations/cak-inflight"},
+        )
+        resp = client.post(
+            "/api/rag/sandboxes",
+            json={"name": "n", "links": ["https://x.example.com/"],
+                  "client_action_id": "cak-inflight"},
+        )
+    assert resp.status_code == 202
+    assert resp.json().get("status") == "accepted"
