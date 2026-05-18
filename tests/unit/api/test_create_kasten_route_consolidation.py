@@ -64,11 +64,21 @@ def _build_app(monkeypatch, rag_repo: MagicMock):
         return None
 
     monkeypatch.setattr(sandbox_routes, "require_entitlement", _noop)
-    # v2 dual-path gate: _v2_scope_for → (rag_repo, profile_id, workspace_id).
+    # v2 dual-path gate: _v2_scope_for → (rag_repo, profile_id, workspace_id)
+    # (still used by list_sandboxes + the BOLA member helpers).
     monkeypatch.setattr(
         sandbox_routes,
         "_v2_scope_for",
         lambda user: (rag_repo, PROFILE_ID, WS_ID),
+    )
+    # P1 #3262415343: the create-with-links branch now gates on the
+    # configured-or-flagged get_supabase_v2_scope (the predicate the runner
+    # actually uses), not _v2_scope_for. Stub it truthy here so the links
+    # path is reachable in the harness.
+    monkeypatch.setattr(
+        sandbox_routes,
+        "get_supabase_v2_scope",
+        lambda sub: (rag_repo, PROFILE_ID, WS_ID),
     )
     app = create_app()
     app.dependency_overrides[sandbox_routes.get_current_user] = lambda: {
@@ -228,8 +238,17 @@ def test_links_present_without_v2_scope_is_501(monkeypatch):
     async def _noop(*_a, **_kw):
         return None
 
-    monkeypatch.setattr(sandbox_routes, "require_entitlement", _noop)
-    monkeypatch.setattr(sandbox_routes, "_v2_scope_for", lambda user: None)
+    # require_entitlement is asserted-uncalled below: the v2-capability gate
+    # (P2 #3262415347) must run BEFORE the Meter.KASTEN charge.
+    _charged: list[bool] = []
+
+    async def _charge(*_a, **_kw):
+        _charged.append(True)
+
+    monkeypatch.setattr(sandbox_routes, "require_entitlement", _charge)
+    # P1 #3262415343: the links gate now uses get_supabase_v2_scope; None ->
+    # no resolvable v2 backend -> 501 (no v1 equivalent for link-ingest).
+    monkeypatch.setattr(sandbox_routes, "get_supabase_v2_scope", lambda sub: None)
     app = create_app()
     app.dependency_overrides[sandbox_routes.get_current_user] = lambda: {
         "sub": str(NARUTO),
@@ -241,6 +260,9 @@ def test_links_present_without_v2_scope_is_501(monkeypatch):
         json={"name": "no-v2", "links": ["https://x.example.com/"]},
     )
     assert resp.status_code == 501
+    # P2 #3262415347: entitlement must NOT have been consumed for the
+    # unsupported links path (no billable failure).
+    assert _charged == []
 
 
 def test_malformed_link_rejected_at_request_validation(monkeypatch):

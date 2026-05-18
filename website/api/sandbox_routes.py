@@ -474,24 +474,37 @@ async def create_sandbox(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     action_id = body.client_action_id or body.name
+
+    # ── Phase C (D1 + D3): links present → consolidated async runner ──────
+    # links == [] falls straight through to the byte-identical legacy path
+    # below; this branch is entered ONLY for a non-empty link list. The
+    # runner ingests through the v2 Add Zettel pipeline and so requires a
+    # resolvable DB v2 workspace scope; with none, link-ingest has no v1
+    # equivalent and a clear 501 is correct rather than a misleading v1
+    # fall-through.
+    #
+    # P1 (Codex review #3262415343): gate on the SAME configured-or-flagged
+    # scope the runner actually uses (get_supabase_v2_scope, which is
+    # _persist_should_attempt_v2-gated), NOT the stricter use_supabase_v2()
+    # flag behind _v2_scope_for. Otherwise a v2-configured-but-flag-unset
+    # deployment persists Add Zettel via v2 yet wrongly 501s create-with-links.
+    #
+    # P2 (Codex review #3262415347): perform this capability gate BEFORE the
+    # Meter.KASTEN entitlement charge, so an unsupported links request on a
+    # non-v2 backend never consumes quota (no billable failure for a path
+    # that does no Kasten/link ingestion).
+    if body.links and get_supabase_v2_scope(user.get("sub")) is None:
+        raise HTTPException(
+            status_code=501,
+            detail="Creating a Kasten with links requires DB v2",
+        )
+
     # Single Meter.KASTEN charge — exactly like the legacy path (one call,
     # same args). Per-link Meter.ZETTEL is enforced INSIDE
     # run_add_zettel_pipeline (not here) so links never double-charge.
     await require_entitlement(Meter.KASTEN, user, action_id=action_id)
 
-    # ── Phase C (D1 + D3): links present → consolidated async runner ──────
-    # links == [] falls straight through to the byte-identical legacy path
-    # below; this branch is entered ONLY for a non-empty link list. The
-    # runner requires a DB v2 workspace scope (it ingests through the v2
-    # Add Zettel pipeline) — _v2_scope_for is the same gate the create-only
-    # v2 path uses. With no v2 scope, link-ingest has no v1 equivalent, so a
-    # clear 501 is correct rather than a misleading v1 fall-through.
     if body.links:
-        if _v2_scope_for(user) is None:
-            raise HTTPException(
-                status_code=501,
-                detail="Creating a Kasten with links requires DB v2",
-            )
         # P2 (Codex review #3261952490): the create-with-links idempotency
         # key must NOT fall back to ``body.name``. With the name as key, a
         # follow-up request for the SAME Kasten name but DIFFERENT links was
