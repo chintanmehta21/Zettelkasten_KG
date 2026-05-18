@@ -283,6 +283,7 @@ async def run_create_kasten_pipeline(
     color: str = "#14b8a6",
     default_quality: str = "fast",
     persist: bool = True,
+    drain_enrichment: bool = True,
 ) -> dict[str, Any]:
     """Create (or idempotently reuse) a Kasten and ingest ``links`` into it.
 
@@ -357,6 +358,7 @@ async def run_create_kasten_pipeline(
             color=color or "#14b8a6",
             default_quality=normalized_quality,
             persist=persist,
+            drain_enrichment=drain_enrichment,
         )
     )
     _IN_FLIGHT[cache_key] = (request_hash, task)
@@ -391,6 +393,7 @@ async def _execute_create_kasten(
     color: str,
     default_quality: str,
     persist: bool,
+    drain_enrichment: bool = True,
 ) -> dict[str, Any]:
     user_sub = str(effective_user_id)
     scope = get_supabase_v2_scope(user_sub)
@@ -510,9 +513,19 @@ async def _execute_create_kasten(
     # runner returns. Idempotent + best-effort: a task failure is already
     # logged/swallowed at its own site (Phase-B contract); the
     # pipelines.pipeline_runs(kind='kg_extract') gate keeps it idempotent and
-    # workspace-scoped. The live FastAPI route never calls this drain, so its
-    # fire-and-forget Add-Zettel latency is unchanged.
-    await _drain_pending_enrichment_tasks()
+    # workspace-scoped.
+    #
+    # P2 (Codex review #3261952504): this drain is PROCESS-WIDE
+    # (persist._PENDING_ENRICHMENT_TASKS), so calling it from the long-lived
+    # FastAPI background create-with-links path made one user's operation
+    # block on UNRELATED traffic's enrichment tasks (up to the 120s timeout)
+    # — cross-request latency coupling. It is only needed for short-lived
+    # callers (CLI / Phase-E) whose event loop is torn down by ``asyncio.run``
+    # before fire-and-forget tasks finish. The route passes
+    # ``drain_enrichment=False`` (the server loop persists the tasks; no drain
+    # needed and a global drain is harmful); CLI keeps the default True.
+    if drain_enrichment:
+        await _drain_pending_enrichment_tasks()
 
     _invalidate_graph(user_sub)
 

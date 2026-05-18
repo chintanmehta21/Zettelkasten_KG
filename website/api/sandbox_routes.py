@@ -21,7 +21,8 @@ import logging
 import time
 from collections import OrderedDict
 from typing import Annotated, Any
-from uuid import UUID
+from urllib.parse import quote
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -491,7 +492,20 @@ async def create_sandbox(
                 status_code=501,
                 detail="Creating a Kasten with links requires DB v2",
             )
-        operation_id = action_id
+        # P2 (Codex review #3261952490): the create-with-links idempotency
+        # key must NOT fall back to ``body.name``. With the name as key, a
+        # follow-up request for the SAME Kasten name but DIFFERENT links was
+        # treated as an idempotency conflict and the new links were never
+        # ingested — even though _create_or_get_kasten explicitly reuses an
+        # existing same-name Kasten. Idempotency is opt-in: use the explicit
+        # client_action_id when given; otherwise a fresh per-request id so
+        # each submission is its own idempotency scope (no false conflict,
+        # no cross-request collision in the async op store).
+        operation_id = body.client_action_id or uuid4().hex
+        # P2 (Codex review #3261952498): operation_id may be a client-supplied
+        # value; validate_name does not exclude path-reserved chars. URL-encode
+        # it as a single path segment so the emitted poll URL round-trips.
+        op_path = quote(operation_id, safe="")
 
         async def _runner() -> dict:
             return await run_create_kasten_pipeline(
@@ -505,6 +519,12 @@ async def create_sandbox(
                 color=body.color or "#14b8a6",
                 default_quality=body.default_quality,
                 persist=True,
+                # P2 (Codex review #3261952504): the server loop persists
+                # fire-and-forget enrichment tasks; draining the PROCESS-WIDE
+                # registry from this background request would couple it to
+                # unrelated traffic. Only short-lived CLI callers need the
+                # drain (default True there).
+                drain_enrichment=False,
             )
 
         user_sub = str(user["sub"])
@@ -527,14 +547,14 @@ async def create_sandbox(
             return JSONResponse(
                 existing,
                 status_code=202,
-                headers={"Location": f"/api/rag/sandboxes/operations/{operation_id}", "Retry-After": "3"},
+                headers={"Location": f"/api/rag/sandboxes/operations/{op_path}", "Retry-After": "3"},
             )
 
         task = asyncio.create_task(_runner())
         accepted = {
             "status": "accepted",
             "operation_id": operation_id,
-            "status_url": f"/api/rag/sandboxes/operations/{operation_id}",
+            "status_url": f"/api/rag/sandboxes/operations/{op_path}",
         }
         _kasten_op_put(user_sub, operation_id, accepted)
         _KASTEN_OP_TASKS[_scoped_op_key(user_sub, operation_id)] = task
@@ -546,7 +566,7 @@ async def create_sandbox(
         return JSONResponse(
             accepted,
             status_code=202,
-            headers={"Location": f"/api/rag/sandboxes/operations/{operation_id}", "Retry-After": "3"},
+            headers={"Location": f"/api/rag/sandboxes/operations/{op_path}", "Retry-After": "3"},
         )
 
     # Phase 4.4 v2 dual-path: write to rag.kastens via the v2 RAGRepository.
