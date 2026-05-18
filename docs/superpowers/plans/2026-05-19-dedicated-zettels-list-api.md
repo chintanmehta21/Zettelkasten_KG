@@ -274,6 +274,8 @@ async def list_zettels(
 
 (`BaseModel`, `Annotated`, `Depends`, `JSONResponse`, `_problem`, `router`, `logger` are already imported/defined in this module — verified. Do not re-import.)
 
+> **Implementer note:** `extract_summary_parts(raw, None)` never returns `""` — on empty/missing input it substitutes a fallback string (`persist.py:~378`, e.g. "No summary available…"). The Task 1 tests feed valid JSON so `brief_summary`/`detailed_summary` assertions hold. Do NOT add a test asserting `== ""` for empty `ai_summary`; assert the fallback string instead if such a case is ever added.
+
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `python -m pytest tests/unit/website/test_zettels_list_api.py -q`
@@ -452,15 +454,57 @@ git commit -m "feat: home badge/chooser use /api/zettels not graph"
 Run: `grep -n "ADD_ZETTEL_ASSET_VERSION =" tests/unit/frontend/test_add_zettel_shared_helper.py`
 Expected: one line, e.g. `ADD_ZETTEL_ASSET_VERSION = "20260518b"`.
 
-- [ ] **Step 2: Bump the changed JS cache-busters**
+- [ ] **Step 2: Bump the changed JS cache-busters in the two index.html files**
 
 In `website/features/user_zettels/index.html`: change `user_zettels.js?v=20260518b` → `user_zettels.js?v=20260519a`.
 In `website/features/user_home/index.html`: change `home.js?v=20260518b` → `home.js?v=20260519a`.
-(Use the actual current version found in Step 1 as the old value; new value = `20260519a`. Do NOT touch `add_zettel_api.js` / css versions — unchanged files.)
+Do NOT touch `add_zettel_api.js`, `app.js`, `summarizer.js`, or any `*.css` version — those files are unchanged and stay `20260518b`/their current value.
 
-- [ ] **Step 3: Update the version-pin test**
+- [ ] **Step 3: Fix the version-pin test (exact edits — avoids the ADD_ZETTEL_ASSET_VERSION contradiction)**
 
-In `tests/unit/frontend/test_add_zettel_shared_helper.py`: the assertions that pin `home.js`/`user_zettels.js` to the old version must move to `?v=20260519a`. Change the two lines asserting `/home/js/home.js?v=<old>` and `/home/zettels/js/user_zettels.js?v=<old>` to `?v=20260519a`. Leave `ADD_ZETTEL_ASSET_VERSION` and the `add_zettel_api.js`/css assertions unchanged (those files did not change).
+`tests/unit/frontend/test_add_zettel_shared_helper.py` keys `home.js`/`user_zettels.js` off the `ADD_ZETTEL_ASSET_VERSION` constant (`= "20260518b"`), which is still correct for the *unchanged* `app.js`/`summarizer.js`/`add_zettel_api.js`. So do NOT change the constant. Instead make these 4 exact replacements:
+
+(a) In the `pages_to_scripts` dict, replace:
+```python
+        / "user_home"
+        / "index.html": f"/home/js/home.js?v={ADD_ZETTEL_ASSET_VERSION}",
+```
+with:
+```python
+        / "user_home"
+        / "index.html": "/home/js/home.js?v=20260519a",
+```
+
+(b) In the same dict, replace:
+```python
+        / "user_zettels"
+        / "index.html": f"/home/zettels/js/user_zettels.js?v={ADD_ZETTEL_ASSET_VERSION}",
+```
+with:
+```python
+        / "user_zettels"
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260519a",
+```
+
+(c) Replace the hardcoded pin:
+```python
+    assert "/home/js/home.js?v=20260518b" in (
+```
+with:
+```python
+    assert "/home/js/home.js?v=20260519a" in (
+```
+
+(d) Replace the hardcoded pin:
+```python
+    assert "/home/zettels/js/user_zettels.js?v=20260518b" in (
+```
+with:
+```python
+    assert "/home/zettels/js/user_zettels.js?v=20260519a" in (
+```
+
+Leave `ADD_ZETTEL_ASSET_VERSION`, the `stale_add_zettel_versions` tuple (it does NOT contain `20260518b`, which is still validly used by unchanged files — do not add it), the `static`/`mobile` map entries, and all `*.css?v=` / `summarizer.js?v=` / `app.js?v=` pins unchanged.
 
 - [ ] **Step 4: Run the frontend test file**
 
