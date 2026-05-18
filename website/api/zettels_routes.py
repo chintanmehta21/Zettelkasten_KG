@@ -620,6 +620,15 @@ async def list_zettels(
     """Dedicated per-user Zettel list (v2). Distinct from /api/graph?view=my
     (the 3D knowledge-graph). ``id`` is the workspace_zettel UUID so the
     existing DELETE/PATCH /api/zettels/{id} contract works directly.
+
+    Known v1 limitations (plan-accepted, YAGNI):
+    - ``limit`` and ``offset`` are applied PER WORKSPACE — each
+      ``list_workspace_zettels(ws_id, limit=limit, offset=offset)`` call is
+      sliced independently, not over a single cross-workspace window. Users with
+      one personal workspace (the typical production case) are unaffected.
+    - ``total`` in the response equals ``len(items)`` — the number of items
+      returned in this response after per-workspace slicing and canonical
+      dedupe, NOT the user's grand total of zettels in the database.
     """
     if user is None:
         return _problem(
