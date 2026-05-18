@@ -219,42 +219,78 @@ body {
   outline-offset: 2px;
 }
 
-/* Filter dropdown — multi-section */
+/* Nested "All Filters" menu — mirrors the My Zettels filter
+   (website/features/user_zettels/css/user_zettels.css .zettels-filter-*).
+   Teal-accented dark theme: a compact menu of parent rows, each opening
+   a flyout submenu to the LEFT (header is right-aligned). */
 .kg-filter-dropdown {
   position: fixed;
   top: 70px;
   right: 80px;
-  width: 240px;
-  background: rgba(12, 16, 28, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 8px;
   z-index: 200;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
 }
-.kg-filter-section { display: flex; flex-direction: column; }
-.kg-filter-section + .kg-filter-section { border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px; padding-top: 6px; }
-.kg-filter-section-header {
+.kg-filter-menu {
+  position: relative;
+  min-width: 200px;
+  background: linear-gradient(160deg, hsl(223, 24%, 9%), hsl(221, 22%, 7%));
+  border: 1px solid var(--kg-border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.42),
+    inset 1px 1px 0 rgba(210, 230, 240, 0.03),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.28);
+}
+.kg-filter-parent,
+.kg-filter-clear {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kg-text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  padding: 0.52rem 0.62rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(180,192,210,0.55);
+  gap: 0.4rem;
   cursor: pointer;
-  user-select: none;
+  text-align: left;
+  transition: background-color 0.16s ease, color 0.16s ease;
 }
-.kg-filter-section-chevron { transition: transform 0.18s; }
-.kg-filter-section.collapsed .kg-filter-section-chevron { transform: rotate(-90deg); }
-.kg-filter-section.collapsed .kg-filter-section-body { display: none; }
+.kg-filter-parent:hover,
+.kg-filter-clear:hover {
+  background: var(--kg-bg-hover);
+  color: var(--kg-text);
+}
+.kg-filter-parent.active {
+  background: rgba(20, 184, 166, 0.16);
+  color: #2dd4bf;
+}
+.kg-filter-submenu-arrow { color: var(--kg-text-muted); }
+.kg-filter-clear {
+  margin-top: 0.2rem;
+  border-top: 1px solid var(--kg-border);
+  padding-top: 0.6rem;
+  color: var(--kg-text-muted);
+  justify-content: flex-start;
+}
+.kg-filter-submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: calc(100% + 6px);
+  min-width: 220px;
+  max-height: 320px;
+  overflow: auto;
+  background: linear-gradient(160deg, hsl(223, 24%, 9%), hsl(221, 22%, 7%));
+  border: 1px solid var(--kg-border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+}
+.kg-filter-submenu.open { display: block; }
 .kg-filter-section-body { display: flex; flex-direction: column; padding: 2px 4px; gap: 2px; }
 
 .kg-filter-item {
@@ -294,13 +330,16 @@ body {
 .kg-filter-cta-link:hover { text-decoration: underline; }
 
 /* Section greyed out when current view scope cannot use this filter
-   (Kastens on Global). Whole surface acts as a single greyed click target
-   with a "Sign in to switch" tooltip (matches greyed Personal segment). */
-.kg-filter-section.disabled-scope { cursor: pointer; opacity: 0.55; }
-.kg-filter-section.disabled-scope .kg-filter-section-header { color: rgba(180,192,210,0.3); cursor: pointer; }
-.kg-filter-section.disabled-scope .kg-filter-section-body { pointer-events: none; }
-.kg-filter-section.disabled-scope .kg-filter-empty { color: rgba(180,192,210,0.5); font-style: italic; }
-.kg-filter-section.disabled-scope:hover { opacity: 0.75; }
+   (Kastens on Global). The parent row + its flyout submenu both carry
+   .disabled-scope so the affordance reads as one greyed unit with a
+   "Sign in to switch" tooltip (matches greyed Personal segment). */
+.kg-filter-parent.disabled-scope,
+.kg-filter-submenu.disabled-scope { cursor: pointer; opacity: 0.55; }
+.kg-filter-parent.disabled-scope { color: rgba(180,192,210,0.3); }
+.kg-filter-submenu.disabled-scope .kg-filter-section-body { pointer-events: none; }
+.kg-filter-submenu.disabled-scope .kg-filter-empty { color: rgba(180,192,210,0.5); font-style: italic; }
+.kg-filter-parent.disabled-scope:hover,
+.kg-filter-submenu.disabled-scope:hover { opacity: 0.75; }
 
 .hidden {
   display: none !important;
@@ -835,25 +874,31 @@ body {
 }
 
 /* ----------------------------------------------------------------
-   WAVE-C 1c — strength controls (bucket toggle + numeric slider).
-   Amber/gold theme only (CLAUDE.md: never purple on /knowledge-graph).
-   ---------------------------------------------------------------- */
+   WAVE-C 1c — connection-strength controls (bucket toggle + slider).
+   FILTER CHROME ONLY. Recoloured amber/gold -> site teal to match the
+   My Zettels filter (operator: "Keep the same colour scheme (Teal)").
+   The 3D graph's edge/node colours are NOT affected — those stay amber
+   (EDGE_TIER_COLOR / COLORS in app.js). Never purple. The strength
+   filtering LOGIC is unchanged; only placement + colour move. Now lives
+   inside the "Connection strength" flyout submenu, so it stacks. */
 .kg-strength-controls {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 10px;
-  padding: 4px 8px;
-  border: 1px solid rgba(212, 160, 36, 0.25);
+  padding: 6px 8px;
+  border: 1px solid rgba(20, 184, 166, 0.25);
   border-radius: 8px;
-  background: rgba(212, 160, 36, 0.04);
+  background: rgba(20, 184, 166, 0.04);
 }
-.kg-strength-buckets { display: inline-flex; gap: 2px; }
+.kg-strength-buckets { display: flex; gap: 4px; }
 .kg-strength-bucket {
   appearance: none;
+  flex: 1;
   background: transparent;
-  border: 1px solid rgba(212, 160, 36, 0.25);
-  color: rgba(220, 200, 150, 0.75);
-  padding: 3px 8px;
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  color: rgba(190, 220, 215, 0.75);
+  padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -862,32 +907,107 @@ body {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .kg-strength-bucket:hover {
-  background: rgba(212, 160, 36, 0.10);
-  color: #f3d98a;
+  background: rgba(20, 184, 166, 0.10);
+  color: #2dd4bf;
 }
 .kg-strength-bucket.active {
-  background: rgba(212, 160, 36, 0.22);
-  color: #f3d98a;
-  border-color: #D4A024;
+  background: rgba(20, 184, 166, 0.22);
+  color: #2dd4bf;
+  border-color: hsl(172, 66%, 50%);
 }
 .kg-strength-slider-wrap {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .kg-strength-slider-wrap input[type="range"] {
-  width: 90px;
-  accent-color: #D4A024;
+  flex: 1;
+  width: 100%;
+  accent-color: hsl(172, 66%, 50%);
 }
 .kg-strength-value {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: #f3d98a;
+  color: #2dd4bf;
   min-width: 32px;
   text-align: right;
 }
+
+/* Source-type legend — bottom-left "i" info popup. Teal-accented chrome
+   consistent with the filter. Swatch colours are injected inline by
+   app.js from the real COLORS{} map (never overridden here). */
+.kg-legend-btn {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 150;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(8, 12, 24, 0.7);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  border-radius: 10px;
+  color: rgba(180, 192, 210, 0.75);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.kg-legend-btn:hover,
+.kg-legend-btn.active {
+  background: rgba(20, 184, 166, 0.14);
+  border-color: rgba(20, 184, 166, 0.55);
+  color: #2dd4bf;
+}
+.kg-legend-btn:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.55);
+  outline-offset: 2px;
+}
+.kg-legend-popup {
+  position: fixed;
+  left: 20px;
+  bottom: 70px;
+  z-index: 150;
+  min-width: 168px;
+  background: linear-gradient(160deg, hsl(223, 24%, 9%), hsl(221, 22%, 7%));
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+.kg-legend-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(180, 192, 210, 0.55);
+  margin-bottom: 8px;
+}
+.kg-legend-list { display: flex; flex-direction: column; gap: 6px; }
+.kg-legend-row { display: flex; align-items: center; gap: 10px; }
+.kg-legend-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.kg-legend-label {
+  font-size: 0.82rem;
+  color: rgba(220, 228, 240, 0.9);
+}
+
 @media (max-width: 720px) {
-  .kg-strength-controls { gap: 6px; padding: 3px 6px; }
-  .kg-strength-slider-wrap input[type="range"] { width: 60px; }
-  .kg-strength-bucket { padding: 2px 6px; font-size: 10px; }
+  .kg-strength-controls { gap: 8px; padding: 5px 6px; }
+  .kg-strength-bucket { padding: 3px 6px; font-size: 10px; }
+  .kg-filter-dropdown { right: 16px; }
+  .kg-filter-submenu {
+    position: static;
+    margin-top: 0.25rem;
+    min-width: 0;
+    box-shadow: none;
+  }
+  .kg-legend-btn { width: 36px; height: 36px; left: 14px; bottom: 14px; }
+  .kg-legend-popup { left: 14px; bottom: 58px; }
 }
