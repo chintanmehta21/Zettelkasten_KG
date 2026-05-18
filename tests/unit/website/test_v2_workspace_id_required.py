@@ -6,8 +6,8 @@ cross-tenant leaks via missing/NULL workspace_id at the write boundary.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, patch
-from uuid import uuid4, UUID
+from unittest.mock import MagicMock
+from uuid import uuid4
 
 
 # ---------------------------------------------------------------------------

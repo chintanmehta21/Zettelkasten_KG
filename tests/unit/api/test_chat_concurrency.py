@@ -5,7 +5,6 @@ import asyncio
 
 import pytest
 
-from website.api import _concurrency
 from website.api._concurrency import (
     QueueFull,
     acquire_rerank_slot,
@@ -25,7 +24,7 @@ def _reset_state(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_queue_full_when_depth_exceeds_max():
-    held = asyncio.Event()
+    asyncio.Event()
     release = asyncio.Event()
     started = asyncio.Event()
 

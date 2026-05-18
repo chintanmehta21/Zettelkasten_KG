@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-import networkx as nx
 
 from website.features.rag_pipeline.evaluation.kg_snapshot import (
     snapshot_kasten,

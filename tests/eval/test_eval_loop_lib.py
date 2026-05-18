@@ -13,7 +13,6 @@ Scope (pure-unit, no Gemini, no network):
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -24,13 +23,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from ops.scripts.lib import artifacts, churn_ledger, git_helper, phases
-from ops.scripts.lib.state_detector import IterationState, detect_iteration_state
-from website.features.summarization_engine.evaluator.consolidated import (
+from ops.scripts.lib import artifacts, churn_ledger, git_helper, phases  # noqa: E402
+from ops.scripts.lib.state_detector import IterationState, detect_iteration_state  # noqa: E402
+from website.features.summarization_engine.evaluator.consolidated import (  # noqa: E402
     evaluator_implementation_fingerprint,
     rubric_sha256,
 )
-from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION
+from website.features.summarization_engine.evaluator.prompts import PROMPT_VERSION  # noqa: E402
 
 
 # ── state_detector ───────────────────────────────────────────────────────────

@@ -16,7 +16,6 @@ from __future__ import annotations
 import pathlib
 import re
 
-import pytest
 
 
 LAUNCHER = pathlib.Path("website/features/user_pricing/js/purchase_launcher.js")

@@ -1,7 +1,6 @@
 """Dimension B: stress fixtures (vague, out-of-corpus, multi-hop)."""
 from __future__ import annotations
 
-import pytest
 
 from website.features.rag_pipeline.evaluation.eval_runner import (
     _REFUSAL_PHRASE, _refusal_query_score,

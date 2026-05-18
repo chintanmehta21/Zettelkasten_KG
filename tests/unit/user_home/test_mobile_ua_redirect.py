@@ -11,7 +11,6 @@ httpx ASGITransport so no live server is required.
 from __future__ import annotations
 
 import os
-import sys
 
 import pytest
 

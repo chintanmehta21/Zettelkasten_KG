@@ -376,7 +376,7 @@ def test_refund_processed_webhook_cannot_spoof_via_notes_payment_id(
     ``record.razorpay_payment_id != payment.entity.id``. Victim's pack
     credits must remain untouched.
     """
-    attacker = mint_user()
+    mint_user()
     victim = mint_user()
 
     from website.features.user_pricing.repository import (
@@ -459,7 +459,7 @@ def test_dispute_lost_webhook_cannot_spoof_via_notes_payment_id(
     attacker freeze the victim (``_DISPUTE_FROZEN`` add) and deduct their
     pack credits via the dispute.lost branch.
     """
-    attacker = mint_user()
+    mint_user()
     victim = mint_user()
 
     from website.features.user_pricing.repository import (

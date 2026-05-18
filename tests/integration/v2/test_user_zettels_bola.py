@@ -268,7 +268,7 @@ def test_uz02_shared_kasten_does_not_widen_personal_graph(
     a_wz_ids = asyncio.get_event_loop().run_until_complete(
         bulk_insert_zettels(owner_user=a, n=20, prefix="uz02-a")
     )
-    b_wz_ids = asyncio.get_event_loop().run_until_complete(
+    asyncio.get_event_loop().run_until_complete(
         bulk_insert_zettels(owner_user=b, n=20, prefix="uz02-b")
     )
 

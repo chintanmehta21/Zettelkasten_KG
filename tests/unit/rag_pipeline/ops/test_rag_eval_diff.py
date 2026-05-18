@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 import pytest
 
 from ops.scripts.lib.rag_eval_diff import (
@@ -21,7 +20,7 @@ def test_determinism_gate_blocks_drift():
 def test_write_improvement_delta(tmp_path):
     iter_dir = tmp_path / "iter-02"
     iter_dir.mkdir()
-    delta = write_improvement_delta(
+    write_improvement_delta(
         iter_dir=iter_dir,
         prev_composite=70.0,
         curr_composite=78.0,

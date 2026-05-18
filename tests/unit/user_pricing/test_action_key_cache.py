@@ -10,7 +10,6 @@ cache hit (CWE-639 / IDOR-by-cache-bridge).
 
 from __future__ import annotations
 
-import time
 
 import pytest
 

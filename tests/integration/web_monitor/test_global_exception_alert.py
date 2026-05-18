@@ -11,7 +11,6 @@ unhandled exception, then monkeypatch ``notify_app_error`` (resolved on the
 """
 from __future__ import annotations
 
-import os
 
 import pytest
 from fastapi.testclient import TestClient

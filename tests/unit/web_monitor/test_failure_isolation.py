@@ -13,13 +13,10 @@ from website.features.web_monitor import App_Errors as ae_mod
 from website.features.web_monitor import User_Activity as ua_mod
 from website.features.web_monitor import DO_Alerts as do_mod
 from website.features.web_monitor.App_Errors import (
-    SlackMessage as AppErrSlackMessage,
     notify_app_error,
-    post_to_app_errors,
 )
 from website.features.web_monitor.User_Activity import (
     SlackMessage as UASlackMessage,
-    notify_pricing_visit,
     post_to_user_activity,
 )
 

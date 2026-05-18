@@ -8,7 +8,6 @@ zero-out the sleeps so the test stays under 1s.
 from __future__ import annotations
 
 import asyncio
-import time
 
 import httpx
 import pytest
@@ -73,7 +72,6 @@ async def test_post_honors_retry_after_header_within_tolerance():
     contract — that float is what stamina uses as the wait override.
     """
     from website.features.web_monitor._slack_client import (
-        RateLimited,
         _backoff_hook,
     )
 

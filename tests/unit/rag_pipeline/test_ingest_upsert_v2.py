@@ -7,7 +7,6 @@ shape, and the embedding model version stamp.
 """
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 

@@ -25,7 +25,7 @@ import hashlib
 import pathlib
 
 
-# Computed 2026-05-11 against the committed file (size 3240 bytes).
+# Computed 2026-05-11 against the committed LF-normalized file (size 3240 bytes).
 RPC_FILE = pathlib.Path("supabase/website/_v2/12_revert_unauthorized_pricing.sql")
 GOLDEN_SHA256 = "9d9b8b071acdd753397099f663110848f630f056d6b8c8835b2d2dbb297461a6"
 
@@ -38,14 +38,17 @@ def test_rpc_file_exists():
 
 
 def test_consume_entitlement_body_unchanged():
-    body = RPC_FILE.read_bytes()
+    # The anti-tamper anchor is the SQL body, not the host checkout's newline
+    # convention. Normalize CRLF so the same protected body passes on Windows
+    # and Linux without weakening the golden hash.
+    body = RPC_FILE.read_bytes().replace(b"\r\n", b"\n")
     digest = hashlib.sha256(body).hexdigest()
     assert digest == GOLDEN_SHA256, (
         f"\n  RPC body drifted.\n"
         f"  File:     {RPC_FILE}\n"
         f"  Expected: {GOLDEN_SHA256}\n"
         f"  Actual:   {digest}\n"
-        f"  Size:     {len(body)} bytes\n\n"
+        f"  Size:     {len(body)} bytes after CRLF normalization\n\n"
         f"If this drift is intentional, update GOLDEN_SHA256 in the same commit "
         f"AND obtain explicit operator approval per CLAUDE.md 'pricing module "
         f"authority' rule (NEVER alter the consume_entitlement body without "

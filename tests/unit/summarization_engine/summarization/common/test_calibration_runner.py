@@ -4,7 +4,6 @@ import pytest
 
 from website.features.summarization_engine.summarization.common.calibration import (
     CalibrationHarness,
-    CalibrationResult,
     CalibrationShape,
     CalibrationVerdict,
 )

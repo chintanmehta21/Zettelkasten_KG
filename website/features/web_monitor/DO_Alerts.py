@@ -33,7 +33,6 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, ValidationError
 

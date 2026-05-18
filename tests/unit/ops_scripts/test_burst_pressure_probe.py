@@ -1,7 +1,6 @@
 """Unit tests for ops/scripts/burst_pressure_probe.py pure helpers."""
 from __future__ import annotations
 
-import pytest
 
 from ops.scripts.burst_pressure_probe import (
     _parse_status_distribution,

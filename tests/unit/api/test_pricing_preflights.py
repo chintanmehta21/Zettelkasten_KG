@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from website.api import module_runners
 from website.api import zettels_routes
 from website.api.module_runners import summarization as runner
 

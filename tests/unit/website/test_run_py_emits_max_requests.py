@@ -5,10 +5,8 @@ propagate to gunicorn-recycle storms (1 of 2 workers down every 3-7 reqs).
 """
 from __future__ import annotations
 
-import os
 from unittest.mock import patch
 
-import pytest
 
 import run as run_module
 

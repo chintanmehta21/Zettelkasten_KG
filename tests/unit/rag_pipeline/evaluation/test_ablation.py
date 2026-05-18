@@ -1,4 +1,3 @@
-from unittest.mock import patch, MagicMock
 from website.features.rag_pipeline.evaluation.ablation import compute_graph_lift
 from website.features.rag_pipeline.evaluation.types import ComponentScores
 

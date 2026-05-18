@@ -7,7 +7,6 @@ VAGUE branch keeps expand_vague; iter-13 K6 replaces it with LLM.
 """
 from __future__ import annotations
 
-import os
 from unittest.mock import AsyncMock
 
 import pytest

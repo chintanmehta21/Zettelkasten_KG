@@ -7,7 +7,6 @@ from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
-from pytest_httpx import HTTPXMock
 
 from website.features.summarization_engine.api.models import BatchV2Request
 from website.features.summarization_engine.batch.input_loader import load_batch_input

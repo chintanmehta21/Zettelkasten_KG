@@ -8,7 +8,6 @@ from __future__ import annotations
 import importlib
 import os
 import unittest.mock
-import pytest
 
 _ALL_SB_KEYS = [
     "SUPABASE_V2_URL", "SUPABASE_V2_ANON_KEY", "SUPABASE_V2_SERVICE_ROLE_KEY",

@@ -11,7 +11,6 @@ Fix: _decide_gold_skip_action() gates the gold-skip tag on both conditions:
   2. raw_content (the original generation) has a valid [id=...] citation.
 Falls through to honest low-confidence labeling otherwise.
 """
-import pytest
 
 from website.features.rag_pipeline.orchestrator import (
     _decide_gold_skip_action,

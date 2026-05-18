@@ -23,7 +23,6 @@ import hashlib
 import math
 import random
 
-import pytest
 
 from website.features.kg_features.scoring import compute_connection_strength
 

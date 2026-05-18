@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-import pytest
 
 from website.features.rag_pipeline.retrieval import chunk_share as chunk_share_module
 from website.features.rag_pipeline.retrieval.chunk_share import (

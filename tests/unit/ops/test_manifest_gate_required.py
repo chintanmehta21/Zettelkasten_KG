@@ -15,16 +15,27 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ("tests.unit.ops.test_apply_migrations",)
+
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Bring fixtures + helper from the sibling test module via pytest's plugin layer.
-from tests.unit.ops.test_apply_migrations import (  # noqa: F401
+from tests.unit.ops.test_apply_migrations import (  # noqa: E402
     _load,
-    fake_psycopg,
-    mig_dir,
+    fake_psycopg as _fake_psycopg,
+    mig_dir as _mig_dir,
 )
+
+
+@pytest.fixture(name="fake_psycopg")
+def fake_psycopg_fixture(monkeypatch):
+    return _fake_psycopg.__wrapped__(monkeypatch)
+
+
+@pytest.fixture(name="mig_dir")
+def mig_dir_fixture(tmp_path):
+    return _mig_dir.__wrapped__(tmp_path)
 
 
 @pytest.fixture

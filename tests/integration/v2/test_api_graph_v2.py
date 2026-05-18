@@ -10,7 +10,6 @@ and the FastAPI app's startup wiring.
 """
 from __future__ import annotations
 
-import os
 import uuid
 
 import asyncpg

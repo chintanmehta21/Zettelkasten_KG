@@ -1,8 +1,6 @@
 """iter-12 Task 36: post-iter audit aggregator tests."""
 import json
-from pathlib import Path
-import pytest
-from ops.scripts.post_iter_audit import run_audit, AuditFindings
+from ops.scripts.post_iter_audit import run_audit
 
 
 def _make_verif(checks: list) -> str:

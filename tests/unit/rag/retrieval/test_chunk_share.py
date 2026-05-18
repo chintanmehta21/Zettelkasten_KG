@@ -1,12 +1,16 @@
+import asyncio
 import time
+from unittest.mock import MagicMock
 
 import pytest
+
+from website.features.rag_pipeline.retrieval.chunk_share import (
+    ChunkShareStore,
+    should_apply_chunk_share,
+)
+from website.features.rag_pipeline.types import QueryClass
 
 pytestmark = pytest.mark.skip(reason="v1 chunk_share surface retired in Phase 2.1; replaced by tests/unit/rag_pipeline/test_chunk_share_v2.py")
-
-import pytest
-from unittest.mock import MagicMock
-from website.features.rag_pipeline.retrieval.chunk_share import ChunkShareStore
 
 
 def test_chunk_share_returns_per_kasten_counts():
@@ -17,7 +21,6 @@ def test_chunk_share_returns_per_kasten_counts():
         {"node_id": "c", "chunk_count": 2},
     ]
     store = ChunkShareStore(supabase=fake_supabase)
-    import asyncio
     result = asyncio.run(store.get_chunk_counts(sandbox_id="kasten1"))
     assert result == {"a": 16, "b": 6, "c": 2}
 
@@ -39,7 +42,6 @@ def test_chunk_share_caches_within_ttl():
         {"node_id": "a", "chunk_count": 5},
     ]
     store = ChunkShareStore(supabase=fake_supabase, ttl_seconds=60.0)
-    import asyncio
     asyncio.run(store.get_chunk_counts(sandbox_id="kasten1"))
     asyncio.run(store.get_chunk_counts(sandbox_id="kasten1"))
     assert fake_supabase.rpc.call_count == 1, "two reads within ttl should hit cache"
@@ -52,16 +54,10 @@ def test_chunk_share_cache_expires_after_ttl():
         {"node_id": "a", "chunk_count": 5},
     ]
     store = ChunkShareStore(supabase=fake_supabase, ttl_seconds=0.05)
-    import asyncio
     asyncio.run(store.get_chunk_counts(sandbox_id="kasten1"))
     time.sleep(0.1)
     asyncio.run(store.get_chunk_counts(sandbox_id="kasten1"))
     assert fake_supabase.rpc.call_count == 2, "read after ttl should re-fetch"
-
-
-# iter-09 RES-2: class-conditional chunk-share gate + ratio-to-median magnet detection.
-from website.features.rag_pipeline.retrieval.chunk_share import should_apply_chunk_share
-from website.features.rag_pipeline.types import QueryClass
 
 
 KM_COUNTS = {

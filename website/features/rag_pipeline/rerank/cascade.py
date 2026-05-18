@@ -12,21 +12,10 @@ supports test-time augmentation (Layer 7) when ``mode='high'``.
 from __future__ import annotations
 
 import asyncio
-import gc
 import json
 import logging
 import os
 import threading
-
-
-def aggressive_release() -> None:
-    """Lazy-import the shared release helper. cascade.py is imported by the
-    API layer (website.api -> rag_pipeline.service -> cascade), so a
-    top-level import would create a cycle. The helper is stateless and
-    cheap to look up after the first call (Python caches the import)."""
-    from website.api._mem_release import aggressive_release as _release
-
-    _release()
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,6 +27,16 @@ from tokenizers import Tokenizer
 from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger
 from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager
 from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
+
+
+def aggressive_release() -> None:
+    """Lazy-import the shared release helper. cascade.py is imported by the
+    API layer (website.api -> rag_pipeline.service -> cascade), so a
+    top-level import would create a cycle. The helper is stateless and
+    cheap to look up after the first call (Python caches the import)."""
+    from website.api._mem_release import aggressive_release as _release
+
+    _release()
 
 _logger = logging.getLogger(__name__)
 
