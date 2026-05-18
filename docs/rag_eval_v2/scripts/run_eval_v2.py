@@ -57,7 +57,7 @@ ROOT = Path(__file__).resolve().parents[3]
 RAG_EVAL_V2 = ROOT / "docs" / "rag_eval_v2"
 
 NARUTO_UUID = "f2105544-b73d-4946-8329-096d82f070d3"
-_KASTEN_NAME = {"psychedelic-drugs": "Psychedelic Drugs", "economics": "Economics"}
+_KASTEN_NAME = {"psychedelic-drugs": "Psychedelic drugs", "economics": "Economics"}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -131,8 +131,9 @@ def bootstrap_env() -> None:
 
 
 def _resolve_kasten_id(rag_repo, workspace_id: UUID, kasten_name: str) -> UUID | None:
+    target = kasten_name.strip().casefold()
     for row in rag_repo.list_kastens(workspace_id, limit=200):
-        if (row.get("name") or "").strip() == kasten_name:
+        if (row.get("name") or "").strip().casefold() == target:
             return UUID(str(row["id"]))
     return None
 
@@ -349,9 +350,22 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
         logger.error("is_v2_configured() == False — check SUPABASE_V2_* in .env")
         return 2
 
-    scope = get_supabase_v2_scope(NARUTO_UUID)
+    # get_supabase_v2_scope() can transiently return None on a Supabase
+    # network/RPC hiccup (observed: economics resolved fine while a
+    # back-to-back psychedelic-drugs run got None). Bounded retry keeps the
+    # eval loop from flaking; deterministic absence still fails after N tries.
+    scope = None
+    for _attempt in range(5):
+        scope = get_supabase_v2_scope(NARUTO_UUID)
+        if scope is not None:
+            break
+        logger.warning(
+            "v2 scope for Naruto came back None (attempt %d/5); retrying",
+            _attempt + 1,
+        )
+        time.sleep(2.0 * (_attempt + 1))
     if scope is None:
-        logger.error("no v2 workspace scope for Naruto %s", NARUTO_UUID)
+        logger.error("no v2 workspace scope for Naruto %s (after 5 attempts)", NARUTO_UUID)
         return 2
     _content_repo, _profile_id, workspace_id = scope
 
@@ -408,13 +422,41 @@ async def run(kasten_slug: str, iter_n: int, max_queries: int, settle_seconds: i
         if not qid or not text:
             continue
         try:
-            turn = await _answer_one(
-                orchestrator,
-                text=text,
-                kasten_id=kasten_id,
-                member_zettel_ids=member_zettel_ids,
-                user_uuid=user_uuid,
-            )
+            # Bounded retry on TRANSIENT network/DNS faults (observed:
+            # `ConnectError: [Errno 11001] getaddrinfo failed` knocked out
+            # 9/12 queries in one run while a sibling Kasten run succeeded).
+            # Only transient connectivity errors are retried; any other
+            # exception falls straight through to the per-query failure path.
+            _attempt = 0
+            while True:
+                try:
+                    turn = await _answer_one(
+                        orchestrator,
+                        text=text,
+                        kasten_id=kasten_id,
+                        member_zettel_ids=member_zettel_ids,
+                        user_uuid=user_uuid,
+                    )
+                    break
+                except Exception as _net_exc:  # noqa: BLE001
+                    _msg = f"{type(_net_exc).__name__}: {_net_exc}".lower()
+                    _transient = (
+                        "getaddrinfo failed" in _msg
+                        or "connecterror" in _msg
+                        or "connecttimeout" in _msg
+                        or "temporary failure in name resolution" in _msg
+                        or "11001" in _msg
+                        or "[errno -3]" in _msg
+                        or "connection reset" in _msg
+                    )
+                    if not _transient or _attempt >= 4:
+                        raise
+                    _attempt += 1
+                    logger.warning(
+                        "%s transient network fault (attempt %d/5): %s; retrying",
+                        qid, _attempt, type(_net_exc).__name__,
+                    )
+                    time.sleep(3.0 * _attempt)
             rec = _build_answer_record(
                 turn, chunk_to_zettel=chunk_to_zettel, by_zettel=by_zettel
             )
