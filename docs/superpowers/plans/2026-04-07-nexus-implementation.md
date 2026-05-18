@@ -1,10 +1,10 @@
-# Nexus Implementation Plan
+﻿# Nexus Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship an experimental Nexus feature that connects YouTube/GitHub/Reddit/Twitter accounts, imports artifacts, bulk-summarizes them, and stores resulting Zettels into the existing knowledge graph path.
 
-**Architecture:** Add a new Nexus API router and experimental UI page, implement provider-specific native OAuth + ingestion modules under `website/experimental_features/nexus/source_ingest`, store encrypted provider tokens in Supabase, and reuse the same summarize-and-persist pipeline by extracting shared persistence logic from `/api/summarize`.
+**Architecture:** Add a new Nexus API router and experimental UI page, implement provider-specific native OAuth + ingestion modules under `website/experimental_features/nexus/source_ingest`, store encrypted provider tokens in Supabase, and reuse the same summarize-and-persist pipeline by extracting shared persistence logic from `/api/zettels/add`.
 
 **Tech Stack:** FastAPI, Supabase, native OAuth (PKCE/state), google-genai (`gemini-2.5-flash-lite` for Nexus bulk), existing website KG repository and graph store, pytest.
 
@@ -210,9 +210,9 @@
 - Modify: `website/core/supabase_kg/repository.py`
 - Modify: `website/core/supabase_kg/models.py`
 
-- [ ] Move current node persistence logic from `/api/summarize` into reusable service function.
+- [ ] Move current node persistence logic from `/api/zettels/add` into reusable service function.
 - [ ] Keep file-store add, Supabase add, embedding generation, semantic linking, and entity extraction behavior equivalent.
-- [ ] Update `/api/summarize` to call shared persistence service and preserve response contract.
+- [ ] Update `/api/zettels/add` to call shared persistence service and preserve response contract.
 - [ ] Add/adjust source prefix handling if explicit provider source values are introduced.
 - [ ] Run: `pytest tests/test_website.py tests/test_supabase_kg.py -v`
 - [ ] Expected: no regression in current summarize flow.

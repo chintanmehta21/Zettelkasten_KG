@@ -1,4 +1,4 @@
-# WAVE-A Test Implementation Plan — user_pricing + user_auth + browser_cache
+﻿# WAVE-A Test Implementation Plan — user_pricing + user_auth + browser_cache
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -551,7 +551,7 @@ pytestmark = pytest.mark.live
 
 async def _consume_once(client, jwt: str, action_id: str):
     return await client.post(
-        "/api/summarize",
+        "/api/zettels/add",
         json={"url": "https://example.com", "action_id": action_id},
         headers={"Authorization": f"Bearer {jwt}"},
     )
@@ -597,7 +597,7 @@ def test_rpc_failure_fail_open_current_behavior(monkeypatch, mint_user):
     monkeypatch.setattr(entitlements, "_call_consume_rpc", boom, raising=False)
 
     with TestClient(create_app()) as client:
-        r = client.post("/api/summarize",
+        r = client.post("/api/zettels/add",
                         json={"url": "https://example.com", "action_id": "act-failopen"},
                         headers={"Authorization": f"Bearer {user.jwt}"})
         assert r.status_code != 402, "Current design fail-open: RPC outage must NOT block"
@@ -615,7 +615,7 @@ def test_rpc_failure_fail_closed_phase9(monkeypatch, mint_user):
     monkeypatch.setattr(entitlements, "_call_consume_rpc", boom, raising=False)
 
     with TestClient(create_app()) as client:
-        r = client.post("/api/summarize",
+        r = client.post("/api/zettels/add",
                         json={"url": "https://example.com", "action_id": "act-failclosed"},
                         headers={"Authorization": f"Bearer {user.jwt}"})
         assert r.status_code == 402
@@ -694,7 +694,7 @@ def test_plan_quota_exact(plan, meter, quota, mint_user_on_plan):
     """First `quota` calls succeed, the (quota+1)th returns 402."""
     user = mint_user_on_plan(plan=plan)  # fixture from Phase 0 — see fallback
     with TestClient(create_app()) as client:
-        endpoint = {"zettels": "/api/summarize", "rag": "/api/rag/adhoc", "kasten": "/api/rag/sandboxes"}[meter]
+        endpoint = {"zettels": "/api/zettels/add", "rag": "/api/rag/adhoc", "kasten": "/api/rag/sandboxes"}[meter]
         body = {"zettels": {"url": "https://example.com"}, "rag": {"query": "hi"}, "kasten": {"name": "k"}}[meter]
         for i in range(quota):
             r = client.post(endpoint, json={**body, "action_id": f"a-{i}"}, headers={"Authorization": f"Bearer {user.jwt}"})

@@ -1,4 +1,4 @@
-# Render → DigitalOcean Migration — Plan vs Implementation Gap Analysis
+﻿# Render → DigitalOcean Migration — Plan vs Implementation Gap Analysis
 
 > **ARCHIVED — Historical gap-analysis report (legacy, no longer used).** This system report audited the Render → DigitalOcean migration when it landed. The migration is complete; Render is no longer used. The DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -45,9 +45,9 @@ All five tasks are fully implemented. Git history confirms each landed as its ow
 - **Verdict:** Loader priority (file → env var → single-key), whitespace stripping, empty skipping, and error message all match the plan character-for-character.
 - **Gaps:** none.
 
-#### Task 2 — Lazy imports in `website/core/pipeline.py` ✅ EXACT MATCH
+#### Task 2 — Lazy imports in `website/api/module_runners/summarization.py` ✅ EXACT MATCH
 
-- **Implementation:** `website/core/pipeline.py` — heavy imports (`GeminiSummarizer`, `build_tag_list`, `get_extractor`, `detect_source_type`) all moved inside `summarize_url()`. Module-level imports limited to `logging`, `get_settings`, `normalize_url`, `resolve_redirects`. Unused `asdict` and `SourceType` removed.
+- **Implementation:** `website/api/module_runners/summarization.py` — heavy imports (`GeminiSummarizer`, `build_tag_list`, `get_extractor`, `detect_source_type`) all moved inside `summarize_url()`. Module-level imports limited to `logging`, `get_settings`, `normalize_url`, `resolve_redirects`. Unused `asdict` and `SourceType` removed.
 - **Tests:** `tests/test_pipeline_lazy_imports.py` — both tests present, checks the full HEAVY_MODULES list.
 - **Gaps:** none.
 

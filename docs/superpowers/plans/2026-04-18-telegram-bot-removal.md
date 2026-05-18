@@ -1,4 +1,4 @@
-# Telegram Bot Removal Implementation Plan
+﻿# Telegram Bot Removal Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -22,7 +22,7 @@
 - Create: `website/features/legacy_summary/summarizer.py`
 - Create: `website/main.py`
 - Modify: `website/core/__init__.py`
-- Modify: `website/core/pipeline.py`
+- Modify: `website/api/module_runners/summarization.py`
 - Modify: `website/features/summarization_engine/core/orchestrator.py`
 - Modify: `website/features/api_key_switching/__init__.py`
 - Modify: `website/experimental_features/nexus/service/bulk_import.py`
@@ -44,7 +44,7 @@
 - Create: `website/core/settings.py`
 - Create: `website/core/url_utils.py`
 - Modify: `website/core/__init__.py`
-- Modify: `website/core/pipeline.py`
+- Modify: `website/api/module_runners/summarization.py`
 - Modify: `website/features/summarization_engine/core/orchestrator.py`
 - Modify: `website/features/api_key_switching/__init__.py`
 - Modify: `website/experimental_features/nexus/service/persist.py`
@@ -103,7 +103,7 @@ Create `website/core/url_utils.py` by moving the SSRF-safe URL helpers from `tel
 - [ ] **Step 7: Cut over website callers to the native modules**
 
 Update these imports:
-- `website/core/pipeline.py`
+- `website/api/module_runners/summarization.py`
 - `website/features/summarization_engine/core/orchestrator.py`
 - `website/features/api_key_switching/__init__.py`
 - `website/experimental_features/nexus/service/persist.py`
@@ -134,7 +134,7 @@ Expected: PASS, or a smaller set of failures that point only to the next migrati
 - [ ] **Step 10: Commit**
 
 ```bash
-git add website/core/settings.py website/core/url_utils.py website/core/__init__.py website/core/pipeline.py website/features/summarization_engine/core/orchestrator.py website/features/api_key_switching/__init__.py website/experimental_features/nexus/service/persist.py tests/unit/website/test_settings.py tests/unit/website/test_url_utils.py
+git add website/core/settings.py website/core/url_utils.py website/core/__init__.py website/api/module_runners/summarization.py website/features/summarization_engine/core/orchestrator.py website/features/api_key_switching/__init__.py website/experimental_features/nexus/service/persist.py tests/unit/website/test_settings.py tests/unit/website/test_url_utils.py
 git commit -m "refactor: move website config and url utils local"
 ```
 

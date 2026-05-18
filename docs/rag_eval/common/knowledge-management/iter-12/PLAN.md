@@ -1,4 +1,4 @@
-# iter-12 RAG-eval Recovery Plan
+﻿# iter-12 RAG-eval Recovery Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Read [RESEARCH.md](RESEARCH.md) before each phase.
 
@@ -1873,7 +1873,7 @@ git commit -m "feat: demote factor telemetry and env knob"
 **Files:**
 - New: `supabase/website/kg_public/migrations/2026-05-07_kg_node_aliases.sql`
 - New: `website/features/rag_pipeline/ingest/entity_canonicalizer.py`
-- Modify: `website/core/pipeline.py` (zettel write path — call canonicalizer before `kg_nodes` upsert)
+- Modify: `website/api/module_runners/summarization.py` (zettel write path — call canonicalizer before `kg_nodes` upsert)
 - Modify: `website/features/rag_pipeline/retrieval/entity_anchor.py` (read new `matched_via` column for iter-13 attribution)
 - New: `ops/scripts/backfill_aliases.py` (one-shot backfill of existing zettels)
 - Tests: `tests/unit/rag/ingest/test_entity_canonicalizer.py` (NEW); extend `test_entity_anchor.py`
@@ -2000,7 +2000,7 @@ def summary_hash(summary: str) -> str:
     return hashlib.sha256((summary or "").encode("utf-8")).hexdigest()[:16]
 ```
 
-- [ ] **Step 3: Wire into write path** (`website/core/pipeline.py`):
+- [ ] **Step 3: Wire into write path** (`website/api/module_runners/summarization.py`):
 
 ```python
 # In the kg_nodes upsert path (write/update zettel):
@@ -2045,7 +2045,7 @@ supabase.table("kg_nodes").upsert(upsert_payload).execute()
 pytest tests/unit/rag/ingest/ tests/unit/rag/retrieval/test_entity_anchor.py -q
 git add supabase/website/kg_public/migrations/2026-05-07_kg_node_aliases.sql \
         website/features/rag_pipeline/ingest/entity_canonicalizer.py \
-        website/core/pipeline.py \
+        website/api/module_runners/summarization.py \
         website/features/rag_pipeline/retrieval/entity_anchor.py \
         ops/scripts/backfill_aliases.py \
         tests/unit/rag/ingest/test_entity_canonicalizer.py \
@@ -3616,7 +3616,7 @@ This step has zero code change; it's a forensic gate before Phase 1 starts so th
 - [ ] **Task 26** `score_rank_demote ... margin=...` log line emitted on every THEMATIC retrieval; scores.md surfaces p10/p50 margin distribution. (Note: Task 26's static 0.85→0.75 flip is SUPERSEDED by Task 32; only the telemetry survives.)
 - [ ] **Task 28 (R5)** `kg_nodes.aliases text[]` + `summary_hash text` columns added; `rag_resolve_entity_anchors` returns `(node_id, matched_via)` and matches via name OR alias OR tag; backfill script ran for all existing zettels; new ingests trigger canonicalization on summary-hash change only.
 - [ ] **Task 29 (R6)** entity extraction returns `{text, confidence}` per item; confidence floor 0.7; cap-3 by confidence DESC + tie-break; `kg_extraction_blocklist` table created; cold-start guard skips block when Kasten < 50 nodes; resolution success evicts row.
-- [ ] **Task 30 (R3)** `cited_in_context` runtime guard added to `/api/summarize`; `gold_expectation_groundedness_check` pre-eval audit runs over all 14 KM-Kasten queries; flagged-as-coverage-blind queries are EXCLUDED from gold@1 numerator (E1-style N/A treatment).
+- [ ] **Task 30 (R3)** `cited_in_context` runtime guard added to `/api/zettels/add`; `gold_expectation_groundedness_check` pre-eval audit runs over all 14 KM-Kasten queries; flagged-as-coverage-blind queries are EXCLUDED from gold@1 numerator (E1-style N/A treatment).
 - [ ] **Task 31 (R4 FULL SHIP)** `kg_kasten_metrics` extended with `seed_arm`, `seed_pool_bucket`, `seed_alpha`, `seed_beta`, `seed_total_pulls`, `seed_last_decay_at`, `bandit_disabled_at`, `bandit_disabled_reason` columns. Bandit module `anchor_seed_bandit.py` shipped with R4-followup mods 1-4: γ=0.98/day decay, S/M/L pool-size stratification, informative warm-start prior, per-Kasten kill switch column. Pre-flight `bandit_warm_start.py` script ran. Two-week ramp plan executed: Day 1-3 telemetry-only → Day 4-7 canary 1 → Day 8-14 canaries 2-3 → Day 15+ all-Kasten (operator-approved per acceptance gate). 5 pathology metrics surfaced at `/api/health`.
 - [ ] **Task 32 (R2)** `_pick_anchor_pin` helper inserted before `_xquad_select` call site; cap pin to slot-1 only; `_demote_factor_for_candidate` percentile-derived (slope `0.20`); SUPERSEDES Task 26's static 0.85→0.75 flip; cross-class fixtures cover sparse/dense/single-topic/compare/anchor-mismatch.
 - [ ] **Task 33 (R1)** documentation-only; deferred alternatives logged in `iter-12/RESEARCH.md` "iter-13 carry-overs"; mem-vault `decision` observation recorded.

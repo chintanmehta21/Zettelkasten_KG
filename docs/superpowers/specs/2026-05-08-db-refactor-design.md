@@ -1,4 +1,4 @@
-# DB Refactor Design — 2026-05-08 (rev. 2 — post-audit)
+﻿# DB Refactor Design — 2026-05-08 (rev. 2 — post-audit)
 
 **Status:** Brainstorming complete; locked decisions baked in; 41 audit findings addressed (12 BLOCKER + 29 MAJOR). Ready for implementation plan.
 **Scope:** Full Supabase schema redesign for the Zettelkasten website. Bot stays out of scope (writes to local `KG_DIRECTORY` / GitHub, not Supabase) — confirmed: bot does not dual-write.
@@ -894,7 +894,7 @@ CREATE INDEX idx_canonical_chunks_embedding_hnsw
 | Code area | Change |
 |---|---|
 | `website/core/supabase_v2/repositories/*.py` | Use `client.schema("content").table("canonical_zettels")` form throughout (audit C.1) |
-| `website/api/routes.py` `/api/summarize` | Insert workspace_id from JWT claim; canonical-then-overlay |
+| `website/api/routes.py` `/api/zettels/add` | Insert workspace_id from JWT claim; canonical-then-overlay |
 | `website/features/rag_pipeline/scoring/registry_adapter.py` | **~150-line adapter (Phase-1 mandatory)**. LISTEN over **direct Postgres connection (port 5432, NOT 6543 pgbouncer)** + 60s polling fallback (audit C.3). Initialized in **gunicorn `post_fork` hook**, not lifespan, to avoid `--preload` snapshot drift (audit F.2) |
 | `website/features/rag_pipeline/retrieval/hybrid.py` | Reads weights from `RegistryAdapter.get_weight(...)`. ANN goes through `content.search_chunks()` RPC (audit B.5), not direct table query |
 | `website/features/user_pricing/*` | `profile_id UUID` instead of `render_user_id TEXT` |

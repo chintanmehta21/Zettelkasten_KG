@@ -1,4 +1,4 @@
-# User Authentication Design — Supabase Auth + Google OAuth
+﻿# User Authentication Design — Supabase Auth + Google OAuth
 
 > **ARCHIVED CONTEXT — pre-migration spec.** Written while the app was hosted on Render.com (legacy, no longer used). Any "Render Dashboard" / "Render env var" reference below should be read as the production environment generally — those env vars now live in the DigitalOcean droplet's container env, not Render. See "Deployment Infrastructure (Canonical)" in the project root `CLAUDE.md` for the live setup.
 
@@ -38,7 +38,7 @@ Add end-to-end user authentication to the Zettelkasten Summarizer website using 
 │  website/api/routes.py                                       │
 │  ├─ GET  /api/me          → requires auth, returns profile   │
 │  ├─ GET  /api/graph       → optional auth, user-scoped       │
-│  └─ POST /api/summarize   → optional auth, user-scoped       │
+│  └─ POST /api/zettels/add   → optional auth, user-scoped       │
 └─────────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -167,7 +167,7 @@ Changes:
    - Authenticated: return user-scoped graph (kg_nodes where user_id matches)
    - Unauthenticated: return the global/default graph (backwards compatible)
 
-3. **`POST /api/summarize`** — add optional auth:
+3. **`POST /api/zettels/add`** — add optional auth:
    - Authenticated: write to user's graph in Supabase
    - Unauthenticated: write to file store only (backwards compatible)
 

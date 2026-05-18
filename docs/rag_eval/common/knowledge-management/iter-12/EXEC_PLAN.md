@@ -1,4 +1,4 @@
-# iter-12 EXEC plan
+﻿# iter-12 EXEC plan
 
 **Branch:** `iter12-exec` off `master@f98475b` (post-drift-fix)
 **Date:** 2026-05-12
@@ -21,7 +21,7 @@ This branch consolidates the post-PR-#11 / post-PR-#13 follow-up work into one r
 - **V0** — list Naruto's full v2 zettel inventory; pattern-match against the 7 iter-11 node-ids; freeze the canonical URL set.
 - **V1** — audit `content.canonical_zettels` + `content.workspace_zettels` + `content.canonical_chunks` for Naruto's workspace.
 - **V2** — clean-slate wipe: DELETE every Naruto-owned row in `content.workspace_zettels`, the matching `content.canonical_chunks`, the matching `content.canonical_zettels` (after FK check), every `rag.kasten_zettels` linking Naruto's Kastens, and every `rag.kastens` row owned by Naruto. From UI side: confirm `/home` is empty.
-- **I1** — re-ingest 7 URLs via `/api/summarize` with a working Naruto bearer (P0 fixed) and working YT pipeline (P3 fixed).
+- **I1** — re-ingest 7 URLs via `/api/zettels/add` with a working Naruto bearer (P0 fixed) and working YT pipeline (P3 fixed).
 - **I2** — verify per zettel: row in `content.canonical_zettels`, ≥1 row in `content.canonical_chunks`, row in `content.workspace_zettels` for Naruto's workspace.
 - **K1** — create `rag.kastens` row "Knowledge Management & Personal Productivity" + 7 `rag.kasten_zettels` linking rows.
 - **R1** — readiness verdict: re-run `iter-11/queries.json` query set against the rebuilt Kasten as a sanity baseline before authorizing the iter-12 eval run.

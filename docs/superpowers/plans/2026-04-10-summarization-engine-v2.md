@@ -1,10 +1,10 @@
-# Summarization Engine v2 Implementation Plan
+﻿# Summarization Engine v2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a dynamic, source-aware summarization engine at `website/features/summarization_engine/` that ingests URLs from 9 content sources (GitHub, Newsletters, Reddit, YouTube, HackerNews, LinkedIn, arXiv, Podcasts, Twitter), produces structured Zettelkasten summaries via tiered Gemini 2.5 Pro + Flash, and persists to Supabase — all without touching the existing `telegram_bot/` pipeline.
 
-**Architecture:** Pure library (returns `SummaryResult`, caller composes writers). 4-phase summarization pipeline (CoD densify → inverted-FactScore self-check → conditional patch → Flash structured extract). Auto-discovery registries for ingestors and summarizers. Extends existing `kg_nodes` Supabase schema. New endpoints `/api/v2/summarize`, `/api/v2/batch*` alongside existing `/api/summarize`.
+**Architecture:** Pure library (returns `SummaryResult`, caller composes writers). 4-phase summarization pipeline (CoD densify → inverted-FactScore self-check → conditional patch → Flash structured extract). Auto-discovery registries for ingestors and summarizers. Extends existing `kg_nodes` Supabase schema. New endpoints `/api/v2/summarize`, `/api/v2/batch*` alongside existing `/api/zettels/add`.
 
 **Tech Stack:** Python 3.11+, FastAPI, Pydantic v2, httpx, trafilatura 2.x, feedparser, PyMuPDF, youtube-transcript-api, yt-dlp, praw, beautifulsoup4, google-genai (Gemini 2.5 Pro + Flash), Supabase (postgrest-py), pytest + pytest-asyncio + pytest-httpx, sse-starlette.
 
@@ -124,7 +124,7 @@ Pure-library summarization engine that ingests URLs from 9 content sources and p
 - Writers are composable: `SupabaseWriter`, `ObsidianWriter`, `GithubRepoWriter`
 
 ## Integration
-- `/api/v2/summarize` and `/api/v2/batch*` endpoints alongside existing `/api/summarize`
+- `/api/v2/summarize` and `/api/v2/batch*` endpoints alongside existing `/api/zettels/add`
 - Old `telegram_bot/` pipeline untouched
 - Reuses `website/features/api_key_switching/key_pool.py`
 

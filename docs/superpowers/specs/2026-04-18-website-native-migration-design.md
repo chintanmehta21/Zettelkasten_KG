@@ -1,4 +1,4 @@
-# Website-Native Migration & Lightweight Runtime Design
+﻿# Website-Native Migration & Lightweight Runtime Design
 
 **Date:** 2026-04-18
 **Owner:** Chintan
@@ -55,7 +55,7 @@ The desired end state is that the website becomes the single source of truth for
 
 As of this design, website imports from `telegram_bot` are concentrated in the following areas:
 
-- `website/core/pipeline.py`
+- `website/api/module_runners/summarization.py`
 - `website/core/__init__.py`
 - `website/features/summarization_engine/core/orchestrator.py`
 - `website/features/api_key_switching/__init__.py`

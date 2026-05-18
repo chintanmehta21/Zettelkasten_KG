@@ -1,4 +1,4 @@
-# Targeted Improvements for KG Intelligence Layer Design (M1–M6)
+﻿# Targeted Improvements for KG Intelligence Layer Design (M1–M6)
 
 ## Overview
 
@@ -82,7 +82,7 @@ This report reviews the "KG Intelligence Layer — Native Design Spec" and propo
 ### Performance and Memory
 
 - Add a simple guard in `_build_networkx_graph` to skip edges whose endpoints no longer exist in the node set (e.g., due to inconsistent data or partial cache invalidation) to prevent NetworkX from materializing orphan nodes and bloating memory.[^1]
-- For larger graphs, consider moving analytics computation to a background task kicked off by explicit cache invalidation (e.g., after `POST /api/summarize`), then serving stale-but-reasonable metrics until the next analytics snapshot completes, rather than blocking the first GET /api/graph cache miss.[^3]
+- For larger graphs, consider moving analytics computation to a background task kicked off by explicit cache invalidation (e.g., after `POST /api/zettels/add`), then serving stale-but-reasonable metrics until the next analytics snapshot completes, rather than blocking the first GET /api/graph cache miss.[^3]
 
 ## Module M4: Natural Language Graph Query (Text-to-SQL)
 

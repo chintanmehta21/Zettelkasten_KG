@@ -1,4 +1,4 @@
-# Summarization Engine v2 — Design Spec
+﻿# Summarization Engine v2 — Design Spec
 
 **Date:** 2026-04-10
 **Status:** Draft for review
@@ -15,7 +15,7 @@ A dynamic, source-aware summarization engine that ingests URLs from nine distinc
 
 1. **Coverage first.** Missing a key insight from the source is a critical failure. Minor over-inclusion is acceptable.
 2. **Nine source types** with dedicated ingestion and summarization logic: GitHub, Newsletters, Reddit, YouTube, Hacker News, LinkedIn, arXiv, Podcasts, Twitter/X.
-3. **Zero blast radius.** The existing `telegram_bot/` pipeline stays untouched. New engine lives at `website/features/summarization_engine/` and exposes itself via `/api/v2/*` endpoints alongside the existing `/api/summarize`.
+3. **Zero blast radius.** The existing `telegram_bot/` pipeline stays untouched. New engine lives at `website/features/summarization_engine/` and exposes itself via `/api/v2/*` endpoints alongside the existing `/api/zettels/add`.
 4. **Token-efficient batch processing.** Batches ≥ 50 URLs route through the Gemini Batch API (50% discount, ~24h turnaround). Smaller batches and real-time requests use the realtime API.
 5. **Multi-user** via the existing `kg_users` schema and Supabase RLS.
 
@@ -26,7 +26,7 @@ A dynamic, source-aware summarization engine that ingests URLs from nine distinc
 - LinkedIn Playwright-authenticated extraction
 - OCR for scanned arXiv PDFs
 - Migrating the existing Telegram bot to call v2 engine
-- Migrating existing `/api/summarize` endpoint to v2 engine
+- Migrating existing `/api/zettels/add` endpoint to v2 engine
 - Replacing the existing Nexus batch module
 - Multi-stage Gemini Batch API pipelining (Phase 1 → 2 → 3 → 4 as separate batches)
 - Automated BERTScore or G-Eval quality scoring (manual spot-check only)
@@ -1053,7 +1053,7 @@ async def cancel_batch(
     """Cancel a running batch. Items in progress finish; pending items are skipped."""
 ```
 
-The old `/api/summarize` endpoint is untouched. It keeps calling `website/core/pipeline.py` against the old extractors.
+The old `/api/zettels/add` endpoint is untouched. It keeps calling `website/api/module_runners/summarization.py` against the old extractors.
 
 ---
 
@@ -1262,7 +1262,7 @@ pytest-httpx>=0.34         # HTTP cassette mocking for tests
   - `PODCAST_INDEX_KEY`, `PODCAST_INDEX_SECRET` — free self-signup at api.podcastindex.org
 - **Gemini key pool reused** from existing `api_env` file. No new credentials required.
 - **Supabase migration**: manual `psql` execution of the migration SQL, or `supabase db push` via CLI.
-- **Zero downtime**: old telegram bot + old `/api/summarize` keep running against old pipeline. New engine lives at `/api/v2/*`.
+- **Zero downtime**: old telegram bot + old `/api/zettels/add` keep running against old pipeline. New engine lives at `/api/v2/*`.
 
 ---
 
@@ -1287,7 +1287,7 @@ pytest-httpx>=0.34         # HTTP cassette mocking for tests
 - LinkedIn Playwright-authenticated extraction
 - OCR for scanned arXiv PDFs
 - Migration of existing telegram bot to call v2 engine
-- Migration of existing `/api/summarize` to v2 engine
+- Migration of existing `/api/zettels/add` to v2 engine
 - Replacement of existing Nexus batch module
 - Multi-stage Gemini Batch API pipelining (Phase 1 → 2 → 3 → 4 as separate batches)
 - Automated BERTScore or G-Eval quality scoring

@@ -16,7 +16,10 @@ def client():
     zettels_routes._IDEMPOTENCY_CACHE.clear()
 
     app = create_app()
-    return TestClient(app)
+    with TestClient(app) as test_client:
+        yield test_client
+    zettels_routes._RATE_STORE.clear()
+    zettels_routes._IDEMPOTENCY_CACHE.clear()
 
 
 class TestHealthEndpoint:
@@ -31,6 +34,12 @@ class TestIndexPage:
         resp = client.get("/")
         assert resp.status_code == 200
         assert "Zettelkasten" in resp.text
+
+    @pytest.mark.parametrize("path", ["/", "/m/", "/home", "/home/zettels"])
+    def test_html_pages_revalidate_asset_references(self, client: TestClient, path: str) -> None:
+        resp = client.get(path)
+        assert resp.status_code == 200
+        assert resp.headers["cache-control"] == "no-cache, max-age=0, must-revalidate"
 
 
 class TestAddZettelEndpoint:

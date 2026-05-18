@@ -1,4 +1,4 @@
-# Render → DigitalOcean Migration Design Specification
+﻿# Render → DigitalOcean Migration Design Specification
 
 > **ARCHIVED — Historical migration record.** This document describes a one-time migration from Render.com to a DigitalOcean droplet. The migration is complete and merged. The DigitalOcean droplet (Premium Intel 2 GB RAM / 1 vCPU / 70 GB NVMe SSD with Reserved IP, blue/green Docker Compose + Caddy) is the canonical and only production environment. **Do not treat any Render reference in this file as current; Render is no longer used.** See the "Deployment Infrastructure (Canonical)" section in the project root `CLAUDE.md` for the live setup.
 
@@ -91,7 +91,7 @@ Rationale (verified against DO "Choosing a plan" docs):
 
 Why Premium AMD wins for this workload:
 
-1. **Memory bandwidth matters most.** `numpy`, `scipy`, `networkx` PageRank, embeddings, and FastAPI JSON serialization all hit DRAM hard. 3200 MHz > 2933 MHz > 2666 MHz. This directly improves `/api/graph` and `/api/summarize` tail latency.
+1. **Memory bandwidth matters most.** `numpy`, `scipy`, `networkx` PageRank, embeddings, and FastAPI JSON serialization all hit DRAM hard. 3200 MHz > 2933 MHz > 2666 MHz. This directly improves `/api/graph` and `/api/zettels/add` tail latency.
 2. **NVMe SSD** makes blue-green image pulls and container start ~5–10s faster than SATA, which compounds over many deploys and restart recovery.
 3. **Latest-gen CPU** means better single-thread IPC, which is what a single-vCPU FastAPI worker actually cares about.
 4. The $1/mo premium over Regular is trivial compared to the reliability + UX upside and is consistent with user constraint #8 (zero-downtime) and #12 (UX masterclass).
@@ -182,7 +182,7 @@ The Telegram bot continues to run inside the same FastAPI process via `telegram_
 1. Provision the Droplet (Premium AMD $7, BLR1, Docker 1-Click).
 2. Rewrite `ops/Dockerfile` for size, cold-start, non-root, tini, healthcheck, labels.
 3. Update `.dockerignore` to shrink build context.
-4. Lazy-import refactor across `website/core/pipeline.py`, `website/experimental_features/nexus/service/persist.py`, and any other eager heavy imports found during audit.
+4. Lazy-import refactor across `website/api/module_runners/summarization.py`, `website/experimental_features/nexus/service/persist.py`, and any other eager heavy imports found during audit.
 5. Add `GEMINI_API_KEYS` env-var fallback to `website/features/api_key_switching/key_pool.py` without removing the existing `/etc/secrets/api_env` file-based loader (backward compatible).
 6. New `ops/caddy/Caddyfile` + `upstream.snippet` for blue-green.
 7. New `ops/docker-compose.blue.yml`, `docker-compose.green.yml`, `docker-compose.caddy.yml`.
@@ -318,7 +318,7 @@ website/features/api_key_switching/key_pool.py
 website/features/api_key_switching/__init__.py
   # Mirror loader order if __init__ re-exports load logic
 
-website/core/pipeline.py
+website/api/module_runners/summarization.py
   # Move `from telegram_bot.pipeline.summarizer import GeminiSummarizer`
   # and `from telegram_bot.sources import get_extractor` out of module scope
   # into `summarize_url()` body. (lines 15–16)
@@ -462,7 +462,7 @@ Each feature subagent delivered concrete wins; these are folded into the Dockerf
 - Caddy adds `Cache-Control: public, max-age=30` on `/api/graph` to align with the 30s in-memory TTL.
 - `user_zettels.js` (45 KB) and `home.css` (29 KB) are the biggest single assets. Compression yields ~60–70% wire reduction.
 
-**Summarizer `/api/summarize` (compute-heavy):**
+**Summarizer `/api/zettels/add` (compute-heavy):**
 - Lazy-import `GeminiSummarizer` and `get_extractor` — saves ~120 MB resident + ~1–2s first-request latency on cold start. See §8.2.
 - Keep the in-memory rate limiter; explicitly documented as blue-green lossy but acceptable.
 
@@ -489,7 +489,7 @@ Each feature subagent delivered concrete wins; these are folded into the Dockerf
 - Cold `docker run` to healthcheck-passing: **≤ 6s** on NVMe (Premium AMD).
 - First `/api/health` 200: **≤ 500ms** from `docker run`.
 - First `/` (home HTML) response on a cold container: **≤ 800ms** p95.
-- First `/api/summarize` on a cold container: **≤ 4s** p95 (Gemini + extractor initialization).
+- First `/api/zettels/add` on a cold container: **≤ 4s** p95 (Gemini + extractor initialization).
 
 ---
 
@@ -509,7 +509,7 @@ If none yield any keys, the loader raises as today. This change is strictly addi
 
 Two confirmed eager-import chains import ~120+ MB of runtime libs at module load, which `python run.py` pays before the first request is even routed. Both are in code paths that the website imports at startup:
 
-1. `website/core/pipeline.py:15-16`
+1. `website/api/module_runners/summarization.py:15-16`
    - `from telegram_bot.pipeline.summarizer import GeminiSummarizer`
    - `from telegram_bot.sources import get_extractor`
    - These drag in `google-genai`, `trafilatura`, `lxml`, `praw`, `yt-dlp`, and the entire extractor plugin registry at *import time*.
@@ -678,7 +678,7 @@ The migration from Render to the Droplet must not drop a single website request.
     - `GET /` → 200, home HTML
     - `GET /api/health` → 200
     - `GET /api/graph` → 200, JSON (node count matches Render)
-    - `POST /api/summarize` with a throwaway URL → 200
+    - `POST /api/zettels/add` with a throwaway URL → 200
     - `GET /knowledge-graph` → 200
     - `GET /home` (authed and unauthed)
     - `GET /home/zettels` (authed)
@@ -688,7 +688,7 @@ The migration from Render to the Droplet must not drop a single website request.
     - Verify HTTP/3 is active: `curl --http3 -I https://stage.zettelkasten.in/`
     - Verify IPv6: `curl -6 -I https://stage.zettelkasten.in/`
     - Verify HSTS header present: `curl -I https://stage.zettelkasten.in/ | grep -i strict-transport-security`
-14. Confirm Supabase reads/writes work from the new host (`/api/graph` returns the same node count as Render; submit a test URL through `/api/summarize` and confirm the new node appears).
+14. Confirm Supabase reads/writes work from the new host (`/api/graph` returns the same node count as Render; submit a test URL through `/api/zettels/add` and confirm the new node appears).
 15. Confirm the Gemini key pool loads from `GEMINI_API_KEYS` env var (check logs for `[KeyPool] loaded N keys from env var`).
 16. Test a blue-green flip locally on the droplet: push a trivial no-op change, watch the deploy workflow promote green, verify zero 5xx during the flip.
 
@@ -745,7 +745,7 @@ The migration from Render to the Droplet must not drop a single website request.
 
 - Zero 5xx errors observed from the website during the cutover window in Caddy logs.
 - BetterStack reports no incidents for the public hostname during T-0 to T+1 hour.
-- `/api/summarize` round-trips work end-to-end within 10 minutes of cutover.
+- `/api/zettels/add` round-trips work end-to-end within 10 minutes of cutover.
 - Telegram bot responds to a `/ping` or test command within 30 seconds of the `setWebhook` call.
 - `graph.json` / Supabase show writes landing from the new host.
 
@@ -930,7 +930,7 @@ Year 2+ cost watch: GoDaddy's `.in` renewal is ~₹1,400 (roughly $17/y). If tha
 2. `/api/health` p95 latency ≤ 100 ms from BLR1-adjacent vantage.
 3. `/` (home) TTFB p95 ≤ 500 ms from the user's region.
 4. `/api/graph` p95 ≤ 400 ms (Supabase read path) or ≤ 50 ms (cache hit).
-5. `/api/summarize` p95 ≤ 6 s (Gemini + extractor variance dominates; this is a sanity bound, not a regression gate).
+5. `/api/zettels/add` p95 ≤ 6 s (Gemini + extractor variance dominates; this is a sanity bound, not a regression gate).
 6. Zero user-reported outages during cutover.
 7. Zero 5xx spikes visible in Caddy logs during cutover window.
 8. Image size on GHCR ≤ 550 MB compressed.
