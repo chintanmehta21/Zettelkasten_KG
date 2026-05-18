@@ -185,19 +185,19 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/css/home.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260518a" in (
+    assert "/home/js/home.js?v=20260518b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260518a" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260518b" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/m/js/summarizer.js?v=20260518a" in (
+    assert "/m/js/summarizer.js?v=20260518b" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
 
