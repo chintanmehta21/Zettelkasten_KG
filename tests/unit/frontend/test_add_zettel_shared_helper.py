@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2].parent
-ADD_ZETTEL_ASSET_VERSION = "20260518a"
+ADD_ZETTEL_ASSET_VERSION = "20260518b"
 
 
 def test_all_add_zettel_surfaces_use_shared_helper():
