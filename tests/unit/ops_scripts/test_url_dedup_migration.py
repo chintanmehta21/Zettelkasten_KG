@@ -30,7 +30,9 @@ def test_migration_exists_and_is_well_formed():
 
 
 def test_rpc_conflict_target_is_url_only():
-    rpc = Path("supabase/website/_v2/17_content_rpcs.sql").read_text(encoding="utf-8").lower()
+    rpc = Path(
+        "supabase/website/_v2/repeatable/R__content_rpcs.sql"
+    ).read_text(encoding="utf-8").lower()
     assert "on conflict (normalized_url)" in rpc
     # The composite (normalized_url, content_hash) must not survive as a
     # conflict target. Scope the negative check to the ON CONFLICT clause:
