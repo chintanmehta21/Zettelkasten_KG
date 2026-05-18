@@ -1,4 +1,6 @@
 """iter-12 Class K3: confidence-gap bypass tests."""
+import pytest
+
 from website.features.rag_pipeline.types import (
     ChunkKind,
     QueryClass,
