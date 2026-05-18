@@ -1,0 +1,147 @@
+{
+  "_meta": {
+    "kasten_slug": "psychedelic-drugs",
+    "kasten_name": "Psychedelic Drugs",
+    "kasten_built_at": "PENDING_OPERATOR_INGEST",
+    "iter": "1",
+    "members_node_ids": [],
+    "members_node_ids_note": "Resolved at runtime by run_eval_v2.py from RAGRepository.list_kasten_zettels(kasten_id) -> canonical_zettel_id list. Empty here because ingestion is operator-gated; the harness writes the resolved list into each iter-N/queries.json copy.",
+    "expected_citation_key": "title_substring",
+    "expected_citation_key_note": "expected_primary_citation values are case-insensitive title substrings. The harness resolves each to a canonical_zettel_id via list_kasten_zettels title match, then matches answers (whose Citation.node_id is a canonical_chunk_id) after remapping chunk_id -> canonical_zettel_id.",
+    "source_type_breakdown": {
+      "youtube": 3,
+      "reddit": 2,
+      "web": 3
+    },
+    "ci_gates_summary": {
+      "end_to_end_gold_at_1_min": 0.6,
+      "synthesizer_grounding_min": 0.85,
+      "infra_failures_max": 0,
+      "max_per_source_top1_share": 0.4
+    }
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "single-zettel factual extraction from the Fadiman MAPS talk",
+      "text": "In James Fadiman's MAPS talk on scientific problem solving with psychedelics, what protocol or setting does he describe for using psychedelics to solve technical or creative problems?",
+      "expected_primary_citation": "Scientific Problem Solving with Psychedelics",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Fadiman describes a structured problem-solving session: a clearly defined problem stated in advance; a moderate dose in a calm, distraction-free setting; an intention-setting phase; then focused work on the problem during the session, with the psychedelic used as a tool for divergent insight rather than recreation."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "numeric / methodology extraction from the 28-day microdosing video",
+      "text": "In the 'Science of Micro-dosing: Tested for 28 DAYS' video, what dosing schedule and duration did the experiment use, and what was the headline outcome?",
+      "expected_primary_citation": "Micro-dosing",
+      "expected_minimum_citations": 1,
+      "ground_truth": "A sub-perceptual microdose taken on an intermittent schedule (not every day) across a 28-day self-experiment; the reported outcome is subjective changes in mood/focus with no dramatic perceptual effects, framed cautiously as anecdotal rather than clinical evidence."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "single-zettel deep extraction — arXiv DMT neural-correlates paper",
+      "text": "According to the 'Neural Correlates of the DMT Experience' arXiv paper, what neural or EEG signatures are associated with the DMT state?",
+      "expected_primary_citation": "Neural Correlates of the DMT Experience",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The paper reports DMT-induced changes in EEG spectral power (notably reduced alpha power) and altered signal complexity / connectivity that correlate with the intensity of the subjective experience, linking the immersive DMT state to measurable cortical dynamics."
+    },
+    {
+      "qid": "q4",
+      "class": "lookup",
+      "tests": "the Strangest Drug video — distinctive thesis extraction",
+      "text": "What makes the substance covered in 'The Strangest Drug Ever Studied' so unusual according to that video?",
+      "expected_primary_citation": "Strangest Drug",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The video frames the drug as unusual because of its uniquely brief but extraordinarily intense effect profile and the difficulty of studying it scientifically — its pharmacology and the phenomenology it produces sit far outside the pattern of typical psychoactive substances."
+    },
+    {
+      "qid": "q5",
+      "class": "multi_hop",
+      "tests": "explicit 2-zettel synthesis — names the two zettels to combine so partials are diagnosable as retriever failures",
+      "text": "The consciousness 'XOR theory' Reddit thread and the Vervaeke 'meaning crisis higher states' summary both touch on how psychedelics change the structure of awareness. How would the XOR-theory framing explain the higher-state experiences Vervaeke describes?",
+      "expected_primary_citation": [
+        "XOR",
+        "Awakening from the Meaning Crisis"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "The XOR-theory framing treats ordinary perception as a constrained, mutually-exclusive selection over possible realities; psychedelics relax that exclusivity. Vervaeke's higher states (a widened, self-transcending mode of knowing) map onto this as the XOR constraint loosening, letting normally-filtered aspects of awareness co-occur, which is experienced as expanded meaning and reduced ego-bound selection."
+    },
+    {
+      "qid": "q6",
+      "class": "thematic",
+      "tests": "broad cross-corpus synthesis — asks for >=4 citations so under-recall is measurable",
+      "text": "Across these zettels, what is the implicit view of how psychedelics relate to knowledge, truth, or insight? Cite at least four sources.",
+      "expected_primary_citation": [
+        "Scientific Problem Solving with Psychedelics",
+        "Neural Correlates of the DMT Experience",
+        "XOR",
+        "Awakening from the Meaning Crisis",
+        "cosmic-joke"
+      ],
+      "expected_minimum_citations": 4,
+      "ground_truth": "Themes: (1) psychedelics as a deliberate problem-solving / insight tool (Fadiman); (2) the altered state has measurable neural correlates, not just subjective report (DMT arXiv); (3) they relax the perceptual selection that defines ordinary reality (XOR theory); (4) they can induce self-transcending higher states tied to meaning (Vervaeke); (5) the LSD/Buddhism essay frames insight as seeing through the constructed, 'cosmic joke' nature of the self."
+    },
+    {
+      "qid": "q7",
+      "class": "step_back",
+      "tests": "abstract-from-concrete reasoning — picks an abstraction and asks where else it appears",
+      "text": "Several of these zettels suggest psychedelics destabilize a person's sense of a fixed self or fixed reality. Which zettels make that argument, and how does each one frame the destabilization?",
+      "expected_primary_citation": [
+        "cosmic-joke",
+        "XOR",
+        "certainty"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "The LSD/Tibetan-Buddhism essay frames it as seeing the self as an empty, constructed 'cosmic joke'; the XOR-theory thread frames it as collapsing the exclusive selection that builds a single reality; the 'disrupt the certainty of truth' philosophy thread frames it as eroding epistemic certainty about what is real."
+    },
+    {
+      "qid": "q8",
+      "class": "vague",
+      "tests": "single-topic vague query — rewriter must expand 'microdosing' to a useful retrieval",
+      "text": "Anything about microdosing?",
+      "expected_primary_citation": "Micro-dosing",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The 28-day microdosing self-experiment video is the primary microdosing-specific zettel; a correct answer surfaces it and summarizes the sub-perceptual intermittent-dosing approach and its cautious, anecdotal framing."
+    },
+    {
+      "qid": "q9",
+      "class": "lookup",
+      "tests": "Reddit philosophy thread — specific claim extraction",
+      "text": "In the philosophy Reddit thread about psychedelic experiences disrupting the certainty of truth, what is the core argument about how a psychedelic experience changes someone's relationship to 'truth'?",
+      "expected_primary_citation": "certainty",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The thread argues a powerful psychedelic experience can feel more real than ordinary reality, which undermines a person's confidence that their normal waking state is the privileged arbiter of truth — leaving them with epistemic humility or destabilized certainty rather than a new fixed belief."
+    },
+    {
+      "qid": "q10",
+      "class": "lookup",
+      "tests": "web essay — named-concept extraction (LSD / Tibetan Buddhism)",
+      "text": "In the 'LSD, Tibetan Buddhism, and the Cosmic Joke of Being' essay, what is the 'cosmic joke' and what realization is it pointing at?",
+      "expected_primary_citation": "cosmic-joke",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The 'cosmic joke' is the realization that the separate, solid self one defends so seriously is empty/constructed — the punchline being that there was never a fixed self to protect; LSD and Buddhist practice are framed as two routes to glimpsing this same insight."
+    },
+    {
+      "qid": "q11",
+      "class": "adversarial",
+      "tests": "hallucination resistance — MDMA-assisted PTSD therapy trials are absent from every zettel",
+      "text": "Summarize what this Kasten says about the Phase 3 clinical trial results for MDMA-assisted therapy for PTSD.",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "No zettel in this Kasten covers MDMA-assisted PTSD Phase 3 trials. A correct answer must refuse or explicitly state the absence; fabricating trial numbers or outcomes is the hard fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q12",
+      "class": "vague",
+      "tests": "two-token vague query — must route to the DMT arXiv zettel, not the generic 'psychedelic' magnet",
+      "text": "DMT brain?",
+      "expected_primary_citation": "Neural Correlates of the DMT Experience",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The DMT neural-correlates arXiv paper is the only DMT-and-brain-specific zettel; a correct answer retrieves it and summarizes the EEG/connectivity signatures of the DMT state rather than answering with unrelated psychedelic content."
+    }
+  ]
+}
