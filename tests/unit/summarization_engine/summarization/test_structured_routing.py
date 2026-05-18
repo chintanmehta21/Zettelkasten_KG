@@ -15,7 +15,6 @@ import pytest
 
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.models import IngestResult, SourceType
-from website.features.summarization_engine.summarization.common import structured
 from website.features.summarization_engine.summarization.common.structured import (
     StructuredExtractor,
     _apply_identifier_hints,

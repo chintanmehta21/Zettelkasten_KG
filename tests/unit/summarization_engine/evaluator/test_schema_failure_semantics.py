@@ -10,7 +10,6 @@ These tests pin the contract enforced by:
 import json
 
 import pytest
-from pydantic import ValidationError
 
 from website.features.summarization_engine.evaluator.models import (
     AntiPatternTrigger,

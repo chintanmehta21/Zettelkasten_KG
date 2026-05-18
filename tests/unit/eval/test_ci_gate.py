@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from ops.scripts.eval.ci_gate import (
     GateResult,

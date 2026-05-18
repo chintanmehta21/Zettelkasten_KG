@@ -310,9 +310,12 @@ async def test_rerank_threads_query_class_through_fused_score() -> None:
 
 
 def test_mmr_is_stable_when_all_nodes_distinct() -> None:
-    a = _candidate("node-a", 0.0); a.final_score = 0.9
-    b = _candidate("node-b", 0.0); b.final_score = 0.8
-    c = _candidate("node-c", 0.0); c.final_score = 0.7
+    a = _candidate("node-a", 0.0)
+    a.final_score = 0.9
+    b = _candidate("node-b", 0.0)
+    b.final_score = 0.8
+    c = _candidate("node-c", 0.0)
+    c.final_score = 0.7
 
     picked = _mmr_select([a, b, c], top_k=3, node_penalty=0.10)
     assert [x.node_id for x in picked] == ["node-a", "node-b", "node-c"]

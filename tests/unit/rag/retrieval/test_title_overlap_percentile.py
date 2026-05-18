@@ -1,5 +1,4 @@
 """iter-12 Phase 5 / Task 9: Q5 percentile-based title-overlap exemption."""
-import pytest
 
 
 def _cand(node_id, base_rrf, final_rrf, title_boost=0.0):

@@ -4,7 +4,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "deploy-droplet.yml"

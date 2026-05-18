@@ -1,5 +1,4 @@
 """iter-12 Phase 7: Class S + W + I9 — trust-first metrics + composite reweight + per-class breakdown."""
-import pytest
 
 
 def test_accuracy_user_visible_excludes_refused():

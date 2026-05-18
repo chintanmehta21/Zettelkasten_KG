@@ -1,5 +1,4 @@
 """iter-12 Task 35: per-query telemetry — retry_outcome_class enum + classifier."""
-import pytest
 
 
 def test_classify_empty_pool():

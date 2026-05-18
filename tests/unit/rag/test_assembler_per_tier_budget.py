@@ -10,7 +10,6 @@ from uuid import uuid4
 
 import pytest
 
-from website.features.rag_pipeline.context import assembler as assembler_mod
 from website.features.rag_pipeline.context.assembler import (
     ContextAssembler,
     _BUDGET_BY_LLM_TIER,

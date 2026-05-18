@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet

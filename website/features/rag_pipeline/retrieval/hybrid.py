@@ -5,25 +5,28 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import os
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-import os
-
+from website.core.supabase_v2.client import get_v2_client
 from website.features.rag_pipeline.errors import EmptyScopeError
 from website.features.rag_pipeline.query.metadata import QueryMetadata
-from website.features.rag_pipeline.retrieval._async_helpers import rpc_call
 from website.features.rag_pipeline.query.router import _COMPARE_PATTERN
-from website.features.rag_pipeline.retrieval.kasten_freq import (
-    KastenFrequencyStore,
-)
+from website.features.rag_pipeline.retrieval._async_helpers import rpc_call
 from website.features.rag_pipeline.retrieval.chunk_share import (
     ChunkShareStore,
     compute_chunk_share_penalty,
     should_apply_chunk_share,
 )
+from website.features.rag_pipeline.retrieval.kasten_freq import (
+    KastenFrequencyStore,
+)
+from website.features.rag_pipeline.scoring.registry_adapter import RegistryAdapter
+from website.features.rag_pipeline.types import ChunkKind, QueryClass, RetrievalCandidate, ScopeFilter, SourceType
 
 # iter-07 Fix B: COMPARE-aware anti-magnet. When the rewritten query contains
 # a compare/vs pattern AND ≥2 person entities, disable the kasten-frequency
@@ -113,14 +116,10 @@ _SCORE_RANK_GAP_BYPASS = float(os.environ.get("RAG_SCORE_RANK_GAP_BYPASS", "1.5"
 # iter-12 Task 32 (R2): percentile-derived demote slope; replaces static 0.85 factor.
 _DEMOTE_SLOPE = float(os.environ.get("RAG_SCORE_RANK_DEMOTE_SLOPE", "0.20"))
 
-from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate, ScopeFilter, SourceType, ChunkKind
-
 # iter-10 P3: score-rank-correlation magnet gate. THEMATIC/STEP_BACK only.
 # NOT applied to LOOKUP (legitimate proper-noun magnets), VAGUE (already
 # gated by vague_low_entity), or MULTI_HOP (loses hop-2 anchors).
 _SCORE_RANK_GATED_CLASSES = (QueryClass.THEMATIC, QueryClass.STEP_BACK)
-from website.core.supabase_v2.client import get_v2_client
-from website.features.rag_pipeline.scoring.registry_adapter import RegistryAdapter
 
 _log = logging.getLogger(__name__)
 
@@ -290,9 +289,6 @@ def _detect_compare_intent_text_only(query: str) -> bool:
 # fraction of variants, suppress the per-variant consensus bump (it's a
 # magnet, not a relevance signal). The bump is at line ~169.
 _CONSENSUS_SUPPRESS_FRACTION = 0.5
-
-
-from dataclasses import dataclass
 
 
 @dataclass

@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from ops.scripts.lib.rag_eval_billing import (
     BillingTier,

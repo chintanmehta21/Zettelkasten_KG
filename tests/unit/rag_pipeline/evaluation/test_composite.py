@@ -1,7 +1,6 @@
 import math
 
 import pytest
-from pathlib import Path
 
 from website.features.rag_pipeline.evaluation.composite import (
     compute_composite,

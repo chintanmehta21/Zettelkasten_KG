@@ -6,7 +6,6 @@ full pipeline.
 """
 from __future__ import annotations
 
-import pytest
 
 from website.core.text_polish import (
     comma_after_adverbial,

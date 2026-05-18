@@ -10,6 +10,9 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
+from website.api.auth import get_current_user, get_optional_user
+from website.app import create_app
+
 TEST_SECRET = "test-jwt-secret-that-is-long-enough-for-hs256!!"
 
 
@@ -44,9 +47,6 @@ class TestAuthSettings:
             assert len(secret) > 0
         finally:
             os.environ.pop("SUPABASE_JWT_SECRET", None)
-
-
-from website.api.auth import get_current_user, get_optional_user
 
 
 class TestGetCurrentUser:
@@ -160,9 +160,6 @@ class TestGetOptionalUser:
         resp = client.get("/test", headers={"Authorization": "Bearer garbage"})
         assert resp.status_code == 200
         assert resp.json()["user"] is None
-
-
-from website.app import create_app
 
 
 @pytest.fixture

@@ -1,5 +1,4 @@
 from website.features.rag_pipeline.evaluation.kg_recommender import generate_recommendations
-from website.features.rag_pipeline.evaluation.types import KGRecommendation
 
 
 def test_generates_add_link_when_gold_is_distant():

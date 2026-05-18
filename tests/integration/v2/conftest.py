@@ -22,7 +22,6 @@ import pytest_asyncio
 from tests.v2.fixtures import MintedKasten, MintedUser, mint_test_user_with_workspaces
 from tests.v2.fixtures.users import delete_test_user
 from tests.v2.fixtures.wave_c import (
-    SOURCE_INGEST_NAMES,
     GraphJsonValidator,
     SourceFixturePathResolver,
     StubGeminiPool,

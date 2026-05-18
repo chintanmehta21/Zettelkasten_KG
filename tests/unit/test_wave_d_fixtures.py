@@ -8,7 +8,6 @@ web_monitor / user_home / header impl tasks.
 from __future__ import annotations
 
 import httpx
-import pytest
 
 
 def test_slack_webhook_mock_default_200(slack_webhook_mock, monkeypatch):

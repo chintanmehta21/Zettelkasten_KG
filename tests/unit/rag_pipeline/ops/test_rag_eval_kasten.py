@@ -1,14 +1,8 @@
 # tests/unit/rag_pipeline/ops/test_rag_eval_kasten.py
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 
 from ops.scripts.lib.rag_eval_kasten import (
-    build_kasten,
-    load_naruto_zettels_for_source,
     parse_chintan_testing,
     select_similar_zettel,
-    KastenBuildError,
 )
 
 

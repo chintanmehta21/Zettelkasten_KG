@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
 from cachetools import LRUCache
 
 from website.features.rag_pipeline.ingest.embedder import ChunkEmbedder

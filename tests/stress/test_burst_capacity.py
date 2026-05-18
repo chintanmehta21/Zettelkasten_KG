@@ -17,7 +17,7 @@ import asyncio
 
 import pytest
 
-from website.api import _concurrency, chat_routes
+from website.api import chat_routes
 from website.api._concurrency import (
     QueueFull,
     acquire_rerank_slot,

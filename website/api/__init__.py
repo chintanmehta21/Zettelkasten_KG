@@ -7,7 +7,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user
 from website.features.rag_pipeline.service import get_rag_runtime

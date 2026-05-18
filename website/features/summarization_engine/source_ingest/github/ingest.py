@@ -7,8 +7,6 @@ import os
 import re
 import subprocess
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
 from typing import Any
 from urllib.parse import urlparse
 
@@ -28,6 +26,8 @@ from website.features.summarization_engine.source_ingest.utils import (
     raise_extraction,
     utc_now,
 )
+
+logger = logging.getLogger(__name__)
 
 # Top-level Markdown files we look for beyond the README. Names are matched
 # case-insensitively against the repo's top-level tree.

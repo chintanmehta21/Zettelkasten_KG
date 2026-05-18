@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 
 GATE = Path(__file__).resolve().parents[4] / "ops" / "scripts" / "rag_eval_quality_gate.py"

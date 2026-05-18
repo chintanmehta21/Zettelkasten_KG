@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from website.core.summary_normalizer import normalize_summary_for_wire
 

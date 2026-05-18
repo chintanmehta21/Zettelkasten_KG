@@ -24,7 +24,6 @@ real SSRF bug and the test will fail loudly.
 from __future__ import annotations
 
 import socket
-from typing import Iterable
 from unittest.mock import patch
 
 import pytest

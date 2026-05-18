@@ -1,10 +1,8 @@
-import pytest
 from website.features.rag_pipeline.evaluation.component_scorers import (
     chunking_score,
     retrieval_score,
     rerank_score,
 )
-from website.features.rag_pipeline.types import RetrievalCandidate, SourceType, ChunkKind
 
 
 def test_chunking_score_rewards_balanced_chunks():

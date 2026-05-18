@@ -198,7 +198,7 @@ def comma_outside_quote(text: str) -> str:
         if ch in ",;:" and i + 1 < n and text[i + 1] in ("'", '"'):
             quote = text[i + 1]
             # Look back for matching open quote in same sentence/paragraph
-            j = i - 1
+            i - 1
             sentence_start = max(
                 text.rfind(". ", 0, i),
                 text.rfind("! ", 0, i),

@@ -10,8 +10,6 @@ the upstream graph loader. Avoids any Supabase round-trip (these are NOT
 """
 from __future__ import annotations
 
-import gzip
-import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -159,8 +157,8 @@ def test_min_strength_filter_strict_subset() -> None:
     assert len(weak["links"]) == 4, "min_strength=0.0 returns everything"
     assert len(strong["links"]) == 1
     # Strong is a strict subset.
-    strong_keys = {(l["source"], l["target"]) for l in strong["links"]}
-    weak_keys = {(l["source"], l["target"]) for l in weak["links"]}
+    strong_keys = {(link["source"], link["target"]) for link in strong["links"]}
+    weak_keys = {(link["source"], link["target"]) for link in weak["links"]}
     assert strong_keys.issubset(weak_keys)
 
 
@@ -185,7 +183,6 @@ def test_min_strength_filter_drops_null_strength() -> None:
 def test_brotli_negotiation_returns_br(monkeypatch) -> None:
     """Accept-Encoding: br ⇒ Content-Encoding: br on a >1KB response."""
     import website.api.routes as routes_module
-    from website.core.graph_models import KGGraph
 
     # Stub out get_graph() to return a payload large enough to compress.
     big_payload = {

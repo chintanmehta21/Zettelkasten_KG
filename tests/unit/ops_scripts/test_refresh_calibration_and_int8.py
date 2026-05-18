@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from ops.scripts import refresh_calibration_and_int8 as refresh
 

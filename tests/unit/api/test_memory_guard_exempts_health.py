@@ -4,7 +4,6 @@ VmRSS is over the threshold. Exempt prefixes: /api/health, /api/admin/,
 """
 from __future__ import annotations
 
-from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient

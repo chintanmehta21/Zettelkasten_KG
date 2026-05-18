@@ -25,7 +25,6 @@ author. These identity fields come from the source API and need no heuristic.
 from __future__ import annotations
 
 import re
-from collections import Counter
 from typing import Iterable
 
 
