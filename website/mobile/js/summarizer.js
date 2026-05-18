@@ -6,6 +6,8 @@
 
   const form     = document.getElementById('summarize-form');
   const urlInput = document.getElementById('url-input');
+  const documentInput = document.getElementById('document-input');
+  const documentUploadBtn = document.getElementById('document-upload-btn');
   const srcSel   = document.getElementById('source-select');
   const submitBtn= document.getElementById('submit-btn');
   const loading  = document.getElementById('loading');
@@ -52,9 +54,28 @@
     errorEl.classList.add('active');
   }
 
+  function validateDocument(file) {
+    if (!file) return null;
+    const allowed = /\.(pdf|txt|md|markdown|docx)$/i;
+    if (!allowed.test(file.name || '')) return 'Upload PDF, TXT, Markdown, or DOCX.';
+    if (file.size > 10 * 1024 * 1024) return 'Document is too large (max 10 MB).';
+    if (file.size <= 0) return 'Document is empty.';
+    return null;
+  }
+
+  function clearSelectedDocument() {
+    if (documentInput) documentInput.value = '';
+    if (documentUploadBtn) documentUploadBtn.classList.remove('has-file');
+    if (urlInput) urlInput.placeholder = 'Paste a URL...';
+  }
+
+  function getSelectedDocument() {
+    return documentInput && documentInput.files ? documentInput.files[0] : null;
+  }
+
   function markdownToHTML(md) {
     if (!md) return '';
-    let html = md;
+    let html = normalizeSummaryMarkdown(md);
     // Code blocks
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
     // Inline code
@@ -75,6 +96,10 @@
     html = html.replace(/<p>\s*<(h[23]|ul|pre)/g, '<$1');
     html = html.replace(/<\/(h[23]|ul|pre)>\s*<\/p>/g, '</$1>');
     return html;
+  }
+
+  function normalizeSummaryMarkdown(text) {
+    return String(text || '').replace(/([^\n])\s+(#{2,6}\s+)/g, '$1\n\n$2');
   }
 
   function showResult(data) {
@@ -111,6 +136,13 @@
     // Source link
     const srcLink = document.getElementById('source-link');
     srcLink.href = data.source_url || '#';
+    if (data.source_type === 'document') {
+      srcLink.removeAttribute('href');
+      srcLink.setAttribute('aria-disabled', 'true');
+    } else {
+      srcLink.setAttribute('href', data.source_url || '#');
+      srcLink.removeAttribute('aria-disabled');
+    }
 
     result.classList.add('active');
     result.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -127,33 +159,68 @@
     });
   });
 
+  if (documentUploadBtn && documentInput) {
+    documentUploadBtn.addEventListener('click', function () {
+      documentInput.click();
+    });
+    documentInput.addEventListener('change', function () {
+      const file = getSelectedDocument();
+      errorEl.classList.remove('active');
+      documentUploadBtn.classList.toggle('has-file', Boolean(file));
+      if (file) {
+        urlInput.value = '';
+        urlInput.placeholder = file.name || 'Document selected';
+      }
+    });
+  }
+
+  if (urlInput) {
+    urlInput.addEventListener('input', function () {
+      if (urlInput.value.trim()) clearSelectedDocument();
+    });
+  }
+
   // Form submit
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var url = urlInput.value.trim();
-    if (!url) return;
+    var file = getSelectedDocument();
+    if (!url && !file) return showError('Please enter a URL or choose a document.');
 
     // Basic URL validation
-    if (!/^https?:\/\/.+/i.test(url)) {
+    if (!file && !/^https?:\/\/.+/i.test(url)) {
       if (/^[\w]/.test(url)) url = 'https://' + url;
       else return showError('Please enter a valid URL.');
     }
-    if (url.length > 2048) return showError('URL is too long (max 2048 characters).');
+    if (!file && url.length > 2048) return showError('URL is too long (max 2048 characters).');
+    const documentError = file ? validateDocument(file) : null;
+    if (documentError) return showError(documentError);
 
     showLoading();
 
-    if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function') {
+    if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function' || typeof window.ZKAddZettel.uploadDocument !== 'function') {
       return showError('Add Zettel API helper failed to load. Please refresh and try again.');
     }
 
-    window.ZKAddZettel.add({
-      url: url,
-      clientActionId: window.ZKAddZettel.makeActionId('landing'),
-      persist: true,
-      surface: 'landing',
-      mode: 'sync'
-    })
+    const request = file
+      ? window.ZKAddZettel.uploadDocument({
+        file: file,
+        clientActionId: window.ZKAddZettel.makeActionId('mobile-document'),
+        persist: true,
+        surface: 'mobile'
+      })
+      : window.ZKAddZettel.add({
+        url: url,
+        clientActionId: window.ZKAddZettel.makeActionId('mobile'),
+        persist: true,
+        surface: 'mobile',
+        mode: 'sync'
+      });
+
+    request
     .then(function (data) {
+      clearSelectedDocument();
+      urlInput.value = '';
       showResult(data.summary || {});
     })
     .catch(function (err) {
