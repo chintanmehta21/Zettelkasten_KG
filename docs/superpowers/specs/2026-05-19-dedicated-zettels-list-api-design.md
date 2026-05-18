@@ -16,7 +16,7 @@ A dedicated `GET /api/zettels` that returns a clean, paginated list of the authe
 
 - New route `GET /api/zettels` in `website/api/zettels_routes.py` (existing router, prefix `/api`), `Depends(get_optional_user)`.
 - Reuses the verified path (no new query logic): `get_supabase_v2_scope_for_read(user["sub"])` → `(content_repo, profile_id, workspace_ids)`; for each `ws_id`, `content_repo.list_workspace_zettels(ws_id, limit=limit, offset=offset)`; dedupe by `canonical_zettel_id` (same dedupe the graph assembler does).
-- **Shared node-id helper (correctness-critical):** the id `f"{prefix}-{slug}-{canonical_id[:8]}"` currently lives inline in `_v2_assemble_graph` (`website/api/routes.py`). Extract it to one helper (e.g. `website/api/_node_id.py::derive_zettel_node_id(source_type, title, canonical_id)`), and call it from BOTH `_v2_assemble_graph` (refactor, behaviour-identical) and the new endpoint. This guarantees the `id` returned by `/api/zettels` is byte-identical to what `/api/zettels/{id}` open/delete and the graph already use — zero regression to open/delete.
+- **`id` = `workspace_zettel.id` (UUID), corrected design.** Investigation found `_v2_assemble_graph` emits a slug id `f"{prefix}-{slug}-{canonical8}"`, but `DELETE`/`PATCH /api/zettels/{node_id}` (`routes.py:627/688`) require a **`workspace_zettel` UUID** (`_is_supabase_uuid` gate). The My Zettels page passes the slug to delete → it currently 400s: **delete/tag-edit from the list is a pre-existing production bug.** The dedicated endpoint therefore returns `id = row["id"]` (the workspace_zettel UUID already in every `list_workspace_zettels` row), which is exactly what delete/PATCH require. Switching the list page to this endpoint **fixes the broken delete/PATCH** with no extra code. No shared slug helper and **no `_v2_assemble_graph` refactor** — the 3D graph keeps its slug ids (it never deletes).
 - v2-only and per-user isolation:
   - Unauthenticated / non-UUID subject → `401` problem response (the list pages already redirect to `/` when unauthenticated; 401 is the clean contract).
   - Authenticated but `use_supabase_v2()` false, no v2 scope, or zero zettels → `200` with `{"zettels": [], "total": 0, ...}`. No file-store fallback — a personal list has no anonymous/global concept (unlike the graph).
@@ -32,7 +32,7 @@ GET /api/zettels?limit=5000&offset=0
 {
   "zettels": [
     {
-      "id":               "<prefix>-<slug>-<canonical8>",  // == open/delete id
+      "id":               "<workspace_zettel UUID>",  // == DELETE/PATCH /api/zettels/{id} contract
       "title":            "string",
       "brief_summary":    "string",   // extract_summary_parts(ai_summary)[0]
       "detailed_summary": "string",   // extract_summary_parts(ai_summary)[1]
@@ -70,7 +70,7 @@ Notes:
 ## Testing (TDD)
 
 - Endpoint unit tests: authed user with N zettels → `len==N`, field correctness, `total`==N; unauthenticated → 401; v2-off / no scope → 200 empty; pagination (limit/offset clamping + slicing); per-user isolation (user A never sees user B's rows).
-- **Id-parity regression test:** `derive_zettel_node_id` output equals the id `_v2_assemble_graph` previously produced for the same inputs (guards open/delete by id).
+- **Delete/PATCH-after-switch regression test:** with the list page on `/api/zettels`, the `id` it surfaces is a `workspace_zettel` UUID that `DELETE`/`PATCH /api/zettels/{id}` accept (asserts the pre-existing slug-400 bug is fixed, not reintroduced).
 - Frontend guard test: list pages reference `/api/zettels` and no longer `/api/graph?view=my`; `/knowledge-graph` still uses `/api/graph`.
 - Full `pytest` + `ruff` green; post-deploy live verification: `/api/zettels` as `naruto@zettelkasten.local` returns the 27.
 
