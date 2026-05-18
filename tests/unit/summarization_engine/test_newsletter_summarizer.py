@@ -74,6 +74,27 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape(monkeypatc
     result = await NewsletterSummarizer(client, {}).summarize(ingest)
 
     assert result.metadata.source_type == SourceType.NEWSLETTER
-    assert result.detailed_summary.publication_identity == "Platformer"
-    assert result.detailed_summary.stance == "cautionary"
-    assert result.detailed_summary.cta == "Subscribe"
+    # DEFECT 3 fix: detailed_summary is the rendered DetailedSummarySection
+    # list (NOT the rich NewsletterDetailedPayload model). The old assertions
+    # (.publication_identity / .stance / .cta on detailed_summary) encoded the
+    # bug — iterating that model downstream yielded tuples and crashed with
+    # "'tuple' object has no attribute 'heading'".
+    from website.core.summary_rendering import render_detailed_summary
+    from website.features.summarization_engine.core.models import (
+        DetailedSummarySection,
+    )
+
+    assert isinstance(result.detailed_summary, list)
+    assert result.detailed_summary and all(
+        isinstance(s, DetailedSummarySection) for s in result.detailed_summary
+    )
+    # Must render cleanly (the exact path that crashed live).
+    rendered = render_detailed_summary(result.detailed_summary)
+    assert rendered  # non-empty, no AttributeError
+    # The rich payload (publication/stance/cta) is preserved verbatim on
+    # metadata.structured_payload for any source-specific consumer.
+    sp = result.metadata.structured_payload
+    assert sp is not None
+    assert sp["detailed_summary"]["publication_identity"] == "Platformer"
+    assert sp["detailed_summary"]["stance"] == "cautionary"
+    assert sp["detailed_summary"]["cta"] == "Subscribe"

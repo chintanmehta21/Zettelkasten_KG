@@ -114,6 +114,12 @@ def get_supabase_v2_scope(*args: Any, **kwargs: Any) -> Any:
     return _impl(*args, **kwargs)
 
 
+async def _drain_pending_enrichment_tasks(*args: Any, **kwargs: Any) -> Any:
+    from website.core.persist import drain_pending_enrichment_tasks as _impl
+
+    return await _impl(*args, **kwargs)
+
+
 def RAGRepository(*args: Any, **kwargs: Any) -> Any:  # noqa: N802 — factory facade
     from website.core.supabase_v2.repositories.rag_repository import (
         RAGRepository as _impl,
@@ -493,6 +499,20 @@ async def _execute_create_kasten(
             failed.append(
                 FailedLink(url="<bulk_add_to_kasten>", error=str(exc))
             )
+
+    # Phase-B KG population + RAG chunk ingest are scheduled fire-and-forget
+    # inside the Add-Zettel persist path so the *website* route returns without
+    # waiting. This runner, however, is short-lived (CLI / Phase-E: the loop is
+    # torn down by ``asyncio.run`` the moment we return) — pending kg-populate
+    # tasks would be cancelled before they create any kg_edges (observed:
+    # 0 edges after a real CLI ingest). Deterministically drain them here so KG
+    # population is GUARANTEED to complete for every ingested zettel before the
+    # runner returns. Idempotent + best-effort: a task failure is already
+    # logged/swallowed at its own site (Phase-B contract); the
+    # pipelines.pipeline_runs(kind='kg_extract') gate keeps it idempotent and
+    # workspace-scoped. The live FastAPI route never calls this drain, so its
+    # fire-and-forget Add-Zettel latency is unchanged.
+    await _drain_pending_enrichment_tasks()
 
     _invalidate_graph(user_sub)
 

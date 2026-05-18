@@ -42,6 +42,63 @@ logger = logging.getLogger("website.core.persist")
 _v2_core_repo: V2CoreRepository | None = None
 _v2_content_repo: V2ContentRepository | None = None
 
+# Registry of in-flight best-effort enrichment tasks (Phase-B KG population +
+# RAG chunk ingest). These are scheduled fire-and-forget so the *website*
+# Add-Zettel route returns without waiting (latency unchanged). But the
+# create_kasten CLI / Phase-E runner is a SHORT-LIVED process: it awaits the
+# Add-Zettel pipeline (which only SCHEDULES these tasks) then returns, and the
+# event loop is torn down by ``asyncio.run`` — silently cancelling the pending
+# kg-populate tasks before they create any edges (observed: 10 kg_nodes,
+# 0 kg_edges after a real CLI ingest). The runner therefore drains this
+# registry via ``drain_pending_enrichment_tasks`` before returning, guaranteeing
+# KG population actually completes. The live FastAPI route never calls the
+# drain, so its fire-and-forget latency is unaffected.
+_PENDING_ENRICHMENT_TASKS: "set[asyncio.Task]" = set()
+
+
+def _register_enrichment_task(task: "asyncio.Task") -> None:
+    """Track a fire-and-forget enrichment task so a short-lived caller can
+    deterministically drain it before process exit (see module docstring on
+    ``_PENDING_ENRICHMENT_TASKS``). The done-callback removes the task so the
+    set never grows unbounded on a long-lived server."""
+    _PENDING_ENRICHMENT_TASKS.add(task)
+    task.add_done_callback(_PENDING_ENRICHMENT_TASKS.discard)
+
+
+async def drain_pending_enrichment_tasks(*, timeout: float = 120.0) -> int:
+    """Await every currently-registered fire-and-forget enrichment task.
+
+    Used by the create_kasten runner (CLI / Phase-E / route-background path)
+    so KG population + RAG chunk ingest are guaranteed to complete before the
+    runner returns and the interpreter (CLI) tears the loop down. Idempotent
+    and safe to call repeatedly. Never raises: individual task failures are
+    already logged + swallowed at their own call sites (best-effort contract);
+    a per-task timeout is enforced so one stuck task cannot wedge the runner.
+
+    Returns the number of tasks drained (for observability / tests). New tasks
+    scheduled *while* draining (e.g. a task that itself schedules another) are
+    picked up by the drain loop until the registry is empty or the deadline
+    passes.
+    """
+    import time as _time
+
+    drained = 0
+    deadline = _time.monotonic() + timeout
+    while _PENDING_ENRICHMENT_TASKS:
+        remaining = deadline - _time.monotonic()
+        if remaining <= 0:
+            logger.warning(
+                "drain_pending_enrichment_tasks: %d task(s) still pending at "
+                "timeout; leaving them to the loop",
+                len(_PENDING_ENRICHMENT_TASKS),
+            )
+            break
+        # Snapshot: a task may schedule another while we await this batch.
+        batch = list(_PENDING_ENRICHMENT_TASKS)
+        done, _pending = await asyncio.wait(batch, timeout=remaining)
+        drained += len(done)
+    return drained
+
 
 class SupabaseV2PersistError(RuntimeError):
     """Raised when a v2-configured Add Zettel persist attempt fails.
@@ -724,6 +781,7 @@ def _schedule_rag_chunks(
         logger.debug("No running event loop for RAG chunks on %s", node_id)
         return
     task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+    _register_enrichment_task(task)
 
 
 def _schedule_kg_population(
@@ -781,6 +839,7 @@ def _schedule_kg_population(
         logger.debug("No running event loop for KG population on %s", canonical_zettel_id)
         return
     task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+    _register_enrichment_task(task)
 
 
 def _generate_node_embedding(payload: dict[str, Any]) -> list[float] | None:

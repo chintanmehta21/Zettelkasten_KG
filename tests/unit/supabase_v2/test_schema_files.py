@@ -57,6 +57,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "44_functional_gates.sql",
         "45_rag_subgraph_for_pagerank.sql",
         "46_kg_two_level_strength.sql",
+        "47_canonical_source_type_arxiv.sql",
     ]
 
 

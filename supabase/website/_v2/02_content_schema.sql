@@ -20,8 +20,20 @@ CREATE TABLE IF NOT EXISTS content.canonical_zettels (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     normalized_url    text NOT NULL,
     content_hash      bytea NOT NULL,
+    -- Must list EVERY value summarization_engine.core.models.SourceType can
+    -- emit (github, newsletter, reddit, youtube, hackernews, linkedin, arxiv,
+    -- podcast, twitter, web) PLUS the sub-route flavors persisted historically
+    -- (substack, medium, generic). Missing 'arxiv'/'hackernews'/'linkedin'/
+    -- 'podcast' here previously made content.upsert_canonical_zettel raise a
+    -- CHECK violation for those sources, blocking the WHOLE canonical zettel
+    -- write (surfaced to the user as "Knowledge-graph write failed; the zettel
+    -- was not saved."). See migration 47_canonical_source_type_arxiv.sql.
     source_type       text NOT NULL CHECK (
-        source_type IN ('youtube', 'reddit', 'github', 'twitter', 'substack', 'newsletter', 'medium', 'web', 'generic')
+        source_type IN (
+            'youtube', 'reddit', 'github', 'twitter', 'substack',
+            'newsletter', 'medium', 'web', 'generic',
+            'hackernews', 'linkedin', 'arxiv', 'podcast'
+        )
     ),
     title             text,
     body_md           text,

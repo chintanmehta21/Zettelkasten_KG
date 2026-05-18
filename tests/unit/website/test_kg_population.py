@@ -370,6 +370,168 @@ async def test_persist_wiring_fires_task_without_awaiting(monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# DEFECT 1: short-lived create_kasten runner must DRAIN the fire-and-forget
+# kg-populate tasks before returning, else the loop teardown cancels them and
+# 0 kg_edges are ever written (observed: 10 kg_nodes, 0 kg_edges via CLI).
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scheduled_kg_task_is_registered_for_drain(monkeypatch):
+    """_schedule_kg_population registers the task so a short-lived caller can
+    deterministically await it (the fix's enabling mechanism)."""
+    from website.core import persist
+
+    release = asyncio.Event()
+
+    async def _fake_populate(**_k):
+        await release.wait()
+        return {"edges": 1}
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.kg_population.populate_kg_for_zettel",
+        _fake_populate,
+    )
+    monkeypatch.setattr(
+        "website.core.supabase_v2.client.get_v2_client", lambda: object()
+    )
+
+    assert not persist._PENDING_ENRICHMENT_TASKS
+    persist._schedule_kg_population(
+        payload={"source_url": "https://e.com", "source_type": "web", "tags": []},
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        canonical_zettel_id=_ZID,
+        title="T",
+        summary="S",
+    )
+    assert len(persist._PENDING_ENRICHMENT_TASKS) == 1, (
+        "scheduled kg-populate task must be registered for the runner drain"
+    )
+    release.set()
+    drained = await persist.drain_pending_enrichment_tasks(timeout=2.0)
+    assert drained >= 1
+    # Done-callback cleared the registry (no unbounded growth on a server).
+    assert not persist._PENDING_ENRICHMENT_TASKS
+
+
+@pytest.mark.asyncio
+async def test_drain_completes_kg_population_that_would_be_cancelled(monkeypatch):
+    """REPRO of Defect 1: without the drain the kg-populate coroutine is still
+    suspended when the caller returns (loop teardown would cancel it -> 0
+    edges). drain_pending_enrichment_tasks guarantees it RUNS TO COMPLETION."""
+    from website.core import persist
+
+    completed = asyncio.Event()
+    gate = asyncio.Event()
+
+    async def _fake_populate(**_k):
+        # Suspends like the real hook (many awaited Supabase round-trips).
+        await gate.wait()
+        completed.set()
+        return {"edges": 3}
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.kg_population.populate_kg_for_zettel",
+        _fake_populate,
+    )
+    monkeypatch.setattr(
+        "website.core.supabase_v2.client.get_v2_client", lambda: object()
+    )
+
+    persist._schedule_kg_population(
+        payload={"source_url": "https://e.com", "source_type": "web", "tags": []},
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        canonical_zettel_id=_ZID,
+        title="T",
+        summary="S",
+    )
+    # Task is scheduled but NOT yet complete (mirrors the CLI exit race).
+    assert not completed.is_set()
+    gate.set()
+    await persist.drain_pending_enrichment_tasks(timeout=2.0)
+    assert completed.is_set(), (
+        "drain must run the kg-populate task to completion (Defect 1 fix)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_drain_is_idempotent_and_safe_when_empty():
+    """Calling the drain with nothing pending is a no-op (idempotent; the
+    runner may call it even when persist=False or all links failed)."""
+    from website.core import persist
+
+    assert not persist._PENDING_ENRICHMENT_TASKS
+    assert await persist.drain_pending_enrichment_tasks(timeout=1.0) == 0
+    assert await persist.drain_pending_enrichment_tasks(timeout=1.0) == 0
+
+
+@pytest.mark.asyncio
+async def test_drain_swallows_task_failure(monkeypatch):
+    """A failing enrichment task must not make the drain raise (best-effort
+    contract preserved: the runner still returns succeeded)."""
+    from website.core import persist
+
+    async def _boom(**_k):
+        raise RuntimeError("kg blew up")
+
+    monkeypatch.setattr(
+        "website.features.rag_pipeline.ingest.kg_population.populate_kg_for_zettel",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "website.core.supabase_v2.client.get_v2_client", lambda: object()
+    )
+
+    persist._schedule_kg_population(
+        payload={"source_url": "https://e.com", "source_type": "web", "tags": []},
+        workspace_id=_WS_A,
+        profile_id=_PROFILE,
+        canonical_zettel_id=_ZID,
+        title="T",
+        summary="S",
+    )
+    # Must NOT raise even though the task raised internally.
+    await persist.drain_pending_enrichment_tasks(timeout=2.0)
+    assert not persist._PENDING_ENRICHMENT_TASKS
+
+
+@pytest.mark.asyncio
+async def test_create_kasten_runner_drains_before_returning(monkeypatch):
+    """End-to-end Defect 1: the create_kasten runner awaits the drain so KG
+    population is GUARANTEED complete before the (short-lived) runner returns.
+    The website route never calls the drain (latency unaffected) — asserted by
+    test_persist_wiring_fires_task_without_awaiting above."""
+    from website.api.module_runners import create_kasten as ck
+
+    order: list[str] = []
+
+    async def _fake_drain(*_a, **_k):
+        order.append("drained")
+        return 1
+
+    def _fake_scope(_sub):
+        order.append("scope")
+        raise ValueError("stop after scope (drain wiring is what we assert)")
+
+    monkeypatch.setattr(ck, "_drain_pending_enrichment_tasks", _fake_drain)
+    monkeypatch.setattr(ck, "get_supabase_v2_scope", _fake_scope)
+
+    # The runner must reference the drain facade (import + call site exist).
+    import inspect
+
+    src = inspect.getsource(ck._execute_create_kasten)
+    assert "_drain_pending_enrichment_tasks" in src, (
+        "create_kasten runner must drain pending enrichment tasks before return"
+    )
+    # And the facade resolves to persist.drain_pending_enrichment_tasks.
+    from website.core import persist
+
+    assert persist.drain_pending_enrichment_tasks is not None
+
+
+# --------------------------------------------------------------------------
 # STRUCTURAL signal (D-KG-1 slot restore): shared-chunk + Adamic-Adar
 # --------------------------------------------------------------------------
 

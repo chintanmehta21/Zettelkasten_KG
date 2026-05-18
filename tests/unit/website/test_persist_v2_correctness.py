@@ -12,7 +12,9 @@ All Supabase access is mocked; no live network.
 """
 from __future__ import annotations
 
+import re as _re
 from datetime import date
+from pathlib import Path as _Path
 from uuid import UUID
 
 import pytest
@@ -23,6 +25,7 @@ from website.core.supabase_v2.repositories.content_repository import (
     EmptyRpcResultError,
     _first,
 )
+from website.features.summarization_engine.core.models import SourceType as _ST
 
 _PROFILE = UUID("00000000-0000-0000-0000-000000000001")
 _WORKSPACE = UUID("00000000-0000-0000-0000-000000000002")
@@ -363,3 +366,151 @@ def test_summary_dto_none_raw_text_yields_url_only_hash() -> None:
     url = payload["source_url"]
     expected = _h.sha256(f"{url}\x00".encode("utf-8")).digest()
     assert persist._stable_content_hash(payload, url) == expected
+
+
+# ---- DEFECT 2: arxiv (and every emitted SourceType) must persist ----------
+#
+# Live evidence: arxiv abstract URLs failed with "Knowledge-graph write
+# failed; the zettel was not saved." ROOT CAUSE: content.canonical_zettels'
+# source_type CHECK only allowed
+#   youtube,reddit,github,twitter,substack,newsletter,medium,web,generic
+# but SourceType emits arxiv/hackernews/linkedin/podcast too. The INSERT in
+# content.upsert_canonical_zettel raised a CHECK violation -> caught by
+# persist.persist_summarized_result's generic handler -> SupabaseV2PersistError
+# -> the WHOLE canonical zettel write aborts. KG enrichment is fire-and-forget
+# and never on this path; the canonical write itself failed the constraint.
+
+_V2_DIR = _Path(__file__).resolve().parents[3] / "supabase" / "website" / "_v2"
+
+
+def _check_allowed_source_types() -> set[str]:
+    """Parse the live CHECK value set from 02_content_schema.sql."""
+    sql = (_V2_DIR / "02_content_schema.sql").read_text(encoding="utf-8")
+    m = _re.search(
+        r"source_type\s+text\s+NOT NULL\s+CHECK\s*\(\s*source_type\s+IN\s*\((.*?)\)\s*\)",
+        sql,
+        _re.DOTALL | _re.IGNORECASE,
+    )
+    assert m, "could not locate canonical_zettels source_type CHECK"
+    return set(_re.findall(r"'([a-z]+)'", m.group(1)))
+
+
+def test_schema_check_allows_every_emitted_source_type() -> None:
+    """Regression guard: the CHECK must list EVERY value SourceType can emit
+    so no source can ever fail the canonical-zettel write again."""
+    allowed = _check_allowed_source_types()
+    emitted = {st.value for st in _ST}
+    missing = emitted - allowed
+    assert not missing, (
+        f"source_type CHECK is missing emitted SourceType value(s): {missing}. "
+        f"allowed={sorted(allowed)} emitted={sorted(emitted)}"
+    )
+    # arxiv specifically (the live failure) must be present.
+    assert "arxiv" in allowed
+
+
+def test_migration_47_widens_check_to_arxiv() -> None:
+    """The forward migration must (a) exist in apply order and (b) re-add the
+    widened CHECK including arxiv/hackernews/linkedin/podcast."""
+    mig = _V2_DIR / "47_canonical_source_type_arxiv.sql"
+    assert mig.exists(), "migration 47 missing"
+    body = mig.read_text(encoding="utf-8")
+    for v in ("arxiv", "hackernews", "linkedin", "podcast"):
+        assert f"'{v}'" in body, f"migration 47 must add '{v}'"
+    assert "DROP CONSTRAINT IF EXISTS canonical_zettels_source_type_check" in body
+    assert "ADD CONSTRAINT canonical_zettels_source_type_check" in body
+
+
+@pytest.mark.asyncio
+async def test_arxiv_zettel_persists_when_check_is_correct(monkeypatch) -> None:
+    """End-to-end: with the corrected CHECK an arxiv zettel persists (the
+    repo's INSERT no longer raises). The DB CHECK is modelled by a fake repo
+    that enforces exactly the (now-correct) allowed set parsed from schema."""
+    allowed = _check_allowed_source_types()
+
+    class _CheckEnforcingRepo:
+        def upsert_canonical_zettel(self, zettel, *, workspace=None, chunks=None):
+            # Model the Postgres CHECK constraint precisely.
+            if zettel.source_type not in allowed:
+                raise RuntimeError(
+                    'new row for relation "canonical_zettels" violates '
+                    "check constraint "
+                    '"canonical_zettels_source_type_check"'
+                )
+            return CanonicalUpsertResult(
+                canonical_zettel_id=UUID(
+                    "00000000-0000-0000-0000-0000000000aa"
+                ),
+                workspace_zettel_id=_WZID,
+                was_new=True,
+            )
+
+    monkeypatch.setattr(
+        persist,
+        "get_supabase_v2_scope",
+        lambda _s: (_CheckEnforcingRepo(), _PROFILE, _WORKSPACE),
+    )
+    monkeypatch.setattr(persist, "_file_graph_contains_url", lambda _u: False)
+    monkeypatch.setattr(persist, "_persist_file_node", lambda p, skip_duplicate: "web-x")
+    # Keep KG enrichment a pure no-op so this test isolates the canonical
+    # write (KG is fire-and-forget and explicitly out of the persist contract).
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+
+    outcome = await persist.persist_summarized_result(
+        {
+            "title": "Attention Is All You Need",
+            "source_type": "arxiv",
+            "source_url": "https://arxiv.org/abs/2011.08892",
+            "summary": "An arXiv paper abstract.",
+            "tags": ["ml"],
+            "metadata": {},
+        },
+        user_sub=str(_PROFILE),
+    )
+    assert outcome.supabase_saved is True
+    assert outcome.supabase_node_id is not None
+
+
+@pytest.mark.asyncio
+async def test_arxiv_would_have_failed_under_old_check(monkeypatch) -> None:
+    """Proves the diagnosed mechanism: under the OLD allowed set, an arxiv
+    zettel raises SupabaseV2PersistError (exactly the live symptom). This is
+    the negative control for the fix above."""
+    old_allowed = {
+        "youtube", "reddit", "github", "twitter", "substack",
+        "newsletter", "medium", "web", "generic",
+    }
+
+    class _OldRepo:
+        def upsert_canonical_zettel(self, zettel, *, workspace=None, chunks=None):
+            if zettel.source_type not in old_allowed:
+                raise RuntimeError(
+                    "violates check constraint "
+                    '"canonical_zettels_source_type_check"'
+                )
+            return CanonicalUpsertResult(
+                canonical_zettel_id=UUID("00000000-0000-0000-0000-0000000000bb"),
+                workspace_zettel_id=_WZID,
+                was_new=True,
+            )
+
+    monkeypatch.setattr(
+        persist,
+        "get_supabase_v2_scope",
+        lambda _s: (_OldRepo(), _PROFILE, _WORKSPACE),
+    )
+    monkeypatch.setattr(persist, "_file_graph_contains_url", lambda _u: False)
+    monkeypatch.setattr(persist, "_persist_file_node", lambda p, skip_duplicate: None)
+
+    with pytest.raises(persist.SupabaseV2PersistError):
+        await persist.persist_summarized_result(
+            {
+                "title": "X",
+                "source_type": "arxiv",
+                "source_url": "https://arxiv.org/abs/1812.01047",
+                "summary": "S",
+                "tags": [],
+                "metadata": {},
+            },
+            user_sub=str(_PROFILE),
+        )
