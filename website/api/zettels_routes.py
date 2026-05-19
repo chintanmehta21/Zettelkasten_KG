@@ -26,6 +26,7 @@ from website.api.module_runners.summarization import (
     run_add_document_pipeline,
     run_add_zettel_pipeline,
 )
+from website.core import operations_repo
 from website.core.persist import (
     SupabaseV2PersistError,
     extract_summary_parts,
@@ -50,12 +51,9 @@ _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
 _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
-_AUTO_ACCEPT_AFTER_SECONDS = 8.0
-_IN_MEMORY_ASYNC_ENABLED = os.getenv("ADD_ZETTEL_IN_MEMORY_ASYNC", "").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-}
+# Raised 8 -> 20 (approved): fast jobs still return inline 200 within 20s;
+# anything slower fast-acks 202 well before Cloudflare's ~100s edge timeout.
+_AUTO_ACCEPT_AFTER_SECONDS = 20.0
 _OPERATION_TTL_SECONDS = 15 * 60
 _MAX_OPERATION_RECORDS = 128
 _MAX_IDEMPOTENCY_RECORDS = 128
@@ -234,11 +232,14 @@ def _store_operation_result(
     cache_key: tuple[str, str],
     request_hash: str,
     persist_requested: bool,
+    user_id: UUID | None = None,
 ) -> None:
+    failed = False
     try:
         result = task.result()
     except Exception as exc:
         logger.exception("Background Add Zettel operation failed")
+        failed = True
         result = AddZettelResponse(
             status="failed",
             operation_id=operation_id,
@@ -253,6 +254,22 @@ def _store_operation_result(
     _operation_put(operation_id, result)
     _OPERATION_TASKS.pop(operation_id, None)
     _IN_FLIGHT.pop(cache_key, None)
+    if user_id is not None:
+        # Persist terminal state to the shared store so cross-worker polls
+        # resolve. Scheduled on the loop, DB call in a thread; never fatal.
+        async def _persist_terminal() -> None:
+            fn = operations_repo.mark_failed if failed else operations_repo.mark_succeeded
+            await asyncio.to_thread(
+                fn, user_id=user_id, operation_id=operation_id, response=result
+            )
+        try:
+            asyncio.get_running_loop().create_task(_persist_terminal())
+        except RuntimeError:
+            # No running loop (callback fired post-loop, e.g. tests): best
+            # effort synchronous write.
+            (operations_repo.mark_failed if failed else operations_repo.mark_succeeded)(
+                user_id=user_id, operation_id=operation_id, response=result
+            )
 
 
 async def _await_in_flight(
@@ -355,13 +372,7 @@ async def add_zettel(
         running_hash, operation_id, running_task = in_flight
         if running_hash != request_hash:
             return _idempotency_conflict(body.client_action_id)
-        if not _IN_MEMORY_ASYNC_ENABLED:
-            return await _await_in_flight(
-                cache_key=cache_key,
-                request_hash=request_hash,
-                operation_id=operation_id,
-                task=running_task,
-            )
+        # Universal async: return existing accepted response for in-flight ops.
         existing = _operation_get(operation_id)
         if existing is None:
             existing = AddZettelResponse(
@@ -385,38 +396,52 @@ async def add_zettel(
             _run_add_zettel(body, user=user, effective_user_id=effective_user_id)
         )
         _IN_FLIGHT[cache_key] = (request_hash, body.client_action_id, work)
-        if body.mode == "auto" and _IN_MEMORY_ASYNC_ENABLED:
-            try:
-                result = await asyncio.wait_for(asyncio.shield(work), timeout=_AUTO_ACCEPT_AFTER_SECONDS)
-            except TimeoutError:
-                accepted = AddZettelResponse(
-                    status="accepted",
+        try:
+            # Inline-return path: fast jobs (<= N s) still get a synchronous
+            # 200 with the full result, exactly as before.
+            result = await asyncio.wait_for(
+                asyncio.shield(work), timeout=_AUTO_ACCEPT_AFTER_SECONDS
+            )
+        except TimeoutError:
+            # Universal 202 fast-ack (ALL modes, incl. the prod 'sync'
+            # frontend default). Cloudflare-524 fix: never hold the
+            # connection past N; the client polls /api/operations/{id}.
+            accepted = AddZettelResponse(
+                status="accepted",
+                operation_id=body.client_action_id,
+                persistence=persistence_dto(body.persist, None),
+                quality=QualityDTO(confidence="pending"),
+                status_url=f"/api/operations/{body.client_action_id}",
+            ).model_dump(mode="json")
+            _operation_put(body.client_action_id, accepted)
+            _OPERATION_TASKS[body.client_action_id] = work
+            # Shared store so any worker can answer the poll + it survives
+            # worker recycle. Off the event loop; never fatal.
+            await asyncio.to_thread(
+                operations_repo.create_accepted,
+                user_id=effective_user_id,
+                operation_id=body.client_action_id,
+                request_hash=request_hash,
+                accepted_body=accepted,
+            )
+            work.add_done_callback(
+                lambda task: _store_operation_result(
+                    task,
                     operation_id=body.client_action_id,
-                    persistence=persistence_dto(body.persist, None),
-                    quality=QualityDTO(confidence="pending"),
-                    status_url=f"/api/operations/{body.client_action_id}",
-                ).model_dump(mode="json")
-                _operation_put(body.client_action_id, accepted)
-                _OPERATION_TASKS[body.client_action_id] = work
-                work.add_done_callback(
-                    lambda task: _store_operation_result(
-                        task,
-                        operation_id=body.client_action_id,
-                        cache_key=cache_key,
-                        request_hash=request_hash,
-                        persist_requested=body.persist,
-                    )
+                    cache_key=cache_key,
+                    request_hash=request_hash,
+                    persist_requested=body.persist,
+                    user_id=effective_user_id,
                 )
-                return JSONResponse(
-                    accepted,
-                    status_code=202,
-                    headers={
-                        "Location": f"/api/operations/{body.client_action_id}",
-                        "Retry-After": "3",
-                    },
-                )
-        else:
-            result = await work
+            )
+            return JSONResponse(
+                accepted,
+                status_code=202,
+                headers={
+                    "Location": f"/api/operations/{body.client_action_id}",
+                    "Retry-After": "3",
+                },
+            )
         _cache_put(cache_key, request_hash, result)
         _operation_put(body.client_action_id, result)
         _IN_FLIGHT.pop(cache_key, None)
@@ -579,7 +604,23 @@ async def add_zettel_document(
 
 
 @router.get("/operations/{operation_id}", response_model=AddZettelResponse)
-async def operation_status(operation_id: str):
+async def operation_status(
+    operation_id: str,
+    user: Annotated[dict | None, Depends(get_optional_user)] = None,
+):
+    effective_user_id = _effective_user_id(user)
+    row = await asyncio.to_thread(
+        operations_repo.get_operation,
+        user_id=effective_user_id,
+        operation_id=operation_id,
+    )
+    if row is not None:
+        status = row.get("status")
+        payload = row.get("response") or row.get("error") or {}
+        if status == "accepted":
+            return JSONResponse(payload, status_code=202)
+        return JSONResponse(payload, status_code=200)
+    # Single-worker / dev fallback: in-memory store.
     result = _operation_get(operation_id)
     if result is None:
         return _problem(
@@ -589,7 +630,9 @@ async def operation_status(operation_id: str):
             operation_id=operation_id,
             type_slug="operation-not-found",
         )
-    return JSONResponse(result, status_code=202 if result.get("status") == "accepted" else 200)
+    return JSONResponse(
+        result, status_code=202 if result.get("status") == "accepted" else 200
+    )
 
 
 class ZettelListItem(BaseModel):
