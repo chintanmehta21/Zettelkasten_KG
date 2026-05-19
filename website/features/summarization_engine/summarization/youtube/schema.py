@@ -10,6 +10,14 @@ from typing_extensions import Annotated
 
 MiniTitle = Annotated[str, StringConstraints(max_length=50)]
 _TITLE_STOPWORDS = {"a", "an", "in", "of", "the", "to", "with"}
+# B2': coordinating conjunctions that read as dangling when the words[:5]
+# slice lands on one ("DMT Identity History Effects Theories and" / "... and").
+# Stripped only when TRAILING (interior conjunctions are kept — see
+# test_youtube_title_keeps_conjunctions); NOT added to _TITLE_STOPWORDS so
+# interior occurrences still survive the stopword filter.
+_TRAILING_CONJUNCTIONS = {
+    "and", "or", "but", "nor", "for", "yet", "so", "vs", "versus", "&",
+}
 _SPEAKER_PLACEHOLDERS = frozenset({
     "narrator", "host", "speaker", "analyst", "commentator",
     "voiceover", "voice over", "author of the source",
@@ -378,7 +386,14 @@ def _normalize_mini_title(title: str) -> str:
     tokens = [t for t in tokens if t]
     preferred = [token for token in tokens if token.lower() not in _TITLE_STOPWORDS]
     words = preferred if len(preferred) >= 3 else tokens
-    normalized = " ".join(words[:5]).strip()
+    sliced = words[:5]
+    # B2': drop trailing coordinating conjunction(s) so the slice never
+    # ends on a dangling "and"/"or"/"vs"/"&". Looped to collapse runs
+    # ("Cats Dogs AND OR" -> "Cats Dogs"); idempotent on already-clean
+    # input. Interior conjunctions are untouched (only the tail is peeled).
+    while sliced and sliced[-1].lower() in _TRAILING_CONJUNCTIONS:
+        sliced = sliced[:-1]
+    normalized = " ".join(sliced).strip()
     return normalized[:50] or "YouTube Summary"
 
 

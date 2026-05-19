@@ -51,7 +51,7 @@ def test_youtube_payload_repairs_brief_and_adds_format_tag():
         },
     )
 
-    assert payload.mini_title == "DMT Identity History Effects Theories"
+    assert payload.mini_title == "DMT Identity History Effects"
     # The brief must either (a) clean-truncate to whole sentences or
     # (b) rebuild with the primary speaker. Both outcomes satisfy the
     # no-dangling-tail contract.
