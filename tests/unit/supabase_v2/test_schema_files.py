@@ -64,6 +64,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "46_url_dedup.sql",
         "47_migrate_17_to_repeatable.sql",
         "48_operations.sql",
+        "49_operations_sweep.sql",
     ]
 
 
