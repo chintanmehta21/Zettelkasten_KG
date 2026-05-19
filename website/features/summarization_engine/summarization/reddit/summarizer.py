@@ -44,6 +44,9 @@ from website.features.summarization_engine.summarization.common.structured impor
     StructuredExtractor,
     _normalize_tags,
 )
+from website.features.summarization_engine.post_summary_transformation.rules.title import (
+    trim_to_word_boundary as _tt_trim,
+)
 from website.features.summarization_engine.summarization.reddit.schema import (
     RedditCluster,
     RedditDetailedPayload,
@@ -272,7 +275,7 @@ def _build_minimum_safe_payload(
     subreddit = str(ingest.metadata.get("subreddit") or "reddit").strip() or "reddit"
     title = str(ingest.metadata.get("title") or "thread").strip() or "thread"
     subreddit_tag = f"r-{subreddit.lower().replace('_', '-')}"
-    mini_title = f"r/{subreddit} {title}"[:60].rstrip() or f"r/{subreddit} thread"
+    mini_title = _tt_trim(f"r/{subreddit} {title}", 60) or f"r/{subreddit} thread"
     brief_sentences = [
         f"OP posted in r/{subreddit} about {title[:120]}.",
         "The thread contained replies that could not be fully clustered by the summarizer.",

@@ -16,6 +16,7 @@ from website.features.summarization_engine.core.models import (
 )
 from website.features.summarization_engine.summarization.common.json_utils import parse_json_object
 from website.features.summarization_engine.summarization.common.prompts import SYSTEM_PROMPT, source_context
+from website.features.summarization_engine.post_summary_transformation.rules.title import trim_to_word_boundary as _tt_trim
 
 
 class StructuredSummaryPayload(BaseModel):
@@ -68,7 +69,7 @@ class StructuredExtractor:
             payload = _fallback_payload(ingest, summary_text, self._config)
 
         return SummaryResult(
-            mini_title=payload.mini_title[: self._config.structured_extract.mini_title_max_chars],
+            mini_title=_tt_trim(payload.mini_title, self._config.structured_extract.mini_title_max_chars),
             brief_summary=payload.brief_summary[: self._config.structured_extract.brief_summary_max_chars],
             tags=_normalize_tags(payload.tags, self._config.structured_extract.tags_min, self._config.structured_extract.tags_max),
             detailed_summary=payload.detailed_summary,
