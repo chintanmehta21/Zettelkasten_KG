@@ -43,6 +43,27 @@ def test_youtube_title_keeps_conjunctions():
     assert "vs" not in ys._TITLE_STOPWORDS
 
 
+def test_youtube_title_no_trailing_conjunction():
+    from website.features.summarization_engine.summarization.youtube import schema as ys
+    # words[:5] slice lands on a trailing coordinating conjunction; B2'
+    # strips it so the mini_title never ends on a dangling "and"/"or"/etc.
+    out = ys._normalize_mini_title("DMT Identity History Effects and Theories")
+    assert out == "DMT Identity History Effects"
+    # case-insensitive + looped (multiple trailing conjunctions collapse)
+    assert ys._normalize_mini_title("Cats Dogs AND OR") == "Cats Dogs"
+    assert ys._normalize_mini_title("Risk versus Reward vs") == "Risk versus Reward"
+    assert ys._normalize_mini_title("Crypto Boom &") == "Crypto Boom"
+    # interior conjunctions are preserved (only the trailing one is stripped;
+    # "of" is dropped here by the pre-existing _TITLE_STOPWORDS filter, not B2')
+    assert ys._normalize_mini_title("Rise and Fall of Empires") == "Rise and Fall Empires"
+    # idempotent
+    once = ys._normalize_mini_title("DMT Identity History Effects and Theories")
+    assert ys._normalize_mini_title(once) == once
+    # conjunctions still NOT re-added to the stopword set
+    assert "and" not in ys._TITLE_STOPWORDS
+    assert "vs" not in ys._TITLE_STOPWORDS
+
+
 def test_capitalize_first_content_word_only():
     cap = t.capitalize_title
     assert cap("r/IAmA first-time heroin risks") == "r/IAmA First-time heroin risks"
