@@ -961,6 +961,7 @@ body {
 }
 
 .home-add-row {
+    --home-add-control-size: 46px;
     display: flex;
     gap: 0.52rem;
     align-items: center;
@@ -971,9 +972,9 @@ body {
 }
 
 .home-add-document-btn {
-    width: 46px;
-    min-height: 46px;
-    flex: 0 0 46px;
+    width: var(--home-add-control-size);
+    height: var(--home-add-control-size);
+    flex: 0 0 var(--home-add-control-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1000,7 +1001,7 @@ body {
 
 .home-add-input {
     flex: 1;
-    min-height: 46px;
+    height: var(--home-add-control-size);
     padding: 0.56rem 0.75rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -1497,10 +1498,15 @@ body {
         flex-direction: column;
     }
 
-    .home-add-document-btn,
     .home-add-input,
     .home-add-submit {
         width: 100%;
+    }
+
+    .home-add-document-btn {
+        width: var(--home-add-control-size);
+        height: var(--home-add-control-size);
+        flex-basis: var(--home-add-control-size);
     }
 }
 

@@ -207,6 +207,7 @@ a:hover {
 }
 
 .input-wrapper {
+    --landing-control-size: 2.75rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -240,9 +241,9 @@ a:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.55rem;
-    height: 2.55rem;
-    flex: 0 0 2.55rem;
+    width: var(--landing-control-size);
+    height: var(--landing-control-size);
+    flex: 0 0 var(--landing-control-size);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -273,6 +274,7 @@ a:hover {
 
 #url-input {
     flex: 1;
+    height: var(--landing-control-size);
     background: transparent;
     border: none;
     outline: none;
@@ -949,8 +951,9 @@ a:hover {
     }
 
     .document-upload-btn {
-        width: 100%;
-        flex-basis: auto;
+        width: var(--landing-control-size);
+        height: var(--landing-control-size);
+        flex-basis: var(--landing-control-size);
     }
 
     .dropdown-toggle {

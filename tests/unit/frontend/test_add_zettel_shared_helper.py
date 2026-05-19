@@ -130,6 +130,28 @@ def test_all_add_zettel_frontend_entrypoints_have_document_upload():
         assert "ZKAddZettel.add" in js, name
 
 
+def test_document_upload_buttons_match_adjacent_textbox_height():
+    style = (ROOT / "website" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    home_css = (ROOT / "website" / "features" / "user_home" / "css" / "home.css").read_text(encoding="utf-8")
+    zettels_css = (
+        ROOT / "website" / "features" / "user_zettels" / "css" / "user_zettels.css"
+    ).read_text(encoding="utf-8")
+    mobile_css = (ROOT / "website" / "mobile" / "css" / "mobile.css").read_text(encoding="utf-8")
+
+    assert "--landing-control-size" in style
+    assert "width: var(--landing-control-size);" in style
+    assert "height: var(--landing-control-size);" in style
+
+    for css in [home_css, zettels_css]:
+        assert "--home-add-control-size: 46px;" in css
+        assert "width: var(--home-add-control-size);" in css
+        assert "height: var(--home-add-control-size);" in css
+
+    assert "--mobile-input-size: 52px;" in mobile_css
+    assert "width: var(--mobile-input-size);" in mobile_css
+    assert "height: var(--mobile-input-size);" in mobile_css
+
+
 def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     helper = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "mode: opts.mode || 'sync'" in helper

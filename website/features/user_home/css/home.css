@@ -316,6 +316,7 @@
 }
 
 .home-add-row {
+    --home-add-control-size: 46px;
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -326,9 +327,9 @@
 }
 
 .home-add-document-btn {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
+    width: var(--home-add-control-size);
+    height: var(--home-add-control-size);
+    flex: 0 0 var(--home-add-control-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -356,6 +357,7 @@
 
 .home-add-input {
     flex: 1;
+    height: var(--home-add-control-size);
     padding: 0.5rem 0.75rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -1464,10 +1466,15 @@
         flex-direction: column;
     }
 
-    .home-add-document-btn,
     .home-add-input,
     .home-add-submit {
         width: 100%;
+    }
+
+    .home-add-document-btn {
+        width: var(--home-add-control-size);
+        height: var(--home-add-control-size);
+        flex-basis: var(--home-add-control-size);
     }
 
     .home-avatar-grid {
