@@ -41,3 +41,17 @@ def test_youtube_title_keeps_conjunctions():
     assert "and" not in ys._TITLE_STOPWORDS
     assert "or" not in ys._TITLE_STOPWORDS
     assert "vs" not in ys._TITLE_STOPWORDS
+
+
+def test_capitalize_first_content_word_only():
+    cap = t.capitalize_title
+    assert cap("r/IAmA first-time heroin risks") == "r/IAmA First-time heroin risks"
+    assert cap("r/philosophy seeks philosophical perspectives") == "r/philosophy Seeks philosophical perspectives"
+    assert cap("owner/repo does something") == "owner/repo Does something"
+    assert cap("seeks the truth") == "Seeks the truth"
+    # preserve acronyms / camelCase / brands / already-capitalized / interior
+    assert cap("GitHub ships iOS arXiv tool") == "GitHub ships iOS arXiv tool"
+    assert cap("FT analysis of US policy") == "FT analysis of US policy"
+    assert cap("Already Good Title") == "Already Good Title"
+    assert cap("") == ""
+    assert cap("r/AskHistorians") == "r/AskHistorians"  # prefix only, nothing to cap
