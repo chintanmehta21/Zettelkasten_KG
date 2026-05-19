@@ -1860,6 +1860,11 @@
     var lines = String(markdown || '').split(/\r?\n/);
     var paraBuf = [];
     var listStack = null;
+    // Each ``## `` opens a collapsible section (same chevron/panel/toggle
+    // contract as renderStructuredDetailed). Content after an h2 routes into
+    // the open section's panel via currentTarget instead of the flat container.
+    var currentTarget = container;
+    var firstH2Seen = false;
 
     function flushPara() {
       if (!paraBuf.length) return;
@@ -1868,7 +1873,7 @@
         var p = document.createElement('p');
         p.className = 'zettels-summary-para';
         p.textContent = joined;
-        container.appendChild(p);
+        currentTarget.appendChild(p);
       }
       paraBuf = [];
     }
@@ -1880,12 +1885,35 @@
       var h3 = trimmed.match(/^###\s+(.*)$/);
       var h2 = trimmed.match(/^##\s+(.*)$/);
       var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
-      if (h2 || h3) {
+      if (h2) {
         flushPara(); closeList();
-        var heading = document.createElement(h2 ? 'h4' : 'h5');
-        heading.className = h2 ? 'zettels-summary-h2' : 'zettels-summary-h3';
-        heading.textContent = (h2 ? h2[1] : h3[1]).trim();
-        container.appendChild(heading);
+        var h4 = document.createElement('h4');
+        h4.className = 'zettels-summary-h2';
+        var lbl = document.createElement('span');
+        lbl.className = 'zettels-summary-h2-label';
+        lbl.textContent = h2[1].trim();
+        h4.appendChild(lbl);
+        h4.appendChild(buildChevronSpan());
+        container.appendChild(h4);
+        var panel = document.createElement('div');
+        panel.className = 'zettels-summary-panel';
+        container.appendChild(panel);
+        attachToggle(h4, panel);
+        if (firstH2Seen) {
+          h4.setAttribute('aria-expanded', 'false');
+          panel.setAttribute('data-collapsed', 'true');
+          panel.style.maxHeight = '0px';
+        }
+        firstH2Seen = true;
+        currentTarget = panel;
+        continue;
+      }
+      if (h3) {
+        flushPara(); closeList();
+        var h5 = document.createElement('h5');
+        h5.className = 'zettels-summary-h3';
+        h5.textContent = h3[1].trim();
+        currentTarget.appendChild(h5);
         continue;
       }
       if (bullet) {
@@ -1893,7 +1921,7 @@
         if (!listStack) {
           listStack = { el: document.createElement('ul') };
           listStack.el.className = 'zettels-summary-list';
-          container.appendChild(listStack.el);
+          currentTarget.appendChild(listStack.el);
         }
         var li = document.createElement('li');
         li.className = 'zettels-summary-list-item';

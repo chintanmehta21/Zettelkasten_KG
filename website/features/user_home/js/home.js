@@ -514,11 +514,47 @@
     }
   }
 
+  function _hmChevron() {
+    var s = document.createElement('span');
+    s.className = 'home-summary-chevron';
+    s.setAttribute('aria-hidden', 'true');
+    s.textContent = '›'; // ›
+    return s;
+  }
+  function _attachToggle(headingEl, panelEl) {
+    headingEl.setAttribute('role', 'button');
+    headingEl.setAttribute('tabindex', '0');
+    headingEl.setAttribute('aria-expanded', 'true');
+    function toggle() {
+      var collapsed = panelEl.getAttribute('data-collapsed') === 'true';
+      if (collapsed) {
+        panelEl.setAttribute('data-collapsed', 'false');
+        panelEl.style.maxHeight = panelEl.scrollHeight + 'px';
+        headingEl.setAttribute('aria-expanded', 'true');
+      } else {
+        panelEl.setAttribute('data-collapsed', 'true');
+        panelEl.style.maxHeight = '0px';
+        headingEl.setAttribute('aria-expanded', 'false');
+      }
+    }
+    headingEl.addEventListener('click', toggle);
+    headingEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault(); toggle();
+      }
+    });
+  }
+
   function renderMarkdownLite(container, markdown) {
     markdown = normalizeSummaryMarkdown(markdown);
     var lines = String(markdown || '').split(/\r?\n/);
     var paraBuf = [];
     var listStack = null; // { el: <ul>, level: number }
+    // Each ``## `` opens a collapsible section (chevron + panel + toggle,
+    // same contract as user_zettels). Content after an h2 routes into the
+    // open section's panel via currentTarget instead of the flat container.
+    var currentTarget = container;
+    var firstH2Seen = false;
 
     function flushPara() {
       if (!paraBuf.length) return;
@@ -527,7 +563,7 @@
         var p = document.createElement('p');
         p.className = 'home-summary-para';
         p.textContent = joined;
-        container.appendChild(p);
+        currentTarget.appendChild(p);
       }
       paraBuf = [];
     }
@@ -546,13 +582,37 @@
       var h3 = trimmed.match(/^###\s+(.*)$/);
       var h2 = trimmed.match(/^##\s+(.*)$/);
       var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
-      if (h2 || h3) {
+      if (h2) {
         flushPara();
         closeList();
-        var heading = document.createElement(h2 ? 'h4' : 'h5');
-        heading.className = h2 ? 'home-summary-h2' : 'home-summary-h3';
-        heading.textContent = (h2 ? h2[1] : h3[1]).trim();
-        container.appendChild(heading);
+        var h4 = document.createElement('h4');
+        h4.className = 'home-summary-h2';
+        var lbl = document.createElement('span');
+        lbl.className = 'home-summary-h2-label';
+        lbl.textContent = h2[1].trim();
+        h4.appendChild(lbl);
+        h4.appendChild(_hmChevron());
+        container.appendChild(h4);
+        var panel = document.createElement('div');
+        panel.className = 'home-summary-panel';
+        container.appendChild(panel);
+        _attachToggle(h4, panel);
+        if (firstH2Seen) {
+          h4.setAttribute('aria-expanded', 'false');
+          panel.setAttribute('data-collapsed', 'true');
+          panel.style.maxHeight = '0px';
+        }
+        firstH2Seen = true;
+        currentTarget = panel;
+        continue;
+      }
+      if (h3) {
+        flushPara();
+        closeList();
+        var h5 = document.createElement('h5');
+        h5.className = 'home-summary-h3';
+        h5.textContent = h3[1].trim();
+        currentTarget.appendChild(h5);
         continue;
       }
       if (bullet) {
@@ -560,7 +620,7 @@
         if (!listStack) {
           listStack = { el: document.createElement('ul') };
           listStack.el.className = 'home-summary-list';
-          container.appendChild(listStack.el);
+          currentTarget.appendChild(listStack.el);
         }
         var li = document.createElement('li');
         li.className = 'home-summary-list-item';
