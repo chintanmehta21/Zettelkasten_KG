@@ -117,11 +117,12 @@ def test_search_chunks_excludes_null_embeddings() -> None:
 
 
 def test_document_source_type_is_added_by_forward_migration() -> None:
-    # Operator directive 2026-05-19: the base 02 CHECK carries the COMPLETE
-    # current source list (fresh-install correctness, same pattern as arxiv),
-    # AND the forward migration 45_document_source_type.sql re-adds 'document'
-    # idempotently for already-deployed DBs. Both must contain it.
-    assert "'document'" in _sql("02_content_schema.sql")
+    # 02_content_schema.sql is an already-applied (2026-05-09) versioned
+    # migration; its body is immutable (schema-drift gate). 'document' is NOT
+    # in the frozen base 02 CHECK — it is added by the forward migration
+    # 45_document_source_type.sql, which is the authoritative effective CHECK
+    # for the live DB and for fresh installs (it runs in apply order).
+    assert "'document'" not in _sql("02_content_schema.sql")
     assert "'document'" in _sql("45_document_source_type.sql")
 
 

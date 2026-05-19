@@ -20,17 +20,8 @@ CREATE TABLE IF NOT EXISTS content.canonical_zettels (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     normalized_url    text NOT NULL,
     content_hash      bytea NOT NULL,
-    -- Base CHECK carries the COMPLETE current source list (incl. 'document'
-    -- and arxiv/hackernews/linkedin/podcast) so a fresh install accepts every
-    -- emitted SourceType without depending on migration order (operator
-    -- directive 2026-05-19). The forward migration 45_document_source_type.sql
-    -- re-adds the same set idempotently for ALREADY-DEPLOYED DBs.
     source_type       text NOT NULL CHECK (
-        source_type IN (
-            'youtube', 'reddit', 'github', 'twitter', 'substack',
-            'newsletter', 'medium', 'web', 'generic',
-            'hackernews', 'linkedin', 'arxiv', 'podcast', 'document'
-        )
+        source_type IN ('youtube', 'reddit', 'github', 'twitter', 'substack', 'newsletter', 'medium', 'web', 'generic')
     ),
     title             text,
     body_md           text,

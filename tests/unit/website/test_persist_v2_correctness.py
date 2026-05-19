@@ -388,14 +388,23 @@ _V2_DIR = _Path(__file__).resolve().parents[3] / "supabase" / "website" / "_v2"
 
 
 def _check_allowed_source_types() -> set[str]:
-    """Parse the live CHECK value set from 02_content_schema.sql."""
-    sql = (_V2_DIR / "02_content_schema.sql").read_text(encoding="utf-8")
+    """Parse the EFFECTIVE live CHECK value set.
+
+    Source of truth is the forward migration 45_document_source_type.sql, NOT
+    base 02_content_schema.sql. 02 is an already-applied (2026-05-09) versioned
+    migration whose body is immutable (the schema-drift gate checksums it); the
+    live DB's actual canonical_zettels source_type CHECK is whatever
+    45_document_source_type.sql last (DROP+ADD) set. Parsing 45 keeps this
+    regression guard aligned with what the deployed database really enforces.
+    """
+    sql = (_V2_DIR / "45_document_source_type.sql").read_text(encoding="utf-8")
     m = _re.search(
-        r"source_type\s+text\s+NOT NULL\s+CHECK\s*\(\s*source_type\s+IN\s*\((.*?)\)\s*\)",
+        r"ADD\s+CONSTRAINT\s+canonical_zettels_source_type_check\s+CHECK\s*\(\s*"
+        r"source_type\s+IN\s*\((.*?)\)\s*\)",
         sql,
         _re.DOTALL | _re.IGNORECASE,
     )
-    assert m, "could not locate canonical_zettels source_type CHECK"
+    assert m, "could not locate canonical_zettels source_type CHECK in migration 45"
     return set(_re.findall(r"'([a-z]+)'", m.group(1)))
 
 
@@ -414,23 +423,22 @@ def test_schema_check_allows_every_emitted_source_type() -> None:
 
 
 def test_forward_migration_widens_check_to_arxiv_and_document() -> None:
-    """arxiv/hackernews/linkedin/podcast must be valid source types. The
-    standalone 47_canonical_source_type_arxiv.sql was removed during the
-    origin/master merge reconciliation (redundant: master's
-    45_document_source_type.sql is the SUPERSET CHECK incl. arxiv + document).
-    Coverage now: (a) base 02 carries the complete list incl. arxiv & document
-    (operator directive 2026-05-19), and (b) the forward migration
-    45_document_source_type.sql re-adds the widened CHECK for deployed DBs."""
+    """arxiv/hackernews/linkedin/podcast/document must be valid source types.
+
+    Coverage is via the forward migration 45_document_source_type.sql (the
+    authoritative effective CHECK) — NOT base 02_content_schema.sql. 02 was
+    applied 2026-05-09 and its body is immutable (schema-drift gate); the
+    widened list lives in 45's DROP+ADD CONSTRAINT. The standalone
+    47_canonical_source_type_arxiv.sql was removed during the origin/master
+    merge reconciliation (redundant: 45 is the SUPERSET CHECK)."""
     assert not (_V2_DIR / "47_canonical_source_type_arxiv.sql").exists(), (
         "47_canonical_source_type_arxiv.sql was intentionally removed in the "
         "merge reconciliation; 45_document_source_type.sql supersedes it"
     )
-    base = (_V2_DIR / "02_content_schema.sql").read_text(encoding="utf-8")
     mig = _V2_DIR / "45_document_source_type.sql"
     assert mig.exists(), "forward migration 45_document_source_type missing"
     body = mig.read_text(encoding="utf-8")
     for v in ("arxiv", "hackernews", "linkedin", "podcast", "document"):
-        assert f"'{v}'" in base, f"base 02 CHECK must allow '{v}'"
         assert f"'{v}'" in body, f"45_document_source_type must add '{v}'"
     assert "DROP CONSTRAINT IF EXISTS canonical_zettels_source_type_check" in body
     assert "ADD CONSTRAINT canonical_zettels_source_type_check" in body
