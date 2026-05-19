@@ -299,7 +299,7 @@
           name: z.title || 'Untitled',
           group: z.source_type || 'web',
           url: z.source_url || '',
-          date: z.added_at || '',
+          date: (z.added_at || '').slice(0, 10),
           summary: z.brief_summary || '',
           description: z.detailed_summary || z.brief_summary || '',
           tags: Array.isArray(z.tags) ? z.tags : []
@@ -941,6 +941,11 @@
       // UX-8: refresh the My Zettels badge authoritatively from /api/zettels.
       refreshMyZettelsBadge(token);
     } catch (e) {
+      // The optimistic add did not land — tear the skeleton down immediately on
+      // ANY error (incl. quota_exhausted) so it never orphans if the user
+      // dismisses the quota gate without paying/watching ads. A resume re-runs
+      // addZettel() which creates a fresh skeleton.
+      if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       var quotaDetail = e && e.detail && e.detail.code === 'quota_exhausted' ? e.detail : null;
       if (quotaDetail && window.ZKQuotaGate) {
         await window.ZKQuotaGate.show({
@@ -951,7 +956,6 @@
         });
         return;
       }
-      if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (addError) addError.textContent = e.message;
       if (addZettelDropdown) addZettelDropdown.classList.add('open');
     } finally {
