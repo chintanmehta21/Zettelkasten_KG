@@ -222,9 +222,21 @@ def _operation_put(operation_id: str, value: dict[str, Any]) -> None:
     _OPERATIONS.move_to_end(operation_id)
     while len(_OPERATIONS) > _MAX_OPERATION_RECORDS:
         old_id, _ = _OPERATIONS.popitem(last=False)
-        old_task = _OPERATION_TASKS.pop(old_id, None)
-        if old_task and not old_task.done():
-            old_task.cancel()
+        # Bug fix: never cancel a still-running summarization task on LRU
+        # eviction (universal-202 regression). The oldest _OPERATIONS entry
+        # is often an accept-time placeholder whose task is mid-flight;
+        # cancelling it kills the user's summary. Promote to _BG_TASKS for
+        # a guaranteed strong ref and leave the task to finish; its
+        # done-callback (_store_operation_result) will pop _OPERATION_TASKS
+        # and re-publish the terminal result via _operation_put.
+        old_task = _OPERATION_TASKS.get(old_id)
+        if old_task is None:
+            continue
+        if old_task.done():
+            _OPERATION_TASKS.pop(old_id, None)
+        else:
+            _BG_TASKS.add(old_task)
+            old_task.add_done_callback(_BG_TASKS.discard)
 
 
 def _operation_get(operation_id: str) -> dict[str, Any] | None:
