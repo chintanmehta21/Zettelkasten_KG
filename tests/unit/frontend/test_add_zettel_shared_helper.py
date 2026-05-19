@@ -1,13 +1,142 @@
 """Regression tests for the shared Add Zettel frontend caller."""
 from __future__ import annotations
 
+import json
 import re
+import shutil
 import subprocess
+import textwrap
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2].parent
 ADD_ZETTEL_ASSET_VERSION = "20260518b"
+
+
+_NODE = shutil.which("node")
+
+
+def _run_poll_accepted(initial_body, poll_bodies):
+    """Execute the real pollAccepted via the public ZKAddZettel.add in Node.
+
+    Stubs window/fetch so the first /api/zettels/add returns ``initial_body``
+    (status 200) and each subsequent status poll returns the next entry of
+    ``poll_bodies`` (HTTP 200, terminal). Returns a dict describing whether the
+    returned promise resolved or rejected and the resolved value / error shape.
+    """
+    helper = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(
+        encoding="utf-8"
+    )
+    harness = textwrap.dedent(
+        """
+        const INITIAL = %s;
+        const POLLS = %s;
+        let pollIdx = 0;
+        global.window = {
+          setTimeout: (fn) => fn(),  // collapse sleeps
+        };
+        global.fetch = async (url) => {
+          let body;
+          if (String(url).indexOf('/api/zettels/add') !== -1 && pollIdx === 0
+              && String(url).indexOf('/operations/') === -1) {
+            body = INITIAL;
+          } else {
+            body = POLLS[pollIdx++];
+          }
+          return {
+            ok: true,
+            status: 200,
+            headers: { get: (k) => (k.toLowerCase() === 'content-type'
+              ? 'application/json' : null) },
+            json: async () => body,
+            text: async () => JSON.stringify(body),
+          };
+        };
+        %s
+        (async () => {
+          try {
+            const res = await window.ZKAddZettel.add({ url: 'https://x.test' });
+            console.log(JSON.stringify({ outcome: 'resolved', value: res }));
+          } catch (e) {
+            console.log(JSON.stringify({
+              outcome: 'rejected',
+              message: e && e.message,
+              detail: e && e.detail,
+              problem: e && e.problem,
+              status: e && e.status,
+            }));
+          }
+        })();
+        """
+    ) % (json.dumps(initial_body), json.dumps(poll_bodies), helper)
+    proc = subprocess.run(
+        [_NODE, "-e", harness], capture_output=True, text=True, timeout=30
+    )
+    assert proc.returncode == 0, proc.stderr
+    return json.loads(proc.stdout.strip().splitlines()[-1])
+
+
+@pytest.mark.skipif(_NODE is None, reason="node not available")
+def test_poll_accepted_rejects_on_terminal_failed_payload():
+    """A terminal status:'failed' poll body must REJECT carrying the failure
+    payload (so both consumers' existing catch surface it as an error instead
+    of building an 'Untitled' card from envelope.summary)."""
+    accepted = {"status": "accepted", "status_url": "/api/operations/op-f1"}
+    failed_body = {
+        "status": "failed",
+        "operation_id": "op-f1",
+        "detail": {"code": "extraction_failed", "message": "could not extract"},
+    }
+    out = _run_poll_accepted(accepted, [failed_body])
+    assert out["outcome"] == "rejected", out
+    # the structured failure body must be carried for the existing catch path
+    assert out["problem"] == failed_body
+    assert out["detail"] == failed_body["detail"]
+
+
+@pytest.mark.skipif(_NODE is None, reason="node not available")
+def test_poll_accepted_still_resolves_on_terminal_succeeded_payload():
+    """No regression: a terminal status:'succeeded' poll body still resolves."""
+    accepted = {"status": "accepted", "status_url": "/api/operations/op-ok"}
+    ok_body = {"status": "succeeded", "operation_id": "op-ok",
+               "summary": {"title": "Real Title"}}
+    out = _run_poll_accepted(accepted, [ok_body])
+    assert out["outcome"] == "resolved", out
+    assert out["value"]["status"] == "succeeded"
+    assert out["value"]["summary"]["title"] == "Real Title"
+
+
+@pytest.mark.skipif(_NODE is None, reason="node not available")
+def test_poll_accepted_still_resolves_on_non_202_immediate_body():
+    """A direct (non-accepted) 200 body returns unchanged (sync fast path)."""
+    direct = {"status": "succeeded", "summary": {"title": "Sync"}}
+    out = _run_poll_accepted(direct, [])
+    assert out["outcome"] == "resolved", out
+    assert out["value"]["summary"]["title"] == "Sync"
+
+
+def test_failed_async_poll_routes_into_existing_catch_not_a_new_card():
+    """Guard: neither consumer builds a card on a thrown poll. The card build
+    must sit AFTER `await apiPromise` inside the try, so a pollAccepted
+    rejection skips it and lands in the existing catch (skeleton teardown +
+    error surface) — same path as a synchronous add failure."""
+    for rel in [
+        "website/features/user_home/js/home.js",
+        "website/features/user_zettels/js/user_zettels.js",
+    ]:
+        js = (ROOT / rel).read_text(encoding="utf-8")
+        # The envelope is consumed via `await apiPromise` inside a try{...}catch
+        m = re.search(r"try\s*\{\s*var envelope = await apiPromise;", js)
+        assert m, rel + ": card build must be guarded by try{ await apiPromise }"
+        tail = js[m.start():]
+        catch_pos = tail.find("} catch")
+        assert catch_pos != -1, rel + ": missing catch for the apiPromise try"
+        # the catch must surface the error (addError text / quota detail) — the
+        # same path a synchronous add failure already uses
+        catch_blk = tail[catch_pos:catch_pos + 1200]
+        assert "addError" in catch_blk, rel + ": catch must surface the error"
 
 
 def test_all_add_zettel_surfaces_use_shared_helper():
