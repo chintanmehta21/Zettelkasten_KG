@@ -63,6 +63,8 @@ def test_mark_succeeded_writes_response():
     update_dict = tbl.update.call_args[0][0]
     assert update_dict["status"] == "succeeded"
     assert update_dict["response"] == response_payload
+    # symmetry/cleanliness: succeeded clears the error column too
+    assert update_dict["error"] is None
     # updated_at must be a real ISO-8601 datetime, not the literal "now()"
     assert "updated_at" in update_dict
     assert update_dict["updated_at"] != "now()"
@@ -88,9 +90,10 @@ def test_mark_failed_writes_error():
     tbl.update.assert_called_once()
     update_dict = tbl.update.call_args[0][0]
     assert update_dict["status"] == "failed"
-    # failed path writes to `error` column, NOT `response`
+    # failed path writes the failure body to `error` AND clears the stale
+    # accepted body still sitting in `response` (P1 self-consistency fix)
     assert update_dict.get("error") == failed_payload
-    assert "response" not in update_dict
+    assert update_dict["response"] is None
     assert "updated_at" in update_dict
     assert update_dict["updated_at"] != "now()"
     _dt.datetime.fromisoformat(update_dict["updated_at"])  # raises if not valid ISO

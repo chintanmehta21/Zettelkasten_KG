@@ -53,9 +53,15 @@ def _mark(
 ) -> bool:
     try:
         client = get_v2_client()
-        col = "response" if status == "succeeded" else "error"
+        # Status-consistent write: a failed row must NOT keep the stale
+        # accepted body in `response` (any consumer reading `response or
+        # error` would otherwise serve the accepted body for a failed op).
+        if status == "succeeded":
+            cols = {"response": payload, "error": None}
+        else:
+            cols = {"error": payload, "response": None}
         client.schema(_SCHEMA).table(_TABLE).update(
-            {"status": status, col: payload, "updated_at": datetime.now(timezone.utc).isoformat()}
+            {"status": status, **cols, "updated_at": datetime.now(timezone.utc).isoformat()}
         ).eq("user_id", str(user_id)).eq("operation_id", operation_id).execute()
         return True
     except Exception:

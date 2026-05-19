@@ -68,23 +68,81 @@ def test_operation_status_202_while_accepted():
     assert r.json()["status"] == "accepted"
 
 
-def test_operation_status_supabase_miss_falls_back_then_404():
+def test_operation_status_supabase_miss_and_no_inmem_returns_202_pending():
+    """P2: both Supabase get_operation AND the per-worker in-memory store
+    miss. During the fire-and-forget accepted-row replication gap a poll
+    routed to another worker would 404 a job that is actually running —
+    return a transient 202 pending instead so the client keeps polling."""
     with patch("website.api.zettels_routes.operations_repo.get_operation",
                return_value=None):
-        r = _client().get("/api/operations/nope")
-    assert r.status_code == 404
-    assert r.json()["type"].endswith("operation-not-found")
+        r = _client().get("/api/operations/replication-gap-op")
+    assert r.status_code == 202
+    body = r.json()
+    assert body["status"] == "accepted"
+    assert body["operation_id"] == "replication-gap-op"
+    assert body["status_url"] == "/api/operations/replication-gap-op"
+    assert r.headers.get("Retry-After") == "3"
 
 
-def test_failed_operation_returns_200_failed_payload():
+def test_failed_operation_returns_200_error_payload_not_stale_accepted():
+    """P1 read side: a failed row that still carries a stale accepted body in
+    `response` must return the FAILURE body (from `error`), not the stale
+    accepted body. Selection is status-driven, not `response or error`."""
+    stale_accepted = {"status": "accepted", "operation_id": "op-4"}
     failed = {"status": "failed", "operation_id": "op-4",
               "quality": {"confidence": "failed"}}
     with patch("website.api.zettels_routes.operations_repo.get_operation",
-               return_value={"status": "failed", "response": failed,
+               return_value={"status": "failed", "response": stale_accepted,
                              "error": failed}):
         r = _client().get("/api/operations/op-4")
     assert r.status_code == 200
-    assert r.json()["status"] == "failed"
+    body = r.json()
+    assert body["status"] == "failed"
+    assert body["quality"]["confidence"] == "failed"
+
+
+def test_succeeded_row_reads_response_200():
+    """P1 read side: succeeded → payload from `response`, 200."""
+    succeeded = {"status": "succeeded", "operation_id": "op-5",
+                 "summary": {"title": "S"}}
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               return_value={"status": "succeeded", "response": succeeded,
+                             "error": None}):
+        r = _client().get("/api/operations/op-5")
+    assert r.status_code == 200
+    assert r.json()["status"] == "succeeded"
+    assert r.json()["summary"]["title"] == "S"
+
+
+def test_accepted_row_reads_response_202():
+    """P1 read side: accepted → payload from `response`, 202."""
+    acc = {"status": "accepted", "operation_id": "op-6",
+           "status_url": "/api/operations/op-6"}
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               return_value={"status": "accepted", "response": acc,
+                             "error": None}):
+        r = _client().get("/api/operations/op-6")
+    assert r.status_code == 202
+    assert r.json()["status"] == "accepted"
+
+
+def test_inmem_accepted_still_202_when_supabase_misses():
+    """P2 no-regression: when Supabase misses but the per-worker in-memory
+    store HAS the accepted result, the single-worker fallback still serves
+    202 (we only changed the truly-not-found-anywhere branch)."""
+    from website.api import zettels_routes as zr
+
+    acc = {"status": "accepted", "operation_id": "inmem-1",
+           "status_url": "/api/operations/inmem-1"}
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               return_value=None):
+        zr._operation_put("inmem-1", acc)
+        try:
+            r = _client().get("/api/operations/inmem-1")
+        finally:
+            zr._OPERATIONS.pop("inmem-1", None)
+    assert r.status_code == 202
+    assert r.json()["status"] == "accepted"
 
 
 def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
