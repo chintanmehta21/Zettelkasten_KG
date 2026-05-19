@@ -1,6 +1,64 @@
 ﻿(function () {
   'use strict';
 
+  // Conservative smart-dollar guard: only treat $...$ as math when the
+  // content looks like LaTeX (no bare prices like $5 / $ 100). Display
+  // ($$, \[ \]) and \( \) are unambiguous and always allowed.
+  function _mathRenderArxiv(rootEl, sourceType) {
+    if (!rootEl) return;
+    rootEl.setAttribute('data-math-source', String(sourceType || ''));
+    // DYNAMIC GATE: today only 'arxiv'; widen this set later if accuracy holds.
+    var MATH_SOURCES = { arxiv: true };
+    if (!MATH_SOURCES[String(sourceType || '').toLowerCase()]) return;
+    if (typeof window.renderMathInElement !== 'function') return;
+    try {
+      window.renderMathInElement(rootEl, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '$', right: '$', display: false }
+        ],
+        // smart-dollar: a $ that opens math must be followed by a
+        // non-space, non-digit; closing $ preceded by non-space. KaTeX
+        // auto-render has no built-in guard, so pre-mask price-like $.
+        preProcess: function (math) { return math; },
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'option'],
+        ignoredClasses: ['no-math'],
+        throwOnError: false,
+        trust: false,
+        maxExpand: 1000
+      });
+    } catch (e) {
+      // Never let math rendering break the popup.
+      if (window.console && console.warn) console.warn('[katex] skipped', e);
+    }
+  }
+
+  // Pre-mask price-like dollar runs so $...$ scanning can't pair them.
+  // Applied to text nodes only, before renderMathInElement.
+  function _maskPriceDollars(rootEl) {
+    if (!rootEl) return;
+    var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      // $ followed by a digit or whitespace = currency, not math → escape it
+      // so the auto-render delimiter scan ignores it.
+      node.nodeValue = node.nodeValue.replace(/\$(?=\s|\d)/g, '﹩');
+    }
+  }
+
+  function _unmaskPriceDollars(rootEl) {
+    if (!rootEl) return;
+    var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue.indexOf('﹩') !== -1) {
+        node.nodeValue = node.nodeValue.replace(/﹩/g, '$');
+      }
+    }
+  }
+
   var _supabaseClient = null;
   var _session = null;
   var _token = '';
@@ -1110,6 +1168,11 @@
       detailed: node.detailedSummary || '',
       detailedStructured: node.detailedStructured || null
     });
+
+    var _mathSrc = (node.source || node.group || '').toLowerCase();
+    _maskPriceDollars(summaryText);
+    _mathRenderArxiv(summaryText, _mathSrc);
+    _unmaskPriceDollars(summaryText);
 
     summaryTags.innerHTML = '';
     (node.tags || []).forEach(function (tag) {

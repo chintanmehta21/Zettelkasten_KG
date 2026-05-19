@@ -317,3 +317,33 @@ def test_poll_accepted_budget_covers_180s_and_respects_retry_after():
     ]:
         html = (ROOT / rel).read_text(encoding="utf-8")
         assert "/js/add_zettel_api.js?v=20260519c" in html, rel
+
+
+def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():
+    base = ROOT / "website" / "static" / "vendor" / "katex"
+    assert (base / "katex.min.css").exists(), "KaTeX css must be vendored (no CDN)"
+    assert (base / "katex.min.js").exists()
+    assert (base / "contrib" / "auto-render.min.js").exists()
+    fonts = list((base / "fonts").glob("KaTeX_*.woff2"))
+    assert fonts, "KaTeX woff2 fonts must be vendored"
+
+    for rel in ["website/features/user_home/index.html",
+                "website/features/user_zettels/index.html"]:
+        html = (ROOT / rel).read_text(encoding="utf-8")
+        assert "/vendor/katex/katex.min.css" in html, rel
+        assert "/vendor/katex/katex.min.js" in html, rel
+        assert "/vendor/katex/contrib/auto-render.min.js" in html, rel
+    # NOT loaded on non-popup pages
+    for rel in ["website/static/index.html", "website/mobile/index.html"]:
+        html = (ROOT / rel).read_text(encoding="utf-8")
+        assert "vendor/katex" not in html, rel
+
+    for rel in ["website/features/user_home/js/home.js",
+                "website/features/user_zettels/js/user_zettels.js"]:
+        js = (ROOT / rel).read_text(encoding="utf-8")
+        assert "renderMathInElement" in js, rel
+        assert "throwOnError" in js and "false" in js, rel
+        assert "trust" in js, rel
+        # arxiv-gated + dynamic flag
+        assert "arxiv" in js.lower(), rel
+        assert "data-math-source" in js or "mathSource" in js, rel
