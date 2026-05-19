@@ -79,3 +79,41 @@ def apply_text_quality(value: Any, *, source_type: str | None, field_kind: str) 
                 field_kind, source_type,
             )
     return out
+
+
+# Section-level rules operate on the list[section]; key field_kind is the
+# fixed string "section_list". Each rule: list -> list, pure + idempotent.
+SectionRuleFn = Callable[[list], list]
+_SECTION_REGISTRY: "OrderedDict[str | None, list[SectionRuleFn]]" = OrderedDict()
+
+
+def register_section(*, source_type: str | None):
+    def _add(fn: "SectionRuleFn") -> "SectionRuleFn":
+        st = source_type.lower() if isinstance(source_type, str) else None
+        _SECTION_REGISTRY.setdefault(st, []).append(fn)
+        return fn
+
+    return _add
+
+
+def apply_sections(sections: Any, *, source_type: str | None) -> Any:
+    if not isinstance(sections, list):
+        return sections
+    st = source_type.lower() if isinstance(source_type, str) else None
+    rules = list(_SECTION_REGISTRY.get(None, []))
+    if st is not None:
+        rules.extend(_SECTION_REGISTRY.get(st, []))
+    if not rules:
+        return sections
+    out = sections
+    for fn in rules:
+        try:
+            res = fn(out)
+            if isinstance(res, list):
+                out = res
+        except Exception:
+            logger.exception(
+                "post-summary section rule failed (source=%s) — sections unchanged",
+                source_type,
+            )
+    return out
