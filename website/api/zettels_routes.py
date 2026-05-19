@@ -250,20 +250,31 @@ def _store_operation_result(
     user_id: UUID | None = None,
 ) -> None:
     failed = False
-    try:
-        result = task.result()
-    except Exception as exc:
-        logger.exception("Background Add Zettel operation failed")
-        failed = True
-        result = AddZettelResponse(
+
+    def _failed_response(reason: str) -> dict[str, Any]:
+        return AddZettelResponse(
             status="failed",
             operation_id=operation_id,
             persistence=persistence_dto(persist_requested, None),
             quality=QualityDTO(
                 confidence="failed",
-                confidence_reason=str(exc),
+                confidence_reason=reason,
             ),
         ).model_dump(mode="json")
+
+    try:
+        result = task.result()
+    except asyncio.CancelledError:
+        # CancelledError is BaseException, not Exception. _operation_put's LRU
+        # eviction cancels old tasks; without this branch the cleanup trio
+        # below is skipped and the _IN_FLIGHT slot is stuck forever.
+        logger.warning("Background Add Zettel operation cancelled (op=%s)", operation_id)
+        failed = True
+        result = _failed_response("operation cancelled")
+    except Exception as exc:
+        logger.exception("Background Add Zettel operation failed")
+        failed = True
+        result = _failed_response(str(exc))
     else:
         _cache_put(cache_key, request_hash, result)
     _operation_put(operation_id, result)
@@ -278,11 +289,16 @@ def _store_operation_result(
                 fn, user_id=user_id, operation_id=operation_id,
                 request_hash=request_hash, response=result,
             )
+        _terminal_coro = _persist_terminal()
         try:
-            asyncio.get_running_loop().create_task(_persist_terminal())
+            # Route through _spawn_bg so the task is strongly referenced in
+            # _BG_TASKS until done — bare create_task lets GC drop the
+            # terminal mark_* write mid-flight (op stuck `accepted`).
+            _spawn_bg(_terminal_coro)
         except RuntimeError:
-            # No running loop (callback fired post-loop, e.g. tests): best
-            # effort synchronous write.
+            # No running loop (callback fired post-loop, e.g. tests): close
+            # the un-scheduled coro, then best-effort synchronous write.
+            _terminal_coro.close()
             (operations_repo.mark_failed if failed else operations_repo.mark_succeeded)(
                 user_id=user_id, operation_id=operation_id,
                 request_hash=request_hash, response=result,
