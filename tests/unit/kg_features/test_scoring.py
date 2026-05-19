@@ -2,7 +2,8 @@
 
 Locked decisions covered:
 - D-KG-1 weights: embedding=0.55 + tag=0.25 + structural=0.15 + temporal=0.05
-- D-KG-2 edge-creation threshold: ≥ 0.55
+- D-KG-2 edge-creation threshold: ≥ 0.50 (B3: re-tuned from 0.55 after the
+  raw-cosine clamp replaced the (cos+1)/2 compression)
 - Per-node neighborhood percentile rank (NOT global percentile)
 - Pure function: no DB / no network / no global state
 """
@@ -40,8 +41,8 @@ def test_weights_match_locked_decision() -> None:
 
 
 def test_thresholds_match_locked_decisions() -> None:
-    """D-KG-2 (edge create ≥ 0.55) and D-KG-3 (edge render ≥ 0.7)."""
-    assert EDGE_CREATION_THRESHOLD == 0.55
+    """D-KG-2 (edge create ≥ 0.50, B3-retuned) and D-KG-3 (edge render ≥ 0.7)."""
+    assert EDGE_CREATION_THRESHOLD == 0.50
     assert EDGE_RENDER_THRESHOLD == 0.7
 
 
@@ -212,16 +213,58 @@ def test_percentile_rank_singleton_returns_zero() -> None:
 
 
 def test_below_creation_threshold_predicate_excludes() -> None:
-    """Score < 0.55 must NOT qualify for edge creation."""
-    assert 0.54 < EDGE_CREATION_THRESHOLD
-    assert not (0.54 >= EDGE_CREATION_THRESHOLD)
+    """Score < 0.50 must NOT qualify for edge creation."""
+    assert 0.49 < EDGE_CREATION_THRESHOLD
+    assert not (0.49 >= EDGE_CREATION_THRESHOLD)
 
 
 def test_at_creation_threshold_predicate_includes() -> None:
-    """Score == 0.55 IS the creation cutoff (≥, not >)."""
-    assert 0.55 >= EDGE_CREATION_THRESHOLD
+    """Score == 0.50 IS the creation cutoff (≥, not >)."""
+    assert 0.50 >= EDGE_CREATION_THRESHOLD
 
 
 def test_render_threshold_strict_subset_of_creation() -> None:
-    """Render threshold (0.7) > creation threshold (0.55) by construction."""
+    """Render threshold (0.7) > creation threshold (0.50) by construction."""
     assert EDGE_RENDER_THRESHOLD > EDGE_CREATION_THRESHOLD
+
+
+# ── B3: raw-cosine clamp kernel (no (cos+1)/2 affine rescale) ──────────
+
+
+def test_b3_cosine_kernel_clamps_not_rescales() -> None:
+    """B3 regression: ``_cosine_similarity`` must clamp to ``max(0, cos)``,
+    NOT affine-rescale via ``(cos+1)/2``. The old rescale floored unrelated
+    pairs at 0.5 and compressed related pairs into 0.55-0.70, degenerating
+    the composite and collapsing edge tiers (defect B3)."""
+    from website.features.kg_features.scoring import _cosine_similarity
+
+    # Identical → 1.0 (both kernels agree here).
+    assert _cosine_similarity([1.0, 0.0], [1.0, 0.0]) == pytest.approx(1.0)
+    # Orthogonal → 0.0 under clamp (old rescale wrongly gave 0.5).
+    assert _cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
+    # Antipodal → 0.0 under clamp (old rescale wrongly gave 0.0 too, but via
+    # a different path; pin it explicitly so a rescale regression is caught).
+    assert _cosine_similarity([1.0, 0.0], [-1.0, 0.0]) == pytest.approx(0.0)
+    # A genuinely related pair keeps its TRUE similarity (~0.97), not the
+    # compressed ~0.98→rescaled band — spread is preserved for tiering.
+    sim = _cosine_similarity([1.0, 0.25], [1.0, 0.05])
+    assert sim > 0.95
+    # Pathological inputs still collapse to 0.0 silently.
+    assert _cosine_similarity([], [1.0]) == 0.0
+    assert _cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+
+def test_b3_orthogonal_embeddings_contribute_zero_not_half() -> None:
+    """End-to-end: orthogonal embeddings must add 0 to the composite (was
+    0.55 * 0.5 = 0.275 under the old rescale — a phantom edge-strength
+    floor that created spurious edges between unrelated nodes)."""
+    score = compute_connection_strength(
+        "a",
+        "b",
+        embeddings={"a": [1.0, 0.0], "b": [0.0, 1.0]},
+        tags={"a": [], "b": []},
+        structural={"a": {}, "b": {}},
+        temporal_days=365.0,
+    )
+    # Only the (near-zero) temporal term remains; the embedding term is 0.
+    assert score < 0.05

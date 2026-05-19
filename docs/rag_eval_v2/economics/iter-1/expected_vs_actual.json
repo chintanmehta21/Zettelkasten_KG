@@ -1,0 +1,168 @@
+[
+  {
+    "qid": "q1",
+    "class": "lookup",
+    "text": "In the 'Entire INDIAN Economics in 18 Mins' video, how does it summarize the structure of the Indian economy — what are the main sectors or pillars it identifies?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 8984,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q2",
+    "class": "lookup",
+    "text": "What is the central argument of 'America is Losing Control of the Petrodollar' about why the petrodollar system matters and what threatens it?",
+    "expected_primary_citation_resolved": [
+      "40e1a993-5d2c-4752-903f-a683d0b10bdb"
+    ],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 4938,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q3",
+    "class": "lookup",
+    "text": "According to 'The 1991 Crisis: The Week India Changed Forever', what triggered the 1991 crisis and what reforms followed?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "multi_hop",
+    "latency_ms": 2827,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q4",
+    "class": "lookup",
+    "text": "In the AskHistorians thread about the Inca Empire, how did the Incas run a complex economy without money or markets?",
+    "expected_primary_citation_resolved": [
+      "fc376266-707f-42fb-9376-109d5071c722"
+    ],
+    "actual_retrieved_zettel_ids": [
+      "fc376266-707f-42fb-9376-109d5071c722",
+      "76ce1597-9660-45f8-a454-a743019edee5",
+      "287b5d8e-f764-4e0f-92a2-9b6c1f815ad3",
+      "40e1a993-5d2c-4752-903f-a683d0b10bdb"
+    ],
+    "actual_primary_citation": "fc376266-707f-42fb-9376-109d5071c722",
+    "critic_verdict": "supported",
+    "query_class": "multi_hop",
+    "latency_ms": 7453,
+    "answer_preview": "The Inca Empire operated a complex economy without money or markets primarily through a labor-based system known as the Mit'a system [id=\"7f4694aa-c49f-42aa-9963-c3b37e08b648\"]. Citizens provided labor service to the state for a portion of the year, often during agricultural down"
+  },
+  {
+    "qid": "q5",
+    "class": "lookup",
+    "text": "In the Hacker News 'Government Cheese Caves' thread, what is the economic story behind the U.S. government cheese stockpile — why did it accumulate and what does the discussion say it illustrates about market intervention?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "multi_hop",
+    "latency_ms": 9672,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q6",
+    "class": "multi_hop",
+    "text": "The Tulip Mania arXiv paper models financial bubbles mathematically; the petrodollar video describes a dollar-demand system. Using the bubble dynamics from the Tulip Mania paper, how could a rapid loss of confidence in the petrodollar resemble a bubble collapse?",
+    "expected_primary_citation_resolved": [
+      "40e1a993-5d2c-4752-903f-a683d0b10bdb"
+    ],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "multi_hop",
+    "latency_ms": 2780,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q7",
+    "class": "thematic",
+    "text": "Across these zettels, what is the implicit theory of how trust, information, or confidence holds an economic system together? Cite at least four sources.",
+    "expected_primary_citation_resolved": [
+      "40e1a993-5d2c-4752-903f-a683d0b10bdb",
+      "fc376266-707f-42fb-9376-109d5071c722"
+    ],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "thematic",
+    "latency_ms": 1077,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q8",
+    "class": "step_back",
+    "text": "Some zettels describe resource allocation steered by the state rather than by free price-setting markets. Which zettels are these and what coordination mechanism does each describe?",
+    "expected_primary_citation_resolved": [
+      "fc376266-707f-42fb-9376-109d5071c722"
+    ],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "multi_hop",
+    "latency_ms": 1640,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q9",
+    "class": "vague",
+    "text": "Anything about the Big Mac index?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [
+      "5c139a52-bfde-4c41-ab0c-cf2150e69aa0"
+    ],
+    "actual_primary_citation": "5c139a52-bfde-4c41-ab0c-cf2150e69aa0",
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 2031,
+    "answer_preview": "The Big Mac index is calculated by The Economist, and its data and R code are provided in a repository [id=\"4512ab47-a93c-4b86-b8a1-8a80a4338da8\"]. This repository processes raw Big Mac price, exchange rate, and GDP data to generate three distinct CSV files: `big-mac-raw-index.cs"
+  },
+  {
+    "qid": "q10",
+    "class": "lookup",
+    "text": "In the Adam Tooze Chartbook 448 piece on price controls and nationalization, what is the argument about when heterodox tools like price controls or financial repression become economically defensible?",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 8593,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q11",
+    "class": "adversarial",
+    "text": "Summarize what this Kasten says about Bitcoin's halving cycle and its effect on monetary policy.",
+    "expected_primary_citation_resolved": [],
+    "actual_retrieved_zettel_ids": [],
+    "actual_primary_citation": null,
+    "critic_verdict": "supported",
+    "query_class": "lookup",
+    "latency_ms": 828,
+    "answer_preview": "I can't find that in your Zettels."
+  },
+  {
+    "qid": "q12",
+    "class": "vague",
+    "text": "Money without markets?",
+    "expected_primary_citation_resolved": [
+      "fc376266-707f-42fb-9376-109d5071c722"
+    ],
+    "actual_retrieved_zettel_ids": [
+      "fc376266-707f-42fb-9376-109d5071c722"
+    ],
+    "actual_primary_citation": "fc376266-707f-42fb-9376-109d5071c722",
+    "critic_verdict": "supported",
+    "query_class": "vague",
+    "latency_ms": 2139,
+    "answer_preview": "The Inca Empire functioned and expanded without the use of money or markets [id=\"7f4694aa-c49f-42aa-9963-c3b37e08b648\"]. Its economy was fundamentally a labor-based system, not reliant on currency [id=\"7f4694aa-c49f-42aa-9963-c3b37e08b648\"]. Citizens provided labor, known as mit'"
+  }
+]

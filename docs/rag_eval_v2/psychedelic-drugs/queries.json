@@ -1,0 +1,162 @@
+{
+  "_meta": {
+    "kasten_slug": "psychedelic-drugs",
+    "kasten_name": "Psychedelic Drugs",
+    "kasten_built_at": "PENDING_OPERATOR_INGEST",
+    "iter": "1",
+    "members_node_ids": [],
+    "members_node_ids_note": "Resolved at runtime by run_eval_v2.py from RAGRepository.list_kasten_zettels(kasten_id) -> canonical_zettel_id list. Empty here because ingestion is operator-gated; the harness writes the resolved list into each iter-N/queries.json copy.",
+    "expected_citation_key": "title_substring",
+    "expected_citation_key_note": "expected_primary_citation values are case-insensitive title substrings. The harness resolves each to a canonical_zettel_id via list_kasten_zettels title match, then matches answers (whose Citation.node_id is a canonical_chunk_id) after remapping chunk_id -> canonical_zettel_id.",
+    "members_node_ids_resolved": [
+      "675f86d3-a98b-4bfc-860d-93ea33a9cbf4",
+      "cf15d1c2-b9b8-4a14-a0bb-b894c10220a9",
+      "9021e570-ce11-45f0-b73c-77ac3e2984c5",
+      "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38",
+      "19df3a35-8ad8-44c8-b82a-e256ae93a244",
+      "4f930d23-00be-435d-84ae-190bea792d25",
+      "0cdc9bf7-a538-45e3-b1e0-a7bbd3b5138e",
+      "500d08f5-55e1-4066-99b1-2b0030c24214",
+      "50a4ee13-02bd-4e62-862e-551ec267fcce"
+    ],
+    "members_count": 9,
+    "members_node_ids_resolved_note": "Live-read 2026-05-18 via rag.list_kasten_zettels(fca95c6b-9797-41e6-9f29-b9a911f79de8) — REAL expanded corpus (9 members; +1 on-topic-adjacent: YouTube HBTYVVUBAGs 'Silk Road's Rise Fall'). canonical_zettel_id snapshot for audit; the harness still re-resolves at runtime (members_node_ids stays []).",
+    "source_type_breakdown": {
+      "youtube": 4,
+      "reddit": 4,
+      "arxiv": 1
+    },
+    "gold_regen_note": "Gold regenerated 2026-05-18, then re-verified against the EXPANDED REAL corpus (9 members; +1: YouTube HBTYVVUBAGs 'Silk Road's Rise Fall' - a darknet-marketplace history, NOT psychedelic pharmacology, kept as the intentional off-topic skeleton member; no query points at it). Every expected_primary_citation re-confirmed as a verified case-insensitive substring of a REAL current title that genuinely answers its query (no breakage from the expansion - all prior needles still resolve uniquely). CORPUS DEFECT (still present, intentional): the arXiv slot (2011.08892, expected DMT 'Neural Correlates' paper) is the off-topic physics paper 'FORTRESS II: Software for Spin-2 BECs' - no DMT arXiv zettel exists. q3/q4/q12 (Strangest-Drug / DMT-brain) stay repointed to the YouTube 'DMT History Science Consciousness' lecture (the real DMT-and-brain source). No query points at FORTRESS II.",
+    "link_set_note": "2 medium.com essays (humanparts 'LSD/Tibetan Buddhism cosmic joke', cosmocat27 'Awakening from the Meaning Crisis') were unreachable server-side (anti-bot) and replaced with reachable r/IAmA + r/philosophy threads. Corpus later EXPANDED with 1 member (Silk Road YouTube, kept as off-topic skeleton). 3 source types (youtube/reddit/arxiv), 9 members.",
+    "ci_gates_summary": {
+      "end_to_end_gold_at_1_min": 0.6,
+      "synthesizer_grounding_min": 0.85,
+      "infra_failures_max": 0,
+      "max_per_source_top1_share": 0.4
+    }
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "single-zettel factual extraction from the Fadiman MAPS talk",
+      "text": "In James Fadiman's MAPS talk on scientific problem solving with psychedelics, what protocol or setting does he describe for using psychedelics to solve technical or creative problems?",
+      "expected_primary_citation": "Problem-Solving Research",
+      "expected_minimum_citations": 1,
+      "ground_truth": "Fadiman describes a structured problem-solving session: a clearly defined problem stated in advance; a moderate dose in a calm, distraction-free setting; an intention-setting phase; then focused work on the problem during the session, with the psychedelic used as a tool for divergent insight rather than recreation."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "numeric / methodology extraction from the 28-day microdosing video",
+      "text": "In the 'Science of Micro-dosing: Tested for 28 DAYS' video, what dosing schedule and duration did the experiment use, and what was the headline outcome?",
+      "expected_primary_citation": "Microdosing Psilocybin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "A sub-perceptual microdose taken on an intermittent schedule (not every day) across a 28-day self-experiment; the reported outcome is subjective changes in mood/focus with no dramatic perceptual effects, framed cautiously as anecdotal rather than clinical evidence."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "single-zettel deep extraction — arXiv DMT neural-correlates paper",
+      "text": "According to the 'Neural Correlates of the DMT Experience' arXiv paper, what neural or EEG signatures are associated with the DMT state?",
+      "expected_primary_citation": "DMT History Science Consciousness",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The only DMT-and-brain source in this Kasten is the DMT history/science/consciousness lecture: it frames DMT as a naturally occurring, potent endogenous psychedelic that profoundly alters perception and consciousness through complex, not-fully-understood neurobiological mechanisms; it discusses DMT's brain action and consciousness implications rather than reporting a specific EEG study's spectral findings."
+    },
+    {
+      "qid": "q4",
+      "class": "lookup",
+      "tests": "the Strangest Drug video — distinctive thesis extraction",
+      "text": "What makes the substance covered in 'The Strangest Drug Ever Studied' so unusual according to that video?",
+      "expected_primary_citation": "DMT History Science Consciousness",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The 'Strangest Drug Ever Studied' video was ingested as the DMT history/science/consciousness lecture: it frames DMT as unusual because it is a naturally occurring endogenous compound that produces an extraordinarily intense, perception-altering state via complex neurobiological mechanisms that are still not fully understood, setting it apart from typical psychoactive substances."
+    },
+    {
+      "qid": "q5",
+      "class": "multi_hop",
+      "tests": "explicit 2-zettel synthesis — names the two zettels to combine so partials are diagnosable as retriever failures",
+      "text": "The consciousness 'XOR theory' Reddit thread and the r/philosophy 'what does philosophy reddit know about drugs' thread both touch on how psychedelics change the structure of awareness and knowledge. How would the XOR-theory framing explain the shifts in awareness the philosophy thread attributes to psychedelics?",
+      "expected_primary_citation": [
+        "r/consciousness explore if perceptual",
+        "r/philosophy seeks philosophical perspectives"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "The r/consciousness 'altered perception' thread treats ordinary perception as inherently limited and incomplete — psychedelics expand or unmask normally-filtered awareness. The r/philosophy 'philosophical perspectives on hallucinogens' thread discusses psychedelics altering perception, ego, and what counts as knowledge; combined, the limited-perception framing explains the philosophy thread's reported shifts as the ordinary perceptual filter loosening, experienced as expanded perspective and reduced ego-bound selection."
+    },
+    {
+      "qid": "q6",
+      "class": "thematic",
+      "tests": "broad cross-corpus synthesis — asks for >=4 citations so under-recall is measurable",
+      "text": "Across these zettels, what is the implicit view of how psychedelics relate to knowledge, truth, or insight? Cite at least four sources.",
+      "expected_primary_citation": [
+        "Problem-Solving Research",
+        "DMT History Science Consciousness",
+        "r/consciousness explore if perceptual",
+        "r/philosophy seeks philosophical perspectives",
+        "r/philosophy argue psychedelic experiences"
+      ],
+      "expected_minimum_citations": 4,
+      "ground_truth": "Themes: (1) psychedelics as a deliberate problem-solving / insight tool (Fadiman problem-solving lecture); (2) the DMT state profoundly alters perception/consciousness via real neurobiological mechanisms, not just subjective report (DMT history/science lecture); (3) ordinary perception is inherently limited and psychedelics expand it (r/consciousness thread); (4) the r/philosophy 'philosophical perspectives on hallucinogens' thread treats psychedelic experience as philosophically relevant to perception, ego, and knowledge; (5) the r/philosophy 'disrupt the certainty of truth' thread frames a powerful experience as eroding epistemic certainty about what is real."
+    },
+    {
+      "qid": "q7",
+      "class": "step_back",
+      "tests": "abstract-from-concrete reasoning — picks an abstraction and asks where else it appears",
+      "text": "Several of these zettels suggest psychedelics destabilize a person's sense of a fixed self or fixed reality. Which zettels make that argument, and how does each one frame the destabilization?",
+      "expected_primary_citation": [
+        "r/consciousness explore if perceptual",
+        "r/philosophy argue psychedelic experiences",
+        "r/philosophy seeks philosophical perspectives"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "The r/consciousness thread frames it as exposing that ordinary perception is incomplete, unsettling the assumption of a single fixed reality; the r/philosophy 'disrupt the certainty of truth' thread frames it as eroding epistemic certainty about what is real; the r/philosophy 'philosophical perspectives on hallucinogens' thread frames it as drug experiences unsettling assumptions about perception, the self, and what can be known."
+    },
+    {
+      "qid": "q8",
+      "class": "vague",
+      "tests": "single-topic vague query — rewriter must expand 'microdosing' to a useful retrieval",
+      "text": "Anything about microdosing?",
+      "expected_primary_citation": "Microdosing Psilocybin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The 28-day microdosing self-experiment video is the primary microdosing-specific zettel; a correct answer surfaces it and summarizes the sub-perceptual intermittent-dosing approach and its cautious, anecdotal framing."
+    },
+    {
+      "qid": "q9",
+      "class": "lookup",
+      "tests": "Reddit philosophy thread — specific claim extraction",
+      "text": "In the philosophy Reddit thread about psychedelic experiences disrupting the certainty of truth, what is the core argument about how a psychedelic experience changes someone's relationship to 'truth'?",
+      "expected_primary_citation": "r/philosophy argue psychedelic experiences",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The thread argues a powerful psychedelic experience can feel more real than ordinary reality, which undermines a person's confidence that their normal waking state is the privileged arbiter of truth — leaving them with epistemic humility or destabilized certainty rather than a new fixed belief."
+    },
+    {
+      "qid": "q10",
+      "class": "lookup",
+      "tests": "Reddit first-person AMA — direct experiential account extraction",
+      "text": "In the r/IAmA 'I did Heroin yesterday' first-person thread, how does the poster describe the drug experience and their reasons or framing for trying it?",
+      "expected_primary_citation": "first-time heroin",
+      "expected_minimum_citations": 1,
+      "ground_truth": "It is a first-person, non-habitual-user account: the poster describes trying the drug out of curiosity and reports the subjective effects and their reflections in the AMA, distinguishing a one-off experiential use from regular drug use rather than offering clinical or pharmacological claims."
+    },
+    {
+      "qid": "q11",
+      "class": "adversarial",
+      "tests": "hallucination resistance — MDMA-assisted PTSD therapy trials are absent from every zettel",
+      "text": "Summarize what this Kasten says about the Phase 3 clinical trial results for MDMA-assisted therapy for PTSD.",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "No zettel in this Kasten covers MDMA-assisted PTSD Phase 3 trials. A correct answer must refuse or explicitly state the absence; fabricating trial numbers or outcomes is the hard fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q12",
+      "class": "vague",
+      "tests": "two-token vague query — must route to the DMT arXiv zettel, not the generic 'psychedelic' magnet",
+      "text": "DMT brain?",
+      "expected_primary_citation": "DMT History Science Consciousness",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The DMT history/science/consciousness lecture is the only DMT-and-brain-specific zettel; a correct answer retrieves it and summarizes DMT's neurobiological action and consciousness effects rather than answering with unrelated psychedelic content."
+    }
+  ]
+}

@@ -153,6 +153,26 @@ class ContentRepository:
             .upsert(payloads, on_conflict="canonical_zettel_id,chunk_idx")
             .execute()
         )
+        # D5: ON CONFLICT(canonical_zettel_id, chunk_idx) upsert never prunes.
+        # A re-ingest that now yields FEWER chunks would leave the old
+        # higher-idx rows orphaned (stale retrieval candidates + dangling
+        # workspace_chunk_membership). Issue a second PostgREST call to delete
+        # every chunk whose idx is >= the fresh chunk count, so chunk_idx
+        # stays a dense 0..N-1 range exactly mirroring the new chunk set.
+        # ON DELETE CASCADE drops the stale membership rows. This mirrors the
+        # safe delete-then-state pattern backfill_rechunk_v2.py proved. The
+        # golden-md5-protected content.upsert_canonical_zettel RPC is NOT
+        # touched. Only runs when chunks were written (empty-list early-return
+        # above preserves the embed-or-skip "leave for backfill" contract —
+        # we must never wipe recoverable rows on a 0-chunk persist).
+        (
+            self._client.schema("content")
+            .table("canonical_chunks")
+            .delete()
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .gte("chunk_idx", len(payloads))
+            .execute()
+        )
         return [UUID(str(row["id"])) for row in response.data or []]
 
     def upsert_workspace_zettel(
@@ -312,6 +332,70 @@ class ContentRepository:
         )
         return bool(response.data)
 
+    def resolve_workspace_zettel_id(
+        self,
+        *,
+        canonical_zettel_id: UUID,
+        workspace_id: UUID,
+    ) -> UUID | None:
+        """Resolve the live workspace_zettel id for a canonical id in a workspace.
+
+        Phase C dedup-caveat fix: ``AddZettelPipelineOutput.workspace_zettel_id``
+        carries the *canonical* id (not the workspace overlay id) when a link
+        dedups against an existing canonical row. A canonical id must never be
+        sent to ``rag.bulk_add_to_kasten`` (its FK targets
+        ``content.workspace_zettels.id``). This compound-key lookup
+        ``(canonical_zettel_id, workspace_id)`` returns the true overlay id, or
+        ``None`` if the workspace has no non-deleted overlay for that canonical.
+        """
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id")
+            .eq("canonical_zettel_id", str(canonical_zettel_id))
+            .eq("workspace_id", str(workspace_id))
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return None
+        return UUID(str(rows[0]["id"]))
+
+    def resolve_workspace_zettel_id_by_url(
+        self,
+        *,
+        normalized_url: str,
+        workspace_id: UUID,
+    ) -> UUID | None:
+        """Resolve the live workspace_zettel id for a normalized URL in a workspace.
+
+        Phase C dedup-caveat fix (companion to
+        :meth:`resolve_workspace_zettel_id`): the create_kasten runner has the
+        ingested link's normalized URL but cannot reliably tell whether
+        ``AddZettelPipelineOutput.workspace_zettel_id`` is the workspace overlay
+        id or the canonical id (the latter on a dedup hit, ``was_new=False``).
+        Resolving via the canonical URL + workspace compound key guarantees the
+        true ``content.workspace_zettels.id`` is what feeds
+        ``rag.bulk_add_to_kasten`` — never a canonical id. Returns ``None`` if
+        the workspace has no non-deleted overlay for that URL.
+        """
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id,canonical:canonical_zettels!inner(normalized_url)")
+            .eq("workspace_id", str(workspace_id))
+            .eq("canonical.normalized_url", normalized_url)
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return None
+        return UUID(str(rows[0]["id"]))
+
     def search_chunks(
         self,
         *,
@@ -330,9 +414,21 @@ class ContentRepository:
         return [SearchChunkResult(**row) for row in response.data or []]
 
 
+class EmptyRpcResultError(RuntimeError):
+    """Raised when a PostgREST/RPC response carried zero rows.
+
+    P1-7(b): an empty response from ``content.upsert_canonical_zettel`` (or any
+    ``_first()`` caller) means the write did not land. Previously this was a
+    bare ``RuntimeError`` that the persist layer swallowed into HTTP 200 +
+    ``supabase=false`` — invisible data loss. ``_first()`` still raises; the
+    persist layer now translates this into the surfaced
+    ``SupabaseV2PersistError`` problem+json contract instead of swallowing.
+    """
+
+
 def _first(data):
     if not data:
-        raise RuntimeError("Supabase returned no rows")
+        raise EmptyRpcResultError("Supabase returned no rows")
     if isinstance(data, list):
         return data[0]
     return data

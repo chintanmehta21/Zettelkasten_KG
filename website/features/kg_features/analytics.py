@@ -8,8 +8,8 @@ Why igraph (per D-KG-5): networkx's pure-python pagerank/louvain are
 O(V·E) with high constants; igraph's C core runs the same algorithms
 ~10-100x faster, which matters at our 10k+ scale target. The public
 surface (``compute_graph_metrics(graph: KGGraph) -> GraphMetrics``) is
-intentionally UNCHANGED — callers in ``website.api.routes`` and the
-backfill scripts must not need to be touched.
+intentionally UNCHANGED so its sole production caller
+(``website.api.routes``) does not need to be touched.
 
 Locked decisions:
 - ``compute_graph_metrics`` returns the canonical PageRank + Louvain +

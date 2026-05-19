@@ -1,0 +1,166 @@
+{
+  "_meta": {
+    "kasten_slug": "economics",
+    "kasten_name": "Economics",
+    "kasten_built_at": "PENDING_OPERATOR_INGEST",
+    "iter": "1",
+    "members_node_ids": [],
+    "members_node_ids_note": "Resolved at runtime by run_eval_v2.py from RAGRepository.list_kasten_zettels(kasten_id) -> canonical_zettel_id list. Empty here because ingestion is operator-gated; the harness writes the resolved list into each iter-N/queries.json copy.",
+    "expected_citation_key": "title_substring",
+    "expected_citation_key_note": "expected_primary_citation values are case-insensitive title substrings. The harness resolves each to a canonical_zettel_id via list_kasten_zettels title match, then matches answers (whose Citation.node_id is a canonical_chunk_id) after remapping chunk_id -> canonical_zettel_id.",
+    "members_node_ids_resolved": [
+      "976deede-e614-4c7c-b487-ccee3c15edc9",
+      "287b5d8e-f764-4e0f-92a2-9b6c1f815ad3",
+      "8e95ad3b-5e9b-4258-b336-26e8caee12d5",
+      "5c139a52-bfde-4c41-ab0c-cf2150e69aa0",
+      "2513a7ac-e41f-48a2-a2dd-762c79de258b",
+      "b440d791-0130-4c23-8c54-172405d850d8",
+      "fc376266-707f-42fb-9376-109d5071c722",
+      "40e1a993-5d2c-4752-903f-a683d0b10bdb",
+      "80d484dc-be29-4b48-960d-ba74ed08fa1d",
+      "a67345b3-56e9-46ab-a1a4-ea25d1995b87",
+      "76ce1597-9660-45f8-a454-a743019edee5"
+    ],
+    "members_count": 11,
+    "members_node_ids_resolved_note": "Live-read 2026-05-18 via rag.list_kasten_zettels(34090364-c731-41ed-abe5-e04ef34701e9) — REAL expanded corpus (11 members). canonical_zettel_id snapshot for audit; the harness still re-resolves at runtime (members_node_ids stays []).",
+    "source_type_breakdown": {
+      "youtube": 4,
+      "reddit": 3,
+      "arxiv": 1,
+      "hackernews": 1,
+      "github": 1,
+      "newsletter": 1
+    },
+    "gold_regen_note": "Gold regenerated 2026-05-18, then re-verified against the EXPANDED REAL corpus (11 members; +2 on-topic: YouTube ZxZO0jd8VoU 'BlackRock's Power Universal Ownership'; Reddit r/india '20 years of GDP misestimation'). Every expected_primary_citation re-confirmed as a verified case-insensitive substring of a REAL current title that genuinely answers its query (no breakage from the expansion - all prior needles still resolve uniquely). q7 (thematic, >=4) gained the r/india GDP-misestimation thread as an additional faithful citation: it is directly on-theme for 'how information/trust holds an economic system together' (trust in official statistics). CORPUS DEFECTS (still present, intentional off-topic skeleton kept): (a) arXiv slot (1812.01047, expected Tulip-Mania bubble paper) is the off-topic Turan-Number graph theory paper - NO bubble-dynamics source exists even after expansion (BlackRock = ownership concentration, r/india = GDP mismeasurement; neither models bubble collapse), so q6 STAYS 1-hop (Petrodollar only, min_citations 1); restoring 2-hop would require fabricating a bubble source. (b) HN slot (id 25841029, expected 'Government Cheese Caves') is the off-topic 'Critique of Sentence Comprehension Test'; q5/q7/q8 stay pointed at the on-topic r/AskEconomics government-intervention cluster (faithful to market-intervention intent).",
+    "link_set_note": "The medium.com 'Microeconomics of the Dark Web' essay was unreachable server-side (anti-bot, 403) and replaced with the reachable Hacker News thread (HN slot ingested off-topic). Corpus later EXPANDED with 2 on-topic members (BlackRock universal-ownership YouTube, r/india GDP-misestimation Reddit); off-topic skeleton members (Turan arXiv, HN sentence-comprehension) kept intentionally. 6 source types (youtube/reddit/arxiv/hackernews/github/newsletter), 11 members.",
+    "ci_gates_summary": {
+      "end_to_end_gold_at_1_min": 0.6,
+      "synthesizer_grounding_min": 0.85,
+      "infra_failures_max": 0,
+      "max_per_source_top1_share": 0.4
+    }
+  },
+  "queries": [
+    {
+      "qid": "q1",
+      "class": "lookup",
+      "tests": "single-zettel factual extraction — Indian economics explainer",
+      "text": "In the 'Entire INDIAN Economics in 18 Mins' video, how does it summarize the structure of the Indian economy — what are the main sectors or pillars it identifies?",
+      "expected_primary_citation": "Economic Principles Explained",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The video (ingested as a general economics explainer) frames economics around scarcity and unlimited wants versus finite resources, the role of opportunity cost, and how these drive markets, trade, and financial systems — a high-level structural tour of economic fundamentals rather than a single-number answer."
+    },
+    {
+      "qid": "q2",
+      "class": "lookup",
+      "tests": "single-zettel thesis extraction — petrodollar video",
+      "text": "What is the central argument of 'America is Losing Control of the Petrodollar' about why the petrodollar system matters and what threatens it?",
+      "expected_primary_citation": "Petrodollar",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The petrodollar system (oil priced and settled in USD) underpins persistent global demand for dollars and US financial dominance; the video argues this is being eroded by countries settling energy trades in other currencies and by geopolitical de-dollarization moves, weakening US leverage."
+    },
+    {
+      "qid": "q3",
+      "class": "lookup",
+      "tests": "historical-event extraction — 1991 India crisis",
+      "text": "According to 'The 1991 Crisis: The Week India Changed Forever', what triggered the 1991 crisis and what reforms followed?",
+      "expected_primary_citation": "1991 Economic Reforms",
+      "expected_minimum_citations": 1,
+      "ground_truth": "A balance-of-payments crisis (foreign reserves down to a few weeks of imports, India airlifting gold to secure loans) triggered the 1991 reforms: rupee devaluation, dismantling of the licence raj, trade liberalization, and opening to foreign investment."
+    },
+    {
+      "qid": "q4",
+      "class": "lookup",
+      "tests": "Reddit AskHistorians — Inca economy specifics",
+      "text": "In the AskHistorians thread about the Inca Empire, how did the Incas run a complex economy without money or markets?",
+      "expected_primary_citation": "Inca",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The Inca economy ran on a labor-tax (mit'a) and state redistribution system rather than money or markets: the state organized large-scale corvee labor, stored surplus in warehouses (qollqa), and redistributed goods, with the quipu used for accounting."
+    },
+    {
+      "qid": "q5",
+      "class": "lookup",
+      "tests": "Reddit AskEconomics thread — government-intervention / unintended-consequences economics",
+      "text": "In the Hacker News 'Government Cheese Caves' thread, what is the economic story behind the U.S. government cheese stockpile — why did it accumulate and what does the discussion say it illustrates about market intervention?",
+      "expected_primary_citation": "r/AskEconomics first-year economics teacher",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The Government-Cheese HN link was not ingested; the surplus/market-intervention story in this Kasten is the r/AskEconomics 'interesting economic stories' thread, whose dominant cluster is government intervention and unintended consequences: government attempts to fix one problem (e.g. price supports/subsidies) induce overproduction and costly, hard-to-unwind distortions — the same price-support-intervention lesson the cheese-caves example illustrates."
+    },
+    {
+      "qid": "q6",
+      "class": "multi_hop",
+      "tests": "synthesis grounded in the one real in-corpus zettel — the Tulip-Mania arXiv link was swapped to an off-topic ingest, so the bubble-paper hop is absent; faithful gold is the petrodollar zettel only",
+      "text": "The Tulip Mania arXiv paper models financial bubbles mathematically; the petrodollar video describes a dollar-demand system. Using the bubble dynamics from the Tulip Mania paper, how could a rapid loss of confidence in the petrodollar resemble a bubble collapse?",
+      "expected_primary_citation": [
+        "Petrodollar"
+      ],
+      "expected_minimum_citations": 1,
+      "ground_truth": "The Tulip-Mania arXiv source is not in this Kasten (its arXiv slot was ingested as an off-topic graph-theory paper), so only the petrodollar zettel is citable: it describes structurally-sustained dollar demand underpinned by confidence and security guarantees, eroding as countries diversify away — a confidence-driven unwind where demand falls partly because participants expect it to fall, structurally analogous to a bubble's reflexive collapse phase."
+    },
+    {
+      "qid": "q7",
+      "class": "thematic",
+      "tests": "broad cross-corpus synthesis — asks for >=4 citations so under-recall is measurable",
+      "text": "Across these zettels, what is the implicit theory of how trust, information, or confidence holds an economic system together? Cite at least four sources.",
+      "expected_primary_citation": [
+        "Petrodollar",
+        "r/AskEconomics first-year economics teacher",
+        "1991 Economic Reforms",
+        "Inca",
+        "Heterodox Policies",
+        "r/india present new evidence"
+      ],
+      "expected_minimum_citations": 4,
+      "ground_truth": "Themes: (1) the petrodollar rests on sustained confidence in the dollar and US security guarantees; (2) the r/AskEconomics thread shows government intervention producing unintended, costly distortions when it overrides market signals; (3) the 1991 crisis shows confidence collapse (reserves, creditor trust) forcing reform; (4) the Inca system substituted state organization and recorded accounting (quipu) for market trust; (5) the heterodox-policy analysis argues confidence/coordination tools (price controls, financial repression) become defensible when ordinary market confidence breaks in a polycrisis. (6) the r/india GDP-misestimation thread shows that trust in official economic information (here, India's GDP statistics) is itself load-bearing: when the credibility of headline numbers is contested, confidence in the system's measured state erodes."
+    },
+    {
+      "qid": "q8",
+      "class": "step_back",
+      "tests": "abstract-from-concrete — picks 'allocation steered by the state rather than free price-setting markets' and asks where it appears",
+      "text": "Some zettels describe resource allocation steered by the state rather than by free price-setting markets. Which zettels are these and what coordination mechanism does each describe?",
+      "expected_primary_citation": [
+        "Inca",
+        "r/AskEconomics first-year economics teacher"
+      ],
+      "expected_minimum_citations": 2,
+      "ground_truth": "The Inca thread describes a moneyless labor-tax (mit'a) + state redistribution + quipu-accounting system that coordinates the economy without markets; the r/AskEconomics thread's government-intervention cluster describes states overriding market price-setting (price supports/subsidies) and absorbing the induced surplus. Both show allocation directed by state organization rather than free-market price-setting."
+    },
+    {
+      "qid": "q9",
+      "class": "vague",
+      "tests": "single-topic vague query — rewriter must expand 'big mac' to the GitHub dataset zettel",
+      "text": "Anything about the Big Mac index?",
+      "expected_primary_citation": "big-mac-data",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The Economist's big-mac-data GitHub repository is the Big-Mac-Index-specific zettel; a correct answer surfaces it and explains it as the dataset/methodology behind the Big Mac Index, a lighthearted purchasing-power-parity measure of currency over/under-valuation."
+    },
+    {
+      "qid": "q10",
+      "class": "lookup",
+      "tests": "Substack long-form — Tooze chartbook policy-tools extraction",
+      "text": "In the Adam Tooze Chartbook 448 piece on price controls and nationalization, what is the argument about when heterodox tools like price controls or financial repression become economically defensible?",
+      "expected_primary_citation": "Heterodox Policies",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The piece (ingested as an analysis of an FT article by Gita Gopinath on heterodox policy) argues these tools — price controls, financial repression, central bank–treasury coordination — are not categorically illegitimate: in a 'polycrisis' with constrained fiscal space they have historical precedent and may be unavoidable, defensible coordination instruments against a reflexive orthodoxy that dismisses them outright."
+    },
+    {
+      "qid": "q11",
+      "class": "adversarial",
+      "tests": "hallucination resistance — cryptocurrency / Bitcoin monetary policy is absent from every zettel",
+      "text": "Summarize what this Kasten says about Bitcoin's halving cycle and its effect on monetary policy.",
+      "expected_primary_citation": [],
+      "expected_minimum_citations": 0,
+      "ground_truth": "No zettel in this Kasten covers Bitcoin's halving cycle or crypto monetary policy. A correct answer must refuse or state the absence; fabricating halving-cycle effects is the hard fail.",
+      "expected_critic_verdict": "unsupported_or_partial"
+    },
+    {
+      "qid": "q12",
+      "class": "vague",
+      "tests": "two-token vague query — must route to the Inca zettel, not the generic 'economy' magnet",
+      "text": "Money without markets?",
+      "expected_primary_citation": "Inca",
+      "expected_minimum_citations": 1,
+      "ground_truth": "The Inca AskHistorians thread is the clearest 'economy without money/markets' zettel; a correct answer retrieves it and explains the mit'a labor-tax and state-redistribution model rather than answering generically about money."
+    }
+  ]
+}

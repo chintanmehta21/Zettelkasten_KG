@@ -26,6 +26,7 @@ from website.api.module_runners.summarization import (
     run_add_document_pipeline,
     run_add_zettel_pipeline,
 )
+from website.core.persist import SupabaseV2PersistError
 from website.core.url_utils import validate_url
 from website.features.summarization_engine.core.errors import (
     ExtractionConfidenceError,
@@ -459,6 +460,19 @@ async def add_zettel(
             detail=str(exc),
             operation_id=body.client_action_id,
             type_slug="invalid-url",
+        )
+    except SupabaseV2PersistError as exc:
+        # P1-2: v2 was configured + attempted but the KG write failed (broken
+        # RPC, schema-cache miss, RLS denial, empty RPC result). Surface a
+        # non-200 problem+json instead of the old silent 200 + supabase=false.
+        _IN_FLIGHT.pop(cache_key, None)
+        logger.error("Add Zettel v2 persist failed for %s: %s", body.url, exc.detail)
+        return _problem(
+            status_code=502,
+            title="Knowledge-graph write failed",
+            detail=exc.detail,
+            operation_id=body.client_action_id,
+            type_slug="kg-write-failed",
         )
     except Exception as exc:
         _IN_FLIGHT.pop(cache_key, None)

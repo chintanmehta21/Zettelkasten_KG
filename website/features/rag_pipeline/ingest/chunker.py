@@ -1,4 +1,4 @@
-﻿"""Chunking strategies for RAG ingestion."""
+"""Chunking strategies for RAG ingestion."""
 
 from __future__ import annotations
 
@@ -9,6 +9,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from website.features.rag_pipeline.types import (
+    LONG_FORM_SOURCE_TYPES as LONG_FORM_SOURCES,
+)
+from website.features.rag_pipeline.types import (
+    SHORT_FORM_SOURCE_TYPES as SHORT_FORM_SOURCES,
+)
 from website.features.rag_pipeline.types import ChunkType, SourceType
 
 
@@ -80,21 +86,24 @@ except Exception:  # pragma: no cover - exercised through fallbacks in tests
         pass
 
 
-LONG_FORM_SOURCES = {
-    SourceType.YOUTUBE,
-    SourceType.SUBSTACK,
-    SourceType.MEDIUM,
-    SourceType.WEB,
-}
-SHORT_FORM_SOURCES = {
-    SourceType.REDDIT,
-    SourceType.TWITTER,
-    SourceType.GITHUB,
-    SourceType.GENERIC,
-}
+# D4: the chunker's routing buckets are now the canonical LONG/SHORT bucket
+# map co-located with the enum (types.py), imported above as
+# LONG_FORM_SOURCES / SHORT_FORM_SOURCES. This guarantees the new members
+# (newsletter/hackernews/linkedin/arxiv/podcast) route correctly instead of
+# falling through to the final recursive default unbucketed.
 
 LONG_CHUNK_TOKENS = 512
 LONG_OVERLAP_TOKENS = 64
+
+# D3 — SHORT_FORM size gate. Reddit / GitHub / Twitter / Generic bodies were
+# emitted as exactly ONE atomic chunk regardless of length, so a 16k-char
+# reddit/github body collapsed to a single chunk (no RAG passage granularity,
+# starves chunk_node_mentions). A body is kept atomic ONLY when it is at or
+# below this token budget; longer short-form bodies fall through to the
+# long-form recursive/semantic path (sentence-snap + overlap conventions
+# preserved). ~800 tokens ≈ a long-ish single comment / short README, which is
+# still coherent as one passage; past that, segmentation strictly helps recall.
+SHORT_FORM_ATOMIC_MAX_TOKENS = 800
 
 
 class _UnavailableChunker:
@@ -163,9 +172,15 @@ class ZettelChunker:
             return []
 
         if source_type in SHORT_FORM_SOURCES:
-            return [self._atomic_chunk(title, cleaned_text, tags, extra_metadata)]
+            # D3: keep atomic ONLY for genuinely short bodies. A long
+            # short-form body (e.g. a 16k-char reddit/github post) must NOT
+            # collapse to one chunk — fall through to the long-form
+            # recursive/semantic path so RAG gets passage granularity.
+            if _count_tokens(cleaned_text) <= SHORT_FORM_ATOMIC_MAX_TOKENS:
+                return [self._atomic_chunk(title, cleaned_text, tags, extra_metadata)]
+            # else: long short-form body -> shared long-form segmentation below.
 
-        if source_type in LONG_FORM_SOURCES:
+        if source_type in LONG_FORM_SOURCES or source_type in SHORT_FORM_SOURCES:
             try:
                 if self._late is not None:
                     chunks = self._late_chunk(cleaned_text, extra_metadata)

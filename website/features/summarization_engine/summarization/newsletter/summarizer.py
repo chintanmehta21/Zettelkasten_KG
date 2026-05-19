@@ -44,6 +44,7 @@ from website.features.summarization_engine.summarization.common.prompts import (
     SYSTEM_PROMPT,
 )
 from website.features.summarization_engine.summarization.common.structured import (
+    _coerce_newsletter_detailed,
     _date_or_none,
     _normalize_tags,
 )
@@ -247,7 +248,14 @@ class NewsletterSummarizer(BaseSummarizer):
                 self._engine_config.structured_extract.tags_max,
                 reserved=_brand_reserved(payload),
             ),
-            detailed_summary=payload.detailed_summary,
+            # Convert the rich NewsletterDetailedPayload into the rendered
+            # DetailedSummarySection list every downstream consumer expects
+            # (mirrors Reddit's _detailed_payload_to_sections / GitHub's
+            # composer). _coerce_newsletter_detailed == _sanitize_composed(
+            # compose_newsletter_detailed(payload)); passing the payload model
+            # straight through made render_detailed_summary iterate a Pydantic
+            # model and crash with "'tuple' object has no attribute 'heading'".
+            detailed_summary=_coerce_newsletter_detailed(payload),
             metadata=SummaryMetadata(
                 source_type=ingest.source_type,
                 url=ingest.url,

@@ -267,9 +267,9 @@ def test_mmr_keeps_duplicate_node_when_strongly_better() -> None:
 
 
 def test_fused_score_lookup_class_weights_rerank_more_heavily() -> None:
-    """LOOKUP queries should weight the rerank signal (0.70) substantially
-    more than the default (0.60) — proper-noun lookups live or die on the
-    cross-encoder's match, not graph or RRF."""
+    """LOOKUP queries should weight the rerank signal (E4 F3: 0.80)
+    substantially more than the default (0.60) — proper-noun lookups live or
+    die on the cross-encoder's match, not graph or RRF."""
     reranker = CascadeReranker.__new__(CascadeReranker)
     candidate = _candidate("n", rrf=0.2, graph=0.4)
     candidate.content = "x" * 400  # quality factor saturated to 1.0
@@ -278,7 +278,10 @@ def test_fused_score_lookup_class_weights_rerank_more_heavily() -> None:
     lookup = reranker._fused_score(candidate, 0.9, QueryClass.LOOKUP)
 
     assert lookup > default
-    assert lookup == pytest.approx(0.70 * 0.9 * 1.0 + 0.15 * 0.4 + 0.15 * 0.2)
+    # E4 F3: LOOKUP rebalanced (0.70,0.15,0.15) -> (0.80,0.10,0.10). Pins the
+    # CONSTANT's fused-score effect (the behavioral guard is `lookup > default`
+    # above); updated to the new approved weights.
+    assert lookup == pytest.approx(0.80 * 0.9 * 1.0 + 0.10 * 0.4 + 0.10 * 0.2)
 
 
 def test_fused_score_multi_hop_class_weights_graph_more_heavily() -> None:

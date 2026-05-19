@@ -19,14 +19,14 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
-import onnxruntime as ort
-from flashrank import Ranker, RerankRequest
-from tokenizers import Tokenizer
+import numpy as np  # noqa: E402
+import onnxruntime as ort  # noqa: E402
+from flashrank import Ranker, RerankRequest  # noqa: E402
+from tokenizers import Tokenizer  # noqa: E402
 
-from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger
-from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager
-from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate
+from website.features.rag_pipeline.rerank.degradation_log import DegradationLogger  # noqa: E402
+from website.features.rag_pipeline.rerank.model_manager import FLASHRANK_MODEL_NAME, ModelManager  # noqa: E402
+from website.features.rag_pipeline.types import QueryClass, RetrievalCandidate  # noqa: E402
 
 
 def aggressive_release() -> None:
@@ -230,10 +230,15 @@ _score_one._tokenizer = None  # type: ignore[attr-defined]
 # rerank weight back to 0.55 and trim graph to 0.30 for THEMATIC. The KG
 # signal stays strong enough to surface true gold (per iter-02's +28.8 lift)
 # while reducing the probability that the probe's tag-overlap edges win.
+# E4 Fix F3 (docs/research/e4_component_fix_proposal.md Finding 2): factoid
+# classes lift cross-encoder weight so a correctly-top-ranked gold is not
+# outvoted by graph+rrf (classic weighted-fusion dilution; scorer is
+# 0.8-weighted on gold top-3/top-5). MULTI_HOP / STEP_BACK stay graph-heavy
+# by Phase-D design (UNCHANGED). Every tuple sums to exactly 1.0.
 _FUSION_WEIGHTS: dict[QueryClass, tuple[float, float, float]] = {
-    QueryClass.LOOKUP: (0.70, 0.15, 0.15),
-    QueryClass.VAGUE: (0.55, 0.25, 0.20),
-    QueryClass.THEMATIC: (0.55, 0.30, 0.15),  # iter-04: rebalance for probe
+    QueryClass.LOOKUP: (0.80, 0.10, 0.10),   # E4 F3: was (0.70,0.15,0.15)
+    QueryClass.VAGUE: (0.65, 0.20, 0.15),    # E4 F3: was (0.55,0.25,0.20)
+    QueryClass.THEMATIC: (0.62, 0.25, 0.13),  # E4 F3: was (0.55,0.30,0.15)
     QueryClass.MULTI_HOP: (0.40, 0.45, 0.15),
     QueryClass.STEP_BACK: (0.45, 0.40, 0.15),
 }
@@ -253,7 +258,6 @@ def _resolve_fusion_weights(
     rerank_w, graph_w, rrf_w = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
     if graph_weight_override is not None:
         graph_w = graph_weight_override
-        denom = (rerank_w + rrf_w) if hasattr(_FUSION_WEIGHTS, "get") else 0
         # Use original (rerank_w, rrf_w) ratio from the class table to redistribute.
         orig_rerank, _, orig_rrf = _FUSION_WEIGHTS.get(query_class, _DEFAULT_FUSION_WEIGHTS)
         denom = orig_rerank + orig_rrf

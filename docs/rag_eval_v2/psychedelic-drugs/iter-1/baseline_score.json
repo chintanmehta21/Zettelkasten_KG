@@ -1,0 +1,26 @@
+{
+  "source": "iter-11 legacy composite baseline (docs/rag_eval/common/knowledge-management/iter-11/scores.md, kasten=knowledge-management)",
+  "mapping_note": "This baseline is the knowledge-management iter-11 LEGACY-weights composite. It is NOT a per-Kasten baseline for psychedelic-drugs / economics — those have no prior run. It is carried as the reference target so iter-1 of each v2 Kasten is scored against the same composite definition the v1 loop converged on. The mapping is NOT 1:1: the corpus, query set, and member set differ entirely. Treat composite=60.26 as the 'pipeline-quality bar to beat', not an expected score for this Kasten. compare_baseline.py reports delta vs this and also reports the trust-first holistic block (gold@1 / accuracy_user_visible / over_refusal) so improvement is not judged on the legacy composite alone.",
+  "weights_block": "legacy",
+  "weights": { "chunking": 0.1, "retrieval": 0.25, "reranking": 0.2, "synthesis": 0.45 },
+  "weights_hash": "422403f9d47a",
+  "composite": 60.26,
+  "components": {
+    "chunking": 40.43,
+    "retrieval": 64.26,
+    "reranking": 52.45,
+    "synthesis": 65.92
+  },
+  "ragas_sidecar": {
+    "faithfulness": 87.86,
+    "answer_relevancy": 85.71
+  },
+  "holistic": {
+    "gold_at_1_unconditional": 0.6154,
+    "gold_at_1_within_budget": 0.3077,
+    "gold_at_3": 0.6923,
+    "gold_at_8": 0.7692,
+    "within_budget_rate": 0.5
+  },
+  "latency": { "p50_ms": 34149, "p95_ms": 42846 }
+}

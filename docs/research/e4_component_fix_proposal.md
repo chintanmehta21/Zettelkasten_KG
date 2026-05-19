@@ -1,0 +1,30 @@
+# E4 — Component-Score Fix Proposal (research-backed, operator approval)
+
+Valid signal = economics iter-2 (psych iter-1/2 were gold-resolution artifacts, now fixed & committed `be1fefc`; live-validated 11/11 + 11/11 resolve). Targets benefit BOTH Kastens (general fixes, no overfit). All droplet-safe, no protected-knob touch.
+
+## Finding 0 — "chunking regression" is a MEASUREMENT ARTIFACT, not a chunker problem
+The rag_eval_v2 chunking sub-score reads **empty stub chunks**: `ops/scripts/rag_eval_loop.py:126-142 _build_chunks_map` emits `[{"text":""}]` (v1→v2 purge stub) and `score_rag_eval.py:150-166 _fetch_chunks_for_nodes` returns `{nid:[]}`. Scorer `component_scorers.py:9-73` is then mathematically capped at ~20 (budget 0 + boundary 0 + coherence 50·0.2 + dedup 100/N·0.1) **regardless of real chunk quality**. The 40.43 iter-11 bar was measured under the old real-fetch regime → the comparison is invalid. Our chunker is already 2025-26 best practice (512 tok / 64 overlap / semantic+recursive / sentence-snap / title-prefix, `chunker.py:96-202`).
+**Fix F1 (eval-harness only, zero prod blast):** repair the rag_eval_v2 chunk-feed to fetch real chunk text+token_count from v2 `content.canonical_chunks` (now embedded post-persist-fix), keyed by node_id. Expected chunking 20 → ~55-80. Cites: Anthropic Contextual Retrieval 2024; Databricks/Weaviate 2025; ACL ICNLSP 2025.
+
+## Finding 1 — Retrieval (econ 36 vs bar): RRF k=60 flattens small-corpus ranking
+`1/(60+rank)` → rank-1 vs rank-10 span ~13%; decisive dense hit washed out by FTS noise; gold in-pool but mid-ranked (gold@1≈0.33). Task-type already correct.
+**Fix F2:** RRF k 60→24 via env knob `RAG_RRF_K` at BOTH fusion sites (`hybrid.py:668` SQL `p_rrf_k`, `hybrid.py:1232` `_RRF_K`) — must move together. Pool size UNCHANGED (respects iter-03 §B 328 MB memory decision). Zero latency/RAM; composes with Phase-D `_gap_adapted_weights` + K3. Expected econ retrieval 36→45-50s, gold@1 0.33→~0.5+. Cites: OpenSearch RRF 2024; EmergentMind 2025; DS4DH grid-search k≈46; TDS 2025.
+
+## Finding 2 — Reranking (econ 26 vs bar): cross-encoder diluted by graph/rrf
+`_fused_score` (`cascade.py:656-669`) gives the precision-stage cross-encoder only 0.55-0.70; graph+rrf (0.30-0.45) outvote a correctly-top-ranked gold (classic weighted-fusion dilution). Scorer (`component_scorers.py:110-165`) is 0.8-weighted on gold top-3/top-5 placement.
+**Fix F3:** rebalance `_FUSION_WEIGHTS` (`cascade.py:233-240`) on factoid classes only — LOOKUP (0.70,0.15,0.15)→(0.80,0.10,0.10); VAGUE→(0.65,0.20,0.15); THEMATIC→(0.62,0.25,0.13); **MULTI_HOP/STEP_BACK UNCHANGED** (Phase-D graph-heavy by design). Sums stay 1.0; no int8/preload/timeout/semaphore touched; composes with Phase-D graph_score path. Expected reranking +10-20. Cites: Serghei 2025; glaforge 2026; TDS 2025 pool 10-30; ZeroEntropy 2026 calibration.
+
+## Finding 3 — Corpus quality: 3 Defect-4-swapped links are OFF-TOPIC junk
+Defect-4 (Medium-403 swap) replaced 3 links with ingests that summarized OFF-TOPIC: psych "FORTRESS II: Spin-2 BECs" (arxiv), econ "Turán Number" (arxiv) + "Sentence Comprehension Test" (hn). These pollute the corpus; econ q6 had to drop 2-hop→1-hop, Tulip-Mania paper absent. Eval validity degraded for affected queries.
+**Fix F4:** re-curate those 3 to genuinely on-topic links from the kasten skeletons + re-ingest (idempotent), restoring 2-hop coverage. Operator decision (corpus change + re-ingest).
+
+## Prod protection (chunk-embedding root cause) — operator decision
+The persist.py chunk-embedding fix IS the prod Add-Zettel path but is only in this PR branch. Until shipped, prod end-users keep producing NULL-embedding chunks; existing prod data (ALL users) has NULL embeddings.
+**P-A:** ship persist fix to prod (merge/deploy). **P-B:** authorized prod-wide `backfill_chunk_embeddings` run (all users, not just Naruto). Both need explicit approval (scoped PR-only until merge; prod-wide data op).
+
+## Finding 5 (F5) — Off-topic-member abstention gate (research-backed; end-user adds any Zettel to any Kasten)
+Real scenario: a Kasten legitimately holds off-topic members (kept intentionally). When the true answer isn't in the Kasten, the system currently synthesizes a confident WRONG answer from off-topic chunks instead of abstaining. Internal finding: our cross-encoder ALREADY emits a sigmoid-calibrated [0,1] query-doc relevance prob (`cascade.py:186,216-218`) with per-class thresholds (`cascade.py:180,392`) — used only for ordering, never abstention. That's the gap.
+**Recommended (Option A):** a calibrated **pre-synthesis relevance floor** at `orchestrator.py:~896` (right after the existing NO_CONTEXT early-refusal): if `max(c.rerank_score for c in context.used_candidates if not None)` < a conservative per-class env floor `RAG_ABSTAIN_FLOOR_<CLASS>` (default ≈0.5× the existing ordering `_THRESHOLDS[class]`), return the existing `_empty_context_refusal()` sink (refusal, citation-suppressed, eval `refused=True`). Skip when reranker fell back to RRF (`rerank_score is None`) and when `len(used_candidates)<=1` (cold-start carve-out, mirrors `_filter_pre_rerank`). Env-flag `RAG_ABSTAIN_FLOOR_ENABLED` (observe-only → enable after one eval pass confirms off-topic≈0.02-0.15 vs on-topic≫0.25 separation). Aligned with CRAG (arXiv 2401.15884, 2024), Self-RAG ISREL (2310.11511), Google Sufficient-Context (2411.06037, ICLR 2025). Zero extra LLM/model/network, O(K) floats, no protected knob, instant env revert. Expected: under_refusal↓, accuracy_user_visible↑, over_refusal flat by construction. Guard: new unit tests (all-off-topic→abstain; one-relevant→answer; RRF-fallback→skip; ≤1→skip) + rag_eval_v2 must show under_refusal↓ & accuracy↑ with over_refusal NOT up.
+
+## Risk/guard summary
+F1 eval-only. F2/F3: revertible 1-constant / 1-dict edits; guard tests — `test_hybrid_phase_d.py`, `test_confidence_gap.py`, 5 `per_class_regression/test_*_class.py`, `_FUSION_WEIGHTS` sum=1 + Phase-D override tests must stay green; validated by re-running the eval loop pre/post. No protected infra knob touched by any fix.

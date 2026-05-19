@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+import os
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -211,21 +212,75 @@ async def summarize_url_bundle(
             url, ingest_result.confidence_reason, len(ingest_result.raw_text),
         )
 
-    # Refuse to summarize near-empty content — the LLM will hallucinate.
-    # Strip section headers (## Video, ## Transcript, etc.) and whitespace
-    # to measure actual content length.
-    _MIN_CONTENT_CHARS = 50
+    # D7/D8 — thin-extraction gate, QUARANTINE-FIRST. The old single
+    # ``_MIN_CONTENT_CHARS = 50`` hard-rejected ANY near-empty extraction
+    # (raised, zettel never saved). That has a large false-positive blast
+    # radius (legit short posts). New 2-signal gate:
+    #   * trigger ONLY when extraction_confidence == "low" AND the stripped
+    #     content is below a per-source-type floor. confidence in
+    #     {medium, high} is NEVER gated regardless of length (protects legit
+    #     short posts).
+    #   * on trigger -> QUARANTINE: do NOT raise; summarize + persist but tag
+    #     ingest_result.metadata["quality_flag"] = "thin" so the retrieval /
+    #     KG read side can exclude it (flag contract below).
+    #   * the hard-reject tier still EXISTS but is behind
+    #     RAG_THIN_EXTRACTION_REJECT_ENABLED, default OFF (operator-gated for
+    #     a later corpus length-distribution review).
+    #
+    # quality_flag contract: a zettel whose ingest metadata carries
+    # quality_flag == "thin" was summarized from below-floor low-confidence
+    # source text and is hallucination-prone. The retrieval/KG read side
+    # MUST exclude such zettels (key off this metadata flag). Setting the
+    # flag here is the single producer; downstream exclusion is the
+    # consumer's responsibility (out of this PR's file scope — documented,
+    # not silently relied upon).
     stripped = ingest_result.raw_text
     for marker in ("## Video", "## Transcript", "## Description", "Channel:"):
         stripped = stripped.replace(marker, "")
-    if len(stripped.strip()) < _MIN_CONTENT_CHARS:
-        raise ExtractionConfidenceError(
-            f"Insufficient content extracted ({len(stripped.strip())} chars). "
-            f"Reason: {ingest_result.confidence_reason}",
-            source_type=effective_source_type.value,
-            reason=ingest_result.confidence_reason,
-            tier_results=ingest_result.metadata.get("tier_results") or [],
-            url=url,
+    stripped_len = len(stripped.strip())
+
+    # Per-source-type minimum content floor (chars). Short, post-shaped
+    # sources legitimately run short, so their floor is lower than long-form
+    # article/paper sources. Anything not listed uses the generic floor.
+    _THIN_FLOOR_BY_SOURCE = {
+        SourceType.YOUTUBE: 280,
+        SourceType.REDDIT: 280,
+        SourceType.TWITTER: 280,
+        SourceType.HACKERNEWS: 280,
+        SourceType.LINKEDIN: 280,
+    }
+    _THIN_FLOOR_DEFAULT = 500  # generic / arxiv / newsletter / web / github / podcast
+    thin_floor = _THIN_FLOOR_BY_SOURCE.get(effective_source_type, _THIN_FLOOR_DEFAULT)
+
+    is_low_conf = ingest_result.extraction_confidence == "low"
+    is_below_floor = stripped_len < thin_floor
+    if is_low_conf and is_below_floor:
+        reject_enabled = os.environ.get(
+            "RAG_THIN_EXTRACTION_REJECT_ENABLED", "false"
+        ).strip().lower() in ("1", "true", "yes", "on")
+        if reject_enabled:
+            # Operator-gated hard-reject tier (default OFF): restore the old
+            # fail-closed behavior — do not persist a hallucination-prone row.
+            raise ExtractionConfidenceError(
+                f"Insufficient content extracted ({stripped_len} chars; "
+                f"floor {thin_floor}). Reason: {ingest_result.confidence_reason}",
+                source_type=effective_source_type.value,
+                reason=ingest_result.confidence_reason,
+                tier_results=ingest_result.metadata.get("tier_results") or [],
+                url=url,
+            )
+        # QUARANTINE: persist but tag thin so it is excluded from
+        # retrieval / KG. The summary still runs (so the zettel is visible
+        # to the user) but it must never feed grounded answers.
+        ingest_result.metadata["quality_flag"] = "thin"
+        logger.warning(
+            "orchestrator.thin_extraction_quarantined url=%s source_type=%s "
+            "content_len=%d floor=%d reason=%s",
+            url,
+            effective_source_type.value,
+            stripped_len,
+            thin_floor,
+            ingest_result.confidence_reason,
         )
 
     summarizer_cls = get_summarizer(effective_source_type)

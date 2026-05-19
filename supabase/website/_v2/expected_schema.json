@@ -312,9 +312,6 @@
     "rag_replace_node_chunks(p_user_id uuid, p_node_id text)": {
       "return_type": "void"
     },
-    "rag_subgraph_for_pagerank(p_user_id uuid, p_node_ids text[])": {
-      "return_type": "TABLE(source_node_id text, target_node_id text, weight integer)"
-    },
     "rls_auto_enable()": {
       "return_type": "event_trigger"
     },

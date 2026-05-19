@@ -1,6 +1,3 @@
-# LEGACY (broken after 2026-05-11): references dropped v1 tables (kg_*/rag_*/etc.).
-# One-shot / eval / backfill tool — not in active production path.
-# Revive: port to website.core.supabase_v2 / get_v2_client(). Tracked for follow-up.
 """iter-12 Task 30 / R3 Tier-1 — pre-eval gold expectation groundedness check.
 
 Usage:
@@ -13,16 +10,12 @@ and writes coverage_blind_queries.json to the _audit/ dir.
 
 Default: advisory-only (--auto-exclude=False).
 """
-# LEGACY (broken after 2026-05-11): imports website.core.supabase_kg which was retired
-# in Phase 8.0.6. To revive, port get_supabase_client calls to get_v2_client() from
-# website.core.supabase_v2.client. Tracked for follow-up iteration.
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -35,20 +28,15 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 # ---------------------------------------------------------------------------
 
 async def _fetch_chunks_for_node(node_id: str, client) -> list[str]:
-    """Return chunk text list for a single node_id from kg_node_chunks.
+    """Return chunk text list for a single node_id (empty contract).
 
-    Uses direct table query — no RPC needed.
-    # TODO operator: confirm RPC name if a dedicated rag_chunks_for_node RPC
-    # exists; for now we use the table direct-query path proven in score_rag_eval.py.
+    The legacy slug-keyed ``public.kg_node_chunks`` fetch was purged with
+    DB v2 (table dropped; no slug→canonical_zettel_id bridge). Returning []
+    keeps the audit's existing "no_chunks_found → coverage_blind" path
+    intact until the v2 eval-driver rebuild lands (see rag_eval_v2 Phase E).
     """
-    try:
-        resp = client.table("kg_node_chunks").select(
-            "chunk_idx,content"
-        ).eq("node_id", node_id).order("chunk_idx").execute()
-        return [r["content"] for r in (resp.data or []) if r.get("content")]
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("chunk fetch failed for %s: %s", node_id, exc)
-        return []
+    del node_id, client  # call-contract parity; no v2 slug-keyed chunk fetch
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -112,10 +100,10 @@ async def _audit(args: argparse.Namespace) -> int:
 
     # Load deps lazily so the script can be imported without full env
     try:
-        from website.core.supabase_kg.client import get_supabase_client
-        client = get_supabase_client()
+        from website.core.supabase_v2.client import get_v2_client
+        client = get_v2_client()
     except Exception as exc:  # noqa: BLE001
-        logger.error("Supabase client unavailable: %s", exc)
+        logger.error("v2 Supabase client unavailable: %s", exc)
         return 1
 
     try:

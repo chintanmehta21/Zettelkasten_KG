@@ -58,12 +58,58 @@ describe('KG filter UX — static source rules', () => {
     expect(APP_SRC).not.toMatch(/resetSimulation\s*\(/);
   });
 
-  it('index.html exposes a strength control container in the top bar', () => {
+  it('index.html exposes a strength control container (now in the filter menu)', () => {
     expect(HTML_SRC).toMatch(/id="strength-controls"/);
     expect(HTML_SRC).toMatch(/id="strength-slider"/);
     expect(HTML_SRC).toMatch(/data-bucket="strong"/);
     expect(HTML_SRC).toMatch(/data-bucket="medium"/);
     expect(HTML_SRC).toMatch(/data-bucket="weak"/);
+  });
+
+  it('uses the My-Zettels nested "All Filters" structure (parents + Clear)', () => {
+    // Single trigger button (aria-haspopup) — no scattered top-bar pills.
+    expect(HTML_SRC).toMatch(/id="filter-btn"[^>]*aria-haspopup="true"/);
+    // Parent rows for each category.
+    expect(HTML_SRC).toMatch(/class="kg-filter-parent"[^>]*data-submenu="source"/);
+    expect(HTML_SRC).toMatch(/class="kg-filter-parent"[^>]*data-submenu="tags"/);
+    expect(HTML_SRC).toMatch(/class="kg-filter-parent"[^>]*data-submenu="strength"/);
+    // Clear Filters action (mirrors .zettels-filter-clear).
+    expect(HTML_SRC).toMatch(/id="kg-filter-clear"[^>]*>Clear Filters</);
+    // Connection-strength is a nested sub-section, not a floating bar.
+    expect(HTML_SRC).toMatch(/id="kg-submenu-strength"[\s\S]*?id="strength-controls"/);
+    // The old scattered top-bar strength block must NOT sit in the
+    // header — scope the scan to the <header>…</header> slice only.
+    const headerSlice = (HTML_SRC.match(/<header class="kg-header">[\s\S]*?<\/header>/) || [''])[0];
+    expect(headerSlice).not.toMatch(/id="strength-controls"/);
+    expect(headerSlice).not.toMatch(/kg-strength-bucket/);
+  });
+
+  it('app.js wires nested submenu open/close + Clear Filters reset', () => {
+    expect(APP_SRC).toMatch(/function openFilterSubmenu/);
+    expect(APP_SRC).toMatch(/function closeFilterSubmenus/);
+    // Clear resets sources/tags AND restores Strong-only default strength.
+    expect(APP_SRC).toMatch(/kg-filter-clear/);
+    expect(APP_SRC).toMatch(/activeBucket\s*=\s*'strong'/);
+    expect(APP_SRC).toMatch(/minStrength\s*=\s*DEFAULT_MIN_STRENGTH/);
+  });
+
+  it('strength filtering LOGIC is unchanged (helpers + bucket wiring intact)', () => {
+    // Placement/colour moved; the cull/snap/bucket helpers + their
+    // bindings must be byte-for-byte the same behaviour.
+    expect(APP_SRC).toMatch(/function cullLinksByStrength/);
+    expect(APP_SRC).toMatch(/snapToBucket\(b\)/);
+    expect(APP_SRC).toMatch(/strengthSlider\.addEventListener\('input'/);
+    expect(APP_SRC).toMatch(/data-bucket/);
+  });
+
+  it('legend "i" button toggles a source-type popup', () => {
+    expect(HTML_SRC).toMatch(/id="kg-legend-btn"[^>]*aria-haspopup="true"/);
+    expect(HTML_SRC).toMatch(/id="kg-legend-popup"/);
+    expect(HTML_SRC).toMatch(/id="kg-legend-list"/);
+    // Built from the real SOURCE_LABEL/COLORS maps in app.js.
+    expect(APP_SRC).toMatch(/wireLegendPopup/);
+    expect(APP_SRC).toMatch(/kg-legend-swatch/);
+    expect(APP_SRC).toMatch(/COLORS\[src\]/);
   });
 
   it('strength slider element pins min/max/step', () => {

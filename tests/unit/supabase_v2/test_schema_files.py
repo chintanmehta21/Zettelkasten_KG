@@ -55,6 +55,12 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "43_port_match_kg_nodes.sql",
         "44_functional_gates.sql",
         "45_document_source_type.sql",
+        # PR #23 KG-scoring migrations (already prod-applied under these
+        # names; NOT renumbered per migration discipline). They are
+        # independent of master's source_type/url_dedup migrations and sort
+        # deterministically between them via the glob.
+        "45_rag_subgraph_for_pagerank.sql",
+        "46_kg_two_level_strength.sql",
         "46_url_dedup.sql",
         "47_migrate_17_to_repeatable.sql",
     ]
@@ -111,7 +117,11 @@ def test_search_chunks_excludes_null_embeddings() -> None:
 
 
 def test_document_source_type_is_added_by_forward_migration() -> None:
-    assert "'document'" not in _sql("02_content_schema.sql")
+    # Operator directive 2026-05-19: the base 02 CHECK carries the COMPLETE
+    # current source list (fresh-install correctness, same pattern as arxiv),
+    # AND the forward migration 45_document_source_type.sql re-adds 'document'
+    # idempotently for already-deployed DBs. Both must contain it.
+    assert "'document'" in _sql("02_content_schema.sql")
     assert "'document'" in _sql("45_document_source_type.sql")
 
 

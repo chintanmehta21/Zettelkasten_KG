@@ -1,4 +1,4 @@
-﻿"""Sandbox and node-picker routes for the user-level RAG experience.
+"""Sandbox and node-picker routes for the user-level RAG experience.
 
 Phase 4.4 (DB v2 purge) — kasten CRUD dual-path:
  * list/create/delete kastens, list-zettels-in-kasten, and add-zettels-to-kasten
@@ -16,14 +16,23 @@ Phase 4.4 (DB v2 purge) — kasten CRUD dual-path:
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import Annotated
-from uuid import UUID
+import time
+from collections import OrderedDict
+from typing import Annotated, Any
+from urllib.parse import quote
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user
+from website.api.module_runners.create_kasten import (
+    IdempotencyConflict,
+    run_create_kasten_pipeline,
+)
 from website.core.db_version import use_supabase_v2
 from website.core.persist import get_supabase_v2_scope
 from website.core.supabase_v2.repositories.rag_repository import RAGRepository as V2RAGRepository
@@ -35,6 +44,84 @@ from website.features.user_pricing.models import Meter
 logger = logging.getLogger("website.api.sandbox_routes")
 
 router = APIRouter(prefix="/api/rag", tags=["rag-sandboxes"])
+
+# ─────────────────────────────────────────────────────────────────────────
+# Async create-Kasten operation store (D3). Mirrors the Add-Zettel
+# ``_OPERATIONS`` / ``GET /api/operations/{id}`` polling machinery in
+# ``zettels_routes`` (that store is route-private and returns JSONResponse, so
+# the pattern is replicated minimally + consistently here). Only used when the
+# consolidated POST is given a non-empty ``links`` list; the create-only path
+# (``links == []``) stays fully synchronous and byte-identical to the legacy
+# ``create_sandbox`` response.
+# ─────────────────────────────────────────────────────────────────────────
+_KASTEN_OP_TTL_SECONDS = 15 * 60
+_KASTEN_OP_MAX_RECORDS = 128
+_KASTEN_OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
+_KASTEN_OP_TASKS: dict[str, asyncio.Task] = {}
+
+
+def _scoped_op_key(user_sub: str, operation_id: str) -> str:
+    """Tenant-scope the in-memory op-store key by the authenticated subject.
+
+    SECURITY (P1, Codex review #3261718805): the store was keyed ONLY by
+    ``operation_id``, which derives from ``client_action_id`` or — when that
+    is absent — the user-supplied Kasten ``name``. Two different authenticated
+    users creating a Kasten with the same name collided on one key: the second
+    user read the first user's accepted/final payload (kasten metadata, failed
+    -link details) and their own create job never ran (the existing-record
+    short-circuit fired). The subject (a UUID, never contains NUL) is prefixed
+    with a NUL separator so an arbitrary ``name`` can never forge another
+    user's key. The external ``operation_id`` in URLs/responses is unchanged;
+    scoping is server-side and enforced on both create and poll.
+    """
+    return f"{user_sub}\x00{operation_id}"
+
+
+def _kasten_op_put(user_sub: str, operation_id: str, value: dict[str, Any]) -> None:
+    key = _scoped_op_key(user_sub, operation_id)
+    _KASTEN_OPERATIONS[key] = (time.monotonic(), value)
+    _KASTEN_OPERATIONS.move_to_end(key)
+    while len(_KASTEN_OPERATIONS) > _KASTEN_OP_MAX_RECORDS:
+        old_key, _ = _KASTEN_OPERATIONS.popitem(last=False)
+        old_task = _KASTEN_OP_TASKS.pop(old_key, None)
+        if old_task and not old_task.done():
+            old_task.cancel()
+
+
+def _kasten_op_get(user_sub: str, operation_id: str) -> dict[str, Any] | None:
+    key = _scoped_op_key(user_sub, operation_id)
+    record = _KASTEN_OPERATIONS.get(key)
+    if not record:
+        return None
+    ts, value = record
+    if time.monotonic() - ts > _KASTEN_OP_TTL_SECONDS:
+        _KASTEN_OPERATIONS.pop(key, None)
+        _KASTEN_OP_TASKS.pop(key, None)
+        return None
+    _KASTEN_OPERATIONS.move_to_end(key)
+    return value
+
+
+def _store_kasten_op_result(
+    task: asyncio.Task, *, user_sub: str, operation_id: str
+) -> None:
+    try:
+        result = task.result()
+    except IdempotencyConflict:
+        result = {
+            "status": "failed",
+            "operation_id": operation_id,
+            "error": "client_action_id reused with a different request body",
+        }
+    except Exception as exc:  # noqa: BLE001 — surface as a failed op, never crash the loop
+        logger.exception("Background create_kasten operation failed")
+        result = {
+            "status": "failed",
+            "operation_id": operation_id,
+            "error": str(exc),
+        }
+    _kasten_op_put(user_sub, operation_id, result)
+    _KASTEN_OP_TASKS.pop(_scoped_op_key(user_sub, operation_id), None)
 
 
 def _is_uuid(value: str | None) -> bool:
@@ -147,6 +234,11 @@ class SandboxCreateRequest(BaseModel):
     color: str | None = "#14b8a6"
     default_quality: str = "fast"
     client_action_id: str | None = None
+    # Phase C (D1): optional link list. Empty (the default) → create-only,
+    # response byte-identical to the legacy create_sandbox. Non-empty → the
+    # consolidated runner ingests each link through the Add Zettel pipeline
+    # (async + poll, D3). Backward compatible: existing callers omit it.
+    links: list[str] = []
 
     @field_validator("name")
     @classmethod
@@ -165,6 +257,28 @@ class SandboxCreateRequest(BaseModel):
         if normalized not in {"fast", "high"}:
             raise ValueError("default_quality must be fast or high")
         return normalized
+
+    @field_validator("links")
+    @classmethod
+    def validate_links(cls, value: list[str]) -> list[str]:
+        # Same URL validation Add Zettel applies (AddZettelRequest.validate_url
+        # field): scheme allow-list + length cap + SSRF-blocking validate_url.
+        # Lazy import keeps url_utils out of module import time.
+        from website.core.url_utils import validate_url
+
+        cleaned: list[str] = []
+        for raw in value or []:
+            link = (raw or "").strip()
+            if not link:
+                raise ValueError("links must not contain empty entries")
+            if len(link) > 2048:
+                raise ValueError("URL too long (max 2048 characters)")
+            if not link.startswith(("http://", "https://")):
+                raise ValueError("URL must start with http:// or https://")
+            if not validate_url(link):
+                raise ValueError(f"URL is invalid or blocked: {link}")
+            cleaned.append(link)
+        return cleaned
 
 
 class SandboxUpdateRequest(BaseModel):
@@ -360,7 +474,113 @@ async def create_sandbox(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     action_id = body.client_action_id or body.name
+
+    # ── Phase C (D1 + D3): links present → consolidated async runner ──────
+    # links == [] falls straight through to the byte-identical legacy path
+    # below; this branch is entered ONLY for a non-empty link list. The
+    # runner ingests through the v2 Add Zettel pipeline and so requires a
+    # resolvable DB v2 workspace scope; with none, link-ingest has no v1
+    # equivalent and a clear 501 is correct rather than a misleading v1
+    # fall-through.
+    #
+    # P1 (Codex review #3262415343): gate on the SAME configured-or-flagged
+    # scope the runner actually uses (get_supabase_v2_scope, which is
+    # _persist_should_attempt_v2-gated), NOT the stricter use_supabase_v2()
+    # flag behind _v2_scope_for. Otherwise a v2-configured-but-flag-unset
+    # deployment persists Add Zettel via v2 yet wrongly 501s create-with-links.
+    #
+    # P2 (Codex review #3262415347): perform this capability gate BEFORE the
+    # Meter.KASTEN entitlement charge, so an unsupported links request on a
+    # non-v2 backend never consumes quota (no billable failure for a path
+    # that does no Kasten/link ingestion).
+    if body.links and get_supabase_v2_scope(user.get("sub")) is None:
+        raise HTTPException(
+            status_code=501,
+            detail="Creating a Kasten with links requires DB v2",
+        )
+
+    # Single Meter.KASTEN charge — exactly like the legacy path (one call,
+    # same args). Per-link Meter.ZETTEL is enforced INSIDE
+    # run_add_zettel_pipeline (not here) so links never double-charge.
     await require_entitlement(Meter.KASTEN, user, action_id=action_id)
+
+    if body.links:
+        # P2 (Codex review #3261952490): the create-with-links idempotency
+        # key must NOT fall back to ``body.name``. With the name as key, a
+        # follow-up request for the SAME Kasten name but DIFFERENT links was
+        # treated as an idempotency conflict and the new links were never
+        # ingested — even though _create_or_get_kasten explicitly reuses an
+        # existing same-name Kasten. Idempotency is opt-in: use the explicit
+        # client_action_id when given; otherwise a fresh per-request id so
+        # each submission is its own idempotency scope (no false conflict,
+        # no cross-request collision in the async op store).
+        operation_id = body.client_action_id or uuid4().hex
+        # P2 (Codex review #3261952498): operation_id may be a client-supplied
+        # value; validate_name does not exclude path-reserved chars. URL-encode
+        # it as a single path segment so the emitted poll URL round-trips.
+        op_path = quote(operation_id, safe="")
+
+        async def _runner() -> dict:
+            return await run_create_kasten_pipeline(
+                name=body.name,
+                links=body.links,
+                user=user,
+                effective_user_id=UUID(str(user["sub"])),
+                client_action_id=operation_id,
+                description=body.description or "",
+                icon=body.icon or "stack",
+                color=body.color or "#14b8a6",
+                default_quality=body.default_quality,
+                persist=True,
+                # P2 (Codex review #3261952504): the server loop persists
+                # fire-and-forget enrichment tasks; draining the PROCESS-WIDE
+                # registry from this background request would couple it to
+                # unrelated traffic. Only short-lived CLI callers need the
+                # drain (default True there).
+                drain_enrichment=False,
+            )
+
+        user_sub = str(user["sub"])
+        existing = _kasten_op_get(user_sub, operation_id)
+        # SECURITY/CORRECTNESS (P1, Codex review #3261831595): only a
+        # genuinely IN-FLIGHT duplicate (status == "accepted") is
+        # short-circuited — return 202 so the client polls the existing op
+        # instead of spawning a redundant task. A TERMINAL record
+        # (failed/completed) is deliberately NOT replayed here: idempotent
+        # replay of an identical body, the changed-body conflict
+        # (IdempotencyConflict), and retry-after-failure are ALL owned by
+        # run_create_kasten_pipeline (_request_hash + _IDEMPOTENCY_CACHE +
+        # _IN_FLIGHT) — the single authoritative idempotency layer. The old
+        # blanket replay bypassed it (re-POST with different links inside the
+        # 15-min TTL returned a stale success/accepted and skipped ingestion;
+        # a failed op was un-retryable until TTL expiry). Falling through lets
+        # the runner re-evaluate: identical → cached replay; changed body →
+        # recorded conflict; prior failure → fresh retry.
+        if existing is not None and existing.get("status") == "accepted":
+            return JSONResponse(
+                existing,
+                status_code=202,
+                headers={"Location": f"/api/rag/sandboxes/operations/{op_path}", "Retry-After": "3"},
+            )
+
+        task = asyncio.create_task(_runner())
+        accepted = {
+            "status": "accepted",
+            "operation_id": operation_id,
+            "status_url": f"/api/rag/sandboxes/operations/{op_path}",
+        }
+        _kasten_op_put(user_sub, operation_id, accepted)
+        _KASTEN_OP_TASKS[_scoped_op_key(user_sub, operation_id)] = task
+        task.add_done_callback(
+            lambda t: _store_kasten_op_result(
+                t, user_sub=user_sub, operation_id=operation_id
+            )
+        )
+        return JSONResponse(
+            accepted,
+            status_code=202,
+            headers={"Location": f"/api/rag/sandboxes/operations/{op_path}", "Retry-After": "3"},
+        )
 
     # Phase 4.4 v2 dual-path: write to rag.kastens via the v2 RAGRepository.
     # The repo does not accept owner_profile_id — the workspace_id IS the
@@ -433,6 +653,31 @@ async def create_sandbox(
 
     # Phase 9: gate consumed atomically in require_entitlement above.
     return {"sandbox": _serialize_sandbox(row)}
+
+
+@router.get("/sandboxes/operations/{operation_id}")
+async def create_kasten_operation_status(
+    operation_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Poll a create-Kasten-with-links operation (D3).
+
+    Mirrors ``zettels_routes.operation_status`` (``GET /api/operations/{id}``)
+    but reads the create-Kasten store. Auth-gated like every other sandbox
+    route. The two-segment path ``sandboxes/operations/{id}`` cannot collide
+    with the single-segment ``sandboxes/{sandbox_id}`` route.
+
+    SECURITY (P1, Codex review #3261718805): the lookup is scoped to the
+    authenticated subject, so a user can only ever poll their OWN operation
+    even if they guess/replay another user's operation_id (which can be a
+    plain Kasten name). A foreign id resolves to a different scoped key →
+    404, never a cross-tenant payload read.
+    """
+    result = _kasten_op_get(str(user["sub"]), operation_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Operation not found")
+    status_code = 202 if result.get("status") == "accepted" else 200
+    return JSONResponse(result, status_code=status_code)
 
 
 @router.get("/sandboxes/{sandbox_id}")

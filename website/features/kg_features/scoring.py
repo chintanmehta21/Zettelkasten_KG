@@ -7,7 +7,9 @@ per locked decision **D-KG-1**::
     score = 0.55 * embedding + 0.25 * tag + 0.15 * structural + 0.05 * temporal
 
 Locked thresholds:
-- D-KG-2 edge-creation threshold: ``EDGE_CREATION_THRESHOLD = 0.55`` (>=)
+- D-KG-2 edge-creation threshold: ``EDGE_CREATION_THRESHOLD = 0.50`` (>=)
+  (B3: re-tuned from 0.55 after the raw-cosine clamp removed the (cos+1)/2
+  compression; 0.50 keeps real related-pair edges while culling noise.)
 - D-KG-3 edge-render threshold:   ``EDGE_RENDER_THRESHOLD = 0.7``    (>=)
 
 Caller contract:
@@ -20,9 +22,14 @@ Caller contract:
 - ``temporal_days``: float, distance between node creation timestamps in
   days. Exponential decay; 0 days → 1.0; ~30 days → ~0.37.
 
-The scorer's purity makes it cheap to call inline in the per-edge create
-path (``persist_summarized_result``) AND in the offline backfill scripts
-(``ops/scripts/backfill_links.py``).
+Status: pure, and CALLED in production. Phase B (decision Q2) wired this
+scorer into the KG-population hook: ``rag_pipeline.ingest.kg_population``
+imports ``compute_connection_strength`` + ``EDGE_CREATION_THRESHOLD`` and
+invokes it per candidate edge. That hook is the single sanctioned prod
+importer (guarded by ``tests/unit/test_kg_features_unreachable.py``'s
+``SCORING_ALLOWED`` allow-list). Kept per locked decision **D-KG-1**; its
+purity (no DB / network / global state) is what makes it safe to call from
+the per-edge create path.
 """
 from __future__ import annotations
 
@@ -38,7 +45,7 @@ WEIGHTS: dict[str, float] = {
     "temporal": 0.05,
 }
 
-EDGE_CREATION_THRESHOLD: float = 0.55
+EDGE_CREATION_THRESHOLD: float = 0.50
 EDGE_RENDER_THRESHOLD: float = 0.7
 
 # Temporal half-life in days. exp(-days / 30) → ~0.37 at 30d, ~0.018 at 120d.
@@ -57,12 +64,15 @@ __all__ = [
 
 
 def _cosine_similarity(va: Sequence[float], vb: Sequence[float]) -> float:
-    """Dim-mismatch / empty / zero-norm safe cosine sim mapped to [0, 1].
+    """Dim-mismatch / empty / zero-norm safe cosine sim clamped to [0, 1].
 
-    Real cosine ranges [-1, 1]; we shift to [0, 1] so it composes linearly
-    with the other signals. Any pathological input (length mismatch, zero
-    vector, NaN) collapses to 0.0 silently — the score is a *signal*, not
-    a numeric promise.
+    B3 fix: real cosine ranges [-1, 1]; the old ``(cos+1)/2`` affine rescale
+    compressed the usable band (orthogonal→0.5, mild-related→0.55-0.70) so
+    the composite degenerated and edge tiers collapsed. We now clamp the raw
+    cosine to ``max(0.0, cos)``: unrelated/antipodal → 0, related → its true
+    similarity, preserving spread for threshold/tier discrimination. Any
+    pathological input (length mismatch, zero vector, NaN) → 0.0 silently —
+    the score is a *signal*, not a numeric promise.
     """
     if not va or not vb or len(va) != len(vb):
         return 0.0
@@ -78,9 +88,9 @@ def _cosine_similarity(va: Sequence[float], vb: Sequence[float]) -> float:
     cos = dot / math.sqrt(na * nb)
     if math.isnan(cos):
         return 0.0
-    # Clip + shift to [0, 1]
+    # B3: clamp raw cosine to [0, 1] (no affine rescale — preserve spread)
     cos = max(-1.0, min(1.0, cos))
-    return (cos + 1.0) / 2.0
+    return max(0.0, cos)
 
 
 def _jaccard(set_a: Iterable[str], set_b: Iterable[str]) -> float:
@@ -175,10 +185,11 @@ def percentile_rank(value: float, neighborhood: Sequence[float]) -> float:
 
     Edge cases:
     - Empty / singleton neighborhoods → 0.0 (no relative information).
-    - Used by the scorer's caller to *normalize* candidate scores against
-      the source node's own neighborhood before applying the
-      EDGE_CREATION_THRESHOLD — keeps a sparsely-connected node's edges
-      from being unfairly culled by the global threshold.
+    - Intended (once the D-KG-1 rewire wires this module in) to *normalize*
+      candidate scores against the source node's own neighborhood before
+      applying EDGE_CREATION_THRESHOLD, so a sparsely-connected node's
+      edges aren't unfairly culled by the global threshold. No current
+      production caller.
     """
     if not neighborhood or len(neighborhood) <= 1:
         return 0.0

@@ -40,6 +40,18 @@ class SummaryDTO(BaseModel):
     tokens_used: int
     latency_ms: int
     metadata: dict[str, Any]
+    # P1-7(b): the pre-summary extracted source text (article/transcript/body),
+    # carried so persist's _stable_content_hash can key the canonical dedup
+    # hash on actual source content, not LLM wording. Optional with a safe
+    # default so existing callers/tests constructing SummaryDTO are unaffected;
+    # consumed only by _stable_content_hash and stripped before the row is
+    # written, so it never widens the persisted DTO or any other consumer.
+    # exclude=True: this is an internal dedup-only signal — it MUST NOT
+    # serialize into AddZettelResponse (model_dump / model_dump_json), or
+    # /api/zettels/add and /api/operations/{id} would leak the full extracted
+    # body to every client. The Add Zettel pipeline threads it into the
+    # persist payload explicitly (see run_add_zettel), so dedup is unaffected.
+    source_fingerprint_text: str | None = Field(default=None, exclude=True)
 
 
 class PersistenceDTO(BaseModel):
@@ -234,6 +246,9 @@ async def run_add_document_pipeline(
     if persist:
         payload = summary.model_dump(mode="json")
         payload["raw_text"] = ingest.raw_text
+        # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
+        # the public response), so re-thread it here for the dedup hash.
+        payload["source_fingerprint_text"] = summary.source_fingerprint_text
         outcome = await persist_summarized_result(payload, user_sub=user_sub)
 
     return AddZettelPipelineOutput(
@@ -264,6 +279,12 @@ def summary_dto(bundle: Any) -> SummaryDTO:
         tokens_used=result.metadata.total_tokens_used,
         latency_ms=result.metadata.total_latency_ms,
         metadata=metadata,
+        # IngestResult.raw_text is the deterministic pre-summary extracted
+        # source (set by the source ingestor before Gemini); None when ingest
+        # produced nothing, so persist's hash safely falls back to URL-only.
+        source_fingerprint_text=(
+            (ingest.raw_text or None) if ingest is not None else None
+        ),
     )
     if ingest is not None:
         summary.metadata.setdefault("raw_metadata", dict(ingest.metadata or {}))

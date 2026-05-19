@@ -1,4 +1,4 @@
-﻿"""Hybrid retrieval over Supabase RPCs."""
+"""Hybrid retrieval over Supabase RPCs."""
 
 from __future__ import annotations
 
@@ -116,6 +116,21 @@ _SCORE_RANK_GAP_BYPASS = float(os.environ.get("RAG_SCORE_RANK_GAP_BYPASS", "1.5"
 # iter-12 Task 32 (R2): percentile-derived demote slope; replaces static 0.85 factor.
 _DEMOTE_SLOPE = float(os.environ.get("RAG_SCORE_RANK_DEMOTE_SLOPE", "0.20"))
 
+# E4 Fix F2 (docs/research/e4_component_fix_proposal.md Finding 1): RRF k.
+# 1/(60+rank) flattens small-corpus ranking (rank-1 vs rank-10 span ~13%); a
+# decisive dense hit is washed out by FTS noise. k=24 sharpens top-rank
+# separation. SINGLE SOURCE OF TRUTH for BOTH fusion sites — the SQL RPC
+# p_rrf_k payload AND the Python re-fusion constant read this. Pool size /
+# p_match_count UNCHANGED (respects the iter-03 §B 328 MB memory decision).
+# Composes with Phase-D _gap_adapted_weights (operates on raw channel scores,
+# not k) and K3 _top1_top2_gap (scale-invariant ratio); neither asserts k==60.
+# MUST be int: the SQL RPC `p_rrf_k` is a Postgres integer param — a float
+# (e.g. 24.0) raises `22P02 invalid input syntax for type integer`, which
+# 500s EVERY retrieval query. The Python re-fusion `1.0/(_RRF_K + float(r))`
+# is unaffected by int vs float. (types/get_v2_client/RegistryAdapter are
+# imported at module top post-merge — master L10/15/28/29.)
+_RRF_K = int(os.environ.get("RAG_RRF_K", "24"))
+
 # iter-10 P3: score-rank-correlation magnet gate. THEMATIC/STEP_BACK only.
 # NOT applied to LOOKUP (legitimate proper-noun magnets), VAGUE (already
 # gated by vague_low_entity), or MULTI_HOP (loses hop-2 anchors).
@@ -162,6 +177,77 @@ _WEIGHTS_BY_CLASS: dict[QueryClass, tuple[float, float, float]] = {
     QueryClass.STEP_BACK: (0.50, 0.20, 0.30),
 }
 _DEFAULT_WEIGHTS: tuple[float, float, float] = (0.5, 0.3, 0.2)
+
+# Phase D P2-4: query-adaptive RRF mixing via per-channel score-gap margin.
+# Each channel's normalized top1/top2 score gap measures how *decisive* that
+# channel is for this query. A channel that is more decisive than the present-
+# channel mean is up-weighted; a flat channel is down-weighted. Bounded, single
+# pass, renormalized to preserve Σw. HARD IDENTITY: when no usable gap signal
+# exists (empty pool / <2 candidates in a channel / all gaps equal) every
+# modifier is exactly 1.0 so the fused weights are float-identical to the
+# static tuple — zero regression by construction. Applied ONLY to the in-Python
+# RRF weights AFTER the RPC call; the RPC payload weights are never touched.
+_GAP_BETA: float = 0.25  # modifier sensitivity around the present-channel mean
+_GAP_CLAMP_DELTA: float = 0.30  # modifier clamped to [1-Δ, 1+Δ] = [0.70, 1.30]
+_GAP_EPS: float = 1e-12  # denominator floor for the normalized gap
+
+
+def _channel_gap(scores: list[float]) -> float | None:
+    """Normalized top1/top2 score gap for one channel's ranked score list.
+
+    ``gap = (s1 - s2) / (s1 + EPS)`` clamped to [0, 1]. Returns ``None`` when
+    the channel has fewer than 2 scores (no usable decisiveness signal). The
+    scores are sorted descending here so callers may pass them in any order.
+    """
+    if scores is None or len(scores) < 2:
+        return None
+    s = sorted(scores, reverse=True)
+    s1, s2 = s[0], s[1]
+    gap = (s1 - s2) / (s1 + _GAP_EPS)
+    if gap < 0.0:
+        return 0.0
+    if gap > 1.0:
+        return 1.0
+    return gap
+
+
+def _gap_adapted_weights(
+    weights: tuple[float, float, float],
+    gaps: tuple[float | None, float | None, float | None],
+) -> tuple[float, float, float]:
+    """Apply the score-gap-margin modifier to ``(sem, fts, graph)`` weights.
+
+    ``gaps`` holds the per-channel normalized gap or ``None`` when the channel
+    has no usable signal. Identity is float-EXACT (returns ``weights``
+    unchanged, same object semantics for the tuple values) when fewer than two
+    channels carry a gap OR every present gap is equal — guaranteeing no
+    regression vs the static tuple. Otherwise each present channel's weight is
+    scaled by ``m = clamp(1 + β·(gap - mean_present_gap), 1-Δ, 1+Δ)`` and the
+    result is renormalized so Σw' == Σw (single pass, no iteration).
+    """
+    present = [g for g in gaps if g is not None]
+    # Identity guard: <2 present channels, or all present gaps identical.
+    if len(present) < 2 or max(present) == min(present):
+        return weights
+    mean_gap = sum(present) / len(present)
+    lo = 1.0 - _GAP_CLAMP_DELTA
+    hi = 1.0 + _GAP_CLAMP_DELTA
+    adj: list[float] = []
+    for w, g in zip(weights, gaps):
+        if g is None:
+            adj.append(w)
+            continue
+        m = 1.0 + _GAP_BETA * (g - mean_gap)
+        if m < lo:
+            m = lo
+        elif m > hi:
+            m = hi
+        adj.append(w * m)
+    total = sum(adj)
+    if total <= 0.0:
+        return weights
+    scale = sum(weights) / total
+    return (adj[0] * scale, adj[1] * scale, adj[2] * scale)
 
 
 def _weights_for_class(
@@ -311,17 +397,29 @@ def _percentile(values: list[float], p: int) -> float:
     return sorted_v[lo] * (1 - (rank - lo)) + sorted_v[hi] * (rank - lo)
 
 
-def _top1_top2_gap(candidates) -> float | None:
-    """iter-12 Class K3: relative confidence-gap between top-1 and top-2 rrf_score.
+def _top1_top2_gap(candidates, *, score_key: str = "rrf_score") -> float | None:
+    """iter-12 Class K3: relative confidence-gap between top-1 and top-2.
 
-    Returns top1/top2 ratio, or None when fewer than 2 candidates exist.
-    Used by _apply_score_rank_demote (magnet-gate bypass) and _retry_gap_bypass_threshold.
+    Returns top1/top2 ratio over ``score_key``, or None when fewer than 2
+    candidates exist. ``score_key`` defaults to ``rrf_score`` so the pre-fusion
+    call site (_apply_score_rank_demote, here in hybrid.py) is byte-identical.
+
+    Phase D D2 fix: the orchestrator post-rerank caller passes
+    ``score_key="final_score"`` because post-rerank ``used_candidates`` are
+    ordered by ``final_score`` (cascade sets it at fuse time), not by the raw
+    pre-fusion ``rrf_score``. Reading ``rrf_score`` there gated the
+    clear-winner retry-skip on the wrong field and could wrongly skip retry
+    after rerank reordered the top-2.
     """
     if not candidates or len(candidates) < 2:
         return None
-    sorted_cands = sorted(candidates, key=lambda c: c.rrf_score, reverse=True)
-    top1 = sorted_cands[0].rrf_score
-    top2 = max(sorted_cands[1].rrf_score, 1e-9)
+    sorted_cands = sorted(
+        candidates,
+        key=lambda c: (getattr(c, score_key, None) or 0.0),
+        reverse=True,
+    )
+    top1 = getattr(sorted_cands[0], score_key, None) or 0.0
+    top2 = max(getattr(sorted_cands[1], score_key, None) or 0.0, 1e-9)
     return top1 / top2
 
 
@@ -578,7 +676,7 @@ class HybridRetriever:
                     "p_query_text": query_text,
                     "p_query_embedding": query_vec,
                     "p_match_count": limit,
-                    "p_rrf_k": 60,
+                    "p_rrf_k": _RRF_K,  # E4 F2: single source of truth (env RAG_RRF_K, default 24)
                     # Pass per-source weights through to the SQL fused score so
                     # the legacy ``rrf_score`` column stays meaningful, but the
                     # downstream Python RRF re-fuses with the graph dimension
@@ -676,7 +774,10 @@ class HybridRetriever:
                             "url": "",
                             "content": row.get("content") or "",
                             "tags": list(row.get("user_tags") or []),
-                            "metadata": {},
+                            # Phase D D4: explicit marker so the fusion path can
+                            # scope the dense-fallback RRF-basis normalization
+                            # to ONLY these rows (never generic rank-less rows).
+                            "metadata": {"_dense_fallback": True},
                             "rrf_score": score,
                             "raw_dense_score": score,
                             "raw_fts_score": None,
@@ -1000,6 +1101,11 @@ class HybridRetriever:
         # the kasten members), so a non-empty scope_filter.node_ids degrades
         # gracefully to the unfiltered kasten member list.
         del user_id  # v2 RPC authorises via kasten ownership + JWT.
+        # C#3: defensive None-guard. The annotation says ScopeFilter but some
+        # callers pass None; the .node_ids/.tags/.source_types derefs below
+        # would AttributeError. Treat absent filter as an empty filter.
+        if scope_filter is None:
+            scope_filter = ScopeFilter()
         if sandbox_id is None and not any(
             [scope_filter.node_ids, scope_filter.tags, scope_filter.source_types]
         ):
@@ -1114,6 +1220,7 @@ class HybridRetriever:
         # count(distinct kg_node_id) DESC as deterministic tiebreak. Chunks with
         # the strongest entity-mention signal get rank 1.
         graph_rank_map: dict[str, int] = {}
+        graph_strength_map: dict[str, float] = {}
         if anchor_chunk_mentions:
             agg: dict[str, dict[str, int | set]] = {}
             for m in anchor_chunk_mentions:
@@ -1129,12 +1236,83 @@ class HybridRetriever:
             )
             for i, (cid, _slot) in enumerate(ordered, start=1):
                 graph_rank_map[str(cid)] = i
+                # Phase D P2-4: retain the underlying mention-sum strength so
+                # the graph channel's decisiveness gap is computed from the
+                # actual signal magnitude (not the dense integer rank).
+                graph_strength_map[str(cid)] = float(int(_slot["sum"]))
 
         # Phase 2.4.5: Python-side 3-source weighted RRF (Cormack 2009 — fuse
         # ranks, NEVER raw scores). Per-source contribution is 0 when the
         # chunk does not appear in that source's ranked list. Per-class weights
         # come from _WEIGHTS_BY_CLASS (passed in by the caller).
-        _RRF_K = 60.0
+        # E4 F2: k now the module-level _RRF_K (env RAG_RRF_K, default 24) so
+        # the SQL RPC p_rrf_k and this Python re-fusion move together. No local
+        # rebind — the references below resolve to the module constant.
+        # Phase D P2-4: query-adaptive mixing. Compute each channel's
+        # decisiveness from the in-memory pre-fusion data (no extra retrieval),
+        # then nudge ONLY the Python RRF weights. The RPC payload weights were
+        # already sent verbatim upstream and are untouched here. HARD IDENTITY:
+        # empty pool OR any channel with <2 candidates OR all gaps equal →
+        # every modifier == 1.0 → fused weights float-IDENTICAL to the static
+        # tuple (see _gap_adapted_weights). Single pass, no iteration.
+        if by_key:
+            _sem_scores = [
+                float(by_key[k].metadata["raw_dense_score"])
+                for k in sem_rank_map
+                if k in by_key
+                and by_key[k].metadata.get("raw_dense_score") is not None
+            ]
+            _fts_scores = [
+                float(by_key[k].metadata["raw_fts_score"])
+                for k in fts_rank_map
+                if k in by_key
+                and by_key[k].metadata.get("raw_fts_score") is not None
+            ]
+            _graph_scores = [
+                graph_strength_map[k]
+                for k in graph_rank_map
+                if k in graph_strength_map
+            ]
+            _gaps = (
+                _channel_gap(_sem_scores),
+                _channel_gap(_fts_scores),
+                _channel_gap(_graph_scores),
+            )
+            sem_weight, fts_weight, graph_weight = _gap_adapted_weights(
+                (sem_weight, fts_weight, graph_weight), _gaps
+            )
+        # Phase D D4: dense-fallback-only candidates (search_chunks_enriched_
+        # kasten path) carry a cosine ``rrf_score`` and NO per-source ranks, so
+        # the RRF loop below leaves them on the SQL/cosine scale while normal
+        # candidates land on the ~1/(K+rank) RRF scale — xQuAD/demote then
+        # percentile over a mixed _base_rrf_score basis. Synthesize a
+        # dense-rank for ONLY the explicitly-tagged dense-fallback candidates
+        # (``_dense_fallback`` metadata marker set by the fallback adapter) so
+        # they fuse onto the SAME RRF basis. Scoped strictly to that path:
+        # generic rank-less rows (e.g. SQL-only hybrid rows, test fixtures)
+        # are NOT reclassified and stay byte-identical to pre-Phase-D.
+        _fallback_dense_rank: dict[str, int] = {}
+        if by_key:
+            _fallback_keys = [
+                k
+                for k, c in by_key.items()
+                if c.metadata.get("_dense_fallback") is True
+                and k not in sem_rank_map
+                and k not in fts_rank_map
+                and k not in graph_rank_map
+            ]
+            if _fallback_keys:
+                _ranked = sorted(
+                    _fallback_keys,
+                    key=lambda k: float(
+                        by_key[k].metadata.get("raw_dense_score")
+                        if by_key[k].metadata.get("raw_dense_score") is not None
+                        else by_key[k].rrf_score
+                    ),
+                    reverse=True,
+                )
+                for _i, _k in enumerate(_ranked, start=1):
+                    _fallback_dense_rank[_k] = _i
         if by_key:
             for key, cand in by_key.items():
                 sem_r = sem_rank_map.get(key)
@@ -1147,6 +1325,12 @@ class HybridRetriever:
                     rrf += fts_weight * (1.0 / (_RRF_K + float(fts_r)))
                 if graph_r is not None:
                     rrf += graph_weight * (1.0 / (_RRF_K + float(graph_r)))
+                # Phase D D4: fallback-only key — fuse its synthesized dense
+                # rank through the semantic-channel RRF term so it shares the
+                # same score basis as the normal candidates.
+                _fb_r = _fallback_dense_rank.get(key)
+                if _fb_r is not None:
+                    rrf += sem_weight * (1.0 / (_RRF_K + float(_fb_r)))
                 # Replace the SQL-side single-weight rrf_score with the proper
                 # 3-source weighted RRF. Fall back to the SQL fused score when
                 # all per-source ranks are missing (defensive — should not

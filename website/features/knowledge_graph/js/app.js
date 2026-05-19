@@ -34,6 +34,18 @@ const SLIDER_DEBOUNCE_MS = 250;
 const AMBER_HUE_MIN = 30;
 const AMBER_HUE_MAX = 55;
 
+// Phase B edge color: amber, tiered by the strength tier the read path
+// computes (strong|medium|weak). All three are the #D4A024 amber family
+// (rgb 212,160,36 ≈ HSL hue 43, inside AMBER_HUE_MIN..MAX) — strong is the
+// brightest/most-saturated and most opaque, weak is a faint low-alpha amber.
+// CLAUDE.md: NEVER blue/purple on /knowledge-graph. Edge thickness/opacity
+// stay with edgeWidthFor/edgeOpacityFor; only the hue is set here.
+const EDGE_TIER_COLOR = {
+  strong: 'rgba(212, 160, 36, 0.85)',
+  medium: 'rgba(196, 150, 60, 0.45)',
+  weak:   'rgba(176, 142, 84, 0.18)'
+};
+
 function snapToBucket(name) {
   const b = STRENGTH_BUCKETS[name];
   return b ? b.min : DEFAULT_MIN_STRENGTH;
@@ -774,13 +786,19 @@ function getCommunityHue(communityId) {
       })
       .nodeThreeObjectExtend(false)
 
-      // ---- Link rendering (colors kept as-is) ----
+      // ---- Link rendering: amber, tiered by Phase B strength tier ----
+      // CLAUDE.md hard rule: /knowledge-graph accent is amber/gold #D4A024;
+      // NEVER blue/purple. strong = brightest/most-saturated amber, medium =
+      // mid, weak = faint amber. Opacity still comes from edgeOpacityFor()
+      // via .linkOpacity (untouched); this only sets the hue/base alpha.
       .linkColor(link => {
         const src = typeof link.source === 'object' ? link.source : null;
         if (src && hoverNode && (src.id === hoverNode.id || (typeof link.target === 'object' && link.target.id === hoverNode.id))) {
-          return COLORS[src.group] || 'rgba(160, 180, 240, 0.8)';
+          // Hover keeps the source node's source-badge color (amber family
+          // in COLORS{}); fall back to the brightest amber edge tone.
+          return COLORS[src.group] || EDGE_TIER_COLOR.strong;
         }
-        return 'rgba(100, 130, 200, 0.25)';
+        return EDGE_TIER_COLOR[link && link.tier] || EDGE_TIER_COLOR.weak;
       })
       .linkWidth(link => {
         const src = typeof link.source === 'object' ? link.source : null;
@@ -1199,19 +1217,95 @@ function getCommunityHue(communityId) {
     });
   }
 
-  // ---- Filter ----
+  // ---- Filter (nested "All Filters" menu — mirrors My Zettels) ----
+  // Parent rows reveal exclusive flyout submenus; opening the menu shows
+  // the Source submenu by default (same as user_zettels.js openSubmenu).
+  const filterParents = filterDropdown
+    ? filterDropdown.querySelectorAll('.kg-filter-parent[data-submenu]')
+    : [];
+  const filterClearBtn = document.getElementById('kg-filter-clear');
+
+  function closeFilterSubmenus() {
+    if (!filterDropdown) return;
+    filterDropdown.querySelectorAll('.kg-filter-submenu').forEach(s => s.classList.remove('open'));
+    filterParents.forEach(p => p.classList.remove('active'));
+  }
+
+  function openFilterSubmenu(name) {
+    if (!filterDropdown) return;
+    closeFilterSubmenus();
+    const sub = filterDropdown.querySelector('.kg-filter-submenu[data-section="' + name + '"]');
+    if (sub) sub.classList.add('open');
+    filterParents.forEach(p => {
+      if (p.dataset.submenu === name) p.classList.add('active');
+    });
+  }
+
+  function openFilterMenu() {
+    if (!filterDropdown || !filterBtn) return;
+    filterDropdown.classList.remove('hidden');
+    filterBtn.classList.add('active');
+    filterBtn.setAttribute('aria-expanded', 'true');
+    openFilterSubmenu('source');
+  }
+
+  function closeFilterMenu() {
+    if (!filterDropdown || !filterBtn) return;
+    filterDropdown.classList.add('hidden');
+    filterBtn.classList.remove('active');
+    filterBtn.setAttribute('aria-expanded', 'false');
+    closeFilterSubmenus();
+  }
+
   if (filterBtn && filterDropdown) {
     filterBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      filterDropdown.classList.toggle('hidden');
-      filterBtn.classList.toggle('active');
+      if (filterDropdown.classList.contains('hidden')) openFilterMenu();
+      else closeFilterMenu();
+    });
+  }
+
+  filterParents.forEach(parent => {
+    const name = parent.dataset.submenu;
+    const reveal = () => openFilterSubmenu(name);
+    parent.addEventListener('mouseenter', reveal);
+    parent.addEventListener('focus', reveal);
+    parent.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      reveal();
+    });
+  });
+
+  if (filterClearBtn) {
+    filterClearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Reset Source (all on), Tags + Kastens (none), and the
+      // connection-strength control back to its Strong-only default.
+      activeSources = new Set([...knownSources]);
+      activeTags.clear();
+      if (typeof activeKastens !== 'undefined' && activeKastens) activeKastens.clear();
+      activeBucket = 'strong';
+      minStrength = DEFAULT_MIN_STRENGTH;
+      renderSourceSection();
+      renderTagsSection();
+      renderKastensSection();
+      _syncStrengthUI();
+      _onStrengthChange({ snapBucket: false });
+      applyFilters();
     });
   }
 
   document.addEventListener('click', (e) => {
-    if (filterDropdown && filterBtn && !filterDropdown.contains(e.target) && e.target !== filterBtn) {
-      filterDropdown.classList.add('hidden');
-      filterBtn.classList.remove('active');
+    if (filterDropdown && filterBtn && !filterDropdown.classList.contains('hidden') &&
+        !filterDropdown.contains(e.target) && e.target !== filterBtn && !filterBtn.contains(e.target)) {
+      closeFilterMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && filterDropdown && !filterDropdown.classList.contains('hidden')) {
+      closeFilterMenu();
     }
   });
 
@@ -1285,20 +1379,57 @@ function getCommunityHue(communityId) {
     });
   }
 
-  document.querySelectorAll('.kg-filter-section-header').forEach(h => {
-    const toggle = () => {
-      const section = h.parentElement;
-      section.classList.toggle('collapsed');
-      h.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
-    };
-    h.addEventListener('click', toggle);
-    h.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggle();
+  // Source-type legend — bottom-left "i" popup. Swatches use the real
+  // per-source COLORS{} values (the same map the 3D nodes render with);
+  // colours are read here, never mutated.
+  (function wireLegendPopup() {
+    const legendBtn = document.getElementById('kg-legend-btn');
+    const legendPopup = document.getElementById('kg-legend-popup');
+    const legendList = document.getElementById('kg-legend-list');
+    if (!legendBtn || !legendPopup || !legendList) return;
+
+    // De-dupe colours (substack/newsletter share #60A5FA) so the legend
+    // lists one row per source label.
+    legendList.innerHTML = '';
+    Object.keys(SOURCE_LABEL).forEach(src => {
+      const row = document.createElement('div');
+      row.className = 'kg-legend-row';
+      const sw = document.createElement('span');
+      sw.className = 'kg-legend-swatch';
+      sw.style.background = COLORS[src] || '#888';
+      const lbl = document.createElement('span');
+      lbl.className = 'kg-legend-label';
+      lbl.textContent = SOURCE_LABEL[src] || src;
+      row.appendChild(sw);
+      row.appendChild(lbl);
+      legendList.appendChild(row);
+    });
+
+    function openLegend() {
+      legendPopup.classList.remove('hidden');
+      legendBtn.classList.add('active');
+      legendBtn.setAttribute('aria-expanded', 'true');
+    }
+    function closeLegend() {
+      legendPopup.classList.add('hidden');
+      legendBtn.classList.remove('active');
+      legendBtn.setAttribute('aria-expanded', 'false');
+    }
+    legendBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (legendPopup.classList.contains('hidden')) openLegend();
+      else closeLegend();
+    });
+    document.addEventListener('click', (e) => {
+      if (!legendPopup.classList.contains('hidden') &&
+          !legendPopup.contains(e.target) && e.target !== legendBtn && !legendBtn.contains(e.target)) {
+        closeLegend();
       }
     });
-  });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !legendPopup.classList.contains('hidden')) closeLegend();
+    });
+  })();
 
   // ---- Side-panel collapsible sections (Summary / Tags / Connected Notes) ----
   (function wirePanelSections() {
@@ -1445,15 +1576,19 @@ function getCommunityHue(communityId) {
     const body = document.getElementById('filter-kastens-body');
     if (!body) return;
     body.innerHTML = '';
-    const sectionEl = body.closest('.kg-filter-section');
-    // Greyed when view is Global (Kastens are personal scope).
-    // Whole section is hover-greyed with the tooltip "Sign in to switch"
-    // (mirrors the greyed Personal segment in the toggle).
+    // Nested-menu structure: the "section" is the Kastens parent row +
+    // its flyout submenu. Grey both so the disabled-scope affordance
+    // still reads as one unit (mirrors the greyed Personal segment).
+    const sectionEl = body.closest('.kg-filter-submenu');
+    const parentEl = document.getElementById('kg-filter-parent-kastens');
+    const scopeEls = [sectionEl, parentEl].filter(Boolean);
     if (currentView === 'global') {
+      scopeEls.forEach(el => {
+        el.classList.add('disabled-scope');
+        el.setAttribute('title', 'Sign in to switch');
+        el.setAttribute('aria-disabled', 'true');
+      });
       if (sectionEl) {
-        sectionEl.classList.add('disabled-scope');
-        sectionEl.setAttribute('title', 'Sign in to switch');
-        sectionEl.setAttribute('aria-disabled', 'true');
         // Capture-phase click handler: any click anywhere in the section
         // opens login (logged-out) or switches view to Personal (logged-in).
         sectionEl.onclick = (e) => {
@@ -1475,12 +1610,12 @@ function getCommunityHue(communityId) {
       body.appendChild(hint);
       return;
     }
-    if (sectionEl) {
-      sectionEl.classList.remove('disabled-scope');
-      sectionEl.removeAttribute('title');
-      sectionEl.removeAttribute('aria-disabled');
-      sectionEl.onclick = null;
-    }
+    scopeEls.forEach(el => {
+      el.classList.remove('disabled-scope');
+      el.removeAttribute('title');
+      el.removeAttribute('aria-disabled');
+    });
+    if (sectionEl) sectionEl.onclick = null;
     if (!isLoggedIn) {
       const link = document.createElement('a');
       link.className = 'kg-filter-cta-link';

@@ -96,12 +96,29 @@ async def test_newsletter_summarizer_returns_newsletter_payload_shape(
     result = await NewsletterSummarizer(mock_gemini_client, {}).summarize(ingest)
 
     assert result.mini_title.startswith("Stratechery")
-    assert result.detailed_summary.stance == "cautionary"
+    # DEFECT 3 fix: detailed_summary is the rendered DetailedSummarySection
+    # list (not the rich NewsletterDetailedPayload). Iterating that model
+    # downstream yielded tuples -> "'tuple' object has no attribute 'heading'".
+    from website.core.summary_rendering import render_detailed_summary
+    from website.features.summarization_engine.core.models import (
+        DetailedSummarySection,
+    )
+
+    assert isinstance(result.detailed_summary, list)
+    assert result.detailed_summary and all(
+        isinstance(s, DetailedSummarySection) for s in result.detailed_summary
+    )
+    assert render_detailed_summary(result.detailed_summary)  # no AttributeError
     assert result.metadata.is_schema_fallback is False
     assert result.metadata.structured_payload is not None
+    # Rich payload preserved on structured_payload (stance/publication intact).
     assert (
         result.metadata.structured_payload["detailed_summary"]["publication_identity"]
         == "Stratechery"
+    )
+    assert (
+        result.metadata.structured_payload["detailed_summary"]["stance"]
+        == "cautionary"
     )
     # Contract: the summarizer invoked generate() with the Newsletter schema
     call = mock_gemini_client.generate.await_args

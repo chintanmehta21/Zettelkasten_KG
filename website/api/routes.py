@@ -363,6 +363,108 @@ _graph_cache_global: dict | None = None
 _graph_cache_global_ts: float = 0
 
 
+# Phase B read-path strength constants.
+#
+# Strength column precedence (per design + verified migrations): the Phase B
+# scorer writes ``workspace_strength`` (_v2/46) which DRIVES RENDERING; the
+# 42-era ``connection_strength`` composite is the read-path fallback for rows
+# the scorer has not reached yet; the legacy ``weight`` column is ALWAYS NULL
+# post-migration and is only kept as a last resort. ``None`` everywhere → a
+# neutral sentinel so an unscored edge never renders as "strong".
+_UNSCORED_STRENGTH_SENTINEL = 0.5  # mid-bucket; matches 42_*.sql backfill intent
+
+# Percentile cutoffs (fraction of the workspace's weighted-edge distribution).
+# Top 25% → strong, next 35% → medium, bottom 40% → weak. Mirrors both
+# improvement reports' "use the workspace distribution, not fixed global
+# cutoffs" guidance.
+_TIER_STRONG_PCTL = 0.75
+_TIER_MEDIUM_PCTL = 0.40
+
+# Small-n fallback: with fewer than this many *weighted* edges a percentile is
+# statistically unstable, so fall back to the fixed D-KG-3 cutoffs referenced
+# in the kg index comment (0.7 strong / 0.4 medium).
+_TIER_MIN_SAMPLE = 20
+_TIER_STRONG_FIXED = 0.7
+_TIER_MEDIUM_FIXED = 0.4
+
+
+def _resolve_edge_strength(edge: dict) -> tuple[float, bool]:
+    """Return ``(strength, was_scored)`` for one kg_edges row.
+
+    Precedence: ``workspace_strength`` (Phase B render driver) →
+    ``connection_strength`` (42-era composite fallback) → legacy ``weight``
+    (always NULL post-migration) → unscored sentinel. ``was_scored`` is
+    ``True`` only when a real per-workspace/composite score was present, so
+    the percentile distribution is built from genuinely-scored edges and an
+    unscored edge can never be tiered "strong".
+    """
+    for col in ("workspace_strength", "connection_strength", "weight"):
+        raw = edge.get(col)
+        if raw is None:
+            continue
+        try:
+            numeric = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if numeric < 0:
+            numeric = 0.0
+        # workspace_strength / connection_strength are [0,1] by CHECK
+        # constraint; legacy weight may be 1-10 → normalise like the prior
+        # _normalize_connection_strength did so behaviour is unchanged.
+        if numeric > 1.0:
+            numeric = min(numeric / 10.0, 1.0)
+        return numeric, col != "weight"
+    return _UNSCORED_STRENGTH_SENTINEL, False
+
+
+def _percentile_threshold(sorted_vals: list[float], fraction: float) -> float:
+    """Value at ``fraction`` quantile of an ascending ``sorted_vals``.
+
+    ``fraction`` in [0,1]; nearest-rank style on the sorted list. Caller
+    guarantees ``sorted_vals`` is non-empty.
+    """
+    if fraction <= 0:
+        return sorted_vals[0]
+    if fraction >= 1:
+        return sorted_vals[-1]
+    idx = int(round(fraction * (len(sorted_vals) - 1)))
+    return sorted_vals[idx]
+
+
+def _build_tier_classifier(scored_strengths: list[float]):
+    """Build a ``strength -> 'strong'|'medium'|'weak'`` classifier.
+
+    Computed ONLY from ``scored_strengths`` — the genuinely-scored edges of
+    ONE workspace (BOLA: the caller passes a single workspace's edges, so the
+    distribution can never leak another tenant's strengths). With < 20
+    scored edges the percentile is unstable → fixed D-KG-3 cutoffs.
+    """
+    n = len(scored_strengths)
+    if n >= _TIER_MIN_SAMPLE:
+        ordered = sorted(scored_strengths)
+        strong_cut = _percentile_threshold(ordered, _TIER_STRONG_PCTL)
+        medium_cut = _percentile_threshold(ordered, _TIER_MEDIUM_PCTL)
+        # Guard degenerate distributions (all-equal) so medium <= strong.
+        if medium_cut > strong_cut:
+            medium_cut = strong_cut
+    else:
+        strong_cut = _TIER_STRONG_FIXED
+        medium_cut = _TIER_MEDIUM_FIXED
+
+    def _classify(strength: float, was_scored: bool) -> str:
+        # An unscored edge is never "strong": it did not participate in the
+        # distribution and its sentinel must not masquerade as a real score.
+        if not was_scored:
+            return "weak"
+        if strength >= strong_cut:
+            return "strong"
+        if strength >= medium_cut:
+            return "medium"
+        return "weak"
+
+    return _classify
+
+
 def _v2_assemble_graph(
     *,
     user_sub: str,
@@ -418,23 +520,23 @@ def _v2_assemble_graph(
     links: list[dict] = []
     seen_links: set[tuple[str, str, str]] = set()  # (src, dst, relation)
 
-    def _normalize_connection_strength(value: object) -> float:
-        if value is None:
-            return 1.0
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return 1.0
-        if numeric <= 0:
-            return 0.0
-        if numeric <= 1:
-            return numeric
-        return min(numeric / 10.0, 1.0)
-
     for ws_id in workspace_ids:
         edge_rows = kg_repo.list_workspace_edges(ws_id)
         if not edge_rows:
             continue
+        # Phase B: resolve each edge's render strength (workspace_strength ->
+        # connection_strength -> legacy weight -> sentinel) and build the
+        # strong/medium/weak tier classifier from THIS workspace's scored
+        # edges only. The classifier never sees another workspace's
+        # strengths — BOLA isolation by construction (one ws per iteration).
+        edge_strengths: dict[int, tuple[float, bool]] = {}
+        scored_strengths: list[float] = []
+        for idx, edge in enumerate(edge_rows):
+            strength, was_scored = _resolve_edge_strength(edge)
+            edge_strengths[idx] = (strength, was_scored)
+            if was_scored:
+                scored_strengths.append(strength)
+        _classify_tier = _build_tier_classifier(scored_strengths)
         # Resolve the bigint kg_node ids on each edge endpoint to overlay
         # node ids via kg.chunk_node_mentions -> content.canonical_chunks ->
         # canonical_zettel_id. Without this join we'd emit self-loops
@@ -448,9 +550,43 @@ def _v2_assemble_graph(
                     endpoint_ids.add(int(edge.get(col)))
                 except (TypeError, ValueError):
                     continue
+        sorted_endpoint_ids = sorted(endpoint_ids)
         node_to_zettels = kg_repo.list_node_zettel_mapping(
-            ws_id, sorted(endpoint_ids)
+            ws_id, sorted_endpoint_ids
         )
+
+        # B1 FALLBACK: a workspace whose kg_nodes were upserted WITHOUT
+        # kg.chunk_node_mentions rows (observed live for Naruto: 58 kg_edges,
+        # 20 kg_nodes, 0 mentions) yields an EMPTY ``node_to_zettels`` for
+        # every endpoint, so the primary join below resolves nothing and ALL
+        # edges are dropped (the KG renders as isolated nodes). For exactly
+        # the endpoint nodes the mention join did NOT resolve, recover the
+        # node->canonical-zettel link from ``kg_nodes.metadata`` (the
+        # ``canonical_zettel_id`` key kg_population writes at node upsert via
+        # ``_node_metadata``). One extra bounded, workspace-scoped select
+        # keyed by the still-unresolved endpoint ids — BOLA-safe (fenced to
+        # ws_id; a foreign-tenant canonical id can never key into
+        # ``canonical_to_overlay``, which only holds THIS workspace's loaded
+        # overlays). Edges render when EITHER chunk_node_mentions OR this
+        # metadata fallback resolves both endpoints.
+        unresolved_endpoints = [
+            nid for nid in sorted_endpoint_ids if not node_to_zettels.get(nid)
+        ]
+        node_to_canonical_meta: dict[int, str] = {}
+        if unresolved_endpoints:
+            try:
+                node_to_canonical_meta = (
+                    kg_repo.list_node_canonical_zettel_metadata(
+                        ws_id, unresolved_endpoints
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 — degrade, never 500
+                logger.warning(
+                    "v2 graph B1 metadata fallback failed for ws=%s: %s",
+                    ws_id,
+                    exc,
+                )
+                node_to_canonical_meta = {}
 
         def _resolve_overlay_ids(kg_node_id: int) -> list[str]:
             ids: list[str] = []
@@ -458,21 +594,37 @@ def _v2_assemble_graph(
                 overlay = canonical_to_overlay.get(str(zettel_id))
                 if overlay:
                     ids.append(overlay)
+            if ids:
+                return ids
+            # B1 fallback: mention join resolved nothing for this node — try
+            # the canonical_zettel_id stored on kg_nodes.metadata. Still
+            # gated by canonical_to_overlay (THIS workspace's loaded
+            # overlays), so a foreign canonical id resolves to nothing.
+            meta_zettel = node_to_canonical_meta.get(kg_node_id)
+            if meta_zettel:
+                overlay = canonical_to_overlay.get(str(meta_zettel))
+                if overlay:
+                    ids.append(overlay)
             return ids
 
-        for edge in edge_rows:
+        edges_dropped_unresolved = 0
+        for idx, edge in enumerate(edge_rows):
             try:
                 src_id = int(edge.get("src_node_id"))
                 dst_id = int(edge.get("dst_node_id"))
             except (TypeError, ValueError):
                 continue
+            strength, was_scored = edge_strengths[idx]
+            tier = _classify_tier(strength, was_scored)
             src_overlays = _resolve_overlay_ids(src_id)
             dst_overlays = _resolve_overlay_ids(dst_id)
             if not src_overlays or not dst_overlays:
-                # Endpoint node has no mention chunk that maps to one of the
-                # workspace zettels we already loaded — skip rather than fake
-                # a self-loop. The evidence-canonical fallback is intentional
-                # only when src AND dst both resolve through the same zettel.
+                # Endpoint resolved via NEITHER chunk_node_mentions NOR the
+                # B1 metadata fallback (e.g. an orphan kg_node with no chunk
+                # rows and no canonical_zettel_id in metadata) — skip rather
+                # than fake a self-loop, and COUNT it so silent edge loss is
+                # observable in the ops log (B1 telemetry).
+                edges_dropped_unresolved += 1
                 continue
             relation = str(edge.get("relation_type") or "shared_tag")
             description = edge.get("shared_tag_label")
@@ -495,11 +647,24 @@ def _v2_assemble_graph(
                             "weight": None,
                             "link_type": "tag",
                             "description": description,
-                            "connection_strength": _normalize_connection_strength(
-                                edge.get("weight")
-                            ),
+                            "connection_strength": strength,
+                            "tier": tier,
                         }
                     )
+
+        # B1 telemetry: surface how many edges were dropped because NEITHER
+        # the chunk_node_mentions join NOR the metadata fallback resolved an
+        # endpoint, so silent edge loss (the original Naruto symptom) is
+        # observable in the ops log instead of an invisibly edgeless graph.
+        if edges_dropped_unresolved:
+            logger.warning(
+                "v2 graph edge_drop_unresolved ws=%s dropped=%d of=%d "
+                "(endpoints unresolved via chunk_node_mentions + metadata "
+                "fallback)",
+                ws_id,
+                edges_dropped_unresolved,
+                len(edge_rows),
+            )
 
     # Use Pydantic to enforce the shape; total_nodes mirrors v1 conventions.
     try:

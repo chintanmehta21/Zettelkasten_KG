@@ -8,13 +8,17 @@ HEAVY = "website.features.kg_features.embeddings"
 TARGET = "website.experimental_features.nexus.service.persist"
 
 
-def test_persist_module_does_not_import_embeddings():
+def test_persist_module_does_not_import_embeddings(monkeypatch):
     """Importing the persist module must not pull in kg_features.embeddings."""
-    sys.modules.pop(HEAVY, None)
-    sys.modules.pop(TARGET, None)
-    for key in list(sys.modules.keys()):
-        if key.startswith(HEAVY + ".") or key.startswith(TARGET + "."):
-            sys.modules.pop(key, None)
+    # monkeypatch.delitem restores these sys.modules entries at teardown;
+    # a bare pop leaked the absent embeddings module into later tests.
+    for key in list(sys.modules):
+        if (
+            key in (HEAVY, TARGET)
+            or key.startswith(HEAVY + ".")
+            or key.startswith(TARGET + ".")
+        ):
+            monkeypatch.delitem(sys.modules, key, raising=False)
 
     import website.experimental_features.nexus.service.persist  # noqa: F401
 

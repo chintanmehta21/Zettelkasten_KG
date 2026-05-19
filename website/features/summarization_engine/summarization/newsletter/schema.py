@@ -8,7 +8,10 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
-from website.features.summarization_engine.core.models import SummaryMetadata
+from website.features.summarization_engine.core.models import (
+    DetailedSummarySection,
+    SummaryMetadata,
+)
 
 
 _BRANDED_YAML_DEFAULT = (
@@ -73,5 +76,17 @@ class NewsletterSummaryResult(BaseModel):
     mini_title: str
     brief_summary: str
     tags: list[str] = Field(..., min_length=7, max_length=10)
-    detailed_summary: NewsletterDetailedPayload
+    # MUST be the rendered section list (NOT the rich NewsletterDetailedPayload).
+    # Every downstream consumer — render_detailed_summary
+    # (summarization.summary_dto / nexus bulk_import) and writers/markdown.py —
+    # iterates ``result.detailed_summary`` expecting DetailedSummarySection
+    # objects with ``.heading``/``.bullets``/``.sub_sections``. Passing the
+    # NewsletterDetailedPayload model here made ``for section in
+    # detailed_summary`` iterate the Pydantic model and yield ``(field, value)``
+    # tuples, producing the live "'tuple' object has no attribute 'heading'"
+    # crash on every Substack/newsletter zettel. Reddit/GitHub/YouTube all
+    # already return this shape; this aligns Newsletter with that contract. The
+    # full NewsletterDetailedPayload is still preserved verbatim on
+    # SummaryMetadata.structured_payload for any source-specific consumer.
+    detailed_summary: list[DetailedSummarySection]
     metadata: SummaryMetadata
