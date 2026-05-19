@@ -50,23 +50,38 @@ def _speaker_line(speakers: Iterable[str]) -> str:
     return f"Speakers: {head} (+{extra} more)"
 
 
-def _format_and_speakers_bullets(payload: YouTubeStructuredPayload) -> list[str]:
+def _format_and_speakers_bullets(payload: YouTubeStructuredPayload) -> tuple[list[str], str]:
+    """Return (bullets, sub_section_heading). When the only speaker(s) are
+    generic role-nouns/placeholders (per the shared _is_placeholder_speaker),
+    drop the Speakers bullet and title the sub-section 'Format' instead of
+    'Format and speakers'. Surgical: affects ONLY this sub-section."""
+    from website.features.summarization_engine.summarization.youtube.schema import (
+        _is_placeholder_speaker,
+    )
+
     bullets: list[str] = []
     fmt = _clean(payload.detailed_summary.format or "")
     if fmt:
-        bullets.append(f"Format: {fmt}")
-    speaker_line = _speaker_line(payload.speakers)
-    if speaker_line:
-        bullets.append(speaker_line)
-    return bullets
+        bullets.append(f"Format: {fmt[:1].upper() + fmt[1:]}")
+
+    real_names = [
+        s for s in (payload.speakers or [])
+        if _clean(s) and not _is_placeholder_speaker(_clean(s))
+    ]
+    if real_names:
+        speaker_line = _speaker_line(real_names)
+        if speaker_line:
+            bullets.append(speaker_line)
+        return bullets, "Format and speakers"
+    return bullets, "Format"
 
 
 def _overview_section(payload: YouTubeStructuredPayload) -> DetailedSummarySection:
     primary = _first_sentence(payload.brief_summary) or "This video is captured in the Zettelkasten."
     sub_sections: dict[str, list[str]] = {}
-    fmt_bullets = _format_and_speakers_bullets(payload)
+    fmt_bullets, fmt_heading = _format_and_speakers_bullets(payload)
     if fmt_bullets:
-        sub_sections["Format and speakers"] = fmt_bullets
+        sub_sections[fmt_heading] = fmt_bullets
     thesis = _clean(payload.detailed_summary.thesis or "")
     if thesis:
         sub_sections["Core argument"] = [thesis]
