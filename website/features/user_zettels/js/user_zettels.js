@@ -850,6 +850,13 @@
         applyFilters();
       }
     } catch (err) {
+      // The optimistic add did not land — tear the skeleton/spacer down
+      // immediately on ANY error (incl. quota_exhausted) so they never orphan
+      // if the user dismisses the quota gate without paying/watching ads. A
+      // resume re-runs addZettel() which creates a fresh skeleton.
+      if (skeleton && skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
+      if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer);
+      applyFilters();
       var quotaDetail = err && err.detail && err.detail.code === 'quota_exhausted' ? err.detail : null;
       if (quotaDetail && window.ZKQuotaGate) {
         await window.ZKQuotaGate.show({
@@ -861,9 +868,6 @@
         return;
       }
       console.error('[user_zettels] Add failed:', err);
-      if (skeleton && skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
-      if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer);
-      applyFilters();
 
       if (addError) addError.textContent = err.message || 'Failed to add zettel';
       if (addDropdown) addDropdown.classList.add('open');
