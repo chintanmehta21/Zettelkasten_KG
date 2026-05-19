@@ -288,23 +288,32 @@
 
   async function loadZettels(token) {
     try {
-      var resp = await fetch('/api/graph?view=my', {
+      var resp = await fetch('/api/zettels', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       var data = await resp.json();
-      var nodes = data.nodes || [];
-      var links = data.links || [];
+      var zettels = Array.isArray(data.zettels) ? data.zettels : [];
+      var nodes = zettels.map(function (z) {
+        return {
+          id: z.id,
+          name: z.title || 'Untitled',
+          group: z.source_type || 'web',
+          url: z.source_url || '',
+          date: z.added_at || '',
+          summary: z.brief_summary || '',
+          description: z.detailed_summary || z.brief_summary || '',
+          tags: Array.isArray(z.tags) ? z.tags : []
+        };
+      });
 
-      // Sort by date descending
+      // Sort by capture date descending
       nodes.sort(function (a, b) {
         return (b.date || '').localeCompare(a.date || '');
       });
 
       // Update KG stats panel
       var kgNodeCount = document.getElementById('kg-node-count');
-      var kgLinkCount = document.getElementById('kg-link-count');
       if (kgNodeCount) kgNodeCount.textContent = nodes.length;
-      if (kgLinkCount) kgLinkCount.textContent = links.length;
 
       // Show only latest 3 zettels in the preview
       renderCards(nodes.slice(0, 3), nodes.length);
@@ -580,7 +589,7 @@
 
   // ── My Zettels badge (UX-8) ──────────────────────────────────────
   // The header badge was set once at render time and drifted from the
-  // authoritative count returned by /api/graph?view=my as the user added
+  // authoritative count returned by /api/zettels as the user added
   // zettels. We now refetch on add success and on stale interaction.
 
   var _badgeUpdatedAt = 0;
@@ -592,20 +601,17 @@
     if (_badgeRefreshing) return;
     _badgeRefreshing = true;
     try {
-      var resp = await fetch('/api/graph?view=my', {
+      var resp = await fetch('/api/zettels', {
         credentials: 'include',
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (!resp.ok) return;
       var data = await resp.json();
-      var nodes = data.nodes || [];
-      var links = data.links || [];
+      var count = Array.isArray(data.zettels) ? data.zettels.length : 0;
       var badge = document.getElementById('zettel-count');
-      if (badge) badge.textContent = nodes.length;
+      if (badge) badge.textContent = count;
       var kgN = document.getElementById('kg-node-count');
-      var kgL = document.getElementById('kg-link-count');
-      if (kgN) kgN.textContent = nodes.length;
-      if (kgL) kgL.textContent = links.length;
+      if (kgN) kgN.textContent = count;
       _badgeUpdatedAt = Date.now();
     } catch (e) {
       console.warn('[home] badge refresh failed', e);
@@ -932,7 +938,7 @@
       zettelCount.textContent = count;
       // UX-2: clear any slow-message that may have appeared in-flight.
       if (addError) addError.textContent = '';
-      // UX-8: refresh the My Zettels badge authoritatively from /api/graph.
+      // UX-8: refresh the My Zettels badge authoritatively from /api/zettels.
       refreshMyZettelsBadge(token);
     } catch (e) {
       var quotaDetail = e && e.detail && e.detail.code === 'quota_exhausted' ? e.detail : null;
@@ -1400,26 +1406,26 @@
     if (_createKastenInflight && !opts.force) return _createKastenInflight;
     _createKastenInflight = (async function () {
       try {
-        // UX-3: source the chooser from /api/graph?view=my so newly-added
-        // zettels are always present (graph is the canonical user view).
-        var resp = await fetch('/api/graph?view=my', {
+        // UX-3: source the chooser from /api/zettels so newly-added
+        // zettels are always present (the dedicated per-user list).
+        var resp = await fetch('/api/zettels', {
           credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) {
-          console.warn('[create-kasten] load graph failed', resp.status);
+          console.warn('[create-kasten] load zettels failed', resp.status);
           _createKastenNodes = [];
         } else {
           var data = await resp.json();
-          var nodes = data.nodes || [];
+          var zettels = Array.isArray(data.zettels) ? data.zettels : [];
           // Normalize to the shape renderCreateKastenZettelList expects:
-          // {id, name, source_type, summary}. Graph uses `group`.
-          _createKastenNodes = nodes.map(function (n) {
+          // {id, name, source_type, summary}.
+          _createKastenNodes = zettels.map(function (z) {
             return {
-              id: n.id,
-              name: n.name || n.title || n.id,
-              source_type: n.group || n.source_type || 'web',
-              summary: n.summary || n.description || ''
+              id: z.id,
+              name: z.title || z.id,
+              source_type: z.source_type || 'web',
+              summary: z.brief_summary || ''
             };
           });
         }
