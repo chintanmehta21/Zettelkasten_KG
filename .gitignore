@@ -33,6 +33,9 @@ __pycache__/
 venv/
 target/
 vendor/
+# Self-hosted third-party assets (KaTeX) are intentionally vendored, not a CDN.
+!website/static/vendor/
+!website/static/vendor/**
 
 # Logs / coverage / caches
 *.log

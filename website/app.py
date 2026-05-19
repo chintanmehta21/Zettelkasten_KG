@@ -346,6 +346,11 @@ def create_app(lifespan=None) -> FastAPI:
     app.mount("/header/css", StaticFiles(directory=str(HEADER_DIR / "css")), name="header-css")
     app.mount("/header/js", StaticFiles(directory=str(HEADER_DIR / "js")), name="header-js")
 
+    # Self-hosted third-party vendor assets (KaTeX, etc.) — no CDN.
+    _mount_static_if_exists(
+        app, "/vendor", STATIC_DIR / "vendor", "vendor"
+    )
+
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
     app.mount(
