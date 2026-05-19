@@ -665,7 +665,7 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
             if not current.startswith(prefix):
                 suffix_source = current or str(meta.get("title") or "").strip()
                 suffix = suffix_source[: max(0, 60 - len(prefix) - 1)].strip()
-                raw["mini_title"] = f"{prefix} {suffix}".strip()[:60]
+                raw["mini_title"] = _tt_trim(f"{prefix} {suffix}".strip(), 60)
         _REDDIT_PLACEHOLDERS = {
             "op", "the op", "original poster", "the original poster",
             "the author", "author", "user", "the user", "commenter",

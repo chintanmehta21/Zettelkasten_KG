@@ -29,8 +29,18 @@ def _summary_metadata():
 def _valid_model_kwargs(cfg):
     from website.features.summarization_engine.core.models import DetailedSummarySection
 
+    # Space-containing string exactly at cap so the Pydantic max_length validator
+    # accepts it (trim runs upstream before model construction).
+    max_chars = cfg.structured_extract.mini_title_max_chars
+    # Fill with whole "word " units, strip trailing space to land at exactly max_chars.
+    raw = ("word " * (max_chars // 5 + 1))[:max_chars].rstrip()
+    # If rstrip undershot, pad with single chars to restore exact length.
+    if len(raw) < max_chars:
+        raw = raw + " w" * ((max_chars - len(raw)) // 2) + "w" * ((max_chars - len(raw)) % 2)
+    mini_title_input = raw[:max_chars]
+
     return dict(
-        mini_title="t" * cfg.structured_extract.mini_title_max_chars,
+        mini_title=mini_title_input,
         brief_summary="b" * cfg.structured_extract.brief_summary_max_chars,
         tags=[f"tag-{index}" for index in range(cfg.structured_extract.tags_max)],
         detailed_summary=[DetailedSummarySection(heading="H", bullets=["b"])],
@@ -56,18 +66,39 @@ def test_build_summary_result_model_applies_config_caps():
 
 
 def test_build_summary_result_model_accepts_boundary_values():
+    from website.features.summarization_engine.post_summary_transformation.rules.title import (
+        trim_to_word_boundary,
+    )
+
     reset_config_cache()
     cfg = load_config()
     Model = build_summary_result_model(cfg)
 
     result = Model(**_valid_model_kwargs(cfg))
 
-    assert len(result.mini_title) <= cfg.structured_extract.mini_title_max_chars
+    max_chars = cfg.structured_extract.mini_title_max_chars
+    assert len(result.mini_title) <= max_chars
     # word-boundary trim: no trailing partial word, no ellipsis
     assert result.mini_title == result.mini_title.rstrip()
     assert "…" not in result.mini_title
     assert len(result.brief_summary) == cfg.structured_extract.brief_summary_max_chars
     assert len(result.tags) == cfg.structured_extract.tags_max
+
+    # Non-vacuous word-boundary trim assertion: feed a >max space-containing string
+    # directly to trim_to_word_boundary (which runs upstream before model construction)
+    # and prove the cut landed on a word boundary, not mid-word.
+    long_input = " ".join(["longword"] * (max_chars // 4 + 5))
+    assert len(long_input) > max_chars, "test setup: long_input must exceed cap"
+    trimmed = trim_to_word_boundary(long_input, max_chars)
+    assert len(trimmed) <= max_chars
+    assert trimmed == trimmed.rstrip()
+    assert "…" not in trimmed
+    # trimmed is a prefix of the original; char immediately after must be a space.
+    remainder = long_input[len(trimmed):]
+    if remainder and " " in long_input[:max_chars]:
+        assert remainder[0] == " ", (
+            f"mid-word cut: kept={trimmed!r}, next_char={remainder[0]!r}"
+        )
 
 
 @pytest.mark.parametrize(
