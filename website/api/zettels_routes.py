@@ -62,6 +62,15 @@ _IDEMPOTENCY_CACHE: "OrderedDict[tuple[str, str], tuple[float, str, dict[str, An
 _OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
 _OPERATION_TASKS: dict[str, asyncio.Task] = {}
 _IN_FLIGHT: dict[tuple[str, str], tuple[str, str, asyncio.Task]] = {}
+_BG_TASKS: set[asyncio.Task] = set()
+
+
+def _spawn_bg(coro) -> None:
+    """Fire-and-forget a coroutine without blocking the caller, keeping a
+    strong ref so the event loop doesn't GC it mid-flight."""
+    task = asyncio.create_task(coro)
+    _BG_TASKS.add(task)
+    task.add_done_callback(_BG_TASKS.discard)
 
 
 class AddZettelRequest(BaseModel):
@@ -272,20 +281,6 @@ def _store_operation_result(
             )
 
 
-async def _await_in_flight(
-    *,
-    cache_key: tuple[str, str],
-    request_hash: str,
-    operation_id: str,
-    task: asyncio.Task,
-) -> dict[str, Any]:
-    result = await asyncio.shield(task)
-    _cache_put(cache_key, request_hash, result)
-    _operation_put(operation_id, result)
-    _IN_FLIGHT.pop(cache_key, None)
-    return result
-
-
 def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
     if not persisted:
         return
@@ -415,14 +410,18 @@ async def add_zettel(
             ).model_dump(mode="json")
             _operation_put(body.client_action_id, accepted)
             _OPERATION_TASKS[body.client_action_id] = work
-            # Shared store so any worker can answer the poll + it survives
-            # worker recycle. Off the event loop; never fatal.
-            await asyncio.to_thread(
-                operations_repo.create_accepted,
-                user_id=effective_user_id,
-                operation_id=body.client_action_id,
-                request_hash=request_hash,
-                accepted_body=accepted,
+            # Best-effort shared-store write — fire-and-forget so a slow/
+            # unreachable Supabase NEVER delays the 202 (that would re-
+            # introduce the Cloudflare 524). The in-memory store already
+            # serves polls during this window.
+            _spawn_bg(
+                asyncio.to_thread(
+                    operations_repo.create_accepted,
+                    user_id=effective_user_id,
+                    operation_id=body.client_action_id,
+                    request_hash=request_hash,
+                    accepted_body=accepted,
+                )
             )
             work.add_done_callback(
                 lambda task: _store_operation_result(
