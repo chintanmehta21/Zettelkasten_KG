@@ -37,3 +37,32 @@ def test_arxiv_keeps_real_and_multibullet():
     ]
     out = reg.apply_sections(secs, source_type="arxiv")
     assert [s.heading for s in out] == ["Limitations", "Citations", "Methodology"]
+
+
+def test_arxiv_keeps_placeholder_phrase_with_trailing_substantive_content():
+    """A bullet that merely STARTS with the placeholder phrase but carries a
+    real second clause must NOT be treated as an empty placeholder."""
+    secs = [
+        _s("Limitations", [
+            "No limitations were provided in the abstract, however the small "
+            "sample size (n=12) is a notable caveat."
+        ]),
+        _s("Citations", [
+            "No citations were provided; but the authors reference prior work "
+            "extensively in the discussion."
+        ]),
+    ]
+    out = reg.apply_sections(secs, source_type="arxiv")
+    assert [s.heading for s in out] == ["Limitations", "Citations"]
+
+
+def test_arxiv_drops_pure_placeholder_with_benign_tail():
+    """Exactly the placeholder sentence (optionally a benign tail) is still
+    dropped."""
+    secs = [
+        _s("Citations", ["No citations were provided in the provided summary."]),
+        _s("Limitations", ["No specific limitations were mentioned."]),
+        _s("Citations", ["No citations were provided for the paper"]),
+    ]
+    out = reg.apply_sections(secs, source_type="arxiv")
+    assert out == []

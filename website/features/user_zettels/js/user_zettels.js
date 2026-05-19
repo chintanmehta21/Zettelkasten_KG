@@ -35,16 +35,69 @@
     }
   }
 
-  // Pre-mask price-like dollar runs so $...$ scanning can't pair them.
-  // Applied to text nodes only, before renderMathInElement.
+  // Pre-mask ONLY genuine currency $ so it can't be mis-paired as math, while
+  // preserving real $...$ / $$...$$ KaTeX delimiter pairs (incl. numeric-leading
+  // inline LaTeX like $1/N$, $2\pi$). Applied to text nodes only, pre-render.
+  // Mirrors KaTeX auto-render delimiter rules: an opening $ may not be
+  // immediately followed by whitespace and a closing $ may not be immediately
+  // preceded by whitespace; \$ is an escaped literal (never a delimiter).
+  function _maskPriceDollarsStr(s) {
+    var SENT = '﹩'; // ﹩ small dollar sign sentinel
+    var out = '';
+    var i = 0;
+    var n = s.length;
+    while (i < n) {
+      var ch = s[i];
+      if (ch === '\\' && s[i + 1] === '$') { out += '\\$'; i += 2; continue; }
+      if (ch !== '$') { out += ch; i += 1; continue; }
+      // $$ display, then $ inline. Try to find a valid closing delimiter.
+      var isDisplay = s[i + 1] === '$';
+      var openLen = isDisplay ? 2 : 1;
+      var contentStart = i + openLen;
+      // KaTeX: opening delimiter not immediately followed by whitespace.
+      var bad = contentStart >= n || /\s/.test(s[contentStart]);
+      var close = -1;
+      if (!bad) {
+        for (var j = contentStart; j < n; j++) {
+          if (s[j] === '\\') { j += 1; continue; }
+          if (isDisplay) {
+            if (s[j] === '$' && s[j + 1] === '$') {
+              if (j > contentStart && !/\s/.test(s[j - 1])) { close = j; }
+              break;
+            }
+          } else if (s[j] === '$') {
+            // closing $ not immediately preceded by whitespace, non-empty span.
+            if (j > contentStart && !/\s/.test(s[j - 1])) { close = j; }
+            break;
+          }
+        }
+      }
+      if (close !== -1) {
+        // Valid math span: emit verbatim so KaTeX still pairs/renders it.
+        var end = close + openLen;
+        out += s.slice(i, end);
+        i = end;
+        continue;
+      }
+      // Unpaired $: currency iff followed by digit/whitespace → mask it.
+      if (contentStart < n && /[\s\d]/.test(s[i + 1])) {
+        out += SENT;
+      } else {
+        out += '$';
+      }
+      i += 1;
+    }
+    return out;
+  }
+
   function _maskPriceDollars(rootEl) {
     if (!rootEl) return;
     var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
     var node;
     while ((node = walker.nextNode())) {
-      // $ followed by a digit or whitespace = currency, not math → escape it
-      // so the auto-render delimiter scan ignores it.
-      node.nodeValue = node.nodeValue.replace(/\$(?=\s|\d)/g, '﹩');
+      if (node.nodeValue.indexOf('$') !== -1) {
+        node.nodeValue = _maskPriceDollarsStr(node.nodeValue);
+      }
     }
   }
 
