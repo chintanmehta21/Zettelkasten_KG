@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 
 
 MiniTitle = Annotated[str, StringConstraints(max_length=50)]
-_TITLE_STOPWORDS = {"a", "an", "and", "for", "in", "of", "the", "to", "with"}
+_TITLE_STOPWORDS = {"a", "an", "in", "of", "the", "to", "with"}
 _SPEAKER_PLACEHOLDERS = frozenset({
     "narrator", "host", "speaker", "analyst", "commentator",
     "voiceover", "voice over", "author of the source",

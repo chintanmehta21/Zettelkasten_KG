@@ -31,3 +31,13 @@ def test_word_boundary_trim_single_long_word_hard_cut_fallback():
 def test_no_ellipsis_added():
     out = t.trim_to_word_boundary("alpha beta gamma delta " * 5, 60)
     assert "…" not in out and "..." not in out
+
+
+def test_youtube_title_keeps_conjunctions():
+    from website.features.summarization_engine.summarization.youtube import schema as ys
+    out = ys._normalize_mini_title("Silk Road's Rise and Fall of a Marketplace")
+    assert "and" in out.lower().split() or "&" in out
+    # 'and' is no longer treated as a droppable stopword for titles
+    assert "and" not in ys._TITLE_STOPWORDS
+    assert "or" not in ys._TITLE_STOPWORDS
+    assert "vs" not in ys._TITLE_STOPWORDS
