@@ -376,6 +376,16 @@ def _coerce_detailed_summary(
         return _coerce_github_detailed(payload)
     if source_type == SourceType.NEWSLETTER:
         return _coerce_newsletter_detailed(payload)
+    if source_type == SourceType.ARXIV:
+        # Arxiv has no per-source composer; reuse the generic path (source=None
+        # yields a byte-identical generic list) then apply the section registry
+        # which drops empty Limitations/Citations placeholders. Arxiv-only.
+        from website.features.summarization_engine.post_summary_transformation import (
+            registry as _reg,
+        )
+
+        secs = _coerce_detailed_summary(payload, None)
+        return _reg.apply_sections(secs, source_type="arxiv") if isinstance(secs, list) else secs
 
     raw = getattr(payload, "detailed_summary", None)
     if raw is None:
