@@ -175,12 +175,12 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": f"/home/js/home.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        / "index.html": "/home/js/home.js?v=20260519a",
         ROOT
         / "website"
         / "features"
         / "user_zettels"
-        / "index.html": f"/home/zettels/js/user_zettels.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260519a",
     }
     stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
 
@@ -207,13 +207,13 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/css/home.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260518b" in (
+    assert "/home/js/home.js?v=20260519a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260518a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260518b" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260519a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
