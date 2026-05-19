@@ -123,6 +123,9 @@ def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
         )
         # result returned immediately; invalidation deferred to a task
         assert res["persistence"]["persisted"] is True
+        # Ordering proof: invalidation must NOT have run synchronously before
+        # _run_add_zettel returned — it is scheduled, not inline.
+        assert calls["invalidated"] == 0
         await _aio.sleep(0.05)  # let the scheduled continuation run
         assert calls["invalidated"] == 1
 
