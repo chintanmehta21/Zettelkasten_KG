@@ -294,6 +294,21 @@ def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
         logger.exception("Failed to invalidate graph cache after Add Zettel")
 
 
+def _schedule_graph_invalidation(user_sub: str | None, persisted: bool) -> None:
+    """Run _invalidate_graph as a fire-and-forget continuation, off the
+    Add Zettel critical path. Falls back to inline if no running loop."""
+    if not persisted:
+        return
+
+    async def _run() -> None:
+        await asyncio.to_thread(_invalidate_graph, user_sub, persisted)
+
+    try:
+        _spawn_bg(_run())
+    except RuntimeError:
+        _invalidate_graph(user_sub, persisted)
+
+
 async def _run_add_zettel(
     body: AddZettelRequest,
     *,
@@ -310,7 +325,12 @@ async def _run_add_zettel(
         gemini_client_factory=_gemini_client,
     )
     persistence = PersistenceDTO.model_validate(result["persistence"])
-    _invalidate_graph(user_sub if user else None, persistence.persisted)
+    # Off the critical path: graph-cache invalidation is eventually
+    # consistent. Schedule it as a post-return continuation so it never
+    # adds to the summary's TTFB / the operation's time-to-succeeded.
+    _schedule_graph_invalidation(
+        user_sub if user else None, persistence.persisted
+    )
     return result
 
 

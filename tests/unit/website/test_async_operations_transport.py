@@ -87,3 +87,43 @@ def test_failed_operation_returns_200_failed_payload():
         r = _client().get("/api/operations/op-4")
     assert r.status_code == 200
     assert r.json()["status"] == "failed"
+
+
+def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
+    """_run_add_zettel must return the pipeline result WITHOUT awaiting graph
+    invalidation; invalidation is scheduled as a post-return continuation."""
+    import asyncio as _aio
+
+    from website.api import zettels_routes as zr
+
+    calls = {"invalidated": 0}
+
+    async def _fake_pipeline(**_kw):
+        return {
+            "persistence": {
+                "persisted": True, "requested": True,
+                "file_store": False, "supabase": True, "duplicate": False,
+            },
+            "summary": {"title": "X"},
+        }
+
+    def _slow_invalidate(_sub, _persisted):
+        calls["invalidated"] += 1
+
+    monkeypatch.setattr(zr, "run_add_zettel_pipeline", _fake_pipeline)
+    monkeypatch.setattr(zr, "_invalidate_graph", _slow_invalidate)
+
+    async def _go():
+        body = zr.AddZettelRequest(
+            url="https://example.com", client_action_id="g-1",
+            surface="landing", mode="sync",
+        )
+        res = await zr._run_add_zettel(
+            body, user=None, effective_user_id=zr._zoro_user_id()
+        )
+        # result returned immediately; invalidation deferred to a task
+        assert res["persistence"]["persisted"] is True
+        await _aio.sleep(0.05)  # let the scheduled continuation run
+        assert calls["invalidated"] == 1
+
+    asyncio.run(_go())
