@@ -62,7 +62,10 @@ def test_build_summary_result_model_accepts_boundary_values():
 
     result = Model(**_valid_model_kwargs(cfg))
 
-    assert len(result.mini_title) == cfg.structured_extract.mini_title_max_chars
+    assert len(result.mini_title) <= cfg.structured_extract.mini_title_max_chars
+    # word-boundary trim: no trailing partial word, no ellipsis
+    assert result.mini_title == result.mini_title.rstrip()
+    assert "…" not in result.mini_title
     assert len(result.brief_summary) == cfg.structured_extract.brief_summary_max_chars
     assert len(result.tags) == cfg.structured_extract.tags_max
 
