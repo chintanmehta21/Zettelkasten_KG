@@ -347,3 +347,15 @@ def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():
         # arxiv-gated + dynamic flag
         assert "arxiv" in js.lower(), rel
         assert "data-math-source" in js or "mathSource" in js, rel
+
+
+def test_markdownlite_major_headers_are_collapsible_both_pages():
+    uz = (ROOT / "website" / "features" / "user_zettels" / "js" / "user_zettels.js").read_text(encoding="utf-8")
+    hm = (ROOT / "website" / "features" / "user_home" / "js" / "home.js").read_text(encoding="utf-8")
+    # renderMarkdownLite must build a collapsible panel + chevron + toggle for h2
+    for js, name in [(uz, "user_zettels"), (hm, "home")]:
+        assert "renderMarkdownLite" in js, name
+        # the markdownlite h2 path now wires a panel + toggle (not a flat <h4>)
+        assert "summary-panel" in js, name
+        assert "aria-expanded" in js, name
+        assert "attachToggle" in js or "_attachToggle" in js, name
