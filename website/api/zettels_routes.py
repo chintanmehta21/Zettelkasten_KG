@@ -275,7 +275,8 @@ def _store_operation_result(
         async def _persist_terminal() -> None:
             fn = operations_repo.mark_failed if failed else operations_repo.mark_succeeded
             await asyncio.to_thread(
-                fn, user_id=user_id, operation_id=operation_id, response=result
+                fn, user_id=user_id, operation_id=operation_id,
+                request_hash=request_hash, response=result,
             )
         try:
             asyncio.get_running_loop().create_task(_persist_terminal())
@@ -283,7 +284,8 @@ def _store_operation_result(
             # No running loop (callback fired post-loop, e.g. tests): best
             # effort synchronous write.
             (operations_repo.mark_failed if failed else operations_repo.mark_succeeded)(
-                user_id=user_id, operation_id=operation_id, response=result
+                user_id=user_id, operation_id=operation_id,
+                request_hash=request_hash, response=result,
             )
 
 

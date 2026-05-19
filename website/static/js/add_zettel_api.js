@@ -72,7 +72,19 @@
       var resp = await fetchStatusRaw(body.status_url, headers);
       var next = resp.body;
       if (resp.retryAfter) { body.retry_after = resp.retryAfter; }
-      if (next && next.status && next.status !== 'accepted') return next;
+      if (next && next.status && next.status !== 'accepted') {
+        // A terminal async FAILURE must reject (same contract as a non-202
+        // add failure) so each consumer's existing catch surfaces it instead
+        // of building an "Untitled" card from a failed envelope.summary.
+        if (next.status === 'failed') {
+          var failErr = new Error(cleanProblemDetail(next, 'Summary failed.'));
+          failErr.status = 200;
+          failErr.detail = next.detail || next.error || next;
+          failErr.problem = next;
+          throw failErr;
+        }
+        return next;
+      }
     }
     var error = new Error('Summary is still processing. It will appear in My Zettels shortly.');
     error.status = 202;
