@@ -17,6 +17,9 @@ from __future__ import annotations
 import re
 import time
 
+from website.features.summarization_engine.post_summary_transformation.rules.title import (
+    trim_to_word_boundary as _tt_trim,
+)
 from website.features.summarization_engine.core.budget import get_budget
 from website.features.summarization_engine.core.models import SummaryMetadata
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
@@ -235,9 +238,10 @@ class NewsletterSummarizer(BaseSummarizer):
             structured_payload_extras["byline_author"] = byline
 
         return NewsletterSummaryResult(
-            mini_title=payload.mini_title[
-                : self._engine_config.structured_extract.mini_title_max_chars
-            ],
+            mini_title=_tt_trim(
+                payload.mini_title,
+                self._engine_config.structured_extract.mini_title_max_chars,
+            ),
             brief_summary=_trim_at_sentence_boundary(
                 payload.brief_summary,
                 self._engine_config.structured_extract.brief_summary_max_chars,

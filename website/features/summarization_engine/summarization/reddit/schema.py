@@ -15,6 +15,9 @@ import re
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 from typing_extensions import Annotated
 
+from website.features.summarization_engine.post_summary_transformation.rules.title import (
+    trim_to_word_boundary as _tt_trim,
+)
 from website.features.summarization_engine.summarization.common.brief_repair import (
     as_sentence as _as_sentence,
     normalize_whitespace as _normalize_whitespace,
@@ -124,14 +127,14 @@ def _normalize_mini_title(mini_title: str, *, subreddit: str, op_intent: str) ->
     prefix = f"r/{subreddit}"
     lowered = (op_intent or "").lower()
     if "first-time" in lowered and "heroin" in lowered:
-        return f"{prefix} first-time heroin risks"[:60].rstrip()
+        return _tt_trim(f"{prefix} first-time heroin risks", 60)
     words = [
         word
         for word in re.findall(r"[A-Za-z0-9][A-Za-z0-9+/.-]*", op_intent or "")
         if word.lower() not in _STOPWORDS
     ]
     compact = " ".join(words[:5]).strip() or "thread summary"
-    return f"{prefix} {compact}"[:60].rstrip()
+    return _tt_trim(f"{prefix} {compact}", 60)
 
 
 def _reddit_tag_cleaner(tag: object) -> str:

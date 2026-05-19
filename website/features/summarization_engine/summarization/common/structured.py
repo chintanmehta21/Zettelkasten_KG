@@ -27,6 +27,9 @@ from website.features.summarization_engine.core.models import (
     SummaryMetadata,
     SummaryResult,
 )
+from website.features.summarization_engine.post_summary_transformation.rules.title import (
+    trim_to_word_boundary as _tt_trim,
+)
 from website.features.summarization_engine.summarization.common.json_utils import (
     parse_json_object,
 )
@@ -252,9 +255,10 @@ class StructuredExtractor:
         brief_truncated = _smart_truncate(brief_raw, brief_max)
         brief_safe = _safe_brief(brief_truncated)
         return SummaryResult(
-            mini_title=str(getattr(payload, "mini_title", ""))[
-                : self._config.structured_extract.mini_title_max_chars
-            ],
+            mini_title=_tt_trim(
+                str(getattr(payload, "mini_title", "")),
+                self._config.structured_extract.mini_title_max_chars,
+            ),
             brief_summary=brief_safe,
             tags=tags,
             detailed_summary=detailed_list,
@@ -616,11 +620,11 @@ def _mini_title_hint_for(ingest: IngestResult) -> str:
             flags=re.IGNORECASE,
         )
         if match:
-            return f"{match.group(1)}/{match.group(2)}"[:60]
+            return _tt_trim(f"{match.group(1)}/{match.group(2)}", 60)
         meta = ingest.metadata or {}
         full_name = meta.get("full_name") or meta.get("repo_full_name")
         if isinstance(full_name, str) and "/" in full_name:
-            return full_name[:60]
+            return _tt_trim(full_name, 60)
     return ""
 
 
@@ -652,7 +656,7 @@ def _apply_identifier_hints(raw: dict, ingest: IngestResult) -> dict:
             if isinstance(meta_name, str) and "/" in meta_name:
                 full_name = meta_name
         if isinstance(full_name, str) and "/" in full_name:
-            raw["mini_title"] = full_name[:60]
+            raw["mini_title"] = _tt_trim(full_name, 60)
     elif st == SourceType.REDDIT:
         subreddit = meta.get("subreddit") or meta.get("sub")
         if isinstance(subreddit, str) and subreddit:
@@ -768,7 +772,7 @@ def _fallback_payload(
     ]
 
     return StructuredSummaryPayload(
-        mini_title=str(title)[: config.structured_extract.mini_title_max_chars],
+        mini_title=_tt_trim(str(title), config.structured_extract.mini_title_max_chars),
         brief_summary=brief,
         tags=["_schema_fallback_"],
         detailed_summary=sections,
