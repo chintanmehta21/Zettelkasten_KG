@@ -123,3 +123,14 @@ def test_zettels_list_clamps_limit_and_offset():
         )
     assert r.status_code == 200
     assert r.json()["limit"] == 10000 and r.json()["offset"] == 0
+
+
+def test_dto_title_is_capitalized_via_registry(monkeypatch):
+    # a stored raw title with a lowercase first content word after r/ prefix
+    # is presented capitalized in the DTO; (raw store is not asserted here —
+    # it is untouched by design).
+    from website.api import zettels_routes as zr
+    out = zr._present_title("r/philosophy seeks truth", "reddit")
+    assert out == "r/philosophy Seeks truth"
+    # non-string / empty safe
+    assert zr._present_title("", "reddit") == ""

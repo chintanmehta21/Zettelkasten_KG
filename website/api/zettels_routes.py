@@ -37,6 +37,7 @@ from website.features.summarization_engine.core.errors import (
     RoutingError,
     UnsupportedVideoError,
 )
+from website.features.summarization_engine.post_summary_transformation import registry as _pst
 from website.features.summarization_engine.source_ingest.document import DocumentUploadError
 
 logger = logging.getLogger("website.api.zettels")
@@ -92,6 +93,12 @@ class AddZettelRequest(BaseModel):
         if not validate_url(value):
             raise ValueError("URL is invalid or blocked")
         return value
+
+
+def _present_title(raw: str, source_type: str | None) -> str:
+    """Presentation-only title normalization (registry). Stored raw title is
+    NEVER mutated; this shapes the DTO/response only."""
+    return _pst.apply_text_quality(raw, source_type=source_type, field_kind="title")
 
 
 def _problem(
@@ -731,7 +738,10 @@ async def list_zettels(
                 items.append(
                     {
                         "id": str(row.get("id") or ""),
-                        "title": str(canonical.get("title") or "Untitled"),
+                        "title": _present_title(
+                            str(canonical.get("title") or "Untitled"),
+                            str(canonical.get("source_type") or "").lower(),
+                        ),
                         "brief_summary": brief or "",
                         "detailed_summary": detailed or "",
                         "tags": list(row.get("user_tags") or []),
