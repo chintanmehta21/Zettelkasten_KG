@@ -641,19 +641,42 @@ async def operation_status(
     )
     if row is not None:
         status = row.get("status")
-        payload = row.get("response") or row.get("error") or {}
+        # Status-driven column selection. A failed row may still carry a
+        # stale accepted body in `response` (see operations_repo._mark);
+        # `response or error` would wrongly serve it as a 200 success.
+        if status == "failed":
+            payload = row.get("error") or {}
+        elif status in ("succeeded", "accepted"):
+            payload = row.get("response") or {}
+        else:
+            payload = row.get("response") or row.get("error") or {}
         if status == "accepted":
             return JSONResponse(payload, status_code=202)
         return JSONResponse(payload, status_code=200)
     # Single-worker / dev fallback: in-memory store.
     result = _operation_get(operation_id)
     if result is None:
-        return _problem(
-            status_code=404,
-            title="Operation not found",
-            detail="The operation is unknown or expired.",
+        # Cross-worker replication gap: the `accepted` row is persisted via
+        # fire-and-forget (commit 63bd2399, to not re-introduce the 524), so
+        # worker A can have accepted a job that worker B's poll sees in
+        # neither Supabase nor its own in-memory store. A hard 404 would make
+        # the frontend fail a job that is actually running. Return a
+        # transient 202 pending instead — bounded by the client's existing
+        # 180s poll budget, after which a genuinely-bogus id fails client-side.
+        pending = AddZettelResponse(
+            status="accepted",
             operation_id=operation_id,
-            type_slug="operation-not-found",
+            persistence=persistence_dto(True, None),
+            quality=QualityDTO(confidence="pending"),
+            status_url=f"/api/operations/{operation_id}",
+        ).model_dump(mode="json")
+        return JSONResponse(
+            pending,
+            status_code=202,
+            headers={
+                "Location": f"/api/operations/{operation_id}",
+                "Retry-After": "3",
+            },
         )
     return JSONResponse(
         result, status_code=202 if result.get("status") == "accepted" else 200
