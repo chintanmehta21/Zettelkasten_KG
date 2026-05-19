@@ -25,13 +25,19 @@ CREATE INDEX IF NOT EXISTS operations_expires_at_idx
 
 ALTER TABLE core.operations ENABLE ROW LEVEL SECURITY;
 
--- Service-role only: the app reads/writes via the service-role v2 client and
--- enforces per-user scope in the query (WHERE user_id = effective_user_id),
--- exactly like canonical_chunks_service_all. No authenticated-direct access.
+-- Service-role only via the core.is_service_role() JWT predicate (same form
+-- as 34_retrieval_feedback_events.sql). The app reads/writes with the
+-- service-role v2 client and scopes by user_id in-query; authenticated/anon
+-- roles get an implicit RLS deny (no separate read policy by design).
 DROP POLICY IF EXISTS operations_service_all ON core.operations;
 CREATE POLICY operations_service_all ON core.operations
     FOR ALL
     USING (core.is_service_role())
     WITH CHECK (core.is_service_role());
 
+COMMENT ON COLUMN core.operations.updated_at IS
+    'Set by caller on each write (operations_repo passes now()); no BEFORE UPDATE trigger installed by design.';
+
 COMMIT;
+
+NOTIFY pgrst, 'reload schema';

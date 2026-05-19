@@ -20,3 +20,5 @@ def test_operations_migration_exists_and_well_formed():
     assert "operations_service_all" in sql
     assert "core.is_service_role()" in sql
     assert "if exists" in sql and "if not exists" in sql
+    assert "notify pgrst, 'reload schema'" in sql
+    assert "comment on column core.operations.updated_at" in sql
