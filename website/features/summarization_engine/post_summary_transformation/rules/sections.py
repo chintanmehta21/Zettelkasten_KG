@@ -14,8 +14,13 @@ import re
 from website.features.summarization_engine.post_summary_transformation import registry as _reg
 
 _TARGETS = {"limitations", "citations"}
+# FULLMATCH: the bullet must be ONLY the placeholder sentence plus an optional
+# benign tail. A second clause / "however"/"but"/";"/extra sentence keeps the
+# section (real trailing content must not be discarded as an empty placeholder).
 _PLACEHOLDER = re.compile(
-    r"^no (specific )?(limitations|citations) were (mentioned|provided)",
+    r"no (specific )?(limitations|citations) were (mentioned|provided)"
+    r"( (in|for) (the )?(provided |given )?"
+    r"(summary|text|paper|abstract|article|content))?\.?\s*",
     re.IGNORECASE,
 )
 
@@ -29,7 +34,7 @@ def _placeholder_only(section) -> bool:
     bullets = getattr(section, "bullets", None)
     if not isinstance(bullets, list) or len(bullets) != 1:
         return False
-    return bool(_PLACEHOLDER.match(str(bullets[0] or "").strip()))
+    return _PLACEHOLDER.fullmatch(str(bullets[0] or "").strip()) is not None
 
 
 @_reg.register_section(source_type="arxiv")
