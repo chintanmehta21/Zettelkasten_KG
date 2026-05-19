@@ -925,7 +925,7 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--accent);
-    margin: 0 0 0.4rem;
+    margin: 0 0 0.25rem;
 }
 
 .home-summary-section-body {
@@ -953,7 +953,7 @@
     font-weight: 600;
     color: var(--text-primary);
     text-transform: capitalize;
-    margin: 0.85rem 0 0.35rem;
+    margin: 0.6rem 0 0.3rem;
 }
 
 .home-summary-h3 {
@@ -962,6 +962,41 @@
     color: var(--text-primary);
     margin: 0.7rem 0 0.3rem;
 }
+
+/* Collapse visual (mirrors zettels; subtle, simple, elegant). The
+   home-summary-h2 has no ::before bar by default — add a matching subtle
+   one so the connect/tick reads. */
+.home-summary-h2 {
+  position: relative;
+  padding-left: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 180ms ease, background 180ms ease;
+}
+.home-summary-h2::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.25rem; bottom: 0.25rem;
+  width: 3px; border-radius: 2px;
+  background: var(--accent, #14b8a6); opacity: 0.8;
+}
+.home-summary-panel {
+  overflow: hidden;
+  transition: max-height 260ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease;
+}
+.home-summary-panel[data-collapsed="true"] {
+  max-height: 0 !important; opacity: 0; pointer-events: none;
+}
+.home-summary-h2[aria-expanded="false"] { background: rgba(255,255,255,0.025); border-radius: 4px; }
+.home-summary-h2[aria-expanded="false"] .home-summary-h2-label { opacity: 0.72; font-weight: 600; }
+.home-summary-h2[aria-expanded="false"]::before { top: 0; bottom: 0; border-radius: 0; opacity: 0.7; }
+.home-summary-h2[aria-expanded="false"]::after {
+  content: ""; position: absolute; left: 0; top: 0; width: 5px; height: 1px;
+  background: var(--accent, #14b8a6); opacity: 0.5;
+}
+.home-summary-chevron { margin-left: auto; transition: transform 180ms ease; opacity: 0.6; }
+.home-summary-h2[aria-expanded="false"] .home-summary-chevron { transform: rotate(-90deg); }
+.home-summary-h2 { display: flex; align-items: center; gap: 0.4rem; }
 
 .home-summary-list {
     margin: 0 0 0.75rem 1.1rem;
