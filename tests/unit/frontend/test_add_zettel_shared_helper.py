@@ -164,7 +164,7 @@ def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert f"/js/add_zettel_api.js?v={ADD_ZETTEL_ASSET_VERSION}" in text, path
+        assert "/js/add_zettel_api.js?v=20260519c" in text, path
 
 
 def test_add_zettel_pages_reference_fresh_surface_scripts():
@@ -301,3 +301,19 @@ def test_list_pages_use_dedicated_zettels_endpoint_not_graph():
     assert "/api/graph?view=my" not in home, "home.js must not use the graph endpoint for list/badge"
     kg = (ROOT / "website" / "features" / "knowledge_graph" / "js" / "app.js").read_text(encoding="utf-8")
     assert "/api/graph" in kg, "the 3D /knowledge-graph viz must still use /api/graph"
+
+
+def test_poll_accepted_budget_covers_180s_and_respects_retry_after():
+    js = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
+    assert "POLL_BUDGET_MS" in js, "pollAccepted must define an explicit budget"
+    assert "180000" in js, "poll budget must cover ~180s (Gunicorn timeout)"
+    assert "Retry-After" in js or "retry-after" in js, "must honor Retry-After"
+    # add_zettel_api.js cache-buster bumped to the literal 20260519c everywhere
+    for rel in [
+        "website/static/index.html",
+        "website/mobile/index.html",
+        "website/features/user_home/index.html",
+        "website/features/user_zettels/index.html",
+    ]:
+        html = (ROOT / rel).read_text(encoding="utf-8")
+        assert "/js/add_zettel_api.js?v=20260519c" in html, rel

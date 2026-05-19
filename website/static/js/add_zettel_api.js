@@ -38,15 +38,43 @@
     return body;
   }
 
+  async function fetchStatusRaw(statusUrl, headers) {
+    var response = await fetch(statusUrl, { headers: headers });
+    var body = await parseResponse(response);
+    if (!response.ok && response.status !== 202) {
+      var error = new Error(cleanProblemDetail(body, 'Status check failed with status ' + response.status));
+      error.status = response.status;
+      error.detail = body && (body.detail || body.error || body);
+      error.problem = body;
+      throw error;
+    }
+    return { body: body, retryAfter: response.headers.get('Retry-After') };
+  }
+
+  // ~180s total budget (matches GUNICORN_TIMEOUT) so slow YouTube/long-form
+  // synth completes via polling instead of a Cloudflare 524. Fast polls first
+  // to catch quick jobs, then steady 4s; server Retry-After (seconds) wins.
+  var POLL_BUDGET_MS = 180000;
+
   async function pollAccepted(body, headers) {
     if (!body || body.status !== 'accepted' || !body.status_url) return body;
-    var attempts = 10;
-    for (var i = 0; i < attempts; i += 1) {
-      await sleep(i < 2 ? 1200 : 3000);
-      var next = await fetchStatus(body.status_url, headers);
-      if (next && next.status !== 'accepted') return next;
+    var elapsed = 0;
+    var attempt = 0;
+    while (elapsed < POLL_BUDGET_MS) {
+      var wait = attempt < 3 ? 1500 : 4000;
+      if (body && body.retry_after) {
+        var ra = parseInt(body.retry_after, 10);
+        if (!isNaN(ra) && ra > 0) wait = ra * 1000;
+      }
+      await sleep(wait);
+      elapsed += wait;
+      attempt += 1;
+      var resp = await fetchStatusRaw(body.status_url, headers);
+      var next = resp.body;
+      if (resp.retryAfter) { body.retry_after = resp.retryAfter; }
+      if (next && next.status && next.status !== 'accepted') return next;
     }
-    var error = new Error('Summary is still processing. Please check My Zettels in a moment.');
+    var error = new Error('Summary is still processing. It will appear in My Zettels shortly.');
     error.status = 202;
     error.detail = body;
     error.problem = body;
