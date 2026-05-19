@@ -9,6 +9,7 @@ request path via ``asyncio.to_thread`` and from the task done-callback.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -54,7 +55,7 @@ def _mark(
         client = get_v2_client()
         col = "response" if status == "succeeded" else "error"
         client.schema(_SCHEMA).table(_TABLE).update(
-            {"status": status, col: payload, "updated_at": "now()"}
+            {"status": status, col: payload, "updated_at": datetime.now(timezone.utc).isoformat()}
         ).eq("user_id", str(user_id)).eq("operation_id", operation_id).execute()
         return True
     except Exception:
@@ -76,6 +77,7 @@ def mark_succeeded(
 def mark_failed(
     *, user_id: UUID, operation_id: str, response: dict[str, Any]
 ) -> bool:
+    """`response` is the failed AddZettelResponse payload; written to the `error` column by `_mark`."""
     return _mark(
         user_id=user_id, operation_id=operation_id,
         status="failed", payload=response,
@@ -83,7 +85,12 @@ def mark_failed(
 
 
 def get_operation(*, user_id: UUID, operation_id: str) -> dict[str, Any] | None:
-    """Return the operation row scoped to ``user_id`` (BOLA-safe), or None."""
+    """Return the operation row scoped to ``user_id`` (BOLA-safe), or None.
+
+    On a transient client/DB error it returns None (indistinguishable from a
+    genuine miss) and the caller falls back to the in-memory store — by design,
+    the error is logged via logger.exception.
+    """
     try:
         client = get_v2_client()
         resp = (
