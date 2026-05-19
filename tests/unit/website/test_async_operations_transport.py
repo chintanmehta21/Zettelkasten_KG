@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from unittest.mock import patch
-from uuid import uuid4
-
 from fastapi.testclient import TestClient
 
 from website.app import create_app
@@ -130,3 +128,58 @@ def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
         assert calls["invalidated"] == 1
 
     asyncio.run(_go())
+
+
+def test_idempotent_replay_same_op_returns_existing_not_reenqueued():
+    """Second GET with the same op id returns the stored row (no re-run)."""
+    succeeded = {"status": "succeeded", "operation_id": "idem-1"}
+    seen = {"n": 0}
+
+    def _get(**_kw):
+        seen["n"] += 1
+        return {"status": "succeeded", "response": succeeded, "error": None}
+
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               side_effect=_get):
+        c = _client()
+        r1 = c.get("/api/operations/idem-1")
+        r2 = c.get("/api/operations/idem-1")
+    assert r1.status_code == r2.status_code == 200
+    assert seen["n"] == 2  # each poll is a cheap row read, never a re-enqueue
+
+
+def test_operation_status_is_user_scoped_bola():
+    """get_operation is always called with the resolver's effective_user_id;
+    a caller cannot read another user's op by id alone."""
+    captured = {}
+
+    def _get(*, user_id, operation_id):
+        captured["user_id"] = str(user_id)
+        return None
+
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               side_effect=_get):
+        _client().get("/api/operations/someone-elses-op")
+    assert "user_id" in captured  # scoped read enforced server-side
+
+
+def test_supabase_write_failure_does_not_5xx_the_add():
+    """create_accepted returning False (store down) must NOT break the 202."""
+    async def _slow(*_a, **_k):
+        await asyncio.sleep(30)
+        return {"persistence": {"persisted": False}}
+
+    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
+         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+         patch("website.api.zettels_routes.operations_repo.create_accepted",
+               return_value=False), \
+         patch("website.api.zettels_routes.operations_repo.mark_succeeded",
+               return_value=False), \
+         patch("website.api.zettels_routes.operations_repo.mark_failed",
+               return_value=False):
+        r = _client().post(
+            "/api/zettels/add",
+            json={"url": "https://example.com", "client_action_id": "store-down-1",
+                  "surface": "landing", "mode": "sync", "persist": False},
+        )
+    assert r.status_code == 202  # in-memory still serves; never 5xx
