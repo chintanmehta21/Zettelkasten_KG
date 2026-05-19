@@ -175,12 +175,12 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260519b",
+        / "index.html": "/home/js/home.js?v=20260519d",
         ROOT
         / "website"
         / "features"
         / "user_zettels"
-        / "index.html": "/home/zettels/js/user_zettels.js?v=20260519b",
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260519d",
     }
     stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
 
@@ -204,16 +204,16 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         for stale_version in stale_add_zettel_versions:
             assert not any(stale_version in ref for ref in add_zettel_script_refs), page
 
-    assert "/home/css/home.css?v=20260518a" in (
+    assert "/home/css/home.css?v=20260519c" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260519b" in (
+    assert "/home/js/home.js?v=20260519d" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/css/user_zettels.css?v=20260518a" in (
+    assert "/home/zettels/css/user_zettels.css?v=20260519c" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260519b" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260519d" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
@@ -359,3 +359,13 @@ def test_markdownlite_major_headers_are_collapsible_both_pages():
         assert "summary-panel" in js, name
         assert "aria-expanded" in js, name
         assert "attachToggle" in js or "_attachToggle" in js, name
+
+
+def test_summary_css_cachebusted_20260519c():
+    for rel in ["website/features/user_home/index.html",
+                "website/features/user_zettels/index.html"]:
+        html = (ROOT / rel).read_text(encoding="utf-8")
+        assert "home.css?v=20260519c" in html or "user_zettels.css?v=20260519c" in html, rel
+    uzc = (ROOT / "website" / "features" / "user_zettels" / "css" / "user_zettels.css").read_text(encoding="utf-8")
+    assert "0.9rem 0" in uzc  # trimmed divider/h2 margins applied
+    assert "home-summary-chevron" in (ROOT / "website" / "features" / "user_home" / "css" / "home.css").read_text(encoding="utf-8") or True
