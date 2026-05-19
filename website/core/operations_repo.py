@@ -28,7 +28,15 @@ def create_accepted(
     request_hash: str,
     accepted_body: dict[str, Any],
 ) -> bool:
-    """Upsert an ``accepted`` row. Idempotent on (user_id, operation_id)."""
+    """Insert-only ``accepted`` row; no-op if any row already exists.
+
+    ON CONFLICT DO NOTHING (ignore_duplicates=True). This write is best-effort
+    and may be delayed; the terminal mark_succeeded/mark_failed upsert can land
+    first. An overwriting upsert would then revert a terminal row back to
+    status='accepted' (false 202-forever on cross-worker polls). Insert-only
+    means: no row -> create the bridge accepted row; ANY existing row (prior
+    accepted OR terminal) -> leave it untouched.
+    """
     try:
         client = get_v2_client()
         client.schema(_SCHEMA).table(_TABLE).upsert(
@@ -41,6 +49,7 @@ def create_accepted(
                 "error": None,
             },
             on_conflict="user_id,operation_id",
+            ignore_duplicates=True,
         ).execute()
         return True
     except Exception:

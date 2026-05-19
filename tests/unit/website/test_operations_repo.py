@@ -25,7 +25,12 @@ def _client(rows=None):
     return c
 
 
-def test_create_accepted_upserts_accepted_row():
+def test_create_accepted_insert_only_cannot_downgrade_terminal_row():
+    """P1 race fix: the accepted write is insert-only (ON CONFLICT DO NOTHING
+    via ignore_duplicates=True), so a delayed create_accepted landing AFTER a
+    terminal mark_succeeded/mark_failed can NEVER revert the row to
+    status='accepted'. A plain conflict-overwriting upsert (no
+    ignore_duplicates) would clobber the terminal row -> false 202-forever."""
     uid = uuid4()
     accepted_body = {"status": "accepted", "operation_id": "a-1"}
     mock_client = _client()
@@ -39,6 +44,7 @@ def test_create_accepted_upserts_accepted_row():
     tbl.upsert.assert_called_once()
     payload, kwargs = tbl.upsert.call_args
     upsert_dict = payload[0] if payload else kwargs.get("json", {})
+    # all NOT NULL columns satisfied on the insert path
     assert upsert_dict["status"] == "accepted"
     assert upsert_dict["response"] == accepted_body
     assert upsert_dict["error"] is None
@@ -46,6 +52,8 @@ def test_create_accepted_upserts_accepted_row():
     assert upsert_dict["operation_id"] == "a-1"
     assert upsert_dict["request_hash"] == "h1"
     assert kwargs.get("on_conflict") == "user_id,operation_id"
+    # the race-safety guarantee: insert-only, never an overwriting upsert
+    assert kwargs.get("ignore_duplicates") is True
 
 
 def test_mark_succeeded_writes_response():
