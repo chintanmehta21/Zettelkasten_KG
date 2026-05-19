@@ -918,8 +918,9 @@ def _normalize_section(section: dict[str, Any]) -> dict[str, Any] | None:
                 v = [str(v)]
             cleaned_key = _strip_timestamp(_pretty_heading(k)) or str(k)
             cleaned_vals = [str(x).strip() for x in v if str(x).strip()]
-            # Sanitize Format-and-speakers UA leaks.
-            if cleaned_key.strip().lower() == "format and speakers":
+            # Sanitize Format-and-speakers UA leaks (also matches bare "Format"
+            # heading emitted when all speakers are generic placeholders).
+            if cleaned_key.strip().lower() in ("format and speakers", "format"):
                 cleaned_vals = _sanitize_format_and_speakers(cleaned_vals)
             pretty_subs[cleaned_key] = cleaned_vals
     bullets = section.get("bullets") or []
