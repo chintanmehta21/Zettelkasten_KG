@@ -173,18 +173,18 @@ def test_usage_weight_bonus_math_byte_for_byte(weights, expected_total):
         for w in weights
     ]
     repo = _Repo(rows)
-    user = uuid4()
+    ws = uuid4()
 
     bonus = _usage_weight_bonus(
         repo,
-        user_id=user,
+        workspace_id=ws,
         target_node_id="chunk-T",
         query_class=QueryClass.MULTI_HOP,
     )
 
     assert bonus == pytest.approx(_expected_bonus(expected_total), abs=1e-12)
     # Single delegated call with the right shape.
-    assert repo.calls == [(str(user), ["chunk-T"], "multi_hop")]
+    assert repo.calls == [(str(ws), ["chunk-T"], "multi_hop")]
 
 
 def test_usage_weight_bonus_returns_zero_on_repo_error():
@@ -196,7 +196,7 @@ def test_usage_weight_bonus_returns_zero_on_repo_error():
 
     bonus = _usage_weight_bonus(
         _Repo(),
-        user_id=uuid4(),
+        workspace_id=uuid4(),
         target_node_id="chunk-T",
         query_class=QueryClass.LOOKUP,
     )
@@ -218,7 +218,7 @@ def test_usage_weight_bonus_disabled_short_circuits(monkeypatch):
     repo = _Repo()
     bonus = _usage_weight_bonus(
         repo,
-        user_id=uuid4(),
+        workspace_id=uuid4(),
         target_node_id="chunk-T",
         query_class=QueryClass.MULTI_HOP,
     )
@@ -307,6 +307,75 @@ async def test_score_delegates_to_search_signal_weights_rpc():
     assert boosted_scores["node-3"] - baseline_scores["node-3"] == pytest.approx(
         _expected_bonus(18.0), abs=1e-9,
     )
+
+
+@pytest.mark.asyncio
+async def test_workspace_id_keys_rpcs_not_profile_id():
+    """P1 (Codex #3262442111): when the scorer is built with a workspace_id
+    distinct from the auth-subject/profile user_id, BOTH workspace-keyed RPCs
+    (subgraph_for_pagerank, search_signal_weights) must receive
+    p_workspace_id == workspace_id, NEVER the profile user_id. Pre-fix the
+    profile UUID was sent and matched zero rows under the service_role
+    client (silent graph_score=0.0 for all traffic).
+    """
+    profile_id = uuid4()
+    workspace_id = uuid4()
+    assert profile_id != workspace_id
+    edges = [
+        {"source_node_id": "node-1", "target_node_id": "node-2", "weight": 1.0},
+        {"source_node_id": "node-2", "target_node_id": "node-3", "weight": 1.0},
+    ]
+    signal_rows = [
+        {"source_canonical_chunk_id": "node-1",
+         "target_canonical_chunk_id": "node-3", "weight": 10.0},
+        {"source_canonical_chunk_id": "node-2",
+         "target_canonical_chunk_id": "node-3", "weight": 8.0},
+    ]
+    fake = _Client(edges=edges, signal_weight_rows=signal_rows)
+    cands = [_candidate("node-1"), _candidate("node-2"), _candidate("node-3")]
+    await LocalizedPageRankScorer(
+        supabase=fake, workspace_id=workspace_id
+    ).score(
+        user_id=profile_id,
+        candidates=cands,
+        query_class=QueryClass.MULTI_HOP,
+    )
+    schema_rpcs = [c for c in fake.calls if c[0] == "schema_rpc"]
+    pagerank = [c for c in schema_rpcs if c[2] == "subgraph_for_pagerank"]
+    signal = [c for c in schema_rpcs if c[2] == "search_signal_weights"]
+    assert pagerank and signal
+    for _kind, _schema, _name, params in pagerank:
+        assert params["p_workspace_id"] == str(workspace_id)
+        assert params["p_workspace_id"] != str(profile_id)
+    for _kind, _schema, _name, params in signal:
+        assert params["p_workspace_id"] == str(workspace_id)
+        assert params["p_workspace_id"] != str(profile_id)
+
+
+@pytest.mark.asyncio
+async def test_no_workspace_id_falls_back_to_user_id():
+    """Back-compat: scorer built WITHOUT a workspace_id keeps the prior
+    behaviour (RPCs keyed on the passed user_id) so unresolved-workspace
+    callers/tests never regress."""
+    uid = uuid4()
+    edges = [
+        {"source_node_id": "node-1", "target_node_id": "node-2", "weight": 1.0},
+        {"source_node_id": "node-2", "target_node_id": "node-3", "weight": 1.0},
+    ]
+    signal_rows = [
+        {"source_canonical_chunk_id": "node-1",
+         "target_canonical_chunk_id": "node-3", "weight": 5.0},
+    ]
+    fake = _Client(edges=edges, signal_weight_rows=signal_rows)
+    cands = [_candidate("node-1"), _candidate("node-2"), _candidate("node-3")]
+    await LocalizedPageRankScorer(supabase=fake).score(
+        user_id=uid, candidates=cands, query_class=QueryClass.MULTI_HOP,
+    )
+    for _kind, _schema, name, params in [
+        c for c in fake.calls if c[0] == "schema_rpc"
+    ]:
+        if name in ("subgraph_for_pagerank", "search_signal_weights"):
+            assert params["p_workspace_id"] == str(uid)
 
 
 @pytest.mark.asyncio

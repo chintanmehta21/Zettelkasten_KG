@@ -28,6 +28,7 @@ from website.features.rag_pipeline.retrieval.graph_score import LocalizedPageRan
 from website.features.rag_pipeline.retrieval.hybrid import HybridRetriever
 from website.features.rag_pipeline.retrieval.planner import RetrievalPlanner
 from website.features.rag_pipeline.scoring.runtime import get_registry_adapter
+from website.core.supabase_v2.repositories.core_repository import CoreRepository
 from website.core.supabase_v2.client import get_v2_client
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -54,6 +55,7 @@ _EXAMPLE_QUERIES = (
 class RAGRuntime:
     repo: object
     kg_user_id: UUID
+    workspace_id: UUID | None
     sessions: ChatSessionStore
     sandboxes: SandboxStore
     orchestrator: RAGOrchestrator
@@ -75,6 +77,16 @@ def _build_runtime(user_sub: str | None) -> RAGRuntime:
         ) from exc
 
     client = get_v2_client()
+    # P1 (Codex #3262442111): resolve the caller's workspace_id ONCE here
+    # (memoised by this lru_cache per user_sub) so graph_score keys the
+    # workspace-scoped RPCs (rag.subgraph_for_pagerank /
+    # rag.search_signal_weights) on the workspace UUID, not the profile UUID.
+    # Resolver failure / no workspace -> None: the scorer then falls back to
+    # user_id, preserving the prior degrade-to-0.0 behaviour (no regression).
+    try:
+        workspace_id = CoreRepository().get_default_workspace_id(kg_user_id)
+    except Exception:  # noqa: BLE001 — never block runtime construction
+        workspace_id = None
     sessions = ChatSessionStore(supabase=None)
     sandboxes = SandboxStore(supabase=None)
     embedder = ChunkEmbedder(pool=get_embedding_pool())
@@ -91,7 +103,7 @@ def _build_runtime(user_sub: str | None) -> RAGRuntime:
             supabase=None,
             registry_adapter=get_registry_adapter(),
         ),
-        graph_scorer=LocalizedPageRankScorer(supabase=None),
+        graph_scorer=LocalizedPageRankScorer(supabase=None, workspace_id=workspace_id),
         reranker=CascadeReranker(
             model_dir=os.environ.get("RAG_MODEL_DIR", "/app/models"),
             stage1_k=int(os.environ.get("RAG_CASCADE_STAGE1_K", "10")),
@@ -108,6 +120,7 @@ def _build_runtime(user_sub: str | None) -> RAGRuntime:
     return RAGRuntime(
         repo=client,
         kg_user_id=kg_user_id,
+        workspace_id=workspace_id,
         sessions=sessions,
         sandboxes=sandboxes,
         orchestrator=orchestrator,

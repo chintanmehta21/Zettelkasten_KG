@@ -43,7 +43,7 @@ def _clamp01(value: float) -> float:
 def _usage_weight_bonus(
     rag_repo: RAGRepository,
     *,
-    user_id: UUID,
+    workspace_id: UUID,
     target_node_id: str,
     query_class: QueryClass | str,
 ) -> float:
@@ -53,9 +53,14 @@ def _usage_weight_bonus(
     `rag.search_signal_weights` RPC (replaces the retired legacy v1
     materialised view). The decay-weight scoring math is byte-for-byte
     unchanged: rows' weights are summed and passed through the same sigmoid
-    bound. ``user_id`` binds to ``workspace_id`` under v2 (rag pipeline
-    uniformly treats the rag-pipeline ``user_id`` as the workspace UUID — the
-    JWT workspace_ids gate enforces RLS on the RPC).
+    bound.
+
+    P1 (Codex review #3262442111): ``workspace_id`` MUST be the resolved
+    workspace UUID, NOT the auth-subject/profile UUID. ``rag.search_signal_weights``
+    filters ``WHERE workspace_id = p_workspace_id``; the v2 client is
+    service_role so a profile UUID does not raise but silently matches zero
+    rows (bonus collapses to 0). The caller threads the workspace_id resolved
+    once at runtime build (service.py::_build_runtime -> get_default_workspace_id).
 
     Returns a sigmoid-bounded value in [-0.05, +0.05] (≈0 when weight==0,
     approaching +0.05 as weight grows). Returns 0.0 on any failure so a missing
@@ -67,7 +72,7 @@ def _usage_weight_bonus(
     try:
         qc_value = query_class.value if hasattr(query_class, "value") else str(query_class)
         rows = rag_repo.search_signal_weights(
-            workspace_id=user_id,
+            workspace_id=workspace_id,
             target_chunk_ids=[target_node_id],
             query_class=qc_value,
         )
@@ -81,12 +86,27 @@ def _usage_weight_bonus(
 class LocalizedPageRankScorer:
     """Compute a small induced-subgraph PageRank score for candidates."""
 
-    def __init__(self, damping: float = 0.85, supabase: Any | None = None):
+    def __init__(
+        self,
+        damping: float = 0.85,
+        supabase: Any | None = None,
+        workspace_id: UUID | None = None,
+    ):
         # v2 purge: default supabase client comes from the v2 client factory.
         # Tests / runtime callers can still inject a mock supabase-py-shaped
         # client to override.
         self._supabase = supabase or get_v2_client()
         self._damping = damping
+        # P1 (Codex #3262442111): the resolved workspace UUID (NOT the
+        # auth-subject/profile UUID). Threaded once from service.py::
+        # _build_runtime via get_default_workspace_id(profile_id). Both
+        # rag.subgraph_for_pagerank and rag.search_signal_weights filter
+        # WHERE workspace_id = p_workspace_id; the v2 client is service_role
+        # so a profile UUID does not error — it silently matches zero rows
+        # (graph_score -> 0.0 for all traffic). When None (no resolvable
+        # workspace), score() falls back to user_id, preserving the prior
+        # behaviour (degrade to 0.0) rather than regressing.
+        self._workspace_id = workspace_id
         # RAGRepository wraps the v2 search_signal_weights RPC; reuse the
         # same client so a single Supabase project handles both calls.
         self._rag_repo = RAGRepository(self._supabase)
@@ -104,26 +124,36 @@ class LocalizedPageRankScorer:
                 candidate.graph_score = 0.0
             return
 
+        # P1 (Codex #3262442111): both rag.subgraph_for_pagerank and
+        # rag.search_signal_weights are workspace-keyed
+        # (WHERE workspace_id = p_workspace_id). ``user_id`` is the
+        # auth-subject/profile UUID (service.py: kg_user_id = UUID(user_sub)),
+        # NOT the workspace UUID — passing it matched zero rows under the
+        # service_role client (silent graph_score=0.0 for all traffic). Use
+        # the workspace_id resolved once at runtime build; fall back to
+        # user_id only when no workspace was resolvable (preserves the prior
+        # degrade-to-0.0 behaviour rather than regressing).
+        ws_id = self._workspace_id or user_id
+
         # v2 purge (P1-1): schema-qualified call into `rag.subgraph_for_pagerank`
         # (supabase/website/_v2/45_rag_subgraph_for_pagerank.sql). The legacy
         # unqualified `rag_subgraph_for_pagerank` was a dropped v1 zombie that
         # threw on every call, silently degrading centrality to 0.0. Under v2
         # `candidate.node_id` is the canonical_chunk_id (str) so it maps to the
-        # RPC's `p_chunk_ids uuid[]`; `user_id` is the workspace UUID (rag
-        # pipeline convention, same as search_signal_weights). Failure path
-        # still degrades to 0.0 centrality, but now logs at WARNING instead of
-        # being silently swallowed by the dropped-RPC exception.
+        # RPC's `p_chunk_ids uuid[]`. Failure path still degrades to 0.0
+        # centrality, but now logs at WARNING instead of being silently
+        # swallowed by the dropped-RPC exception.
         try:
             response = await rpc_call(self._supabase.schema("rag").rpc(
                 "subgraph_for_pagerank",
-                {"p_workspace_id": str(user_id), "p_chunk_ids": node_ids},
+                {"p_workspace_id": str(ws_id), "p_chunk_ids": node_ids},
             ))
             edges = response.data or []
         except Exception as exc:
             _logger.warning(
                 "graph_score: rag.subgraph_for_pagerank failed (workspace=%s, "
                 "candidates=%d); degrading graph_score to 0.0: %r",
-                user_id,
+                ws_id,
                 len(node_ids),
                 exc,
             )
@@ -188,7 +218,7 @@ class LocalizedPageRankScorer:
             if candidate.node_id not in bonus_cache:
                 bonus_cache[candidate.node_id] = _usage_weight_bonus(
                     self._rag_repo,
-                    user_id=user_id,
+                    workspace_id=ws_id,
                     target_node_id=candidate.node_id,
                     query_class=query_class,
                 )
