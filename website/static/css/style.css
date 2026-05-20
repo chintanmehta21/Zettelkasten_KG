@@ -230,11 +230,7 @@ a:hover {
 }
 
 .document-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
+    display: none;
 }
 
 .document-upload-btn {
