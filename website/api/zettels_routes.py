@@ -33,6 +33,9 @@ from website.core.persist import (
     get_supabase_v2_scope_for_read,
 )
 from website.core.url_utils import validate_url
+from website.features.functional_gates.async_backpressure import (
+    check_async_backpressure,
+)
 from website.features.summarization_engine.core.errors import (
     ExtractionConfidenceError,
     RoutingError,
@@ -631,6 +634,14 @@ async def add_zettel(
     operation_id = idempotency_header or body.client_action_id
     cache_key = (str(effective_user_id), operation_id)
     request_hash = _request_hash(body)
+    # Phase 4: per-user async backpressure gate. DB-backed in-flight count
+    # replaces the legacy in-memory LRU cap. Fail-open inside the gate so a
+    # transient DB hiccup never 5xxs accept. Runs AFTER auth + rate-limit +
+    # idempotency-key resolution and BEFORE the dedup / accept work so a
+    # duplicate poll for the same op_id does NOT consume a backpressure slot.
+    backpressure_response = await check_async_backpressure(user_id=effective_user_id)
+    if backpressure_response is not None:
+        return backpressure_response
     cached = _cache_get(cache_key, request_hash)
     if cached is not None:
         return cached
