@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
+from website.api._problem import _problem_dict
 from website.api.auth import get_optional_user
 from website.api.module_runners.summarization import (
     AddZettelPipelineOutput as AddZettelResponse,
@@ -116,17 +117,17 @@ def _problem(
     type_slug: str = "add-zettel-failed",
     extra: dict[str, Any] | None = None,
 ) -> JSONResponse:
-    body: dict[str, Any] = {
-        "type": f"https://zettelkasten.in/problems/errors/{type_slug}",
-        "title": title,
-        "status": status_code,
-        "detail": detail,
-        "instance": f"/api/zettels/add/{operation_id}" if operation_id else "/api/zettels/add",
-    }
-    if operation_id:
-        body["operation_id"] = operation_id
-    if extra:
-        body.update(extra)
+    """Sync 4xx/5xx problem+json response. Delegates body construction to the
+    shared ``_problem_dict()`` builder so the sync and async paths emit
+    physically identical RFC 9457 dicts for the same exception (Phase 3)."""
+    body = _problem_dict(
+        status_code=status_code,
+        title=title,
+        detail=detail,
+        type_slug=type_slug,
+        operation_id=operation_id,
+        extra=extra,
+    )
     return JSONResponse(body, status_code=status_code, media_type="application/problem+json")
 
 
@@ -258,16 +259,18 @@ def _operation_get(operation_id: str) -> dict[str, Any] | None:
     return value
 
 
-def _async_failure_error_payload(exc: BaseException) -> dict[str, Any] | None:
-    """Map a background-task exception to a problem-detail dict matching the
-    SYNC route's `_problem(...)` body (zettels_routes.py L504-547), so a failure
-    that crossed the 20s universal-202 fast-ack boundary surfaces the SAME
-    structured payload to the frontend as the inline sync path. Returns None
-    for generic exceptions (no structured detail available — frontend falls
-    back to the existing confidence_reason-only generic UI)."""
-    _slug_prefix = "https://zettelkasten.in/problems/errors/"
+def _async_failure_error_payload(
+    exc: BaseException, *, operation_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Map a background-task exception to an RFC 9457 problem-detail dict
+    physically identical to the sync ``_problem(...)`` body for the same
+    exception, so a failure that crossed the 20s universal-202 fast-ack
+    boundary surfaces the SAME structured payload to the frontend as the
+    inline sync path. Both paths funnel through ``_problem_dict(...)`` —
+    Phase 3 of the async-ops redesign. Returns None for generic exceptions
+    (no structured detail available — frontend falls back to the existing
+    confidence_reason-only generic UI)."""
     if isinstance(exc, HTTPException):
-        # Mirrors sync handler L504-519: HTTPException with dict-or-str detail.
         detail = exc.detail
         title = "Add Zettel request rejected"
         type_slug = "request-rejected"
@@ -275,49 +278,49 @@ def _async_failure_error_payload(exc: BaseException) -> dict[str, Any] | None:
             title = str(detail.get("message") or detail.get("error") or title)
             if detail.get("code") == "quota_exhausted":
                 type_slug = "quota-exhausted"
-        return {
-            "type": f"{_slug_prefix}{type_slug}",
-            "title": title,
-            "status": exc.status_code,
-            "detail": detail,
-        }
+        return _problem_dict(
+            status_code=exc.status_code,
+            title=title,
+            detail=detail,
+            type_slug=type_slug,
+            operation_id=operation_id,
+        )
     if isinstance(exc, UnsupportedVideoError):
-        # Mirrors sync handler L520-528.
-        return {
-            "type": f"{_slug_prefix}unsupported-video",
-            "title": "Unsupported video",
-            "status": 422,
-            "detail": f"Video type cannot be ingested: {exc.reason}",
-        }
+        return _problem_dict(
+            status_code=422,
+            title="Unsupported video",
+            detail=f"Video type cannot be ingested: {exc.reason}",
+            type_slug="unsupported-video",
+            operation_id=operation_id,
+        )
     if isinstance(exc, ExtractionConfidenceError):
-        # Mirrors sync handler L529-538 (incl. extras passed via _problem.extra).
-        return {
-            "type": f"{_slug_prefix}insufficient-content",
-            "title": "Insufficient content",
-            "status": 422,
-            "detail": (
+        return _problem_dict(
+            status_code=422,
+            title="Insufficient content",
+            detail=(
                 "Could not extract enough content from this URL to "
                 "produce a reliable summary."
             ),
-            "reason": exc.reason,
-            "tier_results": list(exc.tier_results),
-        }
+            type_slug="insufficient-content",
+            operation_id=operation_id,
+            extra={"reason": exc.reason, "tier_results": list(exc.tier_results)},
+        )
     if isinstance(exc, (RoutingError, ValueError)):
-        # Mirrors sync handler L539-547.
-        return {
-            "type": f"{_slug_prefix}invalid-url",
-            "title": "Invalid Add Zettel request",
-            "status": 422,
-            "detail": str(exc),
-        }
+        return _problem_dict(
+            status_code=422,
+            title="Invalid Add Zettel request",
+            detail=str(exc),
+            type_slug="invalid-url",
+            operation_id=operation_id,
+        )
     if isinstance(exc, SupabaseV2PersistError):
-        # Mirrors sync handler L548-560.
-        return {
-            "type": f"{_slug_prefix}kg-write-failed",
-            "title": "Knowledge-graph write failed",
-            "status": 502,
-            "detail": exc.detail,
-        }
+        return _problem_dict(
+            status_code=502,
+            title="Knowledge-graph write failed",
+            detail=exc.detail,
+            type_slug="kg-write-failed",
+            operation_id=operation_id,
+        )
     return None
 
 
@@ -363,7 +366,8 @@ def _store_operation_result(
         # boundary so the frontend's class-specific UI (quota-exhausted,
         # unsupported-video, etc.) keys off `err.detail.code` identically.
         result = _failed_response(
-            str(exc), error=_async_failure_error_payload(exc),
+            str(exc),
+            error=_async_failure_error_payload(exc, operation_id=operation_id),
         )
     else:
         _cache_put(cache_key, request_hash, result)
@@ -483,17 +487,21 @@ def _failed_response_for(
     `.error` for the frontend's class-specific UI (`err.detail.code` keying)."""
     if isinstance(exc, asyncio.CancelledError):
         reason = "operation cancelled"
-        error_payload: dict[str, Any] | None = {
-            "type": "https://zettelkasten.in/problems/operation-cancelled",
-            "title": "Operation cancelled",
-            "status": 499,
-            "detail": "The operation was cancelled by the client.",
-            "instance": f"/api/zettels/operations/{operation_id}",
-            "code": "operation_cancelled",
-        }
+        # Phase 3: route the cancel shape through the unified builder so it
+        # matches the rest of the RFC 9457 family byte-for-byte.
+        error_payload: dict[str, Any] | None = _problem_dict(
+            status_code=499,
+            title="Operation cancelled",
+            detail="The operation was cancelled by the client.",
+            type_slug="operation_cancelled",
+            operation_id=operation_id,
+            instance=f"/api/zettels/operations/{operation_id}",
+        )
     else:
         reason = str(exc) or exc.__class__.__name__
-        error_payload = _async_failure_error_payload(exc)
+        error_payload = _async_failure_error_payload(
+            exc, operation_id=operation_id,
+        )
     return AddZettelResponse(
         status="failed",
         operation_id=operation_id,
@@ -981,14 +989,14 @@ async def operation_status(
             "status": "expired",
             "operation_id": operation_id,
             "error": row.get("error")
-            or {
-                "type": "https://zettelkasten.in/problems/operation-expired",
-                "title": "Operation expired",
-                "status": 410,
-                "detail": "This operation's TTL elapsed before it could be retrieved.",
-                "instance": f"/api/zettels/operations/{operation_id}",
-                "code": "operation_expired",
-            },
+            or _problem_dict(
+                status_code=410,
+                title="Operation expired",
+                detail="This operation's TTL elapsed before it could be retrieved.",
+                type_slug="operation_expired",
+                operation_id=operation_id,
+                instance=f"/api/zettels/operations/{operation_id}",
+            ),
         }
         return JSONResponse(envelope, status_code=410)
 

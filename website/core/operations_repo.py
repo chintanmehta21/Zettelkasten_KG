@@ -131,19 +131,25 @@ def mark_failed(
 
 
 def _cancel_problem_dict(operation_id: str) -> dict[str, Any]:
-    """Minimal RFC 9457-ish error body for cancellation.
+    """RFC 9457 error body for cooperative cancellation.
 
-    Phase 2 stub; Phase 3 replaces with the unified ``_problem_dict()`` helper
-    in zettels_routes. Kept here so ``cancel(...)`` is self-sufficient.
+    Phase 3: routes through the unified ``_problem_dict()`` builder in
+    ``website.api._problem`` so sync 4xxs, async-finalized failures, AND
+    cancel writes emit physically-identical problem shapes for clients
+    that key off ``body.code`` / ``body.error.code``.
     """
-    return {
-        "type": "https://zettelkasten.in/problems/operation-cancelled",
-        "title": "Operation cancelled",
-        "status": 499,
-        "detail": "The operation was cancelled by the client.",
-        "instance": f"/api/zettels/operations/{operation_id}",
-        "code": "operation_cancelled",
-    }
+    # Local import keeps the dependency graph one-way (api -> core) and
+    # avoids any chance of circular import at module load.
+    from website.api._problem import _problem_dict
+
+    return _problem_dict(
+        status_code=499,
+        title="Operation cancelled",
+        detail="The operation was cancelled by the client.",
+        type_slug="operation_cancelled",
+        operation_id=operation_id,
+        instance=f"/api/zettels/operations/{operation_id}",
+    )
 
 
 def accept(
