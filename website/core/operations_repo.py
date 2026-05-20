@@ -121,6 +121,219 @@ def mark_failed(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 2 (async-ops redesign): RPC-backed state-machine wrappers.
+# These coexist with the legacy create_accepted / mark_succeeded / mark_failed
+# above; Phase 5 deletes the legacy fns. New code MUST use accept/start/
+# finalize/cancel — they are the only callers of migration 51's state-guarded
+# RPCs (ops_accept / ops_start / ops_finalize).
+# ---------------------------------------------------------------------------
+
+
+def _cancel_problem_dict(operation_id: str) -> dict[str, Any]:
+    """Minimal RFC 9457-ish error body for cancellation.
+
+    Phase 2 stub; Phase 3 replaces with the unified ``_problem_dict()`` helper
+    in zettels_routes. Kept here so ``cancel(...)`` is self-sufficient.
+    """
+    return {
+        "type": "https://zettelkasten.in/problems/operation-cancelled",
+        "title": "Operation cancelled",
+        "status": 499,
+        "detail": "The operation was cancelled by the client.",
+        "instance": f"/api/zettels/operations/{operation_id}",
+        "code": "operation_cancelled",
+    }
+
+
+def accept(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    request_hash: str,
+    accepted_body: dict[str, Any],
+    ttl_seconds: int = 86400,
+) -> tuple[str, bool]:
+    """Idempotent accept via ``core.ops_accept`` RPC.
+
+    Returns ``(canonical_operation_id, is_new)``. The RPC body returns exactly
+    one row ``{operation_id, status, is_new}`` whether the INSERT fired or the
+    partial-unique-index conflict path served the existing active row.
+
+    Defensive: on ANY error returns ``(operation_id, True)`` so the request
+    path never 5xxs because of the operations store (mirrors the existing
+    legacy posture).
+    """
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc(
+            "ops_accept",
+            {
+                "p_user_id": str(user_id),
+                "p_operation_id": operation_id,
+                "p_request_hash": request_hash,
+                "p_accepted": accepted_body,
+                "p_ttl_seconds": ttl_seconds,
+            },
+        ).execute()
+        rows = resp.data or []
+        if not rows:
+            # Should never happen — the RPC CTE guarantees one row. Fall back
+            # to is_new=True so the caller spawns the task.
+            logger.warning(
+                "operations_repo.accept: ops_accept returned empty data (op=%s)",
+                operation_id,
+            )
+            return operation_id, True
+        row = rows[0]
+        return str(row.get("operation_id") or operation_id), bool(row.get("is_new"))
+    except Exception:
+        logger.exception("operations_repo.accept failed (op=%s)", operation_id)
+        return operation_id, True
+
+
+def start(*, user_id: UUID, operation_id: str) -> bool:
+    """``queued -> running`` transition via ``core.ops_start`` RPC.
+
+    Returns True iff the state-guarded UPDATE fired (RPC returned a non-null
+    status). False if the row is already running, terminal, or nonexistent.
+    """
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc(
+            "ops_start",
+            {"p_user_id": str(user_id), "p_operation_id": operation_id},
+        ).execute()
+        data = resp.data
+        # Scalar text RETURNING: postgrest returns either the bare scalar
+        # ('running' / None) or a single-row list with the function-name key.
+        # Both shapes collapse to "transition fired" iff we can pull a non-null
+        # 'running' from `data`.
+        if data is None:
+            return False
+        if isinstance(data, str):
+            return data == "running"
+        if isinstance(data, list):
+            if not data:
+                return False
+            first = data[0]
+            if first is None:
+                return False
+            if isinstance(first, dict):
+                # `{'ops_start': 'running'}` or `{'ops_start': None}`
+                val = next(iter(first.values()), None)
+                return val == "running"
+            return first == "running"
+        if isinstance(data, dict):
+            val = next(iter(data.values()), None)
+            return val == "running"
+        return False
+    except Exception:
+        logger.exception("operations_repo.start failed (op=%s)", operation_id)
+        return False
+
+
+_FINALIZE_TARGETS = frozenset({"succeeded", "failed", "cancelled"})
+
+
+def finalize(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    target: str,
+    response: dict[str, Any] | None = None,
+    error: dict[str, Any] | None = None,
+) -> bool:
+    """``(queued|running) -> terminal`` transition via ``core.ops_finalize``.
+
+    ``target`` must be one of succeeded/failed/cancelled. Returns True iff the
+    state-guarded UPDATE fired (RPC returned non-null status). False on no-op
+    (row already terminal — bug-class killer for duplicate-finalize races).
+    """
+    if target not in _FINALIZE_TARGETS:
+        raise ValueError(
+            f"operations_repo.finalize: invalid target {target!r}, "
+            f"must be one of {sorted(_FINALIZE_TARGETS)}"
+        )
+    try:
+        client = get_v2_client()
+        resp = client.schema(_SCHEMA).rpc(
+            "ops_finalize",
+            {
+                "p_user_id": str(user_id),
+                "p_operation_id": operation_id,
+                "p_target": target,
+                "p_response": response,
+                "p_error": error,
+            },
+        ).execute()
+        data = resp.data
+        # Same scalar-text decoding as start(): True iff a non-null status
+        # made it back from RETURNING.
+        if data is None:
+            return False
+        if isinstance(data, str):
+            return data == target
+        if isinstance(data, list):
+            if not data:
+                return False
+            first = data[0]
+            if first is None:
+                return False
+            if isinstance(first, dict):
+                val = next(iter(first.values()), None)
+                return val == target
+            return first == target
+        if isinstance(data, dict):
+            val = next(iter(data.values()), None)
+            return val == target
+        return False
+    except Exception:
+        logger.exception(
+            "operations_repo.finalize(%s) failed (op=%s)", target, operation_id
+        )
+        return False
+
+
+def count_in_flight_for_user(*, user_id: UUID) -> int:
+    """Number of ``queued`` or ``running`` operations for ``user_id``.
+
+    Used by the per-user async backpressure gate (Phase 4). Fail-open: any
+    error returns 0 so backpressure NEVER 5xxs the accept path.
+    """
+    try:
+        client = get_v2_client()
+        resp = (
+            client.schema(_SCHEMA)
+            .table(_TABLE)
+            .select("operation_id", count="exact", head=True)
+            .eq("user_id", str(user_id))
+            .in_("status", ["queued", "running"])
+            .execute()
+        )
+        return int(getattr(resp, "count", 0) or 0)
+    except Exception:
+        logger.exception(
+            "operations_repo.count_in_flight_for_user failed (user=%s)", user_id
+        )
+        return 0
+
+
+def cancel(*, user_id: UUID, operation_id: str) -> bool:
+    """Cancel an in-flight op via ``finalize(target='cancelled', ...)``.
+
+    Idempotent under duplicate cancel: a row already terminal returns False
+    (the RPC's WHERE guard makes the UPDATE a no-op).
+    """
+    return finalize(
+        user_id=user_id,
+        operation_id=operation_id,
+        target="cancelled",
+        response=None,
+        error=_cancel_problem_dict(operation_id),
+    )
+
+
 def get_operation(*, user_id: UUID, operation_id: str) -> dict[str, Any] | None:
     """Return the operation row scoped to ``user_id`` (BOLA-safe), or None.
 

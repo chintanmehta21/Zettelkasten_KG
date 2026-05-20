@@ -64,6 +64,12 @@ _OPERATION_TASKS: dict[str, asyncio.Task] = {}
 _IN_FLIGHT: dict[tuple[str, str], tuple[str, str, asyncio.Task]] = {}
 _BG_TASKS: set[asyncio.Task] = set()
 
+# Phase 2 (async-ops redesign): canonical strong-ref + cancel target for the
+# per-process background worker coroutines spawned by the new accept path.
+# Coexists with _BG_TASKS / _OPERATION_TASKS until Phase 5 deletes the legacy
+# in-memory machinery. Keyed by the CANONICAL op id returned by ops.accept.
+_LIVE_TASKS: dict[str, asyncio.Task] = {}
+
 
 def _spawn_bg(coro) -> None:
     """Fire-and-forget a coroutine without blocking the caller, keeping a
@@ -468,6 +474,129 @@ async def _run_add_document(
     return result
 
 
+def _failed_response_for(
+    exc: BaseException, *, operation_id: str, persist_requested: bool
+) -> dict[str, Any]:
+    """Build the AddZettelResponse(status='failed', ...) body for an async-
+    background-worker exception. Mirrors `_store_operation_result._failed_response`
+    so the GET handler can return a coherent failed shape with structured
+    `.error` for the frontend's class-specific UI (`err.detail.code` keying)."""
+    if isinstance(exc, asyncio.CancelledError):
+        reason = "operation cancelled"
+        error_payload: dict[str, Any] | None = {
+            "type": "https://zettelkasten.in/problems/operation-cancelled",
+            "title": "Operation cancelled",
+            "status": 499,
+            "detail": "The operation was cancelled by the client.",
+            "instance": f"/api/zettels/operations/{operation_id}",
+            "code": "operation_cancelled",
+        }
+    else:
+        reason = str(exc) or exc.__class__.__name__
+        error_payload = _async_failure_error_payload(exc)
+    return AddZettelResponse(
+        status="failed",
+        operation_id=operation_id,
+        persistence=persistence_dto(persist_requested, None),
+        quality=QualityDTO(
+            confidence="failed",
+            confidence_reason=reason,
+        ),
+        error=error_payload,
+    ).model_dump(mode="json")
+
+
+async def _run(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    body: AddZettelRequest,
+    user: dict | None,
+) -> None:
+    """Phase-2 background worker coroutine.
+
+    Wraps the existing summarize-and-persist pipeline; transitions the canonical
+    DB row through the state machine via ops.start / ops.finalize. Strong-ref
+    held by `_LIVE_TASKS[operation_id]` until the done-callback pops it.
+
+    The state-guarded RPCs make every transition idempotent: a stale finalize
+    against an already-terminal row is a silent no-op (kills the duplicate-
+    finalize / blind-update bug class by construction — migration 51).
+    """
+    # queued -> running. No-op if the row is already terminal (e.g. a cancel
+    # raced us); the try/finally below still attempts a terminal write but
+    # ops.finalize is also state-guarded, so a second no-op is harmless.
+    try:
+        await asyncio.to_thread(
+            operations_repo.start, user_id=user_id, operation_id=operation_id
+        )
+    except Exception:
+        logger.exception(
+            "operations_repo.start raised in _run (op=%s)", operation_id
+        )
+
+    try:
+        result = await _run_add_zettel(
+            body, user=user, effective_user_id=user_id
+        )
+    except asyncio.CancelledError:
+        # Cooperative cancellation (DELETE /api/zettels/operations/{id} or
+        # task.cancel() from the local LIVE_TASKS map).
+        failed_body = _failed_response_for(
+            asyncio.CancelledError(),
+            operation_id=operation_id,
+            persist_requested=body.persist,
+        )
+        try:
+            await asyncio.to_thread(
+                operations_repo.finalize,
+                user_id=user_id,
+                operation_id=operation_id,
+                target="cancelled",
+                response=failed_body,
+                error=failed_body.get("error"),
+            )
+        except Exception:
+            logger.exception(
+                "operations_repo.finalize(cancelled) raised (op=%s)", operation_id
+            )
+        raise
+    except Exception as exc:
+        logger.exception("Background Add Zettel operation failed (op=%s)", operation_id)
+        failed_body = _failed_response_for(
+            exc, operation_id=operation_id, persist_requested=body.persist
+        )
+        try:
+            await asyncio.to_thread(
+                operations_repo.finalize,
+                user_id=user_id,
+                operation_id=operation_id,
+                target="failed",
+                response=failed_body,
+                error=failed_body.get("error"),
+            )
+        except Exception:
+            logger.exception(
+                "operations_repo.finalize(failed) raised (op=%s)", operation_id
+            )
+        return
+
+    # Success path. response = the full AddZettelResponse payload.
+    try:
+        await asyncio.to_thread(
+            operations_repo.finalize,
+            user_id=user_id,
+            operation_id=operation_id,
+            target="succeeded",
+            response=result,
+            error=None,
+        )
+    except Exception:
+        logger.exception(
+            "operations_repo.finalize(succeeded) raised (op=%s)", operation_id
+        )
+
+
 @router.post("/zettels/add", response_model=AddZettelResponse)
 async def add_zettel(
     body: AddZettelRequest,
@@ -485,31 +614,38 @@ async def add_zettel(
         )
 
     effective_user_id = _effective_user_id(user)
-    cache_key = (str(effective_user_id), body.client_action_id)
+    # Phase 2 (async-ops redesign): honor IETF-draft `Idempotency-Key` header
+    # (https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
+    # as the operation_id when present; fall back to the legacy client_action_id.
+    # The header takes precedence so a client retrying with the same key gets
+    # the same canonical op even if it forgot to reuse client_action_id.
+    idempotency_header = (request.headers.get("Idempotency-Key") or "").strip()
+    operation_id = idempotency_header or body.client_action_id
+    cache_key = (str(effective_user_id), operation_id)
     request_hash = _request_hash(body)
     cached = _cache_get(cache_key, request_hash)
     if cached is not None:
         return cached
     in_flight = _IN_FLIGHT.get(cache_key)
     if in_flight is not None:
-        running_hash, operation_id, running_task = in_flight
+        running_hash, in_flight_op_id, running_task = in_flight
         if running_hash != request_hash:
-            return _idempotency_conflict(body.client_action_id)
+            return _idempotency_conflict(operation_id)
         # Universal async: return existing accepted response for in-flight ops.
-        existing = _operation_get(operation_id)
+        existing = _operation_get(in_flight_op_id)
         if existing is None:
             existing = AddZettelResponse(
                 status="accepted",
-                operation_id=operation_id,
+                operation_id=in_flight_op_id,
                 persistence=persistence_dto(body.persist, None),
                 quality=QualityDTO(confidence="pending"),
-                status_url=f"/api/operations/{operation_id}",
+                status_url=f"/api/operations/{in_flight_op_id}",
             ).model_dump(mode="json")
         return JSONResponse(
             existing,
             status_code=202 if existing.get("status") == "accepted" else 200,
             headers={
-                "Location": f"/api/operations/{operation_id}",
+                "Location": f"/api/operations/{in_flight_op_id}",
                 "Retry-After": "3",
             },
         )
@@ -518,7 +654,7 @@ async def add_zettel(
         work = asyncio.create_task(
             _run_add_zettel(body, user=user, effective_user_id=effective_user_id)
         )
-        _IN_FLIGHT[cache_key] = (request_hash, body.client_action_id, work)
+        _IN_FLIGHT[cache_key] = (request_hash, operation_id, work)
         try:
             # Inline-return path: fast jobs (<= N s) still get a synchronous
             # 200 with the full result, exactly as before.
@@ -526,51 +662,82 @@ async def add_zettel(
                 asyncio.shield(work), timeout=_AUTO_ACCEPT_AFTER_SECONDS
             )
         except TimeoutError:
-            # Universal 202 fast-ack (ALL modes, incl. the prod 'sync'
-            # frontend default). Cloudflare-524 fix: never hold the
-            # connection past N; the client polls /api/operations/{id}.
+            # Phase 2 (async-ops redesign) — universal 202 fast-ack flow.
+            # Build the accepted body shape FIRST (DB row carries it).
             accepted = AddZettelResponse(
                 status="accepted",
-                operation_id=body.client_action_id,
+                operation_id=operation_id,
                 persistence=persistence_dto(body.persist, None),
                 quality=QualityDTO(confidence="pending"),
-                status_url=f"/api/operations/{body.client_action_id}",
+                status_url=f"/api/operations/{operation_id}",
             ).model_dump(mode="json")
-            _operation_put(body.client_action_id, accepted)
-            _OPERATION_TASKS[body.client_action_id] = work
-            # Best-effort shared-store write — fire-and-forget so a slow/
-            # unreachable Supabase NEVER delays the 202 (that would re-
-            # introduce the Cloudflare 524). The in-memory store already
-            # serves polls during this window.
-            _spawn_bg(
-                asyncio.to_thread(
-                    operations_repo.create_accepted,
+            # State-guarded accept via core.ops_accept RPC (migration 51).
+            # Returns the CANONICAL op_id + is_new flag. Per Stripe/Brandur
+            # idempotency: duplicate (user_id, request_hash) for an active
+            # row returns the existing canonical op rather than creating a
+            # new one — the client's poll resolves to the same result.
+            try:
+                canonical_op_id, is_new = await asyncio.to_thread(
+                    operations_repo.accept,
                     user_id=effective_user_id,
-                    operation_id=body.client_action_id,
+                    operation_id=operation_id,
                     request_hash=request_hash,
                     accepted_body=accepted,
+                    ttl_seconds=86400,
                 )
-            )
-            work.add_done_callback(
-                lambda task: _store_operation_result(
-                    task,
-                    operation_id=body.client_action_id,
-                    cache_key=cache_key,
-                    request_hash=request_hash,
-                    persist_requested=body.persist,
-                    user_id=effective_user_id,
+            except Exception:
+                logger.exception(
+                    "operations_repo.accept raised (op=%s); falling back to local op_id",
+                    operation_id,
                 )
-            )
+                canonical_op_id, is_new = operation_id, True
+
+            if is_new:
+                # Spawn the background worker holding the canonical op id.
+                # _LIVE_TASKS is the strong-ref + cancel target for the local
+                # process; the DB row is the cross-worker truth.
+                run_task = asyncio.create_task(
+                    _run(
+                        user_id=effective_user_id,
+                        operation_id=canonical_op_id,
+                        body=body,
+                        user=user,
+                    )
+                )
+                _LIVE_TASKS[canonical_op_id] = run_task
+                run_task.add_done_callback(
+                    lambda _t, _op=canonical_op_id: _LIVE_TASKS.pop(_op, None)
+                )
+                # The original `work` task was a probe to time-bound the
+                # inline path; we abandon it now (its result, if it ever
+                # arrives, would race the canonical _run path). Cancel +
+                # discard cleanly. Wrap in try/except — task may already
+                # be done or cancelled by other code paths.
+                if not work.done():
+                    work.cancel()
+                _IN_FLIGHT.pop(cache_key, None)
+            else:
+                # Duplicate active request: another worker / earlier accept
+                # already owns the canonical op. Abandon our probe task; the
+                # client polls the canonical op id and gets the same result.
+                if not work.done():
+                    work.cancel()
+                _IN_FLIGHT.pop(cache_key, None)
+                # Overwrite the accepted body's operation_id to the canonical
+                # one so the 202 body + Location header agree.
+                accepted["operation_id"] = canonical_op_id
+                accepted["status_url"] = f"/api/operations/{canonical_op_id}"
+
             return JSONResponse(
                 accepted,
                 status_code=202,
                 headers={
-                    "Location": f"/api/operations/{body.client_action_id}",
-                    "Retry-After": "3",
+                    "Location": f"/api/operations/{canonical_op_id}",
+                    "Retry-After": "2",
                 },
             )
         _cache_put(cache_key, request_hash, result)
-        _operation_put(body.client_action_id, result)
+        _operation_put(operation_id, result)
         _IN_FLIGHT.pop(cache_key, None)
         return result
     except HTTPException as exc:
@@ -735,36 +902,26 @@ async def operation_status(
     operation_id: str,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
+    """Phase-2 (async-ops redesign): DB-only read.
+
+    The `core.operations` row is the sole source of truth. The in-memory
+    fallback (`_operation_get`) is no longer consulted in the new path; the
+    DB CHECK + state-guarded RPCs (migration 51) ensure the row always
+    reflects the canonical state across all workers.
+    """
     effective_user_id = _effective_user_id(user)
     row = await asyncio.to_thread(
         operations_repo.get_operation,
         user_id=effective_user_id,
         operation_id=operation_id,
     )
-    if row is not None:
-        status = row.get("status")
-        # Status-driven column selection. A failed row may still carry a
-        # stale accepted body in `response` (see operations_repo._mark);
-        # `response or error` would wrongly serve it as a 200 success.
-        if status == "failed":
-            payload = row.get("error") or {}
-        elif status in ("succeeded", "accepted"):
-            payload = row.get("response") or {}
-        else:
-            payload = row.get("response") or row.get("error") or {}
-        if status == "accepted":
-            return JSONResponse(payload, status_code=202)
-        return JSONResponse(payload, status_code=200)
-    # Single-worker / dev fallback: in-memory store.
-    result = _operation_get(operation_id)
-    if result is None:
-        # Cross-worker replication gap: the `accepted` row is persisted via
-        # fire-and-forget (commit 63bd2399, to not re-introduce the 524), so
-        # worker A can have accepted a job that worker B's poll sees in
-        # neither Supabase nor its own in-memory store. A hard 404 would make
-        # the frontend fail a job that is actually running. Return a
-        # transient 202 pending instead — bounded by the client's existing
-        # 180s poll budget, after which a genuinely-bogus id fails client-side.
+
+    if row is None:
+        # Cross-worker replication gap during accept: the accepted row may
+        # not yet be visible to this worker's read replica. A hard 404 would
+        # fail a job that is actually queued/running on another worker.
+        # Return a transient 202 pending — bounded by the client's 180s
+        # poll budget, after which a genuinely-bogus id falls out client-side.
         pending = AddZettelResponse(
             status="accepted",
             operation_id=operation_id,
@@ -777,11 +934,109 @@ async def operation_status(
             status_code=202,
             headers={
                 "Location": f"/api/operations/{operation_id}",
-                "Retry-After": "3",
+                "Retry-After": "2",
             },
         )
+
+    status = row.get("status")
+
+    # Active states -> 202 + Retry-After. The accepted body lives in
+    # `response` (written by ops_accept/_run on the queued INSERT or the
+    # `accepted` legacy lexicon backfilled by migration 51).
+    if status in ("queued", "running", "accepted"):
+        payload = row.get("response") or {}
+        return JSONResponse(
+            payload,
+            status_code=202,
+            headers={
+                "Location": f"/api/operations/{operation_id}",
+                "Retry-After": "2",
+            },
+        )
+
+    # Succeeded: 200 + full AddZettelResponse from `response`.
+    if status == "succeeded":
+        payload = row.get("response") or {}
+        return JSONResponse(payload, status_code=200)
+
+    # Failed / cancelled: 200 + body containing status + operation_id + the
+    # RFC 9457 `error` dict. Prefer the full AddZettelResponse-shaped body
+    # written by _run (carries quality.confidence_reason + .error); fall
+    # back to a minimal envelope if only the `error` column was populated
+    # (legacy / reaper-set rows).
+    if status in ("failed", "cancelled"):
+        body_resp = row.get("response")
+        if isinstance(body_resp, dict) and body_resp:
+            return JSONResponse(body_resp, status_code=200)
+        envelope = {
+            "status": status,
+            "operation_id": operation_id,
+            "error": row.get("error") or {},
+        }
+        return JSONResponse(envelope, status_code=200)
+
+    # Expired: 410 Gone + RFC 9457 envelope.
+    if status == "expired":
+        envelope = {
+            "status": "expired",
+            "operation_id": operation_id,
+            "error": row.get("error")
+            or {
+                "type": "https://zettelkasten.in/problems/operation-expired",
+                "title": "Operation expired",
+                "status": 410,
+                "detail": "This operation's TTL elapsed before it could be retrieved.",
+                "instance": f"/api/zettels/operations/{operation_id}",
+                "code": "operation_expired",
+            },
+        }
+        return JSONResponse(envelope, status_code=410)
+
+    # Unknown status (defensive — CHECK constraint should make this
+    # unreachable). Treat as pending 202 rather than 5xx.
     return JSONResponse(
-        result, status_code=202 if result.get("status") == "accepted" else 200
+        row.get("response") or {},
+        status_code=202,
+        headers={"Retry-After": "2"},
+    )
+
+
+@router.delete("/zettels/operations/{operation_id}")
+async def cancel_operation(
+    operation_id: str,
+    user: Annotated[dict | None, Depends(get_optional_user)] = None,
+):
+    """Phase-2 (async-ops redesign): cooperative cancellation.
+
+    Calls `core.ops_finalize(target='cancelled', ...)` via the state-guarded
+    RPC. If the row was already terminal the RPC is a silent no-op. Also
+    cancels the local _LIVE_TASKS entry; another worker's in-flight task
+    (if any) will keep running but its eventual `finalize(succeeded)` will
+    be a no-op because the row is already cancelled.
+    """
+    effective_user_id = _effective_user_id(user)
+    try:
+        cancelled = await asyncio.to_thread(
+            operations_repo.cancel,
+            user_id=effective_user_id,
+            operation_id=operation_id,
+        )
+    except Exception:
+        logger.exception(
+            "operations_repo.cancel raised (op=%s)", operation_id
+        )
+        cancelled = False
+
+    local_task = _LIVE_TASKS.pop(operation_id, None)
+    if local_task is not None and not local_task.done():
+        local_task.cancel()
+
+    return JSONResponse(
+        {
+            "status": "cancelled" if cancelled else "noop",
+            "operation_id": operation_id,
+        },
+        status_code=200,
     )
 
 
