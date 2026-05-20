@@ -48,9 +48,6 @@
     "binary_quantize(vector)": {
       "return_type": "bit"
     },
-    "chat_session_stats_update()": {
-      "return_type": "trigger"
-    },
     "cosine_distance(halfvec, halfvec)": {
       "return_type": "double precision"
     },
@@ -59,21 +56,6 @@
     },
     "cosine_distance(vector, vector)": {
       "return_type": "double precision"
-    },
-    "execute_kg_query(query_text text, p_user_id uuid)": {
-      "return_type": "jsonb"
-    },
-    "explain_kg_query(query_text text, p_user_id uuid)": {
-      "return_type": "jsonb"
-    },
-    "find_neighbors(p_user_id uuid, p_node_id text, p_depth integer)": {
-      "return_type": "TABLE(node_id text, name text, source_type text, summary text, tags text[], url text, depth integer, path text[])"
-    },
-    "get_kg_graph(p_user_id uuid, p_limit integer, p_offset integer)": {
-      "return_type": "jsonb"
-    },
-    "get_kg_stats(p_user_id uuid)": {
-      "return_type": "jsonb"
     },
     "gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)": {
       "return_type": "internal"
@@ -201,9 +183,6 @@
     "hamming_distance(bit, bit)": {
       "return_type": "double precision"
     },
-    "handle_new_user()": {
-      "return_type": "trigger"
-    },
     "hnsw_bit_support(internal)": {
       "return_type": "internal"
     },
@@ -216,12 +195,6 @@
     "hnswhandler(internal)": {
       "return_type": "index_am_handler"
     },
-    "hybrid_kg_search(query_text text, query_embedding vector, p_user_id uuid, p_limit integer, semantic_weight double precision, fulltext_weight double precision, graph_weight double precision, p_k integer, p_seed_node_id text)": {
-      "return_type": "TABLE(node_id text, name text, source_type text, summary text, tags text[], url text, rrf_score double precision)"
-    },
-    "immutable_array_to_text(text[])": {
-      "return_type": "text"
-    },
     "inner_product(halfvec, halfvec)": {
       "return_type": "double precision"
     },
@@ -230,9 +203,6 @@
     },
     "inner_product(vector, vector)": {
       "return_type": "double precision"
-    },
-    "isolated_nodes(p_user_id uuid)": {
-      "return_type": "TABLE(node_id text, name text, source_type text, url text, node_date date)"
     },
     "ivfflat_bit_support(internal)": {
       "return_type": "internal"
@@ -245,18 +215,6 @@
     },
     "jaccard_distance(bit, bit)": {
       "return_type": "double precision"
-    },
-    "kg_expand_subgraph(p_user_id uuid, p_node_ids text[], p_depth integer)": {
-      "return_type": "TABLE(id text)"
-    },
-    "kg_node_chunks_fts_update()": {
-      "return_type": "trigger"
-    },
-    "kg_nodes_fts_update()": {
-      "return_type": "trigger"
-    },
-    "kg_refresh_usage_edges_agg()": {
-      "return_type": "void"
     },
     "l1_distance(halfvec, halfvec)": {
       "return_type": "double precision"
@@ -291,44 +249,17 @@
     "l2_normalize(vector)": {
       "return_type": "vector"
     },
-    "nexus_housekeeping(p_oauth_retention interval, p_run_retention interval)": {
-      "return_type": "jsonb"
-    },
-    "rag_bandit_read_arms(p_user_id uuid, p_kasten_id uuid, p_bucket text)": {
-      "return_type": "TABLE(seed_arm numeric, seed_alpha numeric, seed_beta numeric, seed_total_pulls integer, bandit_disabled_at timestamp with time zone)"
-    },
-    "rag_bandit_record_outcome(p_user_id uuid, p_kasten_id uuid, p_arm numeric, p_bucket text, p_reward integer)": {
-      "return_type": "void"
-    },
-    "rag_bulk_add_to_sandbox(p_user_id uuid, p_sandbox_id uuid, p_tags text[], p_tag_mode text, p_source_types text[], p_node_ids text[], p_added_via text)": {
-      "return_type": "jsonb"
-    },
-    "rag_kasten_node_frequencies(p_kasten_id uuid)": {
-      "return_type": "TABLE(node_id text, hit_count integer)"
-    },
-    "rag_kasten_record_node_hit(p_kasten_id uuid, p_node_id text)": {
-      "return_type": "void"
-    },
-    "rag_replace_node_chunks(p_user_id uuid, p_node_id text)": {
-      "return_type": "void"
-    },
     "rls_auto_enable()": {
       "return_type": "event_trigger"
     },
     "set_limit(real)": {
       "return_type": "real"
     },
-    "shortest_path(p_user_id uuid, p_source_id text, p_target_id text, p_max_depth integer)": {
-      "return_type": "TABLE(path text[], depth integer)"
-    },
     "show_limit()": {
       "return_type": "real"
     },
     "show_trgm(text)": {
       "return_type": "text[]"
-    },
-    "similar_nodes(p_user_id uuid, p_node_id text, p_limit integer)": {
-      "return_type": "TABLE(node_id text, name text, source_type text, shared_tags text[], overlap_count bigint)"
     },
     "similarity(text, text)": {
       "return_type": "real"
@@ -416,15 +347,6 @@
     },
     "sum(vector)": {
       "return_type": "vector"
-    },
-    "top_connected_nodes(p_user_id uuid, p_limit integer)": {
-      "return_type": "TABLE(node_id text, name text, source_type text, degree bigint)"
-    },
-    "top_tags(p_user_id uuid, p_limit integer)": {
-      "return_type": "TABLE(tag text, frequency bigint, node_count bigint)"
-    },
-    "update_updated_at_column()": {
-      "return_type": "trigger"
     },
     "vector(vector, integer, boolean)": {
       "return_type": "vector"
