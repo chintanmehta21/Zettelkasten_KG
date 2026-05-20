@@ -16,6 +16,7 @@ partial unique index ``ops_user_req_hash_active_uniq``.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 from uuid import UUID
 
@@ -25,6 +26,14 @@ logger = logging.getLogger("website.core.operations_repo")
 
 _SCHEMA = "core"
 _TABLE = "operations"
+
+# PR #39 / Wave-4 A5 (2026-05-20): retry policy for finalize() on transient
+# PostgREST failures. A single hiccup at the very end of a pipeline used to
+# leave the row stuck `running` until the 7-min reaper flipped it, even
+# though the zettel itself persisted successfully. Three attempts with
+# 0.5/1/2s exponential backoff covers the typical PostgREST blip without
+# extending tail latency materially.
+_FINALIZE_RETRY_BACKOFF_S: tuple[float, ...] = (0.5, 1.0, 2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -160,50 +169,79 @@ def finalize(
     ``target`` must be one of succeeded/failed/cancelled. Returns True iff the
     state-guarded UPDATE fired (RPC returned non-null status). False on no-op
     (row already terminal — bug-class killer for duplicate-finalize races).
+
+    PR #39 / Wave-4 A5: retry on transient PostgREST failures up to 3 times
+    with 0.5/1/2s backoff. The 7-min reaper covers exhausted attempts; the
+    retry just narrows the window where the zettel is persisted but the
+    operations row is stuck `running`.
     """
     if target not in _FINALIZE_TARGETS:
         raise ValueError(
             f"operations_repo.finalize: invalid target {target!r}, "
             f"must be one of {sorted(_FINALIZE_TARGETS)}"
         )
-    try:
-        client = get_v2_client()
-        resp = client.schema(_SCHEMA).rpc(
-            "ops_finalize",
-            {
-                "p_user_id": str(user_id),
-                "p_operation_id": operation_id,
-                "p_target": target,
-                "p_response": response,
-                "p_error": error,
-            },
-        ).execute()
-        data = resp.data
-        # Same scalar-text decoding as start(): True iff a non-null status
-        # made it back from RETURNING.
-        if data is None:
-            return False
-        if isinstance(data, str):
-            return data == target
-        if isinstance(data, list):
-            if not data:
+    last_exc: Exception | None = None
+    attempts = len(_FINALIZE_RETRY_BACKOFF_S) + 1  # initial + N retries
+    for attempt in range(attempts):
+        try:
+            client = get_v2_client()
+            resp = client.schema(_SCHEMA).rpc(
+                "ops_finalize",
+                {
+                    "p_user_id": str(user_id),
+                    "p_operation_id": operation_id,
+                    "p_target": target,
+                    "p_response": response,
+                    "p_error": error,
+                },
+            ).execute()
+            data = resp.data
+            # Same scalar-text decoding as start(): True iff a non-null status
+            # made it back from RETURNING.
+            if data is None:
                 return False
-            first = data[0]
-            if first is None:
-                return False
-            if isinstance(first, dict):
-                val = next(iter(first.values()), None)
+            if isinstance(data, str):
+                return data == target
+            if isinstance(data, list):
+                if not data:
+                    return False
+                first = data[0]
+                if first is None:
+                    return False
+                if isinstance(first, dict):
+                    val = next(iter(first.values()), None)
+                    return val == target
+                return first == target
+            if isinstance(data, dict):
+                val = next(iter(data.values()), None)
                 return val == target
-            return first == target
-        if isinstance(data, dict):
-            val = next(iter(data.values()), None)
-            return val == target
-        return False
-    except Exception:
-        logger.exception(
-            "operations_repo.finalize(%s) failed (op=%s)", target, operation_id
+            return False
+        except Exception as exc:  # noqa: BLE001 — retry transient class
+            last_exc = exc
+            if attempt < attempts - 1:
+                sleep_s = _FINALIZE_RETRY_BACKOFF_S[attempt]
+                logger.warning(
+                    "operations_repo.finalize(%s) attempt %d/%d failed; "
+                    "retrying in %.1fs (op=%s)",
+                    target, attempt + 1, attempts, sleep_s, operation_id,
+                    exc_info=True,
+                )
+                time.sleep(sleep_s)
+                continue
+            logger.exception(
+                "operations_repo.finalize(%s) exhausted %d attempts (op=%s); "
+                "stuck-running reaper will eventually flip the row",
+                target, attempts, operation_id,
+            )
+            return False
+    # Unreachable — the loop returns or breaks on the last attempt.
+    # Defensive fallthrough to satisfy static analysers.
+    if last_exc is not None:
+        logger.error(
+            "operations_repo.finalize(%s) fell through retry loop (op=%s): %s",
+            target, operation_id, last_exc,
         )
-        return False
+    return False
 
 
 def count_in_flight_for_user(*, user_id: UUID) -> int:

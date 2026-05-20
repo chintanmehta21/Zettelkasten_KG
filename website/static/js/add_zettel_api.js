@@ -122,15 +122,24 @@
   async function add(options) {
     var opts = options || {};
     var token = opts.token || '';
+    var actionId = opts.clientActionId || makeActionId(opts.surface);
     var headers = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = 'Bearer ' + token;
+    // PR #39 / Wave-4 A3 (2026-05-20): send the same key as both the body's
+    // legacy `client_action_id` AND the IETF-draft `Idempotency-Key` header.
+    // The route prefers the header (zettels_routes.py:543) so two parallel
+    // clicks sharing the same form-mounted action id resolve to the same
+    // canonical operation server-side, even if the browser race-condition
+    // would normally yield separate body ids. Stable per logical Add Zettel
+    // submission; regenerated on each fresh form mount.
+    headers['Idempotency-Key'] = actionId;
 
     var response = await fetch('/api/zettels/add', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
         url: opts.url,
-        client_action_id: opts.clientActionId || makeActionId(opts.surface),
+        client_action_id: actionId,
         persist: opts.persist !== false,
         surface: opts.surface || 'landing'
         // PR #39 / Wave-1 A2: `mode` field retired (route is always-async).
@@ -151,12 +160,17 @@
   async function uploadDocument(options) {
     var opts = options || {};
     var token = opts.token || '';
+    var actionId = opts.clientActionId || makeActionId(opts.surface || 'landing-document');
     var headers = {};
     if (token) headers.Authorization = 'Bearer ' + token;
+    // PR #39 / Wave-4 A3: parity with the URL add path — send the
+    // Idempotency-Key header so a duplicate document submission resolves
+    // to the same canonical operation server-side.
+    headers['Idempotency-Key'] = actionId;
 
     var form = new FormData();
     form.append('file', opts.file);
-    form.append('client_action_id', opts.clientActionId || makeActionId(opts.surface || 'landing-document'));
+    form.append('client_action_id', actionId);
     form.append('persist', opts.persist === false ? 'false' : 'true');
     form.append('surface', opts.surface || 'landing');
 
