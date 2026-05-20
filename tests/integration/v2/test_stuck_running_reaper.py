@@ -1,6 +1,6 @@
 """Phase 4 (async-ops redesign): pg_cron stuck-running reaper.
 
-Verifies migration ``52_stuck_running_reaper.sql``:
+Verifies migration ``57_stuck_running_reaper.sql``:
 - The pg_cron job ``reap_stuck_running_operations`` is scheduled.
 - Rows status='running' with updated_at older than 5 minutes are finalized as
   'failed' + RFC 9457 worker-lost error.

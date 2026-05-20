@@ -1,4 +1,4 @@
--- 52_stuck_running_reaper.sql — pg_cron watchdog for stuck running ops.
+-- 57_stuck_running_reaper.sql — pg_cron watchdog for stuck running ops.
 --
 -- Companion to migration 49 (sweep_stale_operations: TTL-based DELETE of
 -- expires_at < now()). This job covers a different failure mode: a worker
