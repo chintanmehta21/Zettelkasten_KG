@@ -1017,8 +1017,7 @@
         token: token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'home',
-        mode: 'sync'
+        surface: 'home'
       });
 
     // Create skeleton now — it'll be revealed seamlessly during shatter

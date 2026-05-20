@@ -222,8 +222,7 @@
         url: url,
         clientActionId: window.ZKAddZettel.makeActionId('mobile'),
         persist: true,
-        surface: 'mobile',
-        mode: 'sync'
+        surface: 'mobile'
       });
 
     request

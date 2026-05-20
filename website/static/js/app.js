@@ -326,8 +326,7 @@
         token: authToken,
         clientActionId: window.ZKAddZettel.makeActionId('landing'),
         persist: true,
-        surface: 'landing',
-        mode: 'sync'
+        surface: 'landing'
       });
 
     request
