@@ -234,3 +234,188 @@ def test_exception_path_no_cache_put_stores_failed_frees_slot():
         assert zr._operation_get(op_id)["status"] == "failed"
     finally:
         _clear(cache_key, op_id)
+
+
+# ---------------------------------------------------------------------------
+# P2 — structured failure detail preserved across the 20s fast-ack boundary
+# (otherwise the frontend's `err.detail.code === 'quota_exhausted'` UI regresses
+# to a generic message for any failure that completes after the universal-202)
+# ---------------------------------------------------------------------------
+def _async_failed_result(op_id: str, exc: BaseException):
+    """Drive _store_operation_result's `except Exception` branch with `exc`
+    and return the stored terminal envelope."""
+    from fastapi import HTTPException as _HTTPException  # noqa: F401
+    cache_key = ("u", f"c-{op_id}")
+
+    async def _go():
+        async def _raises():
+            raise exc
+
+        task = asyncio.create_task(_raises())
+        try:
+            await task
+        except BaseException:
+            pass
+        _seed_slot(cache_key, op_id, task)
+        zr._store_operation_result(
+            task, operation_id=op_id, cache_key=cache_key,
+            request_hash="h", persist_requested=False, user_id=None,
+        )
+
+    try:
+        asyncio.run(_go())
+        return zr._operation_get(op_id)
+    finally:
+        _clear(cache_key, op_id)
+
+
+def test_async_failure_httpexception_dict_detail_preserves_structured_error():
+    """402 quota_exhausted from the pricing gate must reach the frontend with
+    `error.detail == {"code":"quota_exhausted", ...}` after a slow-async fail,
+    so the post-F1 reject path's `err.detail.code` works identically to sync."""
+    from fastapi import HTTPException
+
+    detail = {
+        "code": "quota_exhausted",
+        "message": "Daily Zettel limit reached",
+        "meter": "zettel",
+    }
+    stored = _async_failed_result(
+        "op-quota-async",
+        HTTPException(status_code=402, detail=detail),
+    )
+    assert stored is not None
+    err = stored.get("error")
+    assert isinstance(err, dict), f"structured error missing: {stored!r}"
+    # Mirror the sync path's _problem(...) output for the HTTPException branch
+    # (zettels_routes.py:504-519): same code/title/status/detail surface so
+    # frontend `err.detail.code === 'quota_exhausted'` resolves identically.
+    assert err.get("status") == 402
+    assert err.get("detail") == detail
+    # The sync path derives title from detail["message"]/["error"]; mirror it.
+    assert err.get("title") == "Daily Zettel limit reached"
+    # type_slug parity: "quota-exhausted" when detail.code == "quota_exhausted".
+    assert err.get("type", "").endswith("/quota-exhausted")
+
+
+def test_async_failure_unsupported_video_preserves_structured_error():
+    """UnsupportedVideoError thrown in the background task must map to the
+    SAME problem-detail shape as the sync route handler at L520-528."""
+    from website.features.summarization_engine.core.errors import (
+        UnsupportedVideoError,
+    )
+
+    exc = UnsupportedVideoError(
+        reason="private", url="https://youtube.com/watch?v=abc",
+    )
+    stored = _async_failed_result("op-unsup-async", exc)
+    err = stored.get("error") if stored else None
+    assert isinstance(err, dict), f"structured error missing: {stored!r}"
+    assert err.get("status") == 422
+    assert err.get("title") == "Unsupported video"
+    assert err.get("detail") == "Video type cannot be ingested: private"
+    assert err.get("type", "").endswith("/unsupported-video")
+
+
+def test_async_failure_extraction_confidence_preserves_structured_error():
+    """ExtractionConfidenceError must map to the sync path's L529-538 shape,
+    including the `reason` + `tier_results` extras emitted by _problem.extra."""
+    from website.features.summarization_engine.core.errors import (
+        ExtractionConfidenceError,
+    )
+
+    tier_results = [{"tier": "t1", "ok": False}]
+    exc = ExtractionConfidenceError(
+        "low", reason="low_signal", tier_results=tier_results,
+    )
+    stored = _async_failed_result("op-conf-async", exc)
+    err = stored.get("error") if stored else None
+    assert isinstance(err, dict), f"structured error missing: {stored!r}"
+    assert err.get("status") == 422
+    assert err.get("title") == "Insufficient content"
+    assert err.get("type", "").endswith("/insufficient-content")
+    assert err.get("reason") == "low_signal"
+    assert err.get("tier_results") == tier_results
+
+
+def test_async_failure_generic_exception_has_no_structured_error():
+    """A plain RuntimeError carries no structured detail — `error` is None and
+    the existing `confidence_reason=str(exc)` path is untouched."""
+    stored = _async_failed_result("op-generic-async", RuntimeError("boom"))
+    assert stored is not None
+    assert stored.get("status") == "failed"
+    assert stored["quality"]["confidence_reason"] == "boom"
+    # Either field absent or explicitly None — never a wrong-shape dict.
+    assert stored.get("error") in (None,)
+
+
+def test_async_cancelled_path_has_no_structured_error():
+    """T2 cancellation path must keep its current 'operation cancelled' body
+    with error=None (cancellation is not a typed failure)."""
+    cache_key = ("u", "c-cancel-err")
+    op_id = "op-cancel-err"
+
+    async def _go():
+        started = asyncio.Event()
+
+        async def _never():
+            started.set()
+            await asyncio.sleep(3600)
+
+        task = asyncio.create_task(_never())
+        await started.wait()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        _seed_slot(cache_key, op_id, task)
+        zr._store_operation_result(
+            task, operation_id=op_id, cache_key=cache_key,
+            request_hash="h", persist_requested=False, user_id=None,
+        )
+
+    try:
+        asyncio.run(_go())
+        stored = zr._operation_get(op_id)
+        assert stored is not None
+        assert stored["status"] == "failed"
+        assert stored["quality"]["confidence_reason"] == "operation cancelled"
+        assert stored.get("error") in (None,)
+    finally:
+        _clear(cache_key, op_id)
+
+
+def test_succeeded_envelope_does_not_introduce_structured_error():
+    """No regression on the success path — `error` MUST be None / absent."""
+    cache_key = ("u", "c-ok-err")
+    op_id = "op-ok-err"
+
+    async def _go():
+        async def _ok():
+            from website.api.module_runners.summarization import (
+                AddZettelPipelineOutput, QualityDTO, persistence_dto,
+            )
+            return AddZettelPipelineOutput(
+                status="succeeded",
+                operation_id=op_id,
+                persistence=persistence_dto(False, None),
+                quality=QualityDTO(confidence="succeeded"),
+            ).model_dump(mode="json")
+
+        task = asyncio.create_task(_ok())
+        await task
+        _seed_slot(cache_key, op_id, task)
+        zr._store_operation_result(
+            task, operation_id=op_id, cache_key=cache_key,
+            request_hash="h", persist_requested=False, user_id=None,
+        )
+
+    try:
+        asyncio.run(_go())
+        stored = zr._operation_get(op_id)
+        assert stored is not None
+        assert stored["status"] == "succeeded"
+        assert stored.get("error") in (None,)
+    finally:
+        _clear(cache_key, op_id)

@@ -77,6 +77,13 @@ class AddZettelPipelineOutput(BaseModel):
     node_id: str | None = None
     workspace_zettel_id: str | None = None
     status_url: str | None = None
+    # Additive (P2): structured problem-detail payload for failures that crossed
+    # the 20s universal-202 fast-ack boundary. Mirrors the sync route's
+    # _problem(...) body keys (type/title/status/detail [+ extras]) so the
+    # frontend's `err.detail.code === 'quota_exhausted'` classifier resolves
+    # identically whether the failure happened inline or in the background
+    # task. None for success/accepted/cancelled/generic-exception paths.
+    error: dict[str, Any] | None = None
 
 
 GeminiClientFactory = Callable[[], Any]
