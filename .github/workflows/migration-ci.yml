@@ -112,9 +112,17 @@ jobs:
         # 11_post_install.sql was just applied seconds ago. The legacy public.*
         # tables don't exist on fresh DB anyway, so dropping them is a no-op
         # here. Production deploys MUST NOT pass --skip-files.
+        #
+        # 54+55 are skipped on fresh builds because they REVOKE EXECUTE on
+        # legacy public.* fns that don't exist on a clean DB (PG has no
+        # native REVOKE IF EXISTS). Fresh-build REVOKE is handled by
+        # 58_revoke_legacy_secdef_idempotent.sql instead (pg_proc EXISTS
+        # guard + FOREACH loop). Prod is unaffected: 54+55 are already
+        # applied + checksum-locked; 58 is a no-op re-assertion via the
+        # EXISTS guard on rows that already have grant=revoked.
         run: |
           python ops/scripts/apply_migrations.py --v2 \
-            --skip-files=15_drop_legacy_tables.sql
+            --skip-files=15_drop_legacy_tables.sql,54_revoke_legacy_public_secdef_grants.sql,55_revoke_public_grant_on_secdef.sql
       - name: Stop local Supabase
         if: always()
         run: supabase stop --workdir . --no-backup || true

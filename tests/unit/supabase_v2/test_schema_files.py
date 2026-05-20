@@ -71,6 +71,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "54_revoke_legacy_public_secdef_grants.sql",
         "55_revoke_public_grant_on_secdef.sql",
         "56_drop_legacy_public_functions.sql",
+        "58_revoke_legacy_secdef_idempotent.sql",
     ]
 
 
