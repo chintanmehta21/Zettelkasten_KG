@@ -703,47 +703,59 @@ async def _persist_supabase_v2_zettel(
         user_tags=list(rewrite_tags(payload.get("tags", []) or [])),
         added_via="website",
     )
-    # ROOT-CAUSE FIX: segment the source text into MANY chunks (was a single
-    # monolithic chunk regardless of body length, starving RAG passage
-    # granularity + KG chunk_node_mentions). build_canonical_chunks is the
-    # shared chunk+embed core also used by the v2 re-chunk backfill so the two
-    # can never diverge. On a batch-embed failure it returns [] and we persist
-    # the zettel WITHOUT chunk rows (preserves the embed-or-skip contract: no
-    # lying NULL-embedding+model_version row); backfill recovers later.
-    chunks = await build_canonical_chunks(payload=payload, detailed_summary=detailed_summary)
-    if not chunks:
-        # D10: distinguish "nothing to chunk" (truly empty source — not a
-        # degradation, there is no retrievable content by definition) from
-        # "had real source text but produced 0 chunks" (batch-embed failure
-        # / chunker yielded nothing — the zettel persists but is NOT
-        # retrievable; the caller must surface a degraded signal, not a
-        # clean 200). We re-derive the selected source text via the same
-        # helper build_canonical_chunks uses so the classification cannot
-        # drift from the actual chunk-source policy.
-        had_source = bool(
-            _choose_chunk_source_text(payload, detailed_summary).strip()
-        )
-        if had_source:
-            payload["_degraded_no_chunks"] = True
-        logger.warning(
-            "No embeddable chunks for %s; persisting zettel WITHOUT chunk "
-            "rows (%s — no silent NULL-embedding+model_version). Recover via "
-            "ops/scripts/backfill_rechunk_v2.py.",
-            normalized_url,
-            "non-empty source but 0 chunks (DEGRADED, not retrievable)"
-            if had_source
-            else "empty source",
-        )
+    # PR #39 / Wave-3 B1 (2026-05-20): chunk+embed moved off the critical
+    # Add Zettel path. We write the canonical zettel + workspace zettel
+    # SYNCHRONOUSLY (so My Zettels surfaces the summary the moment _run
+    # finalizes) and enqueue a durable lazy-enrichment job for the
+    # chunker + Gemini batch embed (typically the heaviest step). The
+    # job is drained by an in-process poller in each gunicorn worker.
+    # The legacy inline `_degraded_no_chunks` signal is dropped here:
+    # with the split, "no chunks" is a transient state until the
+    # enrichment job completes (logged by the handler).
     result = await asyncio.to_thread(
         repo.upsert_canonical_zettel,
         zettel,
         workspace=workspace,
-        chunks=chunks,
+        chunks=[],
     )
     persisted_id = result.workspace_zettel_id or result.canonical_zettel_id
+
+    # Enqueue chunk+embed enrichment. Defensive: failure to enqueue must
+    # NEVER fail Add Zettel — the zettel is already persisted and the
+    # backfill_rechunk_v2.py script can pick it up out of band.
+    if profile_id is not None:
+        from website.features.summarization_engine.lazy_enrichment import (
+            repo as enrichment_repo,
+        )
+
+        enrichment_payload = {
+            "canonical_zettel_id": str(result.canonical_zettel_id),
+            "workspace_zettel_id": (
+                str(result.workspace_zettel_id) if result.workspace_zettel_id else None
+            ),
+            "workspace_id": str(workspace_id),
+            "detailed_summary": detailed_summary,
+            "summarized_payload": _enrichment_safe_payload(payload),
+        }
+        try:
+            await asyncio.to_thread(
+                enrichment_repo.enqueue_chunk_embed,
+                user_id=profile_id,
+                canonical_zettel_id=result.canonical_zettel_id,
+                workspace_zettel_id=result.workspace_zettel_id,
+                payload=enrichment_payload,
+            )
+        except Exception:
+            logger.exception(
+                "enqueue_chunk_embed failed for %s; chunk_embed_backfill "
+                "will recover via ops/scripts/backfill_rechunk_v2.py",
+                result.canonical_zettel_id,
+            )
+
     # Phase B: fire-and-forget KG-population enrichment via
     # _schedule_kg_population's asyncio.create_task. Best-effort: never
-    # blocks or fails Add Zettel. Now sees the multi-chunk set above.
+    # blocks or fails Add Zettel. The KG handler is summary-driven and
+    # does NOT depend on the lazy-chunk rows landing first.
     _schedule_kg_population(
         payload=payload,
         workspace_id=workspace_id,
@@ -753,6 +765,22 @@ async def _persist_supabase_v2_zettel(
         summary=detailed_summary or body_md,
     )
     return str(persisted_id), result.workspace_zettel_id is not None, not result.was_new
+
+
+def _enrichment_safe_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return a JSON-safe slice of the persist payload for the enrichment
+    job. Excludes mutable cursors and large internal-only fields. Reusable
+    by both _persist_supabase_v2_zettel and any future enqueue site."""
+    safe_keys = (
+        "source_url", "title", "source_type", "summary", "brief_summary",
+        "detailed_summary", "tags", "metadata", "raw_metadata", "raw_text",
+        "captured_at", "engine_version",
+    )
+    out: dict[str, Any] = {}
+    for k in safe_keys:
+        if k in payload:
+            out[k] = payload[k]
+    return out
 
 
 def _encode_summary_payload(payload: dict[str, Any]) -> str:

@@ -75,6 +75,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "57_stuck_running_reaper.sql",
         "58_revoke_legacy_secdef_idempotent.sql",
         "59_reaper_threshold_7m.sql",
+        "60_zettel_enrichment_jobs.sql",
     ]
 
 

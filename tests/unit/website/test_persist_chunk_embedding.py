@@ -59,16 +59,11 @@ def _payload() -> dict:
 
 @pytest.mark.asyncio
 async def test_chunk_persisted_with_768d_embedding(monkeypatch) -> None:
-    """FIXED behavior: every chunk handed to the repo carries a 768-d vector
-    and the matching model-version stamp.
+    """FIXED behavior: every chunk carries a 768-d vector + matching stamp.
 
-    CONTRACT CHANGE (old -> new): pre-fix this asserted EXACTLY ONE chunk
-    whose text equalled the summary verbatim (the single-monolithic-chunk
-    root-cause bug). Post-fix the persist path segments the source via the
-    real chunker; a short body yields >=1 chunk but each must still carry the
-    embedding + stamp. The single batch-embed call covers every chunk text.
-    Multi-chunk segmentation of long bodies is pinned in
-    test_persist_multichunk.py.
+    PR #39 Wave-3: chunk+embed moved out of ``_persist_supabase_v2_zettel``
+    into ``build_canonical_chunks`` (called by the lazy enrichment handler
+    + backfill). The 768-d invariant is therefore now tested at the helper.
     """
     fake_vec = [0.01] * 768
     embed_calls = {"n": 0}
@@ -79,20 +74,15 @@ async def test_chunk_persisted_with_768d_embedding(monkeypatch) -> None:
         return [fake_vec for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=_payload(),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="Naruto is the protagonist who becomes Hokage.",
     )
 
-    assert repo.chunks is not None and len(repo.chunks) >= 1
+    assert chunks is not None and len(chunks) >= 1
     assert embed_calls["n"] == 1  # single batch embed for all chunks
-    for chunk in repo.chunks:
+    for chunk in chunks:
         assert chunk.embedding is not None
         assert len(chunk.embedding) == 768
         assert chunk.embedding == fake_vec
@@ -129,14 +119,12 @@ async def test_embed_failure_writes_no_chunk_row(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_no_chunk_text_no_embed_call(monkeypatch) -> None:
-    """CONTRACT CHANGE (old -> new): pre-fix an empty body+summary produced
-    ZERO chunks. Post-fix the persist path mirrors the chunker's own
-    source-selection convention (the previously-dead ingest/hook.py path),
-    which SYNTHESIZES a minimal searchable body from title/tags so a
-    transcript-less / paywalled node is still retrievable instead of
-    invisible. So with a real title we now expect exactly one synthesized
-    fallback chunk (embedded once). The truly-empty case (no title either)
-    is covered by ``test_truly_empty_payload_yields_zero_chunks`` below."""
+    """An empty body+summary still produces a single synthesized title/tag
+    fallback chunk so a transcript-less node remains retrievable.
+
+    PR #39 Wave-3: this invariant now lives at ``build_canonical_chunks``,
+    not at ``_persist_supabase_v2_zettel`` (chunks moved off the critical
+    path)."""
     called = {"n": 0}
 
     async def _spy(texts):
@@ -144,21 +132,16 @@ async def test_no_chunk_text_no_embed_call(monkeypatch) -> None:
         return [[0.0] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _spy)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
     payload = _payload()
     payload["summary"] = ""
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=payload,
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="",  # body + summary empty -> title/tag fallback
     )
-    assert repo.chunks is not None and len(repo.chunks) == 1
+    assert chunks is not None and len(chunks) == 1
     assert called["n"] == 1
-    assert "Naruto Uzumaki" in repo.chunks[0].content
+    assert "Naruto Uzumaki" in chunks[0].content
 
 
 @pytest.mark.asyncio
