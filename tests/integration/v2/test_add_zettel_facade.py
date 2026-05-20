@@ -68,8 +68,9 @@ def facade_client(monkeypatch):
     auth_mod._jwks_client = None
     persist_mod._v2_core_repo = None
     persist_mod._v2_content_repo = None
+    # Phase 5 (async-ops redesign): _IN_FLIGHT was deleted with the per-worker
+    # mirror; only the document-path synchronous caches remain in-memory.
     zettels_routes._IDEMPOTENCY_CACHE.clear()
-    zettels_routes._IN_FLIGHT.clear()
     zettels_routes._OPERATIONS.clear()
 
     async def fake_require(*_args, **_kwargs):

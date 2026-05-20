@@ -20,8 +20,10 @@ def document_client(monkeypatch):
     from website.api import auth as auth_mod
 
     auth_mod._jwks_client = None
+    # Phase 5 (async-ops redesign): _IN_FLIGHT was deleted along with the
+    # per-worker in-memory async mirror; the document path uses only
+    # _IDEMPOTENCY_CACHE + _OPERATIONS (synchronous-only result cache).
     zettels_routes._IDEMPOTENCY_CACHE.clear()
-    zettels_routes._IN_FLIGHT.clear()
     zettels_routes._OPERATIONS.clear()
     zettels_routes._RATE_STORE.clear()
 

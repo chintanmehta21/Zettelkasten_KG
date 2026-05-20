@@ -59,19 +59,22 @@ _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
 # anything slower fast-acks 202 well before Cloudflare's ~100s edge timeout.
 _AUTO_ACCEPT_AFTER_SECONDS = 20.0
 _OPERATION_TTL_SECONDS = 15 * 60
+# Document-upload sync idempotency cache (still in-memory; the document path is
+# synchronous-only and does NOT use the core.operations state machine). The
+# async URL path migrated to the DB row in Phase 2; these caps only bound the
+# document endpoint's per-process memory.
 _MAX_OPERATION_RECORDS = 128
 _MAX_IDEMPOTENCY_RECORDS = 128
 
 _IDEMPOTENCY_CACHE: "OrderedDict[tuple[str, str], tuple[float, str, dict[str, Any]]]" = OrderedDict()
 _OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
-_OPERATION_TASKS: dict[str, asyncio.Task] = {}
-_IN_FLIGHT: dict[tuple[str, str], tuple[str, str, asyncio.Task]] = {}
 _BG_TASKS: set[asyncio.Task] = set()
 
 # Phase 2 (async-ops redesign): canonical strong-ref + cancel target for the
-# per-process background worker coroutines spawned by the new accept path.
-# Coexists with _BG_TASKS / _OPERATION_TASKS until Phase 5 deletes the legacy
-# in-memory machinery. Keyed by the CANONICAL op id returned by ops.accept.
+# per-process background worker coroutines spawned by the accept path. The
+# core.operations DB row is the cross-worker truth; _LIVE_TASKS only keeps
+# the local coroutine reachable so the event loop does not GC it and so
+# DELETE /api/zettels/operations/{id} can cooperatively cancel it.
 _LIVE_TASKS: dict[str, asyncio.Task] = {}
 
 
@@ -196,17 +199,14 @@ def _document_request_hash(
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _idempotency_conflict(operation_id: str) -> JSONResponse:
-    return _problem(
-        status_code=409,
-        title="Idempotency key reused with a different request",
-        detail="Generate a new client_action_id when changing the URL or Add Zettel options.",
-        operation_id=operation_id,
-        type_slug="idempotency-conflict",
-    )
-
-
 def _cache_get(key: tuple[str, str], request_hash: str) -> dict[str, Any] | JSONResponse | None:
+    """Synchronous-only idempotency cache lookup for the document-upload path.
+
+    Returns the cached body on a hash hit; a 409 problem response on hash
+    mismatch (same client_action_id with a different document); None on miss
+    or TTL expiry. The async URL path uses ``operations_repo`` (DB row) for
+    idempotency since Phase 2 of the async-ops redesign.
+    """
     record = _IDEMPOTENCY_CACHE.get(key)
     if not record:
         return None
@@ -215,7 +215,13 @@ def _cache_get(key: tuple[str, str], request_hash: str) -> dict[str, Any] | JSON
         _IDEMPOTENCY_CACHE.pop(key, None)
         return None
     if cached_hash != request_hash:
-        return _idempotency_conflict(key[1])
+        return _problem(
+            status_code=409,
+            title="Idempotency key reused with a different request",
+            detail="Generate a new client_action_id when changing the document or Add Zettel options.",
+            operation_id=key[1],
+            type_slug="idempotency-conflict",
+        )
     _IDEMPOTENCY_CACHE.move_to_end(key)
     return value
 
@@ -228,38 +234,16 @@ def _cache_put(key: tuple[str, str], request_hash: str, value: dict[str, Any]) -
 
 
 def _operation_put(operation_id: str, value: dict[str, Any]) -> None:
+    """Synchronous-only idempotency result cache for the document-upload path.
+
+    The async URL path persists terminal results to the ``core.operations`` DB
+    row (Phase 2 of the async-ops redesign); only the synchronous document
+    endpoint still needs the per-process body cache for fast cache-hit replays.
+    """
     _OPERATIONS[operation_id] = (time.monotonic(), value)
     _OPERATIONS.move_to_end(operation_id)
     while len(_OPERATIONS) > _MAX_OPERATION_RECORDS:
-        old_id, _ = _OPERATIONS.popitem(last=False)
-        # Bug fix: never cancel a still-running summarization task on LRU
-        # eviction (universal-202 regression). The oldest _OPERATIONS entry
-        # is often an accept-time placeholder whose task is mid-flight;
-        # cancelling it kills the user's summary. Promote to _BG_TASKS for
-        # a guaranteed strong ref and leave the task to finish; its
-        # done-callback (_store_operation_result) will pop _OPERATION_TASKS
-        # and re-publish the terminal result via _operation_put.
-        old_task = _OPERATION_TASKS.get(old_id)
-        if old_task is None:
-            continue
-        if old_task.done():
-            _OPERATION_TASKS.pop(old_id, None)
-        else:
-            _BG_TASKS.add(old_task)
-            old_task.add_done_callback(_BG_TASKS.discard)
-
-
-def _operation_get(operation_id: str) -> dict[str, Any] | None:
-    record = _OPERATIONS.get(operation_id)
-    if not record:
-        return None
-    ts, value = record
-    if time.monotonic() - ts > _OPERATION_TTL_SECONDS:
-        _OPERATIONS.pop(operation_id, None)
-        _OPERATION_TASKS.pop(operation_id, None)
-        return None
-    _OPERATIONS.move_to_end(operation_id)
-    return value
+        _OPERATIONS.popitem(last=False)
 
 
 def _async_failure_error_payload(
@@ -325,81 +309,6 @@ def _async_failure_error_payload(
             operation_id=operation_id,
         )
     return None
-
-
-def _store_operation_result(
-    task: asyncio.Task,
-    *,
-    operation_id: str,
-    cache_key: tuple[str, str],
-    request_hash: str,
-    persist_requested: bool,
-    user_id: UUID | None = None,
-) -> None:
-    failed = False
-
-    def _failed_response(
-        reason: str, *, error: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        return AddZettelResponse(
-            status="failed",
-            operation_id=operation_id,
-            persistence=persistence_dto(persist_requested, None),
-            quality=QualityDTO(
-                confidence="failed",
-                confidence_reason=reason,
-            ),
-            error=error,
-        ).model_dump(mode="json")
-
-    try:
-        result = task.result()
-    except asyncio.CancelledError:
-        # CancelledError is BaseException, not Exception. _operation_put's LRU
-        # eviction cancels old tasks; without this branch the cleanup trio
-        # below is skipped and the _IN_FLIGHT slot is stuck forever.
-        # Cancellation is NOT a typed failure — no structured error attached.
-        logger.warning("Background Add Zettel operation cancelled (op=%s)", operation_id)
-        failed = True
-        result = _failed_response("operation cancelled")
-    except Exception as exc:
-        logger.exception("Background Add Zettel operation failed")
-        failed = True
-        # Preserve sync-path problem+json detail across the 20s fast-ack
-        # boundary so the frontend's class-specific UI (quota-exhausted,
-        # unsupported-video, etc.) keys off `err.detail.code` identically.
-        result = _failed_response(
-            str(exc),
-            error=_async_failure_error_payload(exc, operation_id=operation_id),
-        )
-    else:
-        _cache_put(cache_key, request_hash, result)
-    _operation_put(operation_id, result)
-    _OPERATION_TASKS.pop(operation_id, None)
-    _IN_FLIGHT.pop(cache_key, None)
-    if user_id is not None:
-        # Persist terminal state to the shared store so cross-worker polls
-        # resolve. Scheduled on the loop, DB call in a thread; never fatal.
-        async def _persist_terminal() -> None:
-            fn = operations_repo.mark_failed if failed else operations_repo.mark_succeeded
-            await asyncio.to_thread(
-                fn, user_id=user_id, operation_id=operation_id,
-                request_hash=request_hash, response=result,
-            )
-        _terminal_coro = _persist_terminal()
-        try:
-            # Route through _spawn_bg so the task is strongly referenced in
-            # _BG_TASKS until done — bare create_task lets GC drop the
-            # terminal mark_* write mid-flight (op stuck `accepted`).
-            _spawn_bg(_terminal_coro)
-        except RuntimeError:
-            # No running loop (callback fired post-loop, e.g. tests): close
-            # the un-scheduled coro, then best-effort synchronous write.
-            _terminal_coro.close()
-            (operations_repo.mark_failed if failed else operations_repo.mark_succeeded)(
-                user_id=user_id, operation_id=operation_id,
-                request_hash=request_hash, response=result,
-            )
 
 
 def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
@@ -485,7 +394,7 @@ def _failed_response_for(
     exc: BaseException, *, operation_id: str, persist_requested: bool
 ) -> dict[str, Any]:
     """Build the AddZettelResponse(status='failed', ...) body for an async-
-    background-worker exception. Mirrors `_store_operation_result._failed_response`
+    background-worker exception. Used by `_run` on the failed / cancelled paths
     so the GET handler can return a coherent failed shape with structured
     `.error` for the frontend's class-specific UI (`err.detail.code` keying)."""
     if isinstance(exc, asyncio.CancelledError):
@@ -632,48 +541,23 @@ async def add_zettel(
     # the same canonical op even if it forgot to reuse client_action_id.
     idempotency_header = (request.headers.get("Idempotency-Key") or "").strip()
     operation_id = idempotency_header or body.client_action_id
-    cache_key = (str(effective_user_id), operation_id)
     request_hash = _request_hash(body)
-    # Phase 4: per-user async backpressure gate. DB-backed in-flight count
-    # replaces the legacy in-memory LRU cap. Fail-open inside the gate so a
-    # transient DB hiccup never 5xxs accept. Runs AFTER auth + rate-limit +
-    # idempotency-key resolution and BEFORE the dedup / accept work so a
-    # duplicate poll for the same op_id does NOT consume a backpressure slot.
+    # Phase 4: per-user async backpressure gate. DB-backed in-flight count is
+    # the cross-worker source of truth (replaces the per-worker in-memory
+    # accounting deleted in Phase 5). Fail-open inside the gate so a transient
+    # DB hiccup never 5xxs accept. Runs AFTER auth + rate-limit and BEFORE the
+    # accept RPC; uniform 429 regardless of dedup hit — protects against poll-
+    # cache thrash. Same-key duplicates are throttled identically; if the user
+    # really is over the per-user cap, the duplicate is still a backpressure
+    # signal worth shedding before any DB work happens.
     backpressure_response = await check_async_backpressure(user_id=effective_user_id)
     if backpressure_response is not None:
         return backpressure_response
-    cached = _cache_get(cache_key, request_hash)
-    if cached is not None:
-        return cached
-    in_flight = _IN_FLIGHT.get(cache_key)
-    if in_flight is not None:
-        running_hash, in_flight_op_id, running_task = in_flight
-        if running_hash != request_hash:
-            return _idempotency_conflict(operation_id)
-        # Universal async: return existing accepted response for in-flight ops.
-        existing = _operation_get(in_flight_op_id)
-        if existing is None:
-            existing = AddZettelResponse(
-                status="accepted",
-                operation_id=in_flight_op_id,
-                persistence=persistence_dto(body.persist, None),
-                quality=QualityDTO(confidence="pending"),
-                status_url=f"/api/operations/{in_flight_op_id}",
-            ).model_dump(mode="json")
-        return JSONResponse(
-            existing,
-            status_code=202 if existing.get("status") == "accepted" else 200,
-            headers={
-                "Location": f"/api/operations/{in_flight_op_id}",
-                "Retry-After": "3",
-            },
-        )
 
     try:
         work = asyncio.create_task(
             _run_add_zettel(body, user=user, effective_user_id=effective_user_id)
         )
-        _IN_FLIGHT[cache_key] = (request_hash, operation_id, work)
         try:
             # Inline-return path: fast jobs (<= N s) still get a synchronous
             # 200 with the full result, exactly as before.
@@ -734,14 +618,12 @@ async def add_zettel(
                 # be done or cancelled by other code paths.
                 if not work.done():
                     work.cancel()
-                _IN_FLIGHT.pop(cache_key, None)
             else:
                 # Duplicate active request: another worker / earlier accept
                 # already owns the canonical op. Abandon our probe task; the
                 # client polls the canonical op id and gets the same result.
                 if not work.done():
                     work.cancel()
-                _IN_FLIGHT.pop(cache_key, None)
                 # Overwrite the accepted body's operation_id to the canonical
                 # one so the 202 body + Location header agree.
                 accepted["operation_id"] = canonical_op_id
@@ -755,12 +637,14 @@ async def add_zettel(
                     "Retry-After": "2",
                 },
             )
-        _cache_put(cache_key, request_hash, result)
-        _operation_put(operation_id, result)
-        _IN_FLIGHT.pop(cache_key, None)
+        # Inline-return success path: the work task completed within the
+        # auto-accept window, so a synchronous 200 with the full result is
+        # returned to the client. Idempotency / cross-worker dedup now live
+        # on the DB row written by the run path; the inline-return branch
+        # does not touch the operations store (the request never crossed the
+        # fast-ack boundary).
         return result
     except HTTPException as exc:
-        _IN_FLIGHT.pop(cache_key, None)
         detail = exc.detail
         problem_title = "Add Zettel request rejected"
         type_slug = "request-rejected"
@@ -776,7 +660,6 @@ async def add_zettel(
             type_slug=type_slug,
         )
     except UnsupportedVideoError as exc:
-        _IN_FLIGHT.pop(cache_key, None)
         return _problem(
             status_code=422,
             title="Unsupported video",
@@ -785,7 +668,6 @@ async def add_zettel(
             type_slug="unsupported-video",
         )
     except ExtractionConfidenceError as exc:
-        _IN_FLIGHT.pop(cache_key, None)
         return _problem(
             status_code=422,
             title="Insufficient content",
@@ -795,7 +677,6 @@ async def add_zettel(
             extra={"reason": exc.reason, "tier_results": exc.tier_results},
         )
     except (RoutingError, ValueError) as exc:
-        _IN_FLIGHT.pop(cache_key, None)
         return _problem(
             status_code=422,
             title="Invalid Add Zettel request",
@@ -807,7 +688,6 @@ async def add_zettel(
         # P1-2: v2 was configured + attempted but the KG write failed (broken
         # RPC, schema-cache miss, RLS denial, empty RPC result). Surface a
         # non-200 problem+json instead of the old silent 200 + supabase=false.
-        _IN_FLIGHT.pop(cache_key, None)
         logger.error("Add Zettel v2 persist failed for %s: %s", body.url, exc.detail)
         return _problem(
             status_code=502,
@@ -817,7 +697,6 @@ async def add_zettel(
             type_slug="kg-write-failed",
         )
     except Exception as exc:
-        _IN_FLIGHT.pop(cache_key, None)
         logger.exception("Add Zettel failed for %s", body.url)
         return _problem(
             status_code=500,
@@ -923,8 +802,8 @@ async def operation_status(
 ):
     """Phase-2 (async-ops redesign): DB-only read.
 
-    The `core.operations` row is the sole source of truth. The in-memory
-    fallback (`_operation_get`) is no longer consulted in the new path; the
+    The `core.operations` row is the sole source of truth. The legacy
+    in-memory fallback was removed in Phase 5 of the async-ops redesign; the
     DB CHECK + state-guarded RPCs (migration 51) ensure the row always
     reflects the canonical state across all workers.
     """

@@ -132,25 +132,6 @@ def test_accepted_row_reads_response_202():
     assert r.json()["status"] == "accepted"
 
 
-def test_inmem_accepted_still_202_when_supabase_misses():
-    """P2 no-regression: when Supabase misses but the per-worker in-memory
-    store HAS the accepted result, the single-worker fallback still serves
-    202 (we only changed the truly-not-found-anywhere branch)."""
-    from website.api import zettels_routes as zr
-
-    acc = {"status": "accepted", "operation_id": "inmem-1",
-           "status_url": "/api/operations/inmem-1"}
-    with patch("website.api.zettels_routes.operations_repo.get_operation",
-               return_value=None):
-        zr._operation_put("inmem-1", acc)
-        try:
-            r = _client().get("/api/operations/inmem-1")
-        finally:
-            zr._OPERATIONS.pop("inmem-1", None)
-    assert r.status_code == 202
-    assert r.json()["status"] == "accepted"
-
-
 def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
     """_run_add_zettel must return the pipeline result WITHOUT awaiting graph
     invalidation; invalidation is scheduled as a post-return continuation."""
