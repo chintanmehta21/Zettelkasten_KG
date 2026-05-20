@@ -245,3 +245,134 @@ The rewritten state-machine tests cover the same correctness properties (idempot
 - Operator runs the rebase-merge and the prod migration co-apply per CLAUDE.md "Audit/Verify ≠ Authorization" rule.
 - Per `feedback_resolve_in_pr_no_deferral.md` — if any new Codex finding lands during this PR, fix it within this PR (it should be RARE given the redesign closes the bug class by construction).
 
+---
+
+## Phase 0 — Discovery Notes (completed 2026-05-20)
+
+All five verification steps executed read-only against installed package source, live web docs, and project SQL/Python files. No code changes.
+
+### Step 1 — PostgREST / supabase-py RPC call shape
+
+**Verified findings:**
+- Versions pinned: `postgrest 2.28.3` / `supabase 2.28.3` (matches PR #30 baseline).
+- `supabase.Client.rpc(fn, params=None, count=None, head=False, get=False)` delegates directly to `self.postgrest.rpc(...)` — same call shape on either side. Source: `<site-packages>/supabase/_sync/client.py::Client.rpc`.
+- `supabase.Client.schema(schema)` returns the underlying `SyncPostgrestClient` configured against that schema, so `client.schema('core').rpc('ops_finalize', {...}).execute()` is the canonical idiom and routes to PostgREST against the `core` schema (PostgREST sets `Accept-Profile`/`Content-Profile` header). Source: `<site-packages>/supabase/_sync/client.py::Client.schema`.
+- `SyncPostgrestClient.rpc(func, params, count, head, get)` builds an HTTP POST (or GET when `get=True`) to `/rpc/<func>` with `params` as the JSON body; returns a `SyncRPCFilterRequestBuilder` whose `.execute()` returns an `APIResponse` with `.data` populated from the PostgREST response body. Source: `<site-packages>/postgrest/_sync/client.py::SyncPostgrestClient.rpc`.
+- `RETURNING` / function row results: when a PL/pgSQL function returns `TABLE(...)` or `SETOF`, `.data` is a `list[dict]` (one element per returned row); when it returns a scalar, `.data` is that scalar value (typed per PostgREST JSON serialization). The state-guard pattern (RPC returns NULL when WHERE matched zero rows) surfaces as `.data is None` for scalar returns, or `.data == []` for `TABLE(...)` returns. Both are unambiguous — the wrapper checks `is None or not data` to detect a no-op transition.
+- Async vs sync: `operations_repo.py` head comment explicitly says "Sync by design — callable from the FastAPI request path via `asyncio.to_thread`" (line 6-7). New `accept/start/finalize` wrappers stay sync; the route layer wraps each call in `await asyncio.to_thread(ops.<fn>, ...)`. No async-client churn needed.
+- Schema-qualified RPC permission: migration 48 currently exposes the `core.operations` table via the existing service-role RLS policy (`operations_service_all`). For RPCs the equivalent requirement is `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role` (and similarly for the other two); without it PostgREST will return 401/403 even though the table grant exists. Phase 1 migration 50 MUST include the `GRANT EXECUTE` lines for each new SECURITY DEFINER function.
+
+**Citations:**
+- `<site-packages>/postgrest/_sync/client.py::SyncPostgrestClient.rpc` (lines containing `method = "HEAD" if head else "GET" if get else "POST"` and the `RequestConfig` build).
+- `<site-packages>/supabase/_sync/client.py::Client.rpc` and `Client.schema`.
+- `website/core/operations_repo.py:6-7` (sync-by-design comment).
+- `supabase/website/_v2/48_operations.sql:32-36` (service-role RLS policy pattern Phase 1 will mirror for `GRANT EXECUTE`).
+
+**Impact on Phase 1+:** No call-shape surprises. Migration 50 MUST add explicit `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role;` (and start/finalize) — this is NOT in the current plan body and should be added to Phase 1 Step 3. Wrapper functions inspect `resp.data` for `None` / `[]` to detect zero-rows-affected; for `ops_accept` which returns `TABLE(operation_id, status, is_new)` the wrapper reads `resp.data[0]` (always one row — INSERT-or-SELECT-existing guarantees a row).
+
+### Step 2 — Partial UNIQUE index + ON CONFLICT semantics
+
+**Verified findings:**
+- `core.operations` current schema (`supabase/website/_v2/48_operations.sql:10-21`):
+  - PK is composite `(user_id, operation_id)`.
+  - `status text NOT NULL CHECK (status IN ('accepted', 'succeeded', 'failed'))` — Phase 1 MUST `ALTER TABLE … DROP CONSTRAINT … ADD CONSTRAINT …` to expand the allowed set to `('queued','running','succeeded','failed','cancelled','expired')`. There is no `accepted` carryover in the new lexicon — Phase 1 should add an explicit data migration `UPDATE core.operations SET status='queued' WHERE status='accepted'` BEFORE swapping the CHECK, otherwise the new CHECK rejects existing in-flight rows.
+  - `request_hash text NOT NULL` — Phase 1's `INSERT … ON CONFLICT` must always supply request_hash (it does).
+  - Existing index: only `operations_expires_at_idx ON (expires_at)`. No conflict with the new partial unique index.
+- PostgreSQL supports partial unique indexes. Quote (PG manual §11.8 Partial Indexes): *"The idea here is to create a unique index over a subset of a table"*. Syntax matches Phase 1 plan: `CREATE UNIQUE INDEX ... ON table (cols) WHERE predicate`. Cited: https://www.postgresql.org/docs/current/indexes-partial.html (accessed 2026-05-20).
+- `ON CONFLICT` inference against a partial unique index: PG manual §INSERT defines `index_predicate` as *"Used to allow inference of partial unique indexes. Any indexes that satisfy the predicate ... can be inferred."* Practical consequence: the `INSERT … ON CONFLICT (user_id, request_hash) WHERE status IN ('queued','running','succeeded') DO NOTHING` form MUST include the explicit `WHERE` clause on the INSERT statement to disambiguate inference when other (future) indexes on the same columns might exist. Cited: https://www.postgresql.org/docs/current/sql-insert.html (accessed 2026-05-20).
+- `CREATE INDEX CONCURRENTLY` CANNOT run inside a transaction block. Quote (PG manual): *"a regular CREATE INDEX command can be performed within a transaction block, but CREATE INDEX CONCURRENTLY cannot."* Cited: https://www.postgresql.org/docs/current/sql-createindex.html (accessed 2026-05-20).
+- Migration 48 (`BEGIN; ... COMMIT;`) and 49 are single-transaction files. Migration 50 MUST split: (a) one `BEGIN/COMMIT` block for the CHECK swap + data backfill + RPC `CREATE OR REPLACE FUNCTION` statements, (b) the `CREATE UNIQUE INDEX CONCURRENTLY` OUTSIDE any transaction. The project's migration runner (`ops/scripts/apply_migrations.py`) must already tolerate this for any prior CONCURRENTLY migration — Phase 1 step 2 must verify this, and if the runner wraps the whole file in a transaction the CONCURRENTLY statement must be moved to a separate migration file (e.g. `50a_operations_state_machine.sql` for the txn parts, `50b_partial_unique_concurrent.sql` for the index).
+- PostgREST `Prefer: resolution=ignore-duplicates` against a partial unique index: the live PostgREST docs page consulted (https://postgrest.org/en/stable/references/api/tables_views.html, accessed 2026-05-20) does NOT explicitly confirm or deny partial-unique-index inference. However, PostgREST sends `INSERT … ON CONFLICT … DO NOTHING` to Postgres; conflict resolution is then PG's responsibility and the `index_predicate` inference rule above applies. The new RPC approach SIDESTEPS this ambiguity entirely — the SQL function body inside `ops_accept` writes the `INSERT … ON CONFLICT (user_id, request_hash) WHERE status IN ('queued','running','succeeded') DO NOTHING` directly with the explicit predicate, so PostgREST's upsert magic is not in the path. The PR #30 C3 fix relied on PostgREST's `ignore_duplicates=True`; the new design relies on raw SQL inside the SECURITY DEFINER function — strictly more robust.
+
+**Citations:**
+- `supabase/website/_v2/48_operations.sql:10-21` (current schema, CHECK, PK).
+- `supabase/website/_v2/48_operations.sql:23-24` (existing index).
+- https://www.postgresql.org/docs/current/indexes-partial.html (partial unique indexes; accessed 2026-05-20).
+- https://www.postgresql.org/docs/current/sql-insert.html (ON CONFLICT, index_predicate; accessed 2026-05-20).
+- https://www.postgresql.org/docs/current/sql-createindex.html (CONCURRENTLY transaction restriction; accessed 2026-05-20).
+
+**Impact on Phase 1+:**
+- Add data-backfill `UPDATE core.operations SET status='queued' WHERE status='accepted'` BEFORE the new CHECK constraint swap.
+- Split migration 50 into a transactional file and a separate `CREATE INDEX CONCURRENTLY` file (or trust the runner to handle a CONCURRENTLY statement outside the txn block) — Phase 1 Step 2 must verify `ops/scripts/apply_migrations.py` behavior and report. Default recommendation: ship as `50_operations_state_machine.sql` (CHECK + RPCs in txn) + `50a_operations_partial_unique.sql` (CONCURRENTLY index, no txn).
+- The `INSERT` inside `ops_accept` SQL function MUST repeat the partial-index predicate in its `ON CONFLICT (user_id, request_hash) WHERE status IN ('queued','running','succeeded') DO NOTHING` clause to guarantee inference.
+
+### Step 3 — pg_cron job amendment vs add
+
+**Verified findings:**
+- Migration 49 (`supabase/website/_v2/49_operations_sweep.sql:18-29`) creates job `'sweep_stale_operations'` running `DELETE FROM core.operations WHERE expires_at < now()` every hour at `:00 UTC`, idempotently guarded by `IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'sweep_stale_operations')`.
+- pg_cron supports `cron.alter_job(job_id, schedule, command, database, username, active)` for in-place modification. Signature: *"CREATE OR REPLACE FUNCTION cron.alter_job(job_id bigint, schedule text DEFAULT NULL::text, command text DEFAULT NULL::text, database text DEFAULT NULL::text, username text DEFAULT NULL::text, active boolean DEFAULT NULL::boolean) RETURNS void"*. Cited: https://github.com/citusdata/pg_cron/blob/main/README.md (accessed 2026-05-20).
+- `cron.schedule(name, schedule, command)` does NOT have documented upsert/replace behavior; calling it twice with the same name is not guaranteed to replace. Safe pattern is `cron.unschedule(name)` then `cron.schedule(name, ...)`, or look up the job_id and call `cron.alter_job(job_id, ...)`.
+
+**Recommendation (must operator-confirm in Phase 4, not auto-decided here):** Ship the stuck-running reaper as a SEPARATE new pg_cron job in a NEW migration `51_stuck_running_reaper.sql` (per the plan filename) with its own job name `'reap_stuck_running_operations'`, not by modifying job 49's command. Rationale:
+1. Separation of concerns: TTL sweep (DELETE expired) and stuck-running reaper (UPDATE running→failed) have different cadences and different blast radii.
+2. Migration hygiene: migration 49 is already live in prod; amending its body would require a destructive `cron.unschedule` + re-`cron.schedule` (or `cron.alter_job(job_id, command:=...)`), introducing a brief window where the sweep is unscheduled if the migration is interrupted.
+3. Idempotency: the same `IF NOT EXISTS` guard pattern from migration 49 trivially extends.
+
+**Citations:**
+- `supabase/website/_v2/49_operations_sweep.sql:18-29`.
+- https://github.com/citusdata/pg_cron/blob/main/README.md `cron.alter_job` signature + `cron.schedule` semantics (accessed 2026-05-20).
+
+**Impact on Phase 1+:** Phase 4 step 3 SHOULD ship as standalone migration 51 with a new job name, per the recommendation above. The plan body already aligns with this (it names `51_stuck_running_reaper.sql`); the open option to "amend 49 if cleanly possible" is REJECTED here for the three reasons listed.
+
+### Step 4 — RFC 9457 exact field set
+
+**Verified findings:**
+- MIME type: `application/problem+json`. Cited: RFC 9457 §3.
+- Members (ALL optional per the spec, but conventionally the type + title + status triple is sent):
+  - `type` — *"URI reference that identifies the problem type"* (RFC 9457 §3.1.1).
+  - `title` — *"Short, human-readable summary of the problem type"* (§3.1.2).
+  - `status` — *"JSON number indicating the HTTP status code generated by origin server"* (§3.1.3).
+  - `detail` — *"Human-readable explanation specific to this occurrence"* (§3.1.4).
+  - `instance` — *"URI reference identifying the specific occurrence of the problem"* (§3.1.5).
+- Extension members (§3.2): problem type definitions MAY add type-specific top-level members. Consumers MUST ignore unrecognized extensions. Names: ≥3 chars, start with letter, alphanumeric + underscore, conform to XML Name rules.
+- Current `_problem()` implementation (`website/api/zettels_routes.py:104-124`) ALREADY emits a close-but-not-exact shape:
+  - Sets `type` as `https://zettelkasten.in/problems/errors/{type_slug}` (note the extra `errors/` path segment).
+  - Sets `title`, `status`, `detail`, `instance` correctly.
+  - Sets `operation_id` as a top-level extension (when present) — VALID per §3.2.
+  - Spreads `extra` keys at top level — VALID per §3.2.
+  - Uses `media_type="application/problem+json"` correctly.
+
+**Mapping (Phase 3 unification — exact target shape):**
+```python
+{
+  "type":     f"https://zettelkasten.in/problems/{type_slug}",   # drop "errors/" segment for cleaner URN
+  "title":    title,
+  "status":   status_code,
+  "detail":   detail,
+  "instance": f"/api/zettels/operations/{operation_id}" if operation_id else request.url.path,
+  "code":     type_slug,    # extension — keys frontend dispatch (already used: e.g. "quota_exhausted")
+  **(extra or {}),          # additional extensions (e.g. retry_after, plan_required)
+}
+```
+Decision item for operator at Phase 3: keep current `type` prefix `errors/` or drop it. Recommendation: drop `errors/` for cleanliness; document the change is purely cosmetic since clients key off `code` (extension), not `type`. **Operator approval needed before Phase 3 ships the change** (per "Beyond-Plan = New Decision" rule — the plan body shows the URL without `errors/`, so adopting the cleaner URL is in-plan; but the user-facing URL change is observable and worth a confirmation).
+
+**Citations:**
+- https://www.rfc-editor.org/rfc/rfc9457.html §3, §3.1.1-5, §3.2 (accessed 2026-05-20).
+- `website/api/zettels_routes.py:104-124` (current `_problem()` body).
+
+**Impact on Phase 1+:** Phase 3 unification is straightforward — the only field mapping changes are (a) drop `errors/` segment in `type` (or retain — operator's call), (b) standardize `instance` to `/api/zettels/operations/{op_id}` (current uses `/api/zettels/add/{op_id}`), (c) ensure `code` extension is always set to `type_slug`. The async path's `finalize(error=...)` writes the SAME dict; GET endpoint returns it verbatim under `body.error`. Frontend contract (`body.error.code`) is preserved.
+
+### Step 5 — Supabase / asyncpg pool reuse
+
+**Verified findings:**
+- `website/core/supabase_v2/client.py:96-104` — `get_v2_client()` is `@lru_cache(maxsize=1)` (singleton), creates a single `Client` with an explicit `httpx.Client(timeout=..., limits=httpx.Limits(max_keepalive_connections=8, max_connections=16))`. The connection pool is keep-alive-capped at 8 across all calls.
+- `client.schema('core').rpc(...)` and `client.schema('core').table(...).select(...)` BOTH route through the same underlying `SyncPostgrestClient` (the `Client.schema()` method delegates to `self.postgrest.schema(schema)` which returns a per-call wrapper that shares the parent's `session` — the same `httpx.Client`). So RPC calls reuse the same HTTP connection pool as table reads. No new connections per RPC; the connection-budget impact of adding `accept` → `start` → poll → `finalize` is purely throughput on the existing pool.
+- Expected per-add-zettel cycle DB traffic: 1× POST `/rpc/ops_accept` + 1× POST `/rpc/ops_start` + N× GET `/operations?...` (one per poll) + 1× POST `/rpc/ops_finalize` = (3 + N) requests against the keep-alive pool. At baseline poll cadence (1s for 180s budget) and current user load (~10-15 users), this is well below the pool's max-keepalive=8 cap.
+- Backpressure-gate read (`count_in_flight_for_user`) adds 1 more SELECT per accept. Acceptable cost; Phase 4 plan body already notes the 1ms-ish overhead and the deferred lru_cache optimization.
+
+**Citations:**
+- `website/core/supabase_v2/client.py:77-104` (singleton + httpx.Limits configuration).
+- `<site-packages>/supabase/_sync/client.py::Client.schema` (delegation to `self.postgrest.schema(...)`).
+
+**Impact on Phase 1+:** Zero new connection-pool tuning required. The 4-RPC-per-add-zettel cycle reuses the existing 8-keepalive pool. No new DigitalOcean droplet RAM or connection-budget impact (per CLAUDE.md guardrails — protected knobs untouched).
+
+### Phase 0 verdict
+
+**READY for Phase 1**, with two amendments the implementer MUST fold into the Phase 1 SQL writes (neither is a scope change; both are derived from the spec):
+
+1. **Add `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role;` (and `ops_start`, `ops_finalize`)** in migration 50 — without it, PostgREST returns 401/403 for the new RPCs even though the table grant exists.
+2. **Add data backfill `UPDATE core.operations SET status='queued' WHERE status='accepted';`** in migration 50 BEFORE swapping the CHECK constraint — otherwise the new CHECK rejects in-flight rows.
+3. **Split migration 50** into a transactional file (CHECK + RPCs) plus a non-transactional `50a` for `CREATE UNIQUE INDEX CONCURRENTLY` — UNLESS Phase 1 Step 2 verifies `ops/scripts/apply_migrations.py` already handles CONCURRENTLY statements outside the file's transaction.
+
+No blockers. Live-doc fetches all returned canonical guidance; package source confirms the call shapes the wrappers will use; existing project files (48, 49, operations_repo.py, supabase_v2/client.py) align with the design.
+
