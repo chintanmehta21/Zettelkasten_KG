@@ -535,3 +535,110 @@ def test_delete_operation_returns_noop_when_already_terminal():
     body = r.json()
     assert body["status"] == "noop"
     assert body["operation_id"] == "already-done"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 (async-ops redesign): per-user backpressure gate wired at accept.
+# The gate runs BEFORE ops.accept. When it returns a 429, no accept is
+# attempted; when it returns None, the accept path proceeds normally.
+# ---------------------------------------------------------------------------
+
+
+def test_post_add_zettel_returns_429_when_user_over_inflight_limit():
+    """check_async_backpressure returning a 429 short-circuits POST without
+    invoking ops.accept. Frontend receives the RFC 9457 problem body verbatim."""
+    from fastapi.responses import JSONResponse
+    from website.api._problem import _problem_dict
+
+    accept_calls: list[dict] = []
+
+    def _accept(**kw):
+        accept_calls.append(kw)
+        return (kw.get("operation_id"), True)
+
+    async def _backpressure(*_a, **_k):
+        return JSONResponse(
+            _problem_dict(
+                status_code=429,
+                title="Too many in-flight operations",
+                detail="User has 3 in-flight operations; limit is 3. ...",
+                type_slug="too-many-in-flight",
+            ),
+            status_code=429,
+            media_type="application/problem+json",
+            headers={"Retry-After": "30"},
+        )
+
+    with patch(
+        "website.api.zettels_routes.check_async_backpressure",
+        side_effect=_backpressure,
+    ), patch(
+        "website.api.zettels_routes.operations_repo.accept",
+        side_effect=_accept,
+    ):
+        r = _client().post(
+            "/api/zettels/add",
+            json={
+                "url": "https://example.com",
+                "client_action_id": "ph4-bp-429",
+                "surface": "landing",
+                "mode": "sync",
+                "persist": False,
+            },
+        )
+    assert r.status_code == 429
+    assert r.headers.get("Retry-After") == "30"
+    body = r.json()
+    assert body["code"] == "too-many-in-flight"
+    # The gate fired BEFORE ops.accept; no accept attempt occurred.
+    assert accept_calls == []
+
+
+def test_post_add_zettel_calls_ops_accept_when_under_limit():
+    """check_async_backpressure returning None means the route proceeds to
+    accept normally. Regression guard: backpressure must not break the happy
+    path when the user is under the limit."""
+    accept_calls: list[dict] = []
+
+    async def _slow(*_a, **_k):
+        await asyncio.sleep(30)
+        return {"persistence": {"persisted": False}}
+
+    def _accept(**kw):
+        accept_calls.append(kw)
+        return (kw.get("operation_id"), True)
+
+    async def _no_backpressure(*_a, **_k):
+        return None
+
+    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
+         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+         patch(
+            "website.api.zettels_routes.check_async_backpressure",
+            side_effect=_no_backpressure,
+         ), \
+         patch(
+            "website.api.zettels_routes.operations_repo.accept",
+            side_effect=_accept,
+         ), \
+         patch(
+            "website.api.zettels_routes.operations_repo.start",
+            return_value=True,
+         ), \
+         patch(
+            "website.api.zettels_routes.operations_repo.finalize",
+            return_value=True,
+         ):
+        r = _client().post(
+            "/api/zettels/add",
+            json={
+                "url": "https://example.com",
+                "client_action_id": "ph4-bp-pass",
+                "surface": "landing",
+                "mode": "sync",
+                "persist": False,
+            },
+        )
+    assert r.status_code == 202
+    assert len(accept_calls) == 1
+    assert accept_calls[0]["operation_id"] == "ph4-bp-pass"

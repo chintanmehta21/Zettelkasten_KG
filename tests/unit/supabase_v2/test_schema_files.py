@@ -68,6 +68,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "50_rls_partitions_and_migrations.sql",
         "51_operations_state_machine.sql",
         "52_default_privileges_hardening.sql",
+        "52_stuck_running_reaper.sql",
         "53_set_search_path_v2_functions.sql",
         "54_revoke_legacy_public_secdef_grants.sql",
         "55_revoke_public_grant_on_secdef.sql",
