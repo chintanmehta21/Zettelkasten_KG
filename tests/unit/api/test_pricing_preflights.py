@@ -27,7 +27,7 @@ async def test_add_zettel_checks_entitlement_before_expensive_work(monkeypatch) 
     monkeypatch.setattr(runner, "summarize_url_bundle", expensive)
     zettels_routes._RATE_STORE.clear()
 
-    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
 
     response = await zettels_routes.add_zettel(
         zettels_routes.AddZettelRequest(

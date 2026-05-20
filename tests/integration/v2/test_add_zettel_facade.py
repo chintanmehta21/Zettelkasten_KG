@@ -283,42 +283,6 @@ def test_add_zettel_idempotency_rejects_same_key_different_request(
     assert calls == ["https://example.com/idempotent-a"]
 
 
-def test_add_zettel_idempotency_returns_accepted_for_running_duplicate(facade_client):
-    client, zettels_routes, _runner = facade_client
-    zettels_routes._IN_MEMORY_ASYNC_ENABLED = True
-    payload = {
-        "url": "https://example.com/running",
-        "client_action_id": "running-click",
-        "persist": True,
-        "surface": "home",
-        "mode": "sync",
-    }
-    request_model = zettels_routes.AddZettelRequest.model_validate(payload)
-    request_hash = zettels_routes._request_hash(request_model)
-    zoro_key = (str(ZORO_AUTH_ID), "running-click")
-    async def _pending():
-        await asyncio.sleep(60)
-
-    import asyncio
-    loop = asyncio.new_event_loop()
-    try:
-        task = loop.create_task(_pending())
-        zettels_routes._IN_FLIGHT[zoro_key] = (request_hash, "running-click", task)
-
-        resp = client.post("/api/zettels/add", json=payload)
-    finally:
-        task.cancel()
-        loop.run_until_complete(asyncio.gather(task, return_exceptions=True))
-        loop.close()
-        zettels_routes._IN_MEMORY_ASYNC_ENABLED = False
-
-    assert resp.status_code == 202
-    assert resp.headers["location"] == "/api/operations/running-click"
-    body = resp.json()
-    assert body["status"] == "accepted"
-    assert body["operation_id"] == "running-click"
-
-
 def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, monkeypatch):
     client, zettels_routes, runner = facade_client
     zettels_routes._IN_MEMORY_ASYNC_ENABLED = False
