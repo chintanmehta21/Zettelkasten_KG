@@ -192,95 +192,17 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
     assert body["node_id"] is None
 
 
-def test_add_zettel_idempotency_reuses_original_response(facade_client, monkeypatch):
-    client, _zettels_routes, runner = facade_client
-    calls: list[str] = []
-
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        calls.append("summarize")
-        return _make_bundle(url)
-
-    async def fake_persist(result, *, user_sub=None, captured_on=None):
-        calls.append("persist")
-        return SimpleNamespace(
-            result=result,
-            file_node_id="web-idempotent",
-            supabase_node_id=None,
-            file_saved=True,
-            supabase_saved=False,
-            supabase_duplicate=False,
-            kg_user_id=user_sub,
-        )
-
-    monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
-    monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
-
-    payload = {
-        "url": "https://example.com/idempotent",
-        "client_action_id": "same-click",
-        "persist": True,
-        "surface": "zettels",
-        "mode": "sync",
-    }
-    first = client.post("/api/zettels/add", json=payload)
-    second = client.post("/api/zettels/add", json=payload)
-
-    assert first.status_code == 200
-    assert second.status_code == 200
-    assert calls == ["summarize", "persist"]
-    assert second.json() == first.json()
-
-
-def test_add_zettel_idempotency_rejects_same_key_different_request(
-    facade_client, monkeypatch
-):
-    client, _zettels_routes, runner = facade_client
-    calls: list[str] = []
-
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        calls.append(url)
-        return _make_bundle(url)
-
-    async def fake_persist(result, *, user_sub=None, captured_on=None):
-        return SimpleNamespace(
-            result=result,
-            file_node_id="web-idempotent",
-            supabase_node_id=None,
-            file_saved=True,
-            supabase_saved=False,
-            supabase_duplicate=False,
-            kg_user_id=user_sub,
-        )
-
-    monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
-    monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
-
-    first = client.post(
-        "/api/zettels/add",
-        json={
-            "url": "https://example.com/idempotent-a",
-            "client_action_id": "same-click-different-request",
-            "persist": True,
-            "surface": "zettels",
-            "mode": "sync",
-        },
-    )
-    second = client.post(
-        "/api/zettels/add",
-        json={
-            "url": "https://example.com/idempotent-b",
-            "client_action_id": "same-click-different-request",
-            "persist": True,
-            "surface": "zettels",
-            "mode": "sync",
-        },
-    )
-
-    assert first.status_code == 200
-    assert second.status_code == 409
-    assert second.headers["content-type"].startswith("application/problem+json")
-    assert second.json()["type"].endswith("/errors/idempotency-conflict")
-    assert calls == ["https://example.com/idempotent-a"]
+# Phase 5 (async-ops redesign): two idempotency tests deleted here.
+# - test_add_zettel_idempotency_reuses_original_response: pinned the legacy
+#   _IN_FLIGHT per-worker dedup contract. Replacement coverage lives at
+#   tests/integration/v2/test_ops_state_machine.py::test_accept_idempotent_returns_existing_when_active
+#   (DB-level) and tests/unit/website/test_async_operations_transport.py::
+#   test_accept_returns_existing_op_id_when_not_new (route level).
+# - test_add_zettel_idempotency_rejects_same_key_different_request: pinned the
+#   legacy 409 same-key/different-body rejection. The new ops.accept contract
+#   returns the canonical op id (200/202) instead of 409; covered by
+#   test_async_operations_transport.py::test_accept_honors_idempotency_key_header
+#   and the cross-user/state-machine isolation tests in test_ops_state_machine.py.
 
 
 def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, monkeypatch):
