@@ -60,12 +60,25 @@ _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
 # root cause of the doubled-pipeline bug class (see add_zettel docstring).
 # The document-upload path is still synchronous and unchanged.
 _OPERATION_TTL_SECONDS = 15 * 60
-# Document-upload sync idempotency cache (still in-memory; the document path is
-# synchronous-only and does NOT use the core.operations state machine). The
-# async URL path migrated to the DB row in Phase 2; these caps only bound the
-# document endpoint's per-process memory.
-_MAX_OPERATION_RECORDS = 128
-_MAX_IDEMPOTENCY_RECORDS = 128
+# SCOPE: these two in-memory dicts back the SYNCHRONOUS document upload
+# path ONLY (`/api/zettels/add/document` -> _run_add_document). The
+# asynchronous URL path migrated to the DB-backed core.operations state
+# machine in PR #30 / Phase 2; do NOT use these for URL idempotency.
+#
+# Why kept: document uploads are an inherently synchronous request/response
+# (the user expects the parsed document content back inline) and the doc
+# extraction is fast enough that a 202-fallback would be UX regression.
+# These caps bound per-process memory for the doc endpoint only.
+#
+# PR #39 / Wave-4 A6 (2026-05-20): re-scoped + renamed comments to kill
+# the "dead code" misnomer in the prior copy.
+_MAX_DOCUMENT_OPERATION_RECORDS = 128
+_MAX_DOCUMENT_IDEMPOTENCY_RECORDS = 128
+# Legacy aliases — kept to avoid touching the document path's call sites
+# in this PR (rename is mechanical and would conflict with concurrent
+# document-path work). Same semantics as the *_DOCUMENT_* names above.
+_MAX_OPERATION_RECORDS = _MAX_DOCUMENT_OPERATION_RECORDS
+_MAX_IDEMPOTENCY_RECORDS = _MAX_DOCUMENT_IDEMPOTENCY_RECORDS
 
 _IDEMPOTENCY_CACHE: "OrderedDict[tuple[str, str], tuple[float, str, dict[str, Any]]]" = OrderedDict()
 _OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
