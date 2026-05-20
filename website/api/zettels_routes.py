@@ -830,8 +830,14 @@ async def operation_status(
     # Active states -> 202 + Retry-After. The accepted body lives in
     # `response` (written by ops_accept/_run on the queued INSERT or the
     # `accepted` legacy lexicon backfilled by migration 51).
+    # PR #39 / Wave-2 (2026-05-20): surface the DB-level row status as
+    # `phase` so the frontend skeleton typewriter can show
+    # stage-appropriate quirky messages (queued = "warming up",
+    # running = "in progress"). Kept separate from the legacy
+    # body.status="accepted" lexicon so existing clients are unaffected.
     if status in ("queued", "running", "accepted"):
-        payload = row.get("response") or {}
+        payload = dict(row.get("response") or {})
+        payload["phase"] = status if status in ("queued", "running") else "queued"
         return JSONResponse(
             payload,
             status_code=202,

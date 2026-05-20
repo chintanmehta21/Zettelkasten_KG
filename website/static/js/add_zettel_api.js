@@ -61,10 +61,16 @@
   var POLL_BACKOFF_SCHEDULE_MS = [1000, 2000, 4000, 8000];
   var POLL_BACKOFF_CAP_MS = 8000;
 
-  async function pollAccepted(body, headers) {
+  async function pollAccepted(body, headers, hooks) {
     if (!body || body.status !== 'accepted' || !body.status_url) return body;
+    var onStatus = hooks && typeof hooks.onStatus === 'function' ? hooks.onStatus : null;
     var elapsed = 0;
     var attempt = 0;
+    // Emit an initial 'queued' tick so the typewriter starts at t=0 instead
+    // of waiting for the first poll round-trip.
+    if (onStatus) {
+      try { onStatus({ phase: body.phase || 'queued', elapsedMs: 0, attempt: 0 }); } catch (e) { void e; }
+    }
     while (elapsed < POLL_BUDGET_MS) {
       var wait = attempt < POLL_BACKOFF_SCHEDULE_MS.length
         ? POLL_BACKOFF_SCHEDULE_MS[attempt]
@@ -90,13 +96,26 @@
           failErr.problem = next;
           throw failErr;
         }
+        if (onStatus) {
+          try { onStatus({ phase: 'succeeded', elapsedMs: elapsed, attempt: attempt }); } catch (e) { void e; }
+        }
         return next;
       }
+      // PR #39 / Wave-2: surface the server-side `phase` (queued|running)
+      // so the typewriter can swap to in-progress vocabulary the moment
+      // the worker picks the job up. Falls back to elapsed-time staging
+      // on older server builds that don't emit phase.
+      if (onStatus) {
+        var phase = (next && next.phase) || (elapsed >= 5000 ? 'running' : 'queued');
+        try { onStatus({ phase: phase, elapsedMs: elapsed, attempt: attempt }); } catch (e) { void e; }
+      }
     }
-    var error = new Error('Summary is still processing. It will appear in My Zettels shortly.');
+    var error = new Error('Still summarizing. Your Zettel will appear in My Zettels once it lands.');
     error.status = 202;
+    error.code = 'poll_exhausted';
     error.detail = body;
     error.problem = body;
+    error.operationId = body.operation_id || null;
     throw error;
   }
 
@@ -126,7 +145,7 @@
       error.problem = body;
       throw error;
     }
-    return pollAccepted(body, headers);
+    return pollAccepted(body, headers, { onStatus: opts.onStatus });
   }
 
   async function uploadDocument(options) {
@@ -155,7 +174,7 @@
       error.problem = body;
       throw error;
     }
-    return pollAccepted(body, headers);
+    return pollAccepted(body, headers, { onStatus: opts.onStatus });
   }
 
   window.ZKAddZettel = {

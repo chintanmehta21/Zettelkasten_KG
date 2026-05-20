@@ -899,20 +899,29 @@
       listEl.insertBefore(skeleton, listEl.firstChild);
     }
 
+    // PR #39 / Wave-2 D5: quirky typewriter inside the skeleton card.
+    // Attaches AFTER the skeleton is in the DOM so it can compute layout.
+    var typer = window.ZKSkeletonTyper && skeleton
+      ? window.ZKSkeletonTyper.attach(skeleton)
+      : null;
+    var onStatus = typer ? typer.update : null;
+
     var apiPromise = isDocument
       ? window.ZKAddZettel.uploadDocument({
         file: file,
         token: _token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'zettels'
+        surface: 'zettels',
+        onStatus: onStatus
       })
       : window.ZKAddZettel.add({
         url: url,
         token: _token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'zettels'
+        surface: 'zettels',
+        onStatus: onStatus
       });
 
     if (addUrlInput) addUrlInput.value = '';
@@ -960,10 +969,10 @@
         applyFilters();
       }
     } catch (err) {
-      // The optimistic add did not land — tear the skeleton/spacer down
-      // immediately on ANY error (incl. quota_exhausted) so they never orphan
-      // if the user dismisses the quota gate without paying/watching ads. A
-      // resume re-runs addZettel() which creates a fresh skeleton.
+      // Optimistic add did not land — tear the skeleton/spacer + surface
+      // the error via addError. Quota gate handled separately below.
+      if (addError) addError.textContent = '';
+      if (typer) { try { typer.detach(); } catch (e) { void e; } }
       if (skeleton && skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer);
       applyFilters();
@@ -977,11 +986,20 @@
         });
         return;
       }
-      console.error('[user_zettels] Add failed:', err);
-
-      if (addError) addError.textContent = err.message || 'Failed to add zettel';
-      if (addDropdown) addDropdown.classList.add('open');
-      if (addUrlInput) addUrlInput.focus();
+      // PR #39 / Wave-2 C2: graceful poll-exhaust UX. Backend pipeline is
+      // still running; schedule a one-shot list refresh after 30s so the
+      // zettel auto-appears without the user needing to refresh manually.
+      if (err && err.code === 'poll_exhausted') {
+        if (addError) {
+          addError.textContent = 'Still summarizing in the background — your Zettel will appear shortly.';
+        }
+        window.setTimeout(function () { try { loadZettels(); } catch (e) { void e; } }, 30000);
+      } else {
+        console.error('[user_zettels] Add failed:', err);
+        if (addError) addError.textContent = err.message || 'Failed to add zettel';
+        if (addDropdown) addDropdown.classList.add('open');
+        if (addUrlInput) addUrlInput.focus();
+      }
     } finally {
       if (addSubmitBtn) addSubmitBtn.disabled = false;
     }
