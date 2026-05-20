@@ -158,7 +158,8 @@ def test_all_add_zettel_surfaces_use_shared_helper():
     for path in surfaces:
         text = path.read_text(encoding="utf-8")
         assert "ZKAddZettel.add" in text, path
-        assert "mode: 'sync'" in text, path
+        # PR #39 / Wave-1 A2: route is always-async; `mode` field retired.
+        assert "mode: 'sync'" not in text, path
         assert "mode: 'auto'" not in text, path
 
 
@@ -281,9 +282,14 @@ def test_document_upload_buttons_match_adjacent_textbox_height():
     assert "height: var(--mobile-input-size);" in mobile_css
 
 
-def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
+def test_add_zettel_helper_is_async_only_and_cache_busted():
+    """PR #39 / Wave-1 A2: the helper no longer sends a `mode` field — the
+    route is always-async (universal 202 + polling). Assert the field is
+    removed AND that every HTML page bumps the cache-bust version so
+    operator deploys serve the new helper."""
     helper = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
-    assert "mode: opts.mode || 'sync'" in helper
+    assert "mode: opts.mode" not in helper
+    assert "mode: 'sync'" not in helper
 
     pages = [
         ROOT / "website" / "static" / "index.html",
@@ -293,7 +299,7 @@ def test_add_zettel_helper_defaults_to_sync_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260519c" in text, path
+        assert "/js/add_zettel_api.js?v=20260520a" in text, path
 
 
 def test_add_zettel_pages_reference_fresh_surface_scripts():
@@ -432,12 +438,16 @@ def test_list_pages_use_dedicated_zettels_endpoint_not_graph():
     assert "/api/graph" in kg, "the 3D /knowledge-graph viz must still use /api/graph"
 
 
-def test_poll_accepted_budget_covers_180s_and_respects_retry_after():
+def test_poll_accepted_budget_covers_300s_and_respects_retry_after():
+    """PR #39 / Wave-1 C1: budget bumped 180s → 300s to align with the
+    7-min stuck-running reaper threshold (migration 59). Long YouTube /
+    long-form PDFs legitimately exceed 3min through summarize + persist,
+    so the prior 180s budget reliably exhausted before terminal state."""
     js = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "POLL_BUDGET_MS" in js, "pollAccepted must define an explicit budget"
-    assert "180000" in js, "poll budget must cover ~180s (Gunicorn timeout)"
+    assert "300000" in js, "poll budget must cover ~300s (reaper threshold - 2min slack)"
     assert "Retry-After" in js or "retry-after" in js, "must honor Retry-After"
-    # add_zettel_api.js cache-buster bumped to the literal 20260519c everywhere
+    # add_zettel_api.js cache-buster bumped to 20260520a (PR #39).
     for rel in [
         "website/static/index.html",
         "website/mobile/index.html",
@@ -445,7 +455,7 @@ def test_poll_accepted_budget_covers_180s_and_respects_retry_after():
         "website/features/user_zettels/index.html",
     ]:
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260519c" in html, rel
+        assert "/js/add_zettel_api.js?v=20260520a" in html, rel
 
 
 def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():

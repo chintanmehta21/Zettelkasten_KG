@@ -912,8 +912,7 @@
         token: _token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'zettels',
-        mode: 'sync'
+        surface: 'zettels'
       });
 
     if (addUrlInput) addUrlInput.value = '';

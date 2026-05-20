@@ -55,9 +55,10 @@ _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
 _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
-# Raised 8 -> 20 (approved): fast jobs still return inline 200 within 20s;
-# anything slower fast-acks 202 well before Cloudflare's ~100s edge timeout.
-_AUTO_ACCEPT_AFTER_SECONDS = 20.0
+# PR #39 / Wave-1 A1: `_AUTO_ACCEPT_AFTER_SECONDS` retired. The URL Add Zettel
+# route now always returns 202 immediately; the inline 20s wait/race was the
+# root cause of the doubled-pipeline bug class (see add_zettel docstring).
+# The document-upload path is still synchronous and unchanged.
 _OPERATION_TTL_SECONDS = 15 * 60
 # Document-upload sync idempotency cache (still in-memory; the document path is
 # synchronous-only and does NOT use the core.operations state machine). The
@@ -87,11 +88,16 @@ def _spawn_bg(coro) -> None:
 
 
 class AddZettelRequest(BaseModel):
+    # PR #39 / Wave-1 A2 (2026-05-20): `mode` field retired. The route is
+    # always-async now (always 202 + polling) per the single-pipeline-path
+    # refactor in A1. The historical `mode: Literal["sync","auto"]` was
+    # declared but ignored by the handler; the frontend's `mode:"sync"`
+    # claim was a contract lie. Pydantic still ignores extra fields by
+    # default for forward compatibility with old clients sending mode.
     url: str
     client_action_id: str = Field(min_length=1, max_length=160)
     persist: bool = True
     surface: Literal["landing", "home", "zettels"]
-    mode: Literal["sync", "auto"] = "sync"
 
     @field_validator("url")
     @classmethod
@@ -554,96 +560,79 @@ async def add_zettel(
     if backpressure_response is not None:
         return backpressure_response
 
+    # PR #39 / Wave-1 A1 (2026-05-20): single-pipeline path.
+    # The previous design wrapped `_run_add_zettel` in a `work` probe + a
+    # 20s `wait_for(shield)` race that, on timeout, spawned a SECOND copy of
+    # the pipeline via `_run(...)` while cancelling the first. That doubled
+    # the pipeline work for any URL exceeding the fast-ack window (20s wasted
+    # + full re-run), and left the `_SUMMARIZE_SEMAPHORE` held by the
+    # cancelled probe until cooperative cancellation propagated through the
+    # Gemini SDK. The route now always 202s immediately: ops_accept records
+    # the queued row, _run takes the canonical pipeline lane, and the client
+    # polls `/api/operations/{id}` for terminal state. Fast cached results
+    # (duplicate request_hash on a succeeded row) resolve in one extra poll
+    # rather than inline-200, accepted as the price of correctness.
     try:
-        work = asyncio.create_task(
-            _run_add_zettel(body, user=user, effective_user_id=effective_user_id)
-        )
+        accepted = AddZettelResponse(
+            status="accepted",
+            operation_id=operation_id,
+            persistence=persistence_dto(body.persist, None),
+            quality=QualityDTO(confidence="pending"),
+            status_url=f"/api/operations/{operation_id}",
+        ).model_dump(mode="json")
+        # State-guarded accept via core.ops_accept RPC (migration 51).
+        # Returns the CANONICAL op_id + is_new flag. Per Stripe/Brandur
+        # idempotency: duplicate (user_id, request_hash) for an active
+        # row returns the existing canonical op rather than creating a
+        # new one — the client's poll resolves to the same result.
         try:
-            # Inline-return path: fast jobs (<= N s) still get a synchronous
-            # 200 with the full result, exactly as before.
-            result = await asyncio.wait_for(
-                asyncio.shield(work), timeout=_AUTO_ACCEPT_AFTER_SECONDS
-            )
-        except TimeoutError:
-            # Phase 2 (async-ops redesign) — universal 202 fast-ack flow.
-            # Build the accepted body shape FIRST (DB row carries it).
-            accepted = AddZettelResponse(
-                status="accepted",
+            canonical_op_id, is_new = await asyncio.to_thread(
+                operations_repo.accept,
+                user_id=effective_user_id,
                 operation_id=operation_id,
-                persistence=persistence_dto(body.persist, None),
-                quality=QualityDTO(confidence="pending"),
-                status_url=f"/api/operations/{operation_id}",
-            ).model_dump(mode="json")
-            # State-guarded accept via core.ops_accept RPC (migration 51).
-            # Returns the CANONICAL op_id + is_new flag. Per Stripe/Brandur
-            # idempotency: duplicate (user_id, request_hash) for an active
-            # row returns the existing canonical op rather than creating a
-            # new one — the client's poll resolves to the same result.
-            try:
-                canonical_op_id, is_new = await asyncio.to_thread(
-                    operations_repo.accept,
-                    user_id=effective_user_id,
-                    operation_id=operation_id,
-                    request_hash=request_hash,
-                    accepted_body=accepted,
-                    ttl_seconds=86400,
-                )
-            except Exception:
-                logger.exception(
-                    "operations_repo.accept raised (op=%s); falling back to local op_id",
-                    operation_id,
-                )
-                canonical_op_id, is_new = operation_id, True
-
-            if is_new:
-                # Spawn the background worker holding the canonical op id.
-                # _LIVE_TASKS is the strong-ref + cancel target for the local
-                # process; the DB row is the cross-worker truth.
-                run_task = asyncio.create_task(
-                    _run(
-                        user_id=effective_user_id,
-                        operation_id=canonical_op_id,
-                        body=body,
-                        user=user,
-                    )
-                )
-                _LIVE_TASKS[canonical_op_id] = run_task
-                run_task.add_done_callback(
-                    lambda _t, _op=canonical_op_id: _LIVE_TASKS.pop(_op, None)
-                )
-                # The original `work` task was a probe to time-bound the
-                # inline path; we abandon it now (its result, if it ever
-                # arrives, would race the canonical _run path). Cancel +
-                # discard cleanly. Wrap in try/except — task may already
-                # be done or cancelled by other code paths.
-                if not work.done():
-                    work.cancel()
-            else:
-                # Duplicate active request: another worker / earlier accept
-                # already owns the canonical op. Abandon our probe task; the
-                # client polls the canonical op id and gets the same result.
-                if not work.done():
-                    work.cancel()
-                # Overwrite the accepted body's operation_id to the canonical
-                # one so the 202 body + Location header agree.
-                accepted["operation_id"] = canonical_op_id
-                accepted["status_url"] = f"/api/operations/{canonical_op_id}"
-
-            return JSONResponse(
-                accepted,
-                status_code=202,
-                headers={
-                    "Location": f"/api/operations/{canonical_op_id}",
-                    "Retry-After": "2",
-                },
+                request_hash=request_hash,
+                accepted_body=accepted,
+                ttl_seconds=86400,
             )
-        # Inline-return success path: the work task completed within the
-        # auto-accept window, so a synchronous 200 with the full result is
-        # returned to the client. Idempotency / cross-worker dedup now live
-        # on the DB row written by the run path; the inline-return branch
-        # does not touch the operations store (the request never crossed the
-        # fast-ack boundary).
-        return result
+        except Exception:
+            logger.exception(
+                "operations_repo.accept raised (op=%s); falling back to local op_id",
+                operation_id,
+            )
+            canonical_op_id, is_new = operation_id, True
+
+        if is_new:
+            # Spawn the background worker holding the canonical op id.
+            # _LIVE_TASKS is the strong-ref + cancel target for the local
+            # process; the DB row is the cross-worker truth.
+            run_task = asyncio.create_task(
+                _run(
+                    user_id=effective_user_id,
+                    operation_id=canonical_op_id,
+                    body=body,
+                    user=user,
+                )
+            )
+            _LIVE_TASKS[canonical_op_id] = run_task
+            run_task.add_done_callback(
+                lambda _t, _op=canonical_op_id: _LIVE_TASKS.pop(_op, None)
+            )
+        else:
+            # Duplicate active request: an existing canonical op already owns
+            # this work. The client polls the canonical op id and resolves to
+            # the same result. Realign the response so 202 body + Location
+            # header agree on the canonical id.
+            accepted["operation_id"] = canonical_op_id
+            accepted["status_url"] = f"/api/operations/{canonical_op_id}"
+
+        return JSONResponse(
+            accepted,
+            status_code=202,
+            headers={
+                "Location": f"/api/operations/{canonical_op_id}",
+                "Retry-After": "2",
+            },
+        )
     except HTTPException as exc:
         detail = exc.detail
         problem_title = "Add Zettel request rejected"

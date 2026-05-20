@@ -26,8 +26,10 @@ def test_slow_add_fast_acks_202_for_sync_mode():
         captured.update(kw)
         return (kw.get("operation_id"), True)  # canonical_op_id, is_new
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
+    # is kept only to keep the background _run task alive past the response
+    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
                side_effect=_accept), \
          patch("website.api.zettels_routes.operations_repo.start",
@@ -37,7 +39,7 @@ def test_slow_add_fast_acks_202_for_sync_mode():
         r = _client().post(
             "/api/zettels/add",
             json={"url": "https://example.com", "client_action_id": "op-sync-1",
-                  "surface": "landing", "mode": "sync", "persist": False},
+                  "surface": "landing", "persist": False},
         )
     assert r.status_code == 202
     body = r.json()
@@ -159,7 +161,7 @@ def test_run_add_zettel_does_not_block_on_graph_invalidation(monkeypatch):
     async def _go():
         body = zr.AddZettelRequest(
             url="https://example.com", client_action_id="g-1",
-            surface="landing", mode="sync",
+            surface="landing",
         )
         res = await zr._run_add_zettel(
             body, user=None, effective_user_id=zr._zoro_user_id()
@@ -246,8 +248,10 @@ def test_supabase_write_failure_does_not_5xx_the_add():
         await asyncio.sleep(30)
         return {"persistence": {"persisted": False}}
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
+    # is kept only to keep the background _run task alive past the response
+    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
                side_effect=RuntimeError("supabase down")), \
          patch("website.api.zettels_routes.operations_repo.start",
@@ -257,7 +261,7 @@ def test_supabase_write_failure_does_not_5xx_the_add():
         r = _client().post(
             "/api/zettels/add",
             json={"url": "https://example.com", "client_action_id": "store-down-1",
-                  "surface": "landing", "mode": "sync", "persist": False},
+                  "surface": "landing", "persist": False},
         )
     assert r.status_code == 202  # accept fail-open; never 5xx
 
@@ -282,8 +286,10 @@ def test_accept_path_calls_ops_accept_rpc_and_returns_202_with_location():
         accept_calls.append(kw)
         return (kw.get("operation_id"), True)
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
+    # is kept only to keep the background _run task alive past the response
+    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
                side_effect=_accept), \
          patch("website.api.zettels_routes.operations_repo.start",
@@ -293,7 +299,7 @@ def test_accept_path_calls_ops_accept_rpc_and_returns_202_with_location():
         r = _client().post(
             "/api/zettels/add",
             json={"url": "https://example.com", "client_action_id": "ph2-accept",
-                  "surface": "landing", "mode": "sync", "persist": False},
+                  "surface": "landing", "persist": False},
         )
     assert r.status_code == 202
     assert r.headers.get("Location") == "/api/operations/ph2-accept"
@@ -318,8 +324,10 @@ def test_accept_returns_existing_op_id_when_not_new():
     def _accept(**_kw):
         return ("canonical-existing", False)
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
+    # is kept only to keep the background _run task alive past the response
+    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
                side_effect=_accept), \
          patch("website.api.zettels_routes.operations_repo.start",
@@ -331,7 +339,7 @@ def test_accept_returns_existing_op_id_when_not_new():
         r = _client().post(
             "/api/zettels/add",
             json={"url": "https://example.com", "client_action_id": "client-attempt",
-                  "surface": "landing", "mode": "sync", "persist": False},
+                  "surface": "landing", "persist": False},
         )
         after_live = set(zr._LIVE_TASKS.keys())
     assert r.status_code == 202
@@ -357,8 +365,10 @@ def test_accept_honors_idempotency_key_header():
         captured.update(kw)
         return (kw.get("operation_id"), True)
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
+    # is kept only to keep the background _run task alive past the response
+    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
                side_effect=_accept), \
          patch("website.api.zettels_routes.operations_repo.start",
@@ -368,7 +378,7 @@ def test_accept_honors_idempotency_key_header():
         r = _client().post(
             "/api/zettels/add",
             json={"url": "https://example.com", "client_action_id": "client-id",
-                  "surface": "landing", "mode": "sync", "persist": False},
+                  "surface": "landing", "persist": False},
             headers={"Idempotency-Key": "header-key-wins"},
         )
     assert r.status_code == 202
@@ -563,7 +573,6 @@ def test_post_add_zettel_returns_429_when_user_over_inflight_limit():
                 "url": "https://example.com",
                 "client_action_id": "ph4-bp-429",
                 "surface": "landing",
-                "mode": "sync",
                 "persist": False,
             },
         )
@@ -592,8 +601,7 @@ def test_post_add_zettel_calls_ops_accept_when_under_limit():
     async def _no_backpressure(*_a, **_k):
         return None
 
-    with patch("website.api.zettels_routes._AUTO_ACCEPT_AFTER_SECONDS", 0.05), \
-         patch("website.api.zettels_routes._run_add_zettel", _slow), \
+    with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch(
             "website.api.zettels_routes.check_async_backpressure",
             side_effect=_no_backpressure,
@@ -616,7 +624,6 @@ def test_post_add_zettel_calls_ops_accept_when_under_limit():
                 "url": "https://example.com",
                 "client_action_id": "ph4-bp-pass",
                 "surface": "landing",
-                "mode": "sync",
                 "persist": False,
             },
         )

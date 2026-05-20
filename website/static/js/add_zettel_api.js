@@ -51,17 +51,24 @@
     return { body: body, retryAfter: response.headers.get('Retry-After') };
   }
 
-  // ~180s total budget (matches GUNICORN_TIMEOUT) so slow YouTube/long-form
-  // synth completes via polling instead of a Cloudflare 524. Fast polls first
-  // to catch quick jobs, then steady 4s; server Retry-After (seconds) wins.
-  var POLL_BUDGET_MS = 180000;
+  // PR #39 / Wave-1 C1 (2026-05-20): 300s budget aligns with the 7-min
+  // stuck-running reaper threshold (migration 59) + headroom so polling
+  // can resolve before the reaper marks a long-running op as failed.
+  // Exponential backoff (1s, 2s, 4s, capped at 8s) reduces poll storm on
+  // the operations endpoint without sacrificing perceived snappiness for
+  // fast jobs. Server `Retry-After` always wins when present.
+  var POLL_BUDGET_MS = 300000;
+  var POLL_BACKOFF_SCHEDULE_MS = [1000, 2000, 4000, 8000];
+  var POLL_BACKOFF_CAP_MS = 8000;
 
   async function pollAccepted(body, headers) {
     if (!body || body.status !== 'accepted' || !body.status_url) return body;
     var elapsed = 0;
     var attempt = 0;
     while (elapsed < POLL_BUDGET_MS) {
-      var wait = attempt < 3 ? 1500 : 4000;
+      var wait = attempt < POLL_BACKOFF_SCHEDULE_MS.length
+        ? POLL_BACKOFF_SCHEDULE_MS[attempt]
+        : POLL_BACKOFF_CAP_MS;
       if (body && body.retry_after) {
         var ra = parseInt(body.retry_after, 10);
         if (!isNaN(ra) && ra > 0) wait = ra * 1000;
@@ -106,8 +113,8 @@
         url: opts.url,
         client_action_id: opts.clientActionId || makeActionId(opts.surface),
         persist: opts.persist !== false,
-        surface: opts.surface || 'landing',
-        mode: opts.mode || 'sync'
+        surface: opts.surface || 'landing'
+        // PR #39 / Wave-1 A2: `mode` field retired (route is always-async).
       })
     });
 
