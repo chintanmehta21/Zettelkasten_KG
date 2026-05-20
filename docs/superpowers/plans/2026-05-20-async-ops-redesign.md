@@ -25,7 +25,7 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
 ## File structure
 
 - **New:** `supabase/website/_v2/51_operations_state_machine.sql` — partial UNIQUE index, status CHECK, three RPCs (`ops_accept`, `ops_start`, `ops_finalize`).
-- **New:** `supabase/website/_v2/52_stuck_running_reaper.sql` — pg_cron job extension (or amends 49 if cleanly possible; see Phase 4).
+- **New:** `supabase/website/_v2/57_stuck_running_reaper.sql` — pg_cron job extension (or amends 49 if cleanly possible; see Phase 4).
 - **Modify:** `website/core/operations_repo.py` — replace `create_accepted` / `mark_succeeded` / `mark_failed` / `_mark` with `accept(...)` / `start(...)` / `finalize(...)` Python wrappers calling the RPCs; add `get_operation` (kept) and new `count_in_flight_for_user(...)` (backpressure) and `cancel(...)`.
 - **Modify:** `website/api/zettels_routes.py` — delete `_OPERATIONS`, `_OPERATION_TASKS`, `_IN_FLIGHT`, `_operation_put`, `_operation_get`, `_cache_get`, `_cache_put`, `_store_operation_result`'s in-memory branches, `_persist_terminal`, the LRU/eviction logic. Keep one `_LIVE_TASKS: dict[str, asyncio.Task]` strong-ref + cancel target (never read by GET). New `operation_status` GET reads DB only. New POST flow: `accept()` → 202 + Location + Retry-After (idempotent by partial unique index) → `_LIVE_TASKS[op_id] = asyncio.create_task(_run(...))` → `start()` inside `_run` → `finalize()` in try/except/finally.
 - **Modify:** `website/api/zettels_routes.py` sync error path — refactor `_problem()` to return / mirror the RFC 9457 shape exactly; the async `finalize(error=...)` writes the SAME shape into the jsonb column.
@@ -150,7 +150,7 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
   - `class AsyncBackpressureGate: async def check(self, user_id, *, limit=_MAX_IN_FLIGHT_PER_USER) -> None | JSONResponse:` returns a 429-with-RFC-9457-body if exceeded, else None.
   - Default `_MAX_IN_FLIGHT_PER_USER = 3` (tuned later; bias conservative). Configurable via env if needed.
 - [ ] **Step 2:** Wire the gate at the accept path of `add_zettel` BEFORE `ops.accept(...)`. (Per the reuse rule — single source for future endpoints like file upload, chat.)
-- [ ] **Step 3:** `supabase/website/_v2/52_stuck_running_reaper.sql` — extend the existing pg_cron job from migration 49 to also:
+- [ ] **Step 3:** `supabase/website/_v2/57_stuck_running_reaper.sql` — extend the existing pg_cron job from migration 49 to also:
   ```sql
   UPDATE core.operations
   SET status='failed',
@@ -183,8 +183,8 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
 - [ ] **Step 3:** `python -m pytest tests/integration/v2/ -q 2>&1 | tail -15` — green (covers the state-machine RPCs end-to-end with real Supabase + the stuck-running reaper).
 - [ ] **Step 4:** `python -m ruff check website tests` → `All checks passed!`.
 - [ ] **Step 5:** `node --check website/features/user_home/js/home.js && node --check website/features/user_zettels/js/user_zettels.js && node --check website/static/js/add_zettel_api.js`.
-- [ ] **Step 6:** Co-apply plan documented (`ops/co_apply/2026-05-20-migration-51-52.md`): operator runs `python ops/scripts/apply_migrations.py --v2 51_operations_state_machine.sql 52_stuck_running_reaper.sql` against prod via the sanctioned path; manifest entry; rollback procedure; smoke test (POST /api/zettels/add of a known URL → poll → succeed).
-- [ ] **Step 7:** Commit `feat: delete obsolete in-memory ops state` + `docs: co-apply plan migration 51+52`.
+- [ ] **Step 6:** Co-apply plan documented (`ops/co_apply/2026-05-20-migration-51-57.md`): operator runs `python ops/scripts/apply_migrations.py --v2 51_operations_state_machine.sql 57_stuck_running_reaper.sql` against prod via the sanctioned path; manifest entry; rollback procedure; smoke test (POST /api/zettels/add of a known URL → poll → succeed).
+- [ ] **Step 7:** Commit `feat: delete obsolete in-memory ops state` + `docs: co-apply plan migration 51+57`.
 - [ ] **Step 8:** Brief summary; **STOP for operator rebase-merge approval + prod co-apply approval**. No autonomous push/PR/merge; never autonomous co-apply (operator runs the migration).
 
 ---
@@ -303,7 +303,7 @@ All five verification steps executed read-only against installed package source,
 - pg_cron supports `cron.alter_job(job_id, schedule, command, database, username, active)` for in-place modification. Signature: *"CREATE OR REPLACE FUNCTION cron.alter_job(job_id bigint, schedule text DEFAULT NULL::text, command text DEFAULT NULL::text, database text DEFAULT NULL::text, username text DEFAULT NULL::text, active boolean DEFAULT NULL::boolean) RETURNS void"*. Cited: https://github.com/citusdata/pg_cron/blob/main/README.md (accessed 2026-05-20).
 - `cron.schedule(name, schedule, command)` does NOT have documented upsert/replace behavior; calling it twice with the same name is not guaranteed to replace. Safe pattern is `cron.unschedule(name)` then `cron.schedule(name, ...)`, or look up the job_id and call `cron.alter_job(job_id, ...)`.
 
-**Recommendation (must operator-confirm in Phase 4, not auto-decided here):** Ship the stuck-running reaper as a SEPARATE new pg_cron job in a NEW migration `52_stuck_running_reaper.sql` (per the plan filename) with its own job name `'reap_stuck_running_operations'`, not by modifying job 49's command. Rationale:
+**Recommendation (must operator-confirm in Phase 4, not auto-decided here):** Ship the stuck-running reaper as a SEPARATE new pg_cron job in a NEW migration `57_stuck_running_reaper.sql` (per the plan filename) with its own job name `'reap_stuck_running_operations'`, not by modifying job 49's command. Rationale:
 1. Separation of concerns: TTL sweep (DELETE expired) and stuck-running reaper (UPDATE running→failed) have different cadences and different blast radii.
 2. Migration hygiene: migration 49 is already live in prod; amending its body would require a destructive `cron.unschedule` + re-`cron.schedule` (or `cron.alter_job(job_id, command:=...)`), introducing a brief window where the sweep is unscheduled if the migration is interrupted.
 3. Idempotency: the same `IF NOT EXISTS` guard pattern from migration 49 trivially extends.
@@ -312,7 +312,7 @@ All five verification steps executed read-only against installed package source,
 - `supabase/website/_v2/49_operations_sweep.sql:18-29`.
 - https://github.com/citusdata/pg_cron/blob/main/README.md `cron.alter_job` signature + `cron.schedule` semantics (accessed 2026-05-20).
 
-**Impact on Phase 1+:** Phase 4 step 3 SHOULD ship as standalone migration 52 with a new job name, per the recommendation above. The plan body already aligns with this (it names `52_stuck_running_reaper.sql`); the open option to "amend 49 if cleanly possible" is REJECTED here for the three reasons listed.
+**Impact on Phase 1+:** Phase 4 step 3 SHOULD ship as standalone migration 57 with a new job name, per the recommendation above. The plan body already aligns with this (it names `57_stuck_running_reaper.sql`); the open option to "amend 49 if cleanly possible" is REJECTED here for the three reasons listed.
 
 ### Step 4 — RFC 9457 exact field set
 
