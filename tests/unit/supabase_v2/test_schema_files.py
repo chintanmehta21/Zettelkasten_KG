@@ -69,6 +69,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "52_default_privileges_hardening.sql",
         "53_set_search_path_v2_functions.sql",
         "54_revoke_legacy_public_secdef_grants.sql",
+        "55_revoke_public_grant_on_secdef.sql",
     ]
 
 
