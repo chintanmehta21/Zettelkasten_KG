@@ -64,28 +64,29 @@ class TestAddZettelEndpoint:
 
 class TestRateLimit:
     def test_rate_limit_enforced(self, client: TestClient, monkeypatch) -> None:
-        """After 10 requests in quick succession, the 11th should be rate-limited."""
+        """After 10 requests in quick succession, the 11th should be rate-limited.
+
+        PR #39 / Wave-1 A1 (2026-05-20): the route is now always-async (202)
+        regardless of pipeline outcome — the inline 200 path is gone. Each
+        of the first 10 calls returns 202; the 11th is 429 from the rate
+        limiter which fires BEFORE accept (same precondition as before)."""
+        from unittest.mock import AsyncMock
         from website.api import zettels_routes
 
         async def fake_run(body, *, user, effective_user_id):
-            return {
-                "status": "succeeded",
-                "operation_id": body.client_action_id,
-                "summary": None,
-                "persistence": {
-                    "requested": True,
-                    "persisted": False,
-                    "file_store": False,
-                    "supabase": False,
-                    "duplicate": False,
-                },
-                "quality": {"confidence": "test", "confidence_reason": None, "quality_signals": {}},
-                "node_id": None,
-                "workspace_zettel_id": None,
-                "status_url": None,
-            }
+            return {"status": "succeeded"}
 
         monkeypatch.setattr(zettels_routes, "_run_add_zettel", fake_run)
+        # Stub the ops state machine so the bg _run task doesn't hit real Supabase.
+        monkeypatch.setattr(zettels_routes.operations_repo, "accept",
+                            lambda **kw: (kw["operation_id"], True))
+        monkeypatch.setattr(zettels_routes.operations_repo, "start",
+                            lambda **kw: True)
+        monkeypatch.setattr(zettels_routes.operations_repo, "finalize",
+                            lambda **kw: True)
+        monkeypatch.setattr(zettels_routes, "check_async_backpressure",
+                            AsyncMock(return_value=None))
+
         for i in range(10):
             resp = client.post(
                 "/api/zettels/add",
@@ -95,7 +96,7 @@ class TestRateLimit:
                     "surface": "landing",
                 },
             )
-            assert resp.status_code == 200
+            assert resp.status_code == 202
 
         resp = client.post(
             "/api/zettels/add",
