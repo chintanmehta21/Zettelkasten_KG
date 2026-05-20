@@ -1,25 +1,24 @@
-"""Multi-chunk persist contract (RAG+KG root-cause fix).
+"""Multi-chunk contract — PR #39 Wave-3 lazy-enrichment rewrite.
 
-ROOT CAUSE this covers: ``_persist_supabase_v2_zettel`` previously built
-exactly ONE ``CanonicalChunkCreate`` regardless of body length, so every
-end-user zettel was a single monolithic chunk -> RAG retrieval had no
-passage granularity and KG (chunk_node_mentions/structural) was starved.
+Original ROOT CAUSE this file pinned: ``_persist_supabase_v2_zettel`` built
+exactly ONE ``CanonicalChunkCreate`` regardless of body length, starving
+RAG passage granularity. The corrected contract — segment into multiple
+chunks with monotonic chunk_idx, single batch embed, embed-or-skip on
+batch-embed failure, content-hash determinism, chunk-count cap — is now
+enforced by ``persist.build_canonical_chunks`` (the shared core also
+called by the lazy enrichment handler ``chunk_embed.handle`` and the
+``backfill_rechunk_v2.py`` script).
 
-These tests pin the corrected contract:
-- a long body is segmented into MULTIPLE chunks with increasing chunk_idx,
-  each with token_count > 0 and an embedding set;
-- the embed path is a SINGLE batch call for all chunk texts;
-- a short body still produces >= 1 chunk;
-- a batch-embed FAILURE persists the zettel with ZERO chunks (the existing
-  embed-or-skip contract, now applied to the whole chunk list);
-- the deterministic ``content_hash`` (P1-7) is unchanged vs pre-fix;
-- ``_schedule_rag_chunks`` (dead path) is gone;
-- the per-zettel chunk-count safety cap is honored.
-
-All Supabase / Gemini access is mocked; no live network.
+These tests therefore target ``build_canonical_chunks`` directly. The
+prior end-to-end `_persist_supabase_v2_zettel` tests are superseded by:
+  * ``tests/unit/summarization_engine/test_lazy_enrichment.py`` for the
+    enqueue + worker + handler dispatch.
+  * ``test_content_hash_unchanged_vs_prefix`` below for the dedup hash
+    invariant (still tested via the inline canonical zettel write).
 """
 from __future__ import annotations
 
+import hashlib
 from datetime import date
 from uuid import UUID
 
@@ -28,6 +27,7 @@ import pytest
 from website.core import persist
 from website.core.supabase_v2.models import CanonicalUpsertResult
 
+
 _PROFILE = UUID("00000000-0000-0000-0000-000000000001")
 _WORKSPACE = UUID("00000000-0000-0000-0000-000000000002")
 _WZID = UUID("00000000-0000-0000-0000-000000000222")
@@ -35,6 +35,11 @@ _CANON = UUID("00000000-0000-0000-0000-000000000111")
 
 
 class _CaptureRepo:
+    """Minimal repo stub: captures whichever chunks the persist path
+    passes to upsert_canonical_zettel. Post-Wave-3 this is always []
+    (the inline persist no longer builds chunks); pre-Wave-3 it captured
+    the inline chunk list."""
+
     def __init__(self) -> None:
         self.chunks = None
         self.zettel = None
@@ -50,7 +55,6 @@ class _CaptureRepo:
 
 
 def _long_body(paragraphs: int = 40) -> str:
-    # ~9k+ chars of distinct sentences so the long-form chunker segments it.
     sent = (
         "Naruto Uzumaki trains relentlessly to master the Rasengan and "
         "earn the village's respect on his path to becoming Hokage. "
@@ -72,13 +76,15 @@ def _payload(*, raw_text: str | None = None, summary: str = "S") -> dict:
     return p
 
 
+# ---------------------------------------------------------------------------
+# build_canonical_chunks (the shared chunker+embed core)
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
 async def test_long_body_segments_into_many_chunks_single_batch_embed(monkeypatch):
-    """OLD->NEW (R1): pre-R1 this fed a long RAW body and asserted the raw
-    body (not the short summary) was chunked. Post-R1 the SUMMARY is the
-    primary chunk source, so a long *summary* must segment into MULTIPLE
-    CanonicalChunkCreate with monotonic chunk_idx, each token_count>0 +
-    embedding set, produced by exactly ONE batch embed call."""
+    """R1 contract: a long SUMMARY is segmented into MULTIPLE chunks via a
+    SINGLE batch embed call. Each chunk well-formed with monotonic idx."""
     long_summary = _long_body()
     embed_calls = {"n": 0, "batch_sizes": []}
 
@@ -88,32 +94,22 @@ async def test_long_body_segments_into_many_chunks_single_batch_embed(monkeypatc
         return [[0.01] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=_payload(raw_text="A short raw body that must NOT be chunked under R1."),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary=long_summary,
-        profile_id=_PROFILE,
     )
 
-    assert repo.chunks is not None
-    assert len(repo.chunks) > 1, "long summary must produce multiple chunks"
-    # Single batch embed call covering every chunk text.
+    assert len(chunks) > 1, "long summary must produce multiple chunks"
     assert embed_calls["n"] == 1
-    assert embed_calls["batch_sizes"][0] == len(repo.chunks)
-    # chunk_idx is 0..N-1 strictly increasing; each chunk well-formed.
-    for i, ch in enumerate(repo.chunks):
+    assert embed_calls["batch_sizes"][0] == len(chunks)
+    for i, ch in enumerate(chunks):
         assert ch.chunk_idx == i
         assert ch.token_count and ch.token_count > 0
         assert ch.embedding is not None and len(ch.embedding) == 768
         assert ch.embedding_model_version == persist._CHUNK_EMBED_MODEL_VERSION
         assert ch.content
-    # The chunked source is the SUMMARY (R1 primary), not the short raw body.
-    joined = " ".join(c.content for c in repo.chunks)
+    joined = " ".join(c.content for c in chunks)
     assert "Paragraph 0" in joined
 
 
@@ -123,54 +119,36 @@ async def test_short_body_still_produces_at_least_one_chunk(monkeypatch):
         return [[0.02] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=_payload(raw_text="Short but real body about Naruto."),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="Naruto becomes Hokage.",
-        profile_id=_PROFILE,
     )
-    assert repo.chunks is not None and len(repo.chunks) >= 1
-    assert repo.chunks[0].embedding is not None
+    assert len(chunks) >= 1
+    assert chunks[0].embedding is not None
 
 
 @pytest.mark.asyncio
-async def test_batch_embed_failure_persists_zettel_with_zero_chunks(monkeypatch):
-    """Existing embed-or-skip contract, now over the whole list: a batch
-    embed failure persists the zettel WITHOUT any chunk rows (never a lying
-    NULL-embedding row)."""
+async def test_batch_embed_failure_yields_zero_chunks(monkeypatch):
+    """Embed-or-skip contract: a batch embed failure returns [], so the
+    handler persists nothing and backfill_rechunk_v2.py recovers later."""
 
     async def _fail(texts):
         return None
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fail)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    node_id, saved, _dup = await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=_payload(raw_text=_long_body()),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="summary",
-        profile_id=_PROFILE,
     )
-    assert repo.chunks == []
-    assert saved is True
-    assert node_id == str(_WZID)
+    assert chunks == []
 
 
 @pytest.mark.asyncio
 async def test_truly_empty_source_no_embed_no_chunks(monkeypatch):
-    """No body, summary, title, or tags -> the chunker's synthesized
-    fallback is also empty -> ZERO chunks, ZERO embed calls (embed-or-skip
-    contract at the floor). A node WITH a title but no body still gets a
-    synthesized title/tag fallback chunk — that path is covered in
-    test_persist_chunk_embedding.py::test_no_chunk_text_no_embed_call."""
+    """No body/summary/title/tags -> the chunker's synthesized fallback is
+    also empty -> ZERO chunks, ZERO embed calls."""
     called = {"n": 0}
 
     async def _spy(texts):
@@ -178,10 +156,8 @@ async def test_truly_empty_source_no_embed_no_chunks(monkeypatch):
         return [[0.0] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _spy)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload={
             "source_url": "https://example.com/post",
             "source_type": "web",
@@ -190,27 +166,49 @@ async def test_truly_empty_source_no_embed_no_chunks(monkeypatch):
             "tags": [],
             "metadata": {},
         },
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="",
-        profile_id=_PROFILE,
     )
-    assert repo.chunks == []
+    assert chunks == []
     assert called["n"] == 0
 
 
 @pytest.mark.asyncio
-async def test_content_hash_unchanged_vs_prefix(monkeypatch):
-    """P1-7 regression: rewiring chunking must NOT change the dedup hash for
-    the same input. The hash derives only from URL + source_fingerprint."""
-    import hashlib
+async def test_chunk_count_safety_cap_enforced(monkeypatch):
+    """Pathological body cannot explode chunk count past the cap."""
 
     async def _fake_embed(texts):
-        return [[0.01] * 768 for _ in texts]
+        return [[0.0] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
+    monkeypatch.setattr(persist, "_MAX_CHUNKS_PER_ZETTEL", 5)
+
+    huge = _long_body(paragraphs=400)
+    chunks = await persist.build_canonical_chunks(
+        payload=_payload(raw_text="short raw"),
+        detailed_summary=huge,
+    )
+    assert len(chunks) <= 5
+
+
+# ---------------------------------------------------------------------------
+# Whole-pipeline invariants still relevant after Wave-3
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_content_hash_unchanged_vs_prefix(monkeypatch):
+    """P1-7 regression: rewiring chunking must NOT change the dedup hash
+    for the same input. The hash derives only from URL + fingerprint."""
     monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+    # PR #39 Wave-3: persist no longer chunks inline, so embed mock is
+    # unused — but persist now enqueues a chunk_embed job; stub the
+    # enqueue so the test doesn't hit Supabase.
+    from website.features.summarization_engine.lazy_enrichment import (
+        repo as enrichment_repo,
+    )
+    monkeypatch.setattr(
+        enrichment_repo, "enqueue_chunk_embed", lambda **_k: (None, False)
+    )
 
     repo = _CaptureRepo()
     payload = _payload(raw_text="RAW SOURCE TEXT")
@@ -227,33 +225,9 @@ async def test_content_hash_unchanged_vs_prefix(monkeypatch):
         "https://example.com/post\x00RAW SOURCE TEXT".encode("utf-8")
     ).digest()
     assert repo.zettel.content_hash == expected
-
-
-@pytest.mark.asyncio
-async def test_chunk_count_safety_cap_enforced(monkeypatch):
-    """A pathological body cannot explode chunk count past the cap."""
-
-    async def _fake_embed(texts):
-        return [[0.0] * 768 for _ in texts]
-
-    monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
-    monkeypatch.setattr(persist, "_MAX_CHUNKS_PER_ZETTEL", 5)
-
-    repo = _CaptureRepo()
-    # ~90k chars -> would chunk into far more than 5 segments. R1: the
-    # SUMMARY is the chunk source, so the huge body must be the summary.
-    huge = _long_body(paragraphs=400)
-    await persist._persist_supabase_v2_zettel(
-        payload=_payload(raw_text="short raw"),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
-        detailed_summary=huge,
-        profile_id=_PROFILE,
-    )
-    assert repo.chunks is not None
-    assert len(repo.chunks) <= 5
+    # PR #39 / Wave-3: persist passes [] for chunks (chunk+embed moved
+    # to the lazy enrichment job).
+    assert repo.chunks == []
 
 
 def test_schedule_rag_chunks_symbol_removed():
@@ -263,5 +237,48 @@ def test_schedule_rag_chunks_symbol_removed():
 
 
 def test_build_canonical_chunks_helper_exists():
-    """Shared chunk+embed core so persist and backfill cannot diverge."""
+    """Shared chunk+embed core — still reachable from both the lazy
+    enrichment handler and backfill_rechunk_v2.py."""
     assert hasattr(persist, "build_canonical_chunks")
+
+
+@pytest.mark.asyncio
+async def test_persist_enqueues_chunk_embed_after_canonical_write(monkeypatch):
+    """PR #39 Wave-3 invariant: after persist writes the canonical zettel,
+    it enqueues exactly ONE chunk_embed job carrying the source fingerprint
+    + summary, so the in-process worker can finalize the lazy chunking."""
+    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+
+    from website.features.summarization_engine.lazy_enrichment import (
+        repo as enrichment_repo,
+    )
+
+    enqueued: list[dict] = []
+
+    def _capture(**kw):
+        enqueued.append(kw)
+        return (str(_CANON), True)
+
+    monkeypatch.setattr(enrichment_repo, "enqueue_chunk_embed", _capture)
+
+    repo = _CaptureRepo()
+    await persist._persist_supabase_v2_zettel(
+        payload=_payload(raw_text="Real body."),
+        repo=repo,
+        workspace_id=_WORKSPACE,
+        captured_on=date.today(),
+        detailed_summary="A meaningful summary about Naruto.",
+        profile_id=_PROFILE,
+    )
+
+    assert len(enqueued) == 1
+    payload_out = enqueued[0]["payload"]
+    assert payload_out["canonical_zettel_id"] == str(_CANON)
+    assert payload_out["workspace_zettel_id"] == str(_WZID)
+    assert payload_out["detailed_summary"].startswith("A meaningful summary")
+    # The summarized_payload must carry source_url + tags + raw_text so the
+    # handler's build_canonical_chunks reproduces the exact chunk source.
+    sp = payload_out["summarized_payload"]
+    assert sp["source_url"] == "https://example.com/post"
+    assert sp["tags"] == ["anime"]
+    assert sp["raw_text"] == "Real body."

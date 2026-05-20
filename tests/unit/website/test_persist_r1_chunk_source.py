@@ -71,25 +71,20 @@ def _payload(*, raw_text=None, summary="S", source_type="web") -> dict:
 
 @pytest.mark.asyncio
 async def test_r1_summary_chosen_over_raw_when_both_present(monkeypatch):
-    """CONTRACT FLIP (old raw-primary -> new summary-primary): when BOTH a
-    real raw body and a real summary exist, the chunker is fed the SUMMARY."""
+    """Summary-primary chunk selection (R1). PR #39 Wave-3: the assertion
+    now targets ``build_canonical_chunks`` directly (the shared chunker+
+    embed core called by the lazy enrichment handler + backfill)."""
 
     async def _fake_embed(texts):
         return [[0.01] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=_payload(raw_text="RAW_BODY_TOKEN appears only in raw text."),
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="SUMMARY_TOKEN is the dense curated summary body.",
-        profile_id=_PROFILE,
     )
-    joined = " ".join(c.content for c in repo.chunks)
+    joined = " ".join(c.content for c in chunks)
     assert "SUMMARY_TOKEN" in joined
     assert "RAW_BODY_TOKEN" not in joined
 
@@ -102,19 +97,13 @@ async def test_r1_raw_fallback_when_summary_empty(monkeypatch):
         return [[0.01] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
     p = _payload(raw_text="RAW_BODY_TOKEN is the only available body.", summary="")
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=p,
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="",
-        profile_id=_PROFILE,
     )
-    joined = " ".join(c.content for c in repo.chunks)
+    joined = " ".join(c.content for c in chunks)
     assert "RAW_BODY_TOKEN" in joined
 
 
@@ -126,19 +115,13 @@ async def test_r1_raw_fallback_when_summary_is_stub(monkeypatch):
         return [[0.01] * 768 for _ in texts]
 
     monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
-    monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
 
-    repo = _CaptureRepo()
     p = _payload(raw_text="RAW_BODY_TOKEN real article text here.")
-    await persist._persist_supabase_v2_zettel(
+    chunks = await persist.build_canonical_chunks(
         payload=p,
-        repo=repo,
-        workspace_id=_WORKSPACE,
-        captured_on=date.today(),
         detailed_summary="transcript not available",
-        profile_id=_PROFILE,
     )
-    joined = " ".join(c.content for c in repo.chunks)
+    joined = " ".join(c.content for c in chunks)
     assert "RAW_BODY_TOKEN" in joined
 
 
@@ -195,10 +178,23 @@ async def test_unknown_source_type_logs_warning_then_maps_to_web(
 
 
 @pytest.mark.asyncio
-async def test_d10_zero_chunks_nonempty_source_sets_degraded_flag(monkeypatch):
-    """A non-empty source whose batch embed fails -> zettel still saved but
-    the PersistenceOutcome carries a degraded signal (NOT clean success)."""
+async def test_d10_zero_chunks_nonempty_source_no_inline_degraded_signal(monkeypatch):
+    """PR #39 Wave-3 CONTRACT CHANGE: chunk+embed moved off the critical
+    path. ``persist_summarized_result`` no longer knows whether chunks
+    will eventually land — it only knows the zettel + workspace zettel
+    were written. The ``degraded='no_chunks'`` inline signal therefore
+    cannot be emitted here anymore; the deferred handler logs the empty-
+    chunks case and the operations row's `error` (post-handler) surfaces
+    it to ops. The end-user sees the persisted zettel either way.
 
+    This test pins the new contract: a zettel that WILL eventually have
+    zero chunks (because the lazy embed fails) still returns a clean
+    persist outcome from the inline path. Surfacing "no chunks" to the
+    user is now an enrichment-side observability concern (planned in a
+    follow-up: read job status from /api/operations/{id})."""
+
+    # The inline path never builds chunks anymore, so embed-failure mocks
+    # here are no-ops; we still keep them as documentation of intent.
     async def _fail_embed(texts):
         return None
 
@@ -210,6 +206,13 @@ async def test_d10_zero_chunks_nonempty_source_sets_degraded_flag(monkeypatch):
     )
     monkeypatch.setattr(persist, "_persist_file_node", lambda *a, **k: None)
     monkeypatch.setattr(persist, "_file_graph_contains_url", lambda _u: False)
+    # Lazy enrichment enqueue stubbed so the test doesn't hit Supabase.
+    from website.features.summarization_engine.lazy_enrichment import (
+        repo as enrichment_repo,
+    )
+    monkeypatch.setattr(
+        enrichment_repo, "enqueue_chunk_embed", lambda **_k: ("stub-job", True)
+    )
 
     outcome = await persist.persist_summarized_result(
         {
@@ -225,9 +228,11 @@ async def test_d10_zero_chunks_nonempty_source_sets_degraded_flag(monkeypatch):
         user_sub=str(_PROFILE),
     )
     assert outcome.supabase_saved is True  # zettel still persisted
-    assert outcome.degraded is True
-    assert outcome.quality_flag == "no_chunks"
-    assert outcome.result.get("quality_flag") == "no_chunks"
+    # NEW contract: inline path is unaware of chunk outcomes; no degraded
+    # signal here.
+    assert outcome.degraded is False
+    assert outcome.quality_flag is None
+    assert outcome.result.get("quality_flag") is None
 
 
 @pytest.mark.asyncio

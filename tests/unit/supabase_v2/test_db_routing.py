@@ -34,21 +34,29 @@ class _FakeV2Repo:
 
 @pytest.mark.asyncio
 async def test_persist_routes_to_v2_when_scope_available(monkeypatch) -> None:
-    """CONTRACT CHANGE (old -> new): this previously asserted a SINGLE
-    ``chunks[0].chunk_idx == 0`` and did NOT mock the embedder — it only ever
-    passed against the pre-embedding-fix code that wrote one
-    ``embedding=None`` chunk unconditionally. The persist path now segments
-    the source into MANY chunks via the shared ``build_canonical_chunks``
-    core, and the embed-or-skip contract means a working embedder is required
-    for any chunk to be written (no lying NULL-embedding rows). We mock the
-    batch embed (no live Gemini) and assert the multi-chunk contract:
-    monotonically increasing chunk_idx, each with a 768-d vector."""
+    """v2-scope routing invariant: with a v2 scope available, persist
+    writes the canonical zettel + workspace zettel via the v2 repo.
 
-    async def _fake_embed(texts):
-        return [[0.01] * 768 for _ in texts]
-
-    monkeypatch.setattr(persist, "embed_chunk_texts", _fake_embed)
+    PR #39 Wave-3 CONTRACT CHANGE: chunks no longer land inline — the
+    inline upsert_canonical_zettel is now called with ``chunks=[]`` and a
+    lazy enrichment job is enqueued for the chunker+Gemini batch embed.
+    We assert both: the inline call uses empty chunks, AND
+    ``enrichment_repo.enqueue_chunk_embed`` is called exactly once with
+    the canonical_zettel_id of the freshly-written row.
+    """
     monkeypatch.setattr(persist, "_schedule_kg_population", lambda **_k: None)
+
+    from website.features.summarization_engine.lazy_enrichment import (
+        repo as enrichment_repo,
+    )
+
+    enqueued: list[dict] = []
+
+    def _capture(**kw):
+        enqueued.append(kw)
+        return ("stub-job", True)
+
+    monkeypatch.setattr(enrichment_repo, "enqueue_chunk_embed", _capture)
 
     repo = _FakeV2Repo()
     monkeypatch.setattr(
@@ -60,9 +68,6 @@ async def test_persist_routes_to_v2_when_scope_available(monkeypatch) -> None:
             UUID("00000000-0000-0000-0000-000000000002"),
         ),
     )
-    # Phase 8.0.3 B+: get_supabase_scope was retired. The v1 fallback branch
-    # in persist_summarized_result was removed; this monkeypatch is no longer
-    # needed.
     monkeypatch.setattr(persist, "_file_graph_contains_url", lambda url: False)
     monkeypatch.setattr(persist, "_persist_file_node", lambda payload, skip_duplicate: None)
 
@@ -82,8 +87,9 @@ async def test_persist_routes_to_v2_when_scope_available(monkeypatch) -> None:
     zettel, workspace, chunks = repo.calls[0]
     assert zettel.normalized_url == "https://example.com"
     assert workspace.workspace_id == UUID("00000000-0000-0000-0000-000000000002")
-    assert chunks and len(chunks) >= 1
-    for i, ch in enumerate(chunks):
-        assert ch.chunk_idx == i
-        assert ch.embedding is not None and len(ch.embedding) == 768
+    # Wave-3 invariant: chunks always [] on the critical path.
+    assert chunks == []
+    # ...and the lazy enrichment job is enqueued exactly once.
+    assert len(enqueued) == 1
+    assert enqueued[0]["canonical_zettel_id"] == UUID("00000000-0000-0000-0000-000000000111")
 

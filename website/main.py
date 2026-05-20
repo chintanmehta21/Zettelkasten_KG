@@ -91,12 +91,25 @@ async def _lifespan(
         heartbeat_loop(hb_stop, key_pool_getter=_key_pool_getter)
     )
 
+    # PR #39 / Wave-3 B1 (2026-05-20): in-process lazy-enrichment worker.
+    # One coroutine per gunicorn worker process drains the
+    # core.zettel_enrichment_jobs queue via SELECT FOR UPDATE SKIP LOCKED.
+    # Disabled in test/CI when ZK_LAZY_ENRICHMENT_DISABLED=1 (the worker's
+    # internal env check short-circuits at first iteration).
+    from website.features.summarization_engine.lazy_enrichment import (
+        worker as enrichment_worker,
+    )
+
+    enrichment_task = asyncio.create_task(enrichment_worker.run_forever())
+
     try:
         yield
     finally:
         hb_stop.set()
         task.cancel()
-        for t in (task, hb_task):
+        await enrichment_worker.request_stop()
+        enrichment_task.cancel()
+        for t in (task, hb_task, enrichment_task):
             try:
                 await t
             except (asyncio.CancelledError, Exception):
