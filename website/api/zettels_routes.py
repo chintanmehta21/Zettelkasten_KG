@@ -252,6 +252,69 @@ def _operation_get(operation_id: str) -> dict[str, Any] | None:
     return value
 
 
+def _async_failure_error_payload(exc: BaseException) -> dict[str, Any] | None:
+    """Map a background-task exception to a problem-detail dict matching the
+    SYNC route's `_problem(...)` body (zettels_routes.py L504-547), so a failure
+    that crossed the 20s universal-202 fast-ack boundary surfaces the SAME
+    structured payload to the frontend as the inline sync path. Returns None
+    for generic exceptions (no structured detail available — frontend falls
+    back to the existing confidence_reason-only generic UI)."""
+    _slug_prefix = "https://zettelkasten.in/problems/errors/"
+    if isinstance(exc, HTTPException):
+        # Mirrors sync handler L504-519: HTTPException with dict-or-str detail.
+        detail = exc.detail
+        title = "Add Zettel request rejected"
+        type_slug = "request-rejected"
+        if isinstance(detail, dict):
+            title = str(detail.get("message") or detail.get("error") or title)
+            if detail.get("code") == "quota_exhausted":
+                type_slug = "quota-exhausted"
+        return {
+            "type": f"{_slug_prefix}{type_slug}",
+            "title": title,
+            "status": exc.status_code,
+            "detail": detail,
+        }
+    if isinstance(exc, UnsupportedVideoError):
+        # Mirrors sync handler L520-528.
+        return {
+            "type": f"{_slug_prefix}unsupported-video",
+            "title": "Unsupported video",
+            "status": 422,
+            "detail": f"Video type cannot be ingested: {exc.reason}",
+        }
+    if isinstance(exc, ExtractionConfidenceError):
+        # Mirrors sync handler L529-538 (incl. extras passed via _problem.extra).
+        return {
+            "type": f"{_slug_prefix}insufficient-content",
+            "title": "Insufficient content",
+            "status": 422,
+            "detail": (
+                "Could not extract enough content from this URL to "
+                "produce a reliable summary."
+            ),
+            "reason": exc.reason,
+            "tier_results": list(exc.tier_results),
+        }
+    if isinstance(exc, (RoutingError, ValueError)):
+        # Mirrors sync handler L539-547.
+        return {
+            "type": f"{_slug_prefix}invalid-url",
+            "title": "Invalid Add Zettel request",
+            "status": 422,
+            "detail": str(exc),
+        }
+    if isinstance(exc, SupabaseV2PersistError):
+        # Mirrors sync handler L548-560.
+        return {
+            "type": f"{_slug_prefix}kg-write-failed",
+            "title": "Knowledge-graph write failed",
+            "status": 502,
+            "detail": exc.detail,
+        }
+    return None
+
+
 def _store_operation_result(
     task: asyncio.Task,
     *,
@@ -263,7 +326,9 @@ def _store_operation_result(
 ) -> None:
     failed = False
 
-    def _failed_response(reason: str) -> dict[str, Any]:
+    def _failed_response(
+        reason: str, *, error: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         return AddZettelResponse(
             status="failed",
             operation_id=operation_id,
@@ -272,6 +337,7 @@ def _store_operation_result(
                 confidence="failed",
                 confidence_reason=reason,
             ),
+            error=error,
         ).model_dump(mode="json")
 
     try:
@@ -280,13 +346,19 @@ def _store_operation_result(
         # CancelledError is BaseException, not Exception. _operation_put's LRU
         # eviction cancels old tasks; without this branch the cleanup trio
         # below is skipped and the _IN_FLIGHT slot is stuck forever.
+        # Cancellation is NOT a typed failure — no structured error attached.
         logger.warning("Background Add Zettel operation cancelled (op=%s)", operation_id)
         failed = True
         result = _failed_response("operation cancelled")
     except Exception as exc:
         logger.exception("Background Add Zettel operation failed")
         failed = True
-        result = _failed_response(str(exc))
+        # Preserve sync-path problem+json detail across the 20s fast-ack
+        # boundary so the frontend's class-specific UI (quota-exhausted,
+        # unsupported-video, etc.) keys off `err.detail.code` identically.
+        result = _failed_response(
+            str(exc), error=_async_failure_error_payload(exc),
+        )
     else:
         _cache_put(cache_key, request_hash, result)
     _operation_put(operation_id, result)

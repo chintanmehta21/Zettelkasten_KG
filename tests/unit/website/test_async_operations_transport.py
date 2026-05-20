@@ -221,6 +221,35 @@ def test_operation_status_is_user_scoped_bola():
     assert "user_id" in captured  # scoped read enforced server-side
 
 
+def test_failed_op_GET_returns_body_including_structured_error_field():
+    """P2: a failed-async op whose Supabase `error` column carries a structured
+    AddZettelResponse (with the new `error` field) must be returned VERBATIM —
+    the GET handler must NOT strip the `error` field. Frontend polls then see
+    `next.error.detail.code` after the F1 reject and route into UI classifiers."""
+    failed_with_struct = {
+        "status": "failed",
+        "operation_id": "op-struct-1",
+        "quality": {"confidence": "failed",
+                    "confidence_reason": "402: quota exhausted"},
+        "error": {
+            "type": "https://zettelkasten.in/problems/errors/quota-exhausted",
+            "title": "Quota exhausted",
+            "status": 402,
+            "detail": {"code": "quota_exhausted", "message": "Quota exhausted"},
+        },
+    }
+    with patch("website.api.zettels_routes.operations_repo.get_operation",
+               return_value={"status": "failed", "response": None,
+                             "error": failed_with_struct}):
+        r = _client().get("/api/operations/op-struct-1")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "failed"
+    # Structured detail survives the GET handler verbatim.
+    assert body["error"]["detail"]["code"] == "quota_exhausted"
+    assert body["error"]["status"] == 402
+
+
 def test_supabase_write_failure_does_not_5xx_the_add():
     """create_accepted returning False (store down) must NOT break the 202."""
     async def _slow(*_a, **_k):
