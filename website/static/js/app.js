@@ -38,17 +38,31 @@
   const errorRetryBtn = document.getElementById('error-retry-btn');
   const errorDetail = document.getElementById('error-detail');
 
-  // Loading messages that cycle
-  const loadingMessages = [
-    'Detecting source type...',
-    'Resolving redirects...',
-    'Extracting content...',
-    'Analyzing with Gemini AI...',
-    'Building summary...',
-    'Almost there...',
+  // PR #39 / Wave-2 D5: quirky phase-aware messages, matching the
+  // desktop typewriter + mobile vocabularies.
+  const MESSAGES_QUEUED = [
+    'Warming up the librarian…',
+    'Loading the inkwell…',
+    'Stretching the neural cortex…'
+  ];
+  const MESSAGES_RUNNING = [
+    'Skimming the source for the juicy bits…',
+    'Distilling the signal from the noise…',
+    'Compressing thoughts into Zettel-sized truth…',
+    'Polishing the prose; minor existential edits…',
+    'Tagging the constellations…',
+    'Triangulating the thesis…'
+  ];
+  const MESSAGES_LONG = [
+    'This one\'s a marathon — sit tight…',
+    'Long-form magic in progress…',
+    'Reading every footnote so you don\'t have to…',
+    'Worth the wait, promise.'
   ];
 
   let loadingInterval = null;
+  let loadingPool = MESSAGES_QUEUED;
+  let loadingIdx = 0;
 
   function showSection(section) {
     [inputSection, loadingSection, resultSection, errorSection].forEach(function (s) {
@@ -60,11 +74,12 @@
   function startLoading(sourceLabel) {
     showSection(loadingSection);
     loadingUrl.textContent = sourceLabel;
-    var idx = 0;
-    loadingText.textContent = loadingMessages[0];
+    loadingPool = MESSAGES_QUEUED;
+    loadingIdx = 0;
+    loadingText.textContent = loadingPool[0];
     loadingInterval = setInterval(function () {
-      idx = Math.min(idx + 1, loadingMessages.length - 1);
-      loadingText.textContent = loadingMessages[idx];
+      loadingIdx = (loadingIdx + 1) % loadingPool.length;
+      loadingText.textContent = loadingPool[loadingIdx];
     }, 3000);
   }
 
@@ -72,6 +87,20 @@
     if (loadingInterval) {
       clearInterval(loadingInterval);
       loadingInterval = null;
+    }
+  }
+
+  function handleStatusTick(tick) {
+    if (!tick) return;
+    const elapsed = tick.elapsedMs || 0;
+    let nextPool;
+    if (elapsed >= 90000) nextPool = MESSAGES_LONG;
+    else if (tick.phase === 'running') nextPool = MESSAGES_RUNNING;
+    else nextPool = MESSAGES_QUEUED;
+    if (nextPool !== loadingPool) {
+      loadingPool = nextPool;
+      loadingIdx = 0;
+      if (loadingText) loadingText.textContent = loadingPool[0];
     }
   }
 
@@ -319,14 +348,16 @@
         token: authToken,
         clientActionId: window.ZKAddZettel.makeActionId('landing-document'),
         persist: true,
-        surface: 'landing'
+        surface: 'landing',
+        onStatus: handleStatusTick
       })
       : window.ZKAddZettel.add({
         url: url,
         token: authToken,
         clientActionId: window.ZKAddZettel.makeActionId('landing'),
         persist: true,
-        surface: 'landing'
+        surface: 'landing',
+        onStatus: handleStatusTick
       });
 
     request
@@ -338,6 +369,11 @@
         showResult(summary);
       })
       .catch(function (err) {
+        // PR #39 / Wave-2 C2: graceful exhaust message for landing.
+        if (err && err.code === 'poll_exhausted') {
+          showError('Still summarizing in the background. Sign in to view it in My Zettels when ready.');
+          return;
+        }
         showError(err.message || 'An unexpected error occurred. Please try again.');
       })
       .finally(function () {

@@ -16,29 +16,43 @@
   const result   = document.getElementById('result');
   const copyBtn  = document.getElementById('copy-btn');
 
-  const MESSAGES = [
-    'Analyzing content...',
-    'Extracting key insights...',
-    'Building summary...',
-    'Almost ready...',
-    'Generating tags...',
-    'Finishing up...'
+  // PR #39 / Wave-2 D5: quirky phase-aware messages, matching the
+  // desktop typewriter vocabulary. Mobile keeps its lighter rotation
+  // model (no skeleton card to mount a typewriter inside).
+  const MESSAGES_QUEUED = [
+    'Warming up the librarian…',
+    'Loading the inkwell…',
+    'Stretching the neural cortex…'
+  ];
+  const MESSAGES_RUNNING = [
+    'Skimming the source for the juicy bits…',
+    'Distilling the signal from the noise…',
+    'Compressing thoughts into Zettel-sized truth…',
+    'Polishing the prose; minor existential edits…',
+    'Tagging the constellations…'
+  ];
+  const MESSAGES_LONG = [
+    'This one\'s a marathon — sit tight…',
+    'Long-form magic in progress…',
+    'Worth the wait, promise.'
   ];
 
   let msgIndex = 0;
   let msgTimer = null;
+  let currentPool = MESSAGES_QUEUED;
   let rawSummary = '';
 
   function showLoading() {
     msgIndex = 0;
-    loadTxt.textContent = MESSAGES[0];
+    currentPool = MESSAGES_QUEUED;
+    loadTxt.textContent = currentPool[0];
     loading.classList.add('active');
     result.classList.remove('active');
     errorEl.classList.remove('active');
     submitBtn.disabled = true;
     msgTimer = setInterval(() => {
-      msgIndex = (msgIndex + 1) % MESSAGES.length;
-      loadTxt.textContent = MESSAGES[msgIndex];
+      msgIndex = (msgIndex + 1) % currentPool.length;
+      loadTxt.textContent = currentPool[msgIndex];
     }, 3000);
   }
 
@@ -46,6 +60,20 @@
     loading.classList.remove('active');
     submitBtn.disabled = false;
     if (msgTimer) { clearInterval(msgTimer); msgTimer = null; }
+  }
+
+  function handleStatusTick(tick) {
+    if (!tick) return;
+    const elapsed = tick.elapsedMs || 0;
+    let nextPool;
+    if (elapsed >= 90000) nextPool = MESSAGES_LONG;
+    else if (tick.phase === 'running') nextPool = MESSAGES_RUNNING;
+    else nextPool = MESSAGES_QUEUED;
+    if (nextPool !== currentPool) {
+      currentPool = nextPool;
+      msgIndex = 0;
+      if (loadTxt) loadTxt.textContent = currentPool[0];
+    }
   }
 
   function showError(msg) {
@@ -216,13 +244,15 @@
         file: file,
         clientActionId: window.ZKAddZettel.makeActionId('mobile-document'),
         persist: true,
-        surface: 'mobile'
+        surface: 'mobile',
+        onStatus: handleStatusTick
       })
       : window.ZKAddZettel.add({
         url: url,
         clientActionId: window.ZKAddZettel.makeActionId('mobile'),
         persist: true,
-        surface: 'mobile'
+        surface: 'mobile',
+        onStatus: handleStatusTick
       });
 
     request
@@ -232,6 +262,14 @@
       showResult(data.summary || {});
     })
     .catch(function (err) {
+      // PR #39 / Wave-2 C2: graceful exhaust — keep the user informed
+      // rather than blasting a generic failure for a still-running pipeline.
+      if (err && err.code === 'poll_exhausted') {
+        hideLoading();
+        errorEl.textContent = 'Still summarizing in the background — refresh in a moment to view.';
+        errorEl.classList.add('active');
+        return;
+      }
       showError(err.message || 'Something went wrong. Please try again.');
     });
   });

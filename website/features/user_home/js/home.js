@@ -1003,6 +1003,15 @@
 
     var targetRect = spacer.getBoundingClientRect();
 
+    // PR #39 / Wave-2 D5: typewriter is attached once the skeleton lands
+    // in the DOM (below). A late-binding closure preserves API-call
+    // parallelism: the first onStatus tick fires after the network
+    // round-trip (>80ms), by which point the skeleton is already mounted.
+    var typer = null;
+    var onStatus = function (tick) {
+      if (typer) { try { typer.update(tick); } catch (e) { void e; } }
+    };
+
     // Start API call immediately (runs in parallel with animation)
     var apiPromise = isDocument
       ? window.ZKAddZettel.uploadDocument({
@@ -1010,14 +1019,16 @@
         token: token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'home'
+        surface: 'home',
+        onStatus: onStatus
       })
       : window.ZKAddZettel.add({
         url: url,
         token: token,
         clientActionId: pricingActionId,
         persist: true,
-        surface: 'home'
+        surface: 'home',
+        onStatus: onStatus
       });
 
     // Create skeleton now — it'll be revealed seamlessly during shatter
@@ -1038,6 +1049,9 @@
       while (cardGrid.children.length > 3) {
         cardGrid.removeChild(cardGrid.lastChild);
       }
+    }
+    if (window.ZKSkeletonTyper) {
+      typer = window.ZKSkeletonTyper.attach(skeleton);
     }
 
     // Run shatter — shards assemble on top of the skeleton, then skeleton fades in
@@ -1116,6 +1130,7 @@
       // ANY error (incl. quota_exhausted) so it never orphans if the user
       // dismisses the quota gate without paying/watching ads. A resume re-runs
       // addZettel() which creates a fresh skeleton.
+      if (typer) { try { typer.detach(); } catch (te) { void te; } }
       if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
       var quotaDetail = e && e.detail && e.detail.code === 'quota_exhausted' ? e.detail : null;
       if (quotaDetail && window.ZKQuotaGate) {
@@ -1127,8 +1142,18 @@
         });
         return;
       }
-      if (addError) addError.textContent = e.message;
-      if (addZettelDropdown) addZettelDropdown.classList.add('open');
+      // PR #39 / Wave-2 C2: graceful poll-exhaust UX. Backend is still
+      // running; nudge the My Zettels badge after 30s so the new zettel
+      // surfaces without a manual reload.
+      if (e && e.code === 'poll_exhausted') {
+        if (addError) {
+          addError.textContent = 'Still summarizing in the background — it\'ll appear in My Zettels shortly.';
+        }
+        window.setTimeout(function () { try { refreshMyZettelsBadge(token); } catch (re) { void re; } }, 30000);
+      } else {
+        if (addError) addError.textContent = e.message;
+        if (addZettelDropdown) addZettelDropdown.classList.add('open');
+      }
     } finally {
       _restoreAddButton();
     }
