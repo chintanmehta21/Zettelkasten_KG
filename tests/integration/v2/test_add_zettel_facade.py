@@ -1,19 +1,72 @@
 """Add Zettel facade contract tests.
 
 These tests pin the website-facing Add Zettel path to the summarization engine
-entry point plus canonical persistence, without the deprecated summarize route
-response shape.
+entry point plus canonical persistence.
+
+PR #39 / Wave-1 A1 (2026-05-20) CONTRACT CHANGE: the route is now always-async
+(HTTP 202 + polling). Tests that previously asserted on inline 200/500 now
+assert on the BACKGROUND finalize write captured via the operations_repo mock.
+GET /api/operations/{id} surfaces the same body to the client.
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 ZORO_AUTH_ID = UUID("a57e1f2f-7d89-4cd7-ae39-72c440ed4b4e")
+
+
+def _wait_for_finalize(captured: dict, *, timeout: float = 3.0) -> None:
+    """Block briefly until the background _run task calls finalize. The
+    route returns 202 immediately under A1; this polls every 25 ms."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if captured.get("called"):
+            return
+        time.sleep(0.025)
+
+
+def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
+    """Stub the ops state machine + backpressure + network-side helpers
+    (resolve_redirects, dedup scope) so the route's background _run task
+    finalizes deterministically without hitting real Supabase / DNS.
+
+    Returns a `captured` dict that tests inspect after `_wait_for_finalize`.
+    """
+    from website.api.module_runners import summarization as runner
+    from website.core import persist as persist_mod
+
+    captured: dict = {}
+
+    def _finalize(**kw):
+        captured["called"] = True
+        captured.update(kw)
+        return True
+
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept",
+                        lambda **kw: (kw["operation_id"], True))
+    monkeypatch.setattr(zettels_routes.operations_repo, "start",
+                        lambda **kw: True)
+    monkeypatch.setattr(zettels_routes.operations_repo, "finalize", _finalize)
+    monkeypatch.setattr(zettels_routes, "check_async_backpressure",
+                        AsyncMock(return_value=None))
+    # Network-side helpers — without these the pipeline does a real HTTP HEAD
+    # request to the test URL, hanging the bg task and producing `cancelled`
+    # via TestClient teardown.
+    monkeypatch.setattr(
+        runner, "resolve_redirects",
+        AsyncMock(side_effect=lambda url: url),
+    )
+    monkeypatch.setattr(runner, "normalize_url", lambda url: url)
+    # Disable URL dedup gate so the pipeline runs the mocked summarize_url_bundle.
+    monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
+    return captured
 
 
 def _make_bundle(url: str):
@@ -114,6 +167,10 @@ def test_add_zettel_contract_summarizes_then_persists(facade_client, monkeypatch
 
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
     monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
+    # Disable URL dedup gate so the pipeline actually runs the mocked summarize.
+    from website.core import persist as persist_mod
+    monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
+    captured = _install_async_mocks(monkeypatch, _zettels_routes)
 
     resp = client.post(
         "/api/zettels/add",
@@ -122,14 +179,17 @@ def test_add_zettel_contract_summarizes_then_persists(facade_client, monkeypatch
             "client_action_id": "landing-1",
             "persist": True,
             "surface": "landing",
-            "mode": "sync",
         },
     )
 
-    assert resp.status_code == 200
-    body = resp.json()
+    # PR #39 A1: route always 202s; the succeeded body lands on the
+    # operations row via finalize, then GET /api/operations/{id} surfaces it.
+    assert resp.status_code == 202
+    _wait_for_finalize(captured)
     assert calls == ["summarize", "persist"]
     assert seen_user_ids == [ZORO_AUTH_ID]
+    assert captured.get("target") == "succeeded"
+    body = captured.get("response") or {}
     assert body["status"] == "succeeded"
     assert body["operation_id"] == "landing-1"
     assert body["summary"]["title"] == "Typed Facade"
@@ -170,6 +230,9 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
     client.app.dependency_overrides[get_optional_user] = fake_user
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
     monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
+    from website.core import persist as persist_mod
+    monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
+    captured = _install_async_mocks(monkeypatch, _zettels_routes)
 
     resp = client.post(
         "/api/zettels/add",
@@ -178,15 +241,15 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
             "client_action_id": "home-1",
             "persist": False,
             "surface": "home",
-            "mode": "sync",
         },
         headers={"Authorization": "Bearer test"},
     )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 202
+    _wait_for_finalize(captured)
     assert seen == [user_id]
     assert persisted == []
-    body = resp.json()
+    body = captured.get("response") or {}
     assert body["persistence"]["requested"] is False
     assert body["persistence"]["persisted"] is False
     assert body["node_id"] is None
@@ -205,9 +268,12 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
 #   and the cross-user/state-machine isolation tests in test_ops_state_machine.py.
 
 
-def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, monkeypatch):
+def test_add_zettel_always_async_returns_202_then_succeeded(facade_client, monkeypatch):
+    """PR #39 A1 + A2: `mode` was retired. The route is universally async —
+    always 202 with the summary landing on the operations row via finalize.
+    This test replaces ``test_add_zettel_auto_mode_runs_sync_when_async_not_durable``
+    which pinned the deprecated `mode:auto` branch."""
     client, zettels_routes, runner = facade_client
-    zettels_routes._IN_MEMORY_ASYNC_ENABLED = False
     calls: list[str] = []
 
     async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
@@ -228,6 +294,9 @@ def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, mo
 
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
     monkeypatch.setattr(runner, "persist_summarized_result", fake_persist)
+    from website.core import persist as persist_mod
+    monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
+    captured = _install_async_mocks(monkeypatch, zettels_routes)
 
     resp = client.post(
         "/api/zettels/add",
@@ -236,24 +305,33 @@ def test_add_zettel_auto_mode_runs_sync_when_async_not_durable(facade_client, mo
             "client_action_id": "auto-sync-1",
             "persist": True,
             "surface": "home",
-            "mode": "auto",
         },
     )
 
-    assert resp.status_code == 200
-    body = resp.json()
+    assert resp.status_code == 202
+    _wait_for_finalize(captured)
+    body = captured.get("response") or {}
     assert body["status"] == "succeeded"
-    assert body.get("status_url") is None
     assert calls == ["summarize", "persist"]
 
 
-def test_add_zettel_problem_detail_failure_is_json(facade_client, monkeypatch):
-    client, _zettels_routes, runner = facade_client
+def test_add_zettel_problem_detail_failure_lands_on_operations_row(
+    facade_client, monkeypatch
+):
+    """PR #39 A1: a synchronous RuntimeError in the pipeline used to surface
+    as an inline 500 + RFC 9457 problem+json. Now the route 202s and the
+    failure body lands on the operations row's `response`/`error` column via
+    ``_run -> finalize(target='failed')``. GET /api/operations/{id} returns
+    that body to the client. The structured shape is preserved."""
+    client, zettels_routes, runner = facade_client
 
     async def fake_summarize(*_args, **_kwargs):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(runner, "summarize_url_bundle", fake_summarize)
+    from website.core import persist as persist_mod
+    monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
+    captured = _install_async_mocks(monkeypatch, zettels_routes)
 
     resp = client.post(
         "/api/zettels/add",
@@ -262,17 +340,25 @@ def test_add_zettel_problem_detail_failure_is_json(facade_client, monkeypatch):
             "client_action_id": "fail-1",
             "persist": True,
             "surface": "landing",
-            "mode": "sync",
         },
     )
 
-    assert resp.status_code == 500
-    assert resp.headers["content-type"].startswith("application/problem+json")
-    body = resp.json()
-    assert body["type"].endswith("/errors/add-zettel-failed")
-    assert body["status"] == 500
-    assert body["title"] == "Add Zettel failed"
-    assert body["instance"] == "/api/zettels/add/fail-1"
+    assert resp.status_code == 202
+    _wait_for_finalize(captured)
+
+    assert captured.get("target") == "failed"
+    response_body = captured.get("response") or {}
+    # The response body itself carries the failed AddZettelResponse shape.
+    assert response_body.get("status") == "failed"
+    quality = response_body.get("quality") or {}
+    assert quality.get("confidence") == "failed"
+    # confidence_reason carries the exception message for generic exceptions
+    # (per _failed_response_for + _async_failure_error_payload's "no structured
+    # detail" fallback path — RuntimeError doesn't get an RFC 9457 envelope).
+    assert "boom" in str(quality.get("confidence_reason") or "")
+    # For generic exceptions the error column is None by design — the
+    # frontend uses confidence_reason for the user-visible message.
+    assert captured.get("error") is None
 
 
 def test_add_zettel_validation_failure_is_problem_json(facade_client):
