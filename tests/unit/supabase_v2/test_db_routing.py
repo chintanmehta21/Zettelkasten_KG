@@ -10,10 +10,20 @@ from website.core.supabase_v2.models import CanonicalUpsertResult
 
 
 def test_db_schema_version_requires_v2_credentials(monkeypatch) -> None:
+    """PR #39 follow-up (2026-05-20): also unset the canonical SUPABASE_*
+    fallback names. `_v2_env` in supabase_v2/client.py falls back to
+    SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY when the
+    V2-prefixed namespace is empty (post-2026-05 deprecation), so deleting
+    only the V2 names left the canonical .env values leaking through and
+    `is_v2_configured()` stayed True. Delete both namespaces so the test
+    actually exercises the "no creds available anywhere" branch."""
     monkeypatch.setenv("DB_SCHEMA_VERSION", "v2")
-    monkeypatch.delenv("SUPABASE_V2_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_V2_SERVICE_ROLE_KEY", raising=False)
-    monkeypatch.delenv("SUPABASE_V2_ANON_KEY", raising=False)
+    for name in (
+        "SUPABASE_V2_URL", "SUPABASE_V2_SERVICE_ROLE_KEY", "SUPABASE_V2_ANON_KEY",
+        # Fallback canonical names also consulted by _v2_env in client.py.
+        "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
     assert db_version.get_db_schema_version() == "v2"
     assert db_version.use_supabase_v2() is False
