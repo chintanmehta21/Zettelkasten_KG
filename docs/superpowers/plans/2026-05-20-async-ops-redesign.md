@@ -18,14 +18,14 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
 
 1. Operator does `gh pr merge 30 --rebase --delete-branch` for PR #30 (zero new code from this redesign needed for that step — PR #30 is review-clean as-is).
 2. After merge, this plan executes on a new branch `feat/async-ops-redesign` from updated `master`.
-3. Migration 48 + 49 are already live in prod (sanctioned co-apply); migration 50 (this plan, Phase 1) will be co-applied at landing-time.
+3. Migration 48 + 49 are already live in prod (sanctioned co-apply); migration 50 (PR #31, RLS partitions + migrations table) landed with PR #31 on 2026-05-20; this plan ships migration 51 (Phase 1) + 52 (Phase 4), both co-applied at landing-time.
 
 ---
 
 ## File structure
 
-- **New:** `supabase/website/_v2/50_operations_state_machine.sql` — partial UNIQUE index, status CHECK, three RPCs (`ops_accept`, `ops_start`, `ops_finalize`).
-- **New:** `supabase/website/_v2/51_stuck_running_reaper.sql` — pg_cron job extension (or amends 49 if cleanly possible; see Phase 4).
+- **New:** `supabase/website/_v2/51_operations_state_machine.sql` — partial UNIQUE index, status CHECK, three RPCs (`ops_accept`, `ops_start`, `ops_finalize`).
+- **New:** `supabase/website/_v2/52_stuck_running_reaper.sql` — pg_cron job extension (or amends 49 if cleanly possible; see Phase 4).
 - **Modify:** `website/core/operations_repo.py` — replace `create_accepted` / `mark_succeeded` / `mark_failed` / `_mark` with `accept(...)` / `start(...)` / `finalize(...)` Python wrappers calling the RPCs; add `get_operation` (kept) and new `count_in_flight_for_user(...)` (backpressure) and `cancel(...)`.
 - **Modify:** `website/api/zettels_routes.py` — delete `_OPERATIONS`, `_OPERATION_TASKS`, `_IN_FLIGHT`, `_operation_put`, `_operation_get`, `_cache_get`, `_cache_put`, `_store_operation_result`'s in-memory branches, `_persist_terminal`, the LRU/eviction logic. Keep one `_LIVE_TASKS: dict[str, asyncio.Task]` strong-ref + cancel target (never read by GET). New `operation_status` GET reads DB only. New POST flow: `accept()` → 202 + Location + Retry-After (idempotent by partial unique index) → `_LIVE_TASKS[op_id] = asyncio.create_task(_run(...))` → `start()` inside `_run` → `finalize()` in try/except/finally.
 - **Modify:** `website/api/zettels_routes.py` sync error path — refactor `_problem()` to return / mirror the RFC 9457 shape exactly; the async `finalize(error=...)` writes the SAME shape into the jsonb column.
@@ -60,7 +60,7 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
 
 ---
 
-### Phase 1 — Schema + RPC migration (`50_operations_state_machine.sql`)
+### Phase 1 — Schema + RPC migration (`51_operations_state_machine.sql`)
 
 - [ ] **Step 1:** Add `CHECK (status IN ('queued','running','succeeded','failed','cancelled','expired'))` constraint on `core.operations.status`. If the column already has a different CHECK, migrate via `ALTER TABLE … DROP CONSTRAINT … ADD CONSTRAINT …` in the same transaction; reject in-flight rows that violate (none expected since current values are subset).
 - [ ] **Step 2:** Add partial unique index:
@@ -150,7 +150,7 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
   - `class AsyncBackpressureGate: async def check(self, user_id, *, limit=_MAX_IN_FLIGHT_PER_USER) -> None | JSONResponse:` returns a 429-with-RFC-9457-body if exceeded, else None.
   - Default `_MAX_IN_FLIGHT_PER_USER = 3` (tuned later; bias conservative). Configurable via env if needed.
 - [ ] **Step 2:** Wire the gate at the accept path of `add_zettel` BEFORE `ops.accept(...)`. (Per the reuse rule — single source for future endpoints like file upload, chat.)
-- [ ] **Step 3:** `supabase/website/_v2/51_stuck_running_reaper.sql` — extend the existing pg_cron job from migration 49 to also:
+- [ ] **Step 3:** `supabase/website/_v2/52_stuck_running_reaper.sql` — extend the existing pg_cron job from migration 49 to also:
   ```sql
   UPDATE core.operations
   SET status='failed',
@@ -183,8 +183,8 @@ The current PR #30 (`fix/add-zettel-ux-524`, tip `d65f0914`) is the bug-fix + UX
 - [ ] **Step 3:** `python -m pytest tests/integration/v2/ -q 2>&1 | tail -15` — green (covers the state-machine RPCs end-to-end with real Supabase + the stuck-running reaper).
 - [ ] **Step 4:** `python -m ruff check website tests` → `All checks passed!`.
 - [ ] **Step 5:** `node --check website/features/user_home/js/home.js && node --check website/features/user_zettels/js/user_zettels.js && node --check website/static/js/add_zettel_api.js`.
-- [ ] **Step 6:** Co-apply plan documented (`ops/co_apply/2026-05-20-migration-50-51.md`): operator runs `python ops/scripts/apply_migrations.py --v2 50_operations_state_machine.sql 51_stuck_running_reaper.sql` against prod via the sanctioned path; manifest entry; rollback procedure; smoke test (POST /api/zettels/add of a known URL → poll → succeed).
-- [ ] **Step 7:** Commit `feat: delete obsolete in-memory ops state` + `docs: co-apply plan migration 50+51`.
+- [ ] **Step 6:** Co-apply plan documented (`ops/co_apply/2026-05-20-migration-50-51.md`): operator runs `python ops/scripts/apply_migrations.py --v2 51_operations_state_machine.sql 52_stuck_running_reaper.sql` against prod via the sanctioned path; manifest entry; rollback procedure; smoke test (POST /api/zettels/add of a known URL → poll → succeed).
+- [ ] **Step 7:** Commit `feat: delete obsolete in-memory ops state` + `docs: co-apply plan migration 51+52`.
 - [ ] **Step 8:** Brief summary; **STOP for operator rebase-merge approval + prod co-apply approval**. No autonomous push/PR/merge; never autonomous co-apply (operator runs the migration).
 
 ---
@@ -260,7 +260,7 @@ All five verification steps executed read-only against installed package source,
 - `SyncPostgrestClient.rpc(func, params, count, head, get)` builds an HTTP POST (or GET when `get=True`) to `/rpc/<func>` with `params` as the JSON body; returns a `SyncRPCFilterRequestBuilder` whose `.execute()` returns an `APIResponse` with `.data` populated from the PostgREST response body. Source: `<site-packages>/postgrest/_sync/client.py::SyncPostgrestClient.rpc`.
 - `RETURNING` / function row results: when a PL/pgSQL function returns `TABLE(...)` or `SETOF`, `.data` is a `list[dict]` (one element per returned row); when it returns a scalar, `.data` is that scalar value (typed per PostgREST JSON serialization). The state-guard pattern (RPC returns NULL when WHERE matched zero rows) surfaces as `.data is None` for scalar returns, or `.data == []` for `TABLE(...)` returns. Both are unambiguous — the wrapper checks `is None or not data` to detect a no-op transition.
 - Async vs sync: `operations_repo.py` head comment explicitly says "Sync by design — callable from the FastAPI request path via `asyncio.to_thread`" (line 6-7). New `accept/start/finalize` wrappers stay sync; the route layer wraps each call in `await asyncio.to_thread(ops.<fn>, ...)`. No async-client churn needed.
-- Schema-qualified RPC permission: migration 48 currently exposes the `core.operations` table via the existing service-role RLS policy (`operations_service_all`). For RPCs the equivalent requirement is `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role` (and similarly for the other two); without it PostgREST will return 401/403 even though the table grant exists. Phase 1 migration 50 MUST include the `GRANT EXECUTE` lines for each new SECURITY DEFINER function.
+- Schema-qualified RPC permission: migration 48 currently exposes the `core.operations` table via the existing service-role RLS policy (`operations_service_all`). For RPCs the equivalent requirement is `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role` (and similarly for the other two); without it PostgREST will return 401/403 even though the table grant exists. Phase 1 migration 51 MUST include the `GRANT EXECUTE` lines for each new SECURITY DEFINER function.
 
 **Citations:**
 - `<site-packages>/postgrest/_sync/client.py::SyncPostgrestClient.rpc` (lines containing `method = "HEAD" if head else "GET" if get else "POST"` and the `RequestConfig` build).
@@ -293,7 +293,7 @@ All five verification steps executed read-only against installed package source,
 
 **Impact on Phase 1+:**
 - Add data-backfill `UPDATE core.operations SET status='queued' WHERE status='accepted'` BEFORE the new CHECK constraint swap.
-- Split migration 50 into a transactional file and a separate `CREATE INDEX CONCURRENTLY` file (or trust the runner to handle a CONCURRENTLY statement outside the txn block) — Phase 1 Step 2 must verify `ops/scripts/apply_migrations.py` behavior and report. Default recommendation: ship as `50_operations_state_machine.sql` (CHECK + RPCs in txn) + `50a_operations_partial_unique.sql` (CONCURRENTLY index, no txn).
+- Split migration 51 into a transactional file and a separate `CREATE INDEX CONCURRENTLY` file (or trust the runner to handle a CONCURRENTLY statement outside the txn block) — Phase 1 Step 2 must verify `ops/scripts/apply_migrations.py` behavior and report. Default recommendation: ship as `51_operations_state_machine.sql` (CHECK + RPCs in txn) + `51a_operations_partial_unique.sql` (CONCURRENTLY index, no txn).
 - The `INSERT` inside `ops_accept` SQL function MUST repeat the partial-index predicate in its `ON CONFLICT (user_id, request_hash) WHERE status IN ('queued','running','succeeded') DO NOTHING` clause to guarantee inference.
 
 ### Step 3 — pg_cron job amendment vs add
@@ -303,7 +303,7 @@ All five verification steps executed read-only against installed package source,
 - pg_cron supports `cron.alter_job(job_id, schedule, command, database, username, active)` for in-place modification. Signature: *"CREATE OR REPLACE FUNCTION cron.alter_job(job_id bigint, schedule text DEFAULT NULL::text, command text DEFAULT NULL::text, database text DEFAULT NULL::text, username text DEFAULT NULL::text, active boolean DEFAULT NULL::boolean) RETURNS void"*. Cited: https://github.com/citusdata/pg_cron/blob/main/README.md (accessed 2026-05-20).
 - `cron.schedule(name, schedule, command)` does NOT have documented upsert/replace behavior; calling it twice with the same name is not guaranteed to replace. Safe pattern is `cron.unschedule(name)` then `cron.schedule(name, ...)`, or look up the job_id and call `cron.alter_job(job_id, ...)`.
 
-**Recommendation (must operator-confirm in Phase 4, not auto-decided here):** Ship the stuck-running reaper as a SEPARATE new pg_cron job in a NEW migration `51_stuck_running_reaper.sql` (per the plan filename) with its own job name `'reap_stuck_running_operations'`, not by modifying job 49's command. Rationale:
+**Recommendation (must operator-confirm in Phase 4, not auto-decided here):** Ship the stuck-running reaper as a SEPARATE new pg_cron job in a NEW migration `52_stuck_running_reaper.sql` (per the plan filename) with its own job name `'reap_stuck_running_operations'`, not by modifying job 49's command. Rationale:
 1. Separation of concerns: TTL sweep (DELETE expired) and stuck-running reaper (UPDATE running→failed) have different cadences and different blast radii.
 2. Migration hygiene: migration 49 is already live in prod; amending its body would require a destructive `cron.unschedule` + re-`cron.schedule` (or `cron.alter_job(job_id, command:=...)`), introducing a brief window where the sweep is unscheduled if the migration is interrupted.
 3. Idempotency: the same `IF NOT EXISTS` guard pattern from migration 49 trivially extends.
@@ -312,7 +312,7 @@ All five verification steps executed read-only against installed package source,
 - `supabase/website/_v2/49_operations_sweep.sql:18-29`.
 - https://github.com/citusdata/pg_cron/blob/main/README.md `cron.alter_job` signature + `cron.schedule` semantics (accessed 2026-05-20).
 
-**Impact on Phase 1+:** Phase 4 step 3 SHOULD ship as standalone migration 51 with a new job name, per the recommendation above. The plan body already aligns with this (it names `51_stuck_running_reaper.sql`); the open option to "amend 49 if cleanly possible" is REJECTED here for the three reasons listed.
+**Impact on Phase 1+:** Phase 4 step 3 SHOULD ship as standalone migration 52 with a new job name, per the recommendation above. The plan body already aligns with this (it names `52_stuck_running_reaper.sql`); the open option to "amend 49 if cleanly possible" is REJECTED here for the three reasons listed.
 
 ### Step 4 — RFC 9457 exact field set
 
@@ -370,9 +370,9 @@ Decision item for operator at Phase 3: keep current `type` prefix `errors/` or d
 
 **READY for Phase 1**, with two amendments the implementer MUST fold into the Phase 1 SQL writes (neither is a scope change; both are derived from the spec):
 
-1. **Add `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role;` (and `ops_start`, `ops_finalize`)** in migration 50 — without it, PostgREST returns 401/403 for the new RPCs even though the table grant exists.
-2. **Add data backfill `UPDATE core.operations SET status='queued' WHERE status='accepted';`** in migration 50 BEFORE swapping the CHECK constraint — otherwise the new CHECK rejects in-flight rows.
-3. **Split migration 50** into a transactional file (CHECK + RPCs) plus a non-transactional `50a` for `CREATE UNIQUE INDEX CONCURRENTLY` — UNLESS Phase 1 Step 2 verifies `ops/scripts/apply_migrations.py` already handles CONCURRENTLY statements outside the file's transaction.
+1. **Add `GRANT EXECUTE ON FUNCTION core.ops_accept(...) TO service_role;` (and `ops_start`, `ops_finalize`)** in migration 51 — without it, PostgREST returns 401/403 for the new RPCs even though the table grant exists.
+2. **Add data backfill `UPDATE core.operations SET status='queued' WHERE status='accepted';`** in migration 51 BEFORE swapping the CHECK constraint — otherwise the new CHECK rejects in-flight rows.
+3. **Split migration 51** into a transactional file (CHECK + RPCs) plus a non-transactional `51a` for `CREATE UNIQUE INDEX CONCURRENTLY` — UNLESS Phase 1 Step 2 verifies `ops/scripts/apply_migrations.py` already handles CONCURRENTLY statements outside the file's transaction.
 
 No blockers. Live-doc fetches all returned canonical guidance; package source confirms the call shapes the wrappers will use; existing project files (48, 49, operations_repo.py, supabase_v2/client.py) align with the design.
 
