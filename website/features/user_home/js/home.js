@@ -1031,6 +1031,29 @@
         onStatus: onStatus
       });
 
+    // PR #40 L2' (2026-05-21): optimistic UI — derive source-type from
+    // the submitted URL (or "document" if file upload) and render the
+    // meta row with REAL chips at t=0. Title remains a skeleton line
+    // because the LLM-generated title is the actual unknown. Linear/
+    // GitHub pattern: user sees "their card" the moment they hit add,
+    // not 2 minutes later.
+    var _h_url = String(url || '').trim().toLowerCase();
+    var _h_isDoc = Boolean(file);
+    var _h_source = (function () {
+      if (_h_isDoc) return 'document';
+      if (!_h_url) return 'web';
+      if (/(^|\/\/)(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\b/.test(_h_url)) return 'youtube';
+      if (/(^|\/\/)(www\.)?github\.com\b/.test(_h_url)) return 'github';
+      if (/(^|\/\/)(www\.)?(reddit\.com|old\.reddit\.com|redd\.it)\b/.test(_h_url)) return 'reddit';
+      if (/(^|\/\/)([^./]+\.)?substack\.com\b/.test(_h_url)) return 'substack';
+      if (/(^|\/\/)(www\.)?medium\.com\b/.test(_h_url)) return 'medium';
+      return 'web';
+    })();
+    var _h_sourceLabel = (_h_source === 'web')
+      ? 'Web'
+      : _h_source.charAt(0).toUpperCase() + _h_source.slice(1);
+    var _h_date = new Date().toISOString().slice(0, 10);
+
     // Create skeleton now — it'll be revealed seamlessly during shatter
     var skeleton = document.createElement('div');
     skeleton.className = 'home-card home-card-skeleton';
@@ -1039,8 +1062,10 @@
     skeleton.innerHTML =
       '<div class="skeleton-line skeleton-title"></div>' +
       '<div class="home-card-meta">' +
-        '<div class="skeleton-line skeleton-date"></div>' +
-        '<div class="skeleton-line skeleton-source"></div>' +
+        '<span class="home-card-date">' + escapeHtml(_h_date) + '</span>' +
+        '<span class="home-card-source ' + _h_source + '">' +
+          escapeHtml(_h_sourceLabel) +
+        '</span>' +
       '</div>';
 
     // Replace spacer with hidden skeleton before shatter starts

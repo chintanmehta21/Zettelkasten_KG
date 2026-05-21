@@ -67,6 +67,47 @@ def test_a3_helper_sends_idempotency_key_header_on_url_path():
     )
 
 
+def test_l2_optimistic_ui_skeleton_renders_real_meta_from_url():
+    """PR #40 L2' (2026-05-21): the skeleton card must render REAL date +
+    source badge chips (Linear/GitHub optimistic-UI pattern) — derived
+    from the submitted URL — instead of skeleton blocks for the meta row.
+    Title + body remain skeleton lines (real LLM unknowns)."""
+    for rel in [
+        "website/features/user_zettels/js/user_zettels.js",
+        "website/features/user_home/js/home.js",
+    ]:
+        js = (_ROOT / rel).read_text(encoding="utf-8")
+        # The detection regex (with backslash-escaped dots) covers every
+        # source-type the cards render. Matching the escaped form so we
+        # exercise the real regex literal rather than incidental matches.
+        assert r"youtu\.be" in js, rel + ": skeleton must detect YouTube URLs"
+        assert r"github\.com" in js, rel + ": skeleton must detect GitHub URLs"
+        assert r"reddit\.com" in js, rel + ": skeleton must detect Reddit URLs"
+        # The meta row uses REAL `.home-card-date` + `.home-card-source`
+        # chips (not skeleton-line blocks) inside the skeleton card.
+        assert (
+            'home-card-date">' in js
+            and 'home-card-source ' in js
+        ), rel + ": skeleton meta must use real chips, not skeleton blocks"
+
+
+def test_l3_operations_get_terminal_responses_set_cache_control():
+    """PR #40 L3' (2026-05-21): GET /api/operations/{id} terminal responses
+    (succeeded/failed/cancelled/expired) must carry Cache-Control + ETag
+    so tab refreshes after terminal don't re-hit PostgREST. Active states
+    (queued/running/accepted) must stay no-store to keep poll fresh."""
+    src = (_ROOT / "website" / "api" / "zettels_routes.py").read_text(encoding="utf-8")
+    assert '"Cache-Control": "private, max-age=300"' in src, (
+        "terminal responses must set Cache-Control: private, max-age=300"
+    )
+    assert "_terminal_cache_headers(" in src, (
+        "terminal helper must be invoked on succeeded/failed/cancelled/expired"
+    )
+    assert '"Cache-Control": "no-store"' in src, (
+        "active 202 responses must explicitly opt out of caching"
+    )
+
+
 # ---------------------------------------------------------------------------
 # A5 — finalize retries transient PostgREST failures
 # ---------------------------------------------------------------------------

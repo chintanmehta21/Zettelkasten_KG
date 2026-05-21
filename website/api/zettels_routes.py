@@ -797,6 +797,31 @@ async def add_zettel_document(
         )
 
 
+def _terminal_cache_headers(operation_id: str, status: str, updated_at: Any) -> dict[str, str]:
+    """PR #40 L3' (2026-05-21): cache-control for terminal operations
+    responses. Terminal rows (succeeded/failed/cancelled/expired) are
+    IMMUTABLE — once finalize fires the row never mutates — so it's safe
+    for the browser to cache the response for 5 minutes. Saves a
+    PostgREST hit on every tab refresh / repeat poll after terminal.
+
+    `private` = browser-only cache (no CDN/Cloudflare share — this body
+    is per-user-scoped, must not leak across tenants). `max-age=300` is
+    a conservative 5-minute window; aligned with the polling budget.
+    ETag is derived from operation_id + status + updated_at so any
+    re-write (e.g., reaper backfill) invalidates client caches."""
+    import hashlib
+
+    etag_input = f"{operation_id}|{status}|{updated_at or ''}".encode("utf-8")
+    etag = '"' + hashlib.sha256(etag_input).hexdigest()[:16] + '"'
+    return {
+        "Cache-Control": "private, max-age=300",
+        "ETag": etag,
+    }
+
+
+_NO_STORE_HEADERS: dict[str, str] = {"Cache-Control": "no-store"}
+
+
 @router.get("/operations/{operation_id}", response_model=AddZettelResponse)
 async def operation_status(
     operation_id: str,
@@ -808,6 +833,12 @@ async def operation_status(
     in-memory fallback was removed in Phase 5 of the async-ops redesign; the
     DB CHECK + state-guarded RPCs (migration 51) ensure the row always
     reflects the canonical state across all workers.
+
+    PR #40 L3' (2026-05-21): terminal responses (succeeded/failed/cancelled/
+    expired) carry `Cache-Control: private, max-age=300` + ETag so a tab
+    refresh after terminal hits the browser cache rather than re-querying
+    PostgREST. Active responses (queued/running/accepted) keep
+    `Cache-Control: no-store` since their content evolves with each poll.
     """
     effective_user_id = _effective_user_id(user)
     row = await asyncio.to_thread(
@@ -835,6 +866,7 @@ async def operation_status(
             headers={
                 "Location": f"/api/operations/{operation_id}",
                 "Retry-After": "2",
+                **_NO_STORE_HEADERS,
             },
         )
 
@@ -857,13 +889,20 @@ async def operation_status(
             headers={
                 "Location": f"/api/operations/{operation_id}",
                 "Retry-After": "2",
+                **_NO_STORE_HEADERS,
             },
         )
 
     # Succeeded: 200 + full AddZettelResponse from `response`.
     if status == "succeeded":
         payload = row.get("response") or {}
-        return JSONResponse(payload, status_code=200)
+        return JSONResponse(
+            payload,
+            status_code=200,
+            headers=_terminal_cache_headers(
+                operation_id, status, row.get("updated_at")
+            ),
+        )
 
     # Failed / cancelled: 200 + body containing status + operation_id + the
     # RFC 9457 `error` dict. Prefer the full AddZettelResponse-shaped body
@@ -871,15 +910,18 @@ async def operation_status(
     # back to a minimal envelope if only the `error` column was populated
     # (legacy / reaper-set rows).
     if status in ("failed", "cancelled"):
+        cache_headers = _terminal_cache_headers(
+            operation_id, status, row.get("updated_at")
+        )
         body_resp = row.get("response")
         if isinstance(body_resp, dict) and body_resp:
-            return JSONResponse(body_resp, status_code=200)
+            return JSONResponse(body_resp, status_code=200, headers=cache_headers)
         envelope = {
             "status": status,
             "operation_id": operation_id,
             "error": row.get("error") or {},
         }
-        return JSONResponse(envelope, status_code=200)
+        return JSONResponse(envelope, status_code=200, headers=cache_headers)
 
     # Expired: 410 Gone + RFC 9457 envelope.
     if status == "expired":
@@ -896,7 +938,13 @@ async def operation_status(
                 instance=f"/api/zettels/operations/{operation_id}",
             ),
         }
-        return JSONResponse(envelope, status_code=410)
+        return JSONResponse(
+            envelope,
+            status_code=410,
+            headers=_terminal_cache_headers(
+                operation_id, status, row.get("updated_at")
+            ),
+        )
 
     # Unknown status (defensive — CHECK constraint should make this
     # unreachable). Treat as pending 202 rather than 5xx.
