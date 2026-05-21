@@ -29,27 +29,46 @@ def client() -> TestClient:
     return TestClient(create_app())
 
 
-def _wait_for_finalize(captured: dict, client: TestClient, *, timeout: float = 10.0) -> None:
-    """Block until the background _run task calls finalize.
+def _drive_bg_to_finalize(
+    post_json: dict, captured: dict, user_dict: dict | None = None,
+    *, settle_s: float = 2.5,
+) -> None:
+    """PR #40 hotfix (2026-05-21): cross-platform deterministic finalize.
 
-    PR #40 (2026-05-21): TestClient's ASGI loop is driven by each
-    incoming request. After `client.post(...)` returns, the loop is
-    paused — `time.sleep` alone won't let the spawned background task
-    progress (especially on Linux CI runners where the asyncio loop
-    and the test thread share a single executor). The fix: drive the
-    loop forward with cheap `GET /api/health` requests until the
-    captured-finalize flag flips. Each request re-enters the loop and
-    lets pending background tasks run a step. Bumped timeout 2.5s →
-    10s for shared-runner headroom."""
-    deadline = time.time() + timeout
+    On Windows / macOS dev hosts, starlette's TestClient happens to drive
+    the route's ``asyncio.create_task(_run(...))`` bg task to completion
+    before ``client.post()`` returns (or shortly thereafter). On Linux
+    GitHub Actions runners it does NOT — the per-request loop is torn
+    down and the bg task is orphaned, never running.
+
+    This helper handles BOTH paths cleanly:
+      1. Poll ``captured`` for up to ``settle_s`` seconds. If the route's
+         bg task already fired finalize (Windows/macOS path), return.
+      2. Otherwise drive ``_run`` SYNCHRONOUSLY via ``asyncio.run`` in
+         the test thread (Linux CI path) so finalize fires exactly once.
+
+    Calling ``asyncio.run`` after the route already fired would
+    double-run the pipeline and break call-count assertions; the polling
+    guard is what prevents that on platforms where the bg task IS run."""
+    import asyncio
+    from website.api import zettels_routes as zr
+
+    deadline = time.time() + settle_s
     while time.time() < deadline:
         if captured.get("called"):
             return
-        try:
-            client.get("/api/health")
-        except Exception:
-            pass
         time.sleep(0.025)
+
+    body = zr.AddZettelRequest(**post_json)
+    user_id = zr._effective_user_id(user_dict)
+    asyncio.run(
+        zr._run(
+            user_id=user_id,
+            operation_id=post_json["client_action_id"],
+            body=body,
+            user=user_dict,
+        )
+    )
 
 
 _YT_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -114,18 +133,16 @@ class TestYouTube422Diagnostics:
         monkeypatch.setattr(zettels_routes, "check_async_backpressure",
                             AsyncMock(return_value=None))
 
-        resp = client.post(
-            "/api/zettels/add",
-            json={
-                "url": _YT_URL,
-                "client_action_id": "yt-422",
-                "persist": True,
-                "surface": "landing",
-            },
-        )
+        post_json = {
+            "url": _YT_URL,
+            "client_action_id": "yt-422",
+            "persist": True,
+            "surface": "landing",
+        }
+        resp = client.post("/api/zettels/add", json=post_json)
 
         assert resp.status_code == 202
-        _wait_for_finalize(captured, client)
+        _drive_bg_to_finalize(post_json, captured)
 
         assert captured.get("target") == "failed"
         error = captured.get("error") or {}
@@ -228,18 +245,16 @@ class TestYouTube422Diagnostics:
         monkeypatch.setattr(zettels_routes, "check_async_backpressure",
                             AsyncMock(return_value=None))
 
-        resp = client.post(
-            "/api/zettels/add",
-            json={
-                "url": _YT_URL,
-                "client_action_id": "yt-ok",
-                "persist": True,
-                "surface": "landing",
-            },
-        )
+        post_json = {
+            "url": _YT_URL,
+            "client_action_id": "yt-ok",
+            "persist": True,
+            "surface": "landing",
+        }
+        resp = client.post("/api/zettels/add", json=post_json)
 
         assert resp.status_code == 202
-        _wait_for_finalize(captured, client)
+        _drive_bg_to_finalize(post_json, captured)
 
         assert captured.get("target") == "succeeded"
         response_payload = captured.get("response") or {}

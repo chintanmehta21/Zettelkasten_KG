@@ -22,20 +22,36 @@ from fastapi.testclient import TestClient
 ZORO_AUTH_ID = UUID("a57e1f2f-7d89-4cd7-ae39-72c440ed4b4e")
 
 
-def _wait_for_finalize(captured: dict, client: TestClient, *, timeout: float = 10.0) -> None:
-    """PR #40 (2026-05-21): drive the TestClient ASGI loop forward via
-    cheap `GET /api/health` requests so the bg `_run` task can finalize.
-    Without these nudges the loop pauses after `client.post(...)` returns
-    and the bg task never gets scheduled (Linux CI failure mode)."""
-    deadline = time.time() + timeout
+def _drive_bg_to_finalize(
+    post_json: dict, captured: dict, user_dict: dict | None = None,
+    *, settle_s: float = 2.5,
+) -> None:
+    """PR #40 hotfix (2026-05-21): cross-platform deterministic finalize.
+
+    Windows/macOS TestClient drives the bg task automatically. Linux CI
+    (ubuntu-latest) tears the per-request loop down and orphans the
+    bg task. This helper polls ``captured`` briefly to detect the
+    auto-drive path; if it never fires, runs ``_run`` directly via
+    ``asyncio.run``. Pipeline runs exactly once either way."""
+    import asyncio
+    from website.api import zettels_routes as zr
+
+    deadline = time.time() + settle_s
     while time.time() < deadline:
         if captured.get("called"):
             return
-        try:
-            client.get("/api/health")
-        except Exception:
-            pass
         time.sleep(0.025)
+
+    body = zr.AddZettelRequest(**post_json)
+    user_id = zr._effective_user_id(user_dict)
+    asyncio.run(
+        zr._run(
+            user_id=user_id,
+            operation_id=post_json["client_action_id"],
+            body=body,
+            user=user_dict,
+        )
+    )
 
 
 def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
@@ -178,20 +194,18 @@ def test_add_zettel_contract_summarizes_then_persists(facade_client, monkeypatch
     monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
     captured = _install_async_mocks(monkeypatch, _zettels_routes)
 
-    resp = client.post(
-        "/api/zettels/add",
-        json={
-            "url": "https://example.com/post",
-            "client_action_id": "landing-1",
-            "persist": True,
-            "surface": "landing",
-        },
-    )
+    post_json = {
+        "url": "https://example.com/post",
+        "client_action_id": "landing-1",
+        "persist": True,
+        "surface": "landing",
+    }
+    resp = client.post("/api/zettels/add", json=post_json)
 
     # PR #39 A1: route always 202s; the succeeded body lands on the
     # operations row via finalize, then GET /api/operations/{id} surfaces it.
     assert resp.status_code == 202
-    _wait_for_finalize(captured, client)
+    _drive_bg_to_finalize(post_json, captured)
     assert calls == ["summarize", "persist"]
     assert seen_user_ids == [ZORO_AUTH_ID]
     assert captured.get("target") == "succeeded"
@@ -240,19 +254,20 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
     monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
     captured = _install_async_mocks(monkeypatch, _zettels_routes)
 
+    post_json = {
+        "url": "https://example.com/no-write",
+        "client_action_id": "home-1",
+        "persist": False,
+        "surface": "home",
+    }
     resp = client.post(
         "/api/zettels/add",
-        json={
-            "url": "https://example.com/no-write",
-            "client_action_id": "home-1",
-            "persist": False,
-            "surface": "home",
-        },
+        json=post_json,
         headers={"Authorization": "Bearer test"},
     )
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured, client)
+    _drive_bg_to_finalize(post_json, captured, user_dict={"sub": str(user_id)})
     assert seen == [user_id]
     assert persisted == []
     body = captured.get("response") or {}
@@ -304,18 +319,16 @@ def test_add_zettel_always_async_returns_202_then_succeeded(facade_client, monke
     monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
     captured = _install_async_mocks(monkeypatch, zettels_routes)
 
-    resp = client.post(
-        "/api/zettels/add",
-        json={
-            "url": "https://example.com/auto-sync",
-            "client_action_id": "auto-sync-1",
-            "persist": True,
-            "surface": "home",
-        },
-    )
+    post_json = {
+        "url": "https://example.com/auto-sync",
+        "client_action_id": "auto-sync-1",
+        "persist": True,
+        "surface": "home",
+    }
+    resp = client.post("/api/zettels/add", json=post_json)
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured, client)
+    _drive_bg_to_finalize(post_json, captured)
     body = captured.get("response") or {}
     assert body["status"] == "succeeded"
     assert calls == ["summarize", "persist"]
@@ -339,18 +352,16 @@ def test_add_zettel_problem_detail_failure_lands_on_operations_row(
     monkeypatch.setattr(persist_mod, "get_supabase_v2_scope", lambda *_a, **_k: None)
     captured = _install_async_mocks(monkeypatch, zettels_routes)
 
-    resp = client.post(
-        "/api/zettels/add",
-        json={
-            "url": "https://example.com/fail",
-            "client_action_id": "fail-1",
-            "persist": True,
-            "surface": "landing",
-        },
-    )
+    post_json = {
+        "url": "https://example.com/fail",
+        "client_action_id": "fail-1",
+        "persist": True,
+        "surface": "landing",
+    }
+    resp = client.post("/api/zettels/add", json=post_json)
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured, client)
+    _drive_bg_to_finalize(post_json, captured)
 
     assert captured.get("target") == "failed"
     response_body = captured.get("response") or {}
