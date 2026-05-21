@@ -1115,8 +1115,26 @@
         }
       });
 
+      // PR #40 (2026-05-21): smooth skeleton -> real card crossfade. Detach
+      // the typewriter first so its caret doesn't blink during the fade,
+      // then fade the skeleton out (250ms) and replace with the realCard
+      // carrying the .is-fading-in animation (280ms). Background tasks
+      // (lazy enrichment chunk_embed, KG population) keep running in the
+      // worker independently — the user sees the polished card immediately
+      // while RAG/KG fill in.
+      if (typer) { try { typer.detach(); } catch (te) { void te; } }
+      realCard.classList.add('is-fading-in');
       if (cardGrid && skeleton.parentNode) {
-        cardGrid.replaceChild(realCard, skeleton);
+        skeleton.classList.add('is-fading-out');
+        var _hSkel = skeleton, _hReal = realCard;
+        window.setTimeout(function () {
+          if (_hSkel && _hSkel.parentNode) {
+            _hSkel.parentNode.replaceChild(_hReal, _hSkel);
+            window.setTimeout(function () {
+              _hReal.classList.remove('is-fading-in');
+            }, 320);
+          }
+        }, 250);
       }
 
       var count = parseInt(zettelCount.textContent || '0', 10) + 1;

@@ -310,12 +310,12 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260519d",
+        / "index.html": "/home/js/home.js?v=20260521a",
         ROOT
         / "website"
         / "features"
         / "user_zettels"
-        / "index.html": "/home/zettels/js/user_zettels.js?v=20260519d",
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260521a",
     }
     stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
 
@@ -339,16 +339,16 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         for stale_version in stale_add_zettel_versions:
             assert not any(stale_version in ref for ref in add_zettel_script_refs), page
 
-    assert "/home/css/home.css?v=20260519c" in (
+    assert "/home/css/home.css?v=20260521a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260519d" in (
+    assert "/home/js/home.js?v=20260521a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/css/user_zettels.css?v=20260519c" in (
+    assert "/home/zettels/css/user_zettels.css?v=20260521a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260519d" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260521a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
@@ -500,11 +500,21 @@ def test_markdownlite_major_headers_are_collapsible_both_pages():
         assert "attachToggle" in js or "_attachToggle" in js, name
 
 
-def test_summary_css_cachebusted_20260519c():
+def test_summary_css_cachebusted_20260521a():
+    """PR #40 (2026-05-21): bumped cache-bust on home.css + user_zettels.css
+    after moving skeletonPulse off the card onto .skeleton-line (so the
+    typewriter span doesn't inherit a faded opacity) AND adding the
+    is-fading-out / is-fading-in crossfade hooks."""
     for rel in ["website/features/user_home/index.html",
                 "website/features/user_zettels/index.html"]:
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "home.css?v=20260519c" in html or "user_zettels.css?v=20260519c" in html, rel
+        assert "home.css?v=20260521a" in html or "user_zettels.css?v=20260521a" in html, rel
     uzc = (ROOT / "website" / "features" / "user_zettels" / "css" / "user_zettels.css").read_text(encoding="utf-8")
     assert "0.9rem 0" in uzc  # trimmed divider/h2 margins applied
     assert "home-summary-chevron" in (ROOT / "website" / "features" / "user_home" / "css" / "home.css").read_text(encoding="utf-8") or True
+    # Lock the typewriter-visibility fix: pulse must be on the .skeleton-line
+    # children, NOT on the .*-card-skeleton parent.
+    assert "animation: skeletonPulse" not in (
+        uzc.split(".zettels-card-skeleton {")[1].split("}")[0]
+        if ".zettels-card-skeleton {" in uzc else ""
+    ), "skeletonPulse must be on .skeleton-line, not the card (typewriter visibility)"

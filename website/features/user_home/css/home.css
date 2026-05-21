@@ -647,7 +647,12 @@
 
 .home-card-skeleton {
     pointer-events: none;
-    animation: skeletonPulse 1.2s ease-in-out infinite;
+    /* PR #40 (2026-05-21): skeletonPulse moved OFF the card and ONTO
+     * the .skeleton-line children. Previously the whole card pulsed
+     * opacity 0.4↔0.7, dragging the typewriter span inside down to
+     * ~37% effective opacity (invisible). Pulsing only the shimmer
+     * lines preserves the loading look AND keeps the quirky typewriter
+     * fully visible alongside. Matches the same change in user_zettels.css. */
 }
 
 @keyframes skeletonPulse {
@@ -658,6 +663,7 @@
 .skeleton-line {
     border-radius: 4px;
     background: hsla(172, 30%, 40%, 0.15);
+    animation: skeletonPulse 1.2s ease-in-out infinite;
 }
 
 .skeleton-title {
@@ -674,6 +680,20 @@
 .skeleton-source {
     width: 50px;
     height: 12px;
+}
+
+/* PR #40 (2026-05-21): smooth skeleton → real-card crossfade hooks.
+ * JS drives the timing inline; these classes are the CSS underpinning. */
+.home-card-skeleton.is-fading-out {
+    transition: opacity 250ms ease-out;
+    opacity: 0 !important;
+}
+.home-card.is-fading-in {
+    animation: zkHomeCardFadeIn 280ms ease-out;
+}
+@keyframes zkHomeCardFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .home-card-new {
