@@ -528,6 +528,45 @@ def test_delete_operation_returns_noop_when_already_terminal():
     assert body["operation_id"] == "already-done"
 
 
+def test_delete_operation_logs_caller_attribution(caplog):
+    """DELETE handler must log identifying headers so a future phantom DELETE
+    can be traced to its source. 2026-05-21 regression: no JS in this repo
+    calls this endpoint but production saw a real DELETE — without
+    attribution logging the actor is unknowable.
+    """
+    import logging
+
+    caplog.set_level(logging.WARNING, logger="website.api.zettels_routes")
+    with patch("website.api.zettels_routes.operations_repo.cancel",
+               return_value=True):
+        r = _client().delete(
+            "/api/zettels/operations/op-attrib-1",
+            headers={
+                "User-Agent": "TestRunner/1.0 (smoke)",
+                "Referer": "https://zettelkasten.in/home/zettels",
+                "Origin": "https://zettelkasten.in",
+                "X-Forwarded-For": "203.0.113.7",
+                "Cf-Connecting-Ip": "203.0.113.7",
+                "Cf-Ray": "ffeeddccbbaa9988-SIN",
+                "Cf-Ipcountry": "IN",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-Mode": "cors",
+                "Idempotency-Key": "zettel:smoke:abc123",
+            },
+        )
+    assert r.status_code == 200
+    # The log line must mention the op_id and at least the user-agent +
+    # cf-ray + idempotency-key (the three highest-signal attribution fields).
+    msgs = [rec.getMessage() for rec in caplog.records
+            if "caller-attribution" in rec.getMessage()]
+    assert msgs, "no caller-attribution log record emitted"
+    blob = " | ".join(msgs)
+    assert "op-attrib-1" in blob
+    assert "TestRunner/1.0" in blob
+    assert "ffeeddccbbaa9988-SIN" in blob
+    assert "zettel:smoke:abc123" in blob
+
+
 # ---------------------------------------------------------------------------
 # Phase 4 (async-ops redesign): per-user backpressure gate wired at accept.
 # The gate runs BEFORE ops.accept. When it returns a 429, no accept is

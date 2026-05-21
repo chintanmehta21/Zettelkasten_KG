@@ -958,6 +958,7 @@ async def operation_status(
 @router.delete("/zettels/operations/{operation_id}")
 async def cancel_operation(
     operation_id: str,
+    request: Request,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     """Phase-2 (async-ops redesign): cooperative cancellation.
@@ -967,8 +968,38 @@ async def cancel_operation(
     cancels the local _LIVE_TASKS entry; another worker's in-flight task
     (if any) will keep running but its eventual `finalize(succeeded)` will
     be a no-op because the row is already cancelled.
+
+    Caller attribution: this endpoint is NOT called by any JS in this repo
+    (verified 2026-05-21 audit). Real-world callers should be the originating
+    client tab acknowledging an explicit user cancel, OR no one. The 2026-05-21
+    production incident saw a phantom DELETE at 03:35 elapsed from no known
+    source. Log every request's identifying headers so the next phantom can be
+    traced back to a tab, extension, devtools session, or stale bundle.
     """
     effective_user_id = _effective_user_id(user)
+    # Caller attribution -- pin the actor on every DELETE. Wrap to defensive
+    # str() in case any header is None/missing; never let a missing header
+    # raise inside the log line.
+    h = request.headers
+    attribution = {
+        "user_agent": h.get("user-agent"),
+        "referer": h.get("referer"),
+        "origin": h.get("origin"),
+        "x_forwarded_for": h.get("x-forwarded-for"),
+        "cf_connecting_ip": h.get("cf-connecting-ip"),
+        "cf_ray": h.get("cf-ray"),
+        "cf_ipcountry": h.get("cf-ipcountry"),
+        "sec_fetch_site": h.get("sec-fetch-site"),
+        "sec_fetch_mode": h.get("sec-fetch-mode"),
+        "idempotency_key": h.get("idempotency-key"),
+    }
+    logger.warning(
+        "cancel_operation caller-attribution op=%s user=%s %s",
+        operation_id,
+        effective_user_id,
+        attribution,
+    )
+
     try:
         cancelled = await asyncio.to_thread(
             operations_repo.cancel,
