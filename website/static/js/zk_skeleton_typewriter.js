@@ -35,18 +35,22 @@
   var STYLE_CSS = [
     '.skeleton-typewriter {',
     '  font-family: var(--font-mono, ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace);',
-    '  font-size: 0.78rem;',
+    '  font-size: 0.82rem;',
     '  line-height: 1.4;',
     '  letter-spacing: 0.005em;',
-    '  color: var(--text-muted, rgba(160, 160, 168, 0.78));',
+    /* Brighter teal-tinted muted color so the line stays visible against
+     * the skeleton-line shimmer bands. Was rgba(160,160,168,0.78) which
+     * faded into the card background under any inherited opacity. */
+    '  color: hsla(172, 30%, 78%, 0.96);',
     '  margin-top: 0.65rem;',
     '  min-height: 1.1em;',
     '  white-space: nowrap;',
     '  overflow: hidden;',
     '  text-overflow: clip;',
-    '  display: inline-block;',
-    '  vertical-align: middle;',
-    '  opacity: 0.92;',
+    '  display: block;',  /* sit on its own row beneath the meta lines */
+    '  opacity: 1;',  /* defensive: never inherit a faded opacity */
+    '  position: relative;',
+    '  z-index: 2;',  /* above any pseudo-element on the skeleton lines */
     '  pointer-events: none;',
     '  user-select: none;',
     '}',

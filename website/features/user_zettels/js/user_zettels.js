@@ -957,12 +957,25 @@
       var canInsertAtTop = shouldRenderNewNodeAtTop(newNode);
       if (canInsertAtTop && skeleton && skeleton.parentNode) {
         var newCard = createCard(newNode, 0, false);
-        newCard.classList.add('is-new');
-        skeleton.parentNode.replaceChild(newCard, skeleton);
-        emptyEl.classList.add('hidden');
+        newCard.classList.add('is-new', 'is-fading-in');
+        // PR #40 (2026-05-21): smooth crossfade so the user sees the
+        // skeleton dissolve into the real card instead of an abrupt swap.
+        // Phase 1 — detach typewriter early so its caret doesn't blink
+        // during the fade. Phase 2 — start skeleton fade-out. Phase 3 —
+        // after 250ms, replaceChild and let the .is-fading-in animation
+        // on the new card carry the eye through the transition.
+        if (typer) { try { typer.detach(); } catch (e) { void e; } }
+        skeleton.classList.add('is-fading-out');
+        var _zSkel = skeleton, _zNew = newCard;
         window.setTimeout(function () {
-          newCard.classList.remove('is-new');
-        }, 450);
+          if (_zSkel && _zSkel.parentNode) {
+            _zSkel.parentNode.replaceChild(_zNew, _zSkel);
+            emptyEl.classList.add('hidden');
+            window.setTimeout(function () {
+              _zNew.classList.remove('is-new', 'is-fading-in');
+            }, 450);
+          }
+        }, 250);
       } else {
         if (skeleton && skeleton.parentNode) skeleton.parentNode.removeChild(skeleton);
         if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer);
