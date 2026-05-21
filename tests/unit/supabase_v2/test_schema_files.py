@@ -79,6 +79,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "61_enrichment_jobs_reaper.sql",
         "62_enrich_claim_next_fix.sql",
         "63_grant_v2_tables_to_service_role.sql",
+        "64_grant_all_v2_tables_to_service_role.sql",
     ]
 
 
@@ -216,32 +217,49 @@ def test_rls_uses_roles_for_workspace_writes() -> None:
 # failed 42501 "permission denied" on every PostgREST poll, hanging the Add
 # Zettel UI for the full 300s poll budget.
 #
-# The structural cause: 08_rls_policies.sql:4 grants ALL on existing tables
-# (00-08 only), and 52_default_privileges_hardening.sql sets ALTER DEFAULT
-# PRIVILEGES for future tables (53+ only). Tables created in migrations
-# 09-51 fall into a gap. Per-table GRANTs are the contract for this range.
-def test_v2_gap_zone_tables_have_explicit_service_role_grant() -> None:
+# Strict contract (post-2026-05-21): every v2 table (in core, content, kg, rag,
+# pipelines, billing) MUST have an explicit `GRANT ... TO service_role` per-
+# table statement somewhere in _v2/*.sql. Schema-wide grants in 08_rls_policies
+# and ALTER DEFAULT PRIVILEGES in 52_default_privileges_hardening are
+# defense-in-depth backstops, NOT the contract — a Supabase platform update
+# or a stray schema-wide REVOKE can silently shadow them, so per-table grants
+# are the only mechanism we trust.
+def _live_v2_tables_from_migrations() -> list[tuple[str, str]]:
+    """Return [(source_file, qualified_name)] for every v2 CREATE TABLE that
+    has NOT been dropped by a later migration."""
     table_re = re.compile(
         r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-z_]+\.[a-z_]+)",
         re.IGNORECASE,
     )
+    drop_re = re.compile(
+        r"DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+([a-z_]+\.[a-z_]+)",
+        re.IGNORECASE,
+    )
+    v2_schemas = {"core", "content", "kg", "rag", "pipelines", "billing"}
+    created: list[tuple[str, str]] = []
+    dropped: set[str] = set()
+    for p in sorted(V2_DIR.glob("*.sql")):
+        text = p.read_text(encoding="utf-8")
+        for m in table_re.finditer(text):
+            q = m.group(1)
+            if q.split(".", 1)[0] in v2_schemas:
+                created.append((p.name, q))
+        for m in drop_re.finditer(text):
+            q = m.group(1)
+            if q.split(".", 1)[0] in v2_schemas:
+                dropped.add(q)
+    return [(src, q) for src, q in created if q not in dropped]
+
+
+def test_every_v2_table_has_explicit_service_role_grant() -> None:
     files = sorted(V2_DIR.glob("*.sql"))
     all_sql = "\n".join(p.read_text(encoding="utf-8") for p in files)
 
-    gap_tables: list[tuple[str, str]] = []
-    for p in files:
-        prefix = p.name.split("_", 1)[0]
-        if not prefix.isdigit():
-            continue
-        num = int(prefix)
-        if not (9 <= num <= 51):
-            continue
-        text = p.read_text(encoding="utf-8")
-        for m in table_re.finditer(text):
-            gap_tables.append((p.name, m.group(1)))
+    live_tables = _live_v2_tables_from_migrations()
+    assert live_tables, "no v2 CREATE TABLE statements parsed - regex broken?"
 
     missing: list[str] = []
-    for source_file, qualified in gap_tables:
+    for source_file, qualified in live_tables:
         grant_pat = re.compile(
             r"GRANT\s+[A-Z, ]+\s+ON\s+(?:TABLE\s+)?"
             + re.escape(qualified)
@@ -252,13 +270,14 @@ def test_v2_gap_zone_tables_have_explicit_service_role_grant() -> None:
             missing.append(f"{qualified} (from {source_file})")
 
     assert not missing, (
-        "v2 gap-zone tables (created in migrations 09-51) without an explicit "
-        "per-table GRANT to service_role:\n  - "
+        "v2 tables without an explicit per-table GRANT to service_role "
+        "anywhere in _v2/*.sql:\n  - "
         + "\n  - ".join(missing)
-        + "\nAdd `GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO service_role;` "
-        "in the table's migration (or in 63_grant_v2_tables_to_service_role.sql). "
-        "The schema-wide GRANT ALL in 08_rls_policies.sql:4 does NOT cover these "
-        "tables because it ran before they existed."
+        + "\nEvery v2 table must have an explicit "
+        "`GRANT ALL ON <table> TO service_role;` (or equivalent) per the "
+        "post-2026-05-21 contract. Add it in the table's migration or in "
+        "64_grant_all_v2_tables_to_service_role.sql. Schema-wide grants and "
+        "ALTER DEFAULT PRIVILEGES are backstops, not the contract."
     )
 
 
@@ -281,3 +300,16 @@ def test_v2_grant_backfill_migration_covers_known_gap_tables() -> None:
         )
     # Self-verification block guards against silent grant failure.
     assert "has_table_privilege('service_role'" in sql
+
+
+def test_v2_grant_all_tables_migration_has_self_verification() -> None:
+    sql = _sql("64_grant_all_v2_tables_to_service_role.sql")
+    # Must self-verify on apply: assert every v2 table has service_role SELECT.
+    assert "has_table_privilege('service_role'" in sql
+    # Must include the dynamic catch-all loop so any table created outside this
+    # file (partman partitions, hand-DDL, missed entries) is still covered.
+    assert "ALTER DEFAULT PRIVILEGES" in sql
+    assert "FROM pg_tables" in sql
+    # Must include the 6 v2 schemas in its scope.
+    for schema in ("core", "content", "kg", "rag", "pipelines", "billing"):
+        assert schema in sql, f"migration 64 must mention schema {schema}"
