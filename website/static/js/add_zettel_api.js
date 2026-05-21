@@ -51,15 +51,20 @@
     return { body: body, retryAfter: response.headers.get('Retry-After') };
   }
 
+  // PR #40 L1 (2026-05-21): poll cap tightened 8s → 4s. Earlier 8s cap
+  // left the user waiting up to 8s AFTER the operations row already
+  // flipped to succeeded — perceptible dead time at the end of long
+  // pipelines. With a 4s cap, worst-case last-poll lag is ≤4s. Doubles
+  // the poll rate from t=7s onwards; each GET /api/operations/{id} is
+  // a single PostgREST scalar read (~50ms server-side on the 2 GB
+  // droplet) so the added load is negligible.
   // PR #39 / Wave-1 C1 (2026-05-20): 300s budget aligns with the 7-min
   // stuck-running reaper threshold (migration 59) + headroom so polling
   // can resolve before the reaper marks a long-running op as failed.
-  // Exponential backoff (1s, 2s, 4s, capped at 8s) reduces poll storm on
-  // the operations endpoint without sacrificing perceived snappiness for
-  // fast jobs. Server `Retry-After` always wins when present.
+  // Server `Retry-After` header always wins when present.
   var POLL_BUDGET_MS = 300000;
-  var POLL_BACKOFF_SCHEDULE_MS = [1000, 2000, 4000, 8000];
-  var POLL_BACKOFF_CAP_MS = 8000;
+  var POLL_BACKOFF_SCHEDULE_MS = [1000, 2000, 4000];
+  var POLL_BACKOFF_CAP_MS = 4000;
 
   async function pollAccepted(body, headers, hooks) {
     if (!body || body.status !== 'accepted' || !body.status_url) return body;

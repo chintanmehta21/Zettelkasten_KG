@@ -299,7 +299,7 @@ def test_add_zettel_helper_is_async_only_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260520a" in text, path
+        assert "/js/add_zettel_api.js?v=20260521a" in text, path
 
 
 def test_add_zettel_pages_reference_fresh_surface_scripts():
@@ -446,6 +446,10 @@ def test_poll_accepted_budget_covers_300s_and_respects_retry_after():
     js = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "POLL_BUDGET_MS" in js, "pollAccepted must define an explicit budget"
     assert "300000" in js, "poll budget must cover ~300s (reaper threshold - 2min slack)"
+    # PR #40 L1: cap tightened 8s → 4s for faster last-poll convergence.
+    assert "POLL_BACKOFF_CAP_MS = 4000" in js, (
+        "poll backoff cap must be 4000ms (PR #40 L1)"
+    )
     assert "Retry-After" in js or "retry-after" in js, "must honor Retry-After"
     # add_zettel_api.js cache-buster bumped to 20260520a (PR #39).
     for rel in [
@@ -455,7 +459,7 @@ def test_poll_accepted_budget_covers_300s_and_respects_retry_after():
         "website/features/user_zettels/index.html",
     ]:
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260520a" in html, rel
+        assert "/js/add_zettel_api.js?v=20260521a" in html, rel
 
 
 def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():
