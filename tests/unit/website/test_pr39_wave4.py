@@ -29,11 +29,20 @@ from website.app import create_app
 _ROOT = Path(__file__).resolve().parents[3]
 
 
-def _wait_for_finalize(captured: dict, *, timeout: float = 3.0) -> None:
+def _wait_for_finalize(captured: dict, client: TestClient, *, timeout: float = 10.0) -> None:
+    """PR #40 (2026-05-21): drive the TestClient's ASGI loop forward via
+    cheap `GET /api/health` requests so the bg `_run` task can finalize
+    before the assertion. Without this nudge, the loop is paused after
+    `client.post(...)` returns and `time.sleep` alone won't let the
+    spawned task progress on Linux CI runners."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         if captured.get("called"):
             return
+        try:
+            client.get("/api/health")
+        except Exception:
+            pass
         time.sleep(0.025)
 
 
@@ -249,7 +258,7 @@ def test_d1_pipeline_runs_exactly_once_per_slow_add(client, monkeypatch):
         },
     )
     assert resp.status_code == 202
-    _wait_for_finalize(captured)
+    _wait_for_finalize(captured, client)
 
     # Critical invariant: pipeline ran exactly once, NOT twice.
     assert run_count["n"] == 1
