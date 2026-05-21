@@ -892,7 +892,7 @@
 
     await sleep(500);
 
-    skeleton = createSkeletonCard();
+    skeleton = createSkeletonCard(url, Boolean(file));
     if (spacer && spacer.parentNode) {
       spacer.parentNode.replaceChild(skeleton, spacer);
     } else if (listEl) {
@@ -1056,17 +1056,40 @@
     return height;
   }
 
-  function createSkeletonCard() {
+  // PR #40 L2' (2026-05-21): optimistic UI — derive the source-type from
+  // the submitted URL so the meta row shows real chips (date + source
+  // badge) at t=0 instead of skeleton blocks. Linear/GitHub pattern. The
+  // title + body remain skeleton lines because those are the actual
+  // unknowns until the Gemini summary lands; the typewriter is the
+  // user-visible progress affordance for those.
+  function _detectSourceFromUrl(rawUrl, isDocument) {
+    if (isDocument) return 'document';
+    var url = String(rawUrl || '').trim().toLowerCase();
+    if (!url) return 'web';
+    if (/(^|\/\/)(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\b/.test(url)) return 'youtube';
+    if (/(^|\/\/)(www\.)?github\.com\b/.test(url)) return 'github';
+    if (/(^|\/\/)(www\.)?(reddit\.com|old\.reddit\.com|redd\.it)\b/.test(url)) return 'reddit';
+    if (/(^|\/\/)([^./]+\.)?substack\.com\b/.test(url)) return 'substack';
+    if (/(^|\/\/)(www\.)?medium\.com\b/.test(url)) return 'medium';
+    if (/(^|\/\/)(news\.ycombinator\.com|hackernews\.com)\b/.test(url)) return 'web';
+    return 'web';
+  }
+
+  function createSkeletonCard(rawUrl, isDocument) {
     var skeleton = document.createElement('article');
     skeleton.className = 'zettels-card zettels-card-skeleton';
     skeleton.style.opacity = '0';
     skeleton.style.transition = 'opacity 0.4s ease';
+    var source = _detectSourceFromUrl(rawUrl, isDocument);
+    var dateLabel = formatDate(new Date().toISOString().slice(0, 10));
     skeleton.innerHTML =
       '<div class="skeleton-line skeleton-title"></div>' +
       '<div class="skeleton-line skeleton-body"></div>' +
       '<div class="zettels-card-meta">' +
-        '<div class="skeleton-line skeleton-date"></div>' +
-        '<div class="skeleton-line skeleton-source"></div>' +
+        '<span class="home-card-date">' + escapeHtml(dateLabel) + '</span>' +
+        '<span class="home-card-source ' + source + '">' +
+          escapeHtml(sourceLabel(source)) +
+        '</span>' +
       '</div>';
     return skeleton;
   }
