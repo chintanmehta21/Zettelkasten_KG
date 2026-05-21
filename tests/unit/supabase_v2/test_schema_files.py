@@ -77,6 +77,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "59_reaper_threshold_7m.sql",
         "60_zettel_enrichment_jobs.sql",
         "61_enrichment_jobs_reaper.sql",
+        "62_enrich_claim_next_fix.sql",
     ]
 
 
@@ -98,6 +99,26 @@ def test_jwt_workspace_ids_uses_safe_jsonb_array_cast() -> None:
     sql = _sql("01_core_schema.sql")
     assert "jsonb_array_elements_text" in sql
     assert "::text::uuid[]" not in sql
+
+
+def test_enrich_claim_next_has_variable_conflict_directive() -> None:
+    """PR #40 hotfix lock: migration 62 must contain the
+    ``#variable_conflict use_column`` plpgsql directive inside the
+    ``core.enrich_claim_next`` body. Without it the bare ``attempts``
+    reference in the UPDATE … SET clause becomes ambiguous between the
+    OUT-table column and the table column, raising 42702 on every worker
+    poll and freezing the lazy-enrichment queue. Pin the fix here so a
+    future refactor can't silently remove the directive."""
+    sql = _sql("62_enrich_claim_next_fix.sql")
+    # Directive must be the first non-blank line inside the function body.
+    assert "CREATE OR REPLACE FUNCTION core.enrich_claim_next()" in sql
+    # The directive form is comment-like but is a real plpgsql parser hint;
+    # placement must be inside the AS $$ ... $$ block, before DECLARE/BEGIN.
+    assert "#variable_conflict use_column" in sql
+    # And the buggy bare-column reference is still present (we only added
+    # the directive; the SET clause's `attempts = attempts + 1` is now
+    # unambiguous courtesy of the directive).
+    assert "attempts   = attempts + 1" in sql
 
 
 def test_hnsw_is_only_in_post_backfill_file() -> None:
