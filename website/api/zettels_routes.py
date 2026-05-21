@@ -963,23 +963,32 @@ async def cancel_operation(
 ):
     """Phase-2 (async-ops redesign): cooperative cancellation.
 
-    Calls `core.ops_finalize(target='cancelled', ...)` via the state-guarded
-    RPC. If the row was already terminal the RPC is a silent no-op. Also
-    cancels the local _LIVE_TASKS entry; another worker's in-flight task
-    (if any) will keep running but its eventual `finalize(succeeded)` will
-    be a no-op because the row is already cancelled.
+    Auth model (hardened 2026-05-21):
+        * Caller must be authenticated AND must supply an `Idempotency-Key`
+          header that exactly matches the path `operation_id`. This is the
+          client-action-id-bound auth: only the originating client (which
+          minted and remembers the op_id at POST time) can cancel.
+        * BOLA scoping is enforced inside the RPC: ops_finalize WHERE
+          user_id = $1 AND operation_id = $2; a JWT for a different user
+          silently no-ops.
 
-    Caller attribution: this endpoint is NOT called by any JS in this repo
-    (verified 2026-05-21 audit). Real-world callers should be the originating
-    client tab acknowledging an explicit user cancel, OR no one. The 2026-05-21
-    production incident saw a phantom DELETE at 03:35 elapsed from no known
-    source. Log every request's identifying headers so the next phantom can be
-    traced back to a tab, extension, devtools session, or stale bundle.
+    Behaviour:
+        * Flips the DB row to `cancelled` via the state-guarded RPC. If the
+          row is already terminal the RPC is a silent no-op.
+        * Does NOT hard-cancel the in-flight asyncio task (removed
+          2026-05-21). The persist phase is shielded; injecting CancelledError
+          mid-PostgREST would risk partial writes (canonical_zettel without
+          workspace_zettel siblings). Letting the task finish naturally is
+          bounded by GUNICORN_TIMEOUT, and its eventual `finalize(succeeded)`
+          is a no-op because the state guard in `ops_finalize` only matches
+          status IN ('queued', 'running').
+
+    Caller attribution: this endpoint has no JS caller in this repo (verified
+    2026-05-21 audit). The 2026-05-21 phantom DELETE came from an external
+    actor (stale cached JS, second tab, devtools, extension). Log every
+    request's identifying headers so the next phantom is traceable.
     """
     effective_user_id = _effective_user_id(user)
-    # Caller attribution -- pin the actor on every DELETE. Wrap to defensive
-    # str() in case any header is None/missing; never let a missing header
-    # raise inside the log line.
     h = request.headers
     attribution = {
         "user_agent": h.get("user-agent"),
@@ -1000,6 +1009,33 @@ async def cancel_operation(
         attribution,
     )
 
+    # Client-action-id-bound auth: the originating client minted the op_id
+    # and remembers it; an external actor without that knowledge cannot
+    # produce a matching Idempotency-Key. This is defense-in-depth on top
+    # of the existing user_id scoping inside the RPC.
+    idem = h.get("idempotency-key")
+    if not idem or idem != operation_id:
+        logger.warning(
+            "cancel_operation rejected: idempotency-key mismatch op=%s key=%r",
+            operation_id,
+            idem,
+        )
+        return JSONResponse(
+            {
+                "type": "https://zettelkasten.in/problems/errors/forbidden",
+                "title": "Forbidden",
+                "detail": (
+                    "DELETE /api/zettels/operations/{id} requires the "
+                    "Idempotency-Key header to match the path operation_id "
+                    "(client-action-id-bound cancellation)."
+                ),
+                "status": 403,
+                "code": "operation_cancel_idempotency_mismatch",
+                "operation_id": operation_id,
+            },
+            status_code=403,
+        )
+
     try:
         cancelled = await asyncio.to_thread(
             operations_repo.cancel,
@@ -1012,9 +1048,16 @@ async def cancel_operation(
         )
         cancelled = False
 
-    local_task = _LIVE_TASKS.pop(operation_id, None)
+    # Diagnostic only: report whether a local in-flight task is still running.
+    # We DO NOT cancel it -- per 2026-05-21 redesign, the shielded persist
+    # must run to completion. The task's eventual finalize(succeeded) is a
+    # no-op because the row is now in the cancelled terminal state.
+    local_task = _LIVE_TASKS.get(operation_id)
     if local_task is not None and not local_task.done():
-        local_task.cancel()
+        logger.info(
+            "cancel_operation: in-flight task left running (shielded persist) op=%s",
+            operation_id,
+        )
 
     return JSONResponse(
         {

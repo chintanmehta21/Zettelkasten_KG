@@ -190,9 +190,17 @@ async def run_add_zettel_pipeline(
     quality = quality_dto(bundle)
     outcome: PersistenceOutcome | None = None
     if persist:
-        outcome = await persist_summarized_result(
-            summary.model_dump(mode="json"),
-            user_sub=user_sub,
+        # asyncio.shield protects the persist write from a mid-flight cancel
+        # of the parent _run task. Without this, a DELETE /api/zettels/
+        # operations/{id} (or a worker SIGTERM) could inject CancelledError
+        # between the canonical_zettel insert and the workspace_zettel /
+        # canonical_chunks inserts -> partial write / orphan rows. Per the
+        # 2026-05-21 incident review.
+        outcome = await asyncio.shield(
+            persist_summarized_result(
+                summary.model_dump(mode="json"),
+                user_sub=user_sub,
+            )
         )
         # Phase 9: gate consumed atomically in require_entitlement above.
 

@@ -381,9 +381,9 @@ cat > "$SNIPPET" <<EOF
 reverse_proxy zettelkasten-${IDLE}:10000 {
     transport http {
         dial_timeout 5s
-        read_timeout 240s
-        write_timeout 240s
-        response_header_timeout 240s
+        read_timeout 300s
+        write_timeout 300s
+        response_header_timeout 300s
         max_conns_per_host 20
     }
     flush_interval -1

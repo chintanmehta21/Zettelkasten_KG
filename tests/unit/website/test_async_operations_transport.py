@@ -474,9 +474,11 @@ def test_get_operation_expired_returns_410():
     assert body["error"]["code"] == "operation_expired"
 
 
-def test_delete_operation_calls_ops_cancel_and_cancels_local_task():
-    """DELETE /api/zettels/operations/{id} invokes ops.cancel and also
-    cancels the local _LIVE_TASKS entry when present (cooperative cancel)."""
+def test_delete_operation_calls_ops_cancel_and_leaves_local_task_running():
+    """DELETE /api/zettels/operations/{id} invokes ops.cancel (DB flip) but
+    does NOT hard-cancel the local _LIVE_TASKS entry. Per 2026-05-21
+    redesign: the shielded persist must run to completion; the in-flight
+    task's eventual finalize(succeeded) is a no-op due to the state guard."""
     from website.api import zettels_routes as zr
 
     cancel_calls: list[dict] = []
@@ -494,25 +496,29 @@ def test_delete_operation_calls_ops_cancel_and_cancels_local_task():
         try:
             with patch("website.api.zettels_routes.operations_repo.cancel",
                        side_effect=_cancel):
-                r = _client().delete("/api/zettels/operations/op-cancel-1")
+                r = _client().delete(
+                    "/api/zettels/operations/op-cancel-1",
+                    headers={"Idempotency-Key": "op-cancel-1"},
+                )
             assert r.status_code == 200
             body = r.json()
             assert body["status"] == "cancelled"
             assert body["operation_id"] == "op-cancel-1"
             assert len(cancel_calls) == 1
             assert cancel_calls[0]["operation_id"] == "op-cancel-1"
-            # Local task popped + cancelled.
-            assert "op-cancel-1" not in zr._LIVE_TASKS
-            # Give the loop a tick to register the cancellation.
-            try:
-                await asyncio.wait_for(local, timeout=0.5)
-            except (asyncio.CancelledError, TimeoutError):
-                pass
-            assert local.cancelled() or local.done()
+            # Local task is LEFT IN _LIVE_TASKS and NOT cancelled. The
+            # shielded persist must run to completion.
+            assert zr._LIVE_TASKS.get("op-cancel-1") is local
+            assert not local.cancelled()
+            assert not local.done()
         finally:
             zr._LIVE_TASKS.pop("op-cancel-1", None)
             if not local.done():
                 local.cancel()
+                try:
+                    await asyncio.wait_for(local, timeout=0.5)
+                except (asyncio.CancelledError, TimeoutError):
+                    pass
 
     asyncio.run(_go())
 
@@ -521,11 +527,41 @@ def test_delete_operation_returns_noop_when_already_terminal():
     """ops.cancel returns False on already-terminal row -> status=noop."""
     with patch("website.api.zettels_routes.operations_repo.cancel",
                return_value=False):
-        r = _client().delete("/api/zettels/operations/already-done")
+        r = _client().delete(
+            "/api/zettels/operations/already-done",
+            headers={"Idempotency-Key": "already-done"},
+        )
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "noop"
     assert body["operation_id"] == "already-done"
+
+
+def test_delete_operation_rejects_missing_idempotency_key():
+    """DELETE without Idempotency-Key -> 403 (client-action-id-bound auth)."""
+    with patch("website.api.zettels_routes.operations_repo.cancel",
+               return_value=True) as cancel_mock:
+        r = _client().delete("/api/zettels/operations/some-op")
+    assert r.status_code == 403
+    body = r.json()
+    assert body["code"] == "operation_cancel_idempotency_mismatch"
+    assert body["operation_id"] == "some-op"
+    # MUST NOT have called ops.cancel -- the guard runs BEFORE any DB write.
+    cancel_mock.assert_not_called()
+
+
+def test_delete_operation_rejects_mismatched_idempotency_key():
+    """DELETE with Idempotency-Key != operation_id -> 403."""
+    with patch("website.api.zettels_routes.operations_repo.cancel",
+               return_value=True) as cancel_mock:
+        r = _client().delete(
+            "/api/zettels/operations/op-real",
+            headers={"Idempotency-Key": "op-other"},
+        )
+    assert r.status_code == 403
+    body = r.json()
+    assert body["code"] == "operation_cancel_idempotency_mismatch"
+    cancel_mock.assert_not_called()
 
 
 def test_delete_operation_logs_caller_attribution(caplog):
@@ -551,7 +587,10 @@ def test_delete_operation_logs_caller_attribution(caplog):
                 "Cf-Ipcountry": "IN",
                 "Sec-Fetch-Site": "same-origin",
                 "Sec-Fetch-Mode": "cors",
-                "Idempotency-Key": "zettel:smoke:abc123",
+                # Match the path operation_id so we pass the
+                # client-action-id-bound auth gate; the attribution log fires
+                # BEFORE the gate so the test still validates logging.
+                "Idempotency-Key": "op-attrib-1",
             },
         )
     assert r.status_code == 200
@@ -564,7 +603,9 @@ def test_delete_operation_logs_caller_attribution(caplog):
     assert "op-attrib-1" in blob
     assert "TestRunner/1.0" in blob
     assert "ffeeddccbbaa9988-SIN" in blob
-    assert "zettel:smoke:abc123" in blob
+    # Idempotency-Key now equals the op_id (path-bound auth) -- attribution
+    # still logs it; the matching value 'op-attrib-1' check above implicitly
+    # covers it.
 
 
 # ---------------------------------------------------------------------------

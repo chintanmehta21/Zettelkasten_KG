@@ -259,7 +259,7 @@ jobs:
             "DEPLOY_ID=${DEPLOY_ID}" \
             "DEPLOY_ACTOR=${DEPLOY_ACTOR}" \
             "GUNICORN_WORKERS=2" \
-            "GUNICORN_TIMEOUT=240" \
+            "GUNICORN_TIMEOUT=300" \
             "GUNICORN_GRACEFUL_TIMEOUT=90" \
             "RAG_CHUNKS_ENABLED=true" \
             "RAG_RERANK_CONCURRENCY=2" \
