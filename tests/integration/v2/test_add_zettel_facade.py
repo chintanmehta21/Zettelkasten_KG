@@ -22,13 +22,19 @@ from fastapi.testclient import TestClient
 ZORO_AUTH_ID = UUID("a57e1f2f-7d89-4cd7-ae39-72c440ed4b4e")
 
 
-def _wait_for_finalize(captured: dict, *, timeout: float = 3.0) -> None:
-    """Block briefly until the background _run task calls finalize. The
-    route returns 202 immediately under A1; this polls every 25 ms."""
+def _wait_for_finalize(captured: dict, client: TestClient, *, timeout: float = 10.0) -> None:
+    """PR #40 (2026-05-21): drive the TestClient ASGI loop forward via
+    cheap `GET /api/health` requests so the bg `_run` task can finalize.
+    Without these nudges the loop pauses after `client.post(...)` returns
+    and the bg task never gets scheduled (Linux CI failure mode)."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         if captured.get("called"):
             return
+        try:
+            client.get("/api/health")
+        except Exception:
+            pass
         time.sleep(0.025)
 
 
@@ -185,7 +191,7 @@ def test_add_zettel_contract_summarizes_then_persists(facade_client, monkeypatch
     # PR #39 A1: route always 202s; the succeeded body lands on the
     # operations row via finalize, then GET /api/operations/{id} surfaces it.
     assert resp.status_code == 202
-    _wait_for_finalize(captured)
+    _wait_for_finalize(captured, client)
     assert calls == ["summarize", "persist"]
     assert seen_user_ids == [ZORO_AUTH_ID]
     assert captured.get("target") == "succeeded"
@@ -246,7 +252,7 @@ def test_add_zettel_uses_authenticated_uuid_and_can_skip_persistence(
     )
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured)
+    _wait_for_finalize(captured, client)
     assert seen == [user_id]
     assert persisted == []
     body = captured.get("response") or {}
@@ -309,7 +315,7 @@ def test_add_zettel_always_async_returns_202_then_succeeded(facade_client, monke
     )
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured)
+    _wait_for_finalize(captured, client)
     body = captured.get("response") or {}
     assert body["status"] == "succeeded"
     assert calls == ["summarize", "persist"]
@@ -344,7 +350,7 @@ def test_add_zettel_problem_detail_failure_lands_on_operations_row(
     )
 
     assert resp.status_code == 202
-    _wait_for_finalize(captured)
+    _wait_for_finalize(captured, client)
 
     assert captured.get("target") == "failed"
     response_body = captured.get("response") or {}

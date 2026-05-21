@@ -29,13 +29,26 @@ def client() -> TestClient:
     return TestClient(create_app())
 
 
-def _wait_for_finalize(captured: dict, *, timeout: float = 2.5) -> None:
-    """Block briefly until the background _run task calls finalize, since
-    the route returns 202 immediately. Polls every 25 ms."""
+def _wait_for_finalize(captured: dict, client: TestClient, *, timeout: float = 10.0) -> None:
+    """Block until the background _run task calls finalize.
+
+    PR #40 (2026-05-21): TestClient's ASGI loop is driven by each
+    incoming request. After `client.post(...)` returns, the loop is
+    paused — `time.sleep` alone won't let the spawned background task
+    progress (especially on Linux CI runners where the asyncio loop
+    and the test thread share a single executor). The fix: drive the
+    loop forward with cheap `GET /api/health` requests until the
+    captured-finalize flag flips. Each request re-enters the loop and
+    lets pending background tasks run a step. Bumped timeout 2.5s →
+    10s for shared-runner headroom."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         if captured.get("called"):
             return
+        try:
+            client.get("/api/health")
+        except Exception:
+            pass
         time.sleep(0.025)
 
 
@@ -112,7 +125,7 @@ class TestYouTube422Diagnostics:
         )
 
         assert resp.status_code == 202
-        _wait_for_finalize(captured)
+        _wait_for_finalize(captured, client)
 
         assert captured.get("target") == "failed"
         error = captured.get("error") or {}
@@ -226,7 +239,7 @@ class TestYouTube422Diagnostics:
         )
 
         assert resp.status_code == 202
-        _wait_for_finalize(captured)
+        _wait_for_finalize(captured, client)
 
         assert captured.get("target") == "succeeded"
         response_payload = captured.get("response") or {}
