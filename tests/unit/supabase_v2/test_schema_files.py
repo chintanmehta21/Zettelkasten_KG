@@ -78,6 +78,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "60_zettel_enrichment_jobs.sql",
         "61_enrichment_jobs_reaper.sql",
         "62_enrich_claim_next_fix.sql",
+        "63_grant_v2_tables_to_service_role.sql",
     ]
 
 
@@ -207,3 +208,76 @@ def test_rls_uses_roles_for_workspace_writes() -> None:
     assert "core.jwt_has_workspace_role(workspace_id, ARRAY['owner'])" in sql
     assert "kasten_members_workspace_insert" in sql
     assert "chat_messages_workspace_insert" in sql
+
+
+# Regression guard for the 2026-05-21 production incident where
+# core.operations was created in migration 48 with RLS + service_role policy
+# but no explicit table-level GRANT. operations_repo.get_operation() then
+# failed 42501 "permission denied" on every PostgREST poll, hanging the Add
+# Zettel UI for the full 300s poll budget.
+#
+# The structural cause: 08_rls_policies.sql:4 grants ALL on existing tables
+# (00-08 only), and 52_default_privileges_hardening.sql sets ALTER DEFAULT
+# PRIVILEGES for future tables (53+ only). Tables created in migrations
+# 09-51 fall into a gap. Per-table GRANTs are the contract for this range.
+def test_v2_gap_zone_tables_have_explicit_service_role_grant() -> None:
+    table_re = re.compile(
+        r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-z_]+\.[a-z_]+)",
+        re.IGNORECASE,
+    )
+    files = sorted(V2_DIR.glob("*.sql"))
+    all_sql = "\n".join(p.read_text(encoding="utf-8") for p in files)
+
+    gap_tables: list[tuple[str, str]] = []
+    for p in files:
+        prefix = p.name.split("_", 1)[0]
+        if not prefix.isdigit():
+            continue
+        num = int(prefix)
+        if not (9 <= num <= 51):
+            continue
+        text = p.read_text(encoding="utf-8")
+        for m in table_re.finditer(text):
+            gap_tables.append((p.name, m.group(1)))
+
+    missing: list[str] = []
+    for source_file, qualified in gap_tables:
+        grant_pat = re.compile(
+            r"GRANT\s+[A-Z, ]+\s+ON\s+(?:TABLE\s+)?"
+            + re.escape(qualified)
+            + r"\b[^;]*?\bservice_role\b",
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not grant_pat.search(all_sql):
+            missing.append(f"{qualified} (from {source_file})")
+
+    assert not missing, (
+        "v2 gap-zone tables (created in migrations 09-51) without an explicit "
+        "per-table GRANT to service_role:\n  - "
+        + "\n  - ".join(missing)
+        + "\nAdd `GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO service_role;` "
+        "in the table's migration (or in 63_grant_v2_tables_to_service_role.sql). "
+        "The schema-wide GRANT ALL in 08_rls_policies.sql:4 does NOT cover these "
+        "tables because it ran before they existed."
+    )
+
+
+def test_v2_grant_backfill_migration_covers_known_gap_tables() -> None:
+    sql = _sql("63_grant_v2_tables_to_service_role.sql")
+    for qualified in (
+        "core.operations",
+        "billing.pricing_usage_counters",
+        "billing.pricing_action_ledger",
+    ):
+        pat = re.compile(
+            r"GRANT\s+SELECT,\s*INSERT,\s*UPDATE,\s*DELETE\s+ON\s+"
+            + re.escape(qualified)
+            + r"\s+TO\s+service_role",
+            re.IGNORECASE,
+        )
+        assert pat.search(sql), (
+            f"63_grant_v2_tables_to_service_role.sql must include an explicit "
+            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO service_role."
+        )
+    # Self-verification block guards against silent grant failure.
+    assert "has_table_privilege('service_role'" in sql
