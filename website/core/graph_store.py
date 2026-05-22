@@ -53,12 +53,23 @@ def _load() -> dict:
 
 
 def _save() -> None:
-    """Persist in-memory graph to disk."""
-    if _graph is not None:
+    """Persist the in-memory graph to disk (best-effort).
+
+    The production container image is mounted read-only; ``graph.json`` is a
+    non-canonical mirror (Supabase v2 is the source of truth), so a read-only
+    filesystem here is expected, not a fault. The in-memory graph still
+    updates and serves reads for the process — only the on-disk mirror is
+    skipped, quietly, instead of raising into a noisy WARNING on every add.
+    """
+    if _graph is None:
+        return
+    try:
         GRAPH_JSON.write_text(
             json.dumps(_graph, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+    except OSError as exc:
+        logger.debug("graph.json mirror not persisted (read-only fs): %s", exc)
 
 
 def _slugify(text: str, max_len: int = 24) -> str:
