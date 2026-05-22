@@ -278,9 +278,18 @@ def test_yt_proxy_url_explicit_overrides(monkeypatch):
 
 def test_yt_proxy_url_derived_from_webshare_creds(monkeypatch):
     """Free->paid switch is value-only: same creds derive the backbone URL,
-    shared by the transcript-API tier and the yt-dlp tiers."""
+    shared by the transcript-API tier and the yt-dlp tiers. The rotating
+    backbone needs the '-rotate' username suffix (bare username 407s)."""
     monkeypatch.delenv("YT_PROXY_URL", raising=False)
     monkeypatch.delenv("YT_PROXY_BACKBONE", raising=False)
     monkeypatch.setenv("YT_TRANSCRIPT_PROXY_USER", "wsuser")
     monkeypatch.setenv("YT_TRANSCRIPT_PROXY_PASS", "wspass")
-    assert _yt_proxy_url() == "http://wsuser:wspass@p.webshare.io:80"
+    assert _yt_proxy_url() == "http://wsuser-rotate:wspass@p.webshare.io:80"
+
+
+def test_yt_proxy_url_rotate_suffix_not_doubled(monkeypatch):
+    monkeypatch.delenv("YT_PROXY_URL", raising=False)
+    monkeypatch.delenv("YT_PROXY_BACKBONE", raising=False)
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_USER", "wsuser-rotate")
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_PASS", "wspass")
+    assert _yt_proxy_url() == "http://wsuser-rotate:wspass@p.webshare.io:80"
