@@ -117,6 +117,33 @@ class TranscriptChain:
         return final
 
 
+def _yt_proxy_url() -> str:
+    """Resolve the HTTP proxy URL for the yt-dlp tiers.
+
+    Config-driven so the Webshare free -> paid (rotating residential) switch
+    is an environment change only, never a code change. Resolution order:
+
+    1. ``YT_PROXY_URL`` — explicit full URL ``http://user:pass@host:port``.
+    2. Derived from the Webshare transcript-proxy credentials
+       (``YT_TRANSCRIPT_PROXY_USER`` / ``YT_TRANSCRIPT_PROXY_PASS``) against
+       the Webshare rotating backbone ``p.webshare.io:80`` — the same host
+       for the free datacenter pool and paid residential plans. This lets a
+       single set of env vars route every YouTube-bound tier (transcript API
+       *and* yt-dlp) through the one proxy.
+
+    Returns ``""`` when no proxy is configured (direct connection).
+    """
+    explicit = os.environ.get("YT_PROXY_URL", "").strip()
+    if explicit:
+        return explicit
+    user = os.environ.get("YT_TRANSCRIPT_PROXY_USER", "").strip()
+    pwd = os.environ.get("YT_TRANSCRIPT_PROXY_PASS", "").strip()
+    if user and pwd:
+        host = os.environ.get("YT_PROXY_BACKBONE", "p.webshare.io:80").strip()
+        return f"http://{user}:{pwd}@{host}"
+    return ""
+
+
 async def tier_ytdlp_cookies_impersonate(video_id: str, config: dict) -> TierResult:
     """Tier 3: yt-dlp with --cookies-from-burner-account + --impersonate chrome
     (curl_cffi) + PO-token from bgutil sidecar. Unlocks age-restricted +
@@ -169,6 +196,10 @@ async def tier_ytdlp_cookies_impersonate(video_id: str, config: dict) -> TierRes
                 },
                 # curl_cffi impersonation via yt-dlp's impersonate option
                 "impersonate": "chrome",
+                # Route through the Webshare proxy when configured; None ->
+                # yt-dlp default (direct). Datacenter IPs are bot-walled, so
+                # in production this is what gets past "confirm you're not a bot".
+                "proxy": _yt_proxy_url() or None,
             }
             if user_agent:
                 opts["user_agent"] = user_agent
@@ -521,6 +552,7 @@ async def tier_gemini_audio(video_id: str, config: dict) -> TierResult:
             opts = {
                 "quiet": True,
                 "no_warnings": True,
+                "proxy": _yt_proxy_url() or None,
                 "format": "bestaudio[ext=m4a]/bestaudio",
                 "outtmpl": str(out_path),
                 "max_filesize": max_size_mb * 1024 * 1024,
@@ -747,7 +779,12 @@ async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
 
     try:
         with YoutubeDL(
-            {"quiet": True, "skip_download": True, "no_warnings": True}
+            {
+                "quiet": True,
+                "skip_download": True,
+                "no_warnings": True,
+                "proxy": _yt_proxy_url() or None,
+            }
         ) as ydl:
             info = ydl.extract_info(url, download=False) or {}
         title = info.get("title", "") or ""
