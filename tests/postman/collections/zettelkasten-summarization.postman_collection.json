@@ -17,20 +17,33 @@
           "if (!pm.environment.get('latency_events_json')) {",
           "  pm.environment.set('latency_events_json', '[]');",
           "}",
-          "function zkSkipUnlessLive(reason) {",
-          "  if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
-          "    pm.test('SKIPPED: ' + reason, function () { pm.expect(true).to.equal(true); });",
-          "    pm.execution.skipRequest();",
-          "  }",
+          "// Live gate: skip every request unless explicitly hitting a real target.",
+          "if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
+          "  pm.test('SKIPPED: set run_live_requests=true to hit a real target', function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
           "}",
-          "function zkRequire(names, reason) {",
-          "  var missing = names.filter(function (name) { return !pm.environment.get(name); });",
-          "  if (missing.length) {",
-          "    pm.test('SKIPPED: ' + reason + ' missing ' + missing.join(', '), function () { pm.expect(true).to.equal(true); });",
-          "    pm.execution.skipRequest();",
-          "  }",
-          "}",
-          "zkSkipUnlessLive('set run_live_requests=true to hit a real target');"
+          "// Per-request required-variable gate. Centralized in the collection",
+          "// pre-request because Postman runs each script in its own sandbox -",
+          "// a helper defined in one script is NOT in scope in another. The",
+          "// collection pre-request DOES run before every request and can read",
+          "// pm.info.requestName, so all gating lives here.",
+          "var ZK_REQUIRE = {",
+          "  'P1 Home button fires authenticated POST /api/zettels/add': ['auth_token_user_a'],",
+          "  'P1 Zettels page button fires POST /api/zettels/add': ['auth_token_user_a'],",
+          "  'P1 Poll home operation until terminal or budget': ['auth_token_user_a', 'op_url_home'],",
+          "  'P1 User A list contains only scoped zettels': ['auth_token_user_a'],",
+          "  'P1 User B cannot read User A operation payload': ['auth_token_user_b', 'op_url_home'],",
+          "  'P1 Supabase workspace row exists for persisted zettel': ['supabase_url', 'supabase_service_role_key', 'workspace_zettel_id'],",
+          "  'P1 Supabase canonical row is scoped': ['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id'],",
+          "  'P1 Supabase operation response keeps full payload': ['supabase_url', 'supabase_service_role_key', 'op_url_home'],",
+          "  'P2 Supabase chunks or enrichment state is visible': ['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id']",
+          "};",
+          "var zkNeeded = ZK_REQUIRE[pm.info.requestName] || [];",
+          "var zkMissing = zkNeeded.filter(function (name) { return !pm.environment.get(name); });",
+          "if (zkMissing.length) {",
+          "  pm.test('SKIPPED: ' + pm.info.requestName + ' needs ' + zkMissing.join(', '), function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}"
         ]
       }
     },
@@ -153,7 +166,6 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "zkRequire(['auth_token_user_a'], 'home surface requires user A token');",
                   "var id = pm.environment.get('run_id') + ':home';",
                   "pm.variables.set('client_action_id', id);",
                   "pm.variables.set('surface', 'home');",
@@ -197,7 +209,6 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "zkRequire(['auth_token_user_a'], 'zettels surface requires user A token');",
                   "if (pm.environment.get('allow_slow_live_paths') !== 'true') { pm.variables.set('url_under_test', pm.environment.get('test_url_web')); } else { pm.variables.set('url_under_test', pm.environment.get('test_url_youtube')); }",
                   "var id = pm.environment.get('run_id') + ':zettels';",
                   "pm.variables.set('client_action_id', id);",
@@ -241,7 +252,6 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "zkRequire(['auth_token_user_a', 'op_url_home'], 'operation polling requires user A token and op_url_home');",
                   "var notBefore = Number(pm.environment.get('next_poll_not_before_ms') || 0);",
                   "while (Date.now() < notBefore) { /* local runner wait; avoids hammering the app */ }"
                 ]
@@ -295,9 +305,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['auth_token_user_a'], 'user-scoped list requires user A token');"
-                ]
+                "exec": []
               }
             },
             {
@@ -329,9 +337,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['auth_token_user_b', 'op_url_home'], 'cross-user operation check requires user B token and user A op id');"
-                ]
+                "exec": []
               }
             },
             {
@@ -361,9 +367,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'workspace_zettel_id'], 'Supabase write verification requires service-role env and workspace_zettel_id');"
-                ]
+                "exec": []
               }
             },
             {
@@ -398,9 +402,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id'], 'canonical/chunk verification requires service-role env and canonical_zettel_id');"
-                ]
+                "exec": []
               }
             },
             {
@@ -432,9 +434,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'op_url_home'], 'operation payload verification requires service-role env and op_url_home');"
-                ]
+                "exec": []
               }
             },
             {
@@ -468,9 +468,7 @@
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id'], 'chunk visibility requires service-role env and canonical_zettel_id');"
-                ]
+                "exec": []
               }
             },
             {
