@@ -9,11 +9,9 @@ Covers:
 """
 from __future__ import annotations
 
-import asyncio
-import os
 from types import SimpleNamespace
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
