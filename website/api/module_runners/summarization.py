@@ -196,11 +196,14 @@ async def run_add_zettel_pipeline(
         # between the canonical_zettel insert and the workspace_zettel /
         # canonical_chunks inserts -> partial write / orphan rows. Per the
         # 2026-05-21 incident review.
+        payload = summary.model_dump(mode="json")
+        # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
+        # the public response). Re-thread it so persist's _stable_content_hash
+        # keys the (normalized_url, content_hash) dedup off deterministic
+        # source text instead of URL-only — parity with the document path.
+        payload["source_fingerprint_text"] = summary.source_fingerprint_text
         outcome = await asyncio.shield(
-            persist_summarized_result(
-                summary.model_dump(mode="json"),
-                user_sub=user_sub,
-            )
+            persist_summarized_result(payload, user_sub=user_sub)
         )
         # Phase 9: gate consumed atomically in require_entitlement above.
 
@@ -264,7 +267,12 @@ async def run_add_document_pipeline(
         # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
         # the public response), so re-thread it here for the dedup hash.
         payload["source_fingerprint_text"] = summary.source_fingerprint_text
-        outcome = await persist_summarized_result(payload, user_sub=user_sub)
+        # asyncio.shield: parity with run_add_zettel_pipeline — protect the
+        # persist write from a mid-flight cancel (matters once the document
+        # path moves onto the async-ops worker).
+        outcome = await asyncio.shield(
+            persist_summarized_result(payload, user_sub=user_sub)
+        )
 
     return AddZettelPipelineOutput(
         status="succeeded",

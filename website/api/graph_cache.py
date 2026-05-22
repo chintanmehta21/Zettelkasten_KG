@@ -59,6 +59,29 @@ __all__ = [
     "get_default_cache",
 ]
 
+# Strong-refs for fire-and-forget SWR background-refresh tasks so the event
+# loop (which holds only weak refs) cannot GC them mid-flight.
+_BG_REFRESH_TASKS: set[asyncio.Task] = set()
+
+
+def _consume_refresh_exception(fut: asyncio.Future) -> None:
+    """Retrieve the exception of an orphaned SWR refresh future.
+
+    In the stale-while-revalidate path the caller returns the stale payload
+    immediately and never awaits ``refresh_future``. If the background refresh
+    fails, ``_background_refresh`` sets the exception on it — an unretrieved
+    exception that the event loop logs as "Future exception was never
+    retrieved" (observed as PGRST200 spam on /api/graph). Reading
+    ``.exception()`` here marks it retrieved; followers that coalesced on the
+    future can still await it independently.
+    """
+    if fut.cancelled():
+        return
+    try:
+        fut.exception()
+    except Exception:  # noqa: BLE001 - defensive; never propagate from a callback
+        pass
+
 
 def bucket_for_strength(min_strength: float | None) -> str:
     """Map a continuous threshold to one of three cache buckets.
@@ -193,11 +216,18 @@ class UserGraphCache:
                     # (idempotent: only one refresh in flight per key).
                     if key not in self._inflight:
                         refresh_future = asyncio.get_running_loop().create_future()
+                        # This future is returned-without-await by the SWR
+                        # path; consume any exception so a failed background
+                        # refresh never becomes an orphaned unretrieved future.
+                        refresh_future.add_done_callback(_consume_refresh_exception)
                         self._inflight[key] = refresh_future
                         # Schedule outside the lock; the task acquires it itself.
-                        asyncio.create_task(
+                        # Strong-ref the task so it is not GC'd mid-flight.
+                        refresh_task = asyncio.create_task(
                             self._background_refresh(key, loader, refresh_future)
                         )
+                        _BG_REFRESH_TASKS.add(refresh_task)
+                        refresh_task.add_done_callback(_BG_REFRESH_TASKS.discard)
                     self._store.move_to_end(key, last=True)
                     return payload
                 # Beyond SWR window: drop and fall through to cold single-flight.
