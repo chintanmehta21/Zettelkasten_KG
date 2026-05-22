@@ -252,7 +252,6 @@ def test_d1_pipeline_runs_exactly_once_per_slow_add(client, monkeypatch):
     against the original work+_run race that was the root cause of the
     4-5 min hang."""
     from website.api import zettels_routes
-    from website.core import persist as persist_mod
 
     run_count = {"n": 0}
 
