@@ -1,0 +1,139 @@
+name: Postman summarization API
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Base URL to test, for example https://zettelkasten.in"
+        required: true
+        default: "https://zettelkasten.in"
+      live_requests:
+        description: "Set true to execute requests; false validates the collection without hitting a target"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      persist_live_writes:
+        description: "Allow tests that persist zettels into Supabase"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      allow_slow_live_paths:
+        description: "Allow slow YouTube/GitHub summarization paths"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postman-summarization-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  postman:
+    name: Newman summarization suite
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Create dated result tree
+        id: results
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATE_DIR="$(date -u +%F)"
+          TIME_DIR="$(date -u +%H%M%S)-run-${GITHUB_RUN_ID}"
+          RESULT_DIR="docs/postman_results/${DATE_DIR}/${TIME_DIR}"
+          mkdir -p "${RESULT_DIR}"
+          echo "dir=${RESULT_DIR}" >> "${GITHUB_OUTPUT}"
+          echo "date_dir=${DATE_DIR}" >> "${GITHUB_OUTPUT}"
+          echo "time_dir=${TIME_DIR}" >> "${GITHUB_OUTPUT}"
+
+      - name: Install Newman
+        run: npm install --no-save newman
+
+      - name: Render runtime environment
+        shell: bash
+        env:
+          TARGET_URL: ${{ inputs.target_url }}
+          RUN_LIVE_REQUESTS: ${{ inputs.live_requests }}
+          PERSIST_LIVE_WRITES: ${{ inputs.persist_live_writes }}
+          ALLOW_SLOW_LIVE_PATHS: ${{ inputs.allow_slow_live_paths }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          AUTH_TOKEN_USER_A: ${{ secrets.POSTMAN_AUTH_TOKEN_USER_A }}
+          AUTH_TOKEN_USER_B: ${{ secrets.POSTMAN_AUTH_TOKEN_USER_B }}
+        run: |
+          set -euo pipefail
+          node tests/postman/scripts/render-environment.mjs \
+            tests/postman/environments/zettelkasten.local.template.postman_environment.json \
+            "${RUNNER_TEMP}/postman-runtime-environment.json"
+          node tests/postman/scripts/render-environment.mjs \
+            tests/postman/environments/zettelkasten.local.template.postman_environment.json \
+            "${{ steps.results.outputs.dir }}/environment.sanitized.postman_environment.json" \
+            --sanitize
+
+      - name: Validate collection without live requests
+        if: inputs.live_requests != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/postman/scripts/validate-postman-files.mjs
+          cp tests/postman/collections/zettelkasten-summarization.postman_collection.json "${{ steps.results.outputs.dir }}/"
+          cp tests/postman/environments/zettelkasten.local.template.postman_environment.json "${{ steps.results.outputs.dir }}/environment.template.postman_environment.json"
+
+      - name: Run Newman collection
+        if: inputs.live_requests == 'true'
+        shell: bash
+        env:
+          COLLECTION: tests/postman/collections/zettelkasten-summarization.postman_collection.json
+          ENVIRONMENT: ${{ runner.temp }}/postman-runtime-environment.json
+          REPORT_DIR: ${{ steps.results.outputs.dir }}
+        run: bash tests/postman/ci/run-newman.sh
+
+      - name: Write run manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "${{ steps.results.outputs.dir }}/manifest.json" <<EOF
+          {
+            "workflow": "postman-summarization.yml",
+            "run_id": "${GITHUB_RUN_ID}",
+            "run_attempt": "${GITHUB_RUN_ATTEMPT}",
+            "sha": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF}",
+            "target_url": "${{ inputs.target_url }}",
+            "live_requests": "${{ inputs.live_requests }}",
+            "persist_live_writes": "${{ inputs.persist_live_writes }}",
+            "allow_slow_live_paths": "${{ inputs.allow_slow_live_paths }}",
+            "result_dir": "${{ steps.results.outputs.dir }}"
+          }
+          EOF
+
+      - name: Upload structured Postman artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-results-${{ steps.results.outputs.date_dir }}-${{ steps.results.outputs.time_dir }}
+          path: ${{ steps.results.outputs.dir }}/
+          if-no-files-found: error
+          retention-days: 30

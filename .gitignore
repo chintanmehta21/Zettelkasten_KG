@@ -46,6 +46,8 @@ tmp/
 
 # Project outputs
 data/
+!tests/postman/data/
+!tests/postman/data/**
 kg_output/
 
 # Credentials
@@ -114,3 +116,9 @@ package-lock.json
 dev/
 purge_backups/
 zettel_ingest_audit.json
+
+# Postman/Newman generated reports. GitHub Actions uploads these as artifacts;
+# local/manual runs may also write a dated tree here.
+docs/postman_results/
+tests/postman/reports/*
+!tests/postman/reports/.gitkeep

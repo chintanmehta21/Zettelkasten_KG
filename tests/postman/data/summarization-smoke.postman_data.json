@@ -1,0 +1,34 @@
+[
+  {
+    "priority": "P1",
+    "surface": "landing",
+    "source_kind": "web",
+    "url_variable": "test_url_web",
+    "persist": false,
+    "expected_endpoint": "/api/zettels/add"
+  },
+  {
+    "priority": "P1",
+    "surface": "home",
+    "source_kind": "web",
+    "url_variable": "test_url_web",
+    "persist": true,
+    "expected_endpoint": "/api/zettels/add"
+  },
+  {
+    "priority": "P1",
+    "surface": "zettels",
+    "source_kind": "youtube",
+    "url_variable": "test_url_youtube",
+    "persist": true,
+    "expected_endpoint": "/api/zettels/add"
+  },
+  {
+    "priority": "P2",
+    "surface": "api-v2",
+    "source_kind": "github",
+    "url_variable": "test_url_github",
+    "persist": false,
+    "expected_endpoint": "/api/v2/summarize"
+  }
+]
