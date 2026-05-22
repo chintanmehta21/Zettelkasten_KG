@@ -110,11 +110,18 @@ async def batch_upload_v2(
 
 
 def _user_id(user: dict | None) -> UUID:
-    raw = (user or {}).get("sub") or "00000000-0000-0000-0000-000000000001"
-    try:
-        return UUID(str(raw))
-    except ValueError:
-        return UUID("00000000-0000-0000-0000-000000000001")
+    raw = (user or {}).get("sub")
+    if raw:
+        try:
+            return UUID(str(raw))
+        except ValueError:
+            pass
+    # Anonymous / unparseable sub → canonical Zoro user (a real seeded
+    # profile), shared with /api/zettels/add. A fake sentinel UUID has no
+    # profiles row and FK-violates the metering gate, failing the op closed.
+    from website.api.zettels_routes import _zoro_user_id
+
+    return _zoro_user_id()
 
 
 def _gemini_client() -> TieredGeminiClient:
