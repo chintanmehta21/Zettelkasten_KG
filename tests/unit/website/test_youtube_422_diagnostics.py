@@ -25,7 +25,6 @@ def client() -> TestClient:
     from website.api import zettels_routes
 
     zettels_routes._RATE_STORE.clear()
-    zettels_routes._IDEMPOTENCY_CACHE.clear()
     return TestClient(create_app())
 
 
@@ -49,7 +48,12 @@ def _drive_bg_to_finalize(
 
     Calling ``asyncio.run`` after the route already fired would
     double-run the pipeline and break call-count assertions; the polling
-    guard is what prevents that on platforms where the bg task IS run."""
+    guard is what prevents that on platforms where the bg task IS run.
+
+    ADR-3 (2026-05-22): ``_run`` is now pipeline-agnostic — it takes a
+    zero-arg ``pipeline`` callable instead of ``body``/``user``. The
+    pipeline here is the URL ``_run_add_zettel`` wrapper, matching what
+    the route spawns."""
     import asyncio
     from website.api import zettels_routes as zr
 
@@ -65,8 +69,10 @@ def _drive_bg_to_finalize(
         zr._run(
             user_id=user_id,
             operation_id=post_json["client_action_id"],
-            body=body,
-            user=user_dict,
+            pipeline=lambda: zr._run_add_zettel(
+                body, user=user_dict, effective_user_id=user_id
+            ),
+            persist_requested=body.persist,
         )
     )
 

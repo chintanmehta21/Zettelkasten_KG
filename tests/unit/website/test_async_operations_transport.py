@@ -239,21 +239,24 @@ def test_failed_op_GET_returns_body_including_structured_error_field():
     assert body["error"]["status"] == 402
 
 
-def test_supabase_write_failure_does_not_5xx_the_add():
-    """Phase 2 (async-ops redesign): accept RPC raising (store down) must NOT
-    break the 202. The defensive fallback in operations_repo.accept returns
-    (operation_id, True) so the request path still spawns a background task
-    and returns the 202 envelope to the client."""
+def test_supabase_write_failure_yields_503_operation_store_unavailable():
+    """ADR-2 (2026-05-22): the accept path now FAILS CLOSED.
+
+    The prior posture had ``operations_repo.accept`` swallow store errors and
+    return ``(operation_id, True)`` so the route always 202'd — but that
+    spawned a background task the client could never poll (no durable row),
+    an infinite-pending UX. Now ``accept`` returns ``None`` on any store
+    failure and the route returns a retriable 503
+    ``operation-store-unavailable`` problem instead. ``accept`` is the symbol
+    that catches the RuntimeError internally, so we patch it to return
+    ``None`` (its real fail-closed output)."""
     async def _slow(*_a, **_k):
         await asyncio.sleep(30)
         return {"persistence": {"persisted": False}}
 
-    # PR #39 / Wave-1 A1: route never awaits the pipeline; the slow stub
-    # is kept only to keep the background _run task alive past the response
-    # capture, but the 20s wait_for race that motivated _AUTO_ACCEPT is gone.
     with patch("website.api.zettels_routes._run_add_zettel", _slow), \
          patch("website.api.zettels_routes.operations_repo.accept",
-               side_effect=RuntimeError("supabase down")), \
+               return_value=None), \
          patch("website.api.zettels_routes.operations_repo.start",
                return_value=False), \
          patch("website.api.zettels_routes.operations_repo.finalize",
@@ -263,7 +266,11 @@ def test_supabase_write_failure_does_not_5xx_the_add():
             json={"url": "https://example.com", "client_action_id": "store-down-1",
                   "surface": "landing", "persist": False},
         )
-    assert r.status_code == 202  # accept fail-open; never 5xx
+    assert r.status_code == 503  # ADR-2 fail-closed
+    assert r.headers["content-type"].startswith("application/problem+json")
+    body = r.json()
+    assert body["type"].endswith("/errors/operation-store-unavailable")
+    assert body["retryable"] is True
 
 
 # ---------------------------------------------------------------------------

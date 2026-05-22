@@ -5,8 +5,8 @@ Covers:
           helper sends it on both URL and document paths).
   * A5  — operations_repo.finalize retries transient PostgREST failures
           before swallowing.
-  * A6  — in-memory _IDEMPOTENCY_CACHE / _OPERATIONS are present and
-          serve the SYNCHRONOUS document path (not URL path).
+  * A6  — ADR-3: the document path is now async-ops (202 + status_url);
+          the in-memory _IDEMPOTENCY_CACHE / _OPERATIONS dicts were removed.
   * D1  — pipeline-runs-exactly-once invariant for the slow-URL path.
   * D2  — same-Idempotency-Key duplicate dedups to a single canonical op.
   * D3  — user isolation on GET /api/operations/{id}.
@@ -57,8 +57,10 @@ def _drive_bg_to_finalize(
         zr._run(
             user_id=user_id,
             operation_id=post_json["client_action_id"],
-            body=body,
-            user=user_dict,
+            pipeline=lambda: zr._run_add_zettel(
+                body, user=user_dict, effective_user_id=user_id
+            ),
+            persist_requested=body.persist,
         )
     )
 
@@ -68,8 +70,6 @@ def client() -> TestClient:
     from website.api import zettels_routes
 
     zettels_routes._RATE_STORE.clear()
-    zettels_routes._IDEMPOTENCY_CACHE.clear()
-    zettels_routes._OPERATIONS.clear()
     return TestClient(create_app())
 
 
@@ -209,25 +209,36 @@ def test_a5_finalize_returns_false_after_exhausting_retries(monkeypatch) -> None
 
 
 # ---------------------------------------------------------------------------
-# A6 — document-path in-memory dicts are present and named for SYNC path
+# A6 — ADR-3: document path is async-ops; in-memory idempotency dicts removed
 # ---------------------------------------------------------------------------
 
 
-def test_a6_document_idempotency_caches_scoped_to_doc_path() -> None:
-    """The in-memory dicts back the synchronous document upload path. The
-    URL path uses the DB-backed core.operations state machine instead.
+def test_a6_document_path_is_async_ops_and_inmemory_dicts_removed() -> None:
+    """ADR-3 (2026-05-22): the document-upload path moved onto the DB-backed
+    core.operations state machine, exactly like the URL path. The per-process
+    in-memory ``_IDEMPOTENCY_CACHE`` / ``_OPERATIONS`` dicts (and their
+    ``_cache_get`` / ``_cache_put`` / ``_operation_put`` helpers) were removed
+    — they could not coalesce duplicate uploads across gunicorn workers.
 
-    This test pins the scope contract via comment-anchor presence — if the
-    dicts get refactored / merged into core.operations later, this assertion
-    will fail and the doc-path needs to be re-routed first."""
+    This pins the removal so the dicts cannot silently come back."""
     from website.api import zettels_routes
 
+    for sym in (
+        "_IDEMPOTENCY_CACHE",
+        "_OPERATIONS",
+        "_cache_get",
+        "_cache_put",
+        "_operation_put",
+    ):
+        assert not hasattr(zettels_routes, sym), (
+            f"{sym} must stay removed — the document path is async-ops now"
+        )
+
     src = Path(zettels_routes.__file__).read_text(encoding="utf-8")
-    assert "SCOPE: these two in-memory dicts back the SYNCHRONOUS document" in src, (
-        "scope comment must remain explicit"
+    # The document route now returns 202 via the shared accept path.
+    assert "Document Add Zettel — async-ops (ADR-3)" in src, (
+        "document route docstring must declare the async-ops contract"
     )
-    assert isinstance(zettels_routes._IDEMPOTENCY_CACHE, dict)
-    assert isinstance(zettels_routes._OPERATIONS, dict)
 
 
 # ---------------------------------------------------------------------------
@@ -459,3 +470,208 @@ async def test_d5_persist_returns_with_no_chunks_inline_and_enqueues_payload(
     assert sp["source_url"] == "https://example.com/d5"
     assert sp["title"] == "Lazy Enrichment Subject"
     assert sp["tags"] == ["arch"]
+
+
+# ---------------------------------------------------------------------------
+# ADR-1 — server-guided Retry-After backoff (_retry_after_for_age)
+# ---------------------------------------------------------------------------
+
+
+def test_retry_after_for_age_grows_with_operation_age():
+    """ADR-1: Retry-After grows with operation age so short jobs poll fast
+    and long jobs poll sparsely. Boundaries: <20s=2, <60s=4, <180s=10, else=20."""
+    from datetime import datetime, timedelta, timezone
+
+    from website.api.zettels_routes import _retry_after_for_age
+
+    now = datetime.now(timezone.utc)
+    # age ~5s -> "2"
+    assert _retry_after_for_age((now - timedelta(seconds=5)).isoformat()) == "2"
+    # age ~40s -> "4"
+    assert _retry_after_for_age((now - timedelta(seconds=40)).isoformat()) == "4"
+    # age ~120s -> "10"
+    assert _retry_after_for_age((now - timedelta(seconds=120)).isoformat()) == "10"
+    # age ~600s -> "20"
+    assert _retry_after_for_age((now - timedelta(seconds=600)).isoformat()) == "20"
+
+
+def test_retry_after_for_age_falls_back_to_2_on_unparseable_input():
+    """Unparseable / None timestamps must not raise — they fall back to 2s."""
+    from website.api.zettels_routes import _retry_after_for_age
+
+    assert _retry_after_for_age("not-a-timestamp") == "2"
+    assert _retry_after_for_age(None) == "2"
+    assert _retry_after_for_age("") == "2"
+
+
+def test_retry_after_for_age_handles_naive_and_z_suffix_timestamps():
+    """A trailing 'Z' (UTC) and naive timestamps must both parse — the helper
+    normalizes them to UTC rather than raising."""
+    from datetime import datetime, timedelta, timezone
+
+    from website.api.zettels_routes import _retry_after_for_age
+
+    recent = (datetime.now(timezone.utc) - timedelta(seconds=3)).replace(
+        microsecond=0
+    )
+    # 'Z' suffix form
+    assert _retry_after_for_age(
+        recent.isoformat().replace("+00:00", "Z")
+    ) == "2"
+    # naive form (no tzinfo) — treated as UTC
+    assert _retry_after_for_age(recent.replace(tzinfo=None).isoformat()) == "2"
+
+
+# ---------------------------------------------------------------------------
+# ADR-2 — fail-closed accept: store-unavailable -> 503
+# ---------------------------------------------------------------------------
+
+
+def test_accept_returns_none_yields_503_operation_store_unavailable(
+    client, monkeypatch
+):
+    """ADR-2: when ``operations_repo.accept`` returns ``None`` (operations
+    store could not durably record the op), ``POST /api/zettels/add`` returns
+    a retriable 503 ``operation-store-unavailable`` problem instead of
+    spawning untrackable background work."""
+    from website.api import zettels_routes
+
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept",
+                        lambda **kw: None)
+    monkeypatch.setattr(zettels_routes, "check_async_backpressure",
+                        AsyncMock(return_value=None))
+
+    resp = client.post(
+        "/api/zettels/add",
+        json={
+            "url": "https://example.com/store-down",
+            "client_action_id": "store-503",
+            "surface": "landing",
+        },
+    )
+
+    assert resp.status_code == 503
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    body = resp.json()
+    assert body["type"].endswith("/errors/operation-store-unavailable")
+    assert body["status"] == 503
+    assert body["retryable"] is True
+
+
+def test_accept_raising_exception_also_yields_503(client, monkeypatch):
+    """ADR-2: a raised exception inside accept is caught and treated as a
+    store failure (accept_result=None) — same retriable 503, never a 5xx
+    stacktrace leak."""
+    from website.api import zettels_routes
+
+    def _boom(**_kw):
+        raise RuntimeError("PostgREST unreachable")
+
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept", _boom)
+    monkeypatch.setattr(zettels_routes, "check_async_backpressure",
+                        AsyncMock(return_value=None))
+
+    resp = client.post(
+        "/api/zettels/add",
+        json={
+            "url": "https://example.com/accept-raises",
+            "client_action_id": "raise-503",
+            "surface": "landing",
+        },
+    )
+
+    assert resp.status_code == 503
+    assert resp.json()["type"].endswith("/errors/operation-store-unavailable")
+
+
+# ---------------------------------------------------------------------------
+# fc6594c6 — ZettelListItem title_ready / enrichment_status derivation
+# ---------------------------------------------------------------------------
+
+
+def test_zettel_list_item_defaults_are_ready():
+    """A ZettelListItem built without the additive fields defaults to the
+    ready state (backward compatible with old clients/payloads)."""
+    from website.api.zettels_routes import ZettelListItem
+
+    item = ZettelListItem(
+        id="wz-1",
+        title="A real title",
+        brief_summary="b",
+        detailed_summary="d",
+        tags=[],
+        source_type="web",
+        source_url="https://example.com/x",
+        added_at="2026-05-22",
+        published_at="",
+    )
+    assert item.title_ready is True
+    assert item.enrichment_status == "ready"
+
+
+def test_zettel_list_item_empty_title_is_pending():
+    """An empty canonical title -> title="", title_ready=False,
+    enrichment_status="pending" (no "Untitled" literal at the API)."""
+    from website.api.zettels_routes import ZettelListItem
+
+    # This mirrors the derivation `list_zettels` applies for a canonical row
+    # whose title is empty/whitespace.
+    raw_title = "   "
+    title_ready = bool(raw_title.strip())
+    item = ZettelListItem(
+        id="wz-2",
+        title=raw_title.strip() if title_ready else "",
+        title_ready=title_ready,
+        enrichment_status="ready" if title_ready else "pending",
+        brief_summary="b",
+        detailed_summary="d",
+        tags=[],
+        source_type="web",
+        source_url="https://example.com/y",
+        added_at="2026-05-22",
+        published_at="",
+    )
+    assert item.title == ""
+    assert item.title_ready is False
+    assert item.enrichment_status == "pending"
+
+
+# ---------------------------------------------------------------------------
+# ADR-3 — _run overwrites the result's operation_id with the canonical id
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_overwrites_result_operation_id_with_canonical(monkeypatch):
+    """ADR-3: the pipeline stamps operation_id from body.client_action_id,
+    but the route may canonicalize to a different id (Idempotency-Key header
+    or an existing accepted row). ``_run`` overwrites the result's
+    operation_id with the canonical id the client is actually polling so the
+    finalized body matches the operations row."""
+    from website.api import zettels_routes
+
+    captured: dict = {}
+
+    def _finalize(**kw):
+        captured.update(kw)
+        return True
+
+    monkeypatch.setattr(zettels_routes.operations_repo, "start",
+                        lambda **kw: True)
+    monkeypatch.setattr(zettels_routes.operations_repo, "finalize", _finalize)
+
+    async def _pipeline():
+        # The pipeline stamps the *input* client_action_id, not the canonical.
+        return {"status": "succeeded", "operation_id": "pipeline-stamped-id"}
+
+    await zettels_routes._run(
+        user_id=uuid4(),
+        operation_id="canonical-op-id",
+        pipeline=_pipeline,
+        persist_requested=True,
+    )
+
+    assert captured.get("target") == "succeeded"
+    response_body = captured.get("response") or {}
+    # _run rewrote the stamped id to the canonical id passed to _run.
+    assert response_body["operation_id"] == "canonical-op-id"

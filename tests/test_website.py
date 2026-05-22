@@ -13,13 +13,11 @@ def client():
     # Clear rate limiter state between tests
     from website.api import zettels_routes
     zettels_routes._RATE_STORE.clear()
-    zettels_routes._IDEMPOTENCY_CACHE.clear()
 
     app = create_app()
     with TestClient(app) as test_client:
         yield test_client
     zettels_routes._RATE_STORE.clear()
-    zettels_routes._IDEMPOTENCY_CACHE.clear()
 
 
 class TestHealthEndpoint:
