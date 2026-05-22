@@ -19,6 +19,10 @@ services:
       # cluster cap = RAG_QUEUE_MAX × workers = 3 × 2 = 6 in-flight + queued.
       RAG_QUEUE_MAX: "3"
       RAG_RERANK_CONCURRENCY: "2"
+      # YouTube transcript tier reads browser cookies from this path to get
+      # past the datacenter-IP bot wall. Mounted read-only from the host
+      # (see volumes). The host file MUST exist before the container starts.
+      YT_COOKIES_PATH: "/opt/zk/yt-cookies.txt"
     ports:
       - "127.0.0.1:10001:10000"
     networks:
@@ -29,6 +33,8 @@ services:
       # iter-03 §6: models live inside the image; runtime writes (e.g. the
       # cascade-reranker degradation log) go to a separate writable mount.
       - /opt/zettelkasten/data/runtime:/app/runtime:rw
+      # YouTube cookies (Netscape format), refreshed manually on the host.
+      - /opt/zettelkasten/data/yt-cookies.txt:/opt/zk/yt-cookies.txt:ro
     # iter-03 mem-bounded: cgroup ceiling 1600m + 1000m swap budget.
     # Original 1300m proved too tight under realistic q1 multi-hop load
     # (worker SIGKILL during stage-2 BGE int8 inference + Gemini retry
