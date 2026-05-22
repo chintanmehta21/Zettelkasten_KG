@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from website.core.request_context import get_operation_id
 from website.core.url_utils import validate_url
 
 from website.features.summarization_engine.core.budget import budget_scope
@@ -33,6 +34,10 @@ logger = logging.getLogger("summarization_engine.orchestrator")
 
 _CACHE_ROOT = Path(__file__).resolve().parents[4] / "docs" / "summary_eval" / "_cache"
 _INGEST_CACHE = FsContentCache(root=_CACHE_ROOT, namespace="ingests")
+
+# Below this many chars of stripped extraction, summarizing would be pure
+# hallucination — refuse outright regardless of source tier or confidence.
+_EMPTY_INPUT_FLOOR = 50
 
 
 def _is_youtube_url(url: str) -> bool:
@@ -201,6 +206,17 @@ async def summarize_url_bundle(
             raise
         _INGEST_CACHE.put(ingest_cache_key, ingest_result.model_dump(mode="json"))
 
+    # Operation-scoped ingest-boundary trace: ties video_id + extracted-text
+    # size to one Add-Zettel operation for cross-request contamination triage.
+    logger.info(
+        "ingest_boundary op=%s url=%s video_id=%s raw_text_len=%d tier=%s",
+        get_operation_id(),
+        url,
+        (ingest_result.metadata or {}).get("video_id"),
+        len(ingest_result.raw_text or ""),
+        (ingest_result.metadata or {}).get("tier_used"),
+    )
+
     ingest_result.metadata.setdefault("route_subtype", route_decision.subtype)
     ingest_result.metadata.setdefault("route_supported", route_decision.supported)
     if route_decision.reason:
@@ -254,6 +270,30 @@ async def summarize_url_bundle(
 
     is_low_conf = ingest_result.extraction_confidence == "low"
     is_below_floor = stripped_len < thin_floor
+    tier_used = str((ingest_result.metadata or {}).get("tier_used") or "")
+    is_metadata_only = tier_used == "metadata_only"
+    is_near_empty = stripped_len < _EMPTY_INPUT_FLOOR
+
+    # Hard refusal (NOT behind RAG_THIN_EXTRACTION_REJECT_ENABLED) — scoped to
+    # low-confidence extraction so the D7/D8 carve-out for legit medium/high
+    # short posts is preserved:
+    #   * metadata-only tier + below floor -> no transcript was retrieved, so
+    #     the LLM would summarize a bare title/description as if it were the
+    #     video. This is the 2026-05-22 cross-video hallucination vector.
+    #   * near-empty extraction -> never summarize empty input.
+    # Surfaces as HTTP 422 on both the async (_problem_dict) and sync
+    # (summarize_v2) paths via ExtractionConfidenceError.
+    if is_low_conf and ((is_metadata_only and is_below_floor) or is_near_empty):
+        raise ExtractionConfidenceError(
+            f"Insufficient content extracted ({stripped_len} chars; "
+            f"floor {thin_floor}; tier={tier_used or 'unknown'}). "
+            f"Reason: {ingest_result.confidence_reason}",
+            source_type=effective_source_type.value,
+            reason=ingest_result.confidence_reason,
+            tier_results=ingest_result.metadata.get("tier_results") or [],
+            url=url,
+        )
+
     if is_low_conf and is_below_floor:
         reject_enabled = os.environ.get(
             "RAG_THIN_EXTRACTION_REJECT_ENABLED", "false"

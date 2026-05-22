@@ -96,15 +96,18 @@ class LRUCache(Generic[T]):
         self._store.clear()
 
 
-def cache_key_for_url(url: str) -> str:
-    """Stable sha1-hex digest of a normalized URL used as the cache key.
+def cache_key_for_url_content(url: str, content: str) -> str:
+    """Stable sha1-hex digest keyed on URL *and* the ingested content.
 
-    Hashing keeps the cache map small when URLs include long query strings,
-    and avoids URL-encoding mismatches between callers that have different
-    normalization stages upstream.
+    URL-only keying conflated two outcomes for the same video: a thin
+    metadata-only failure and a rich full-transcript success hashed to the
+    same key, so the first writer's payload was served to every later request
+    for the whole TTL. Folding content into the key gives a thin attempt and
+    a rich attempt for the same URL distinct cache slots.
     """
     normalized = (url or "").strip()
-    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()
+    payload = f"{normalized}\x00{content or ''}"
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
-__all__ = ["LRUCache", "cache_key_for_url"]
+__all__ = ["LRUCache", "cache_key_for_url_content"]

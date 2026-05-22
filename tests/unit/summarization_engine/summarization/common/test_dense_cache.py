@@ -12,7 +12,7 @@ import pytest
 
 from website.features.summarization_engine.summarization.common.dense_cache import (
     LRUCache,
-    cache_key_for_url,
+    cache_key_for_url_content,
 )
 
 
@@ -92,17 +92,26 @@ async def test_get_or_compute_recomputes_after_expiry():
     assert calls["n"] == 2
 
 
-def test_cache_key_is_stable_and_hex_sha1():
-    k1 = cache_key_for_url("https://example.com/post")
-    k2 = cache_key_for_url("https://example.com/post")
+def test_content_key_differs_for_same_url_distinct_content():
+    # Regression: a thin metadata-only failure and a rich transcript success
+    # for the same video URL must occupy distinct DV cache slots.
+    url = "https://www.youtube.com/watch?v=fNNz9a2OIn4"
+    thin = cache_key_for_url_content(url, "Video: Title\nChannel: X\nTranscript: ")
+    rich = cache_key_for_url_content(url, "a full, dense transcript " * 50)
+    assert thin != rich
+
+
+def test_content_key_stable_and_hex_sha1():
+    k1 = cache_key_for_url_content("https://example.com/x", "content")
+    k2 = cache_key_for_url_content("https://example.com/x", "content")
     assert k1 == k2
     assert len(k1) == 40
     assert all(c in "0123456789abcdef" for c in k1)
 
 
-def test_cache_key_differs_for_distinct_urls():
-    k1 = cache_key_for_url("https://example.com/a")
-    k2 = cache_key_for_url("https://example.com/b")
+def test_content_key_differs_for_distinct_urls_same_content():
+    k1 = cache_key_for_url_content("https://example.com/a", "same")
+    k2 = cache_key_for_url_content("https://example.com/b", "same")
     assert k1 != k2
 
 

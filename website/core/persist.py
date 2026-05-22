@@ -22,6 +22,7 @@ from typing import Any
 from uuid import UUID
 
 from website.core.graph_store import _SOURCE_PREFIX, add_node, get_graph
+from website.core.request_context import get_operation_id
 from website.core.db_version import use_supabase_v2
 from website.core.supabase_v2.client import is_v2_configured
 from website.core.settings import get_settings  # noqa: F401 - legacy test patch hook
@@ -526,6 +527,16 @@ async def persist_summarized_result(
 
     payload = dict(result)
     captured_on = captured_on or date.today()
+
+    # Operation-scoped persist-boundary trace: the last checkpoint before the
+    # row is written, so a contaminated zettel can be tied to its operation.
+    _raw_meta = payload.get("raw_metadata") or (payload.get("metadata") or {}).get("raw_metadata") or {}
+    logger.info(
+        "persist_boundary op=%s source_url=%s video_id=%s",
+        get_operation_id(),
+        payload.get("source_url"),
+        _raw_meta.get("video_id") if isinstance(_raw_meta, dict) else None,
+    )
 
     explicit_brief = _normalize_summary_text(payload.get("brief_summary"))
     explicit_detailed = _normalize_summary_text(payload.get("detailed_summary"))

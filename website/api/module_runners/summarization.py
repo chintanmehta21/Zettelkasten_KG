@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from website.core.persist import PersistenceOutcome
 
+from website.core.request_context import operation_context
 from website.core.summary_rendering import render_detailed_summary
 
 if TYPE_CHECKING:
@@ -179,33 +180,36 @@ async def run_add_zettel_pipeline(
             return _cache_hit_output(decision.found, client_action_id, persist)
 
     await require_entitlement(Meter.ZETTEL, user, action_id=client_action_id)
-    async with _SUMMARIZE_SEMAPHORE:
-        bundle = await summarize_url_bundle(
-            normalized,
-            user_id=effective_user_id,
-            gemini_client=gemini_client_factory(),
-        )
+    # Bind the operation id so ingest / dense-verify / persist log lines deep
+    # in the engine can be correlated to this one Add-Zettel operation.
+    with operation_context(client_action_id):
+        async with _SUMMARIZE_SEMAPHORE:
+            bundle = await summarize_url_bundle(
+                normalized,
+                user_id=effective_user_id,
+                gemini_client=gemini_client_factory(),
+            )
 
-    summary = summary_dto(bundle)
-    quality = quality_dto(bundle)
-    outcome: PersistenceOutcome | None = None
-    if persist:
-        # asyncio.shield protects the persist write from a mid-flight cancel
-        # of the parent _run task. Without this, a DELETE /api/zettels/
-        # operations/{id} (or a worker SIGTERM) could inject CancelledError
-        # between the canonical_zettel insert and the workspace_zettel /
-        # canonical_chunks inserts -> partial write / orphan rows. Per the
-        # 2026-05-21 incident review.
-        payload = summary.model_dump(mode="json")
-        # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
-        # the public response). Re-thread it so persist's _stable_content_hash
-        # keys the (normalized_url, content_hash) dedup off deterministic
-        # source text instead of URL-only — parity with the document path.
-        payload["source_fingerprint_text"] = summary.source_fingerprint_text
-        outcome = await asyncio.shield(
-            persist_summarized_result(payload, user_sub=user_sub)
-        )
-        # Phase 9: gate consumed atomically in require_entitlement above.
+        summary = summary_dto(bundle)
+        quality = quality_dto(bundle)
+        outcome: PersistenceOutcome | None = None
+        if persist:
+            # asyncio.shield protects the persist write from a mid-flight cancel
+            # of the parent _run task. Without this, a DELETE /api/zettels/
+            # operations/{id} (or a worker SIGTERM) could inject CancelledError
+            # between the canonical_zettel insert and the workspace_zettel /
+            # canonical_chunks inserts -> partial write / orphan rows. Per the
+            # 2026-05-21 incident review.
+            payload = summary.model_dump(mode="json")
+            # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
+            # the public response). Re-thread it so persist's _stable_content_hash
+            # keys the (normalized_url, content_hash) dedup off deterministic
+            # source text instead of URL-only — parity with the document path.
+            payload["source_fingerprint_text"] = summary.source_fingerprint_text
+            outcome = await asyncio.shield(
+                persist_summarized_result(payload, user_sub=user_sub)
+            )
+            # Phase 9: gate consumed atomically in require_entitlement above.
 
     return AddZettelPipelineOutput(
         status="succeeded",
@@ -252,27 +256,28 @@ async def run_add_document_pipeline(
     config = load_config()
     source_config = config.sources.get(SourceType.DOCUMENT.value, {})
     summarizer_cls = get_summarizer(SourceType.DOCUMENT)
-    async with _SUMMARIZE_SEMAPHORE:
-        summarizer = summarizer_cls(gemini_client_factory(), source_config)
-        async with budget_scope(summarizer=SourceType.DOCUMENT.value):
-            summary_result = await summarizer.summarize(ingest)
+    with operation_context(client_action_id):
+        async with _SUMMARIZE_SEMAPHORE:
+            summarizer = summarizer_cls(gemini_client_factory(), source_config)
+            async with budget_scope(summarizer=SourceType.DOCUMENT.value):
+                summary_result = await summarizer.summarize(ingest)
 
-    bundle = OrchestratedSummary(ingest_result=ingest, summary_result=summary_result)
-    summary = summary_dto(bundle)
-    quality = quality_dto(bundle)
-    outcome: PersistenceOutcome | None = None
-    if persist:
-        payload = summary.model_dump(mode="json")
-        payload["raw_text"] = ingest.raw_text
-        # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
-        # the public response), so re-thread it here for the dedup hash.
-        payload["source_fingerprint_text"] = summary.source_fingerprint_text
-        # asyncio.shield: parity with run_add_zettel_pipeline — protect the
-        # persist write from a mid-flight cancel (matters once the document
-        # path moves onto the async-ops worker).
-        outcome = await asyncio.shield(
-            persist_summarized_result(payload, user_sub=user_sub)
-        )
+        bundle = OrchestratedSummary(ingest_result=ingest, summary_result=summary_result)
+        summary = summary_dto(bundle)
+        quality = quality_dto(bundle)
+        outcome: PersistenceOutcome | None = None
+        if persist:
+            payload = summary.model_dump(mode="json")
+            payload["raw_text"] = ingest.raw_text
+            # source_fingerprint_text is exclude=True on SummaryDTO (kept out of
+            # the public response), so re-thread it here for the dedup hash.
+            payload["source_fingerprint_text"] = summary.source_fingerprint_text
+            # asyncio.shield: parity with run_add_zettel_pipeline — protect the
+            # persist write from a mid-flight cancel (matters once the document
+            # path moves onto the async-ops worker).
+            outcome = await asyncio.shield(
+                persist_summarized_result(payload, user_sub=user_sub)
+            )
 
     return AddZettelPipelineOutput(
         status="succeeded",
