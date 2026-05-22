@@ -1005,10 +1005,8 @@
           added_at: new Date().toISOString().slice(0, 10)
         });
         // Reconcile later so the real persisted card replaces this one
-        // without a manual refresh.
-        window.setTimeout(function () {
-          try { loadZettels(); } catch (e) { void e; }
-        }, 8000);
+        // without a manual refresh (loadZettels catches its own errors).
+        window.setTimeout(function () { loadZettels(); }, 8000);
       }
 
       upsertNodeAtTop(newNode);

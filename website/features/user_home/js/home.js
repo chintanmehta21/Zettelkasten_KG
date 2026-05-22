@@ -1187,9 +1187,8 @@
       // Authoritative reconcile: re-pull the preview grid so the optimistic
       // card is replaced by the persisted /api/zettels row — picks up the
       // real title if this add finalized with a pending/empty one.
-      window.setTimeout(function () {
-        try { loadZettels(token); } catch (re) { void re; }
-      }, 6000);
+      // loadZettels catches its own errors.
+      window.setTimeout(function () { loadZettels(token); }, 6000);
     } catch (e) {
       // The optimistic add did not land — tear the skeleton down immediately on
       // ANY error (incl. quota_exhausted) so it never orphans if the user
