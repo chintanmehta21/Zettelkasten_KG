@@ -629,7 +629,7 @@ async def add_zettel(
         # row returns the existing canonical op rather than creating a
         # new one — the client's poll resolves to the same result.
         try:
-            canonical_op_id, is_new = await asyncio.to_thread(
+            accept_result = await asyncio.to_thread(
                 operations_repo.accept,
                 user_id=effective_user_id,
                 operation_id=operation_id,
@@ -639,10 +639,28 @@ async def add_zettel(
             )
         except Exception:
             logger.exception(
-                "operations_repo.accept raised (op=%s); falling back to local op_id",
-                operation_id,
+                "operations_repo.accept raised (op=%s)", operation_id
             )
-            canonical_op_id, is_new = operation_id, True
+            accept_result = None
+
+        if accept_result is None:
+            # ADR-2 fail-closed: the operations store could not durably record
+            # this operation. Spawning the worker now would produce work the
+            # client can never poll (no row to read) -> infinite pending.
+            # Return a retriable 503 instead of accepting untrackable work.
+            return _problem(
+                status_code=503,
+                title="Operation store unavailable",
+                detail=(
+                    "Could not record the Add Zettel operation. "
+                    "Please retry in a moment."
+                ),
+                operation_id=operation_id,
+                type_slug="operation-store-unavailable",
+                extra={"retryable": True},
+            )
+
+        canonical_op_id, is_new = accept_result
 
         if is_new:
             # Spawn the background worker holding the canonical op id.

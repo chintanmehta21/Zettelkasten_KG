@@ -73,16 +73,18 @@ def accept(
     request_hash: str,
     accepted_body: dict[str, Any],
     ttl_seconds: int = 86400,
-) -> tuple[str, bool]:
+) -> tuple[str, bool] | None:
     """Idempotent accept via ``core.ops_accept`` RPC.
 
     Returns ``(canonical_operation_id, is_new)``. The RPC body returns exactly
     one row ``{operation_id, status, is_new}`` whether the INSERT fired or the
     partial-unique-index conflict path served the existing active row.
 
-    Defensive: on ANY error returns ``(operation_id, True)`` so the request
-    path never 5xxs because of the operations store (mirrors the existing
-    legacy posture).
+    ADR-2 (fail-closed): on ANY operations-store failure returns ``None``. The
+    prior posture returned ``(operation_id, True)`` so the request never 5xxd,
+    but that spawned background work the client could never poll (no durable
+    row to read) — an infinite-pending UX. The caller now returns a retriable
+    503 instead, so a store outage is an honest, recoverable error.
     """
     try:
         client = get_v2_client()
@@ -98,18 +100,18 @@ def accept(
         ).execute()
         rows = resp.data or []
         if not rows:
-            # Should never happen — the RPC CTE guarantees one row. Fall back
-            # to is_new=True so the caller spawns the task.
-            logger.warning(
+            # The RPC CTE guarantees one row; empty data means the store did
+            # not durably record the operation. Fail closed.
+            logger.error(
                 "operations_repo.accept: ops_accept returned empty data (op=%s)",
                 operation_id,
             )
-            return operation_id, True
+            return None
         row = rows[0]
         return str(row.get("operation_id") or operation_id), bool(row.get("is_new"))
     except Exception:
         logger.exception("operations_repo.accept failed (op=%s)", operation_id)
-        return operation_id, True
+        return None
 
 
 def start(*, user_id: UUID, operation_id: str) -> bool:
