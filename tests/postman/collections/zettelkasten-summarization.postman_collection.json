@@ -308,7 +308,8 @@
                   "var body = pm.response.json();",
                   "pm.test('List endpoint schema', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(body.zettels).to.be.an('array'); pm.expect(body.total).to.be.a('number'); });",
                   "pm.test('No duplicate zettel ids in list', function () { var ids = body.zettels.map(function (z) { return z.id; }); pm.expect(new Set(ids).size).to.equal(ids.length); });",
-                  "pm.test('No blank Untitled regression in ready items', function () { body.zettels.forEach(function (z) { pm.expect(z.title, 'title for ' + z.id).to.not.equal('Untitled'); }); });"
+                  "pm.test('No blank Untitled regression in ready items', function () { body.zettels.forEach(function (z) { pm.expect(z.title, 'title for ' + z.id).to.not.equal('Untitled'); }); });",
+                  "pm.test('List items expose title_ready / enrichment_status readiness signal', function () { body.zettels.forEach(function (z) { pm.expect(z, 'readiness fields for ' + z.id).to.include.keys('title_ready', 'enrichment_status'); pm.expect(z.enrichment_status, 'enrichment_status for ' + z.id).to.be.oneOf(['ready', 'pending']); pm.expect(z.title_ready, 'title_ready for ' + z.id).to.be.a('boolean'); if (z.title_ready === true) { pm.expect(z.enrichment_status).to.equal('ready'); } else { pm.expect(z.enrichment_status).to.equal('pending'); } }); });"
                 ]
               }
             }
@@ -594,12 +595,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('v2 summarize returns 200 or known content refusal', function () { pm.expect(pm.response.code).to.be.oneOf([200, 422, 503]); });",
+                  "pm.test('v2 summarize returns 202 async-ops contract (ADR-3)', function () { pm.expect(pm.response.code).to.be.oneOf([202, 503]); });",
                   "var body = pm.response.json();",
-                  "if (pm.response.code === 200) {",
-                  "  pm.test('v2 summarize schema', function () { pm.expect(body.summary).to.be.an('object'); pm.expect(body.writers).to.be.an('array'); pm.expect(body.confidence).to.be.oneOf(['high', 'low']); });",
+                  "if (pm.response.code === 202) {",
+                  "  pm.test('v2 summarize accepted envelope', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string').and.not.empty; pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); });",
+                  "  pm.test('v2 summarize operation_id is URL-safe', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]+$/); });",
                   "} else {",
-                  "  pm.test('v2 failure is structured', function () { pm.expect(body.detail || body.error).to.exist; });",
+                  "  pm.test('v2 store-unavailable failure is structured', function () { pm.expect(body.detail || body.error || body.title).to.exist; });",
                   "}"
                 ]
               }
@@ -646,15 +648,14 @@
           }
         },
         {
-          "name": "P2 /api/v2/batch/stream exposes SSE contract",
+          "name": "P2 /api/v2/batch/stream is removed (ADR-4)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Stream endpoint does not 5xx for valid payload', function () { pm.expect(pm.response.code).to.be.oneOf([200, 422, 503]); });",
-                  "pm.test('Stream content type is event-stream on success', function () { if (pm.response.code === 200) pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream'); });"
+                  "pm.test('Fake-SSE batch/stream endpoint is removed (ADR-4)', function () { pm.expect(pm.response.code).to.equal(404); });"
                 ]
               }
             }
@@ -694,8 +695,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Empty document is rejected or processed without 5xx', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 422]); });",
-                  "pm.test('Document response is JSON', function () { pm.expect(pm.response.json()).to.be.an('object'); });"
+                  "pm.test('Document upload uses async-ops or rejects cleanly (ADR-3)', function () { pm.expect(pm.response.code).to.be.oneOf([202, 422]); });",
+                  "var body = pm.response.json();",
+                  "if (pm.response.code === 202) {",
+                  "  pm.test('Document accepted envelope is pollable', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); });",
+                  "} else {",
+                  "  pm.test('Document rejection is structured', function () { pm.expect(body.detail || body.error || body.title).to.exist; });",
+                  "}"
                 ]
               }
             }
