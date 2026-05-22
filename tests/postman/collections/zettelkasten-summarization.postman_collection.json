@@ -1,0 +1,651 @@
+{
+  "info": {
+    "_postman_id": "2b3f44b1-c3c1-4bbf-a97b-zk-summarization",
+    "name": "Zettelkasten Summarization E2E",
+    "description": "End-to-end Postman/Newman suite for Add Zettel, summarization v2, operation polling, UI-triggered surfaces, Supabase write verification, user scoping, failure handling, and timing reports. Built from docs/research/postman_init1.md and docs/research/postman_init2.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  pm.environment.set('run_id', 'postman-' + Date.now() + '-' + Math.random().toString(36).slice(2));",
+          "}",
+          "if (!pm.environment.get('latency_events_json')) {",
+          "  pm.environment.set('latency_events_json', '[]');",
+          "}",
+          "function zkSkipUnlessLive(reason) {",
+          "  if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
+          "    pm.test('SKIPPED: ' + reason, function () { pm.expect(true).to.equal(true); });",
+          "    pm.execution.skipRequest();",
+          "  }",
+          "}",
+          "function zkRequire(names, reason) {",
+          "  var missing = names.filter(function (name) { return !pm.environment.get(name); });",
+          "  if (missing.length) {",
+          "    pm.test('SKIPPED: ' + reason + ' missing ' + missing.join(', '), function () { pm.expect(true).to.equal(true); });",
+          "    pm.execution.skipRequest();",
+          "  }",
+          "}",
+          "zkSkipUnlessLive('set run_live_requests=true to hit a real target');"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "var raw = pm.environment.get('latency_events_json') || '[]';",
+          "var events = [];",
+          "try { events = JSON.parse(raw); } catch (e) { events = []; }",
+          "events.push({",
+          "  request: pm.info.requestName,",
+          "  folder: pm.info.folderName || '',",
+          "  status: pm.response.code,",
+          "  elapsed_ms: pm.response.responseTime,",
+          "  at: new Date().toISOString()",
+          "});",
+          "pm.environment.set('latency_events_json', JSON.stringify(events));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "P1 Readiness",
+      "item": [
+        {
+          "name": "P1 Health endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 health', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Health responds quickly', function () { pm.expect(pm.response.responseTime).to.be.below(5000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P2 Auth config endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/auth/config"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Auth config does not 5xx', function () { pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P1 Website-triggered Add Zettel",
+      "item": [
+        {
+          "name": "P1 Landing button fires POST /api/zettels/add",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':landing';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('surface', 'landing');",
+                  "pm.variables.set('url_under_test', pm.environment.get('test_url_web'));",
+                  "pm.variables.set('persist_flag', 'false');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "pm.test('Landing returns 202 async contract', function () { pm.expect(pm.response.code).to.equal(202); pm.expect(body.status).to.equal('accepted'); });",
+                  "pm.test('Correct endpoint and headers fired', function () { pm.expect(pm.request.url.getPath()).to.equal('/api/zettels/add'); pm.expect(pm.response.headers.get('Location')).to.match(/^\\/api\\/operations\\//); pm.expect(pm.response.headers.get('Retry-After')).to.match(/^\\d+$/); });",
+                  "pm.test('Accepted response schema', function () { pm.expect(body.operation_id).to.equal(pm.variables.get('client_action_id')); pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); pm.expect(body.persistence).to.be.an('object'); pm.expect(body.quality).to.be.an('object'); });",
+                  "pm.environment.set('op_url_landing', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{client_action_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{url_under_test}}\",\n  \"client_action_id\": \"{{client_action_id}}\",\n  \"persist\": false,\n  \"surface\": \"{{surface}}\"\n}"
+            },
+            "url": "{{base_url}}/api/zettels/add"
+          }
+        },
+        {
+          "name": "P1 Home button fires authenticated POST /api/zettels/add",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['auth_token_user_a'], 'home surface requires user A token');",
+                  "var id = pm.environment.get('run_id') + ':home';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('surface', 'home');",
+                  "pm.variables.set('url_under_test', pm.environment.get('test_url_web'));",
+                  "pm.variables.set('persist_flag', pm.environment.get('persist_live_writes') === 'true' ? 'true' : 'false');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "pm.test('Home returns 202 async contract', function () { pm.expect(pm.response.code).to.equal(202); pm.expect(body.status).to.equal('accepted'); });",
+                  "pm.test('Idempotency-Key binds operation id', function () { pm.expect(body.operation_id).to.be.a('string').and.not.empty; pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); });",
+                  "pm.environment.set('op_url_home', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "{{client_action_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{url_under_test}}\",\n  \"client_action_id\": \"{{client_action_id}}\",\n  \"persist\": {{persist_flag}},\n  \"surface\": \"{{surface}}\"\n}"
+            },
+            "url": "{{base_url}}/api/zettels/add"
+          }
+        },
+        {
+          "name": "P1 Zettels page button fires POST /api/zettels/add",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['auth_token_user_a'], 'zettels surface requires user A token');",
+                  "if (pm.environment.get('allow_slow_live_paths') !== 'true') { pm.variables.set('url_under_test', pm.environment.get('test_url_web')); } else { pm.variables.set('url_under_test', pm.environment.get('test_url_youtube')); }",
+                  "var id = pm.environment.get('run_id') + ':zettels';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('surface', 'zettels');",
+                  "pm.variables.set('persist_flag', pm.environment.get('persist_live_writes') === 'true' ? 'true' : 'false');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "pm.test('Zettels returns 202 async contract', function () { pm.expect(pm.response.code).to.equal(202); pm.expect(body.status).to.equal('accepted'); });",
+                  "pm.test('Status URL is pollable operation endpoint', function () { pm.expect(body.status_url).to.match(/^\\/api\\/operations\\//); });",
+                  "pm.environment.set('op_url_zettels', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "{{client_action_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{url_under_test}}\",\n  \"client_action_id\": \"{{client_action_id}}\",\n  \"persist\": {{persist_flag}},\n  \"surface\": \"{{surface}}\"\n}"
+            },
+            "url": "{{base_url}}/api/zettels/add"
+          }
+        },
+        {
+          "name": "P1 Poll home operation until terminal or budget",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['auth_token_user_a', 'op_url_home'], 'operation polling requires user A token and op_url_home');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "var attempts = Number(pm.environment.get('home_poll_attempts') || 0) + 1;",
+                  "pm.environment.set('home_poll_attempts', String(attempts));",
+                  "pm.test('Status endpoint returns active or terminal contract', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); pm.expect(body.operation_id).to.equal(pm.environment.get('op_url_home')); });",
+                  "if (pm.response.code === 202 && attempts < Number(pm.environment.get('poll_max_attempts') || 90)) {",
+                  "  postman.setNextRequest('P1 Poll home operation until terminal or budget');",
+                  "} else {",
+                  "  pm.environment.unset('home_poll_attempts');",
+                  "  pm.test('Terminal or bounded poll exhaustion is explicit', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); });",
+                  "  if (body.status === 'succeeded') {",
+                  "    pm.expect(body.summary).to.be.an('object');",
+                  "    pm.environment.set('workspace_zettel_id', body.workspace_zettel_id || '');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/operations/{{op_url_home}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Supabase and user-scoped integrity",
+      "item": [
+        {
+          "name": "P1 User A list contains only scoped zettels",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['auth_token_user_a'], 'user-scoped list requires user A token');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "pm.test('List endpoint schema', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(body.zettels).to.be.an('array'); pm.expect(body.total).to.be.a('number'); });",
+                  "pm.test('No duplicate zettel ids in list', function () { var ids = body.zettels.map(function (z) { return z.id; }); pm.expect(new Set(ids).size).to.equal(ids.length); });",
+                  "pm.test('No blank Untitled regression in ready items', function () { body.zettels.forEach(function (z) { pm.expect(z.title, 'title for ' + z.id).to.not.equal('Untitled'); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/zettels?limit=100&offset=0"
+          }
+        },
+        {
+          "name": "P1 User B cannot read User A operation payload",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['auth_token_user_b', 'op_url_home'], 'cross-user operation check requires user B token and user A op id');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var text = pm.response.text();",
+                  "pm.test('Cross-user operation does not return terminal success for A', function () { pm.expect(text).to.not.include(pm.environment.get('workspace_zettel_id') || 'never-match'); });",
+                  "pm.test('Cross-user response is pending, not leaked final payload', function () { pm.expect(pm.response.code).to.be.oneOf([202, 404, 410]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "url": "{{base_url}}/api/operations/{{op_url_home}}"
+          }
+        },
+        {
+          "name": "P1 Supabase workspace row exists for persisted zettel",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'workspace_zettel_id'], 'Supabase write verification requires service-role env and workspace_zettel_id');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rows = pm.response.json();",
+                  "pm.test('Supabase returns exactly one workspace_zettels row', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(rows).to.be.an('array').with.lengthOf(1); });",
+                  "if (Array.isArray(rows) && rows[0]) {",
+                  "  pm.environment.set('canonical_zettel_id', rows[0].canonical_zettel_id || '');",
+                  "  pm.test('Workspace row is not soft deleted', function () { pm.expect(rows[0].deleted_at || null).to.equal(null); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "content" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/workspace_zettels?id=eq.{{workspace_zettel_id}}&select=id,workspace_id,canonical_zettel_id,deleted_at,created_at"
+          }
+        },
+        {
+          "name": "P1 Supabase canonical row and chunks are scoped",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id'], 'canonical/chunk verification requires service-role env and canonical_zettel_id');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rows = pm.response.json();",
+                  "pm.test('Canonical zettel exists once', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(rows).to.be.an('array').with.lengthOf(1); });",
+                  "if (rows[0]) { pm.test('Canonical has URL and title fields', function () { pm.expect(rows[0]).to.have.property('normalized_url'); pm.expect(rows[0]).to.have.property('title'); }); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "content" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/canonical_zettels?id=eq.{{canonical_zettel_id}}&select=id,normalized_url,title,source_type,created_at"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Validation and failure handling",
+      "item": [
+        {
+          "name": "P1 Invalid URL is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid URL returns client error', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });",
+                  "pm.test('Invalid URL response is structured JSON', function () { var body = pm.response.json(); pm.expect(body).to.be.an('object'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{run_id}}:invalid" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"ftp://example.com/not-allowed\",\n  \"client_action_id\": \"{{run_id}}:invalid\",\n  \"persist\": false,\n  \"surface\": \"landing\"\n}"
+            },
+            "url": "{{base_url}}/api/zettels/add"
+          }
+        },
+        {
+          "name": "P1 Private URL SSRF candidate is blocked",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Private URL returns client error', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{run_id}}:ssrf" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"http://127.0.0.1:8000/admin\",\n  \"client_action_id\": \"{{run_id}}:ssrf\",\n  \"persist\": false,\n  \"surface\": \"landing\"\n}"
+            },
+            "url": "{{base_url}}/api/zettels/add"
+          }
+        },
+        {
+          "name": "P1 Unauthenticated zettel list is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated list returns 401', function () { pm.expect(pm.response.code).to.equal(401); });",
+                  "pm.test('Problem shape is present', function () { var body = pm.response.json(); pm.expect(body.type || body.title || body.detail).to.exist; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/zettels"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 Summarization API v2 and batch",
+      "item": [
+        {
+          "name": "P2 /api/v2/summarize returns response schema",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('allow_slow_live_paths') !== 'true') { pm.variables.set('v2_url', pm.environment.get('test_url_web')); } else { pm.variables.set('v2_url', pm.environment.get('test_url_github')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('v2 summarize returns 200 or known content refusal', function () { pm.expect(pm.response.code).to.be.oneOf([200, 422, 503]); });",
+                  "var body = pm.response.json();",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('v2 summarize schema', function () { pm.expect(body.summary).to.be.an('object'); pm.expect(body.writers).to.be.an('array'); pm.expect(body.confidence).to.be.oneOf(['high', 'low']); });",
+                  "} else {",
+                  "  pm.test('v2 failure is structured', function () { pm.expect(body.detail || body.error).to.exist; });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{v2_url}}\",\n  \"write_to_supabase\": false\n}"
+            },
+            "url": "{{base_url}}/api/v2/summarize"
+          }
+        },
+        {
+          "name": "P2 /api/v2/batch validates batch contract",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Batch does not 5xx for valid payload', function () { pm.expect(pm.response.code).to.be.oneOf([200, 207, 422, 503]); });",
+                  "pm.test('Batch response is JSON', function () { pm.expect(pm.response.json()).to.be.an('object'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"urls\": [\"{{test_url_web}}\"],\n  \"write_to_supabase\": false\n}"
+            },
+            "url": "{{base_url}}/api/v2/batch"
+          }
+        },
+        {
+          "name": "P2 /api/v2/batch/stream exposes SSE contract",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Stream endpoint does not 5xx for valid payload', function () { pm.expect(pm.response.code).to.be.oneOf([200, 422, 503]); });",
+                  "pm.test('Stream content type is event-stream on success', function () { if (pm.response.code === 200) pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"urls\": [\"{{test_url_web}}\"],\n  \"write_to_supabase\": false\n}"
+            },
+            "url": "{{base_url}}/api/v2/batch/stream"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 Document upload",
+      "item": [
+        {
+          "name": "P2 Document upload endpoint rejects empty file cleanly",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('doc_action_id', pm.environment.get('run_id') + ':document-empty');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty document is rejected or processed without 5xx', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 422]); });",
+                  "pm.test('Document response is JSON', function () { pm.expect(pm.response.json()).to.be.an('object'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "{{doc_action_id}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "client_action_id", "value": "{{doc_action_id}}", "type": "text" },
+                { "key": "persist", "value": "false", "type": "text" },
+                { "key": "surface", "value": "landing", "type": "text" },
+                { "key": "file", "src": "tests/postman/data/empty-document.txt", "type": "file" }
+              ]
+            },
+            "url": "{{base_url}}/api/zettels/add/document"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "run_live_requests", "value": "false" }
+  ]
+}
