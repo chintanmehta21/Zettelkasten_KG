@@ -6,6 +6,7 @@ This module tests the summarization API paths described in `docs/research/postma
 
 - P1: `/api/zettels/add` from landing, home, and My Zettels surfaces.
 - P1: `202 + Location + Retry-After` operation contract and bounded polling.
+- P1: status polling honors `Retry-After` and uses local runner backoff between attempts.
 - P1: authenticated `/api/zettels` list shape, duplicate checks, and user scoping.
 - P1: Supabase verification for `content.workspace_zettels` and `content.canonical_zettels`.
 - P1: validation failures for invalid URLs, SSRF/private URL candidates, and unauthenticated list access.
