@@ -140,7 +140,11 @@ def _yt_proxy_url() -> str:
     pwd = os.environ.get("YT_TRANSCRIPT_PROXY_PASS", "").strip()
     if user and pwd:
         host = os.environ.get("YT_PROXY_BACKBONE", "p.webshare.io:80").strip()
-        return f"http://{user}:{pwd}@{host}"
+        # Webshare's rotating backbone endpoint authenticates with a
+        # "<username>-rotate" suffix (each request then exits via a
+        # different proxy from the pool); the bare username 407s.
+        rotate_user = user if user.endswith("-rotate") else f"{user}-rotate"
+        return f"http://{rotate_user}:{pwd}@{host}"
     return ""
 
 
