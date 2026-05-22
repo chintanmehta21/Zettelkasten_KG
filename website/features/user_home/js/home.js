@@ -398,6 +398,14 @@
     });
   }
 
+  // Single canonical title fallback — never render a bare "Untitled" for a
+  // zettel whose summary has not produced a real title yet.
+  var PENDING_TITLE = 'Summarizing…';
+
+  function homeDisplayTitle(node) {
+    return (node && node.titleReady && node.name) ? node.name : PENDING_TITLE;
+  }
+
   async function loadZettels(token) {
     try {
       var resp = await fetch('/api/zettels', {
@@ -406,9 +414,11 @@
       var data = await resp.json();
       var zettels = Array.isArray(data.zettels) ? data.zettels : [];
       var nodes = zettels.map(function (z) {
+        var rawTitle = (z.title || '').trim();
         return {
           id: z.id,
-          name: z.title || 'Untitled',
+          name: rawTitle,
+          titleReady: z.title_ready !== false && Boolean(rawTitle),
           group: z.source_type || 'web',
           url: z.source_url || '',
           date: (z.added_at || '').slice(0, 10),
@@ -466,9 +476,10 @@
       card.style.animationDelay = (i * 0.08) + 's';
 
       var sourceClass = (node.group || 'web').toLowerCase();
+      if (!node.titleReady) card.className += ' home-card-pending';
 
       card.innerHTML =
-        '<h3 class="home-card-title">' + escapeHtml(node.name || 'Untitled') + '</h3>' +
+        '<h3 class="home-card-title">' + escapeHtml(homeDisplayTitle(node)) + '</h3>' +
         '<div class="home-card-meta">' +
           (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
           '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
@@ -1101,8 +1112,12 @@
       // Morph skeleton into real card
       var today = new Date().toISOString().slice(0, 10);
       var sourceType = (result.source_type || 'web').toLowerCase();
+      var rawTitle = (result.title || '').trim();
       var newNode = {
-        name: result.title || 'Untitled',
+        name: rawTitle,
+        // Degraded/metadata-only extractions can finalize with an empty
+        // title — render the neutral pending state, never "Untitled".
+        titleReady: Boolean(rawTitle),
         date: today,
         group: sourceType,
         url: result.source_url || url || '',
@@ -1114,14 +1129,15 @@
       };
 
       var realCard = document.createElement('a');
-      realCard.className = 'home-card home-card-new';
+      realCard.className = 'home-card home-card-new'
+        + (newNode.titleReady ? '' : ' home-card-pending');
       var safeNewUrl = toSafeHttpUrl(newNode.url);
       realCard.href = safeNewUrl || '#';
       realCard.target = safeNewUrl ? '_blank' : '';
       realCard.rel = safeNewUrl ? 'noopener noreferrer' : '';
 
       realCard.innerHTML =
-        '<h3 class="home-card-title">' + escapeHtml(newNode.name) + '</h3>' +
+        '<h3 class="home-card-title">' + escapeHtml(homeDisplayTitle(newNode)) + '</h3>' +
         '<div class="home-card-meta">' +
           '<span class="home-card-date">' + escapeHtml(newNode.date) + '</span>' +
           '<span class="home-card-source ' + sourceType + '">' + escapeHtml(newNode.group) + '</span>' +
@@ -1168,6 +1184,12 @@
       if (addError) addError.textContent = '';
       // UX-8: refresh the My Zettels badge authoritatively from /api/zettels.
       refreshMyZettelsBadge(token);
+      // Authoritative reconcile: re-pull the preview grid so the optimistic
+      // card is replaced by the persisted /api/zettels row — picks up the
+      // real title if this add finalized with a pending/empty one.
+      window.setTimeout(function () {
+        try { loadZettels(token); } catch (re) { void re; }
+      }, 6000);
     } catch (e) {
       // The optimistic add did not land — tear the skeleton down immediately on
       // ANY error (incl. quota_exhausted) so it never orphans if the user
@@ -1214,7 +1236,7 @@
     if (!overlay) return;
 
     // Prepare popup content while loader plays
-    title.textContent = node.name || 'Untitled';
+    title.textContent = homeDisplayTitle(node);
 
     var sourceClass = (node.group || 'web').toLowerCase();
     // Card-parity layout: date pill (mono) THEN source pill.

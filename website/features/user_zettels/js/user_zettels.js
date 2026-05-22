@@ -358,6 +358,40 @@
     applyFilters();
   }
 
+  // Authoritative single-zettel lookup. The operation envelope's summary
+  // object does NOT match the /api/zettels DTO shape normalizeNode expects,
+  // and a degraded extraction can land with an empty title — so after an
+  // Add Zettel operation finalizes we reconcile against the persisted row
+  // rather than trusting the envelope. `tries` covers PostgREST read-replica
+  // lag between the canonical insert and an authenticated GET.
+  async function fetchZettelById(zettelId, tries) {
+    if (!zettelId) return null;
+    var attempts = tries || 1;
+    for (var i = 0; i < attempts; i++) {
+      try {
+        var resp = await fetch('/api/zettels', {
+          headers: { Authorization: 'Bearer ' + _token }
+        });
+        var data = await resp.json();
+        var list = Array.isArray(data.zettels) ? data.zettels : [];
+        for (var j = 0; j < list.length; j++) {
+          if (String(list[j].id) === String(zettelId)) return list[j];
+        }
+      } catch (e) { void e; }
+      if (i < attempts - 1) await sleep(1500);
+    }
+    return null;
+  }
+
+  // Single canonical title fallback. A card whose summary has not produced a
+  // real title yet (degraded/metadata-only extraction, or a still-pending
+  // optimistic card) shows this neutral label — never a bare "Untitled".
+  var PENDING_TITLE = 'Summarizing…';
+
+  function displayTitle(node) {
+    return (node && node.titleReady && node.title) ? node.title : PENDING_TITLE;
+  }
+
   function normalizeNode(z) {
     var source = normalizeSource(z.source_type || 'web');
     var cleanTags = (Array.isArray(z.tags) ? z.tags : [])
@@ -365,9 +399,14 @@
       .filter(Boolean);
     var brief = z.brief_summary || '';
     var detailed = z.detailed_summary || brief;
+    var rawTitle = (z.title || '').trim();
+    // title_ready is the backend readiness signal (ZettelListItem); absent on
+    // older payloads -> treat a non-empty title as ready.
+    var titleReady = z.title_ready !== false && Boolean(rawTitle);
     return {
-      id: z.id || createLocalNodeId(z.title || 'zettel'),
-      title: (z.title || 'Untitled').trim(),
+      id: z.id || createLocalNodeId(rawTitle || 'zettel'),
+      title: rawTitle,
+      titleReady: titleReady,
       summary: brief,
       briefSummary: brief,
       detailedSummary: detailed,
@@ -624,12 +663,15 @@
 
   function createCard(node, idx, shouldRestoreAnimate) {
     var card = document.createElement('article');
-    card.className = 'zettels-card' + (shouldRestoreAnimate ? ' is-restoring' : '');
+    card.className = 'zettels-card'
+      + (shouldRestoreAnimate ? ' is-restoring' : '')
+      + (node.titleReady ? '' : ' zettels-card-pending');
     card.style.animationDelay = String(idx * 0.03) + 's';
     card.tabIndex = 0;
     card.setAttribute('role', 'link');
     var safeUrl = toSafeHttpUrl(node.url);
-    card.setAttribute('aria-label', safeUrl ? 'Open ' + node.title : node.title);
+    var titleText = displayTitle(node);
+    card.setAttribute('aria-label', safeUrl ? 'Open ' + titleText : titleText);
     card.dataset.nodeId = node.id;
 
     var dateBadge = node.date
@@ -665,7 +707,7 @@
       '</a>';
 
     card.innerHTML =
-      '<h2 class="zettels-card-title">' + escapeHtml(node.title) + '</h2>' +
+      '<h2 class="zettels-card-title">' + escapeHtml(titleText) + '</h2>' +
       '<p class="zettels-card-summary">' + escapeHtml(truncate(node.briefSummary, 240)) + '</p>' +
       '<div class="zettels-card-meta">' +
         dateBadge +
@@ -935,20 +977,39 @@
 
     try {
       var envelope = await apiPromise;
-      var result = envelope.summary || {};
-      result.node_id = envelope.node_id;
-      result.workspace_zettel_id = envelope.workspace_zettel_id;
-      result.persistence = envelope.persistence;
-      var newNode = normalizeNode({
-        id: result.node_id || buildNodeId(result.title || 'untitled', result.source_type || 'web'),
-        name: result.title || 'Untitled',
-        summary: result.summary || result.brief_summary || '',
-        description: result.brief_summary || '',
-        tags: Array.isArray(result.tags) ? result.tags : [],
-        url: result.source_url || url || '',
-        group: result.source_type || 'web',
-        date: result.captured_at || new Date().toISOString().slice(0, 10)
-      });
+      var summary = envelope.summary || {};
+      var wzId = envelope.workspace_zettel_id || null;
+      // Authoritative reconcile: pull the persisted /api/zettels row by its
+      // workspace_zettel_id instead of rendering from envelope.summary
+      // (whose shape does not match normalizeNode's DTO contract).
+      var authoritative = await fetchZettelById(wzId, 2);
+      var newNode;
+      if (authoritative) {
+        newNode = normalizeNode(authoritative);
+      } else {
+        // Persist skipped, or replication lag outran our retries: build a
+        // best-effort node from the envelope with the CORRECT DTO keys.
+        // titleReady is false when the summary produced no real title, so
+        // the card shows "Summarizing…" rather than "Untitled".
+        var rawTitle = (summary.title || '').trim();
+        newNode = normalizeNode({
+          id: wzId || envelope.node_id
+            || buildNodeId(rawTitle || 'zettel', summary.source_type || 'web'),
+          title: rawTitle,
+          title_ready: Boolean(rawTitle),
+          brief_summary: summary.brief_summary || summary.one_line_summary || '',
+          detailed_summary: summary.detailed_summary || summary.summary || '',
+          tags: Array.isArray(summary.tags) ? summary.tags : [],
+          source_type: summary.source_type || 'web',
+          source_url: summary.source_url || url || '',
+          added_at: new Date().toISOString().slice(0, 10)
+        });
+        // Reconcile later so the real persisted card replaces this one
+        // without a manual refresh.
+        window.setTimeout(function () {
+          try { loadZettels(); } catch (e) { void e; }
+        }, 8000);
+      }
 
       upsertNodeAtTop(newNode);
       rebuildFilterMenus();
