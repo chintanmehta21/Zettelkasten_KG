@@ -7,7 +7,8 @@
 | P1 | Poll `/api/operations/{id}` until terminal or explicit budget | `P1 Poll home operation until terminal or budget` |
 | P1 | Response schema includes operation, summary, persistence, quality, and error structure | Add requests, operation polling, validation failures |
 | P1 | Auth/user scoping and BOLA resistance | `P1 User A list contains only scoped zettels`, `P1 User B cannot read User A operation payload` |
-| P1 | Supabase writes land in v2 content tables | `P1 Supabase workspace row exists for persisted zettel`, `P1 Supabase canonical row and chunks are scoped` |
+| P1 | Supabase writes land in v2 content tables | `P1 Supabase workspace row exists for persisted zettel`, `P1 Supabase canonical row is scoped`, `P2 Supabase chunks or enrichment state is visible` |
+| P1 | Operation terminal payload preserves response summary | `P1 Supabase operation response keeps full payload` |
 | P1 | No duplicate/incorrect writes | User list duplicate ID assertion plus single-row Supabase checks |
 | P1 | Invalid URLs and SSRF candidates fail cleanly | `P1 Invalid URL is rejected`, `P1 Private URL SSRF candidate is blocked` |
 | P1 | Unauthenticated user zettel list is rejected | `P1 Unauthenticated zettel list is rejected` |
