@@ -1,6 +1,7 @@
 """FastAPI routes for summarization engine v2."""
 from __future__ import annotations
 
+import hashlib
 import os
 from json import dumps
 from typing import Annotated
@@ -9,80 +10,66 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from website.api.auth import get_optional_user
-from website.api.module_runners.summarization import run_add_zettel_pipeline
 from website.features.api_key_switching.key_pool import (
     GeminiKeyPool,
     _load_keys_from_file,
     candidate_api_env_paths,
 )
-from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request, SummarizeV2Response
+from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request
 from website.features.summarization_engine.batch.processor import BatchProcessor
 from website.features.summarization_engine.core.config import load_config
-from website.features.summarization_engine.core.errors import UnsupportedVideoError
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.writers.supabase import SupabaseWriter
 
 router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
 
 
-@router.post("/summarize", response_model=SummarizeV2Response)
+@router.post("/summarize")
 async def summarize_v2(
     request: SummarizeV2Request,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
+    """Summarize a URL — async-ops (ADR-3).
+
+    Returns ``202 Accepted`` + ``status_url``; the client polls
+    ``GET /api/operations/{id}`` for the terminal ``AddZettelResponse``. This
+    unifies /api/v2/summarize with /api/zettels/add onto the one durable
+    long-running-operation contract — the previous synchronous path was
+    timeout-prone for slow YouTube/PDF sources. Anonymous callers map to the
+    Zoro sentinel UUID. Refusals (unsupported video, insufficient context)
+    surface as a terminal ``failed`` operation with a structured ``error``.
+    """
+    # Function-level import: the async-ops machinery lives in the website
+    # zettels router; importing at module load would risk a cycle.
+    from website.api.zettels_routes import (
+        AddZettelRequest,
+        _accept_and_spawn,
+        _run_add_zettel,
+    )
+
     user_id = _user_id(user)
-    # Single dedup gate + entitlement + engine + persistence all live in the
-    # shared runner so /api/zettels/add and /api/v2/summarize cannot diverge.
-    # Anonymous callers map to the Zoro sentinel UUID via _user_id.
-    try:
-        out = await run_add_zettel_pipeline(
-            url=request.url,
-            client_action_id=f"v2-summarize-{request.url}",
-            persist=request.write_to_supabase,
-            user=user if user else {"sub": str(user_id)},
-            effective_user_id=user_id,
-        )
-    except UnsupportedVideoError as exc:
-        # H4/T7: preflight hard-fail (private/removed/livestream/premiere/members-only).
-        # Distinct from H2's post-chain 422 (metadata_only + <500 chars).
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "unsupported_video_type",
-                "reason": exc.reason,
-                "confidence": "insufficient",
-                "confidence_reason": f"Video type cannot be ingested: {exc.reason}",
-                "quality_signals": {"input_chars": 0, "source_tier": "preflight_refused"},
-            },
-        )
-
-    quality = out.get("quality") or {}
-    conf = quality.get("confidence")
-    reason = quality.get("confidence_reason")
-    quality_signals = quality.get("quality_signals") or {}
-    # H2/C4: two-tier hallucination prevention. Insufficient content + metadata-only
-    # tier -> HTTP 422 refusal (mirrors OpenAI structured-outputs refusal pattern).
-    if conf == "insufficient":
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "insufficient_context",
-                "confidence": "insufficient",
-                "confidence_reason": reason,
-                "quality_signals": quality_signals,
-            },
-        )
-
-    persistence = out.get("persistence") or {}
-    writers: list[dict] = []
-    if request.write_to_supabase:
-        writers.append(persistence)
-    return SummarizeV2Response(
-        summary=out.get("summary") or {},
-        writers=writers,
-        confidence="high" if conf == "high" else "low",
-        confidence_reason=reason or None,
-        quality_signals=quality_signals,
+    operation_id = f"v2-summarize-{request.url}"
+    request_hash = hashlib.sha256(
+        dumps(
+            {"url": request.url, "persist": request.write_to_supabase},
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    body = AddZettelRequest(
+        url=request.url,
+        client_action_id=operation_id,
+        persist=request.write_to_supabase,
+        surface="landing",
+    )
+    user_payload = user if user else {"sub": str(user_id)}
+    return await _accept_and_spawn(
+        user_id=user_id,
+        operation_id=operation_id,
+        request_hash=request_hash,
+        persist=request.write_to_supabase,
+        pipeline=lambda: _run_add_zettel(
+            body, user=user_payload, effective_user_id=user_id
+        ),
     )
 
 
