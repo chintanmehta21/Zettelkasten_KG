@@ -15,7 +15,6 @@ Covers:
 """
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -31,26 +30,20 @@ _ROOT = Path(__file__).resolve().parents[3]
 
 def _drive_bg_to_finalize(
     post_json: dict, captured: dict, user_dict: dict | None = None,
-    *, settle_s: float = 2.5,
 ) -> None:
-    """PR #40 hotfix (2026-05-21): cross-platform deterministic finalize.
+    """Deterministically run the Add Zettel pipeline through ``_run`` once,
+    in the test thread.
 
-    On Windows / macOS dev hosts, TestClient happens to drive the route's
-    bg task to completion before ``client.post()`` returns. On Linux
-    GitHub Actions runners it does NOT — the per-request loop is torn
-    down and the bg task is orphaned. This helper polls ``captured``
-    briefly; if the bg task already fired, returns. Otherwise drives
-    ``_run`` via ``asyncio.run`` in the test thread. Either way the
-    pipeline runs EXACTLY ONCE — call-count assertions stay valid."""
+    The caller stubs ``operations_repo.accept`` with is_new=False so the
+    route spawns NO background task — there is therefore no spawn/poll race
+    and the pipeline runs exactly once on every platform. The prior
+    poll-the-bg-task approach was timing-dependent: on fast Linux CI runners
+    the route's bg task and this helper's manual run both fired, doubling the
+    pipeline (CI failure: run_count == 2)."""
     import asyncio
     from website.api import zettels_routes as zr
 
-    deadline = time.time() + settle_s
-    while time.time() < deadline:
-        if captured.get("called"):
-            return
-        time.sleep(0.025)
-
+    _ = captured
     body = zr.AddZettelRequest(**post_json)
     user_id = zr._effective_user_id(user_dict)
     asyncio.run(
@@ -268,8 +261,11 @@ def test_d1_pipeline_runs_exactly_once_per_slow_add(client, monkeypatch):
         return True
 
     monkeypatch.setattr(zettels_routes, "_run_add_zettel", fake_run_add_zettel)
+    # is_new=False -> the route records the 202 but spawns NO background
+    # _run task; the test drives _run exactly once via _drive_bg_to_finalize.
+    # No spawn/poll race -> deterministic run_count on every platform.
     monkeypatch.setattr(zettels_routes.operations_repo, "accept",
-                        lambda **kw: (kw["operation_id"], True))
+                        lambda **kw: (kw["operation_id"], False))
     monkeypatch.setattr(zettels_routes.operations_repo, "start",
                         lambda **kw: True)
     monkeypatch.setattr(zettels_routes.operations_repo, "finalize", _finalize)
@@ -285,10 +281,9 @@ def test_d1_pipeline_runs_exactly_once_per_slow_add(client, monkeypatch):
     assert resp.status_code == 202
     _drive_bg_to_finalize(post_json, captured)
 
-    # Critical invariant: pipeline ran exactly once. The route's bg-task
-    # spawn was orphaned by TestClient teardown (covered above), and our
-    # _drive_bg_to_finalize call ran _run a single time. Net: ONE call
-    # to the mocked _run_add_zettel.
+    # Critical invariant: _run invokes the pipeline exactly once. The
+    # Wave-1 A1 collapse means a single accept -> single _run; this guards
+    # against _run (or a regressed route) double-invoking the pipeline.
     assert run_count["n"] == 1
 
 
