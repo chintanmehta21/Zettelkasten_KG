@@ -275,10 +275,17 @@
                   "} else {",
                   "  pm.environment.unset('home_poll_attempts');",
                   "  pm.environment.unset('next_poll_not_before_ms');",
-                  "  pm.test('Terminal or bounded poll exhaustion is explicit', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); });",
-                  "  if (body.status === 'succeeded') {",
-                  "    pm.expect(body.summary).to.be.an('object');",
-                  "    pm.environment.set('workspace_zettel_id', body.workspace_zettel_id || '');",
+                  "  if (pm.response.code === 202) {",
+                  "    pm.test('SOFT: operation still running at poll budget (slow source, not a failure)', function () { pm.expect(true).to.equal(true); });",
+                  "  } else {",
+                  "    pm.test('Operation reached an explicit terminal state', function () { pm.expect(pm.response.code).to.be.oneOf([200, 410]); pm.expect(body.status, 'must finalize, not stay running').to.be.oneOf(['succeeded', 'failed', 'cancelled', 'expired']); });",
+                  "    if (body.status === 'succeeded') {",
+                  "      pm.test('Succeeded operation carries a summary', function () { pm.expect(body.summary).to.be.an('object'); });",
+                  "      pm.environment.set('workspace_zettel_id', body.workspace_zettel_id || '');",
+                  "    } else {",
+                  "      var termErr = body.error || {};",
+                  "      pm.test('Non-succeeded terminal is an expected business failure, not a server fault', function () { pm.expect(Number(termErr.status || 0), 'terminal error must not be 5xx-class: ' + JSON.stringify(termErr)).to.be.below(500); });",
+                  "    }",
                   "  }",
                   "}"
                 ]
@@ -593,14 +600,48 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('v2 summarize returns 202 async-ops contract (ADR-3)', function () { pm.expect(pm.response.code).to.be.oneOf([202, 503]); });",
+                  "pm.test('v2 summarize returns 202 async-ops contract (ADR-3)', function () { pm.expect(pm.response.code, 'a 5xx here means a real regression - do not tolerate').to.equal(202); });",
                   "var body = pm.response.json();",
-                  "if (pm.response.code === 202) {",
-                  "  pm.test('v2 summarize accepted envelope', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string').and.not.empty; pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); });",
-                  "  pm.test('v2 summarize operation_id is URL-safe', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]+$/); });",
-                  "} else {",
-                  "  pm.test('v2 store-unavailable failure is structured', function () { pm.expect(body.detail || body.error || body.title).to.exist; });",
-                  "}"
+                  "pm.test('v2 summarize accepted envelope', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string').and.not.empty; pm.expect(body.status_url).to.equal('/api/operations/' + body.operation_id); });",
+                  "pm.test('v2 summarize operation_id is URL-safe + unique (uuid4 hex)', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]{32}$/); });",
+                  "pm.environment.set('v2_first_op_id', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{v2_url}}\",\n  \"write_to_supabase\": false\n}"
+            },
+            "url": "{{base_url}}/api/v2/summarize"
+          }
+        },
+        {
+          "name": "P2 /api/v2/summarize repeat URL still 202 (no PK collision)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('allow_slow_live_paths') !== 'true') { pm.variables.set('v2_url', pm.environment.get('test_url_web')); } else { pm.variables.set('v2_url', pm.environment.get('test_url_github')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Repeat v2 summarize still 202 (deterministic-op_id regression guard)', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Repeat call gets a fresh unique operation_id - no PK collision', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]{32}$/); pm.expect(body.operation_id).to.not.equal(pm.environment.get('v2_first_op_id')); });"
                 ]
               }
             }
