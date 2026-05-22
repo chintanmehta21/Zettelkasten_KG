@@ -5,7 +5,7 @@ import hashlib
 import os
 from json import dumps
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
@@ -48,12 +48,13 @@ async def summarize_v2(
     )
 
     user_id = _user_id(user)
-    # operation_id must be URL-safe — it is interpolated into status_url
-    # (/api/operations/{id}), a single path segment. The raw request.url
-    # would inject '/', '?', '#' and break polling, so derive a stable
-    # hex id from the URL (same URL -> same id -> idempotent).
-    url_hash = hashlib.sha256(request.url.encode("utf-8")).hexdigest()
-    operation_id = f"v2-summarize-{url_hash}"
+    # operation_id must be UNIQUE per call AND URL-safe. It is the
+    # (user_id, operation_id) PK in core.operations and is interpolated into
+    # status_url (/api/operations/{id}). A deterministic per-URL id collided
+    # on the PK for every repeat URL (raw 23505 -> ADR-2 fail-closed 503).
+    # uuid4 hex is collision-free and URL-safe; idempotency for concurrent
+    # duplicate requests is enforced separately by request_hash in ops_accept.
+    operation_id = f"v2-summarize-{uuid4().hex}"
     request_hash = hashlib.sha256(
         dumps(
             {"url": request.url, "persist": request.write_to_supabase},
