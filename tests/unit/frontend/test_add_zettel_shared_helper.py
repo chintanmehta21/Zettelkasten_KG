@@ -310,7 +310,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260522a",
+        / "index.html": "/home/js/home.js?v=20260522b",
         ROOT
         / "website"
         / "features"
@@ -339,10 +339,10 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         for stale_version in stale_add_zettel_versions:
             assert not any(stale_version in ref for ref in add_zettel_script_refs), page
 
-    assert "/home/css/home.css?v=20260521a" in (
+    assert "/home/css/home.css?v=20260522b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260522a" in (
+    assert "/home/js/home.js?v=20260522b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260521a" in (
@@ -507,15 +507,17 @@ def test_markdownlite_major_headers_are_collapsible_both_pages():
         assert "attachToggle" in js or "_attachToggle" in js, name
 
 
-def test_summary_css_cachebusted_20260521a():
-    """PR #40 (2026-05-21): bumped cache-bust on home.css + user_zettels.css
-    after moving skeletonPulse off the card onto .skeleton-line (so the
-    typewriter span doesn't inherit a faded opacity) AND adding the
-    is-fading-out / is-fading-in crossfade hooks."""
-    for rel in ["website/features/user_home/index.html",
-                "website/features/user_zettels/index.html"]:
+def test_summary_css_cachebusted():
+    """Each surface's stylesheet must carry a cache-bust query so CDN/browser
+    caches refresh when the CSS changes. home.css bumped to 20260522b with the
+    PR #44 card click/goto-button rework; user_zettels.css unchanged."""
+    expected_css = {
+        "website/features/user_home/index.html": "home.css?v=20260522b",
+        "website/features/user_zettels/index.html": "user_zettels.css?v=20260521a",
+    }
+    for rel, marker in expected_css.items():
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "home.css?v=20260521a" in html or "user_zettels.css?v=20260521a" in html, rel
+        assert marker in html, rel
     uzc = (ROOT / "website" / "features" / "user_zettels" / "css" / "user_zettels.css").read_text(encoding="utf-8")
     assert "0.9rem 0" in uzc  # trimmed divider/h2 margins applied
     assert "home-summary-chevron" in (ROOT / "website" / "features" / "user_home" / "css" / "home.css").read_text(encoding="utf-8") or True
