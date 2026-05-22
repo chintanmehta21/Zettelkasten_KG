@@ -48,7 +48,12 @@ async def summarize_v2(
     )
 
     user_id = _user_id(user)
-    operation_id = f"v2-summarize-{request.url}"
+    # operation_id must be URL-safe — it is interpolated into status_url
+    # (/api/operations/{id}), a single path segment. The raw request.url
+    # would inject '/', '?', '#' and break polling, so derive a stable
+    # hex id from the URL (same URL -> same id -> idempotent).
+    url_hash = hashlib.sha256(request.url.encode("utf-8")).hexdigest()
+    operation_id = f"v2-summarize-{url_hash}"
     request_hash = hashlib.sha256(
         dumps(
             {"url": request.url, "persist": request.write_to_supabase},
