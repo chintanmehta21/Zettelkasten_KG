@@ -34,6 +34,11 @@ def main() -> int:
         "-k", "uvicorn.workers.UvicornWorker",
         "-w", os.environ.get("GUNICORN_WORKERS", "2"),
         "--preload",
+        # gunicorn 25.1+ control socket defaults to $HOME/.gunicorn/, which is
+        # read-only in the production image -> a noisy startup ERROR on every
+        # worker boot. Blue/green deploys never use `gunicornc` runtime
+        # control, so disable the socket outright.
+        "--no-control-socket",
         "--bind", f"0.0.0.0:{os.environ.get('PORT', '10000')}",
         # iter-10 doc reconciliation: production droplet sets GUNICORN_TIMEOUT=240
         # in /opt/zettelkasten/compose/.env (>=180s per CLAUDE.md guardrail). The
