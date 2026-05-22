@@ -1071,6 +1071,12 @@ async def cancel_operation(
 class ZettelListItem(BaseModel):
     id: str
     title: str
+    # title_ready=False means the canonical row has no non-empty title yet
+    # (degraded/metadata-only extraction or a row still being filled). The
+    # frontend renders a neutral "Summarizing…" state instead of "Untitled".
+    # Additive fields — old clients ignore them (backward compatible).
+    title_ready: bool = True
+    enrichment_status: Literal["ready", "pending"] = "ready"
     brief_summary: str
     detailed_summary: str
     tags: list[str]
@@ -1143,13 +1149,24 @@ async def list_zettels(
                 brief, detailed = extract_summary_parts(
                     row.get("ai_summary"), None
                 )
+                raw_title = str(canonical.get("title") or "").strip()
+                title_ready = bool(raw_title)
+                # No "Untitled" literal at the API boundary — empty title +
+                # title_ready=False lets the frontend pick the neutral state.
+                presented_title = (
+                    _present_title(
+                        raw_title,
+                        str(canonical.get("source_type") or "").lower(),
+                    )
+                    if title_ready
+                    else ""
+                )
                 items.append(
                     {
                         "id": str(row.get("id") or ""),
-                        "title": _present_title(
-                            str(canonical.get("title") or "Untitled"),
-                            str(canonical.get("source_type") or "").lower(),
-                        ),
+                        "title": presented_title,
+                        "title_ready": title_ready,
+                        "enrichment_status": "ready" if title_ready else "pending",
                         "brief_summary": brief or "",
                         "detailed_summary": detailed or "",
                         "tags": list(row.get("user_tags") or []),
