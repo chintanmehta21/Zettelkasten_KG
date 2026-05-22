@@ -10,7 +10,6 @@ that contract — the body ``GET /api/operations/{id}`` subsequently returns.
 from __future__ import annotations
 
 import asyncio
-import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -37,6 +36,14 @@ def _stub_entitlement_gate(monkeypatch):
         "website.core.persist.get_supabase_v2_scope",
         lambda *_a, **_k: None,
     )
+    # _run_add_zettel passes zettels_routes._gemini_client as the client
+    # factory; run_add_zettel_pipeline CALLS it before summarize_url_bundle
+    # runs. Stub it so the pipeline reaches summarize_url_bundle (which raises
+    # UnsupportedVideoError) instead of dying on a missing-Gemini-key
+    # ValueError — that was the order-dependent failure.
+    monkeypatch.setattr(
+        "website.api.zettels_routes._gemini_client", lambda: object()
+    )
 
 
 def _client_and_captured(monkeypatch) -> tuple[TestClient, dict]:
@@ -53,8 +60,11 @@ def _client_and_captured(monkeypatch) -> tuple[TestClient, dict]:
         captured.update(kw)
         return True
 
+    # is_new=False -> _accept_and_spawn records the 202 but spawns NO
+    # background _run task. The test drives _run itself (below), so there is
+    # no flaky spawn/poll race and no _run task leaking into the next test.
     monkeypatch.setattr(zettels_routes.operations_repo, "accept",
-                        lambda **kw: (kw["operation_id"], True))
+                        lambda **kw: (kw["operation_id"], False))
     monkeypatch.setattr(zettels_routes.operations_repo, "start",
                         lambda **kw: True)
     monkeypatch.setattr(zettels_routes.operations_repo, "finalize", _finalize)
@@ -67,14 +77,11 @@ def _client_and_captured(monkeypatch) -> tuple[TestClient, dict]:
     return TestClient(app), captured
 
 
-def _drive_bg_to_finalize(url: str, captured: dict, *, settle_s: float = 2.5) -> None:
+def _drive_bg_to_finalize(url: str, captured: dict) -> None:
+    """Run the v2-summarize pipeline through ``_run`` once, deterministically,
+    in the test thread (the route spawns nothing — see the accept stub)."""
+    _ = captured
     from website.api import zettels_routes as zr
-
-    deadline = time.time() + settle_s
-    while time.time() < deadline:
-        if captured.get("called"):
-            return
-        time.sleep(0.025)
 
     operation_id = f"v2-summarize-{url}"
     user_id = zr._effective_user_id(None)
