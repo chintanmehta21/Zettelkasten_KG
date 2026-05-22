@@ -21,7 +21,6 @@ All Supabase / Gemini access mocked; no live network.
 from __future__ import annotations
 
 import logging
-from datetime import date
 from uuid import UUID
 
 import pytest
