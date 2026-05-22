@@ -7,6 +7,7 @@ from website.features.summarization_engine.source_ingest.youtube.tiers import (
     TierName,
     TierResult,
     TranscriptChain,
+    _yt_proxy_url,
     build_default_chain,
     tier_gemini_audio,
     tier_gemini_youtube_url,
@@ -259,3 +260,27 @@ def test_invidious_instances_refreshed_to_four():
         "inv.thepixora.com",
         "yt.chocolatemoo53.com",
     ]
+
+
+def test_yt_proxy_url_unset_returns_empty(monkeypatch):
+    for var in ("YT_PROXY_URL", "YT_TRANSCRIPT_PROXY_USER",
+                "YT_TRANSCRIPT_PROXY_PASS", "YT_PROXY_BACKBONE"):
+        monkeypatch.delenv(var, raising=False)
+    assert _yt_proxy_url() == ""
+
+
+def test_yt_proxy_url_explicit_overrides(monkeypatch):
+    monkeypatch.setenv("YT_PROXY_URL", "http://u:p@host:8080")
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_USER", "ignored")
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_PASS", "ignored")
+    assert _yt_proxy_url() == "http://u:p@host:8080"
+
+
+def test_yt_proxy_url_derived_from_webshare_creds(monkeypatch):
+    """Free->paid switch is value-only: same creds derive the backbone URL,
+    shared by the transcript-API tier and the yt-dlp tiers."""
+    monkeypatch.delenv("YT_PROXY_URL", raising=False)
+    monkeypatch.delenv("YT_PROXY_BACKBONE", raising=False)
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_USER", "wsuser")
+    monkeypatch.setenv("YT_TRANSCRIPT_PROXY_PASS", "wspass")
+    assert _yt_proxy_url() == "http://wsuser:wspass@p.webshare.io:80"
