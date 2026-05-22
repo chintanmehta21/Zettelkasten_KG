@@ -24,6 +24,21 @@ if [[ -n "$FOLDER" ]]; then
   args+=(--folder "$FOLDER")
 fi
 
+# Capture Newman's exit code instead of letting `set -e` abort here: on a
+# failed live run Newman exits non-zero, but the sanitize + summarize steps
+# below MUST still run so the failure artifacts (redacted report + timing
+# summary) are produced and uploaded. Without this, a failed run uploads
+# only the manifest + environment.
+set +e
 npx "${args[@]}"
-node tests/postman/scripts/sanitize-newman-report.mjs "$RAW_REPORT" "$SANITIZED_REPORT"
-node tests/postman/scripts/summarize-newman-report.mjs "$SANITIZED_REPORT" "$REPORT_DIR/timing-summary.md"
+NEWMAN_EXIT=$?
+set -e
+
+if [[ -f "$RAW_REPORT" ]]; then
+  node tests/postman/scripts/sanitize-newman-report.mjs "$RAW_REPORT" "$SANITIZED_REPORT"
+  node tests/postman/scripts/summarize-newman-report.mjs "$SANITIZED_REPORT" "$REPORT_DIR/timing-summary.md"
+else
+  echo "Newman produced no JSON report at $RAW_REPORT — skipping sanitize/summarize" >&2
+fi
+
+exit "$NEWMAN_EXIT"

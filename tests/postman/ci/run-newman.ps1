@@ -29,6 +29,17 @@ if ($Bail) {
   $argsList += "--bail"
 }
 
+# Capture Newman's exit code. On a failed run the sanitize + summarize
+# steps below MUST still run so the failure artifacts are produced; the
+# script then exits with Newman's code so the caller still sees failure.
 npx @argsList
-node tests/postman/scripts/sanitize-newman-report.mjs $rawReport $sanitizedReport
-node tests/postman/scripts/summarize-newman-report.mjs $sanitizedReport (Join-Path $ReportDir "timing-summary.md")
+$newmanExit = $LASTEXITCODE
+
+if (Test-Path $rawReport) {
+  node tests/postman/scripts/sanitize-newman-report.mjs $rawReport $sanitizedReport
+  node tests/postman/scripts/summarize-newman-report.mjs $sanitizedReport (Join-Path $ReportDir "timing-summary.md")
+} else {
+  Write-Warning "Newman produced no JSON report at $rawReport - skipping sanitize/summarize"
+}
+
+exit $newmanExit
