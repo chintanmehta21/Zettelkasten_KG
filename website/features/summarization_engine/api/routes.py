@@ -7,7 +7,6 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from sse_starlette.sse import EventSourceResponse
 
 from website.api.auth import get_optional_user
 from website.api.module_runners.summarization import run_add_zettel_pipeline
@@ -17,7 +16,7 @@ from website.features.api_key_switching.key_pool import (
     candidate_api_env_paths,
 )
 from website.features.summarization_engine.api.models import BatchV2Request, SummarizeV2Request, SummarizeV2Response
-from website.features.summarization_engine.batch.processor import BatchProcessor, progress_stream
+from website.features.summarization_engine.batch.processor import BatchProcessor
 from website.features.summarization_engine.core.config import load_config
 from website.features.summarization_engine.core.errors import UnsupportedVideoError
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
@@ -109,13 +108,12 @@ async def batch_upload_v2(
     return await processor.run(input_bytes=contents, filename=file.filename or "upload.csv")
 
 
-@router.post("/batch/stream")
-async def batch_stream_v2(
-    request: BatchV2Request,
-    user: Annotated[dict | None, Depends(get_optional_user)] = None,
-):
-    result = await batch_v2(request, user)
-    return EventSourceResponse(progress_stream(result))
+# ADR-4: the former POST /api/v2/batch/stream returned an EventSourceResponse
+# only AFTER the entire batch had already run synchronously — a fake SSE
+# facade that delivered zero incremental progress. It was removed rather than
+# left misleading. Real incremental batch streaming (async generator backed by
+# the running job) is tracked as a separate follow-up. Callers needing batch
+# results use POST /api/v2/batch (synchronous) until then.
 
 
 def _user_id(user: dict | None) -> UUID:
