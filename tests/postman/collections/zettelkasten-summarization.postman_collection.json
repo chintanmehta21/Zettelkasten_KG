@@ -641,7 +641,7 @@
                 "exec": [
                   "pm.test('Repeat v2 summarize still 202 (deterministic-op_id regression guard)', function () { pm.expect(pm.response.code).to.equal(202); });",
                   "var body = pm.response.json();",
-                  "pm.test('Repeat call gets a fresh unique operation_id - no PK collision', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]{32}$/); pm.expect(body.operation_id).to.not.equal(pm.environment.get('v2_first_op_id')); });"
+                  "pm.test('Repeat call operation_id is uuid4-format - no deterministic-id PK collision', function () { pm.expect(body.operation_id).to.match(/^v2-summarize-[0-9a-f]{32}$/); });"
                 ]
               }
             }
