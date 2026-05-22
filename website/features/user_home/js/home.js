@@ -1207,14 +1207,42 @@
         });
         return;
       }
-      // PR #39 / Wave-2 C2: graceful poll-exhaust UX. Backend is still
-      // running; nudge the My Zettels badge after 30s so the new zettel
-      // surfaces without a manual reload.
+      // ADR-1: graceful poll-exhaust. Backend is still running (reaper window
+      // is wider than the poll budget). Show a visible pending placeholder
+      // card and reconcile the preview grid in the background.
       if (e && e.code === 'poll_exhausted') {
         if (addError) {
-          addError.textContent = 'Still summarizing in the background — it\'ll appear in My Zettels shortly.';
+          addError.textContent = 'Still summarizing in the background — it\'ll appear in My Zettels automatically.';
         }
-        window.setTimeout(function () { try { refreshMyZettelsBadge(token); } catch (re) { void re; } }, 30000);
+        var pendingCard = document.createElement('a');
+        pendingCard.className = 'home-card home-card-pending';
+        pendingCard.href = '#';
+        pendingCard.innerHTML =
+          '<h3 class="home-card-title">' + escapeHtml(PENDING_TITLE) + '</h3>' +
+          '<div class="home-card-meta">' +
+            '<span class="home-card-date">' + escapeHtml(new Date().toISOString().slice(0, 10)) + '</span>' +
+          '</div>';
+        if (cardGrid) {
+          cardGrid.insertBefore(pendingCard, cardGrid.firstChild);
+          if (emptyState) emptyState.classList.add('hidden');
+        }
+        var clearPending = function () {
+          if (pendingCard && pendingCard.parentNode) {
+            pendingCard.parentNode.removeChild(pendingCard);
+          }
+        };
+        if (window.ZKAddZettel && typeof window.ZKAddZettel.continueInBackground === 'function') {
+          window.ZKAddZettel.continueInBackground(e.operationId, token, function (envelope) {
+            clearPending();
+            if (envelope) { try { loadZettels(token); } catch (le) { void le; } }
+          });
+        } else {
+          window.setTimeout(function () {
+            clearPending();
+            try { loadZettels(token); } catch (le) { void le; }
+          }, 30000);
+        }
+        refreshMyZettelsBadge(token);
       } else {
         if (addError) addError.textContent = e.message;
         if (addZettelDropdown) addZettelDropdown.classList.add('open');
