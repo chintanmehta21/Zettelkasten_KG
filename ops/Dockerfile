@@ -75,6 +75,12 @@ COPY --chown=appuser:appuser pyproject.toml ./
 COPY --chown=appuser:appuser ops/scripts/ ops/scripts/
 COPY --chown=appuser:appuser supabase/website/_v2/ \
      supabase/website/_v2/
+# expected_users.json: zettels_routes._zoro_user_id() reads this at runtime
+# to map anonymous captures to the canonical Zoro user. Without it the app
+# falls back to a sentinel UUID that is not a real profile row, which then
+# breaks anonymous pricing metering with an FK violation.
+COPY --chown=appuser:appuser ops/deploy/expected_users.json \
+     ops/deploy/expected_users.json
 
 # iter-03: bake reranker model artifacts (int8 BGE + FlashRank stage-1) into
 # the image so /app/models is read-only at runtime. Eliminates the host-state-
