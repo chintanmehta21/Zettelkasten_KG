@@ -8,12 +8,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path $ReportDir | Out-Null
+$rawRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $ReportDir }
+$runId = if ($env:GITHUB_RUN_ID) { $env:GITHUB_RUN_ID } else { "local" }
+$rawReport = Join-Path $rawRoot ("newman-raw-{0}-{1}.json" -f $runId, $PID)
+$sanitizedReport = Join-Path $ReportDir "newman-summary.redacted.json"
 
 $argsList = @(
   "newman", "run", $Collection,
   "--environment", $Environment,
   "--reporters", "cli,json",
-  "--reporter-json-export", (Join-Path $ReportDir "newman-summary.json"),
+  "--reporter-json-export", $rawReport,
   "--timeout-request", "600000",
   "--timeout-script", "600000"
 )
@@ -26,4 +30,5 @@ if ($Bail) {
 }
 
 npx @argsList
-node tests/postman/scripts/summarize-newman-report.mjs (Join-Path $ReportDir "newman-summary.json") (Join-Path $ReportDir "timing-summary.md")
+node tests/postman/scripts/sanitize-newman-report.mjs $rawReport $sanitizedReport
+node tests/postman/scripts/summarize-newman-report.mjs $sanitizedReport (Join-Path $ReportDir "timing-summary.md")

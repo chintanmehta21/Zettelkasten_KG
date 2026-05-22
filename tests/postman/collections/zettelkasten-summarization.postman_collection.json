@@ -241,7 +241,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "zkRequire(['auth_token_user_a', 'op_url_home'], 'operation polling requires user A token and op_url_home');"
+                  "zkRequire(['auth_token_user_a', 'op_url_home'], 'operation polling requires user A token and op_url_home');",
+                  "var notBefore = Number(pm.environment.get('next_poll_not_before_ms') || 0);",
+                  "while (Date.now() < notBefore) { /* local runner wait; avoids hammering the app */ }"
                 ]
               }
             },
@@ -255,9 +257,14 @@
                   "pm.environment.set('home_poll_attempts', String(attempts));",
                   "pm.test('Status endpoint returns active or terminal contract', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); pm.expect(body.operation_id).to.equal(pm.environment.get('op_url_home')); });",
                   "if (pm.response.code === 202 && attempts < Number(pm.environment.get('poll_max_attempts') || 90)) {",
+                  "  var retryAfter = parseInt(pm.response.headers.get('Retry-After') || '', 10);",
+                  "  var baseSleep = Number(pm.environment.get('poll_sleep_ms') || 2000);",
+                  "  var waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(baseSleep * Math.pow(2, Math.min(attempts - 1, 4)), 30000);",
+                  "  pm.environment.set('next_poll_not_before_ms', String(Date.now() + waitMs));",
                   "  postman.setNextRequest('P1 Poll home operation until terminal or budget');",
                   "} else {",
                   "  pm.environment.unset('home_poll_attempts');",
+                  "  pm.environment.unset('next_poll_not_before_ms');",
                   "  pm.test('Terminal or bounded poll exhaustion is explicit', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); });",
                   "  if (body.status === 'succeeded') {",
                   "    pm.expect(body.summary).to.be.an('object');",

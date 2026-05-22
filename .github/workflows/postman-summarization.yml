@@ -94,9 +94,14 @@ jobs:
       - name: Validate collection without live requests
         if: inputs.live_requests != 'true'
         shell: bash
+        env:
+          COLLECTION: tests/postman/collections/zettelkasten-summarization.postman_collection.json
+          ENVIRONMENT: tests/postman/environments/zettelkasten.local.template.postman_environment.json
+          REPORT_DIR: ${{ steps.results.outputs.dir }}
         run: |
           set -euo pipefail
           node tests/postman/scripts/validate-postman-files.mjs
+          bash tests/postman/ci/run-newman.sh
           cp tests/postman/collections/zettelkasten-summarization.postman_collection.json "${{ steps.results.outputs.dir }}/"
           cp tests/postman/environments/zettelkasten.local.template.postman_environment.json "${{ steps.results.outputs.dir }}/environment.template.postman_environment.json"
 
