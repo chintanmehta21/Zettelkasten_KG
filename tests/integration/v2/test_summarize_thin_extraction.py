@@ -63,21 +63,26 @@ class _StubIngestor:
         raw_text: str = "",
         raise_exc: Exception | None = None,
         extraction_confidence: str = "medium",
+        tier_used: str | None = None,
     ):
         self._raw_text = raw_text
         self._raise = raise_exc
         self._conf = extraction_confidence
+        self._tier_used = tier_used
 
     async def ingest(self, url, *, config):
         if self._raise is not None:
             raise self._raise
+        metadata: dict = {"title": "stub"}
+        if self._tier_used is not None:
+            metadata["tier_used"] = self._tier_used
         return IngestResult(
             source_type=SourceType.WEB,
             url=url,
             original_url=url,
             raw_text=self._raw_text,
             sections={"Article": self._raw_text},
-            metadata={"title": "stub"},
+            metadata=metadata,
             extraction_confidence=self._conf,
             confidence_reason="stub",
             fetched_at=datetime.now(timezone.utc),
@@ -181,6 +186,77 @@ async def test_thin_extraction_above_threshold_does_call_gemini(
             source_type=SourceType.WEB,
         )
     assert "Gemini was called" in str(ei.value) or "attr=" in str(ei.value)
+
+
+@pytest.mark.asyncio
+async def test_metadata_only_thin_refuses_without_reject_flag(
+    patched_orchestrator, monkeypatch
+) -> None:
+    """2026-05-22 incident fix: a metadata-only tier + below-floor extraction
+    is refused UNCONDITIONALLY — RAG_THIN_EXTRACTION_REJECT_ENABLED is left
+    unset (default OFF). No transcript means the LLM would summarize a bare
+    title/description; refuse before Gemini."""
+    monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
+    patched_orchestrator(
+        _StubIngestor(
+            raw_text="short metadata blurb " * 6,  # ~126 chars, < 500 floor
+            extraction_confidence="low",
+            tier_used="metadata_only",
+        )
+    )
+    with pytest.raises(ExtractionConfidenceError) as ei:
+        await summarize_url_bundle(
+            "https://example.com/meta-only",
+            user_id=_USER,
+            gemini_client=_ExplodingClient(),
+            source_type=SourceType.WEB,
+        )
+    assert ei.value.url == "https://example.com/meta-only"
+
+
+@pytest.mark.asyncio
+async def test_metadata_only_above_floor_still_summarizes(
+    patched_orchestrator, monkeypatch
+) -> None:
+    """Blast-radius bound: a metadata-only tier whose description clears the
+    floor is NOT refused — it still reaches the summarizer (low confidence,
+    but enough text to summarize faithfully)."""
+    monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
+    patched_orchestrator(
+        _StubIngestor(
+            raw_text="rich video description sentence. " * 30,  # > 500 chars
+            extraction_confidence="low",
+            tier_used="metadata_only",
+        )
+    )
+    with pytest.raises(AssertionError) as ei:
+        await summarize_url_bundle(
+            "https://example.com/meta-rich",
+            user_id=_USER,
+            gemini_client=_ExplodingClient(),
+            source_type=SourceType.WEB,
+        )
+    assert "Gemini was called" in str(ei.value) or "attr=" in str(ei.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raw_text", ["", "tiny", "x" * 49])
+async def test_near_empty_low_conf_refuses_without_reject_flag(
+    patched_orchestrator, raw_text, monkeypatch
+) -> None:
+    """Near-empty (<50 chars) low-confidence extraction is refused
+    unconditionally regardless of tier — "never summarize empty input"."""
+    monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
+    patched_orchestrator(
+        _StubIngestor(raw_text=raw_text, extraction_confidence="low")
+    )
+    with pytest.raises(ExtractionConfidenceError):
+        await summarize_url_bundle(
+            "https://example.com/empty",
+            user_id=_USER,
+            gemini_client=_ExplodingClient(),
+            source_type=SourceType.WEB,
+        )
 
 
 @pytest.mark.asyncio

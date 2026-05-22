@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import logging
 
+from website.core.request_context import get_operation_id
 from website.features.summarization_engine.core.budget import get_budget
 from website.features.summarization_engine.core.gemini_client import TieredGeminiClient
 from website.features.summarization_engine.core.models import IngestResult
 from website.features.summarization_engine.summarization.common.dense_cache import (
     LRUCache,
-    cache_key_for_url,
+    cache_key_for_url_content,
 )
 from website.features.summarization_engine.summarization.common.dense_verify import (
     DenseVerifier,
@@ -53,16 +54,29 @@ async def run_dense_verify(
     dense. This keeps the downstream contract uniform across sources.
     """
     effective_cache = cache or _DV_CACHE
-    key = cache_key_for_url(ingest.url or "")
+    content = precomputed_dense if precomputed_dense is not None else (
+        ingest.raw_text or ""
+    )
+    # Key on URL + content: a thin metadata-only attempt and a rich
+    # full-transcript attempt for the same video must not share a cache slot.
+    key = cache_key_for_url_content(ingest.url or "", content)
 
     async def _compute() -> DenseVerifyResult:
         dv = DenseVerifier(client)
-        content = precomputed_dense if precomputed_dense is not None else (
-            ingest.raw_text or ""
-        )
         return await dv.run(source_type=ingest.source_type, content=content)
 
-    return await effective_cache.get_or_compute(key, _compute)
+    dv = await effective_cache.get_or_compute(key, _compute)
+    # Operation-scoped DV-boundary trace: dense_text size + content-key tie the
+    # summary input back to one operation for contamination triage.
+    _log.info(
+        "dense_verify_boundary op=%s url=%s content_len=%d dense_text_len=%d key=%s",
+        get_operation_id(),
+        ingest.url,
+        len(content),
+        len(dv.dense_text or ""),
+        key[:12],
+    )
+    return dv
 
 
 async def maybe_patch_structured_brief(
