@@ -141,16 +141,34 @@ def test_accept_returns_is_new_false_from_response_data():
     assert is_new is False
 
 
-def test_accept_defensive_on_rpc_error_returns_op_id_true():
-    """Any client error -> (operation_id, True) so request path never 5xxs."""
+def test_accept_fails_closed_with_none_on_rpc_error():
+    """ADR-2 (2026-05-22): ``accept`` now FAILS CLOSED — any operations-store
+    error returns ``None`` instead of the prior ``(operation_id, True)``.
+
+    Returning ``(op_id, True)`` previously let the request never 5xx, but it
+    spawned background work the client could never poll (no durable row to
+    read) — an infinite-pending UX. The caller now returns a retriable 503
+    when accept is ``None``."""
     uid = uuid4()
     with patch.object(orepo, "get_v2_client", side_effect=RuntimeError("pg down")):
-        op_id, is_new = orepo.accept(
+        result = orepo.accept(
             user_id=uid, operation_id="op-x", request_hash="rh",
             accepted_body={},
         )
-    assert op_id == "op-x"
-    assert is_new is True
+    assert result is None
+
+
+def test_accept_fails_closed_with_none_on_empty_rpc_data():
+    """The ops_accept CTE guarantees exactly one row; empty ``data`` means the
+    store did not durably record the op -> fail closed with ``None``."""
+    uid = uuid4()
+    client = _rpc_client(rpc_data=[])
+    with patch.object(orepo, "get_v2_client", return_value=client):
+        result = orepo.accept(
+            user_id=uid, operation_id="op-empty", request_hash="rh",
+            accepted_body={},
+        )
+    assert result is None
 
 
 def test_start_returns_true_on_running_response():

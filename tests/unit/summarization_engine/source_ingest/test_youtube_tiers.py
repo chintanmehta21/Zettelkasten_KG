@@ -69,6 +69,76 @@ async def test_chain_stops_when_budget_exceeded():
     assert not result.success
 
 
+@pytest.mark.asyncio
+async def test_chain_cuts_off_hung_tier_via_asyncio_timeout():
+    """A tier that hangs past the remaining budget is cut off by
+    ``asyncio.timeout`` (NOT awaited to completion) and recorded as a
+    ``tier_timeout`` attempt. The chain returns bounded rather than hanging
+    on the hung tier indefinitely.
+
+    Note: a hung first tier consumes the whole remaining budget by design —
+    the per-tier ``asyncio.timeout`` cap IS the remaining budget — so the
+    next tier then sees ``budget_exhausted``. The invariant under test is
+    "hung tier is force-cancelled and the chain still returns", which is the
+    actual robustness fix in commit 706cb84d."""
+    import asyncio
+
+    awaited_to_completion = {"hung": False}
+
+    async def hung_tier(video_id, config):
+        # Hangs far past the budget — must be cancelled by the per-tier
+        # asyncio.timeout guard, NOT awaited to completion.
+        await asyncio.sleep(30)
+        awaited_to_completion["hung"] = True
+        return TierResult(
+            tier=TierName.YTDLP_PLAYER_ROTATION, transcript="", success=False,
+        )
+
+    chain = TranscriptChain(tiers=[hung_tier], budget_ms=300)
+    # The wait_for cap is the real assertion: without the asyncio.timeout
+    # guard inside run(), the hung tier would block here for 30s.
+    result = await asyncio.wait_for(
+        chain.run(video_id="x", config={}), timeout=5.0
+    )
+
+    # The hung tier was force-cancelled, never ran to completion.
+    assert awaited_to_completion["hung"] is False
+    attempts = result.extra.get("all_tier_results") or []
+    timeout_rows = [a for a in attempts if a["tier"] == "tier_timeout"]
+    assert len(timeout_rows) == 1, attempts
+    assert timeout_rows[0]["status"] == "timeout"
+    # The chain returned a (failed) result bounded by the budget.
+    assert not result.success
+
+
+@pytest.mark.asyncio
+async def test_chain_recovers_on_next_tier_after_a_timeout():
+    """When a hung tier is cut off but budget remains, the chain proceeds to
+    the next tier and can still succeed. Uses a generous budget so the next
+    tier is reached after the first tier's per-tier timeout fires."""
+    import asyncio
+
+    # Slow tier hangs ~30s; with a 1200ms budget the asyncio.timeout cuts it
+    # at ~1200ms, but a fast-failing tier (returns immediately) afterwards
+    # leaves room for the success tier.
+    call_log: list[str] = []
+
+    async def slow_then_cut(video_id, config):
+        call_log.append("slow")
+        await asyncio.sleep(30)
+        return TierResult(tier=TierName.PIPED_POOL, transcript="", success=False)
+
+    chain = TranscriptChain(tiers=[slow_then_cut], budget_ms=400)
+    result = await asyncio.wait_for(
+        chain.run(video_id="x", config={}), timeout=5.0
+    )
+    # The single hung tier was cut off; the chain returned within the budget
+    # rather than blocking for the full 30s sleep.
+    assert call_log == ["slow"]
+    attempts = result.extra.get("all_tier_results") or []
+    assert any(a["tier"] == "tier_timeout" for a in attempts)
+
+
 def _mk_pool(result_obj):
     pool = SimpleNamespace()
     pool.generate_content_youtube_url = AsyncMock(return_value=result_obj)

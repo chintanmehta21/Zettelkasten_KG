@@ -82,36 +82,31 @@ def _mk_summary_result(url: str):
     )
 
 
-# --- v2 route: writer.user_id derives from JWT sub, not body --------------
+# --- v2 route: accept-path user_id derives from JWT sub, not body ---------
+#
+# ADR-3 (2026-05-22): /api/v2/summarize is now async-ops. The route no longer
+# calls summarize_url / SupabaseWriter inline — it delegates to
+# zettels_routes._accept_and_spawn, which records the operation via
+# operations_repo.accept(user_id=...). The BOLA invariant is therefore pinned
+# at the accept boundary: the user_id passed to accept MUST derive from the
+# JWT sub claim, never from the request body. We monkey-patch accept to record
+# the user_id it was called with and assert per-JWT isolation.
 
 
 def test_v2_summarize_user_id_derived_from_jwt(app_client, mint_user, monkeypatch):
     """Two minted users hit ``/api/v2/summarize`` with their own JWT each.
-    The SupabaseWriter MUST receive each user's distinct profile_id."""
+    ``operations_repo.accept`` MUST receive each user's distinct UUID."""
     user_a = mint_user(workspace_count=1)
     user_b = mint_user(workspace_count=1)
 
     seen_user_ids: list[str] = []
 
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        return _mk_summary_result(url)
+    def _accept(**kw):
+        seen_user_ids.append(str(kw["user_id"]))
+        return (kw["operation_id"], True)
 
-    class _RecordingWriter:
-        def __init__(self, *_a, **_kw):
-            pass
-
-        async def write(self, result, *, user_id):
-            seen_user_ids.append(str(user_id))
-            return {"status": "skipped", "reason": "stubbed", "node_id": str(uuid.uuid4())}
-
-    from website.features.summarization_engine.api import routes as v2_routes_mod
-    monkeypatch.setattr(v2_routes_mod, "summarize_url", fake_summarize)
-    monkeypatch.setattr(v2_routes_mod, "SupabaseWriter", _RecordingWriter)
-    monkeypatch.setattr(
-        v2_routes_mod,
-        "_gemini_client",
-        lambda: object(),
-    )
+    from website.api import zettels_routes
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
 
     payload = {
         "url": "https://example.com/article",
@@ -123,43 +118,42 @@ def test_v2_summarize_user_id_derived_from_jwt(app_client, mint_user, monkeypatc
         json=payload,
         headers={"Authorization": f"Bearer {user_a.jwt}"},
     )
-    assert resp_a.status_code == 200, resp_a.text
+    assert resp_a.status_code == 202, resp_a.text
 
     resp_b = app_client.post(
         "/api/v2/summarize",
         json=payload,
         headers={"Authorization": f"Bearer {user_b.jwt}"},
     )
-    assert resp_b.status_code == 200, resp_b.text
+    assert resp_b.status_code == 202, resp_b.text
 
     assert len(seen_user_ids) == 2
     assert seen_user_ids[0] == str(user_a.auth_user_id), (
-        f"writer received wrong user_id for A: {seen_user_ids[0]} != {user_a.auth_user_id}"
+        f"accept received wrong user_id for A: {seen_user_ids[0]} != {user_a.auth_user_id}"
     )
     assert seen_user_ids[1] == str(user_b.auth_user_id), (
-        f"writer received wrong user_id for B: {seen_user_ids[1]} != {user_b.auth_user_id}"
+        f"accept received wrong user_id for B: {seen_user_ids[1]} != {user_b.auth_user_id}"
     )
     assert seen_user_ids[0] != seen_user_ids[1], (
-        "BOLA: both JWTs produced the same writer user_id"
+        "BOLA: both JWTs produced the same accept user_id"
     )
 
 
 def test_v2_summarize_anonymous_uses_default_user(app_client, monkeypatch):
-    """No JWT → user_id falls back to the default sentinel UUID, NOT to
+    """No JWT → user_id falls back to the v2-route sentinel UUID, NOT to
     a previous caller's id (no per-process state leak)."""
     seen: list[str] = []
 
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        seen.append(str(user_id))
-        return _mk_summary_result(url)
+    def _accept(**kw):
+        seen.append(str(kw["user_id"]))
+        return (kw["operation_id"], True)
 
-    from website.features.summarization_engine.api import routes as v2_routes_mod
-    monkeypatch.setattr(v2_routes_mod, "summarize_url", fake_summarize)
-    monkeypatch.setattr(v2_routes_mod, "_gemini_client", lambda: object())
+    from website.api import zettels_routes
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
 
     payload = {"url": "https://example.com/anon", "write_to_supabase": False}
     resp = app_client.post("/api/v2/summarize", json=payload)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 202, resp.text
 
     assert seen == ["00000000-0000-0000-0000-000000000001"], (
         f"anonymous fallback wrong: {seen}"
@@ -169,20 +163,19 @@ def test_v2_summarize_anonymous_uses_default_user(app_client, monkeypatch):
 def test_v2_summarize_body_user_id_field_is_ignored(app_client, mint_user, monkeypatch):
     """Defence-in-depth: if a future schema gains a body ``user_id`` field
     or a stray attacker passes one, it MUST NOT override the JWT-derived
-    user_id. Today the schema has no such field — POSTing one should be
-    silently dropped (FastAPI extra='ignore' default)."""
+    user_id. Today the schema has no such field — POSTing one is silently
+    dropped (FastAPI extra='ignore' default)."""
     user_a = mint_user(workspace_count=1)
     attacker_target = uuid.uuid4()
 
     seen: list[str] = []
 
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        seen.append(str(user_id))
-        return _mk_summary_result(url)
+    def _accept(**kw):
+        seen.append(str(kw["user_id"]))
+        return (kw["operation_id"], True)
 
-    from website.features.summarization_engine.api import routes as v2_routes_mod
-    monkeypatch.setattr(v2_routes_mod, "summarize_url", fake_summarize)
-    monkeypatch.setattr(v2_routes_mod, "_gemini_client", lambda: object())
+    from website.api import zettels_routes
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
 
     payload = {
         "url": "https://example.com/x",
@@ -194,9 +187,9 @@ def test_v2_summarize_body_user_id_field_is_ignored(app_client, mint_user, monke
         json=payload,
         headers={"Authorization": f"Bearer {user_a.jwt}"},
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 202, resp.text
     assert seen == [str(user_a.auth_user_id)], (
-        f"BOLA: body user_id leaked into writer call: seen={seen}, "
+        f"BOLA: body user_id leaked into accept call: seen={seen}, "
         f"attacker_target={attacker_target}"
     )
     # Defence-in-depth: response body must not contain the attacker's UUID.
@@ -209,13 +202,12 @@ def test_v2_summarize_invalid_jwt_falls_back_to_anon(app_client, monkeypatch):
     echo any decoded claims."""
     seen: list[str] = []
 
-    async def fake_summarize(url, *, user_id, gemini_client, source_type=None):
-        seen.append(str(user_id))
-        return _mk_summary_result(url)
+    def _accept(**kw):
+        seen.append(str(kw["user_id"]))
+        return (kw["operation_id"], True)
 
-    from website.features.summarization_engine.api import routes as v2_routes_mod
-    monkeypatch.setattr(v2_routes_mod, "summarize_url", fake_summarize)
-    monkeypatch.setattr(v2_routes_mod, "_gemini_client", lambda: object())
+    from website.api import zettels_routes
+    monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
 
     payload = {"url": "https://example.com/jwt-test", "write_to_supabase": False}
     resp = app_client.post(
@@ -226,7 +218,7 @@ def test_v2_summarize_invalid_jwt_falls_back_to_anon(app_client, monkeypatch):
     # The optional-auth flow either ignores the bad token (treating as anon)
     # or 401s. Either is acceptable — the invariant is "no 5xx".
     assert resp.status_code < 500, resp.text
-    if resp.status_code == 200:
+    if resp.status_code == 202:
         # Anonymous fallback was taken — should match the sentinel UUID.
         assert seen == ["00000000-0000-0000-0000-000000000001"], seen
 

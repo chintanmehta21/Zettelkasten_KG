@@ -48,8 +48,10 @@ def _drive_bg_to_finalize(
         zr._run(
             user_id=user_id,
             operation_id=post_json["client_action_id"],
-            body=body,
-            user=user_dict,
+            pipeline=lambda: zr._run_add_zettel(
+                body, user=user_dict, effective_user_id=user_id
+            ),
+            persist_requested=body.persist,
         )
     )
 
@@ -143,10 +145,10 @@ def facade_client(monkeypatch):
     auth_mod._jwks_client = None
     persist_mod._v2_core_repo = None
     persist_mod._v2_content_repo = None
-    # Phase 5 (async-ops redesign): _IN_FLIGHT was deleted with the per-worker
-    # mirror; only the document-path synchronous caches remain in-memory.
-    zettels_routes._IDEMPOTENCY_CACHE.clear()
-    zettels_routes._OPERATIONS.clear()
+    # ADR-3 (2026-05-22): the in-memory idempotency caches were removed; the
+    # DB-backed core.operations row is the cross-worker truth for both the
+    # URL and document paths.
+    zettels_routes._RATE_STORE.clear()
 
     async def fake_require(*_args, **_kwargs):
         return None
