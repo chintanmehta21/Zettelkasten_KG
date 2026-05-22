@@ -6,7 +6,8 @@ import asyncio
 import json
 import logging
 import time
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -56,33 +57,12 @@ _RATE_STORE: dict[str, list[float]] = defaultdict(list)
 _RATE_LIMIT = 10
 _RATE_WINDOW_SECONDS = 60
 _MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024
-# PR #39 / Wave-1 A1: `_AUTO_ACCEPT_AFTER_SECONDS` retired. The URL Add Zettel
-# route now always returns 202 immediately; the inline 20s wait/race was the
-# root cause of the doubled-pipeline bug class (see add_zettel docstring).
-# The document-upload path is still synchronous and unchanged.
-_OPERATION_TTL_SECONDS = 15 * 60
-# SCOPE: these two in-memory dicts back the SYNCHRONOUS document upload
-# path ONLY (`/api/zettels/add/document` -> _run_add_document). The
-# asynchronous URL path migrated to the DB-backed core.operations state
-# machine in PR #30 / Phase 2; do NOT use these for URL idempotency.
-#
-# Why kept: document uploads are an inherently synchronous request/response
-# (the user expects the parsed document content back inline) and the doc
-# extraction is fast enough that a 202-fallback would be UX regression.
-# These caps bound per-process memory for the doc endpoint only.
-#
-# PR #39 / Wave-4 A6 (2026-05-20): re-scoped + renamed comments to kill
-# the "dead code" misnomer in the prior copy.
-_MAX_DOCUMENT_OPERATION_RECORDS = 128
-_MAX_DOCUMENT_IDEMPOTENCY_RECORDS = 128
-# Legacy aliases — kept to avoid touching the document path's call sites
-# in this PR (rename is mechanical and would conflict with concurrent
-# document-path work). Same semantics as the *_DOCUMENT_* names above.
-_MAX_OPERATION_RECORDS = _MAX_DOCUMENT_OPERATION_RECORDS
-_MAX_IDEMPOTENCY_RECORDS = _MAX_DOCUMENT_IDEMPOTENCY_RECORDS
-
-_IDEMPOTENCY_CACHE: "OrderedDict[tuple[str, str], tuple[float, str, dict[str, Any]]]" = OrderedDict()
-_OPERATIONS: "OrderedDict[str, tuple[float, dict[str, Any]]]" = OrderedDict()
+# ADR-3 (2026-05-22): the document-upload path moved onto the DB-backed
+# core.operations state machine (same as the URL path). The per-process
+# in-memory idempotency caches (_IDEMPOTENCY_CACHE / _OPERATIONS and their
+# TTL/size constants) were removed — they could not coalesce duplicate
+# uploads landing on different gunicorn workers; operations_repo + the
+# request_hash partial-unique index is now the cross-worker truth.
 _BG_TASKS: set[asyncio.Task] = set()
 
 # Phase 2 (async-ops redesign): canonical strong-ref + cancel target for the
@@ -242,53 +222,6 @@ def _document_request_hash(
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _cache_get(key: tuple[str, str], request_hash: str) -> dict[str, Any] | JSONResponse | None:
-    """Synchronous-only idempotency cache lookup for the document-upload path.
-
-    Returns the cached body on a hash hit; a 409 problem response on hash
-    mismatch (same client_action_id with a different document); None on miss
-    or TTL expiry. The async URL path uses ``operations_repo`` (DB row) for
-    idempotency since Phase 2 of the async-ops redesign.
-    """
-    record = _IDEMPOTENCY_CACHE.get(key)
-    if not record:
-        return None
-    ts, cached_hash, value = record
-    if time.monotonic() - ts > _OPERATION_TTL_SECONDS:
-        _IDEMPOTENCY_CACHE.pop(key, None)
-        return None
-    if cached_hash != request_hash:
-        return _problem(
-            status_code=409,
-            title="Idempotency key reused with a different request",
-            detail="Generate a new client_action_id when changing the document or Add Zettel options.",
-            operation_id=key[1],
-            type_slug="idempotency-conflict",
-        )
-    _IDEMPOTENCY_CACHE.move_to_end(key)
-    return value
-
-
-def _cache_put(key: tuple[str, str], request_hash: str, value: dict[str, Any]) -> None:
-    _IDEMPOTENCY_CACHE[key] = (time.monotonic(), request_hash, value)
-    _IDEMPOTENCY_CACHE.move_to_end(key)
-    while len(_IDEMPOTENCY_CACHE) > _MAX_IDEMPOTENCY_RECORDS:
-        _IDEMPOTENCY_CACHE.popitem(last=False)
-
-
-def _operation_put(operation_id: str, value: dict[str, Any]) -> None:
-    """Synchronous-only idempotency result cache for the document-upload path.
-
-    The async URL path persists terminal results to the ``core.operations`` DB
-    row (Phase 2 of the async-ops redesign); only the synchronous document
-    endpoint still needs the per-process body cache for fast cache-hit replays.
-    """
-    _OPERATIONS[operation_id] = (time.monotonic(), value)
-    _OPERATIONS.move_to_end(operation_id)
-    while len(_OPERATIONS) > _MAX_OPERATION_RECORDS:
-        _OPERATIONS.popitem(last=False)
-
-
 def _async_failure_error_payload(
     exc: BaseException, *, operation_id: str | None = None,
 ) -> dict[str, Any] | None:
@@ -334,6 +267,14 @@ def _async_failure_error_payload(
             type_slug="insufficient-content",
             operation_id=operation_id,
             extra={"reason": exc.reason, "tier_results": list(exc.tier_results)},
+        )
+    if isinstance(exc, DocumentUploadError):
+        return _problem_dict(
+            status_code=422,
+            title="Invalid document upload",
+            detail=str(exc),
+            type_slug="invalid-document",
+            operation_id=operation_id,
         )
     if isinstance(exc, (RoutingError, ValueError)):
         return _problem_dict(
@@ -473,14 +414,16 @@ async def _run(
     *,
     user_id: UUID,
     operation_id: str,
-    body: AddZettelRequest,
-    user: dict | None,
+    pipeline: Callable[[], Awaitable[dict[str, Any]]],
+    persist_requested: bool,
 ) -> None:
-    """Phase-2 background worker coroutine.
+    """Pipeline-agnostic background worker coroutine (ADR-3).
 
-    Wraps the existing summarize-and-persist pipeline; transitions the canonical
-    DB row through the state machine via ops.start / ops.finalize. Strong-ref
-    held by `_LIVE_TASKS[operation_id]` until the done-callback pops it.
+    ``pipeline`` is a zero-arg callable returning the AddZettelResponse-shaped
+    result dict — it wraps the URL, document, or v2-summarize pipeline. This
+    worker transitions the canonical DB row through the state machine via
+    ops.start / ops.finalize. Strong-ref held by ``_LIVE_TASKS[operation_id]``
+    until the done-callback pops it.
 
     The state-guarded RPCs make every transition idempotent: a stale finalize
     against an already-terminal row is a silent no-op (kills the duplicate-
@@ -499,16 +442,14 @@ async def _run(
         )
 
     try:
-        result = await _run_add_zettel(
-            body, user=user, effective_user_id=user_id
-        )
+        result = await pipeline()
     except asyncio.CancelledError:
         # Cooperative cancellation (DELETE /api/zettels/operations/{id} or
         # task.cancel() from the local LIVE_TASKS map).
         failed_body = _failed_response_for(
             asyncio.CancelledError(),
             operation_id=operation_id,
-            persist_requested=body.persist,
+            persist_requested=persist_requested,
         )
         try:
             await asyncio.to_thread(
@@ -527,7 +468,7 @@ async def _run(
     except Exception as exc:
         logger.exception("Background Add Zettel operation failed (op=%s)", operation_id)
         failed_body = _failed_response_for(
-            exc, operation_id=operation_id, persist_requested=body.persist
+            exc, operation_id=operation_id, persist_requested=persist_requested
         )
         try:
             await asyncio.to_thread(
@@ -670,8 +611,10 @@ async def add_zettel(
                 _run(
                     user_id=effective_user_id,
                     operation_id=canonical_op_id,
-                    body=body,
-                    user=user,
+                    pipeline=lambda: _run_add_zettel(
+                        body, user=user, effective_user_id=effective_user_id
+                    ),
+                    persist_requested=body.persist,
                 )
             )
             _LIVE_TASKS[canonical_op_id] = run_task
@@ -756,6 +699,82 @@ async def add_zettel(
         )
 
 
+async def _accept_and_spawn(
+    *,
+    user_id: UUID,
+    operation_id: str,
+    request_hash: str,
+    persist: bool,
+    pipeline: Callable[[], Awaitable[dict[str, Any]]],
+) -> JSONResponse:
+    """Shared async-ops accept path (ADR-3) for URL / document / v2-summarize.
+
+    Records the operation durably via ``operations_repo.accept``, spawns the
+    pipeline-agnostic ``_run`` worker, and returns the 202 envelope. ADR-2
+    fail-closed: a retriable 503 if the operations store cannot record the
+    operation, rather than spawning work the client could never poll.
+    """
+    accepted = AddZettelResponse(
+        status="accepted",
+        operation_id=operation_id,
+        persistence=persistence_dto(persist, None),
+        quality=QualityDTO(confidence="pending"),
+        status_url=f"/api/operations/{operation_id}",
+    ).model_dump(mode="json")
+    try:
+        accept_result = await asyncio.to_thread(
+            operations_repo.accept,
+            user_id=user_id,
+            operation_id=operation_id,
+            request_hash=request_hash,
+            accepted_body=accepted,
+            ttl_seconds=86400,
+        )
+    except Exception:
+        logger.exception("operations_repo.accept raised (op=%s)", operation_id)
+        accept_result = None
+
+    if accept_result is None:
+        return _problem(
+            status_code=503,
+            title="Operation store unavailable",
+            detail=(
+                "Could not record the Add Zettel operation. "
+                "Please retry in a moment."
+            ),
+            operation_id=operation_id,
+            type_slug="operation-store-unavailable",
+            extra={"retryable": True},
+        )
+
+    canonical_op_id, is_new = accept_result
+    if is_new:
+        run_task = asyncio.create_task(
+            _run(
+                user_id=user_id,
+                operation_id=canonical_op_id,
+                pipeline=pipeline,
+                persist_requested=persist,
+            )
+        )
+        _LIVE_TASKS[canonical_op_id] = run_task
+        run_task.add_done_callback(
+            lambda _t, _op=canonical_op_id: _LIVE_TASKS.pop(_op, None)
+        )
+    else:
+        accepted["operation_id"] = canonical_op_id
+        accepted["status_url"] = f"/api/operations/{canonical_op_id}"
+
+    return JSONResponse(
+        accepted,
+        status_code=202,
+        headers={
+            "Location": f"/api/operations/{canonical_op_id}",
+            "Retry-After": "2",
+        },
+    )
+
+
 @router.post("/zettels/add/document", response_model=AddZettelResponse)
 async def add_zettel_document(
     request: Request,
@@ -765,6 +784,14 @@ async def add_zettel_document(
     surface: Annotated[Literal["landing", "home", "zettels"], Form()] = "landing",
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
+    """Document Add Zettel — async-ops (ADR-3).
+
+    Returns 202 + ``status_url``; the client polls ``GET /api/operations/{id}``
+    exactly like the URL path. Idempotency and cross-worker state live in the
+    durable ``core.operations`` row — the prior per-process in-memory
+    idempotency caches were removed (they could not coalesce duplicate uploads
+    landing on different gunicorn workers).
+    """
     _ = surface
     ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(ip):
@@ -785,64 +812,46 @@ async def add_zettel_document(
             operation_id=client_action_id,
             type_slug="document-too-large",
         )
+    if not content:
+        return _problem(
+            status_code=422,
+            title="Empty document",
+            detail="The uploaded document is empty.",
+            operation_id=client_action_id,
+            type_slug="invalid-document",
+        )
 
     effective_user_id = _effective_user_id(user)
     filename = file.filename or "uploaded-document"
-    cache_key = (str(effective_user_id), client_action_id)
+    content_type = file.content_type
+    idempotency_header = (request.headers.get("Idempotency-Key") or "").strip()
+    operation_id = idempotency_header or client_action_id
     request_hash = _document_request_hash(
         filename=filename,
         content=content,
         persist=persist,
         surface=surface,
     )
-    cached = _cache_get(cache_key, request_hash)
-    if cached is not None:
-        return cached
 
-    try:
-        result = await _run_add_document(
+    backpressure_response = await check_async_backpressure(user_id=effective_user_id)
+    if backpressure_response is not None:
+        return backpressure_response
+
+    return await _accept_and_spawn(
+        user_id=effective_user_id,
+        operation_id=operation_id,
+        request_hash=request_hash,
+        persist=persist,
+        pipeline=lambda: _run_add_document(
             filename=filename,
             content=content,
-            content_type=file.content_type,
-            client_action_id=client_action_id,
+            content_type=content_type,
+            client_action_id=operation_id,
             persist=persist,
             user=user,
             effective_user_id=effective_user_id,
-        )
-        _cache_put(cache_key, request_hash, result)
-        _operation_put(client_action_id, result)
-        return result
-    except HTTPException as exc:
-        detail = exc.detail
-        problem_title = "Add Zettel request rejected"
-        type_slug = "request-rejected"
-        if isinstance(detail, dict):
-            problem_title = str(detail.get("message") or detail.get("error") or problem_title)
-            if detail.get("code") == "quota_exhausted":
-                type_slug = "quota-exhausted"
-        return _problem(
-            status_code=exc.status_code,
-            title=problem_title,
-            detail=detail,
-            operation_id=client_action_id,
-            type_slug=type_slug,
-        )
-    except DocumentUploadError as exc:
-        return _problem(
-            status_code=422,
-            title="Invalid document upload",
-            detail=str(exc),
-            operation_id=client_action_id,
-            type_slug="invalid-document",
-        )
-    except Exception as exc:
-        logger.exception("Document Add Zettel failed for %s", filename)
-        return _problem(
-            status_code=500,
-            title="Add Zettel failed",
-            detail=f"Failed to process document: {exc}",
-            operation_id=client_action_id,
-        )
+        ),
+    )
 
 
 def _terminal_cache_headers(operation_id: str, status: str, updated_at: Any) -> dict[str, str]:
