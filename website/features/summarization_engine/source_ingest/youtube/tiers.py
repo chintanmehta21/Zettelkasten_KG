@@ -74,7 +74,8 @@ class TranscriptChain:
 
         for tier in self._tiers:
             elapsed_ms = int((time.monotonic() - start) * 1000)
-            if elapsed_ms >= self._budget_ms:
+            remaining_ms = self._budget_ms - elapsed_ms
+            if remaining_ms <= 0:
                 attempts.append(
                     {
                         "tier": "budget_exhausted",
@@ -84,7 +85,24 @@ class TranscriptChain:
                     }
                 )
                 break
-            last_result = await tier(video_id, config)
+            # Real wall-clock guard: a single slow/hung tier could previously
+            # run past the whole budget because the tier was awaited directly.
+            # asyncio.timeout caps each tier at the remaining budget so the
+            # chain's total wall-clock stays bounded (Python 3.11+).
+            tier_start = time.monotonic()
+            try:
+                async with asyncio.timeout(remaining_ms / 1000):
+                    last_result = await tier(video_id, config)
+            except (asyncio.TimeoutError, TimeoutError):
+                attempts.append(
+                    {
+                        "tier": "tier_timeout",
+                        "status": "timeout",
+                        "reason": f"tier exceeded remaining budget {remaining_ms}ms",
+                        "latency_ms": int((time.monotonic() - tier_start) * 1000),
+                    }
+                )
+                continue
             _record(last_result)
             if last_result.success:
                 last_result.extra.setdefault("all_tier_results", attempts)

@@ -295,7 +295,7 @@ def get_operation(*, user_id: UUID, operation_id: str) -> dict[str, Any] | None:
         resp = (
             client.schema(_SCHEMA)
             .table(_TABLE)
-            .select("operation_id,user_id,status,response,error")
+            .select("operation_id,user_id,status,response,error,created_at,updated_at")
             .eq("user_id", str(user_id))
             .eq("operation_id", operation_id)
             .limit(1)

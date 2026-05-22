@@ -521,6 +521,12 @@ async def _run(
         return
 
     # Success path. response = the full AddZettelResponse payload.
+    # The pipeline stamps operation_id from body.client_action_id; the route
+    # may have canonicalized to a different id (Idempotency-Key header, or an
+    # existing accepted row). Overwrite with the canonical id the client is
+    # actually polling so the terminal body matches the operations row.
+    if isinstance(result, dict):
+        result["operation_id"] = operation_id
     try:
         await asyncio.to_thread(
             operations_repo.finalize,
