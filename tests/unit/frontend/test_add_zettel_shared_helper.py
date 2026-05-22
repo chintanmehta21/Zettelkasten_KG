@@ -299,7 +299,7 @@ def test_add_zettel_helper_is_async_only_and_cache_busted():
     ]
     for path in pages:
         text = path.read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260521a" in text, path
+        assert "/js/add_zettel_api.js?v=20260522a" in text, path
 
 
 def test_add_zettel_pages_reference_fresh_surface_scripts():
@@ -310,12 +310,12 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_home"
-        / "index.html": "/home/js/home.js?v=20260521a",
+        / "index.html": "/home/js/home.js?v=20260522a",
         ROOT
         / "website"
         / "features"
         / "user_zettels"
-        / "index.html": "/home/zettels/js/user_zettels.js?v=20260521a",
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260522a",
     }
     stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
 
@@ -342,13 +342,13 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/css/home.css?v=20260521a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/js/home.js?v=20260521a" in (
+    assert "/home/js/home.js?v=20260522a" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/zettels/css/user_zettels.css?v=20260521a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260521a" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260522a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/m/css/mobile.css?v=20260518a" in (
@@ -438,20 +438,23 @@ def test_list_pages_use_dedicated_zettels_endpoint_not_graph():
     assert "/api/graph" in kg, "the 3D /knowledge-graph viz must still use /api/graph"
 
 
-def test_poll_accepted_budget_covers_300s_and_respects_retry_after():
-    """PR #39 / Wave-1 C1: budget bumped 180s → 300s to align with the
-    7-min stuck-running reaper threshold (migration 59). Long YouTube /
-    long-form PDFs legitimately exceed 3min through summarize + persist,
-    so the prior 180s budget reliably exhausted before terminal state."""
+def test_poll_accepted_budget_covers_worst_case_and_respects_retry_after():
+    """ADR-1 (summary-api-async-fixes): budget raised 300s → 420s to align
+    with the 10-min stuck-running reaper threshold (migration 65). Long
+    YouTube / long-form PDFs legitimately exceed several minutes through
+    summarize + persist, so the budget must stay below the reaper window
+    but above the worst-case pipeline duration."""
     js = (ROOT / "website" / "static" / "js" / "add_zettel_api.js").read_text(encoding="utf-8")
     assert "POLL_BUDGET_MS" in js, "pollAccepted must define an explicit budget"
-    assert "300000" in js, "poll budget must cover ~300s (reaper threshold - 2min slack)"
-    # PR #40 L1: cap tightened 8s → 4s for faster last-poll convergence.
-    assert "POLL_BACKOFF_CAP_MS = 4000" in js, (
-        "poll backoff cap must be 4000ms (PR #40 L1)"
+    assert "420000" in js, "poll budget must cover ~420s (reaper threshold - 3min slack)"
+    # ADR-1: server-guided backoff — the cap is raised so a 7-min job is
+    # ~40 polls, not ~200; GET /api/operations/{id} returns a growing
+    # Retry-After that the client honors.
+    assert "POLL_BACKOFF_CAP_MS = 20000" in js, (
+        "poll backoff cap must be 20000ms (ADR-1 server-guided backoff)"
     )
     assert "Retry-After" in js or "retry-after" in js, "must honor Retry-After"
-    # add_zettel_api.js cache-buster bumped to 20260520a (PR #39).
+    # add_zettel_api.js cache-buster bumped to 20260522a (ADR-1).
     for rel in [
         "website/static/index.html",
         "website/mobile/index.html",
@@ -459,7 +462,7 @@ def test_poll_accepted_budget_covers_300s_and_respects_retry_after():
         "website/features/user_zettels/index.html",
     ]:
         html = (ROOT / rel).read_text(encoding="utf-8")
-        assert "/js/add_zettel_api.js?v=20260521a" in html, rel
+        assert "/js/add_zettel_api.js?v=20260522a" in html, rel
 
 
 def test_katex_vendored_and_arxiv_gated_in_popup_pages_only():

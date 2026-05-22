@@ -205,6 +205,9 @@ async def test_pipeline_cross_user_links_charges_once_no_engine():
 
 
 def test_v2_summarize_delegates_to_shared_runner_or_gate():
+    """ADR-3: /api/v2/summarize delegates onto the shared async-ops path
+    (_accept_and_spawn + _run_add_zettel) so it cannot diverge from
+    /api/zettels/add — one dedup gate, entitlement, engine, persistence."""
     import website.features.summarization_engine.api.routes as R
     text = open(R.__file__, encoding="utf-8").read()
-    assert ("run_add_zettel_pipeline" in text) or ("get_url_dedup_gate" in text)
+    assert "_accept_and_spawn" in text and "_run_add_zettel" in text

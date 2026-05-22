@@ -80,6 +80,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "62_enrich_claim_next_fix.sql",
         "63_grant_v2_tables_to_service_role.sql",
         "64_grant_all_v2_tables_to_service_role.sql",
+        "65_reaper_threshold_10m.sql",
     ]
 
 

@@ -103,7 +103,7 @@ def test_v2_summarize_user_id_derived_from_jwt(app_client, mint_user, monkeypatc
 
     def _accept(**kw):
         seen_user_ids.append(str(kw["user_id"]))
-        return (kw["operation_id"], True)
+        return (kw["operation_id"], False)  # is_new=False: no bg task spawned
 
     from website.api import zettels_routes
     monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
@@ -146,7 +146,7 @@ def test_v2_summarize_anonymous_uses_default_user(app_client, monkeypatch):
 
     def _accept(**kw):
         seen.append(str(kw["user_id"]))
-        return (kw["operation_id"], True)
+        return (kw["operation_id"], False)  # is_new=False: no bg task spawned
 
     from website.api import zettels_routes
     monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
@@ -172,7 +172,7 @@ def test_v2_summarize_body_user_id_field_is_ignored(app_client, mint_user, monke
 
     def _accept(**kw):
         seen.append(str(kw["user_id"]))
-        return (kw["operation_id"], True)
+        return (kw["operation_id"], False)  # is_new=False: no bg task spawned
 
     from website.api import zettels_routes
     monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
@@ -204,7 +204,7 @@ def test_v2_summarize_invalid_jwt_falls_back_to_anon(app_client, monkeypatch):
 
     def _accept(**kw):
         seen.append(str(kw["user_id"]))
-        return (kw["operation_id"], True)
+        return (kw["operation_id"], False)  # is_new=False: no bg task spawned
 
     from website.api import zettels_routes
     monkeypatch.setattr(zettels_routes.operations_repo, "accept", _accept)
