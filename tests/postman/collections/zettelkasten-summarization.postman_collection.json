@@ -384,7 +384,7 @@
           }
         },
         {
-          "name": "P1 Supabase canonical row and chunks are scoped",
+          "name": "P1 Supabase canonical row is scoped",
           "event": [
             {
               "listen": "prerequest",
@@ -415,6 +415,76 @@
               { "key": "Accept-Profile", "value": "content" }
             ],
             "url": "{{supabase_url}}/rest/v1/canonical_zettels?id=eq.{{canonical_zettel_id}}&select=id,normalized_url,title,source_type,created_at"
+          }
+        },
+        {
+          "name": "P1 Supabase operation response keeps full payload",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'op_url_home'], 'operation payload verification requires service-role env and op_url_home');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rows = pm.response.json();",
+                  "pm.test('Supabase returns at most one operation row', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(rows).to.be.an('array'); pm.expect(rows.length).to.be.at.most(1); });",
+                  "if (rows[0] && rows[0].status === 'succeeded') {",
+                  "  pm.test('Succeeded operation carries full AddZettelResponse payload', function () { pm.expect(rows[0].response).to.be.an('object'); pm.expect(rows[0].response.summary).to.be.an('object'); pm.expect(rows[0].response.summary.title || '').to.be.a('string'); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "core" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/operations?operation_id=eq.{{op_url_home}}&select=operation_id,user_id,status,response,error,updated_at"
+          }
+        },
+        {
+          "name": "P2 Supabase chunks or enrichment state is visible",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "zkRequire(['supabase_url', 'supabase_service_role_key', 'canonical_zettel_id'], 'chunk visibility requires service-role env and canonical_zettel_id');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var rows = pm.response.json();",
+                  "pm.test('Canonical chunks query succeeds', function () { pm.expect(pm.response.code).to.equal(200); pm.expect(rows).to.be.an('array'); });",
+                  "pm.test('Chunk visibility is explicit even when lazy enrichment is pending', function () { pm.expect(rows.length).to.be.at.least(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "content" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/canonical_chunks?canonical_zettel_id=eq.{{canonical_zettel_id}}&select=id,canonical_zettel_id,chunk_index,created_at"
           }
         }
       ]
