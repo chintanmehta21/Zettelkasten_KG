@@ -445,6 +445,36 @@
     }
   }
 
+  // "Open original source" link, rendered inside the card meta row. Card body
+  // click opens the summary popup; this button is the only nav affordance.
+  function homeGotoBtnHtml(url) {
+    var safe = toSafeHttpUrl(url);
+    if (!safe) return '';
+    return '<a class="home-card-goto-btn" href="' + escapeHtml(safe) + '" ' +
+        'target="_blank" rel="noopener noreferrer" ' +
+        'title="Open original source" aria-label="Open original source">' +
+        '<img src="/artifacts/icon-external-link.svg" alt="Open" />' +
+        '<span class="tooltip">Open original source</span>' +
+      '</a>';
+  }
+
+  function attachHomeCardInteraction(card, node) {
+    card.addEventListener('click', function (e) {
+      // Goto button is a native anchor — let it navigate, don't open popup.
+      if (e.target.closest('.home-card-goto-btn')) {
+        e.stopPropagation();
+        return;
+      }
+      openSummaryPopup(node);
+    });
+    card.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target === card) {
+        e.preventDefault();
+        openSummaryPopup(node);
+      }
+    });
+  }
+
   function renderCards(previewNodes, totalCount) {
     if (!cardGrid || !emptyState || !zettelCount) return;
 
@@ -467,12 +497,10 @@
     if (fade) fade.style.display = previewNodes.length > 0 ? '' : 'none';
 
     previewNodes.forEach(function (node, i) {
-      var card = document.createElement('a');
+      var card = document.createElement('div');
       card.className = 'home-card';
-      var safeUrl = toSafeHttpUrl(node.url);
-      card.href = safeUrl || '#';
-      card.target = safeUrl ? '_blank' : '';
-      card.rel = safeUrl ? 'noopener noreferrer' : '';
+      card.setAttribute('role', 'link');
+      card.tabIndex = 0;
       card.style.animationDelay = (i * 0.08) + 's';
 
       var sourceClass = (node.group || 'web').toLowerCase();
@@ -483,21 +511,11 @@
         '<div class="home-card-meta">' +
           (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
           '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>' +
-          '<button class="home-card-summary-btn" data-node-idx="' + i + '" type="button" title="Summary" aria-label="View summary">' +
-            '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
-            '<span class="tooltip">Summary</span>' +
-          '</button>' +
+          homeGotoBtnHtml(node.url) +
         '</div>';
 
-      // Intercept card clicks — if summary button was clicked, show popup instead of navigating
-      card.addEventListener('click', function (e) {
-        var btn = e.target.closest('.home-card-summary-btn');
-        if (btn) {
-          e.preventDefault();
-          e.stopPropagation();
-          openSummaryPopup(node);
-        }
-      });
+      // Card body click opens the summary popup; goto button navigates.
+      attachHomeCardInteraction(card, node);
 
       cardGrid.appendChild(card);
     });
@@ -1128,33 +1146,21 @@
         tags: result.tags || []
       };
 
-      var realCard = document.createElement('a');
+      var realCard = document.createElement('div');
       realCard.className = 'home-card home-card-new'
         + (newNode.titleReady ? '' : ' home-card-pending');
-      var safeNewUrl = toSafeHttpUrl(newNode.url);
-      realCard.href = safeNewUrl || '#';
-      realCard.target = safeNewUrl ? '_blank' : '';
-      realCard.rel = safeNewUrl ? 'noopener noreferrer' : '';
+      realCard.setAttribute('role', 'link');
+      realCard.tabIndex = 0;
 
       realCard.innerHTML =
         '<h3 class="home-card-title">' + escapeHtml(homeDisplayTitle(newNode)) + '</h3>' +
         '<div class="home-card-meta">' +
           '<span class="home-card-date">' + escapeHtml(newNode.date) + '</span>' +
           '<span class="home-card-source ' + sourceType + '">' + escapeHtml(newNode.group) + '</span>' +
-          '<button class="home-card-summary-btn" type="button" title="Summary" aria-label="View summary">' +
-            '<img src="/artifacts/icon-summary.svg" alt="Summary" />' +
-            '<span class="tooltip">Summary</span>' +
-          '</button>' +
+          homeGotoBtnHtml(newNode.url) +
         '</div>';
 
-      realCard.addEventListener('click', function (e) {
-        var btn = e.target.closest('.home-card-summary-btn');
-        if (btn) {
-          e.preventDefault();
-          e.stopPropagation();
-          openSummaryPopup(newNode);
-        }
-      });
+      attachHomeCardInteraction(realCard, newNode);
 
       // PR #40 (2026-05-21): smooth skeleton -> real card crossfade. Detach
       // the typewriter first so its caret doesn't blink during the fade,
@@ -1271,8 +1277,11 @@
       (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
       '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';
 
-    var summaryParts = extractSummaryParts(node.summary || node.description || '');
-    renderDualSummary(text, summaryParts);
+    // Brief and detailed live in separate fields — parse each independently
+    // so the popup shows the full summary, not the brief twice.
+    var briefParts = extractSummaryParts(node.summary || node.description || '');
+    var detailedParts = extractSummaryParts(node.description || node.summary || '');
+    renderDualSummary(text, { brief: briefParts.brief, detailed: detailedParts.detailed });
 
     var _mathSrc = (node.group || node.source || '').toLowerCase();
     _maskPriceDollars(text);

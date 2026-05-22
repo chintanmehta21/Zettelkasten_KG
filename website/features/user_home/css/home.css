@@ -706,9 +706,9 @@
     100% { opacity: 1; transform: scale(1) translateY(0); box-shadow: none; }
 }
 
-/* ── Summary Button ────────────────────────────────────────────── */
+/* ── Open-Source Button ────────────────────────────────────────── */
 
-.home-card-summary-btn {
+.home-card-goto-btn {
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -725,30 +725,30 @@
     flex-shrink: 0;
 }
 
-.home-card-summary-btn:hover {
+.home-card-goto-btn:hover {
     background: hsla(210, 50%, 55%, 0.2);
     border-color: hsl(210, 55%, 60%);
     box-shadow: 0 0 10px hsla(210, 50%, 55%, 0.3);
     transform: scale(1.12);
 }
 
-.home-card-summary-btn img,
-.home-card-summary-btn .tooltip {
+.home-card-goto-btn img,
+.home-card-goto-btn .tooltip {
     pointer-events: none;
 }
 
-.home-card-summary-btn img {
+.home-card-goto-btn img {
     width: 14px;
     height: 14px;
     filter: brightness(0) saturate(100%) invert(55%) sepia(30%) saturate(500%) hue-rotate(185deg) brightness(95%);
     transition: filter var(--transition);
 }
 
-.home-card-summary-btn:hover img {
+.home-card-goto-btn:hover img {
     filter: brightness(0) saturate(100%) invert(65%) sepia(35%) saturate(600%) hue-rotate(185deg) brightness(100%);
 }
 
-.home-card-summary-btn .tooltip {
+.home-card-goto-btn .tooltip {
     display: none;
     position: absolute;
     bottom: calc(100% + 6px);
@@ -765,7 +765,7 @@
     z-index: 10;
 }
 
-.home-card-summary-btn:hover .tooltip {
+.home-card-goto-btn:hover .tooltip {
     display: block;
     animation: tooltipIn 0.15s ease;
 }
