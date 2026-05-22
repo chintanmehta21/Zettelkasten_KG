@@ -1060,14 +1060,40 @@
         });
         return;
       }
-      // PR #39 / Wave-2 C2: graceful poll-exhaust UX. Backend pipeline is
-      // still running; schedule a one-shot list refresh after 30s so the
-      // zettel auto-appears without the user needing to refresh manually.
+      // ADR-1: graceful poll-exhaust. The backend is still running (reaper
+      // window is wider than the poll budget). Insert a visible pending card
+      // and keep reconciling in the background until the op finalizes.
       if (err && err.code === 'poll_exhausted') {
+        var pendingId = 'pending-' + (err.operationId || Date.now());
+        var pendingNode = normalizeNode({
+          id: pendingId,
+          title: '',
+          title_ready: false,
+          brief_summary: '',
+          source_type: _detectSourceFromUrl(url, isDocument),
+          source_url: url || '',
+          added_at: new Date().toISOString().slice(0, 10)
+        });
+        upsertNodeAtTop(pendingNode);
+        rebuildFilterMenus();
+        updateStats(_allNodes);
+        applyFilters();
         if (addError) {
-          addError.textContent = 'Still summarizing in the background — your Zettel will appear shortly.';
+          addError.textContent = 'Still summarizing in the background — your Zettel will appear here automatically.';
         }
-        window.setTimeout(function () { try { loadZettels(); } catch (e) { void e; } }, 30000);
+        if (window.ZKAddZettel && typeof window.ZKAddZettel.continueInBackground === 'function') {
+          window.ZKAddZettel.continueInBackground(err.operationId, _token, function (envelope) {
+            if (envelope) {
+              try { loadZettels(); } catch (le) { void le; }
+            } else {
+              // failed / reaped / timed out — drop the placeholder.
+              var pIdx = findNodeIndexById(pendingId);
+              if (pIdx >= 0) { _allNodes.splice(pIdx, 1); applyFilters(); }
+            }
+          });
+        } else {
+          window.setTimeout(function () { try { loadZettels(); } catch (e) { void e; } }, 30000);
+        }
       } else {
         console.error('[user_zettels] Add failed:', err);
         if (addError) addError.textContent = err.message || 'Failed to add zettel';

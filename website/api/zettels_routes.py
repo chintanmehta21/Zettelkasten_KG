@@ -7,6 +7,7 @@ import json
 import logging
 import time
 from collections import OrderedDict, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -125,6 +126,29 @@ class AddZettelRequest(BaseModel):
         if not validate_url(value):
             raise ValueError("URL is invalid or blocked")
         return value
+
+
+def _retry_after_for_age(created_at_raw: Any) -> str:
+    """Server-guided poll backoff (ADR-1). ``Retry-After`` grows with the
+    operation's age so short jobs poll fast (snappy UX) while long jobs poll
+    sparsely (low droplet load). Falls back to 2s if the timestamp is
+    unparseable."""
+    try:
+        created = datetime.fromisoformat(
+            str(created_at_raw).replace("Z", "+00:00")
+        )
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        age_s = (datetime.now(timezone.utc) - created).total_seconds()
+    except Exception:
+        return "2"
+    if age_s < 20:
+        return "2"
+    if age_s < 60:
+        return "4"
+    if age_s < 180:
+        return "10"
+    return "20"
 
 
 def _present_title(raw: str, source_type: str | None) -> str:
@@ -889,12 +913,16 @@ async def operation_status(
     if status in ("queued", "running", "accepted"):
         payload = dict(row.get("response") or {})
         payload["phase"] = status if status in ("queued", "running") else "queued"
+        # LRO status contract (ADR-1): surface timestamps so the client can
+        # render elapsed time and reason about staleness.
+        payload["created_at"] = row.get("created_at")
+        payload["updated_at"] = row.get("updated_at")
         return JSONResponse(
             payload,
             status_code=202,
             headers={
                 "Location": f"/api/operations/{operation_id}",
-                "Retry-After": "2",
+                "Retry-After": _retry_after_for_age(row.get("created_at")),
                 **_NO_STORE_HEADERS,
             },
         )

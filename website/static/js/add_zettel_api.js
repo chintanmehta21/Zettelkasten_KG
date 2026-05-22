@@ -51,20 +51,18 @@
     return { body: body, retryAfter: response.headers.get('Retry-After') };
   }
 
-  // PR #40 L1 (2026-05-21): poll cap tightened 8s → 4s. Earlier 8s cap
-  // left the user waiting up to 8s AFTER the operations row already
-  // flipped to succeeded — perceptible dead time at the end of long
-  // pipelines. With a 4s cap, worst-case last-poll lag is ≤4s. Doubles
-  // the poll rate from t=7s onwards; each GET /api/operations/{id} is
-  // a single PostgREST scalar read (~50ms server-side on the 2 GB
-  // droplet) so the added load is negligible.
-  // PR #39 / Wave-1 C1 (2026-05-20): 300s budget aligns with the 7-min
-  // stuck-running reaper threshold (migration 59) + headroom so polling
-  // can resolve before the reaper marks a long-running op as failed.
-  // Server `Retry-After` header always wins when present.
-  var POLL_BUDGET_MS = 300000;
-  var POLL_BACKOFF_SCHEDULE_MS = [1000, 2000, 4000];
-  var POLL_BACKOFF_CAP_MS = 4000;
+  // ADR-1 (summary-api-async-fixes): budget raised 300s → 420s so long
+  // YouTube/PDF pipelines finish inside the client's polling window. The
+  // reaper threshold moved 7m → 10m (migration 65) so it stays strictly
+  // above this budget — a slow-but-progressing op is never reaped mid-poll.
+  // Request volume is kept sane by SERVER-GUIDED backoff: GET
+  // /api/operations/{id} returns a `Retry-After` that grows with the
+  // operation's age (2s while young → 20s once long-running), so a 7-min
+  // job is ~40 polls, not ~200. The client schedule below is only the
+  // fallback when no `Retry-After` header is present.
+  var POLL_BUDGET_MS = 420000;
+  var POLL_BACKOFF_SCHEDULE_MS = [2000, 4000, 8000, 16000];
+  var POLL_BACKOFF_CAP_MS = 20000;
 
   async function pollAccepted(body, headers, hooks) {
     if (!body || body.status !== 'accepted' || !body.status_url) return body;
@@ -196,10 +194,40 @@
     return pollAccepted(body, headers, { onStatus: opts.onStatus });
   }
 
+  // ADR-1: background continuation. After pollAccepted gives up at
+  // POLL_BUDGET_MS the operation is still running server-side (the reaper
+  // window is wider). continueInBackground keeps polling the status URL at a
+  // slow cadence until the operation reaches a terminal state or the reaper
+  // window elapses, then invokes onDone(envelope) — envelope is the succeeded
+  // body, or null on failure/reap/timeout so the caller can clear its
+  // placeholder card.
+  async function continueInBackground(operationId, token, onDone) {
+    function done(env) { try { if (onDone) onDone(env); } catch (e) { void e; } }
+    if (!operationId) { done(null); return; }
+    var headers = {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    var statusUrl = '/api/operations/' + encodeURIComponent(operationId);
+    // ~6 min more — stays inside the 10-min reaper window (migration 65).
+    var deadline = Date.now() + 360000;
+    while (Date.now() < deadline) {
+      await sleep(30000);
+      try {
+        var resp = await fetchStatusRaw(statusUrl, headers);
+        var b = resp.body;
+        if (b && b.status && b.status !== 'accepted') {
+          done(b.status === 'succeeded' ? b : null);
+          return;
+        }
+      } catch (e) { void e; }
+    }
+    done(null);
+  }
+
   window.ZKAddZettel = {
     add: add,
     uploadDocument: uploadDocument,
     makeActionId: makeActionId,
+    continueInBackground: continueInBackground,
     _parseResponse: parseResponse
   };
 })();
