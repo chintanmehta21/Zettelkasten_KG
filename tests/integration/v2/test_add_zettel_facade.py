@@ -26,26 +26,30 @@ def _drive_bg_to_finalize(
     post_json: dict, captured: dict, user_dict: dict | None = None,
     *, settle_s: float = 2.5,
 ) -> None:
-    """PR #40 hotfix (2026-05-21): cross-platform deterministic finalize.
+    """PR #40 hotfix (2026-05-21) — refined 2026-05-23: deterministic finalize.
 
-    Windows/macOS TestClient drives the bg task automatically. Linux CI
-    (ubuntu-latest) tears the per-request loop down and orphans the
-    bg task. This helper polls ``captured`` briefly to detect the
-    auto-drive path; if it never fires, runs ``_run`` directly via
-    ``asyncio.run``. Pipeline runs exactly once either way."""
+    PRIOR DESIGN (poll-then-fallback) had a Linux CI race: the route's bg
+    task could partially execute (call summarize) before TestClient tore the
+    per-request loop down without reaching finalize. The helper's poll then
+    timed out + ran the pipeline AGAIN via asyncio.run → summarize called
+    twice → ``assert seen == [user_id]`` flake.
+
+    REFINED DESIGN: ``_install_async_mocks`` monkeypatches ``zettels_routes._run``
+    to a no-op so the route's auto-spawned bg task never invokes the pipeline.
+    This helper is the SOLE driver, calling the saved original ``_run`` once
+    via ``asyncio.run``. Pipeline runs exactly once on EVERY platform.
+
+    ``settle_s`` is retained for back-compat with the old helper signature
+    but is no longer used (we drive immediately)."""
+    del settle_s  # unused (kept for signature back-compat)
     import asyncio
     from website.api import zettels_routes as zr
 
-    deadline = time.time() + settle_s
-    while time.time() < deadline:
-        if captured.get("called"):
-            return
-        time.sleep(0.025)
-
+    real_run = captured.get("_real_run", zr._run)
     body = zr.AddZettelRequest(**post_json)
     user_id = zr._effective_user_id(user_dict)
     asyncio.run(
-        zr._run(
+        real_run(
             user_id=user_id,
             operation_id=post_json["client_action_id"],
             pipeline=lambda: zr._run_add_zettel(
@@ -61,7 +65,15 @@ def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
     (resolve_redirects, dedup scope) so the route's background _run task
     finalizes deterministically without hitting real Supabase / DNS.
 
-    Returns a `captured` dict that tests inspect after `_wait_for_finalize`.
+    Also monkeypatches ``zettels_routes._run`` to a no-op so the route's
+    auto-spawned ``asyncio.create_task(_run(...))`` does nothing — the
+    ``_drive_bg_to_finalize`` helper drives the saved-real ``_run`` exactly
+    once via ``asyncio.run``. Eliminates the Linux CI race where TestClient
+    tore the per-request loop down mid-pipeline (summarize ran once via the
+    orphaned bg task, then again via the helper's manual fallback).
+
+    Returns a `captured` dict that tests inspect after `_drive_bg_to_finalize`.
+    The ``_real_run`` slot holds the saved original ``_run`` for the helper.
     """
     from website.api.module_runners import summarization as runner
     from website.core import persist as persist_mod
@@ -73,6 +85,16 @@ def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
         captured.update(kw)
         return True
 
+    # Preserve the real _run for _drive_bg_to_finalize to invoke exactly
+    # once via asyncio.run. The monkeypatched no-op below replaces the
+    # symbol the route resolves at create_task time.
+    captured["_real_run"] = zettels_routes._run
+
+    async def _noop_run(*, user_id, operation_id, pipeline, persist_requested):
+        del user_id, operation_id, pipeline, persist_requested
+        return None
+
+    monkeypatch.setattr(zettels_routes, "_run", _noop_run)
     monkeypatch.setattr(zettels_routes.operations_repo, "accept",
                         lambda **kw: (kw["operation_id"], True))
     monkeypatch.setattr(zettels_routes.operations_repo, "start",
