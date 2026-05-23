@@ -1008,7 +1008,7 @@
     left: 0;
     top: 0.35rem;
     bottom: 0.35rem;
-    width: 4px;
+    width: 3px;
     border-radius: 999px;
     background: var(--accent, #14b8a6);
     opacity: 0.85;
@@ -1051,7 +1051,7 @@
     padding-bottom: 0.45rem;
 }
 .zettels-summary-h2[aria-expanded="true"]::before {
-    width: 5px;
+    width: 4px;
     opacity: 1;
 }
 .zettels-summary-h2[aria-expanded="false"] {
@@ -1071,7 +1071,7 @@
     margin-top: 0.55rem;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
-    width: 4px;
+    width: 3px;
     opacity: 0.6;
 }
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
