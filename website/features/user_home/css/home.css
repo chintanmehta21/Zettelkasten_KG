@@ -999,8 +999,13 @@
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: opacity 180ms ease, background 180ms ease;
+    transition: margin 220ms ease, padding 220ms ease,
+                font-size 220ms ease, background 220ms ease;
 }
+/* Mirror of user_zettels — rail morphs smoothly between OPEN (brighter,
+   4px) and COLLAPSED (dim, 3px). Tick lives at top of every h2 but only
+   fades visible when the section is collapsed, so re-opening makes it
+   vanish in lockstep with the rest of the transition. */
 .zettels-summary-h2::before {
     content: "";
     position: absolute;
@@ -1011,6 +1016,7 @@
     border-radius: 0;
     background: var(--accent, #14b8a6);
     opacity: 0.95;
+    transition: opacity 220ms ease, width 220ms ease, background 220ms ease;
 }
 .zettels-summary-h2::after {
     content: "";
@@ -1020,10 +1026,8 @@
     width: 9px;
     height: 1px;
     background: var(--accent, #14b8a6);
-    opacity: 0.5;
-}
-.zettels-summary-h2:first-of-type::after {
-    display: none;
+    opacity: 0;
+    transition: opacity 220ms ease;
 }
 .zettels-summary-h2:first-child {
     margin-top: 0.25rem;
@@ -1077,7 +1081,6 @@
     );
     border-radius: 0;
     font-size: 0.96rem;
-    transition: margin 200ms ease, padding 200ms ease, background 200ms ease;
 }
 .zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
     margin-top: 0.5rem;
@@ -1088,10 +1091,21 @@
 .zettels-summary-h2[aria-expanded="false"]::before {
     opacity: 0.55;
 }
+.zettels-summary-h2[aria-expanded="false"]::after {
+    opacity: 0.5;
+}
+.zettels-summary-h2[aria-expanded="false"]:first-of-type::after,
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"]::after {
+    opacity: 0;
+}
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
     opacity: 0.62;
     font-weight: 600;
     letter-spacing: 0.015em;
+    transition: opacity 220ms ease, font-weight 220ms ease;
+}
+.zettels-summary-h2[aria-expanded="true"] .zettels-summary-h2-label {
+    transition: opacity 220ms ease, font-weight 220ms ease;
 }
 
 .zettels-summary-panel {
