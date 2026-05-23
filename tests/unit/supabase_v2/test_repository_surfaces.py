@@ -123,6 +123,83 @@ def test_rag_repository_uses_rag_schema() -> None:
     assert ("table", "rag", "kastens") in client.calls
 
 
+def test_list_kastens_flattens_postgrest_count_embed() -> None:
+    """Regression for the 2026-05-24 /home/kastens "0 zettels" bug.
+
+    The legacy ``select('*')`` left ``member_count`` unset; the serializer
+    defaulted it to 0 even when ``rag.kasten_zettels`` had rows. Fix is the
+    same-schema PostgREST embed ``select=*,kasten_zettels(count)`` — this
+    test pins both the select string AND the flattening (embed list →
+    flat ``member_count`` int) so a future "tidy-up" PR can't drop either.
+    """
+    captured: dict = {}
+
+    class _ChainK:
+        def __init__(self):
+            self._data: list[dict] = []
+
+        def select(self, columns):
+            captured["select_columns"] = columns
+            return self
+
+        def eq(self, col, val):
+            captured.setdefault("eqs", []).append((col, val))
+            return self
+
+        def order(self, col, **kw):
+            captured.setdefault("orders", []).append((col, kw))
+            return self
+
+        def limit(self, n):
+            captured["limit"] = n
+            return self
+
+        def execute(self):
+            # Canned response: 3 kastens — one with 10 members, one with
+            # 0 members (empty embed list), one with the singleton-dict
+            # shape PostgREST sometimes returns to exercise the defensive
+            # branch.
+            return type("Resp", (), {"data": [
+                {"id": "k-1", "name": "Economics & Markets",
+                 "kasten_zettels": [{"count": 10}]},
+                {"id": "k-2", "name": "Empty Kasten",
+                 "kasten_zettels": []},
+                {"id": "k-3", "name": "Single-dict shape",
+                 "kasten_zettels": {"count": 4}},
+            ]})()
+
+    class _SchemaK:
+        def table(self, _name):
+            captured["table"] = _name
+            return _ChainK()
+
+    class _ClientK:
+        def schema(self, name):
+            captured["schema"] = name
+            return _SchemaK()
+
+    repo = RAGRepository(_ClientK())
+    rows = repo.list_kastens(UUID("00000000-0000-0000-0000-000000000001"))
+
+    # Wire contract: PostgREST same-schema count-embed must be in the select.
+    assert captured["schema"] == "rag"
+    assert captured["table"] == "kastens"
+    assert "kasten_zettels(count)" in captured["select_columns"], (
+        "list_kastens MUST embed kasten_zettels(count) so the card widget "
+        f"can render real member counts. saw: {captured['select_columns']!r}"
+    )
+
+    # Flattening contract: embed shape collapses to a flat int per row,
+    # and the embed key is stripped so downstream readers see only the
+    # legacy flat shape.
+    assert rows[0]["member_count"] == 10
+    assert "kasten_zettels" not in rows[0]
+    assert rows[1]["member_count"] == 0   # empty embed list → 0
+    assert "kasten_zettels" not in rows[1]
+    assert rows[2]["member_count"] == 4   # dict-only fallback shape
+    assert "kasten_zettels" not in rows[2]
+
+
 def test_chat_repository_uses_rag_schema() -> None:
     client = _Client()
     repo = ChatRepository(client)
