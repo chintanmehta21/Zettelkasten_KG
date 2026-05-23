@@ -1,9 +1,15 @@
-"""iter-09 RES-4: non-stream /adhoc admission wire.
+"""iter-09 RES-4 + D2 strangler-fig: non-stream /adhoc admission wire.
 
-Verifies the new ``async with acquire_rerank_slot()`` wrapper inside
+Verifies the ``async with acquire_rerank_slot()`` wrapper inside
 ``_run_answer``: QueueFull surfaces as HTTP 503 with ``Retry-After: 5``,
-mirroring the SSE path. Without this iter-09 fix, 12-concurrent burst probes
-saw depth=0 and admitted indiscriminately (iter-08 burst 25% 502 rate).
+mirroring the SSE path. Without the iter-09 fix, 12-concurrent burst
+probes saw depth=0 and admitted indiscriminately (iter-08 burst 25% 502
+rate).
+
+new_apis_1a (D2 strangler-fig, locked 2026-05-23): the orchestrator call
+now flows through ``ask_kasten.run_ask_kasten_once``. Tests patch the
+lazy-imported runner so the slot-wrap + side-effect ordering invariants
+stay covered without requiring a live RAG runtime.
 """
 from __future__ import annotations
 
@@ -24,6 +30,10 @@ class _StubBody:
         self.content = "hi"
         self.quality = "fast"
         self.stream = False
+        # D2 strangler-fig: the route now reads client_action_id off the
+        # body to pass as the runner's idempotent action_id. None falls
+        # back to the session id in the route helper.
+        self.client_action_id = None
 
 
 def _stub_session() -> dict:
@@ -42,10 +52,31 @@ def _stub_runtime():
     return runtime
 
 
+def _stub_runner_result() -> dict:
+    """The runner returns a flat dict (AskKastenOutput.model_dump()) — the
+    route helper translates it into the legacy ``{session_id, turn}`` shape."""
+    return {
+        "status": "succeeded",
+        "operation_id": "test-action",
+        "content": "answer",
+        "citations": [],
+        "query_class": "lookup",
+        "critic_verdict": "supported",
+        "critic_notes": None,
+        "trace_id": "trace-1",
+        "latency_ms": 100,
+        "token_counts": {},
+        "llm_model": "gemini-2.5-flash",
+        "retrieved_node_ids": [],
+        "retrieved_chunk_ids": [],
+    }
+
+
 @pytest.mark.asyncio
 async def test_run_answer_returns_503_when_queue_full(monkeypatch) -> None:
-    """When acquire_rerank_slot raises QueueFull, _run_answer must convert
-    it to HTTP 503 with Retry-After: 5 (parity with the SSE error event)."""
+    """When ``acquire_rerank_slot`` raises QueueFull, ``_run_answer`` must
+    convert it to HTTP 503 with ``Retry-After: 5`` (parity with the SSE
+    error event)."""
 
     @asynccontextmanager
     async def _full_slot():
@@ -67,10 +98,11 @@ async def test_run_answer_returns_503_when_queue_full(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_answer_invokes_orchestrator_inside_slot(monkeypatch) -> None:
-    """Sanity: when the slot is open, the orchestrator runs and returns the
-    standard (session_id, turn) payload — i.e. the wrap doesn't break the
-    happy path."""
+async def test_run_answer_invokes_runner_inside_slot(monkeypatch) -> None:
+    """D2 strangler-fig: the ``ask_kasten`` runner runs INSIDE the rerank
+    slot. The runner internally calls ``orchestrator.answer``; the slot
+    invariant the iter-09 fix protected is now expressed as 'runner is
+    inside slot'."""
     slot_active: list[bool] = []
 
     @asynccontextmanager
@@ -85,19 +117,19 @@ async def test_run_answer_invokes_orchestrator_inside_slot(monkeypatch) -> None:
 
     runtime = _stub_runtime()
 
-    class _Turn:
-        def model_dump(self) -> dict:
-            return {"id": "t1"}
-
-    async def _answer(*a, **k):
-        # During answer execution the slot must be active.
+    async def _stub_runner(*a, **k):
+        # While the runner runs, the slot must be active.
         assert slot_active and slot_active[-1] is True
-        return _Turn()
+        return _stub_runner_result()
+
+    monkeypatch.setattr(
+        "website.api.module_runners.ask_kasten.run_ask_kasten_once",
+        _stub_runner,
+    )
 
     async def _side_effects(*a, **k):
         return None
 
-    runtime.orchestrator.answer = _answer
     monkeypatch.setattr(chat_routes, "_post_answer_side_effects", _side_effects)
 
     body = _StubBody()
@@ -105,16 +137,17 @@ async def test_run_answer_invokes_orchestrator_inside_slot(monkeypatch) -> None:
         runtime, "00000000-0000-0000-0000-000000000002", _stub_session(), body
     )
     assert payload["session_id"] == "00000000-0000-0000-0000-000000000001"
-    assert payload["turn"] == {"id": "t1"}
+    assert payload["turn"]["content"] == "answer"
     # Slot opened then closed.
     assert slot_active == [True, False]
 
 
 @pytest.mark.asyncio
 async def test_run_answer_releases_slot_before_side_effects_finish(monkeypatch) -> None:
-    """iter-10 P2: post-answer side effects must run AFTER the rerank slot is
-    released. Schedules a slow stub side-effects coroutine; verifies the slot
-    is already released by the time it observes the slot state."""
+    """iter-10 P2 invariant preserved under D2 strangler-fig: post-answer
+    side effects run AFTER the rerank slot is released. Schedules a slow
+    stub side-effects coroutine; verifies the slot is already released by
+    the time it observes the slot state."""
     import asyncio
 
     slot_state: dict = {"in_slot": False}
@@ -131,14 +164,13 @@ async def test_run_answer_releases_slot_before_side_effects_finish(monkeypatch) 
 
     runtime = _stub_runtime()
 
-    class _Turn:
-        def model_dump(self) -> dict:
-            return {"id": "t1"}
+    async def _stub_runner(*a, **k):
+        return _stub_runner_result()
 
-    async def _answer(*a, **k):
-        return _Turn()
-
-    runtime.orchestrator.answer = _answer
+    monkeypatch.setattr(
+        "website.api.module_runners.ask_kasten.run_ask_kasten_once",
+        _stub_runner,
+    )
 
     side_observed: dict = {}
     side_done = asyncio.Event()
@@ -167,9 +199,9 @@ async def test_run_answer_releases_slot_before_side_effects_finish(monkeypatch) 
 
 @pytest.mark.asyncio
 async def test_run_answer_isolates_side_effect_exceptions(monkeypatch, caplog) -> None:
-    """A failing post-answer side effect MUST NOT 5xx the response. The task
-    is best-effort enrichment; failures are logged but the API still returns
-    the answer payload."""
+    """A failing post-answer side effect MUST NOT 5xx the response. The
+    task is best-effort enrichment; failures are logged but the API still
+    returns the answer payload."""
     import asyncio
     import logging
 
@@ -181,14 +213,13 @@ async def test_run_answer_isolates_side_effect_exceptions(monkeypatch, caplog) -
 
     runtime = _stub_runtime()
 
-    class _Turn:
-        def model_dump(self) -> dict:
-            return {"id": "t1"}
+    async def _stub_runner(*a, **k):
+        return _stub_runner_result()
 
-    async def _answer(*a, **k):
-        return _Turn()
-
-    runtime.orchestrator.answer = _answer
+    monkeypatch.setattr(
+        "website.api.module_runners.ask_kasten.run_ask_kasten_once",
+        _stub_runner,
+    )
 
     failed = asyncio.Event()
 
@@ -205,7 +236,7 @@ async def test_run_answer_isolates_side_effect_exceptions(monkeypatch, caplog) -
         payload = await chat_routes._run_answer(
             runtime, "00000000-0000-0000-0000-000000000002", _stub_session(), body
         )
-    assert payload["turn"] == {"id": "t1"}
+    assert payload["turn"]["content"] == "answer"
     await asyncio.wait_for(failed.wait(), timeout=2.0)
     # Give the exception handler a tick to log.
     await asyncio.sleep(0.01)
