@@ -44,6 +44,7 @@ AUTH_DIR = Path(__file__).parent / "features" / "user_auth"
 ARTIFACTS_DIR = Path(__file__).parent / "artifacts"
 HOME_DIR = Path(__file__).parent / "features" / "user_home"
 USER_ZETTELS_DIR = Path(__file__).parent / "features" / "user_zettels"
+USER_PROFILE_DIR = Path(__file__).parent / "features" / "user_profile"
 BROWSER_CACHE_DIR = Path(__file__).parent / "features" / "browser_cache"
 USER_KASTENS_DIR = Path(__file__).parent / "features" / "user_kastens"
 USER_RAG_DIR = Path(__file__).parent / "features" / "user_rag"
@@ -296,6 +297,9 @@ def create_app(lifespan=None) -> FastAPI:
         StaticFiles(directory=str(USER_ZETTELS_DIR / "js")),
         name="home-zettels-js",
     )
+    # /profile static (Trash recovery surface; exec/DB_delete_zettel_refine--1a).
+    _mount_static_if_exists(app, "/profile/css", USER_PROFILE_DIR / "css", "profile-css")
+    _mount_static_if_exists(app, "/profile/js",  USER_PROFILE_DIR / "js",  "profile-js")
     app.mount(
         "/home/kastens/css",
         StaticFiles(directory=str(USER_KASTENS_DIR / "css")),
@@ -445,6 +449,13 @@ def create_app(lifespan=None) -> FastAPI:
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
         return _render_with_shell(USER_ZETTELS_DIR / "index.html")
+
+    @app.get("/profile")
+    async def user_profile(request: Request):
+        """Profile page — Trash recovery surface (exec/DB_delete_zettel_refine--1a)."""
+        if _is_mobile(request):
+            return RedirectResponse(url="/m/", status_code=302)
+        return _render_with_shell(USER_PROFILE_DIR / "index.html")
 
     @app.get("/home/kastens")
     async def user_kastens(request: Request):

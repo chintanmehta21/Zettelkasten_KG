@@ -1,0 +1,226 @@
+/* user_profile.css — Trash recovery surface on /profile.
+ *
+ * Minimal styling layered on top of the global teal-themed style.css. The
+ * Trash list reuses the visual language of zettel cards (rounded card with
+ * teal accent) but exposes Restore + "Delete forever" actions instead of
+ * the live-card remove flow.
+ */
+
+.profile-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.25rem 4rem;
+}
+
+.profile-hero {
+    padding: 2.5rem 0 1.5rem;
+}
+
+.profile-title {
+    margin: 0 0 0.4rem;
+    font-size: 2.1rem;
+    letter-spacing: -0.01em;
+}
+
+.profile-subtitle {
+    margin: 0;
+    color: var(--text-muted, #5b6c7e);
+    font-size: 1rem;
+}
+
+.profile-section {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: var(--surface, #fdfdfd);
+    border: 1px solid var(--border, #e6ebef);
+    border-radius: 16px;
+}
+
+.profile-section-header {
+    margin-bottom: 1.25rem;
+}
+
+.profile-section-title {
+    margin: 0 0 0.3rem;
+    font-size: 1.25rem;
+}
+
+.profile-section-help {
+    margin: 0;
+    color: var(--text-muted, #5b6c7e);
+    font-size: 0.92rem;
+    line-height: 1.45;
+    max-width: 65ch;
+}
+
+.profile-trash-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.profile-trash-empty,
+.profile-trash-loading {
+    color: var(--text-muted, #5b6c7e);
+    font-size: 0.95rem;
+    padding: 1.5rem 0;
+    text-align: center;
+}
+
+/* ── Trash card ───────────────────────────────────────────────────────── */
+.profile-trash-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    background: #fff;
+    border: 1px solid var(--border, #e6ebef);
+    border-radius: 12px;
+    transition: opacity 0.32s ease, transform 0.32s ease, max-height 0.32s ease;
+}
+
+.profile-trash-card.is-removing {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.profile-trash-card.is-collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: -0.85rem;  /* collapse the gap */
+    overflow: hidden;
+    border-width: 0;
+}
+
+.profile-trash-main {
+    min-width: 0; /* allow text truncation in grid */
+}
+
+.profile-trash-card-title {
+    margin: 0 0 0.3rem;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-trash-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    color: var(--text-muted, #5b6c7e);
+}
+
+.profile-trash-card-meta .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--surface-muted, #f1f4f7);
+    color: var(--text, #29384a);
+    font-weight: 500;
+    text-transform: lowercase;
+    font-size: 0.78rem;
+}
+
+.profile-trash-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.profile-trash-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    height: 34px;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border, #e6ebef);
+    background: #fff;
+    color: var(--text, #29384a);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.profile-trash-btn:hover {
+    background: var(--surface-muted, #f1f4f7);
+}
+
+.profile-trash-btn.restore {
+    color: var(--accent-teal, #0e8a8a);
+    border-color: rgba(14, 138, 138, 0.32);
+}
+
+.profile-trash-btn.restore:hover {
+    background: rgba(14, 138, 138, 0.08);
+    border-color: rgba(14, 138, 138, 0.48);
+}
+
+.profile-trash-btn.forever {
+    color: #b9311c;
+    border-color: rgba(185, 49, 28, 0.32);
+}
+
+.profile-trash-btn.forever:hover {
+    background: rgba(185, 49, 28, 0.08);
+    border-color: rgba(185, 49, 28, 0.48);
+}
+
+/* Two-click confirm — second click commits. Same pattern as live-card
+ * Remove button on /home/zettels for muscle-memory consistency. */
+.profile-trash-btn.forever.confirm {
+    background: #b9311c;
+    color: #fff;
+    border-color: #b9311c;
+}
+
+.profile-trash-btn.forever.confirm:hover {
+    background: #a02a17;
+}
+
+.profile-trash-btn-icon {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+/* ── Toast ─────────────────────────────────────────────────────────────── */
+.profile-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.7rem 1.1rem;
+    background: var(--text, #29384a);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    box-shadow: 0 6px 24px rgba(13, 22, 38, 0.18);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.profile-toast.hidden {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    pointer-events: none;
+}
+
+@media (max-width: 640px) {
+    .profile-trash-card {
+        grid-template-columns: 1fr;
+    }
+    .profile-trash-actions {
+        justify-content: flex-end;
+    }
+}
