@@ -86,12 +86,27 @@ def _consume_refresh_exception(fut: asyncio.Future) -> None:
 def bucket_for_strength(min_strength: float | None) -> str:
     """Map a continuous threshold to one of three cache buckets.
 
-    D-KG-3 render thresholds:
+    Aligned with the FRONTEND palette per the new_apis1.md reconciliation
+    (locked 2026-05-23). Previously the backend cache bucketed at
+    ``0.7 / 0.4 / else`` while the UI rendered at ``0.7 / 0.5 / 0.3``,
+    creating a semantic mismatch between client labels and server cache
+    keys (not a correctness break — the actual filter is the exact
+    ``min_strength``, not the bucket label — but a real onboarding tax).
+
+    New thresholds (single source of truth, used by both /api/graph and
+    the view_graph runner):
+
         strong  ≥ 0.7
-        medium  0.4 ≤ x < 0.7
-        weak    < 0.4
-    None / 0.0 → "weak" (largest payload). Float boundary uses ≥ on the
-    high side so 0.7 lands in "strong" deterministically.
+        medium  0.5 ≤ x < 0.7
+        weak    < 0.5
+
+    None / 0.0 → ``"weak"`` (largest payload). Float boundary uses ``≥``
+    on the high side so 0.7 lands in "strong" and 0.5 in "medium"
+    deterministically.
+
+    Backwards compatibility: changing the bucket cutoffs only re-keys the
+    in-process cache — pre-existing entries naturally expire within
+    ``_CACHE_TTL_SECONDS`` / ``_SWR_TTL_SECONDS``. No DB or wire change.
     """
     if min_strength is None:
         return "weak"
@@ -101,7 +116,7 @@ def bucket_for_strength(min_strength: float | None) -> str:
         return "weak"
     if v >= 0.7:
         return "strong"
-    if v >= 0.4:
+    if v >= 0.5:
         return "medium"
     return "weak"
 
