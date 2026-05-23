@@ -39,11 +39,27 @@ from typing import Iterable, Mapping, Sequence
 # ── Locked decisions (D-KG-1 / D-KG-2 / D-KG-3) ──────────────────────────────
 
 WEIGHTS: dict[str, float] = {
-    "embedding": 0.55,
-    "tag": 0.25,
-    "structural": 0.15,
+    # Phase 3-α D-KG-1 rebalance (#operator-approved 2026-05-23):
+    # Original 0.55 / 0.25 / 0.15 / 0.05 left dense-pair (no shared tags)
+    # scores stuck just above the 0.50 creation threshold (cos=1.0 alone
+    # gave 0.55 + tiny temporal ≈ 0.60). 3-source convergence (8-agent
+    # dispatch + kg_fixes1 Deep Research + kg_fixes2 Perplexity, plus
+    # GraphRAG / LightRAG 2024 precedent) recommended dense-leaning +
+    # semantic fast-path. Operator approved this exact set in chat.
+    "embedding": 0.65,
+    "tag": 0.20,
+    "structural": 0.10,
     "temporal": 0.05,
 }
+
+# Phase 3-α D-KG-1 fast-path: when embedding cosine alone is very high
+# (>= 0.80), the pair is semantically near-identical and MUST create an
+# edge regardless of tag/structural/temporal signals. Floor the composite
+# at 0.85 so the resulting edge lands in the strong tier (>= 0.70 bucket)
+# with margin. Plan-3-α + Garg 2024 25M-pair study (negative cosines
+# <0.5%; cos>=0.80 is high-confidence related).
+EMBEDDING_FAST_PATH_THRESHOLD: float = 0.80
+EMBEDDING_FAST_PATH_FLOOR: float = 0.85
 
 EDGE_CREATION_THRESHOLD: float = 0.50
 EDGE_RENDER_THRESHOLD: float = 0.7
@@ -196,10 +212,10 @@ def compute_connection_strength(
     temp = _temporal_signal(temporal_days)
 
     # M3: when tag signal is signal-absent (asymmetric empty), redistribute
-    # the 0.25 tag weight proportionally over the remaining 3 signals so the
+    # the tag weight proportionally over the remaining 3 signals so the
     # composite is not silently penalised by missing-side metadata.
     if tag is None:
-        remaining_weight = 1.0 - WEIGHTS["tag"]  # 0.75
+        remaining_weight = 1.0 - WEIGHTS["tag"]
         score = (
             (WEIGHTS["embedding"] / remaining_weight) * emb
             + (WEIGHTS["structural"] / remaining_weight) * struct
@@ -212,8 +228,17 @@ def compute_connection_strength(
             + WEIGHTS["structural"] * struct
             + WEIGHTS["temporal"] * temp
         )
+
+    # Phase 3-α D-KG-1 fast-path (#operator-approved 2026-05-23):
+    # Near-identical embeddings (cos >= 0.80) bypass the weight composition
+    # — floor the composite at 0.85 so the edge always creates AND renders
+    # in the strong tier. The "max" keeps a perfect-everything pair at its
+    # higher composite if both signals fire.
+    if emb >= EMBEDDING_FAST_PATH_THRESHOLD:
+        score = max(score, EMBEDDING_FAST_PATH_FLOOR)
+
     # Defensive clamp — weights sum to 1.0 by construction so the result is
-    # already in [0, 1], but guard against future weight edits.
+    # already in [0, 1], but guard against future weight edits + fast-path.
     return max(0.0, min(1.0, score))
 
 

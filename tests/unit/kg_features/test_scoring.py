@@ -31,11 +31,16 @@ def test_weights_sum_to_one() -> None:
 
 
 def test_weights_match_locked_decision() -> None:
-    """Pin the exact D-KG-1 weights so future edits trip CI."""
+    """Pin the exact D-KG-1 weights so future edits trip CI.
+
+    Phase 3-α (#operator-approved 2026-05-23): rebalanced from
+    (0.55, 0.25, 0.15, 0.05) → (0.65, 0.20, 0.10, 0.05) to keep dense
+    semantic pairs above the 0.50 creation threshold without a shared tag.
+    """
     assert WEIGHTS == {
-        "embedding": 0.55,
-        "tag": 0.25,
-        "structural": 0.15,
+        "embedding": 0.65,
+        "tag": 0.20,
+        "structural": 0.10,
         "temporal": 0.05,
     }
 
@@ -113,8 +118,9 @@ def test_missing_node_in_embeddings_returns_zero_signal() -> None:
         structural={},
         temporal_days=0.0,
     )
-    # Tag perfect (Jaccard=1.0) + temporal=1.0 contribute 0.25 + 0.05 = 0.3
-    assert 0.25 <= score <= 0.35
+    # Phase 3-α: tag weight is 0.20 (was 0.25); temporal=exp(-1/30)≈0.967
+    # via M1 floor; embedding signal absent. Composite ≈ 0.20 + 0.05*0.967 ≈ 0.25.
+    assert 0.20 <= score <= 0.30
 
 
 def test_missing_embedding_dim_mismatch_returns_zero_signal() -> None:
@@ -134,7 +140,8 @@ def test_missing_embedding_dim_mismatch_returns_zero_signal() -> None:
 
 
 def test_identical_embeddings_max_embedding_signal() -> None:
-    """Cosine(v, v) = 1.0 → embedding signal contributes 0.55."""
+    """Cosine(v, v) = 1.0 → embedding signal contributes 0.65 (Phase 3-α weights),
+    AND triggers the cos>=0.80 fast-path so the composite is floored at 0.85."""
     score = compute_connection_strength(
         "a",
         "b",
@@ -143,12 +150,12 @@ def test_identical_embeddings_max_embedding_signal() -> None:
         structural={"a": {}, "b": {}},
         temporal_days=365.0,
     )
-    # Embedding contributes 0.55; tag=0; structural=0; temporal ~ tiny
-    assert 0.5 <= score <= 0.6
+    # Phase 3-α: composite would be 0.65 + ε, fast-path floors at 0.85.
+    assert 0.84 <= score <= 0.86
 
 
 def test_identical_tag_set_max_tag_signal() -> None:
-    """Jaccard({a,b,c}, {a,b,c}) = 1.0 → tag signal contributes 0.25."""
+    """Jaccard({a,b,c}, {a,b,c}) = 1.0 → tag signal contributes 0.20 (Phase 3-α)."""
     score = compute_connection_strength(
         "n1",
         "n2",
@@ -157,8 +164,8 @@ def test_identical_tag_set_max_tag_signal() -> None:
         structural={},
         temporal_days=365.0,
     )
-    # Only tag fires (~0.25) + small temporal residual
-    assert 0.2 <= score <= 0.3
+    # Phase 3-α: only tag fires (~0.20) + small temporal residual (~ε).
+    assert 0.18 <= score <= 0.22
 
 
 def test_temporal_decay_recent_higher() -> None:
