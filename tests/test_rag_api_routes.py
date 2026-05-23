@@ -273,12 +273,15 @@ def test_sandbox_routes_smoke(monkeypatch):
     assert list_response.status_code == 200
     assert list_response.json()["sandboxes"][0]["name"] == "Transformer notes"
 
+    # POST /api/rag/sandboxes now requires a DB v2 scope (commit 8385072b
+    # removed the v1 sandbox-store fallback). Without v2 scope set up, the
+    # route returns 501 by design. The CREATE assertion below is no longer
+    # exercised against v1; the test needs a v2-scope fixture to revive it.
     create_response = client.post(
         "/api/rag/sandboxes",
         json={"name": "Eval notes", "description": "Testing sandbox", "default_quality": "high"},
     )
-    assert create_response.status_code == 200
-    assert create_response.json()["sandbox"]["name"] == "Eval notes"
+    assert create_response.status_code == 501
 
     nodes_response = client.get("/api/rag/nodes")
     assert nodes_response.status_code == 200
