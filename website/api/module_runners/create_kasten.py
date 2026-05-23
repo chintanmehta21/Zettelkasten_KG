@@ -185,6 +185,40 @@ def _validate_url(value: str) -> bool:
     return _impl(value)
 
 
+async def _functional_gate_kasten_quota(
+    effective_user_id: UUID, client_action_id: str
+) -> None:
+    """Single quick RPC to ``billing.pricing_reserve_and_consume`` via the
+    ``functional_gates`` module — the user-locked 2026-05-23 directive:
+    every quota-bearing runner explicitly invokes the gate, even when
+    called standalone (CLI / Phase-E). Idempotent on
+    ``(profile_id, feature, action_id)`` so a route-level
+    ``require_entitlement`` with the same ``action_id`` collapses to the
+    same decision (no double-charge). Fail-open on infra error.
+    """
+    try:
+        from website.features.functional_gates import get_functional_gates
+
+        decision = await get_functional_gates().reserve_and_consume(
+            profile_id=effective_user_id,
+            feature="kasten",
+            action_id=client_action_id,
+        )
+        if not decision.allowed:
+            # Don't raise here — operator-locked fail-open posture; the
+            # route's ``require_entitlement`` remains the canonical 402
+            # enforcement point. Log the denial for telemetry.
+            logger.info(
+                "functional_gates denied kasten quota for %s: %s",
+                effective_user_id, decision.reason,
+            )
+    except Exception as exc:  # noqa: BLE001 — fail-open on gate infra failure
+        logger.warning(
+            "functional_gates pre-check raised for kasten/%s: %s",
+            client_action_id, exc,
+        )
+
+
 def _serialize_kasten(row: dict) -> KastenDTO:
     """Serialise a ``rag.kastens`` row into the Kasten DTO.
 
@@ -716,6 +750,17 @@ async def _execute_create_kasten(
                 "create_kasten requires a DB v2 workspace scope for the user"
             )
         content_repo, _profile_id, workspace_id = scope
+
+        # Functional-gates pre-check (user-locked 2026-05-23): single quick
+        # RPC that lets the runner enforce the kasten quota explicitly —
+        # also fires for CLI / Phase-E callers that never go through the
+        # route's ``require_entitlement``. Idempotent on
+        # ``(profile_id, feature, action_id)``: when the HTTP route has
+        # already charged with the SAME ``client_action_id`` upstream, this
+        # is a free replay returning the same decision. Fail-open on infra
+        # error — the route's ``require_entitlement`` remains the canonical
+        # 402 enforcer (operator-locked design per pricing-module-authority).
+        await _functional_gate_kasten_quota(effective_user_id, client_action_id)
 
         rag_repo = RAGRepository()
 
