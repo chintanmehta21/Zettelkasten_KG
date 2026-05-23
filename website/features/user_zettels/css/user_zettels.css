@@ -1287,18 +1287,16 @@ body {
 /* H1 — primary section ("Chapter walkthrough", "Overview", "Closing remarks").
    Collapsible: a chevron next to the heading toggles the panel below.
 
-   Visual contract:
-   - Teal rail (::before) hugs the left edge of every h2, top: 0 → bottom: 0,
-     no border-radius — so consecutive collapsed sections form ONE continuous
-     vertical line broken only at the OPEN section.
-   - Subtle 9px×1px tick (::after) sits at the top of every h2 like a bar-
-     graph axis notch, marking each section boundary. The first h2's tick is
-     hidden so the rail starts cleanly.
-   - Open: rail brighter (opacity 1, 4px wide), label full weight/size, no
-     background, breathing room above/below.
-   - Collapsed: rail dimmer (opacity 0.55, 3px), label dim + tighter, faint
-     gradient background fading away from the rail. Margin between adjacent
-     collapsed sections is 0 so the rails physically touch. */
+   Visual contract (per operator direction, 2026-05-23):
+   - Every h2 carries a short, rounded teal stub on its left edge (the curved
+     bar from the original design). Bar geometry is identical across open and
+     collapsed — what changes is opacity + width to signal which section is
+     active. NO continuous rail, NO axis ticks; each section's bar reads as a
+     self-contained accent.
+   - Open: bar full-bright (opacity 1, 4px wide), label full weight/size,
+     generous padding above/below.
+   - Collapsed: bar dim (opacity 0.55), label dimmed + slightly smaller,
+     subtle horizontal gradient bg that fades away from the rail. */
 .zettels-summary-h2 {
     position: relative;
     display: flex;
@@ -1308,7 +1306,7 @@ body {
     font-weight: 700;
     color: var(--text-primary);
     margin: 0.9rem 0 0.45rem 0;
-    padding: 0.06rem 0 0.06rem 0.85rem;
+    padding: 0.1rem 0 0.1rem 0.85rem;
     letter-spacing: 0.005em;
     cursor: pointer;
     user-select: none;
@@ -1316,36 +1314,20 @@ body {
     transition: margin 220ms ease, padding 220ms ease,
                 font-size 220ms ease, background 220ms ease;
 }
-/* The bar uses transitionable properties (opacity + width) so the toggle
-   between OPEN (brighter, 4px) and COLLAPSED (dim, 3px) morphs smoothly
-   instead of snapping. Geometry stays edge-to-edge in both states — the
-   collapsed rail is the same flat full-height line, just dimmer. */
+/* Curved rounded-inset bar. Inset top/bottom (0.3rem) leaves visible breathing
+   room above and below; border-radius rounds the ends. Open/collapsed share
+   this geometry — only opacity and width animate. */
 .zettels-summary-h2::before {
     content: "";
     position: absolute;
     left: 0;
-    top: 0;
-    bottom: 0;
+    top: 0.3rem;
+    bottom: 0.3rem;
     width: 3px;
-    border-radius: 0;
+    border-radius: 2px;
     background: var(--accent, #14b8a6);
-    opacity: 0.95;
+    opacity: 0.85;
     transition: opacity 220ms ease, width 220ms ease, background 220ms ease;
-}
-/* Tick lives at the top boundary of EVERY h2 but only becomes visible when
-   the section is collapsed (opacity-driven so it can animate; ``display``
-   toggles aren't transitionable). When the user re-opens a section, this
-   fades to 0 in lockstep with the rail/label transition. */
-.zettels-summary-h2::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 9px;
-    height: 1px;
-    background: var(--accent, #14b8a6);
-    opacity: 0;
-    transition: opacity 220ms ease;
 }
 .zettels-summary-h2:first-child {
     margin-top: 0.25rem;
@@ -1353,7 +1335,7 @@ body {
 .zettels-summary-h2:focus-visible {
     outline: 2px solid var(--accent, #14b8a6);
     outline-offset: 2px;
-    border-radius: 0;
+    border-radius: 3px;
 }
 .zettels-summary-h2-chevron {
     display: inline-flex;
@@ -1379,53 +1361,34 @@ body {
 .zettels-summary-h2:hover .zettels-summary-h2-chevron {
     color: var(--accent, #14b8a6);
 }
-/* Open: emphasize the rail and give the heading breathing room. */
+/* Open: brighter bar, slightly wider, generous padding. */
 .zettels-summary-h2[aria-expanded="true"] {
-    padding-top: 0.45rem;
-    padding-bottom: 0.45rem;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
 }
 .zettels-summary-h2[aria-expanded="true"]::before {
     width: 4px;
     opacity: 1;
 }
-/* Collapsed: rails of adjacent sections must touch (margin: 0). Label dims
-   and shrinks slightly. Background fades horizontally from the rail. */
+/* Collapsed: dimmer bar, tighter padding, faint horizontal gradient bg, dim
+   label. Each collapsed h2 still has its own short rounded bar — no rail. */
 .zettels-summary-h2[aria-expanded="false"] {
-    margin: 0;
-    padding-top: 0.42rem;
-    padding-bottom: 0.42rem;
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.04) 0%,
-        rgba(255, 255, 255, 0.018) 40%,
+        rgba(255, 255, 255, 0.035) 0%,
+        rgba(255, 255, 255, 0.014) 45%,
         rgba(255, 255, 255, 0) 100%
     );
-    border-radius: 0;
+    border-radius: 3px;
     font-size: 0.96rem;
-}
-/* First collapsed h2 immediately after an OPEN panel gets a small gap so it
-   doesn't crowd the bullets above. Collapsed-after-collapsed stays flush. */
-.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
-    margin-top: 0.5rem;
-}
-.zettels-summary-h2[aria-expanded="false"]:first-of-type {
-    margin-top: 0;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
     opacity: 0.55;
 }
-/* Tick fades IN when the section collapses. Hidden at run starts (first
-   h2 overall, or first collapsed after an OPEN panel) so the rail starts
-   cleanly without a stray notch above it. */
-.zettels-summary-h2[aria-expanded="false"]::after {
-    opacity: 0.5;
-}
-.zettels-summary-h2[aria-expanded="false"]:first-of-type::after,
-.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"]::after {
-    opacity: 0;
-}
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
-    opacity: 0.62;
+    opacity: 0.7;
     font-weight: 600;
     letter-spacing: 0.015em;
     transition: opacity 220ms ease, font-weight 220ms ease;
