@@ -690,75 +690,80 @@ def invalidate_user_graph(user_sub: str | None) -> int:
 async def graph_data(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
     view: str | None = None,
+    kasten_id: str | None = None,
     limit: int = 5000,
     offset: int = 0,
     min_strength: float | None = None,
 ):
     """Return the knowledge graph.
 
-    - Default (no view param, or unauthenticated): global graph
-    - ?view=my: authenticated user's personal graph
-    - ?view=global: explicit global graph (all users combined)
-    - ?limit=N&offset=M: pagination (default 5000 nodes, offset 0)
-    - ?min_strength=0.0..1.0: filter edges by D-KG-1 connection_strength.
-      Bucketed for cache efficiency (D-KG-3): strong ≥ 0.7, medium 0.4-0.7,
-      weak < 0.4. Server applies the exact threshold post-load.
+    Delegates to ``website.api.module_runners.view_graph.run_view_graph``
+    (D6 locked 2026-05-23 — single runner is the source of truth so HTTP,
+    CLI, and Phase-E callers all share the same routing).
+
+    Query parameters:
+
+    * ``view`` — ``my`` / ``kasten`` / ``global``. Omitted → inferred from
+      auth (logged-in → ``my``, anonymous → ``global``).
+    * ``kasten_id`` — UUID; required when ``view=kasten``.
+    * ``limit`` / ``offset`` — pagination (1..10000 / 0..).
+    * ``min_strength`` — drop links below this ``connection_strength``;
+      buckets used for cache key alignment per ``graph_cache.bucket_for_strength``
+      (strong ≥ 0.7, medium ≥ 0.5, weak < 0.5).
+
+    Strict ``view=my`` semantics (new_apis1.md tightening): authenticated
+    user with no v2 scope receives an explicit empty personal graph —
+    NEVER silently falls through to the global file-store. Anonymous
+    callers are served the file-store graph and **never** Zoro's personal
+    graph (D1 locked verdict).
     """
-    global _graph_cache_global, _graph_cache_global_ts
+    from uuid import UUID as _UUID
 
-    limit = max(1, min(limit, 10000))
-    offset = max(0, offset)
-    now = time.time()
+    from website.api.module_runners.view_graph import (
+        KastenNotFoundError,
+        run_view_graph,
+    )
 
-    # v2 path: when DB v2 is live AND the caller is a UUID-subject user with
-    # workspace memberships, assemble the graph from content/kg v2 tables.
-    # WAVE-C 1c-A.3: now wrapped in per-user single-flight cache (D-KG-6).
-    if use_supabase_v2() and user is not None:
-        cache = get_default_cache()
-        bucket = bucket_for_strength(min_strength)
+    limit = max(1, min(int(limit), 10000))
+    offset = max(0, int(offset))
 
-        async def _load_v2_payload() -> dict:
-            v2_graph = _v2_assemble_graph(
-                user_sub=user["sub"], limit=limit, offset=offset,
-            )
-            if v2_graph is None:
-                # Sentinel: signal fallthrough by returning empty wrapper.
-                return {"__fallthrough__": True}
-            # C3-d.4: enrichment computes metrics on the SUBGRAPH the user
-            # will see (links ≥ min_strength), not the raw graph. The post-
-            # enrichment _apply_min_strength_filter still trims the response
-            # links list for the wire payload.
-            payload = _enrich_graph_with_analytics(
-                v2_graph.model_dump(), min_strength=min_strength,
-            )
-            payload = _apply_min_strength_filter(payload, min_strength)
-            return _trim_graph_response(payload)
+    if view is not None and view not in ("my", "kasten", "global"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"view must be one of 'my', 'kasten', 'global'; got {view!r}",
+        )
 
+    parsed_kasten_id: _UUID | None = None
+    if kasten_id is not None:
         try:
-            cached = await cache.get_or_load(
-                user["sub"], bucket, _load_v2_payload,
-            )
-            if not cached.get("__fallthrough__"):
-                return cached
-            # else fall through to anon file-store path below
-        except Exception as exc:
-            logger.warning("v2 /api/graph assembly failed, serving file-store: %s", exc)
+            parsed_kasten_id = _UUID(str(kasten_id))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="kasten_id must be a valid UUID",
+            ) from exc
 
-    # Phase 8.0.4: v1 ``KGRepository.get_graph`` fallback removed (Phase 6
-    # dropped ``public.kg_nodes``). Anonymous and v2-miss callers both serve
-    # the file-store graph — the canonical public/anonymous surface.
-    # Only use cache for default pagination (first page, standard limit).
-    use_cache = offset == 0 and limit >= 5000
-    if use_cache and _graph_cache_global is not None and (now - _graph_cache_global_ts) < _GRAPH_CACHE_TTL:
-        return _graph_cache_global
+    if view == "kasten" and parsed_kasten_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="view=kasten requires a kasten_id query parameter",
+        )
 
-    result = _enrich_graph_with_analytics(get_graph(), min_strength=min_strength)
-    result = _apply_min_strength_filter(result, min_strength)
-    result = _trim_graph_response(result)
-    if use_cache:
-        _graph_cache_global = result
-        _graph_cache_global_ts = now
-    return result
+    try:
+        return await run_view_graph(
+            user=user,
+            view=view,  # type: ignore[arg-type]
+            kasten_id=parsed_kasten_id,
+            limit=limit,
+            offset=offset,
+            min_strength=min_strength,
+        )
+    except KastenNotFoundError:
+        # BOLA mitigation: 403 (never reveal whether the kasten exists in
+        # another tenant; mirrors ask_kasten / sandbox_routes pattern).
+        raise HTTPException(status_code=403, detail="Forbidden") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Phase 8.5.R3 / Phase 8 Task 4d: /api/graph/rebuild-links — HARD DELETED.
