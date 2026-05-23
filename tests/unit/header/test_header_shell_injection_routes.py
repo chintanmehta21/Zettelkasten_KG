@@ -1,11 +1,12 @@
-"""HD-01 — shell-injection smoke across all 9 mounted desktop routes.
+"""HD-01 — shell-injection smoke across all 10 mounted desktop routes.
 
-Phase 0 corrected the spec's "7 inner pages" claim — the real count is 9:
+Phase 0 corrected the spec's "7 inner pages" claim — the real count is 10
+(``/profile`` added by exec/DB_delete_zettel_refine--1a):
 
   ``/``, ``/knowledge-graph``, ``/home``, ``/home/nexus``, ``/home/zettels``,
-  ``/home/kastens``, ``/home/rag``, ``/about``, ``/pricing``.
+  ``/home/kastens``, ``/home/rag``, ``/profile``, ``/about``, ``/pricing``.
 
-All 9 are routed through ``_render_with_shell`` (``website/app.py:53-68``).
+All 10 are routed through ``_render_with_shell`` (``website/app.py:53-68``).
 The shell function performs a *conditional* literal substitution: if the
 page's HTML contains ``<!--ZK_HEADER-->``, the shared fragment is spliced
 in; otherwise the raw page (which ships its own inline header) is returned.
@@ -50,7 +51,7 @@ DESKTOP_UA = (
 )
 
 
-# The 9 desktop routes that go through _render_with_shell. Each entry pairs
+# The 10 desktop routes that go through _render_with_shell. Each entry pairs
 # the URL path with an expected text fragment that confirms route identity
 # (so a misrouted response can't silently pass).
 SHELL_ROUTES = [
@@ -61,6 +62,7 @@ SHELL_ROUTES = [
     ("/home/zettels",     "zettel"),
     ("/home/kastens",     "kasten"),
     ("/home/rag",         "rag"),
+    ("/profile",          "profile"),
     ("/about",            "about"),
     ("/pricing",          "pricing"),
 ]
@@ -109,6 +111,7 @@ SHELL_INJECTED_ROUTES = [
     "/home/zettels",
     "/home/kastens",
     "/home/rag",
+    "/profile",
     "/pricing",
 ]
 INLINE_HEADER_ROUTES = ["/", "/home", "/about"]
