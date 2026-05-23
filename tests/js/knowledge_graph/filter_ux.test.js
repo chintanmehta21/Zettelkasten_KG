@@ -2,7 +2,7 @@
  * KG filter UX — bucket toggle, numeric slider, debounce, threshold culling.
  *
  * Locked decisions (WAVE-C 1c, mem-vault VCS_HUtQLKTHzh71InGIU87I):
- *   D-KG-3  Default render threshold ≥ 0.7 (Strong-only) on first load.
+ *   LD-1    Default render threshold = 0.30 (SLIDER_MIN, weak bucket).
  *   D-KG-4  Discrete buckets (Strong/Medium/Weak) + numeric slider 0.30–0.85.
  *   D-KG-6  `?min_strength=` query param flows to /api/graph for cache key.
  *
@@ -31,8 +31,8 @@ describe('KG filter UX — static source rules', () => {
     expect(APP_SRC).toMatch(/weak[^,]*0\.3/i);
   });
 
-  it('declares default min strength = 0.7 (D-KG-3 Strong-only first load)', () => {
-    expect(APP_SRC).toMatch(/DEFAULT_MIN_STRENGTH\s*=\s*0\.7/);
+  it('declares default min strength = 0.30 (LD-1 weak default)', () => {
+    expect(APP_SRC).toMatch(/DEFAULT_MIN_STRENGTH\s*=\s*0\.30/);
   });
 
   it('declares slider range 0.30–0.85 step 0.05', () => {
@@ -185,8 +185,8 @@ describe('KG filter UX — runtime threshold culling', () => {
     }
   });
 
-  it('default min strength constant equals 0.7 (D-KG-3)', () => {
-    expect(helpers.DEFAULT_MIN_STRENGTH).toBe(0.7);
+  it('default min strength constant equals 0.30 (LD-1)', () => {
+    expect(helpers.DEFAULT_MIN_STRENGTH).toBe(0.30);
   });
 
   it('slider range constants match the locked spec', () => {
