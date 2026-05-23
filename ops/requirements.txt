@@ -81,6 +81,12 @@ dateparser>=1.2
 tldextract>=5.1
 cachetools>=5.3
 
+# KG render+correctness overhaul (2026-05-23):
+# - prometheus_client: drift counters + /api/metrics endpoint (Phase 3 + 4)
+# - blake3: content-hash key for analytics memoization (LD-9, Phase 3)
+prometheus_client>=0.20
+blake3>=0.4
+
 # Razorpay payments (orders, subscriptions, webhook signature verify)
 razorpay>=1.4
 
