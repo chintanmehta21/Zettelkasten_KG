@@ -1144,34 +1144,77 @@ body {
     }
 }
 
-.zettels-summary-close {
+/* Top-right action row: Download | Refresh | Close.
+   All three buttons share the same bare/borderless visual contract — color
+   change on hover, no background, no border, no scale. Matches the user's
+   directive: "as simplistic and clear of their purpose as the X close". */
+.zettels-summary-actions {
     position: absolute;
-    top: 0.68rem;
-    right: 0.7rem;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
+    top: 0.5rem;
+    right: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1rem;
+    z-index: 1;
+}
+.zettels-summary-action {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
+    border: 0;
+    padding: 0;
     color: var(--text-muted);
+    opacity: 0.75;
     cursor: pointer;
-    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    border-radius: var(--radius-sm);
+    transition: color 0.18s ease, opacity 0.18s ease;
 }
-
-.zettels-summary-close:hover {
+.zettels-summary-action:hover {
     color: var(--text-primary);
-    background: var(--bg-elevated);
-    border-color: var(--border-light);
+    opacity: 1;
 }
-
-.zettels-summary-close:focus-visible {
+.zettels-summary-action:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
-
-.zettels-summary-close svg {
+.zettels-summary-action svg {
     width: 18px;
     height: 18px;
+}
+.zettels-summary-action[disabled] {
+    opacity: 0.35;
+    cursor: wait;
+}
+/* Refresh-in-flight spinner: only the icon rotates so the button stays put. */
+.zettels-summary-action.is-spinning svg {
+    animation: zkRefreshSpin 0.9s linear infinite;
+}
+@keyframes zkRefreshSpin {
+    to { transform: rotate(360deg); }
+}
+/* Refreshed-by banner — small teal hairline above the title saying who
+   triggered the last refresh. Subtle, doesn't compete with the source pill. */
+.zettels-summary-refresh-note {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--accent, #14b8a6);
+    opacity: 0.85;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+}
+.zettels-summary-refresh-note svg {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+}
+.zettels-summary-refresh-note.hidden {
+    display: none;
 }
 
 .zettels-summary-meta-row {

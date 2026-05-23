@@ -1,0 +1,100 @@
+/* Print-only stylesheet for the popup Download button. When the user clicks
+   Download, the JS adds body.zk-printing-summary and calls window.print() —
+   these @media print rules hide everything except the popup card and re-flow
+   it for an A4 page (white background, black text, no overlays, no buttons).
+   The print dialog's "Save as PDF" gives the user the .pdf the brief asks for. */
+
+@media print {
+    body.zk-printing-summary,
+    body.zk-printing-summary * {
+        visibility: hidden !important;
+    }
+    body.zk-printing-summary .zettels-summary-modal,
+    body.zk-printing-summary .zettels-summary-modal * {
+        visibility: visible !important;
+    }
+    body.zk-printing-summary .zettels-summary-overlay,
+    body.zk-printing-summary .zettels-summary-overlay.hidden {
+        position: static !important;
+        display: block !important;
+        inset: auto !important;
+        z-index: auto !important;
+        background: white !important;
+        overflow: visible !important;
+    }
+    body.zk-printing-summary .zettels-summary-backdrop,
+    body.zk-printing-summary .zettels-summary-actions {
+        display: none !important;
+    }
+    body.zk-printing-summary .zettels-summary-modal {
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        background: white !important;
+        color: black !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 1.4rem 1.2rem !important;
+        margin: 0 !important;
+        animation: none !important;
+    }
+    body.zk-printing-summary .zettels-summary-modal *,
+    body.zk-printing-summary .zettels-summary-text,
+    body.zk-printing-summary .zettels-summary-section-body,
+    body.zk-printing-summary .zettels-summary-para,
+    body.zk-printing-summary .zettels-summary-list-item {
+        color: black !important;
+        background: white !important;
+    }
+    body.zk-printing-summary .zettels-summary-title {
+        color: black !important;
+        font-size: 1.4rem !important;
+        margin-bottom: 0.8rem !important;
+    }
+    body.zk-printing-summary .zettels-summary-section-heading,
+    body.zk-printing-summary .zettels-summary-h2,
+    body.zk-printing-summary .zettels-summary-h2-label,
+    body.zk-printing-summary .zettels-summary-h3 {
+        color: hsl(173, 80%, 25%) !important;
+    }
+    body.zk-printing-summary .zettels-summary-h2[aria-expanded="false"] {
+        background: transparent !important;
+    }
+    body.zk-printing-summary .zettels-summary-h2::before {
+        background: hsl(173, 80%, 35%) !important;
+    }
+    body.zk-printing-summary .zettels-summary-h2-chevron,
+    body.zk-printing-summary .zettels-summary-divider {
+        display: none !important;
+    }
+    /* Expand every panel so the printed PDF contains the full content. */
+    body.zk-printing-summary .zettels-summary-panel,
+    body.zk-printing-summary .zettels-summary-panel[data-collapsed="true"] {
+        max-height: none !important;
+        opacity: 1 !important;
+        overflow: visible !important;
+        pointer-events: auto !important;
+    }
+    body.zk-printing-summary .zettels-summary-refresh-note {
+        color: hsl(173, 80%, 25%) !important;
+    }
+    body.zk-printing-summary .zettels-summary-tags {
+        margin-top: 1rem;
+    }
+    body.zk-printing-summary .zettels-tag {
+        color: black !important;
+        background: transparent !important;
+        border: 1px solid hsl(220, 14%, 70%) !important;
+    }
+    body.zk-printing-summary .home-card-date,
+    body.zk-printing-summary .home-card-source {
+        color: black !important;
+        background: transparent !important;
+        border: 1px solid hsl(220, 14%, 70%) !important;
+    }
+    @page {
+        margin: 1.2cm;
+    }
+}

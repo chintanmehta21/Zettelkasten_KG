@@ -1634,6 +1634,10 @@
       tags.appendChild(el);
     });
 
+    if (window.ZkRefreshButton && typeof window.ZkRefreshButton.setCurrentNode === 'function') {
+      window.ZkRefreshButton.setCurrentNode(node);
+    }
+
     // Show loader animation first
     setBodyScrollLocked(true);
     if (loader) {
@@ -1808,6 +1812,39 @@
     var summaryBackdrop = document.getElementById('summary-backdrop');
     if (summaryClose) summaryClose.addEventListener('click', closeSummaryPopup);
     if (summaryBackdrop) summaryBackdrop.addEventListener('click', closeSummaryPopup);
+
+    // Refresh + Download buttons (handlers live in refresh_button feature).
+    if (window.ZkRefreshButton && typeof window.ZkRefreshButton.bind === 'function') {
+      window.ZkRefreshButton.bind({
+        onRefreshed: function (payload) {
+          if (!payload) return;
+          var title = document.getElementById('summary-title');
+          var text = document.getElementById('summary-text');
+          var tags = document.getElementById('summary-tags');
+          if (title && payload.title) title.textContent = payload.title;
+          if (text) {
+            var parts = extractSummaryParts({
+              brief_summary: payload.brief_summary || '',
+              detailed_summary: payload.detailed_summary || payload.summary || ''
+            });
+            renderDualSummary(text, parts);
+            var src = (payload.source_type || '').toLowerCase();
+            _maskPriceDollars(text);
+            _mathRenderArxiv(text, src);
+            _unmaskPriceDollars(text);
+          }
+          if (tags && Array.isArray(payload.tags)) {
+            tags.innerHTML = '';
+            payload.tags.forEach(function (tag) {
+              var el = document.createElement('span');
+              el.className = 'zettels-tag';
+              el.textContent = '#' + tag;
+              tags.appendChild(el);
+            });
+          }
+        }
+      });
+    }
 
     // Avatar modal close
     if (avatarModalClose) avatarModalClose.addEventListener('click', closeAvatarPicker);
