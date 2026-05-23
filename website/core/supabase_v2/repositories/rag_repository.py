@@ -72,16 +72,48 @@ class RAGRepository:
         return response.data[0] if response.data else None
 
     def list_kastens(self, workspace_id: UUID, limit: int = 50) -> list[dict]:
+        """List kastens for a workspace, with ``member_count`` populated.
+
+        2026-05-24 incident — Naruto E2E: the /home/kastens dashboard rendered
+        "0 zettels" on a freshly-created Kasten that actually had 10 members.
+        Root cause: ``_serialize_kasten_v2`` reads ``row.get('member_count', 0)``
+        and this repo's ``select('*')`` never populated the field (the lazy
+        compute helper named in the serializer's docstring was never shipped).
+        Members were correctly stored in ``rag.kasten_zettels``; the card
+        widget just had no count to render.
+
+        Fix uses PostgREST's same-schema aggregate embed:
+        ``select=*,kasten_zettels(count)``. The FK
+        ``rag.kasten_zettels.kasten_id -> rag.kastens(id)`` is in the same
+        schema, so the embed is robust (the cross-schema fragility that bit
+        PR #69 does NOT apply here). Single round-trip; PostgreSQL pushes the
+        COUNT down so per-row overhead is index-only on ``kasten_id``.
+        """
         response = (
             self._client.schema("rag").table("kastens")
-            .select("*")
+            .select("*,kasten_zettels(count)")
             .eq("workspace_id", str(workspace_id))
             .order("last_used_at", desc=True, nullsfirst=False)
             .order("created_at", desc=True)
             .limit(limit)
             .execute()
         )
-        return response.data or []
+        rows = response.data or []
+        for row in rows:
+            embed = row.get("kasten_zettels") or []
+            # PostgREST returns the aggregate as a single-element list
+            # ``[{"count": N}]``; defensive against both legacy and future
+            # shapes (empty list → 0, dict-only → unwrap).
+            if isinstance(embed, list) and embed and isinstance(embed[0], dict):
+                row["member_count"] = int(embed[0].get("count") or 0)
+            elif isinstance(embed, dict):
+                row["member_count"] = int(embed.get("count") or 0)
+            else:
+                row["member_count"] = 0
+            # Drop the embed key so callers see a flat row shape; the only
+            # consumer (_serialize_kasten_v2) reads ``member_count`` directly.
+            row.pop("kasten_zettels", None)
+        return rows
 
     def update_kasten(
         self,
