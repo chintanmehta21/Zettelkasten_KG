@@ -81,6 +81,8 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "63_grant_v2_tables_to_service_role.sql",
         "64_grant_all_v2_tables_to_service_role.sql",
         "65_reaper_threshold_10m.sql",
+        "66_workspace_zettels_partial_indexes.sql",
+        "67_canonical_shred_grace_30d.sql",
     ]
 
 
