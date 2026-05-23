@@ -26,7 +26,9 @@ const STRENGTH_BUCKETS = {
   medium: { min: 0.5, label: 'Medium' },
   weak:   { min: 0.3, label: 'Weak'   }
 };
-const DEFAULT_MIN_STRENGTH = 0.7;
+// LD-1: default min strength equals SLIDER_MIN so first paint is maximally
+// permissive. Was 0.7 under the deprecated D-KG-3 strong-only-first rule.
+const DEFAULT_MIN_STRENGTH = 0.30;
 const SLIDER_MIN = 0.3;
 const SLIDER_MAX = 0.85;
 const SLIDER_STEP = 0.05;
@@ -253,9 +255,9 @@ function getCommunityHue(communityId) {
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
   let authToken = null;
-  // WAVE-C 1c: edge-strength threshold (D-KG-3 default 0.7 = Strong-only).
+  // LD-1: default min strength = 0.30 (slider minimum, weak bucket).
   let minStrength = DEFAULT_MIN_STRENGTH;
-  let activeBucket = 'strong'; // exclusive bucket selection by default
+  let activeBucket = 'weak'; // LD-1: default permissive bucket
   const longDateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
