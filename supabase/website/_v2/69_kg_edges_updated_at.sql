@@ -20,8 +20,13 @@
 -- The lock_timeout + statement_timeout wraps surface a stuck-lock as an error
 -- instead of queueing behind every reader. Safe to apply during business hours.
 --
--- Reuses the existing `core.fn_set_updated_at` trigger function from
--- _v2/16_nexus_tokens.sql:59.
+-- Defines a local `kg.fn_set_updated_at` trigger function. The earlier plan
+-- text claimed an existing `core.fn_set_updated_at` could be reused — that
+-- was an audit miss: the v2 schema only has `pipelines.fn_set_updated_at`
+-- (defined inline in _v2/16_nexus_tokens.sql, scoped to pipelines.*).
+-- Rather than reach across schemas (`pipelines.fn_set_updated_at` would
+-- work but couples kg to pipelines), this migration defines an idempotent
+-- `kg.fn_set_updated_at` local to the kg schema where the trigger lives.
 
 BEGIN;
   SET LOCAL lock_timeout = '3s';
@@ -44,14 +49,22 @@ BEGIN;
     ALTER COLUMN updated_at SET NOT NULL;
 COMMIT;
 
--- Trigger sits outside the transaction so a failed body doesn't half-apply
--- (DDL is transactional but the lock-timeout could roll back; the trigger
--- step is independent and idempotent).
+-- Trigger function + trigger sit outside the transaction so a failed body
+-- doesn't half-apply (DDL is transactional but the lock-timeout could roll
+-- back; this step is independent and idempotent via CREATE OR REPLACE).
+CREATE OR REPLACE FUNCTION kg.fn_set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END $$;
+
 DROP TRIGGER IF EXISTS trg_kg_edges_set_updated_at ON kg.kg_edges;
 CREATE TRIGGER trg_kg_edges_set_updated_at
   BEFORE UPDATE ON kg.kg_edges
   FOR EACH ROW
-  EXECUTE FUNCTION core.fn_set_updated_at();
+  EXECUTE FUNCTION kg.fn_set_updated_at();
 
 COMMENT ON COLUMN kg.kg_edges.updated_at IS
   'Maintained by trg_kg_edges_set_updated_at on every UPDATE. Use for "edges re-scored since T" queries.';

@@ -155,14 +155,24 @@ def test_min_strength_filter_strict_subset() -> None:
     weak = _apply_min_strength_filter(payload, 0.0)
     strong = _apply_min_strength_filter(payload, 0.7)
     assert len(weak["links"]) == 4, "min_strength=0.0 returns everything"
-    assert len(strong["links"]) == 1
+    # LD-2: null connection_strength PASSES by default. At threshold 0.7,
+    # the 0.9 link passes AND the null self-loop passes. So strong = 2.
+    assert len(strong["links"]) == 2
     # Strong is a strict subset.
     strong_keys = {(link["source"], link["target"]) for link in strong["links"]}
     weak_keys = {(link["source"], link["target"]) for link in weak["links"]}
     assert strong_keys.issubset(weak_keys)
 
 
-def test_min_strength_filter_drops_null_strength() -> None:
+def test_min_strength_filter_passes_null_strength() -> None:
+    """LD-2: null/missing connection_strength is treated as visible-by-default.
+
+    Renamed from `test_min_strength_filter_drops_null_strength` after the
+    Phase 1 LD-2 flip (#operator-approved 2026-05-23). The old contract
+    (null dropped at threshold > 0) silently culled the entire file-store
+    graph for any threshold; LD-2 makes null pass so legacy/unscored links
+    stay visible while genuinely below-threshold scored links are culled.
+    """
     from website.api.routes import _apply_min_strength_filter
 
     payload = {
@@ -170,11 +180,14 @@ def test_min_strength_filter_drops_null_strength() -> None:
         "links": [
             {"source": "a", "target": "b", "connection_strength": None},
             {"source": "a", "target": "c", "connection_strength": 0.6},
+            {"source": "a", "target": "d", "connection_strength": 0.3},
         ],
     }
     out = _apply_min_strength_filter(payload, 0.5)
-    assert len(out["links"]) == 1
-    assert out["links"][0]["target"] == "c"
+    # null passes (visible-by-default); 0.6 passes (>= threshold); 0.3 culled.
+    assert len(out["links"]) == 2
+    targets = {link["target"] for link in out["links"]}
+    assert targets == {"b", "c"}
 
 
 # ── Brotli content-encoding negotiation ─────────────────────────────
@@ -330,7 +343,7 @@ def test_payload_under_300kb_at_1k_nodes(monkeypatch) -> None:
 # ── _v2_assemble_graph self-loop regression (PR #7 C1) ────────────────
 
 
-def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None:
+def test_v2_graph_drops_true_self_loops_keeps_cross_zettel(monkeypatch) -> None:
     """Edges in the assembled v2 graph must resolve src/dst via mention join.
 
     Regression for PR #7 C1: prior code emitted ``source = target = evidence``
@@ -338,11 +351,15 @@ def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None
     ``analytics.py:78-79`` — leaving PageRank/Louvain with zero edges and
     rendering the D-KG-1 strength filter inert.
 
-    Fixture: 3 zettels (Z_A, Z_B, Z_C) backed by 3 kg_nodes (N1, N2, N3) plus
-    one cross-mention (chunk of Z_A also mentions N3, which usually maps to
-    Z_C). Edges: N1↔N2 (cross-zettel), N2↔N2 (genuine self-loop). Expect:
-    one A↔B link AND the genuine self-loop preserved when src/dst kg_node
-    ids are equal.
+    C5 (Phase 2 KG render+correctness overhaul, 2026-05-23): TRUE self-loops
+    (``src_id == dst_id``) are now DROPPED silently — they have no semantic
+    meaning at the graph layer. Cross-overlay edges where two distinct
+    kg_nodes happen to resolve to the same overlay are preserved as
+    ``co_mention`` links (covered by `test_b1_*` tests above).
+
+    Fixture: 3 zettels (Z_A, Z_B, Z_C) backed by 3 kg_nodes (N1, N2, N3).
+    Edges: N1↔N2 (cross-zettel), N2↔N2 (TRUE self-loop — should be DROPPED).
+    Expect: exactly one A↔B link; the self-loop is dropped by the C5 policy.
     """
     import uuid
 
@@ -356,6 +373,14 @@ def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None
     n1, n2, n3 = 101, 202, 303
 
     class _StubContent:
+        def list_workspace_zettels_by_canonical_ids(self, ws_id, canonical_ids, *, batch_size=500):
+            # Task 2.4b C4: edge-driven assembler now batch-fetches overlays
+            # by canonical id. The stub delegates to the page-driven list
+            # since the test fixtures are small enough that "return all"
+            # subsumes the filtered shape; the route filters in-memory by
+            # the canonical embed anyway.
+            return self.list_workspace_zettels(ws_id, limit=5000, offset=0)
+
         def list_workspace_zettels(self, ws_id, *, limit, offset):
             assert ws_id == workspace_id
             return [
@@ -395,7 +420,7 @@ def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None
             ]
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 # Cross-zettel edge: N1 (->Z_A) ↔ N2 (->Z_B). Must NOT self-loop.
                 {
@@ -439,7 +464,7 @@ def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None
     assert graph is not None
     nodes_by_id = {n.id: n for n in graph.nodes}
     assert len(graph.nodes) == 3, f"expected 3 nodes, got {len(graph.nodes)}"
-    assert len(graph.links) >= 2, "expected cross-zettel link + self-loop"
+    assert len(graph.links) == 1, "C5: cross-zettel link kept; true self-loop dropped"
 
     # Find the cross-zettel link (Alpha <-> Bravo) and assert source != target.
     cross_links = [
@@ -457,13 +482,12 @@ def test_v2_graph_has_no_self_loops_unless_actual_self_loop(monkeypatch) -> None
     assert src_node is not None and dst_node is not None
     assert {src_node.name, dst_node.name} == {"Alpha", "Bravo"}
 
-    # The genuine self-loop (N2 ↔ N2) MUST be preserved when src_id == dst_id.
+    # C5: the genuine self-loop (N2 ↔ N2; src_id == dst_id) MUST be dropped.
     self_loops = [link for link in graph.links if link.source == link.target]
-    assert self_loops, (
-        "expected the genuine N2↔N2 self-loop to be preserved; got none"
+    assert not self_loops, (
+        "C5: true self-loops (src_id == dst_id) must be dropped silently — "
+        f"got {len(self_loops)}"
     )
-    self_loop_node = nodes_by_id[self_loops[0].source]
-    assert self_loop_node.name == "Bravo"
 
 
 def test_v2_graph_links_emit_connection_strength_for_default_filter(monkeypatch) -> None:
@@ -480,6 +504,14 @@ def test_v2_graph_links_emit_connection_strength_for_default_filter(monkeypatch)
     n1, n2 = 101, 202
 
     class _StubContent:
+        def list_workspace_zettels_by_canonical_ids(self, ws_id, canonical_ids, *, batch_size=500):
+            # Task 2.4b C4: edge-driven assembler now batch-fetches overlays
+            # by canonical id. The stub delegates to the page-driven list
+            # since the test fixtures are small enough that "return all"
+            # subsumes the filtered shape; the route filters in-memory by
+            # the canonical embed anyway.
+            return self.list_workspace_zettels(ws_id, limit=5000, offset=0)
+
         def list_workspace_zettels(self, ws_id, *, limit, offset):
             assert ws_id == workspace_id
             return [
@@ -508,7 +540,7 @@ def test_v2_graph_links_emit_connection_strength_for_default_filter(monkeypatch)
             ]
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 {
                     "id": 1,
@@ -549,6 +581,14 @@ def _b1_stub_content(workspace_id, zettels):
     """Build a _StubContent yielding the given (canonical_id, title) zettels."""
 
     class _StubContent:
+        def list_workspace_zettels_by_canonical_ids(self, ws_id, canonical_ids, *, batch_size=500):
+            # Task 2.4b C4: edge-driven assembler now batch-fetches overlays
+            # by canonical id. The stub delegates to the page-driven list
+            # since the test fixtures are small enough that "return all"
+            # subsumes the filtered shape; the route filters in-memory by
+            # the canonical embed anyway.
+            return self.list_workspace_zettels(ws_id, limit=5000, offset=0)
+
         def list_workspace_zettels(self, ws_id, *, limit, offset):
             assert ws_id == workspace_id
             return [
@@ -586,7 +626,7 @@ def test_b1_edges_render_via_metadata_fallback_when_mentions_empty(monkeypatch):
     content = _b1_stub_content(workspace_id, [(z_a, "Alpha"), (z_b, "Bravo")])
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 {
                     "id": 1,
@@ -608,7 +648,9 @@ def test_b1_edges_render_via_metadata_fallback_when_mentions_empty(monkeypatch):
         def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
             assert ws_id == workspace_id
             assert set(kg_node_ids) == {n1, n2}
-            return {n1: z_a, n2: z_b}
+            # B8 (Task 2.2): metadata fallback returns dict[int, list[str]]
+            # so the assembler can fan out across multi-mention chunks.
+            return {n1: [z_a], n2: [z_b]}
 
     monkeypatch.setattr(
         routes_module,
@@ -650,7 +692,7 @@ def test_b1_mentions_take_precedence_when_present(monkeypatch):
     meta_calls = {"n": 0}
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 {
                     "id": 1,
@@ -707,7 +749,7 @@ def test_b1_unresolved_edge_still_skipped_and_counted(monkeypatch, caplog):
     content = _b1_stub_content(workspace_id, [(z_a, "Alpha")])
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 {
                     "id": 1,
@@ -726,7 +768,8 @@ def test_b1_unresolved_edge_still_skipped_and_counted(monkeypatch, caplog):
             return {}
 
         def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
-            return {n1: z_a}  # n_orphan absent
+            # B8 (Task 2.2): metadata fallback returns dict[int, list[str]].
+            return {n1: [z_a]}  # n_orphan absent
 
     monkeypatch.setattr(
         routes_module,
@@ -766,7 +809,7 @@ def test_b1_metadata_fallback_is_bola_safe(monkeypatch):
     content = _b1_stub_content(workspace_id, [(z_a, "Alpha")])
 
     class _StubKG:
-        def list_workspace_edges(self, ws_id):
+        def list_workspace_edges(self, ws_id, *, limit=10000):
             return [
                 {
                     "id": 1,
@@ -787,7 +830,8 @@ def test_b1_metadata_fallback_is_bola_safe(monkeypatch):
         def list_node_canonical_zettel_metadata(self, ws_id, kg_node_ids):
             # n2 maps to a canonical id that is NOT in this workspace's
             # loaded overlay set -> must NOT resolve / leak.
-            return {n1: z_a, n2: z_foreign}
+            # B8 (Task 2.2): metadata fallback returns dict[int, list[str]].
+            return {n1: [z_a], n2: [z_foreign]}
 
     monkeypatch.setattr(
         routes_module,
