@@ -19,9 +19,11 @@
 
   const SUPABASE_URL = window.__SUPABASE_URL || '';
   const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY || '';
+  const AVATAR_COUNT = 60;
 
   let _client = null;
   let _token = '';
+  let _currentAvatarId = null;
 
   let listEl;
   let emptyEl;
@@ -31,6 +33,7 @@
   let toastTimer = null;
   let _confirmId = null;
   let _confirmTimer = null;
+  let avatarGridEl;
 
   function $(id) { return document.getElementById(id); }
 
@@ -257,12 +260,50 @@
 
   function escapeAttr(s) { return escapeHtml(s); }
 
+  function renderAvatarGrid() {
+    if (!avatarGridEl) return;
+    avatarGridEl.innerHTML = '';
+    for (let i = 0; i < AVATAR_COUNT; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'profile-avatar-option' + (i === _currentAvatarId ? ' selected' : '');
+      btn.setAttribute('role', 'radio');
+      btn.setAttribute('aria-checked', i === _currentAvatarId ? 'true' : 'false');
+      btn.setAttribute('aria-label', 'Avatar ' + i);
+      btn.dataset.avatarId = String(i);
+      btn.innerHTML = '<img src="/artifacts/avatars/avatar_' + String(i).padStart(2, '0') + '.svg" alt="" />';
+      btn.addEventListener('click', () => handleAvatarPick(i, btn));
+      avatarGridEl.appendChild(btn);
+    }
+  }
+
+  async function handleAvatarPick(id, btnEl) {
+    if (!_token || id === _currentAvatarId) return;
+    _currentAvatarId = id;
+    avatarGridEl.querySelectorAll('.profile-avatar-option').forEach((el) => {
+      el.classList.remove('selected');
+      el.setAttribute('aria-checked', 'false');
+    });
+    btnEl.classList.add('selected');
+    btnEl.setAttribute('aria-checked', 'true');
+    try {
+      if (window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function') {
+        await window.ZKHeader.setAvatarById(id, _token, null);
+        showToast('Avatar updated.');
+      }
+    } catch (err) {
+      console.error('[user_profile] avatar update failed:', err);
+      showToast('Avatar update failed.');
+    }
+  }
+
   async function init() {
     listEl     = $('trash-list');
     emptyEl    = $('trash-empty');
     loadingEl  = $('trash-loading');
     toastEl    = $('profile-toast');
     toastTextEl = $('profile-toast-text');
+    avatarGridEl = $('profile-avatar-grid');
 
     _client = await initSupabase();
     if (!_client) { window.location.href = '/'; return; }
@@ -277,6 +318,11 @@
     if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
       await window.ZKHeader.boot(_token, { profile });
     }
+
+    const idMatch = profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
+    if (idMatch) _currentAvatarId = parseInt(idMatch[1], 10);
+    renderAvatarGrid();
+
     await loadTrash();
   }
 

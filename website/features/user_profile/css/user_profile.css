@@ -216,11 +216,54 @@
     pointer-events: none;
 }
 
+/* ── Avatar picker ────────────────────────────────────────────────────── */
+.profile-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 0.6rem;
+}
+
+.profile-avatar-option {
+    appearance: none;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    padding: 4px;
+    cursor: pointer;
+    transition: border-color 150ms ease, transform 150ms ease;
+    line-height: 0;
+}
+
+.profile-avatar-option:hover {
+    border-color: var(--text-muted, #5b6c7e);
+}
+
+.profile-avatar-option:focus-visible {
+    outline: none;
+    border-color: var(--accent, #14b8a6);
+}
+
+.profile-avatar-option.selected {
+    border-color: var(--accent, #14b8a6);
+    transform: scale(1.05);
+}
+
+.profile-avatar-option img {
+    width: 100%;
+    height: auto;
+    border-radius: 50%;
+    display: block;
+}
+
 @media (max-width: 640px) {
     .profile-trash-card {
         grid-template-columns: 1fr;
     }
     .profile-trash-actions {
         justify-content: flex-end;
+    }
+    .profile-avatar-grid {
+        grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+        gap: 0.5rem;
     }
 }
