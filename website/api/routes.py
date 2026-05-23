@@ -835,6 +835,158 @@ async def delete_zettel(
     return {"status": "ok", "workspace_zettel_id": node_id}
 
 
+@router.get("/zettels/trash")
+async def list_trash(
+    user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 5000,
+    offset: int = 0,
+):
+    """Return the authenticated user's soft-deleted zettels (trash window).
+
+    Powers the visible Trash UI introduced by exec/DB_delete_zettel_refine--1a.
+    Within the 30-day grace window (per migration 67) every previously
+    soft-deleted overlay row in this user's workspace is returned with its
+    canonical join so the UI can render the same card shape as the live
+    list. Backed by the partial index ``idx_workspace_zettels_trash``
+    (migration 66) so listing is index-supported regardless of corpus size.
+
+    BOLA: scope is the caller's workspace only — the repo's compound-key
+    query plus the v2 auth scope resolution gates cross-tenant reads.
+    """
+    if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub"))):
+        raise HTTPException(status_code=400, detail="Trash list requires v2 UUID auth")
+
+    scope = get_supabase_v2_scope(user["sub"])
+    if scope is None:
+        raise HTTPException(status_code=404, detail="No v2 workspace scope")
+    content_repo, _profile_id, workspace_id = scope
+
+    limit = max(1, min(int(limit), 10000))
+    offset = max(0, int(offset))
+
+    try:
+        rows = content_repo.list_workspace_zettels_trash(
+            workspace_id, limit=limit, offset=offset,
+        )
+    except Exception as exc:
+        logger.exception("list_workspace_zettels_trash failed for %s", user.get("sub"))
+        raise HTTPException(status_code=500, detail="Trash list failed") from exc
+
+    items: list[dict] = []
+    for row in rows:
+        canonical = row.get("canonical") or {}
+        brief, detailed = extract_summary_parts(row.get("ai_summary"), None)
+        items.append(
+            {
+                "id": str(row.get("id") or ""),
+                "title": str(canonical.get("title") or "Untitled"),
+                "brief_summary": brief or "",
+                "detailed_summary": detailed or "",
+                "tags": list(row.get("user_tags") or []),
+                "source_type": str(canonical.get("source_type") or "web").lower(),
+                "source_url": str(canonical.get("normalized_url") or ""),
+                "added_at": str(row.get("created_at") or ""),
+                "deleted_at": str(row.get("deleted_at") or ""),
+                "published_at": str(canonical.get("publication_date") or ""),
+            }
+        )
+    return JSONResponse(
+        {"zettels": items, "total": len(items), "limit": limit, "offset": offset}
+    )
+
+
+@router.post("/zettels/{node_id}/restore")
+async def restore_zettel(
+    node_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Restore a soft-deleted zettel from the user's trash.
+
+    Inverse of ``delete_zettel``. Idempotency: restoring an already-live row
+    returns 404 (the row isn't in trash). BOLA: same compound-key
+    (id + workspace_id) gate as soft-delete — service-role bypasses RLS, so
+    we cannot rely on RLS for tenant scoping.
+
+    The canonical may still have a row sitting in ``core.soft_delete_queue``
+    from the prior soft-delete trigger. That's harmless: the reaper checks
+    the orphan condition again at shred time, and now this restored zettel
+    re-protects its canonical, so the reaper will skip the shred and the
+    queue row eventually expires.
+    """
+    global _graph_cache_global, _graph_cache_global_ts
+    from uuid import UUID
+
+    if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
+        raise HTTPException(status_code=400, detail="Zettel restore requires v2 UUID path")
+
+    scope = get_supabase_v2_scope(user["sub"])
+    if scope is None:
+        raise HTTPException(status_code=404, detail="No v2 workspace scope")
+    content_repo, _profile_id, workspace_id = scope
+
+    try:
+        ok = content_repo.restore_workspace_zettel(
+            UUID(node_id), workspace_id=workspace_id,
+        )
+    except Exception as exc:
+        logger.warning("v2 restore failed for %s: %s", node_id, exc)
+        ok = False
+    if not ok:
+        raise HTTPException(status_code=404, detail="Zettel not found in trash")
+
+    invalidate_user_graph(user.get("sub"))
+    _graph_cache_global = None
+    _graph_cache_global_ts = 0
+    return {"status": "ok", "workspace_zettel_id": node_id}
+
+
+@router.delete("/zettels/{node_id}/forever")
+async def hard_delete_zettel(
+    node_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Permanently delete a zettel that is already in the trash.
+
+    User-facing "Delete forever" affordance from the Trash UI. Distinct from
+    the casual ``DELETE /api/zettels/{node_id}`` which soft-deletes a LIVE
+    row. This endpoint hard-deletes a row that is already soft-deleted —
+    skipping the remaining trash grace window. Refuses to hard-delete a
+    live row (return 404), so a UI bug cannot bypass the soft-delete
+    contract via this endpoint.
+
+    BOLA: compound-key (id + workspace_id) gate inside the repo method.
+
+    The repo's hard-delete fires ``trg_workspace_zettel_after_delete`` which
+    re-runs the orphan check and may enqueue a canonical shred. The queue
+    insert is idempotent (``ON CONFLICT DO NOTHING``).
+    """
+    global _graph_cache_global, _graph_cache_global_ts
+    from uuid import UUID
+
+    if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
+        raise HTTPException(status_code=400, detail="Zettel hard-delete requires v2 UUID path")
+
+    scope = get_supabase_v2_scope(user["sub"])
+    if scope is None:
+        raise HTTPException(status_code=404, detail="No v2 workspace scope")
+    content_repo, _profile_id, workspace_id = scope
+
+    try:
+        ok = content_repo.hard_delete_workspace_zettel(
+            UUID(node_id), workspace_id=workspace_id,
+        )
+    except Exception as exc:
+        logger.warning("v2 hard-delete failed for %s: %s", node_id, exc)
+        ok = False
+    if not ok:
+        raise HTTPException(status_code=404, detail="Zettel not found in trash")
+
+    invalidate_user_graph(user.get("sub"))
+    _graph_cache_global = None
+    _graph_cache_global_ts = 0
+    return {"status": "ok", "workspace_zettel_id": node_id}
+
+
 class ZettelUpdateRequest(BaseModel):
     """User-editable fields on a workspace overlay (v2 only).
 

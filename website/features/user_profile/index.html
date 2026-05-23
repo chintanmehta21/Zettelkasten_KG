@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Profile | Zettelkasten</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260523a">
+    <link rel="stylesheet" href="/header/css/header.css?v=20260418f">
+    <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260523a">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="container profile-container">
+<!--ZK_HEADER-->
+
+        <main class="main profile-main" id="main-content">
+            <section class="profile-hero">
+                <div class="profile-hero-copy">
+                    <h1 class="profile-title">My Profile</h1>
+                    <p class="profile-subtitle">Manage your account and recover removed zettels.</p>
+                </div>
+            </section>
+
+            <section class="profile-section" aria-labelledby="trash-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="trash-heading">Trash</h2>
+                    <p class="profile-section-help">
+                        Removed zettels are kept here for <strong>30 days</strong> before
+                        permanent deletion. Restore a zettel to put it back in your
+                        workspace, or delete it forever to free the slot immediately.
+                    </p>
+                </header>
+
+                <div class="profile-trash-list" id="trash-list" aria-live="polite">
+                    <p class="profile-trash-empty" id="trash-empty" hidden>
+                        Your trash is empty.
+                    </p>
+                    <p class="profile-trash-loading" id="trash-loading">Loading…</p>
+                </div>
+            </section>
+        </main>
+
+        <div class="profile-toast hidden" id="profile-toast" role="status" aria-live="polite">
+            <span id="profile-toast-text">Restored.</span>
+        </div>
+
+<!--ZK_FOOTER-->
+    </div>
+
+    <script type="module" src="/profile/js/user_profile.js?v=20260523a"></script>
+</body>
+</html>

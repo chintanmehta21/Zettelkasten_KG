@@ -287,6 +287,132 @@ class ContentRepository:
         )
         return bool(response.data)
 
+    def list_workspace_zettels_trash(
+        self,
+        workspace_id: UUID,
+        *,
+        limit: int = 5000,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Return soft-deleted workspace zettels in the trash window.
+
+        Mirror of ``list_workspace_zettels`` filtered to the negative space
+        (``deleted_at IS NOT NULL``). Surfaces the 30-day recovery window
+        introduced by migration 67 to the user-facing Trash UI. Ordering by
+        ``deleted_at DESC`` matches the partial index ``idx_workspace_zettels_trash``
+        introduced by migration 66, so this read is index-supported even at
+        scale.
+
+        Shape mirrors ``list_workspace_zettels`` but additionally carries the
+        ``deleted_at`` timestamp so the UI can render "removed N days ago" /
+        compute days-remaining-in-trash.
+        """
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select(
+                "id,"
+                "canonical_zettel_id,"
+                "ai_summary,"
+                "user_tags,"
+                "created_at,"
+                "deleted_at,"
+                "canonical:canonical_zettels!inner("
+                "id,normalized_url,title,source_type,publication_date)"
+            )
+            .eq("workspace_id", str(workspace_id))
+            .not_.is_("deleted_at", "null")
+            .order("deleted_at", desc=True)
+            .range(offset, offset + max(0, limit - 1))
+            .execute()
+        )
+        return list(response.data or [])
+
+    def restore_workspace_zettel(
+        self,
+        workspace_zettel_id: UUID,
+        *,
+        workspace_id: UUID,
+    ) -> bool:
+        """Clear ``deleted_at`` on a soft-deleted workspace overlay row.
+
+        Compound-key match (id + workspace_id) gates cross-tenant restore —
+        same BOLA safety story as ``soft_delete_workspace_zettel`` (Phase
+        8.5.R3 SECURITY FIX). Only matches rows where ``deleted_at IS NOT NULL``
+        so a no-op restore on a live row is impossible.
+
+        Returns ``True`` if a row was restored, ``False`` otherwise (no
+        matching trash row in the given workspace — could mean already
+        restored, already hard-deleted, or never existed).
+
+        After restore the canonical that may have been enqueued for shred by
+        the soft-delete trigger remains in ``core.soft_delete_queue``. That's
+        intentional: the reaper checks the orphan condition again at shred
+        time, so a restored zettel re-protects its canonical at read time.
+        The queue entry expires harmlessly when the orphan check fails on
+        reaper run. No extra DDL needed here.
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .update({"deleted_at": None, "updated_at": now_iso})
+            .eq("id", str(workspace_zettel_id))
+            .eq("workspace_id", str(workspace_id))
+            .not_.is_("deleted_at", "null")
+            .execute()
+        )
+        return bool(response.data)
+
+    def hard_delete_workspace_zettel(
+        self,
+        workspace_zettel_id: UUID,
+        *,
+        workspace_id: UUID,
+    ) -> bool:
+        """Physically DELETE a previously soft-deleted workspace overlay row.
+
+        Powers the visible-Trash "Delete forever" affordance. Only fires on
+        rows already in the trash (``deleted_at IS NOT NULL``) — the API
+        contract is "user is permanently removing something they earlier
+        soft-deleted", NOT "skip the grace window for a live row" (which
+        would be a separate erasure-request path, not implemented here).
+
+        Compound-key match (id + workspace_id) preserves the BOLA gate even
+        though service-role bypasses RLS. The DELETE fires
+        ``trg_workspace_zettel_after_delete`` which re-runs the orphan check
+        and may enqueue a fresh canonical shred (idempotent —
+        ``ON CONFLICT DO NOTHING`` on the queue).
+
+        Returns ``True`` if a row was hard-deleted, ``False`` if no matching
+        soft-deleted row exists in the given workspace.
+        """
+        # PostgREST DELETE doesn't filter by ``deleted_at IS NOT NULL`` via
+        # the ``.not_.is_()`` chain on the same query — verified via
+        # supabase-py source. Instead, do a SELECT-and-check first, then a
+        # compound-key DELETE. Two round-trips but tenant-safe.
+        check = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .select("id")
+            .eq("id", str(workspace_zettel_id))
+            .eq("workspace_id", str(workspace_id))
+            .not_.is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        if not check.data:
+            return False
+        response = (
+            self._client.schema("content")
+            .table("workspace_zettels")
+            .delete()
+            .eq("id", str(workspace_zettel_id))
+            .eq("workspace_id", str(workspace_id))
+            .execute()
+        )
+        return bool(response.data)
+
     def update_workspace_zettel(
         self,
         workspace_zettel_id: UUID,
