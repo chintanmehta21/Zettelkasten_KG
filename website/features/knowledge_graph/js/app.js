@@ -1524,9 +1524,23 @@ function getCommunityHue(communityId) {
     selectedNode = null;
     highlightNodes.clear();
 
-    // Empty-state overlay (P1 #14).
+    // F2: empty-state covers two scenarios:
+    //   (a) no nodes match filters → "No notes match these filters" + Reset.
+    //   (b) nodes present but zero links → "No connections at this strength" +
+    //       Reset (which now also lowers the strength slider, see Task 1.6).
     const emptyOverlay = document.getElementById('overlay-empty');
-    if (emptyOverlay) emptyOverlay.classList.toggle('hidden', filteredNodes.length > 0);
+    const emptyText = document.getElementById('overlay-empty-text');
+    if (emptyOverlay && emptyText) {
+      if (filteredNodes.length === 0) {
+        emptyText.textContent = 'No notes match these filters.';
+        emptyOverlay.classList.remove('hidden');
+      } else if (filteredLinks.length === 0) {
+        emptyText.textContent = 'Nodes loaded, but no connections match this strength. Lower the threshold to see weaker links.';
+        emptyOverlay.classList.remove('hidden');
+      } else {
+        emptyOverlay.classList.add('hidden');
+      }
+    }
 
     if (filteredNodes.length > 0) setTimeout(() => graph && graph.zoomToFit(800, 60), 800);
   }
