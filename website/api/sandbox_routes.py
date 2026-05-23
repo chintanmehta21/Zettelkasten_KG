@@ -1068,19 +1068,31 @@ async def add_members(
     body: SandboxMemberAddRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    # Phase 4.4 v2 dual-path: take the simplest case only — an explicit list of
-    # UUID-shaped node_ids (i.e. workspace_zettel_ids). Tag- or source-type-
-    # filtered adds fall back to v1 because the v2 RPC `bulk_add_to_kasten`
-    # only accepts an explicit workspace_zettel_id array.
+    # Phase 4.4 v2 dual-path: branches on the input shape.
+    #   * EXPLICIT node_ids — pass straight to bulk_add_to_kasten.
+    #   * source_types only — server-side resolve to workspace_zettel_ids
+    #     (necessary because PR #63 retired the v1 sandbox-store create path;
+    #     a freshly-created Kasten lives ONLY in rag.kastens, so the v1
+    #     fallback's `runtime.sandboxes.get_sandbox(...)` returns None and
+    #     yields a 404 even though the row exists. Closes the 2026-05-23
+    #     incident where /home create-kasten "All" flow lost members.)
+    # The "tags" filter still falls back to v1; resolving tag set semantics
+    # via v2 is a follow-up.
     v2 = _v2_scope_for(user)
-    use_v2_add = (
+    use_v2_explicit_ids = (
         v2 is not None
         and bool(body.node_ids)
         and not body.tags
         and not body.source_types
         and all(_is_uuid(nid) for nid in body.node_ids)
     )
-    if use_v2_add:
+    use_v2_source_types = (
+        v2 is not None
+        and not body.node_ids
+        and not body.tags
+        and bool(body.source_types)
+    )
+    if use_v2_explicit_ids:
         rag_repo, _profile_id, workspace_id = v2  # type: ignore[misc]
         kasten = rag_repo.get_kasten(sandbox_id, workspace_id)
         if kasten is None:
@@ -1104,6 +1116,54 @@ async def add_members(
             "status": "ok",
             "added_count": added,
             "members": [_serialize_kasten_zettel_v2(row) for row in rows],
+        }
+
+    if use_v2_source_types:
+        from website.core.supabase_v2.repositories.content_repository import (
+            ContentRepository,
+        )
+
+        rag_repo, _profile_id, workspace_id = v2  # type: ignore[misc]
+        kasten = rag_repo.get_kasten(sandbox_id, workspace_id)
+        if kasten is None:
+            raise HTTPException(status_code=404, detail="Sandbox not found")
+        content_repo = ContentRepository()
+        # 5000-row cap is the existing list_workspace_zettels default; matches
+        # the scale target for a single-workspace bulk-add (10k+ Zettels would
+        # need pagination — file an issue when a tenant approaches that).
+        rows_all = content_repo.list_workspace_zettels(workspace_id, limit=5000)
+        wanted = {item.value for item in body.source_types}
+        wz_ids = [
+            UUID(row["id"])
+            for row in rows_all
+            if (row.get("canonical") or {}).get("source_type") in wanted
+            and row.get("id")
+        ]
+        if not wz_ids:
+            members = rag_repo.list_kasten_zettels(sandbox_id)
+            return {
+                "status": "ok",
+                "added_count": 0,
+                "members": [_serialize_kasten_zettel_v2(row) for row in members],
+            }
+        try:
+            added = rag_repo.add_zettels_to_kasten(
+                kasten_id=sandbox_id,
+                workspace_zettel_ids=wz_ids,
+            )
+        except Exception as exc:  # noqa: BLE001 — surface real driver error to logs + client
+            logger.exception(
+                "v2 bulk_add_to_kasten (source_types) failed kasten=%s workspace=%s: %s",
+                sandbox_id,
+                workspace_id,
+                exc,
+            )
+            raise HTTPException(status_code=500, detail="Add to kasten failed.") from exc
+        members = rag_repo.list_kasten_zettels(sandbox_id)
+        return {
+            "status": "ok",
+            "added_count": added,
+            "members": [_serialize_kasten_zettel_v2(row) for row in members],
         }
 
     runtime = _runtime_for_user(user)
