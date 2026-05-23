@@ -194,28 +194,58 @@ async def _safe_side_effects(
         )
 
 
-async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessageRequest):
+async def _run_answer(
+    runtime,
+    kg_user_id: UUID,
+    session: dict,
+    body: ChatMessageRequest,
+    *,
+    action_id: str | None = None,
+):
+    """D2 strangler-fig (locked 2026-05-23): dispatch the orchestrator call
+    through the ``ask_kasten`` module runner instead of calling
+    ``orchestrator.answer`` directly. The runner owns ``Meter.RAG_QUESTION``
+    entitlement + Kasten BOLA + the orchestrator call; this route helper
+    keeps session bookkeeping, queue admission, post-answer side effects,
+    and the citation drift guard as HTTP-layer concerns.
+    """
+    from website.api.module_runners.ask_kasten import (
+        KastenNotFoundError,
+        run_ask_kasten_once,
+    )
+
     await runtime.sessions.update_session(
         UUID(session["id"]),
         kg_user_id,
         last_scope_filter=body.scope_filter.model_dump(),
         quality_mode=body.quality,
     )
-    query = ChatQuery(
-        session_id=UUID(session["id"]),
-        sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
-        content=body.content,
-        scope_filter=body.scope_filter,
-        quality=body.quality,
-        stream=body.stream,
+
+    effective_action_id = (
+        action_id
+        or body.client_action_id
+        or str(session.get("id") or kg_user_id)
     )
-    # iter-09 RES-4 + iter-10 P2: slot wraps orchestrator.answer ONLY.
-    # _post_answer_side_effects is scheduled as asyncio.create_task AFTER the
-    # slot is released so first-message-of-session enrichment (auto-title,
-    # session bookkeeping, sandbox touch) never serializes the rerank queue.
+    sandbox_id = (
+        UUID(session["sandbox_id"]) if session.get("sandbox_id") else None
+    )
+
+    # iter-09 RES-4 + iter-10 P2: queue slot wraps the orchestrator call ONLY
+    # (now via the runner). Post-answer side-effects are scheduled as
+    # asyncio.create_task AFTER the slot is released so first-message-of-
+    # session enrichment never serializes the rerank queue.
     try:
         async with acquire_rerank_slot():
-            turn = await runtime.orchestrator.answer(query=query, user_id=kg_user_id)
+            result = await run_ask_kasten_once(
+                content=body.content,
+                user={"sub": str(kg_user_id)},
+                effective_user_id=kg_user_id,
+                client_action_id=effective_action_id,
+                kasten_id=sandbox_id,
+                session_id=UUID(session["id"]),
+                quality=body.quality,  # type: ignore[arg-type]
+                scope_filter=body.scope_filter.model_dump(),
+            )
     except QueueFull as exc:
         raise HTTPException(
             status_code=503,
@@ -225,6 +255,10 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
             },
             headers={"Retry-After": "5"},
         ) from exc
+    except KastenNotFoundError as exc:
+        # BOLA: cross-tenant or missing kasten → 403 without leaking existence
+        # (consistent with sandbox_routes / view_graph pattern).
+        raise HTTPException(status_code=403, detail="Forbidden") from exc
 
     asyncio.create_task(
         _safe_side_effects(
@@ -236,13 +270,31 @@ async def _run_answer(runtime, kg_user_id: UUID, session: dict, body: ChatMessag
         )
     )
 
-    # iter-12 R3 T1: citation drift guard (flag only; never blocks)
-    _cites = getattr(turn, "citations", None) or []
-    _primary = _cites[0].node_id if _cites else None
-    _retrieved = getattr(turn, "retrieved_node_ids", None) or []
-    _drift = not check_cited_in_context(primary_citation=_primary, retrieved_node_ids=_retrieved)
-    payload: dict = {"session_id": session["id"], "turn": turn.model_dump()}
-    if _drift:
+    # iter-12 R3 T1: citation drift guard (flag only; never blocks). The
+    # runner returns citations as a list[dict] (model_dump'd), so dotted
+    # access becomes key access.
+    citations = result.get("citations") or []
+    primary = citations[0]["node_id"] if citations else None
+    retrieved = result.get("retrieved_node_ids") or []
+    drift = not check_cited_in_context(
+        primary_citation=primary, retrieved_node_ids=retrieved
+    )
+
+    turn_payload = {
+        "content": result.get("content", ""),
+        "citations": citations,
+        "query_class": result.get("query_class"),
+        "critic_verdict": result.get("critic_verdict"),
+        "critic_notes": result.get("critic_notes"),
+        "trace_id": result.get("trace_id", ""),
+        "latency_ms": result.get("latency_ms", 0),
+        "token_counts": result.get("token_counts") or {},
+        "llm_model": result.get("llm_model", ""),
+        "retrieved_node_ids": retrieved,
+        "retrieved_chunk_ids": result.get("retrieved_chunk_ids") or [],
+    }
+    payload: dict = {"session_id": session["id"], "turn": turn_payload}
+    if drift:
         payload["_citation_drift"] = True
     return payload
 
@@ -294,6 +346,8 @@ async def _stream_answer_with_backpressure(
     kg_user_id: UUID,
     session: dict,
     body: ChatMessageRequest,
+    *,
+    action_id: str | None = None,
 ) -> AsyncIterator[str]:
     """Acquire a rerank slot before streaming; emit an SSE error if shed.
 
@@ -303,7 +357,9 @@ async def _stream_answer_with_backpressure(
     """
     try:
         async with acquire_rerank_slot():
-            async for event in _stream_answer(runtime, kg_user_id, session, body):
+            async for event in _stream_answer(
+                runtime, kg_user_id, session, body, action_id=action_id,
+            ):
                 yield event
     except QueueFull as exc:
         logger.warning("RAG queue full -- shedding request: %s", exc)
@@ -322,21 +378,41 @@ async def _stream_answer(
     kg_user_id: UUID,
     session: dict,
     body: ChatMessageRequest,
+    *,
+    action_id: str | None = None,
 ) -> AsyncIterator[str]:
+    """D2 strangler-fig (locked 2026-05-23): stream events from the
+    ``ask_kasten.stream_ask_kasten`` runner instead of calling
+    ``orchestrator.answer_stream`` directly. The retry-on-first-token
+    machinery, heartbeat wrapper, side-effects-on-done, and citation drift
+    guard remain HTTP-layer concerns."""
+    from website.api.module_runners.ask_kasten import (
+        KastenNotFoundError,
+        stream_ask_kasten,
+    )
+
     # Yield a sentinel SSE frame FIRST so the response headers + first byte
     # flush within milliseconds. Without this, every byte is held back until
-    # update_session() + _prepare_query() (which calls Gemini for query
-    # rewriting on `high`-quality turns and can take 5–30 s) complete; some
-    # browser/proxy combos surface that long header-stall as a generic
+    # update_session() + the runner's pre-flight (entitlement + BOLA +
+    # orchestrator query-rewrite, 5-30s on `high`) complete; some browser/
+    # proxy combos surface that long header-stall as a generic
     # "network error" before the real answer stream begins.
     yield _sse_encode({"type": "status", "stage": "queued"})
 
+    effective_action_id = (
+        action_id
+        or body.client_action_id
+        or str(session.get("id") or kg_user_id)
+    )
+    sandbox_id = (
+        UUID(session["sandbox_id"]) if session.get("sandbox_id") else None
+    )
+
     # Wrap EVERYTHING after the sentinel in one try/except so any failure —
-    # update_session DB error, ChatQuery construction error, orchestrator
+    # update_session DB error, runner pre-flight exception, orchestrator
     # exception, post-answer side-effect exception — surfaces to the client
     # as an SSE `error` event on the already-200 response, never as a 5xx
-    # mid-stream connection drop. The latter is what the browser renders as
-    # the generic "network error" the user has been seeing.
+    # mid-stream connection drop.
     try:
         await runtime.sessions.update_session(
             UUID(session["id"]),
@@ -344,33 +420,30 @@ async def _stream_answer(
             last_scope_filter=body.scope_filter.model_dump(),
             quality_mode=body.quality,
         )
-        query = ChatQuery(
-            session_id=UUID(session["id"]),
-            sandbox_id=UUID(session["sandbox_id"]) if session.get("sandbox_id") else None,
-            content=body.content,
-            scope_filter=body.scope_filter,
-            quality=body.quality,
-            stream=True,
-        )
 
         # Server-side retry on the orchestrator iter. The first call after a
         # cold container reliably fails on "network error" — supabase-py /
         # google-genai connection-pool warmup races with the first request.
-        # One automatic retry with a short backoff hides that from the user.
+        # require_entitlement inside the runner is idempotent on
+        # (user_sub, meter, action_id) so a retry never double-charges.
         last_exc: Exception | None = None
         produced_any = False
         for attempt in range(2):
             try:
-                async for event in runtime.orchestrator.answer_stream(
-                    query=query, user_id=kg_user_id
+                async for event in stream_ask_kasten(
+                    content=body.content,
+                    user={"sub": str(kg_user_id)},
+                    effective_user_id=kg_user_id,
+                    client_action_id=effective_action_id,
+                    kasten_id=sandbox_id,
+                    session_id=UUID(session["id"]),
+                    quality=body.quality,  # type: ignore[arg-type]
+                    scope_filter=body.scope_filter.model_dump(),
                 ):
                     produced_any = True
                     if event.get("type") == "done":
                         # iter-10 P2: schedule side effects fire-and-forget so
-                        # they don't hold the rerank slot (the outer
-                        # _stream_answer_with_backpressure releases the slot
-                        # when this generator exits — anything still awaited
-                        # here pins it).
+                        # they don't hold the rerank slot.
                         asyncio.create_task(
                             _safe_side_effects(
                                 runtime,
@@ -380,18 +453,38 @@ async def _stream_answer(
                                 body.scope_filter.model_dump(),
                             )
                         )
-                        # iter-12 R3 T1: citation drift guard (flag only; never blocks)
+                        # iter-12 R3 T1: citation drift guard (flag only).
                         turn_data = (event.get("turn") or {})
-                        _primary = (turn_data.get("citations") or [{}])[0].get("node_id") if (turn_data.get("citations") or []) else None
-                        if not check_cited_in_context(primary_citation=_primary, retrieved_node_ids=turn_data.get("retrieved_node_ids") or []):
+                        _cites_done = turn_data.get("citations") or []
+                        _primary = (
+                            _cites_done[0].get("node_id") if _cites_done else None
+                        )
+                        if not check_cited_in_context(
+                            primary_citation=_primary,
+                            retrieved_node_ids=turn_data.get("retrieved_node_ids") or [],
+                        ):
                             event = dict(event, _citation_drift=True)
                     yield _sse_encode(event)
                 last_exc = None
                 break
+            except KastenNotFoundError as inner_exc:
+                # BOLA gate fired inside the runner — surface as a structured
+                # error event on the 200 SSE response and DO NOT retry. Don't
+                # leak whether the kasten exists in another tenant.
+                logger.warning(
+                    "stream_ask_kasten BOLA reject for session %s: %r",
+                    session["id"], inner_exc,
+                )
+                yield _sse_encode({
+                    "type": "error",
+                    "code": "forbidden",
+                    "message": "You don't have access to this Kasten.",
+                })
+                return
             except Exception as inner_exc:
                 last_exc = inner_exc
                 logger.warning(
-                    "answer_stream attempt %d/2 failed for session %s: %r",
+                    "stream_ask_kasten attempt %d/2 failed for session %s: %r",
                     attempt + 1,
                     session["id"],
                     inner_exc,
@@ -500,8 +593,11 @@ async def create_message(
     session = await runtime.sessions.get_session(session_id, runtime.kg_user_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    # D2 strangler-fig (locked 2026-05-23): Meter.RAG_QUESTION entitlement
+    # now lives inside the ask_kasten runner (single source of truth). The
+    # action_id flows through so the runner's require_entitlement call is
+    # the canonical idempotent gate on (user_sub, meter, action_id).
     action_id = body.client_action_id or str(session_id)
-    await require_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
 
     if body.stream:
         from website.api._concurrency import _get_state
@@ -515,7 +611,10 @@ async def create_message(
             )
         return StreamingResponse(
             _heartbeat_wrapper(
-                _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body)
+                _stream_answer_with_backpressure(
+                    runtime, runtime.kg_user_id, session, body,
+                    action_id=action_id,
+                )
             ),
             media_type="text/event-stream",
             headers={
@@ -525,10 +624,9 @@ async def create_message(
             },
         )
 
-    payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
-    # Phase 9: gate consumed atomically in require_entitlement; no-op kept
-    # for backward call-shape consistency (see entitlements.consume_entitlement).
-    return payload
+    return await _run_answer(
+        runtime, runtime.kg_user_id, session, body, action_id=action_id,
+    )
 
 
 @router.post("/adhoc")
@@ -536,8 +634,10 @@ async def adhoc_message(
     body: AdhocChatRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
+    # D2 strangler-fig: Meter.RAG_QUESTION entitlement lives inside the
+    # ask_kasten runner. action_id propagates so the runner's idempotent
+    # gate on (user_sub, meter, action_id) is the canonical charge point.
     action_id = body.client_action_id or body.content[:160]
-    await require_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
     runtime = _runtime_for_user(user)
     session_id = await runtime.sessions.create_session(
         user_id=runtime.kg_user_id,
@@ -568,7 +668,10 @@ async def adhoc_message(
     if body.stream:
         return StreamingResponse(
             _heartbeat_wrapper(
-                _stream_answer_with_backpressure(runtime, runtime.kg_user_id, session, body)
+                _stream_answer_with_backpressure(
+                    runtime, runtime.kg_user_id, session, body,
+                    action_id=action_id,
+                )
             ),
             media_type="text/event-stream",
             headers={
@@ -578,8 +681,9 @@ async def adhoc_message(
             },
         )
 
-    payload = await _run_answer(runtime, runtime.kg_user_id, session, body)
-    # Phase 9: gate consumed atomically in require_entitlement.
+    payload = await _run_answer(
+        runtime, runtime.kg_user_id, session, body, action_id=action_id,
+    )
     payload["session"] = _serialize_session(session)
     return payload
 
