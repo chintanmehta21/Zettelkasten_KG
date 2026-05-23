@@ -279,6 +279,10 @@ function getCommunityHue(communityId) {
   let kastenList = [];                // [{id, name, member_count}, ...]
   let knownSources = new Set();       // union of COLORS keys + groups present in data
   let userOwnedIds = new Set();       // node IDs owned by logged-in user (Personal scope)
+  // F7: precomputed Set of node IDs that share at least one link with a
+  // user-owned node. Rebuilt on `userOwnedIds` change OR `fullData` change.
+  // Per-click computeAddBtnState becomes O(1) instead of O(links).
+  let _addableInGlobal = new Set();
   let currentView = 'global'; // 'global' or 'my'
   let isLoggedIn = false;
   let authToken = null;
@@ -403,9 +407,25 @@ function getCommunityHue(communityId) {
       .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
       .then(data => {
         userOwnedIds = new Set((data.nodes || []).map(n => n.id));
+        _rebuildAddableSet();
         refreshOpenPanelAddBtn();
       })
       .catch(() => { /* leave empty; gating will treat all nodes as not-addable */ });
+  }
+
+  // F7: precompute the addable-neighbor set in O(links) once per
+  // userOwnedIds-change or fullData-change. Then computeAddBtnState is O(1).
+  function _rebuildAddableSet() {
+    _addableInGlobal = new Set();
+    if (!isLoggedIn || userOwnedIds.size === 0) return;
+    const links = (fullData && fullData.links) ? fullData.links : [];
+    for (let i = 0; i < links.length; i++) {
+      const l = links[i];
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (userOwnedIds.has(s)) _addableInGlobal.add(t);
+      if (userOwnedIds.has(t)) _addableInGlobal.add(s);
+    }
   }
 
   // Decide whether the Add-to-Kasten button is enabled / disabled / login.
@@ -414,16 +434,8 @@ function getCommunityHue(communityId) {
     if (!isLoggedIn) return 'login';
     if (currentView === 'my') return 'enabled';
     if (userOwnedIds.has(node.id)) return 'enabled';
-    // Global view: addable iff at least one link of node touches a user-owned node.
-    const links = (fullData && fullData.links) ? fullData.links : [];
-    for (let i = 0; i < links.length; i++) {
-      const l = links[i];
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      if (s === node.id && userOwnedIds.has(t)) return 'enabled';
-      if (t === node.id && userOwnedIds.has(s)) return 'enabled';
-    }
-    return 'unlinked';
+    // F7: O(1) lookup against precomputed addable set (was O(links) scan).
+    return _addableInGlobal.has(node.id) ? 'enabled' : 'unlinked';
   }
 
   // Apply Add-to-Kasten button state for the currently-open panel node.
@@ -632,6 +644,8 @@ function getCommunityHue(communityId) {
           return node;
         });
         nodeDegrees = computeDegrees(fullData);
+        // F7: refresh the addable-neighbor set when fullData changes.
+        _rebuildAddableSet();
         // A2: surface analytics degradation as a teal banner.
         try {
           const banner = document.getElementById('kg-analytics-banner');
