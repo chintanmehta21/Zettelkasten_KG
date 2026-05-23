@@ -1,8 +1,9 @@
--- Migration 70 (Phase 3 / LD-8): pipeline_runs state machine extension.
+-- Migration 71 (Phase 3 / LD-8): pipeline_runs state machine extension.
 --
 -- (Plan-numbered "Migration 49" in 2026-05-23-kg-render-correctness-overhaul.md.
--- Renumbered at execution because slot 49 was already taken by
--- 49_operations_sweep.sql. Design content unchanged.)
+-- First renumbered to 70 because slot 49 was occupied; bumped again to 71
+-- to stay sequential after a parallel master commit (0eaf172d) added
+-- 68_hybrid_search_chunks_workspace.sql. Design content unchanged.)
 --
 -- Today: status enum = ('pending'|'in_progress'|'succeeded'|'failed').
 -- Idempotency gate blocks ALL future retries once 'succeeded' is written,
