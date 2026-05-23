@@ -242,6 +242,23 @@ def _client_with_runtime(monkeypatch):
     monkeypatch.setattr(chat_routes, "get_rag_runtime", lambda user_sub: runtime)
     monkeypatch.setattr(sandbox_routes, "get_rag_runtime", lambda user_sub: runtime)
 
+    # D2 strangler-fig (new_apis_1a, locked 2026-05-23): chat_routes now
+    # dispatches the orchestrator call through the ask_kasten runner.
+    # Mock the runner's lazy facades + pricing/gate hooks so the test
+    # stays hermetic — runtime call path becomes
+    # chat_routes._run_answer → ask_kasten.run_ask_kasten_once →
+    # runtime.orchestrator.answer (the FakeOrchestrator stub).
+    from website.api.module_runners import ask_kasten
+
+    async def _noop_async(*_a, **_kw):
+        return None
+
+    monkeypatch.setattr(ask_kasten, "_require_entitlement", _noop_async)
+    monkeypatch.setattr(
+        ask_kasten, "_functional_gate_rag_question_quota", _noop_async,
+    )
+    monkeypatch.setattr(ask_kasten, "_get_runtime", lambda user_sub: runtime)
+
     app = create_app()
     user = {"sub": "user-1", "email": "user@example.com"}
     app.dependency_overrides[chat_routes.get_current_user] = lambda: user

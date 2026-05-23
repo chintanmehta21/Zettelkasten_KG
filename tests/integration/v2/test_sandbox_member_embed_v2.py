@@ -14,15 +14,20 @@ import inspect
 
 
 def _load_modules():
-    api_init = importlib.import_module("website.api")
+    """Return the modules that host a ``_serialize_member`` function.
+
+    new_apis_1a (locked 2026-05-23): ``website/api/__init__.py`` was gutted
+    of its legacy duplicate sandbox-route surface (the package marker now
+    holds only docstring + imports). ``_serialize_member`` lives solely in
+    ``website.api.sandbox_routes`` — the canonical implementation.
+    """
     sandbox_routes = importlib.import_module("website.api.sandbox_routes")
-    return api_init, sandbox_routes
+    return (sandbox_routes,)
 
 
 def test_serialize_member_does_not_read_v1_kg_nodes_embed():
-    """Both serializers must drop the v1 ``row.get("kg_nodes")`` lookup."""
-    api_init, sandbox_routes = _load_modules()
-    for mod in (api_init, sandbox_routes):
+    """The canonical serializer must drop the v1 ``row.get("kg_nodes")`` lookup."""
+    for mod in _load_modules():
         src = inspect.getsource(mod)
         assert 'row.get("kg_nodes")' not in src, (
             f"{mod.__name__}: v1 PostgREST embed key 'kg_nodes' remains"
@@ -34,11 +39,9 @@ def test_serialize_member_does_not_read_v1_kg_nodes_embed():
 
 def test_serialize_member_consumes_v2_flat_rpc_columns():
     """Smoke-test: feed a representative ``rag.list_kasten_zettels`` row
-    into each ``_serialize_member`` and assert the response surfaces the
-    v2 fields (title, source_type, user_tags) rather than crashing on a
+    into ``_serialize_member`` and assert the response surfaces the v2
+    fields (title, source_type, user_tags) rather than crashing on a
     missing nested key."""
-    api_init, sandbox_routes = _load_modules()
-
     sample_v2_row = {
         "workspace_zettel_id": "11111111-1111-1111-1111-111111111111",
         "canonical_zettel_id": "22222222-2222-2222-2222-222222222222",
@@ -49,7 +52,7 @@ def test_serialize_member_consumes_v2_flat_rpc_columns():
         "added_at": "2026-05-10T00:00:00+00:00",
     }
 
-    for mod in (api_init, sandbox_routes):
+    for mod in _load_modules():
         out = mod._serialize_member(sample_v2_row)
         assert isinstance(out, dict)
         node = out.get("node") or {}
