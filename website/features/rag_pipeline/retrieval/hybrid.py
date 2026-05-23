@@ -644,7 +644,9 @@ class HybridRetriever:
         # rag.*_v2 RPCs are kasten-scoped. The retriever takes ``sandbox_id`` as
         # the kasten id; we resolve the owning workspace_id once here so KG
         # anchor resolution + subgraph expansion can be tenant-scoped.
-        workspace_id = await self._resolve_workspace_id(sandbox_id)
+        # PR #73: pass user_id so the workspace-wide branch (sandbox_id=None)
+        # can resolve the caller's workspace via owner_profile_id.
+        workspace_id = await self._resolve_workspace_id(sandbox_id, user_id)
 
         effective_nodes = await self._resolve_nodes(user_id, sandbox_id, scope_filter)
         if effective_nodes is not None and len(effective_nodes) == 0:
@@ -667,24 +669,45 @@ class HybridRetriever:
         del graph_depth  # v1 graph-depth knob; v2 graph signal is mention-based.
 
         async def _search(query_text: str, query_vec: list[float]) -> list[dict]:
+            # 2026-05-24 — workspace-wide branch added (PR #73). Previously
+            # `sandbox_id is None` returned [] unconditionally, making the
+            # /home/rag "Ask all your zettels" mode unable to retrieve
+            # anything regardless of indexing state (assembler emitted the
+            # 57-char empty-context literal). The new
+            # `content.hybrid_search_chunks_workspace` RPC mirrors the
+            # kasten RPC's row shape; only the scope predicate differs.
             if sandbox_id is None:
-                return []
-            response = await rpc_call(self._supabase.schema("content").rpc(
-                "hybrid_search_chunks_kasten",
-                {
-                    "p_kasten_id": str(sandbox_id),
-                    "p_query_text": query_text,
-                    "p_query_embedding": query_vec,
-                    "p_match_count": limit,
-                    "p_rrf_k": _RRF_K,  # E4 F2: single source of truth (env RAG_RRF_K, default 24)
-                    # Pass per-source weights through to the SQL fused score so
-                    # the legacy ``rrf_score`` column stays meaningful, but the
-                    # downstream Python RRF re-fuses with the graph dimension
-                    # using fts_rank/semantic_rank decomposed from this RPC.
-                    "p_full_text_weight": fts_w,
-                    "p_semantic_weight": sem_w,
-                },
-            ))
+                if workspace_id is None:
+                    return []
+                response = await rpc_call(self._supabase.schema("content").rpc(
+                    "hybrid_search_chunks_workspace",
+                    {
+                        "p_workspace_id": str(workspace_id),
+                        "p_query_text": query_text,
+                        "p_query_embedding": query_vec,
+                        "p_match_count": limit,
+                        "p_rrf_k": _RRF_K,
+                        "p_full_text_weight": fts_w,
+                        "p_semantic_weight": sem_w,
+                    },
+                ))
+            else:
+                response = await rpc_call(self._supabase.schema("content").rpc(
+                    "hybrid_search_chunks_kasten",
+                    {
+                        "p_kasten_id": str(sandbox_id),
+                        "p_query_text": query_text,
+                        "p_query_embedding": query_vec,
+                        "p_match_count": limit,
+                        "p_rrf_k": _RRF_K,  # E4 F2: single source of truth (env RAG_RRF_K, default 24)
+                        # Pass per-source weights through to the SQL fused score so
+                        # the legacy ``rrf_score`` column stays meaningful, but the
+                        # downstream Python RRF re-fuses with the graph dimension
+                        # using fts_rank/semantic_rank decomposed from this RPC.
+                        "p_full_text_weight": fts_w,
+                        "p_semantic_weight": sem_w,
+                    },
+                ))
             rows = response.data or []
             # Adapt v2 row -> legacy dict shape consumed by _row_to_candidate
             # and the fusion path. Preserve fts_rank / semantic_rank / raw
@@ -1013,27 +1036,53 @@ class HybridRetriever:
 
         return fused
 
-    async def _resolve_workspace_id(self, sandbox_id: UUID | None) -> UUID | None:
-        """Look up the workspace_id that owns ``sandbox_id`` (kasten).
+    async def _resolve_workspace_id(
+        self,
+        sandbox_id: UUID | None,
+        user_id: UUID | None = None,
+    ) -> UUID | None:
+        """Look up the workspace_id for retrieval scope.
 
         Phase 2.4.1: kg.* v2 RPCs require ``p_workspace_id``; the retriever
         only has ``sandbox_id`` (kasten UUID). One ``rag.kastens`` lookup per
-        retrieve() call resolves the owning workspace. Returns ``None`` when
-        no kasten is in scope (open-scope queries) or the lookup fails — the
-        downstream KG paths are best-effort and short-circuit on None.
+        retrieve() call resolves the owning workspace.
+
+        2026-05-24 (PR #73): ``user_id`` fallback added so the new
+        workspace-wide hybrid path (``sandbox_id is None``) can resolve
+        the caller's workspace via ``core.workspaces.owner_profile_id``.
+        Returns ``None`` only on lookup failure — downstream KG paths
+        remain best-effort and short-circuit on None.
         """
-        if sandbox_id is None:
+        if sandbox_id is not None:
+            try:
+                response = await rpc_call(
+                    self._supabase.schema("rag").table("kastens").select("workspace_id").eq("id", str(sandbox_id)).limit(1)
+                )
+                rows = response.data or []
+                if not rows:
+                    return None
+                return UUID(str(rows[0]["workspace_id"]))
+            except Exception as exc:  # noqa: BLE001 — best-effort, never blocks retrieval
+                _log.debug("resolve_workspace_id failed for kasten=%s: %s", sandbox_id, exc)
+                return None
+        # No kasten in scope → resolve workspace from the authenticated
+        # user's profile. Owner-profile lookup; reader workspaces (e.g.,
+        # via membership/shares) aren't in scope for the open-zettel query.
+        if user_id is None:
             return None
         try:
             response = await rpc_call(
-                self._supabase.schema("rag").table("kastens").select("workspace_id").eq("id", str(sandbox_id)).limit(1)
+                self._supabase.schema("core").table("workspaces")
+                .select("id")
+                .eq("owner_profile_id", str(user_id))
+                .limit(1)
             )
             rows = response.data or []
             if not rows:
                 return None
-            return UUID(str(rows[0]["workspace_id"]))
+            return UUID(str(rows[0]["id"]))
         except Exception as exc:  # noqa: BLE001 — best-effort, never blocks retrieval
-            _log.debug("resolve_workspace_id failed for kasten=%s: %s", sandbox_id, exc)
+            _log.debug("resolve_workspace_id (workspace-wide) failed for user=%s: %s", user_id, exc)
             return None
 
     async def _fetch_kasten_signals(
