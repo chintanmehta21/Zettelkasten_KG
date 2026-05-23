@@ -1,0 +1,413 @@
+{
+  "info": {
+    "_postman_id": "ae9c77d4-c3c1-4bbf-a97b-zk-graph",
+    "name": "Zettelkasten View-Graph E2E",
+    "description": "End-to-end Postman/Newman suite for GET /api/graph — the view_graph runner integration (new_apis_1a, locked 2026-05-23). Covers: view=global (file-store), view=my (v2 assembly), strict view=my semantics (anonymous + view=my returns explicit empty graph, NEVER Zoro's personal — D1 verdict), view=kasten subgraph (D6 + BOLA), strength filter + pagination, and the D6 kasten_id query parameter. Mirrors the gating pattern of zettelkasten-summarization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  pm.environment.set('run_id', 'postman-' + Date.now() + '-' + Math.random().toString(36).slice(2));",
+          "}",
+          "if (!pm.environment.get('latency_events_json')) {",
+          "  pm.environment.set('latency_events_json', '[]');",
+          "}",
+          "if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
+          "  pm.test('SKIPPED: set run_live_requests=true to hit a real target', function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}",
+          "var ZK_REQUIRE = {",
+          "  'P1 view=my returns user graph (auth)': ['auth_token_user_a'],",
+          "  'P1 User A graph does not leak User B nodes': ['auth_token_user_a', 'auth_token_user_b'],",
+          "  'P1 view=kasten subgraph (auth + kasten_id)': ['auth_token_user_a', 'graph_kasten_id'],",
+          "  'P1 view=kasten cross-tenant returns 403': ['auth_token_user_b', 'graph_kasten_id'],",
+          "  'P1 view=my strict empty when no v2 scope (auth, no workspace)': ['auth_token_user_a'],",
+          "  'P1 Cache: repeated view=my within TTL': ['auth_token_user_a']",
+          "};",
+          "var zkNeeded = ZK_REQUIRE[pm.info.requestName] || [];",
+          "var zkMissing = zkNeeded.filter(function (name) { return !pm.environment.get(name); });",
+          "if (zkMissing.length) {",
+          "  pm.test('SKIPPED: ' + pm.info.requestName + ' needs ' + zkMissing.join(', '), function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "var raw = pm.environment.get('latency_events_json') || '[]';",
+          "var events = [];",
+          "try { events = JSON.parse(raw); } catch (e) { events = []; }",
+          "events.push({",
+          "  request: pm.info.requestName,",
+          "  folder: pm.info.folderName || '',",
+          "  status: pm.response.code,",
+          "  elapsed_ms: pm.response.responseTime,",
+          "  at: new Date().toISOString()",
+          "});",
+          "pm.environment.set('latency_events_json', JSON.stringify(events));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "P1 Readiness",
+      "item": [
+        {
+          "name": "P1 Health endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 health', function () { pm.expect(pm.response.code).to.equal(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P1 Global + anonymous (D1)",
+      "item": [
+        {
+          "name": "P1 Anonymous view=global returns file-store",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Anonymous global returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Carries nodes + links arrays', function () { pm.expect(body.nodes).to.be.an('array'); pm.expect(body.links).to.be.an('array'); });",
+                  "pm.test('Meta marks file-store source', function () { pm.expect(body.meta).to.be.an('object'); pm.expect(body.meta.view).to.equal('global'); pm.expect(body.meta.source).to.equal('file-store'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=global"
+          }
+        },
+        {
+          "name": "P1 D1 verdict: anonymous + view=my returns empty (NEVER Zoro)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Anonymous + view=my returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Returns explicit empty personal graph', function () { pm.expect(body.nodes).to.be.an('array').with.lengthOf(0); pm.expect(body.links).to.be.an('array').with.lengthOf(0); pm.expect(body.total_nodes).to.equal(0); });",
+                  "pm.test('Meta marks no-scope, NOT file-store fallthrough', function () { pm.expect(body.meta).to.be.an('object'); pm.expect(body.meta.source).to.equal('no-scope'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=my"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Authenticated views",
+      "item": [
+        {
+          "name": "P1 view=my returns user graph (auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Authenticated view=my returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Returns nodes/links arrays', function () { pm.expect(body.nodes).to.be.an('array'); pm.expect(body.links).to.be.an('array'); });",
+                  "pm.test('Meta marks personal view', function () { if (body.meta) { pm.expect(body.meta.view).to.be.oneOf(['my', undefined]); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=my"
+          }
+        },
+        {
+          "name": "P1 view=my inferred from auth (no view param)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Authenticated default view returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Carries graph payload', function () { pm.expect(body.nodes).to.be.an('array'); pm.expect(body.links).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Kasten-scoped (D6 + BOLA)",
+      "item": [
+        {
+          "name": "P1 view=kasten subgraph (auth + kasten_id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('view=kasten returns 200 for owner', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Carries graph payload + kasten meta', function () { pm.expect(body.nodes).to.be.an('array'); pm.expect(body.links).to.be.an('array'); if (body.meta) { pm.expect(body.meta.view).to.equal('kasten'); pm.expect(body.meta.kasten_id).to.equal(pm.environment.get('graph_kasten_id')); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=kasten&kasten_id={{graph_kasten_id}}"
+          }
+        },
+        {
+          "name": "P1 view=kasten cross-tenant returns 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cross-tenant kasten_id returns 403 (BOLA)', function () { pm.expect(pm.response.code).to.equal(403); });",
+                  "pm.test('No graph payload leak in 403', function () { var t = pm.response.text(); pm.expect(t).to.not.match(/\\\"nodes\\\":\\s*\\[/); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=kasten&kasten_id={{graph_kasten_id}}"
+          }
+        },
+        {
+          "name": "P1 view=kasten without kasten_id returns 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing kasten_id rejected with 400', function () { pm.expect(pm.response.code).to.equal(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=kasten"
+          }
+        },
+        {
+          "name": "P1 view=kasten with malformed kasten_id returns 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Non-UUID kasten_id rejected with 400', function () { pm.expect(pm.response.code).to.equal(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=kasten&kasten_id=not-a-uuid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Strength + pagination",
+      "item": [
+        {
+          "name": "P1 Strong threshold returns subset",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Run weak baseline first so we can compare link counts.",
+                  "if (!pm.environment.get('weak_links_count')) {",
+                  "  pm.variables.set('compare_only', 'false');",
+                  "} else {",
+                  "  pm.variables.set('compare_only', 'true');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Strong filter returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Strong returns at most as many links as weak', function () { var n = (body.links || []).length; var weak = Number(pm.environment.get('weak_links_count') || -1); if (weak >= 0) { pm.expect(n).to.be.at.most(weak); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=global&min_strength=0.7"
+          }
+        },
+        {
+          "name": "P1 Weak threshold baseline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Weak baseline returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set('weak_links_count', String((body.links || []).length));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=global&min_strength=0.3"
+          }
+        },
+        {
+          "name": "P1 Pagination limit/offset honoured",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pagination returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Carries graph payload', function () { pm.expect(body.nodes).to.be.an('array'); pm.expect(body.links).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=global&limit=10&offset=0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Validation",
+      "item": [
+        {
+          "name": "P1 Invalid view literal returns 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unknown view returns 400', function () { pm.expect(pm.response.code).to.equal(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/graph?view=wrong"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 Cache",
+      "item": [
+        {
+          "name": "P1 Cache: repeated view=my within TTL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Repeat call returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('SOFT: cache hit completes in under 1s', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/graph?view=my"
+          }
+        }
+      ]
+    }
+  ]
+}

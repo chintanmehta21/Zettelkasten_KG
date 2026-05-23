@@ -1,0 +1,538 @@
+{
+  "info": {
+    "_postman_id": "9d8b66c3-c3c1-4bbf-a97b-zk-ask-kasten",
+    "name": "Zettelkasten Ask-Kasten E2E",
+    "description": "End-to-end Postman/Newman suite for the chat endpoints that dispatch through the ask_kasten runner (new_apis_1a, D2 strangler-fig, locked 2026-05-23). Covers: session create + post message (non-stream), SSE stream answers, /api/rag/adhoc (one-shot), the D5 sandbox_id<->kasten_id Pydantic wire alias, BOLA scoping (User B cannot post into User A session, cross-tenant kasten_id rejected), validation, and Supabase chat_sessions + chat_messages row integrity. Mirrors the gating + polling pattern of zettelkasten-summarization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  pm.environment.set('run_id', 'postman-' + Date.now() + '-' + Math.random().toString(36).slice(2));",
+          "}",
+          "if (!pm.environment.get('latency_events_json')) {",
+          "  pm.environment.set('latency_events_json', '[]');",
+          "}",
+          "if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
+          "  pm.test('SKIPPED: set run_live_requests=true to hit a real target', function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}",
+          "var ZK_REQUIRE = {",
+          "  'P1 Setup: list sandboxes to seed kasten_id': ['auth_token_user_a'],",
+          "  'P1 Create session for User A (sandbox_id field)': ['auth_token_user_a'],",
+          "  'P1 Create session accepts kasten_id alias (D5)': ['auth_token_user_a'],",
+          "  'P1 Post non-stream message returns 200 + turn': ['auth_token_user_a', 'ask_session_id'],",
+          "  'P1 Post stream message returns SSE events': ['auth_token_user_a', 'ask_session_id'],",
+          "  'P1 Adhoc one-shot returns 200 + session': ['auth_token_user_a'],",
+          "  'P1 User B cannot post into User A session': ['auth_token_user_b', 'ask_session_id'],",
+          "  'P1 Cross-tenant kasten_id is rejected': ['auth_token_user_b'],",
+          "  'P1 Empty content rejected': ['auth_token_user_a', 'ask_session_id'],",
+          "  'P1 Invalid quality rejected': ['auth_token_user_a', 'ask_session_id'],",
+          "  'P2 Supabase chat_sessions row visible': ['supabase_url', 'supabase_service_role_key', 'ask_session_id'],",
+          "  'P2 Supabase chat_messages rows scoped': ['supabase_url', 'supabase_service_role_key', 'ask_session_id']",
+          "};",
+          "var zkNeeded = ZK_REQUIRE[pm.info.requestName] || [];",
+          "var zkMissing = zkNeeded.filter(function (name) { return !pm.environment.get(name); });",
+          "if (zkMissing.length) {",
+          "  pm.test('SKIPPED: ' + pm.info.requestName + ' needs ' + zkMissing.join(', '), function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "var raw = pm.environment.get('latency_events_json') || '[]';",
+          "var events = [];",
+          "try { events = JSON.parse(raw); } catch (e) { events = []; }",
+          "events.push({",
+          "  request: pm.info.requestName,",
+          "  folder: pm.info.folderName || '',",
+          "  status: pm.response.code,",
+          "  elapsed_ms: pm.response.responseTime,",
+          "  at: new Date().toISOString()",
+          "});",
+          "pm.environment.set('latency_events_json', JSON.stringify(events));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "P1 Readiness",
+      "item": [
+        {
+          "name": "P1 Health endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 health', function () { pm.expect(pm.response.code).to.equal(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P1 Setup: list sandboxes to seed kasten_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sandbox list returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Sandboxes are an array', function () { pm.expect(body.sandboxes).to.be.an('array'); });",
+                  "// Pin the first Kasten for downstream ask flows; if empty, downstream",
+                  "// gating will skip via missing ask_kasten_id.",
+                  "if (body.sandboxes && body.sandboxes.length > 0) {",
+                  "  pm.environment.set('ask_kasten_id', String(body.sandboxes[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/rag/sandboxes?limit=5"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Session create",
+      "item": [
+        {
+          "name": "P1 Create session for User A (sandbox_id field)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('session_title', 'pm-ask-' + pm.environment.get('run_id').slice(-8));",
+                  "// sandbox_id field is the LEGACY input name; D5 alias also accepts kasten_id.",
+                  "if (!pm.environment.get('ask_kasten_id')) {",
+                  "  pm.variables.set('sandbox_payload', 'null');",
+                  "} else {",
+                  "  pm.variables.set('sandbox_payload', '\"' + pm.environment.get('ask_kasten_id') + '\"');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session create returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Response carries session object', function () { pm.expect(body.session).to.be.an('object'); pm.expect(body.session.id).to.be.a('string'); });",
+                  "pm.test('D5 dual-emit: response carries BOTH sandbox_id and kasten_id', function () { pm.expect(body.session).to.have.property('sandbox_id'); pm.expect(body.session).to.have.property('kasten_id'); pm.expect(body.session.sandbox_id).to.equal(body.session.kasten_id); });",
+                  "pm.environment.set('ask_session_id', body.session.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sandbox_id\": {{sandbox_payload}},\n  \"title\": \"{{session_title}}\",\n  \"quality\": \"fast\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions"
+          }
+        },
+        {
+          "name": "P1 Create session accepts kasten_id alias (D5)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('session_title', 'pm-ask-alias-' + pm.environment.get('run_id').slice(-8));",
+                  "if (!pm.environment.get('ask_kasten_id')) {",
+                  "  pm.variables.set('kasten_payload', 'null');",
+                  "} else {",
+                  "  pm.variables.set('kasten_payload', '\"' + pm.environment.get('ask_kasten_id') + '\"');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session create accepts kasten_id alias', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Both fields populated on response', function () { pm.expect(body.session.sandbox_id).to.equal(body.session.kasten_id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kasten_id\": {{kasten_payload}},\n  \"title\": \"{{session_title}}\",\n  \"quality\": \"fast\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Ask flows",
+      "item": [
+        {
+          "name": "P1 Post non-stream message returns 200 + turn",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('client_action_id', pm.environment.get('run_id') + ':ask-nonstream');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Non-stream returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Legacy turn envelope shape preserved', function () { pm.expect(body.session_id).to.be.a('string'); pm.expect(body.turn).to.be.an('object'); pm.expect(body.turn.content).to.be.a('string'); pm.expect(body.turn.citations).to.be.an('array'); pm.expect(body.turn.query_class).to.be.a('string'); pm.expect(body.turn.critic_verdict).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"What is this Kasten about?\",\n  \"quality\": \"fast\",\n  \"stream\": false,\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions/{{ask_session_id}}/messages"
+          }
+        },
+        {
+          "name": "P1 Post stream message returns SSE events",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('client_action_id', pm.environment.get('run_id') + ':ask-stream');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Stream returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Content-Type is text/event-stream', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.match(/text\\/event-stream/); });",
+                  "var text = pm.response.text() || '';",
+                  "pm.test('SSE stream contains initial status event', function () { pm.expect(text).to.match(/event:\\s*status/); });",
+                  "pm.test('SSE stream contains terminal done OR error event', function () { pm.expect(text).to.match(/event:\\s*(done|error)/); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Stream me an answer.\",\n  \"quality\": \"fast\",\n  \"stream\": true,\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions/{{ask_session_id}}/messages"
+          }
+        },
+        {
+          "name": "P1 Adhoc one-shot returns 200 + session",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('client_action_id', pm.environment.get('run_id') + ':ask-adhoc');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Adhoc returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Adhoc carries session + turn', function () { pm.expect(body.session).to.be.an('object'); pm.expect(body.session.id).to.be.a('string'); pm.expect(body.turn).to.be.an('object'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Quick adhoc ask.\",\n  \"quality\": \"fast\",\n  \"stream\": false,\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/adhoc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Multi-tenant scoping (BOLA)",
+      "item": [
+        {
+          "name": "P1 User B cannot post into User A session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User B is rejected with 4xx (no 5xx leak)', function () { pm.expect(pm.response.code).to.be.oneOf([401, 403, 404]); });",
+                  "pm.test('Response does not leak User A content', function () { var leak = pm.environment.get('user_a_workspace_id') || ''; if (leak) { pm.expect(pm.response.text().indexOf(leak) === -1).to.equal(true); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"User B trying to post into A's session\",\n  \"quality\": \"fast\",\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions/{{ask_session_id}}/messages"
+          }
+        },
+        {
+          "name": "P1 Cross-tenant kasten_id is rejected",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Use User A's kasten_id with User B's token — BOLA gate must reject.",
+                  "pm.variables.set('foreign_kasten_id', pm.environment.get('ask_kasten_id') || '00000000-0000-0000-0000-000000000000');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cross-tenant kasten_id rejected (no 5xx)', function () { pm.expect(pm.response.code).to.be.oneOf([401, 402, 403, 404]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kasten_id\": \"{{foreign_kasten_id}}\",\n  \"content\": \"adhoc against foreign kasten\",\n  \"quality\": \"fast\",\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/rag/adhoc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Validation",
+      "item": [
+        {
+          "name": "P1 Empty content rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty content returns 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"   \",\n  \"quality\": \"fast\",\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions/{{ask_session_id}}/messages"
+          }
+        },
+        {
+          "name": "P1 Invalid quality rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Bad quality returns 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"any content\",\n  \"quality\": \"premium\",\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/rag/sessions/{{ask_session_id}}/messages"
+          }
+        },
+        {
+          "name": "P1 Unauthenticated chat is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No auth returns 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"any\",\n  \"quality\": \"fast\",\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/rag/adhoc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 Supabase integrity",
+      "item": [
+        {
+          "name": "P2 Supabase chat_sessions row visible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service-role read returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var rows = pm.response.json();",
+                  "pm.test('Exactly one session row by id', function () { pm.expect(Array.isArray(rows)).to.equal(true); pm.expect(rows.length).to.equal(1); pm.expect(rows[0].id).to.equal(pm.environment.get('ask_session_id')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "rag" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/chat_sessions?id=eq.{{ask_session_id}}&select=id,workspace_id,profile_id,kasten_id,title"
+          }
+        },
+        {
+          "name": "P2 Supabase chat_messages rows scoped",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service-role read returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var rows = pm.response.json();",
+                  "pm.test('Messages are an array', function () { pm.expect(Array.isArray(rows)).to.equal(true); });",
+                  "pm.test('Every message references the right session', function () { rows.forEach(function (r) { pm.expect(r.session_id).to.equal(pm.environment.get('ask_session_id')); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "rag" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/chat_messages?session_id=eq.{{ask_session_id}}&select=id,session_id,workspace_id,role,verdict,latency_ms,created_at"
+          }
+        }
+      ]
+    }
+  ]
+}
