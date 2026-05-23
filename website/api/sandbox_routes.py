@@ -770,42 +770,16 @@ async def create_sandbox(
         # Phase 9: gate consumed atomically in require_entitlement above.
         return {"sandbox": _serialize_kasten_v2(row)}
 
-    runtime = _runtime_for_user(user)
-    try:
-        row = await runtime.sandboxes.create_sandbox(
-            user_id=runtime.kg_user_id,
-            name=body.name,
-            description=body.description,
-            icon=body.icon,
-            color=body.color,
-            default_quality=body.default_quality,
-        )
-    except Exception as exc:  # noqa: BLE001 — surface the real driver error to logs + client
-        detail_str = str(exc)
-        logger.exception(
-            "create_sandbox failed for user=%s name=%s: %s",
-            runtime.kg_user_id,
-            body.name,
-            detail_str,
-        )
-        lower = detail_str.lower()
-        # Duplicate-name hits Postgres UNIQUE(user_id, name)
-        if "duplicate key" in lower or "unique" in lower:
-            raise HTTPException(status_code=409, detail="A kasten with that name already exists") from exc
-        # Missing migration — PostgREST schema cache indicates the table is unknown
-        if "pgrst205" in lower or "schema cache" in lower or "could not find the table" in lower:
-            raise HTTPException(
-                status_code=503,
-                detail="Kastens backend is not fully provisioned. Please try again shortly.",
-            ) from exc
-        raise HTTPException(status_code=500, detail="Create sandbox failed. Please try again.") from exc
-
-    if row is None:
-        logger.error("create_sandbox returned None row for user=%s name=%s", runtime.kg_user_id, body.name)
-        raise HTTPException(status_code=500, detail="Create sandbox returned no row")
-
-    # Phase 9: gate consumed atomically in require_entitlement above.
-    return {"sandbox": _serialize_sandbox(row)}
+    # new_apis_1b (operator decision A, locked 2026-05-23): the v1
+    # sandbox-store fallback (``runtime.sandboxes.create_sandbox``) has
+    # been removed — DB v2 is the only supported creation path. Without
+    # a resolvable v2 scope we surface a clear 501 (matching the
+    # create-with-members branch above) instead of falling through to
+    # the retired v1 store.
+    raise HTTPException(
+        status_code=501,
+        detail="Creating a Kasten requires DB v2",
+    )
 
 
 @router.get("/sandboxes/operations/{operation_id}")
