@@ -892,8 +892,18 @@ function getCommunityHue(communityId) {
       .d3AlphaMin(0.01)
       .linkCurvature(0.15)
       .linkCurveRotation(0.4)
-      // Particles — 1 per link, fast travel speed
-      .linkDirectionalParticles(1)
+      // F5: particles are GPU-expensive (1 cylinder per link per frame).
+      // Show only on hover/selected node's incident edges for snappy
+      // interaction at scale; idle graph has zero particles.
+      .linkDirectionalParticles(link => {
+        if (!hoverNode && !selectedNode) return 0;
+        const active = hoverNode || selectedNode;
+        if (!active) return 0;
+        const src = typeof link.source === 'object' ? link.source : null;
+        const tgt = typeof link.target === 'object' ? link.target : null;
+        const touches = (src && src.id === active.id) || (tgt && tgt.id === active.id);
+        return touches ? 1 : 0;
+      })
       .linkDirectionalParticleWidth(1.0)
       .linkDirectionalParticleSpeed(0.008)
       .linkDirectionalParticleColor(link => {
@@ -916,6 +926,10 @@ function getCommunityHue(communityId) {
         } else if (prevHover) {
           _activeNodeIds.delete(prevHover.id);
         }
+        // F5: hover state drives linkDirectionalParticles. Refresh forces
+        // 3d-force-graph to re-evaluate the accessor immediately so
+        // particles appear/disappear on the same frame as the hover change.
+        if (graph && typeof graph.refresh === 'function') graph.refresh();
       })
 
       // ---- Physics — fast convergence ----
@@ -1050,6 +1064,8 @@ function getCommunityHue(communityId) {
     graph.controls().autoRotate = false;
     if (prevSelected && prevSelected !== node) _updateNodeVisual(prevSelected);
     _updateNodeVisual(node);
+    // F5: selection drives linkDirectionalParticles — refresh accessor.
+    if (graph && typeof graph.refresh === 'function') graph.refresh();
 
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
 
