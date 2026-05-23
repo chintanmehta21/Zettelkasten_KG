@@ -895,8 +895,16 @@ a:hover {
 .footer-icon {
     color: var(--text-muted);
     transition: color var(--transition);
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     line-height: 0;
+    /* WCAG 2.2 SC 2.5.8 — keep glyph visually 20×20 but lift the
+       interactive hit area to 24×24 via padding. */
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
+    box-sizing: content-box;
 }
 
 .footer-icon:hover {
