@@ -1,0 +1,196 @@
+name: Read Droplet State (YT tier diagnostics)
+
+# Read-only inspection of the prod droplet's YouTube tier-chain state:
+#   1. Which YT_* secrets are registered at the GH-Actions layer
+#   2. What /opt/zettelkasten/compose/.env actually contains for YT_*
+#      (passwords masked before echo)
+#   3. Webshare proxy reachability + HTTP code for fNNz9a2OIn4
+#   4. T3 cookies file: present + last-modified age
+#   5. POT-token sidecar at 127.0.0.1:4416 reachable?
+#   6. Active blue/green container + recent T2 / metadata_only log lines
+#   7. Recent Gemini key-pool 429 / RESOURCE_EXHAUSTED lines
+#
+# Triggered manually. No state mutation. All proxy creds / .env contents
+# masked before being written to job logs.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Probe whether YT proxy secrets exist at the GH-Actions layer
+        env:
+          YT_URL_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_URL != '' }}
+          YT_USER_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_USER != '' }}
+          YT_PASS_SET: ${{ secrets.YT_TRANSCRIPT_PROXY_PASS != '' }}
+          WEBSHARE_API_TOKEN_SET: ${{ secrets.WEBSHARE_API_TOKEN != '' }}
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "0. GitHub Actions secret registration (boolean — value not echoed)"
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  YT_TRANSCRIPT_PROXY_URL  registered: $YT_URL_SET"
+          echo "  YT_TRANSCRIPT_PROXY_USER registered: $YT_USER_SET"
+          echo "  YT_TRANSCRIPT_PROXY_PASS registered: $YT_PASS_SET"
+          echo "  WEBSHARE_API_TOKEN       registered: $WEBSHARE_API_TOKEN_SET"
+
+      - name: SSH to droplet, dump tier-state, probe proxy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          command_timeout: 4m
+          script: |
+            set +e
+
+            echo "═══════════════════════════════════════════════════════════"
+            echo "1. /opt/zettelkasten/compose/.env — YT_* lines (MASKED)"
+            echo "═══════════════════════════════════════════════════════════"
+            sudo grep -E '^(YT_TRANSCRIPT_PROXY|YT_PROXY|YT_COOKIES_PATH|YT_USER_AGENT|YTDLP_POT_PROVIDER_URL|GEMINI_API_KEYS|GEMINI_API_KEY)=' /opt/zettelkasten/compose/.env 2>/dev/null \
+              | sed -E '
+                  s#//[^@]+@#//****:****@#g;
+                  s#(YT_TRANSCRIPT_PROXY_PASS=).+#\1****REDACTED****#;
+                  s#(YT_TRANSCRIPT_PROXY_USER=).+#\1****REDACTED****#;
+                  s#(GEMINI_API_KEYS=).+#\1****REDACTED****#;
+                  s#(GEMINI_API_KEY=).+#\1****REDACTED****#
+                ' \
+              || echo "(no matching lines OR .env unreadable)"
+            echo ""
+            echo "  Number of GEMINI key entries in env (comma-split):"
+            n=$(sudo grep -E '^GEMINI_API_KEYS=' /opt/zettelkasten/compose/.env 2>/dev/null | sed 's/^GEMINI_API_KEYS=//' | tr ',' '\n' | grep -c . || true)
+            echo "  count=$n"
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "2. Webshare proxy reachability"
+            echo "═══════════════════════════════════════════════════════════"
+            # Source ONLY YT_TRANSCRIPT_PROXY_* into this shell. Avoid sourcing
+            # the whole .env (would put every other secret on the process env).
+            sudo grep -E '^(YT_TRANSCRIPT_PROXY_URL|YT_TRANSCRIPT_PROXY_USER|YT_TRANSCRIPT_PROXY_PASS)=' /opt/zettelkasten/compose/.env > /tmp/.env.yt 2>/dev/null
+            set -a; source /tmp/.env.yt 2>/dev/null; set +a
+            shred -u /tmp/.env.yt 2>/dev/null || rm -f /tmp/.env.yt
+
+            if [ -z "${YT_TRANSCRIPT_PROXY_URL:-}" ]; then
+              echo "  YT_TRANSCRIPT_PROXY_URL is EMPTY in .env -> T2 short-circuits, no network call"
+            else
+              proxy_host=$(echo "$YT_TRANSCRIPT_PROXY_URL" | sed -E 's#.*@##; s#:[0-9]+$##; s#/.*##')
+              echo "  YT_TRANSCRIPT_PROXY_URL set; host=${proxy_host} (creds masked)"
+              echo ""
+              echo "  -- probe A: ipify (small, no YT involvement; checks proxy itself) --"
+              curl --connect-timeout 8 --max-time 15 \
+                   -x "$YT_TRANSCRIPT_PROXY_URL" \
+                   -s -o /tmp/ip.out \
+                   -w "    http=%{http_code}  connect=%{time_connect}s  total=%{time_total}s  size=%{size_download}B\n" \
+                   "https://api.ipify.org" 2>&1 || echo "    curl_exit=$?"
+              echo "    exit_ip_first_8: $(head -c 8 /tmp/ip.out 2>/dev/null || echo '(no body)')"
+              rm -f /tmp/ip.out
+
+              echo ""
+              echo "  -- probe B: YouTube watch page for fNNz9a2OIn4 (Nimit's video) --"
+              curl --connect-timeout 8 --max-time 15 \
+                   -x "$YT_TRANSCRIPT_PROXY_URL" \
+                   -s -o /dev/null \
+                   -w "    http=%{http_code}  connect=%{time_connect}s  total=%{time_total}s  size=%{size_download}B\n" \
+                   "https://www.youtube.com/watch?v=fNNz9a2OIn4" 2>&1 || echo "    curl_exit=$?"
+
+              echo ""
+              echo "  HTTP code legend:"
+              echo "    200 -> proxy OK, content reachable"
+              echo "    402 -> Webshare quota exhausted"
+              echo "    407 -> proxy auth failed (bad creds / IP-allowlist)"
+              echo "    403 -> YouTube refused even via proxy"
+              echo "    000 or timeout -> proxy host unreachable / account suspended"
+            fi
+
+            # scrub
+            unset YT_TRANSCRIPT_PROXY_URL YT_TRANSCRIPT_PROXY_USER YT_TRANSCRIPT_PROXY_PASS
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "3. T3 cookies file — presence + age"
+            echo "═══════════════════════════════════════════════════════════"
+            for p in /opt/zettelkasten/data/yt-cookies.txt /opt/zk/yt-cookies.txt; do
+              if [ -f "$p" ]; then
+                size=$(stat -c %s "$p" 2>/dev/null)
+                mtime=$(stat -c %Y "$p" 2>/dev/null)
+                if [ -n "$mtime" ]; then
+                  age_days=$(( ($(date +%s) - mtime) / 86400 ))
+                else
+                  age_days="?"
+                fi
+                lines=$(wc -l < "$p" 2>/dev/null)
+                echo "  $p  size=${size}B  age_days=${age_days}  lines=${lines}"
+                # Sanity-grep for the Netscape header (does NOT echo any cookie value)
+                if head -1 "$p" 2>/dev/null | grep -q "Netscape HTTP Cookie File"; then
+                  echo "    header_ok=true"
+                else
+                  echo "    header_ok=false (file present but not Netscape format)"
+                fi
+              else
+                echo "  $p  NOT PRESENT"
+              fi
+            done
+            echo "  (Google rotates SID/HSID approx every 14 days for inactive sessions)"
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "4. POT-token sidecar at 127.0.0.1:4416"
+            echo "═══════════════════════════════════════════════════════════"
+            curl --connect-timeout 3 --max-time 5 -s -o /dev/null \
+              -w "  http=%{http_code}  connect=%{time_connect}s  total=%{time_total}s\n" \
+              "http://127.0.0.1:4416/" 2>&1 || echo "  curl_exit=$? (sidecar likely not running)"
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "5. Container blue/green status"
+            echo "═══════════════════════════════════════════════════════════"
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'zk-(blue|green)|caddy' || echo "  (no zk-* containers)"
+            ACTIVE=$(docker ps --format '{{.Names}}' | grep -E '^zk-(blue|green)$' | head -1)
+            echo "  Active container guess: ${ACTIVE:-none}"
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "6. Recent T2 / metadata_only / Webshare log lines (each container)"
+            echo "═══════════════════════════════════════════════════════════"
+            for c in zk-blue zk-green; do
+              if ! docker ps -a --format '{{.Names}}' | grep -q "^${c}$"; then continue; fi
+              echo "── ${c} ──"
+              docker logs --tail 5000 "$c" 2>&1 \
+                | grep -iE "ingest_boundary|tier_used|tier_results|metadata_only|webshare|IpBlocked|youtube_transcript_api|YT_TRANSCRIPT_PROXY|yt-tier|dense_verify_boundary|persist_boundary|orchestrator\.thin|fNNz9a2OIn4" \
+                | sed -E 's#//[^@]+@#//****:****@#g' \
+                | tail -50 || echo "  (no matching lines)"
+              echo ""
+            done
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "7. Recent Gemini key-pool 429 / RESOURCE_EXHAUSTED / rate-limit lines"
+            echo "═══════════════════════════════════════════════════════════"
+            for c in zk-blue zk-green; do
+              if ! docker ps -a --format '{{.Names}}' | grep -q "^${c}$"; then continue; fi
+              echo "── ${c} ──"
+              docker logs --tail 5000 "$c" 2>&1 \
+                | grep -iE "RESOURCE_EXHAUSTED|429|key_pool|GeminiKeyPool|model_used|gemini_filedata|generate_content_youtube_url|key=0|key=1|key=2" \
+                | tail -30 || echo "  (no matching lines)"
+              echo ""
+            done
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "8. Container memory + uptime (sanity)"
+            echo "═══════════════════════════════════════════════════════════"
+            free -h
+            echo ""
+            for c in zk-blue zk-green; do
+              if ! docker ps -a --format '{{.Names}}' | grep -q "^${c}$"; then continue; fi
+              docker inspect -f '  {{.Name}}  state={{.State.Status}}  started={{.State.StartedAt}}' "$c" 2>/dev/null
+            done
+
+            echo ""
+            echo "═══════════════════════════════════════════════════════════"
+            echo "Inspection complete."
+            echo "═══════════════════════════════════════════════════════════"
