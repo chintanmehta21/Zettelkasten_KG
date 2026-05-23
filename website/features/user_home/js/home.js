@@ -1698,8 +1698,13 @@
   // ── Events ────────────────────────────────────────────────────────
 
   function bindEvents(token) {
-    window.__homeBindEventsCount = (window.__homeBindEventsCount || 0) + 1;
-    console.log('[home] bindEvents start, count=' + window.__homeBindEventsCount, { hasBtn: !!avatarBtn, hasDrop: !!avatarDropdown, hasWrap: !!avatarWrap });
+    // Re-entry guard: init() can be re-invoked (DOMContentLoaded vs immediate
+    // call vs auth-state change) and each call would otherwise stack a fresh
+    // document/body/menu listener — clicking Sign out would then fire signOut
+    // N times. Per-element dataset.zkBound guards below still gate the
+    // element-bound listeners, but the document/body delegated ones don't
+    // have that, so guard the whole function.
+    if (window.__homeBindEventsRan) return;
     window.__homeBindEventsRan = true;
     // Avatar dropdown toggle — IDs are home-namespaced (D-2) so header.js binds
     // only header's #avatar-btn; the dataset.zkBound guard remains for re-init safety.
