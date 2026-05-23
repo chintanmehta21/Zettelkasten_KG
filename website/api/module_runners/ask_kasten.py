@@ -138,6 +138,38 @@ async def _require_entitlement(
     await require_entitlement(Meter.RAG_QUESTION, user, action_id=action_id)
 
 
+async def _functional_gate_rag_question_quota(
+    effective_user_id: UUID, client_action_id: str
+) -> None:
+    """Single quick RPC to ``billing.pricing_reserve_and_consume`` via the
+    ``functional_gates`` module — user-locked 2026-05-23 directive: every
+    quota-bearing runner explicitly invokes the gate. Idempotent on
+    ``(profile_id, feature, action_id)`` so the runner's subsequent
+    ``_require_entitlement`` call (which also goes through
+    ``functional_gates`` internally) collapses to the same decision.
+    Fail-open on infra error — the canonical 402 enforcement still lives
+    in ``require_entitlement``.
+    """
+    try:
+        from website.features.functional_gates import get_functional_gates
+
+        decision = await get_functional_gates().reserve_and_consume(
+            profile_id=effective_user_id,
+            feature="rag_question",
+            action_id=client_action_id,
+        )
+        if not decision.allowed:
+            logger.info(
+                "functional_gates denied rag_question quota for %s: %s",
+                effective_user_id, decision.reason,
+            )
+    except Exception as exc:  # noqa: BLE001 — fail-open on gate infra failure
+        logger.warning(
+            "functional_gates pre-check raised for rag_question/%s: %s",
+            client_action_id, exc,
+        )
+
+
 def _build_chat_query(
     *,
     content: str,
@@ -294,8 +326,15 @@ async def run_ask_kasten_once(
 
     with operation_context(client_action_id):
         async with _ASK_KASTEN_SEMAPHORE:
-            # Pricing gate first — fail-fast on 402 before any orchestrator
-            # work (matches chat_routes ordering).
+            # Functional-gates pre-check (user-locked 2026-05-23): single
+            # quick RPC that records the rag_question consumption
+            # explicitly. Idempotent on action_id with the subsequent
+            # require_entitlement call (no double-charge).
+            await _functional_gate_rag_question_quota(
+                effective_user_id, client_action_id
+            )
+            # Pricing gate (canonical 402 enforcement point) — fail-fast
+            # before any orchestrator work. Matches chat_routes ordering.
             await _require_entitlement(user, action_id=client_action_id)
 
             runtime = _get_runtime(str(effective_user_id))
@@ -355,6 +394,12 @@ async def stream_ask_kasten(
 
     with operation_context(client_action_id):
         async with _ASK_KASTEN_SEMAPHORE:
+            # Functional-gates pre-check (user-locked 2026-05-23): mirrors
+            # the non-stream entrypoint so both ask_kasten paths invoke
+            # the gate identically. Idempotent on action_id.
+            await _functional_gate_rag_question_quota(
+                effective_user_id, client_action_id
+            )
             await _require_entitlement(user, action_id=client_action_id)
 
             runtime = _get_runtime(str(effective_user_id))
