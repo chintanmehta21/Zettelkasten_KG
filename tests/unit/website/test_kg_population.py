@@ -141,8 +141,11 @@ class FakeClient:
             raise RuntimeError("injected failure")
 
         if q._schema == "pipelines" and q._table == "pipeline_runs":
-            if q._op == "select":  # has_succeeded_run
-                return _Resp([{"id": "run-x"}] if self._succeeded_run else [])
+            if q._op == "select":  # has_succeeded_run (LD-8 shape: status+metrics)
+                return _Resp(
+                    [{"id": "run-x", "status": "succeeded", "metrics": {"edges": 1}}]
+                    if self._succeeded_run else []
+                )
             if q._op == "insert":  # start_run
                 return _Resp([{"id": "11111111-1111-1111-1111-111111111111"}])
             if q._op == "update":  # finish_run
@@ -199,6 +202,14 @@ def _patch_embeddings(monkeypatch):
     monkeypatch.setattr(
         "website.features.kg_features.embeddings.generate_embedding",
         lambda *_a, **_k: [0.1] * 768,
+    )
+    # LD-8: kg_population now uses the typed entrypoint.
+    from website.features.kg_features.embeddings import EmbeddingResult
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding_typed",
+        lambda *_a, **_k: EmbeddingResult(
+            ok=True, vectors=[[0.1] * 768], reason=None, retryable=False
+        ),
     )
 
 

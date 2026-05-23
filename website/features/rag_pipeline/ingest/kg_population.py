@@ -36,7 +36,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 logger = logging.getLogger("website.features.rag_pipeline.ingest.kg_population")
@@ -794,7 +794,8 @@ async def populate_kg_for_zettel(
         PipelinesRepository,
     )
     from website.features.kg_features.embeddings import (
-        generate_embedding,
+        EmbeddingFailureReason,
+        generate_embedding_typed,
     )
     from website.features.kg_features.pseudo_tags import derive_pseudo_tags
 
@@ -838,7 +839,19 @@ async def populate_kg_for_zettel(
 
         created_at_iso = datetime.now(timezone.utc).isoformat()
         embed_input = f"{title}\n\n{summary}".strip()[:2000]
-        node_embedding = await asyncio.to_thread(generate_embedding, embed_input)
+        # LD-8: typed embedding so the kg-populate state machine can pick the
+        # right pipeline_runs terminal state (retryable rate-limit vs terminal
+        # empty-input). Empty embedding does NOT abort — node upsert + mention
+        # writes still happen so the structural signal lands even when cosine
+        # is unavailable. Retry classification is recorded on the run row.
+        embed_result = await asyncio.to_thread(
+            generate_embedding_typed, embed_input
+        )
+        node_embedding = embed_result.vectors[0] if embed_result.ok else []
+        if not embed_result.ok:
+            metrics["embedding_failure_reason"] = (
+                embed_result.reason.value if embed_result.reason else "unknown"
+            )
 
         # ---- 3. Upsert this zettel's kg node --------------------------
         node_id = await asyncio.to_thread(
@@ -876,11 +889,30 @@ async def populate_kg_for_zettel(
                 "kg-populate no embedding; node upserted, no edges zettel=%s",
                 canonical_zettel_id,
             )
+            # LD-8: classify the no-embedding outcome by upstream reason.
+            #   EMPTY_INPUT → succeeded_empty (clean run, no candidates).
+            #     The summary was empty/whitespace; replaying won't help.
+            #     24h retry window matches the "user might edit the zettel" path.
+            #   RATE_LIMIT / NETWORK / RPC_ERROR → failed_retryable (1h backoff;
+            #     quota likely recovers within the hour).
+            #   EMPTY_VECTOR → failed_retryable (provider returned [] — treat
+            #     as transient).
+            now_utc = datetime.now(timezone.utc)
+            if embed_result.reason == EmbeddingFailureReason.EMPTY_INPUT:
+                state = "succeeded_empty"
+                retry_after = now_utc + timedelta(hours=24)
+                error_msg = None
+            else:
+                state = "failed_retryable"
+                retry_after = now_utc + timedelta(hours=1)
+                error_msg = metrics.get("embedding_failure_reason") or "no_embedding"
             await asyncio.to_thread(
-                pipelines.finish_run,
+                pipelines.finish_run_with_state,
                 run_id=run_id,
-                status="succeeded",
+                state=state,
                 metrics=metrics,
+                error=error_msg,
+                retry_eligible_after=retry_after,
             )
             return metrics
 
@@ -905,12 +937,27 @@ async def populate_kg_for_zettel(
             evidence_canonical_zettel_id=canonical_zettel_id,
         )
 
-        await asyncio.to_thread(
-            pipelines.finish_run,
-            run_id=run_id,
-            status="succeeded",
-            metrics=metrics,
-        )
+        # LD-8: edges > 0 is a truly-terminal success; edges == 0 on a
+        # clean run is "succeeded_empty" — retryable after 24h so candidate
+        # availability can recover (newly-ingested neighbours, scorer-cache
+        # warmth, etc.). Both are valid terminal states, but only `succeeded`
+        # blocks future retries in `has_succeeded_run`.
+        edge_count = int(metrics.get("edges", 0) or 0)
+        if edge_count > 0:
+            await asyncio.to_thread(
+                pipelines.finish_run_with_state,
+                run_id=run_id,
+                state="succeeded",
+                metrics=metrics,
+            )
+        else:
+            await asyncio.to_thread(
+                pipelines.finish_run_with_state,
+                run_id=run_id,
+                state="succeeded_empty",
+                metrics=metrics,
+                retry_eligible_after=datetime.now(timezone.utc) + timedelta(hours=24),
+            )
         logger.info(
             "kg-populate done zettel=%s node=%s candidates=%d edges=%d",
             canonical_zettel_id,
@@ -924,13 +971,19 @@ async def populate_kg_for_zettel(
             "kg-populate failed zettel=%s: %s", canonical_zettel_id, exc
         )
         metrics["error"] = type(exc).__name__
+        # LD-8: most kg-populate exceptions are transient (rate limit, RPC,
+        # network), so default to failed_retryable with 1h backoff. The
+        # retry-sweep will replay these. Truly-permanent failures (corrupt
+        # input, schema violations) need explicit classification — out of
+        # scope for Phase 3; Phase 4 may add a typed exception hierarchy.
         try:
             await asyncio.to_thread(
-                pipelines.finish_run,
+                pipelines.finish_run_with_state,
                 run_id=run_id,
-                status="failed",
+                state="failed_retryable",
                 metrics=metrics,
                 error=str(exc),
+                retry_eligible_after=datetime.now(timezone.utc) + timedelta(hours=1),
             )
         except Exception as fin_exc:  # pragma: no cover - best effort
             logger.warning("kg-populate run finalize failed: %s", fin_exc)
