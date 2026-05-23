@@ -946,6 +946,8 @@
     border-radius: 1px;
 }
 
+/* Mirror of user_zettels — continuous teal rail + axis ticks. See
+   website/features/user_zettels/css/user_zettels.css for the full rationale. */
 .zettels-summary-h2 {
     position: relative;
     display: flex;
@@ -955,7 +957,7 @@
     font-weight: 700;
     color: var(--text-primary);
     margin: 0.9rem 0 0.45rem 0;
-    padding-left: 0.7rem;
+    padding: 0.06rem 0 0.06rem 0.85rem;
     letter-spacing: 0.005em;
     cursor: pointer;
     user-select: none;
@@ -966,12 +968,25 @@
     content: "";
     position: absolute;
     left: 0;
-    top: 0.3rem;
-    bottom: 0.3rem;
+    top: 0;
+    bottom: 0;
     width: 3px;
-    border-radius: 2px;
+    border-radius: 0;
     background: var(--accent, #14b8a6);
-    opacity: 0.85;
+    opacity: 0.95;
+}
+.zettels-summary-h2::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 9px;
+    height: 1px;
+    background: var(--accent, #14b8a6);
+    opacity: 0.5;
+}
+.zettels-summary-h2:first-of-type::after {
+    display: none;
 }
 .zettels-summary-h2:first-child {
     margin-top: 0.25rem;
@@ -979,7 +994,7 @@
 .zettels-summary-h2:focus-visible {
     outline: 2px solid var(--accent, #14b8a6);
     outline-offset: 2px;
-    border-radius: 3px;
+    border-radius: 0;
 }
 .zettels-summary-h2-chevron {
     display: inline-flex;
@@ -1005,40 +1020,41 @@
 .zettels-summary-h2:hover .zettels-summary-h2-chevron {
     color: var(--accent, #14b8a6);
 }
-.zettels-summary-h2[aria-expanded="false"] {
-    margin-top: 0.55rem;
-    margin-bottom: 0;
-    padding-top: 0.32rem;
-    padding-bottom: 0.42rem;
-    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05);
-    transition: margin 200ms ease, padding 200ms ease, box-shadow 200ms ease;
+.zettels-summary-h2[aria-expanded="true"] {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
 }
-.zettels-summary-h2[aria-expanded="false"]:first-child {
-    margin-top: 0.25rem;
+.zettels-summary-h2[aria-expanded="true"]::before {
+    width: 4px;
+    opacity: 1;
+}
+.zettels-summary-h2[aria-expanded="false"] {
+    margin: 0;
+    padding-top: 0.42rem;
+    padding-bottom: 0.42rem;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.04) 0%,
+        rgba(255, 255, 255, 0.018) 40%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    border-radius: 0;
+    font-size: 0.96rem;
+    transition: margin 200ms ease, padding 200ms ease, background 200ms ease;
+}
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.5rem;
+}
+.zettels-summary-h2[aria-expanded="false"]:first-of-type {
+    margin-top: 0;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
-    top: 0;
-    bottom: 0;
-    border-radius: 0;
-    opacity: 0.7;
+    opacity: 0.55;
 }
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
-    opacity: 0.72;
+    opacity: 0.62;
     font-weight: 600;
-}
-.zettels-summary-h2[aria-expanded="false"] {
-    background: rgba(255, 255, 255, 0.025);
-    border-radius: 4px;
-}
-.zettels-summary-h2[aria-expanded="false"]::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 5px;
-    height: 1px;
-    background: var(--accent, #14b8a6);
-    opacity: 0.5;
+    letter-spacing: 0.015em;
 }
 
 .zettels-summary-panel {
