@@ -241,6 +241,101 @@
     toastTimer = window.setTimeout(() => toastEl.classList.add('hidden'), 2400);
   }
 
+  function formatJoinedDate(iso) {
+    if (!iso) return '—';
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return '—';
+    return new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function renderAccount(profile, session) {
+    const nameEl = $('account-name');
+    const emailEl = $('account-email');
+    const joinedEl = $('account-joined');
+    if (nameEl) nameEl.textContent = profile.name || profile.email || '—';
+    if (emailEl) emailEl.textContent = profile.email || '—';
+    const created = session && session.user ? session.user.created_at : null;
+    if (joinedEl) joinedEl.textContent = formatJoinedDate(created);
+  }
+
+  async function fetchJSON(url, token) {
+    try {
+      const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      if (!resp.ok) return null;
+      return await resp.json();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function renderStats(token) {
+    // Zettels — total + breakdown by source_type
+    fetchJSON('/api/zettels/list', token).then((data) => {
+      const rows = data && Array.isArray(data.zettels) ? data.zettels : [];
+      const totalEl = $('stat-zettels-total');
+      const breakdownEl = $('stat-zettels-breakdown');
+      if (totalEl) totalEl.textContent = String(rows.length);
+      if (!breakdownEl) return;
+      const bySource = {};
+      rows.forEach((z) => {
+        const s = (z.source_type || 'web').toLowerCase();
+        bySource[s] = (bySource[s] || 0) + 1;
+      });
+      breakdownEl.textContent = Object.entries(bySource)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([s, c]) => s + ' ' + c)
+        .join(' · ');
+    });
+
+    // Kastens — total + zettels assigned across them
+    fetchJSON('/api/rag/sandboxes', token).then((data) => {
+      const sandboxes = data && Array.isArray(data.sandboxes) ? data.sandboxes : [];
+      const totalEl = $('stat-kastens-total');
+      const subEl = $('stat-kastens-members');
+      if (totalEl) totalEl.textContent = String(sandboxes.length);
+      const members = sandboxes.reduce((acc, s) => acc + (s.member_count || 0), 0);
+      if (subEl) subEl.textContent = members + ' zettel' + (members === 1 ? '' : 's') + ' grouped';
+    });
+
+    // Knowledge graph — node + connection counts
+    fetchJSON('/api/graph', token).then((data) => {
+      const nodes = data && Array.isArray(data.nodes) ? data.nodes.length : 0;
+      const links = data && Array.isArray(data.links) ? data.links.length : 0;
+      const nodesEl = $('stat-kg-nodes');
+      const linksEl = $('stat-kg-links');
+      if (nodesEl) nodesEl.textContent = String(nodes);
+      if (linksEl) linksEl.textContent = links + ' connection' + (links === 1 ? '' : 's');
+    });
+
+    // Plan — tier from billing-profile; usage detail lives on /pricing
+    fetchJSON('/api/pricing/billing-profile', token).then((data) => {
+      const bp = (data && data.profile) || {};
+      const tier = bp.plan_name || bp.plan_id || 'Free';
+      const tierEl = $('stat-plan-tier');
+      const usageEl = $('stat-plan-usage');
+      if (tierEl) tierEl.textContent = tier;
+      if (usageEl) usageEl.textContent = 'Period limits & usage on /pricing';
+    });
+  }
+
+  function bindDangerZone() {
+    const signOutBtn = $('profile-sign-out');
+    if (signOutBtn && !signOutBtn.dataset.zkBound) {
+      signOutBtn.dataset.zkBound = '1';
+      signOutBtn.addEventListener('click', async () => {
+        signOutBtn.disabled = true;
+        try {
+          if (_client) await _client.auth.signOut();
+        } catch (err) {
+          console.error('[user_profile] signOut failed:', err);
+        } finally {
+          window.location.href = '/';
+        }
+      });
+    }
+  }
+
   function formatRemovedAgo(iso) {
     if (!iso) return '';
     const t = Date.parse(iso);
@@ -322,6 +417,10 @@
     const idMatch = profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
     if (idMatch) _currentAvatarId = parseInt(idMatch[1], 10);
     renderAvatarGrid();
+
+    renderAccount(profile, sessionResult.data.session);
+    renderStats(_token);
+    bindDangerZone();
 
     await loadTrash();
   }
