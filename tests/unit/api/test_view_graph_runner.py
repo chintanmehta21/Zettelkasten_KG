@@ -121,7 +121,7 @@ async def test_kasten_view_requires_kasten_id(_stub_routes_helpers):
 
 
 @pytest.mark.asyncio
-async def test_anonymous_default_serves_global_file_store(_stub_routes_helpers):
+async def test_anonymous_default_serves_global_file_store(_stub_routes_helpers, _passthrough_cache):
     """No user + no view → file-store global (NEVER Zoro per D1)."""
     file_store = {"nodes": [{"id": "global-1"}], "links": [], "total_nodes": 1}
     with patch(
@@ -134,7 +134,7 @@ async def test_anonymous_default_serves_global_file_store(_stub_routes_helpers):
 
 
 @pytest.mark.asyncio
-async def test_explicit_global_view_serves_file_store(_stub_routes_helpers):
+async def test_explicit_global_view_serves_file_store(_stub_routes_helpers, _passthrough_cache):
     """Authenticated user with view='global' STILL gets file-store (not their own)."""
     file_store = {"nodes": [], "links": [], "total_nodes": 0}
     with patch(
