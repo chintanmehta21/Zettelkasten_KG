@@ -513,262 +513,418 @@
     {
       "source": "yt-attention",
       "target": "gh-transformers",
-      "relation": "transformers"
+      "relation": "transformers",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-attention",
       "target": "yt-gpt4",
-      "relation": "deep-learning"
+      "relation": "deep-learning",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-attention",
       "target": "ss-the-batch",
-      "relation": "machine-learning"
+      "relation": "machine-learning",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-second-brain",
       "target": "yt-zettelkasten",
-      "relation": "pkm"
+      "relation": "pkm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-second-brain",
       "target": "rd-obsidian-workflow",
-      "relation": "obsidian"
+      "relation": "obsidian",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-second-brain",
       "target": "gh-obsidian",
-      "relation": "obsidian"
+      "relation": "obsidian",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-second-brain",
       "target": "md-knowledge-graphs",
-      "relation": "pkm"
+      "relation": "pkm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-fastapi",
       "target": "gh-fastapi",
-      "relation": "fastapi"
+      "relation": "fastapi",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-fastapi",
       "target": "rd-async-python",
-      "relation": "async"
+      "relation": "async",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-fastapi",
       "target": "md-clean-arch",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-fastapi",
       "target": "ss-bytebytego",
-      "relation": "web-framework"
+      "relation": "web-framework",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-zettelkasten",
       "target": "rd-obsidian-workflow",
-      "relation": "zettelkasten"
+      "relation": "zettelkasten",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-zettelkasten",
       "target": "gh-obsidian",
-      "relation": "note-taking"
+      "relation": "note-taking",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-zettelkasten",
       "target": "md-knowledge-graphs",
-      "relation": "knowledge-graph"
+      "relation": "knowledge-graph",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-gpt4",
       "target": "gh-transformers",
-      "relation": "transformers"
+      "relation": "transformers",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-gpt4",
       "target": "ss-ai-snake-oil",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-gpt4",
       "target": "rd-rag-vs-ft",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "yt-gpt4",
       "target": "md-prompt-eng",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-async-python",
       "target": "gh-fastapi",
-      "relation": "async"
+      "relation": "async",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-async-python",
       "target": "md-clean-arch",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-obsidian-workflow",
       "target": "gh-obsidian",
-      "relation": "obsidian"
+      "relation": "obsidian",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-obsidian-workflow",
       "target": "md-knowledge-graphs",
-      "relation": "pkm"
+      "relation": "pkm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-rag-vs-ft",
       "target": "gh-langchain",
-      "relation": "rag"
+      "relation": "rag",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-rag-vs-ft",
       "target": "md-vector-db",
-      "relation": "rag"
+      "relation": "rag",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-rag-vs-ft",
       "target": "ss-ai-snake-oil",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-rag-vs-ft",
       "target": "md-prompt-eng",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-docker-compose",
       "target": "md-local-first",
-      "relation": "self-hosting"
+      "relation": "self-hosting",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-docker-compose",
       "target": "ss-pragmatic-engineer",
-      "relation": "engineering"
+      "relation": "engineering",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "rd-rust-replacing-cpp",
       "target": "gh-vscode",
-      "relation": "programming"
+      "relation": "programming",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-langchain",
       "target": "md-vector-db",
-      "relation": "rag"
+      "relation": "rag",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-langchain",
       "target": "md-prompt-eng",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-langchain",
       "target": "ss-ai-snake-oil",
-      "relation": "ai"
+      "relation": "ai",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-langchain",
       "target": "gh-transformers",
-      "relation": "ai"
+      "relation": "ai",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-obsidian",
       "target": "md-knowledge-graphs",
-      "relation": "knowledge-graph"
+      "relation": "knowledge-graph",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-fastapi",
       "target": "md-clean-arch",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-fastapi",
       "target": "ss-bytebytego",
-      "relation": "api-design"
+      "relation": "api-design",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "gh-vscode",
       "target": "gh-transformers",
-      "relation": "dev-tools"
+      "relation": "dev-tools",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-pragmatic-engineer",
       "target": "ss-bytebytego",
-      "relation": "system-design"
+      "relation": "system-design",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-pragmatic-engineer",
       "target": "md-local-first",
-      "relation": "architecture"
+      "relation": "architecture",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-ai-snake-oil",
       "target": "md-prompt-eng",
-      "relation": "llm"
+      "relation": "llm",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-ai-snake-oil",
       "target": "ss-the-batch",
-      "relation": "ai"
+      "relation": "ai",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-lenny",
       "target": "ss-pragmatic-engineer",
-      "relation": "engineering"
+      "relation": "engineering",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-the-batch",
       "target": "gh-transformers",
-      "relation": "machine-learning"
+      "relation": "machine-learning",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "ss-the-batch",
       "target": "md-prompt-eng",
-      "relation": "ai"
+      "relation": "ai",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "md-clean-arch",
       "target": "ss-pragmatic-engineer",
-      "relation": "architecture"
+      "relation": "architecture",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "md-vector-db",
       "target": "gh-transformers",
-      "relation": "embeddings"
+      "relation": "embeddings",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "yt-fastapi",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "rd-async-python",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "gh-langchain",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "gh-fastapi",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "gh-transformers",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     },
     {
       "source": "web-python-3-12-release-over",
       "target": "md-clean-arch",
-      "relation": "python"
+      "relation": "python",
+      "connection_strength": 1.0,
+      "tier": "strong",
+      "relation_source": "tag_coincidence"
     }
   ],
   "meta": {
