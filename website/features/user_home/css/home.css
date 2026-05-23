@@ -1055,6 +1055,7 @@
     opacity: 1;
 }
 .zettels-summary-h2[aria-expanded="false"] {
+    margin: 0;
     padding-top: 0.35rem;
     padding-bottom: 0.35rem;
     background: linear-gradient(
@@ -1065,6 +1066,9 @@
     );
     border-radius: 4px;
     font-size: 0.96rem;
+}
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.55rem;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
     width: 4px;
