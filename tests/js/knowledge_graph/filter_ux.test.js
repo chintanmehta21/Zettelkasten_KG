@@ -87,9 +87,9 @@ describe('KG filter UX — static source rules', () => {
   it('app.js wires nested submenu open/close + Clear Filters reset', () => {
     expect(APP_SRC).toMatch(/function openFilterSubmenu/);
     expect(APP_SRC).toMatch(/function closeFilterSubmenus/);
-    // Clear resets sources/tags AND restores Strong-only default strength.
+    // Clear resets sources/tags AND restores LD-1 weak default strength.
     expect(APP_SRC).toMatch(/kg-filter-clear/);
-    expect(APP_SRC).toMatch(/activeBucket\s*=\s*'strong'/);
+    expect(APP_SRC).toMatch(/activeBucket\s*=\s*'weak'/);
     expect(APP_SRC).toMatch(/minStrength\s*=\s*DEFAULT_MIN_STRENGTH/);
   });
 

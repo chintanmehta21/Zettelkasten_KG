@@ -1290,19 +1290,18 @@ function getCommunityHue(communityId) {
   if (filterClearBtn) {
     filterClearBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Reset Source (all on), Tags + Kastens (none), and the
-      // connection-strength control back to its Strong-only default.
+      // F10: reset Source (all on), Tags + Kastens (none), and slider to
+      // LD-1 weak default (0.30). One fetch + one apply, not two.
       activeSources = new Set([...knownSources]);
       activeTags.clear();
       if (typeof activeKastens !== 'undefined' && activeKastens) activeKastens.clear();
-      activeBucket = 'strong';
+      activeBucket = bucketForStrength(DEFAULT_MIN_STRENGTH) || 'weak';
       minStrength = DEFAULT_MIN_STRENGTH;
       renderSourceSection();
       renderTagsSection();
       renderKastensSection();
       _syncStrengthUI();
-      _onStrengthChange({ snapBucket: false });
-      applyFilters();
+      loadGraphData();
     });
   }
 
@@ -1718,9 +1717,14 @@ function getCommunityHue(communityId) {
       activeSources = new Set([...knownSources]);
       activeKastens.clear();
       activeTags.clear();
+      // F10: Reset MUST include the strength slider, otherwise users land in
+      // the same empty state they reset away from.
+      minStrength = DEFAULT_MIN_STRENGTH;  // LD-1: 0.30
+      activeBucket = bucketForStrength(DEFAULT_MIN_STRENGTH) || 'weak';
+      _syncStrengthUI();
       renderSourceSection();
       renderTagsSection();
-      renderKastensSection(); // safe — defined in Task 7.2; defaults to empty if not yet loaded
+      renderKastensSection();
       applyFilters();
     });
   }
