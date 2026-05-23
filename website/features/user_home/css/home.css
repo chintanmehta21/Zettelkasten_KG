@@ -37,56 +37,11 @@
 
 /* ── Avatar Button ──────────────────────────────────────────────── */
 
-.home-avatar-wrap {
-    position: relative;
-}
-
-.home-avatar-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    background: var(--bg-tertiary);
-    cursor: pointer;
-    padding: 0;
-    overflow: hidden;
-    transition: border-color var(--transition), box-shadow var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.home-avatar-btn:hover {
-    border-color: var(--accent-muted);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.home-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-}
-
-.home-avatar-img.hidden {
-    display: none;
-}
-
-.home-avatar-fallback {
-    display: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent);
-    text-transform: uppercase;
-}
-
-.home-avatar-fallback.visible {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
+/* Avatar styles (.home-avatar-wrap / .home-avatar-btn / .home-avatar-img /
+   .home-avatar-fallback) are owned by website/features/header/css/header.css.
+   The earlier duplicates here conflicted with the shared rules (fallback
+   defaulted to display:none + .visible, while header.css uses display:flex
+   + .loaded/.hidden), which left the home-page avatar permanently blank. */
 
 /* ── Avatar Dropdown Menu ─────────────────────────────────────────
    Styling lives in shared header.css — single source of truth so
