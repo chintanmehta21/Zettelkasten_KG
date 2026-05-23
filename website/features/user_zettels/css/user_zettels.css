@@ -1242,10 +1242,20 @@ body {
 }
 
 /* H1 — primary section ("Chapter walkthrough", "Overview", "Closing remarks").
-   Set apart with a short teal accent bar on the left, slightly larger size,
-   and generous top margin so the eye locks onto it as a first-level anchor.
-   Now collapsible: a chevron button appears next to the heading; clicking
-   the heading toggles the expanded/collapsed state of the following content. */
+   Collapsible: a chevron next to the heading toggles the panel below.
+
+   Visual contract:
+   - Teal rail (::before) hugs the left edge of every h2, top: 0 → bottom: 0,
+     no border-radius — so consecutive collapsed sections form ONE continuous
+     vertical line broken only at the OPEN section.
+   - Subtle 9px×1px tick (::after) sits at the top of every h2 like a bar-
+     graph axis notch, marking each section boundary. The first h2's tick is
+     hidden so the rail starts cleanly.
+   - Open: rail brighter (opacity 1, 4px wide), label full weight/size, no
+     background, breathing room above/below.
+   - Collapsed: rail dimmer (opacity 0.55, 3px), label dim + tighter, faint
+     gradient background fading away from the rail. Margin between adjacent
+     collapsed sections is 0 so the rails physically touch. */
 .zettels-summary-h2 {
     position: relative;
     display: flex;
@@ -1255,7 +1265,7 @@ body {
     font-weight: 700;
     color: var(--text-primary);
     margin: 0.9rem 0 0.45rem 0;
-    padding-left: 0.7rem;
+    padding: 0.06rem 0 0.06rem 0.85rem;
     letter-spacing: 0.005em;
     cursor: pointer;
     user-select: none;
@@ -1266,12 +1276,25 @@ body {
     content: "";
     position: absolute;
     left: 0;
-    top: 0.3rem;
-    bottom: 0.3rem;
+    top: 0;
+    bottom: 0;
     width: 3px;
-    border-radius: 2px;
+    border-radius: 0;
     background: var(--accent, #14b8a6);
-    opacity: 0.85;
+    opacity: 0.95;
+}
+.zettels-summary-h2::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 9px;
+    height: 1px;
+    background: var(--accent, #14b8a6);
+    opacity: 0.5;
+}
+.zettels-summary-h2:first-of-type::after {
+    display: none;
 }
 .zettels-summary-h2:first-child {
     margin-top: 0.25rem;
@@ -1279,7 +1302,7 @@ body {
 .zettels-summary-h2:focus-visible {
     outline: 2px solid var(--accent, #14b8a6);
     outline-offset: 2px;
-    border-radius: 3px;
+    border-radius: 0;
 }
 .zettels-summary-h2-chevron {
     display: inline-flex;
@@ -1305,46 +1328,46 @@ body {
 .zettels-summary-h2:hover .zettels-summary-h2-chevron {
     color: var(--accent, #14b8a6);
 }
-/* UI-7: when an H1 is collapsed, tighten its vertical rhythm and add a
-   subtle hairline shadow under the row so adjacent collapsed sections
-   don't float in dead space. Expanded h2s keep their generous margin. */
+/* Open: emphasize the rail and give the heading breathing room. */
+.zettels-summary-h2[aria-expanded="true"] {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}
+.zettels-summary-h2[aria-expanded="true"]::before {
+    width: 4px;
+    opacity: 1;
+}
+/* Collapsed: rails of adjacent sections must touch (margin: 0). Label dims
+   and shrinks slightly. Background fades horizontally from the rail. */
 .zettels-summary-h2[aria-expanded="false"] {
-    margin-top: 0.55rem;
-    margin-bottom: 0;
-    padding-top: 0.32rem;
+    margin: 0;
+    padding-top: 0.42rem;
     padding-bottom: 0.42rem;
-    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.05);
-    transition: margin 200ms ease, padding 200ms ease, box-shadow 200ms ease;
-}
-.zettels-summary-h2[aria-expanded="false"]:first-child {
-    margin-top: 0.25rem;
-}
-/* collapsed: teal bar spans the full header box so consecutive collapsed
-   bars visually connect into one continuous line */
-.zettels-summary-h2[aria-expanded="false"]::before {
-    top: 0;
-    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.04) 0%,
+        rgba(255, 255, 255, 0.018) 40%,
+        rgba(255, 255, 255, 0) 100%
+    );
     border-radius: 0;
-    opacity: 0.7;
+    font-size: 0.96rem;
+    transition: margin 200ms ease, padding 200ms ease, background 200ms ease;
+}
+/* First collapsed h2 immediately after an OPEN panel gets a small gap so it
+   doesn't crowd the bullets above. Collapsed-after-collapsed stays flush. */
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.5rem;
+}
+.zettels-summary-h2[aria-expanded="false"]:first-of-type {
+    margin-top: 0;
+}
+.zettels-summary-h2[aria-expanded="false"]::before {
+    opacity: 0.55;
 }
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
-    opacity: 0.72;
+    opacity: 0.62;
     font-weight: 600;
-}
-.zettels-summary-h2[aria-expanded="false"] {
-    background: rgba(255, 255, 255, 0.025);
-    border-radius: 4px;
-}
-/* subtle 5px×1px teal tick at each collapsed-header boundary */
-.zettels-summary-h2[aria-expanded="false"]::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 5px;
-    height: 1px;
-    background: var(--accent, #14b8a6);
-    opacity: 0.5;
+    letter-spacing: 0.015em;
 }
 
 /* Collapsible content panel that follows each H1. JS toggles
