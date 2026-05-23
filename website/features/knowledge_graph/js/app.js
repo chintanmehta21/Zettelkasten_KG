@@ -60,11 +60,13 @@ function bucketForStrength(s) {
 function cullLinksByStrength(links, threshold) {
   if (!Array.isArray(links)) return [];
   const t = Number(threshold) || 0;
+  if (t <= 0) return links.slice();
   return links.filter(function (l) {
-    // Missing connection_strength → coerce to 0. At threshold 0 all links
-    // pass through; any threshold > 0 culls links lacking a strength field.
+    // LD-2: null/undefined/absent connection_strength is "unscored, visible by
+    // default". Only numeric strengths below the threshold are culled.
     const raw = l && l.connection_strength;
-    const s = (raw === null || raw === undefined) ? 0 : Number(raw);
+    if (raw === null || raw === undefined) return true;
+    const s = Number(raw);
     if (!Number.isFinite(s)) return false;
     return s >= t;
   });
