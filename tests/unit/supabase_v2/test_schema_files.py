@@ -13,7 +13,10 @@ def _sql(name: str) -> str:
 
 
 def test_all_v2_schema_files_exist_in_apply_order() -> None:
-    names = [p.name for p in sorted(V2_DIR.glob("*.sql"))]
+    # Exclude .down.sql rollback files — they're paired with their up migration
+    # and never participate in the forward apply order. Convention adopted with
+    # Migration 69 (Phase 2 KG render+correctness overhaul, 2026-05-23).
+    names = [p.name for p in sorted(V2_DIR.glob("*.sql")) if not p.name.endswith(".down.sql")]
     assert names == [
         "00_extensions.sql",
         "01_core_schema.sql",
@@ -84,6 +87,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "66_workspace_zettels_partial_indexes.sql",
         "67_canonical_shred_grace_30d.sql",
         "68_hybrid_search_chunks_workspace.sql",
+        "69_workspace_zettels_canonical_index.sql",
     ]
 
 

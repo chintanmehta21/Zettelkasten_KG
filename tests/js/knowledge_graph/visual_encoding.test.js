@@ -169,10 +169,12 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(c.__a_medium).toBeGreaterThan(c.__a_weak);
   });
 
-  it('linkColor wires EDGE_TIER_COLOR by link.tier and drops the old blue', () => {
-    // The render callback must key off link.tier and the legacy blue
-    // rgba(100, 130, 200, ...) literal must be gone from app.js.
-    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*link[^\]]*tier[^\]]*\]/);
+  it('linkColor wires EDGE_TIER_COLOR by tierForStrength (LD-5) and drops the old blue', () => {
+    // LD-5: backend no longer ships `tier`; frontend computes it from
+    // link.connection_strength via tierForStrength(). The legacy blue
+    // rgba(100, 130, 200, ...) literal must still be gone from app.js.
+    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*tier\s*\]/);
+    expect(APP_SRC).toMatch(/tierForStrength\s*\(\s*link[^)]*connection_strength/);
     expect(APP_SRC).not.toMatch(/rgba\(\s*100\s*,\s*130\s*,\s*200/);
     expect(APP_SRC).not.toMatch(/rgba\(\s*160\s*,\s*180\s*,\s*240/);
     // Width/opacity helpers untouched: still wired to the named helpers.
@@ -213,8 +215,8 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(APP_SRC).toMatch(/strong:\s*'rgba\(212, 160, 36, 0\.85\)'/);
     expect(APP_SRC).toMatch(/medium:\s*'rgba\(196, 150, 60, 0\.45\)'/);
     expect(APP_SRC).toMatch(/weak:\s*'rgba\(176, 142, 84, 0\.18\)'/);
-    // linkColor still keys off EDGE_TIER_COLOR by tier (amber edges intact).
-    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*link[^\]]*tier[^\]]*\]/);
+    // linkColor still keys off EDGE_TIER_COLOR (LD-5: tier computed by tierForStrength).
+    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*tier\s*\]/);
   });
 
   it('community hue helper clamps within amber band', () => {

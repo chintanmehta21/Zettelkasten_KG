@@ -59,6 +59,17 @@ function bucketForStrength(s) {
   if (v >= STRENGTH_BUCKETS.medium.min) return 'medium';
   return 'weak';
 }
+function tierForStrength(s) {
+  // LD-5: tier is computed client-side from connection_strength. Backend no
+  // longer ships `tier` on the wire — keeps per-workspace cross-scope
+  // consistency (B2 fix) and removes a stale-on-rescore field. Boundaries
+  // match D-KG-4 buckets so a tier and its visual band always agree.
+  const v = Number(s);
+  if (!Number.isFinite(v)) return 'weak';
+  if (v >= 0.7) return 'strong';
+  if (v >= 0.5) return 'medium';
+  return 'weak';
+}
 function cullLinksByStrength(links, threshold) {
   if (!Array.isArray(links)) return [];
   const t = Number(threshold) || 0;
@@ -808,7 +819,9 @@ function getCommunityHue(communityId) {
           // in COLORS{}); fall back to the brightest amber edge tone.
           return COLORS[src.group] || EDGE_TIER_COLOR.strong;
         }
-        return EDGE_TIER_COLOR[link && link.tier] || EDGE_TIER_COLOR.weak;
+        // LD-5: compute tier from connection_strength (backend no longer ships `tier`).
+        const tier = tierForStrength(link && link.connection_strength);
+        return EDGE_TIER_COLOR[tier] || EDGE_TIER_COLOR.weak;
       })
       .linkWidth(link => {
         const src = typeof link.source === 'object' ? link.source : null;
