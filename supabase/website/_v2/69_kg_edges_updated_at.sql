@@ -1,8 +1,9 @@
--- Migration 68 (Phase 2 / B7-b): kg_edges.updated_at column + trigger.
+-- Migration 69 (Phase 2 / B7-b): kg_edges.updated_at column + trigger.
 --
 -- (Plan-numbered "Migration 47" in 2026-05-23-kg-render-correctness-overhaul.md.
--- Renumbered at execution because slot 47 was already taken by
--- 47_migrate_17_to_repeatable.sql.)
+-- First renumbered to 68 because slot 47 was occupied; bumped again to 69
+-- after a parallel master commit (0eaf172d) landed
+-- 68_hybrid_search_chunks_workspace.sql. Design content unchanged.)
 --
 -- 2026-05-23 REWRITE (industry-standard pattern):
 -- Originally written as `ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now()`,
