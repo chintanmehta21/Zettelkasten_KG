@@ -88,7 +88,10 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "67_canonical_shred_grace_30d.sql",
         "68_hybrid_search_chunks_workspace.sql",
         "68_kg_edges_updated_at.sql",
-        "69_workspace_zettels_canonical_index.sql",
+        # NOTE: Migration 69 was REMOVED at execution time after research showed
+        # it was a duplicate of Migration 66's `uq_workspace_zettel_active`.
+        # The KG render+correctness overhaul plan's edge-driven assembler relies
+        # on the existing Mig-66 UNIQUE partial index. See PR #71 description.
         "70_pipeline_runs_state_machine.sql",
     ]
 
