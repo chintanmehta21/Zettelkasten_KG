@@ -921,6 +921,25 @@ body {
   gap: 8px;
   position: relative;
 }
+/* A2: analytics-degradation banner. Teal accent (not amber — amber is
+   reserved for graph chrome). Positioned below the header so it doesn't
+   collide with the view-toggle pills. */
+.kg-banner {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 184, 166, 0.85);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.kg-banner.hidden { display: none; }
+
 /* F1: slider visual cue while a fresh /api/graph fetch is in flight. */
 .kg-strength-slider-wrap.is-loading { opacity: 0.6; pointer-events: none; }
 .kg-strength-slider-wrap.is-loading::after {

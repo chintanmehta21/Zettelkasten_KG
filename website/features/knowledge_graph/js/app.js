@@ -611,6 +611,23 @@ function getCommunityHue(communityId) {
           return node;
         });
         nodeDegrees = computeDegrees(fullData);
+        // A2: surface analytics degradation as a teal banner.
+        try {
+          const banner = document.getElementById('kg-analytics-banner');
+          const louvainFallback = data && data.meta && data.meta.louvain_fallback;
+          const analyticsFailed = data && data.meta && data.meta.analytics_status === 'failed';
+          if (banner) {
+            if (analyticsFailed) {
+              banner.textContent = 'Community detection unavailable — coloring by source.';
+              banner.classList.remove('hidden');
+            } else if (louvainFallback) {
+              banner.textContent = 'Community detection degraded — using fallback hue.';
+              banner.classList.remove('hidden');
+            } else {
+              banner.classList.add('hidden');
+            }
+          }
+        } catch (_e) { /* non-fatal */ }
         _maxPagerank = Math.max(...(fullData.nodes || []).map(n => n.pagerank || 0), 0.001);
         // Seed source filter from union of known + observed groups.
         const observed = new Set((fullData.nodes || []).map(n => normalizeGroup(n.group)));

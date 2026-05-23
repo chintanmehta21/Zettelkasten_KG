@@ -178,12 +178,18 @@ def _enrich_graph_with_analytics(
             node["closeness"] = metrics.closeness.get(nid, 0)
             node["harmonic_centrality"] = metrics.harmonic.get(nid, 0)
 
+        # A2: detect Louvain fallback (analytics.py returns num_communities=0
+        # when community_multilevel raised). The frontend reads this flag to
+        # show a "Community detection degraded" banner.
+        node_count = len(graph_dict.get("nodes", []))
+        louvain_fallback = (metrics.num_communities <= 0 and node_count > 1)
         graph_dict["meta"] = {
             **graph_dict.get("meta", {}),
             "communities": metrics.num_communities,
             "components": metrics.num_components,
             "computed_at": metrics.computed_at,
             "analytics_status": "ok",
+            "louvain_fallback": louvain_fallback,
             "graph_hash": graph_hash[:16] if graph_hash else "",
         }
     except Exception as exc:
