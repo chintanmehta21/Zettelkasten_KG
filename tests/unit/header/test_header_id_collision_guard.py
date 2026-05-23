@@ -36,7 +36,9 @@ DESKTOP_UA = (
 # whether the route injects the shared header or ships an inline copy.
 ALL_ROUTES = [
     "/", "/knowledge-graph", "/home", "/home/nexus",
-    "/home/zettels", "/home/kastens", "/home/rag", "/about", "/pricing",
+    "/home/zettels", "/home/kastens", "/home/rag",
+    "/profile",
+    "/about", "/pricing",
 ]
 
 # IDs declared in the shared header fragment. Any page that injects the
@@ -45,6 +47,7 @@ SHARED_HEADER_IDS = [
     "avatar-btn",
     "avatar-dropdown",
     "menu-signout",
+    "menu-profile",
     "avatar-wrap",
     "avatar-img",
     "avatar-fallback",
