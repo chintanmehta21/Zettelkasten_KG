@@ -586,6 +586,9 @@ function getCommunityHue(communityId) {
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
+        // F1: clear the slider's is-loading state as soon as the server response lands.
+        const sliderWrap = document.querySelector('.kg-strength-slider-wrap');
+        if (sliderWrap) sliderWrap.classList.remove('is-loading');
         fullData = data;
         fullData.nodes = (fullData.nodes || []).map(node => {
           node.group = normalizeGroup(node.group);
@@ -630,6 +633,9 @@ function getCommunityHue(communityId) {
         } catch (e) { /* non-fatal */ }
       })
       .catch(err => {
+        // F1: clear is-loading on error too, so the slider doesn't stay greyed out.
+        const sliderWrap = document.querySelector('.kg-strength-slider-wrap');
+        if (sliderWrap) sliderWrap.classList.remove('is-loading');
         console.error('Failed to load graph data:', err);
         hideOverlay('overlay-loading');
         showOverlay('overlay-error', 'Could not load graph data.');
@@ -1729,9 +1735,20 @@ function getCommunityHue(communityId) {
 
   function _onStrengthChange(opts) {
     opts = opts || {};
-    // Re-cull immediately for instant feedback.
-    if (graph) applyFilters();
-    // Refresh from server with new cache key (matches D-KG-6).
+    // F1 fix: do NOT call applyFilters() over stale fullData. Optimistically
+    // cull EXISTING graphData.links to give instant slider feedback without
+    // touching the node set (no layout jitter), then let loadGraphData()
+    // atomically swap fullData when the server response lands. The server
+    // response is the source of truth; the optimistic cull is a UX bridge.
+    if (graph && graphData && Array.isArray(graphData.links)) {
+      const survivingLinks = cullLinksByStrength(graphData.links, minStrength);
+      graphData = { nodes: graphData.nodes, links: survivingLinks };
+      graph.graphData(graphData);
+      updateStats();
+    }
+    // Visually mark the slider as "loading" so users know a fresh fetch is in flight.
+    const sliderWrap = document.querySelector('.kg-strength-slider-wrap');
+    if (sliderWrap) sliderWrap.classList.add('is-loading');
     loadGraphData();
     if (opts.snapBucket) activeBucket = bucketForStrength(minStrength) || activeBucket;
     _syncStrengthUI();
