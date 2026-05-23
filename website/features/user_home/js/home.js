@@ -1729,12 +1729,11 @@
       }
     });
 
-    // Profile menu item → open avatar picker
+    // Profile menu item → navigate to /profile (href takes over; close dropdown
+    // so the transition feels clean). Avatar picker has moved to /profile.
     if (menuProfile) {
-      menuProfile.addEventListener('click', function (e) {
-        e.preventDefault();
+      menuProfile.addEventListener('click', function () {
         avatarDropdown.classList.remove('open');
-        openAvatarPicker(token);
       });
     }
 
