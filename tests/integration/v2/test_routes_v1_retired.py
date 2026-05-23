@@ -65,12 +65,28 @@ def test_api_graph_no_v1_kgrepository_fallback():
 
 
 def test_api_graph_keeps_file_store_anonymous_path():
-    """File-store get_graph() is the canonical anonymous surface - it stays."""
-    src = _routes_source()
-    # The import line + at least one call site for the global/anonymous path.
-    assert "from website.core.graph_store import" in src
-    assert "get_graph()" in src, (
-        "Anonymous /api/graph callers must still serve file-store get_graph()"
+    """File-store get_graph() is the canonical anonymous surface - it stays.
+
+    new_apis_1a (locked 2026-05-23): the /api/graph route now delegates to
+    ``website.api.module_runners.view_graph.run_view_graph`` — the actual
+    ``get_graph()`` call moved into the runner (D6 + the view=global path).
+    Assertion follows the call site rather than the literal text in
+    ``routes.py``.
+    """
+    import inspect
+
+    from website.api.module_runners import view_graph as _view_graph_module
+
+    runner_src = inspect.getsource(_view_graph_module)
+    assert "from website.core.graph_store import" in runner_src
+    assert "get_graph()" in runner_src or "_get(" in runner_src, (
+        "Anonymous /api/graph callers must still serve file-store get_graph() "
+        "via the view_graph runner"
+    )
+    # And the /api/graph route must still call into the view_graph runner.
+    routes_src = _routes_source()
+    assert "run_view_graph" in routes_src, (
+        "/api/graph route must delegate to module_runners.view_graph.run_view_graph"
     )
 
 

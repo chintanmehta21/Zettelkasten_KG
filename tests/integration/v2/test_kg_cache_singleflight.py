@@ -30,10 +30,15 @@ from website.api.graph_cache import (
 @pytest.mark.parametrize(
     "value,expected",
     [
+        # new_apis_1a (locked 2026-05-23): bucket cutoffs aligned to the
+        # frontend palette — strong ≥ 0.7, medium ≥ 0.5, weak < 0.5.
+        # Replaces the legacy D-KG-3 cutoffs (0.7 / 0.4) so cache keys
+        # match what the UI renders.
         (None, "weak"),
         (0.0, "weak"),
-        (0.39, "weak"),
-        (0.4, "medium"),
+        (0.29, "weak"),
+        (0.49, "weak"),
+        (0.5, "medium"),
         (0.69, "medium"),
         (0.7, "strong"),
         (1.0, "strong"),
