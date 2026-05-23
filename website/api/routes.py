@@ -61,10 +61,14 @@ _TRIMMED_EDGE_FIELDS: frozenset[str] = frozenset({
 
 
 def _apply_min_strength_filter(payload: dict, min_strength: float | None) -> dict:
-    """Filter graph links by edge ``connection_strength`` (D-KG-1).
+    """Filter graph links by edge ``connection_strength`` (LD-2).
 
-    No-op when ``min_strength`` is None or 0.0 (return all edges). When set,
-    drops links whose connection_strength is missing OR below threshold.
+    LD-2: links whose ``connection_strength`` is ``None`` (legacy / unscored)
+    PASS the filter. The threshold ONLY culls links with a numeric strength
+    BELOW it. This is the NetworkX ``weight or 1.0`` convention — an unscored
+    edge is visible by default, not implicitly weak.
+
+    No-op when ``min_strength`` is None or 0.0 (return all edges).
     Pure: returns a new dict; does not mutate inputs.
     """
     if min_strength is None:
@@ -78,8 +82,8 @@ def _apply_min_strength_filter(payload: dict, min_strength: float | None) -> dic
     out = dict(payload)
     out["links"] = [
         link for link in payload.get("links", [])
-        if link.get("connection_strength") is not None
-        and float(link["connection_strength"]) >= threshold
+        if link.get("connection_strength") is None
+        or float(link["connection_strength"]) >= threshold
     ]
     return out
 
@@ -154,12 +158,13 @@ def _enrich_graph_with_analytics(
             except (TypeError, ValueError):
                 threshold = 0.0
             if threshold > 0.0:
+                # LD-2: null/missing strength PASSES (visible-by-default).
                 metrics_input = {
                     **graph_dict,
                     "links": [
                         link for link in graph_dict.get("links", [])
-                        if link.get("connection_strength") is not None
-                        and float(link["connection_strength"]) >= threshold
+                        if link.get("connection_strength") is None
+                        or float(link["connection_strength"]) >= threshold
                     ],
                 }
         kg_graph = KGGraph(**metrics_input)
