@@ -275,11 +275,14 @@ async def run_view_graph(
     if resolved_view == "kasten" and kasten_id is None:
         raise ValueError("view='kasten' requires a kasten_id")
 
-    # ── view='global' OR anonymous fall-through ─────────────────────────
-    # D1 verdict (web-research locked): anonymous reads are served the
-    # file-store graph; Zoro's personal v2 graph is NEVER served to
-    # anonymous viewers.
-    if resolved_view == "global" or (user is None and resolved_view != "kasten"):
+    # ── view='global' ──────────────────────────────────────────────────
+    # D1 verdict (web-research locked): the file-store graph is the
+    # canonical public surface. Zoro's personal v2 graph is NEVER served
+    # to anonymous viewers — and the strict ``view='my'`` semantics below
+    # mean that an unauthenticated caller explicitly asking for "my"
+    # graph gets an empty personal graph, NEVER the global file-store
+    # (which would silently broaden the view they asked for).
+    if resolved_view == "global":
         payload = routes_mod._enrich_graph_with_analytics(
             _file_store_graph(), min_strength=min_strength
         )
@@ -289,8 +292,11 @@ async def run_view_graph(
         payload["meta"]["source"] = "file-store"
         return payload
 
-    # Beyond this point we need a UUID-shaped user["sub"]; bail to empty
-    # personal graph if unauth (view='my' or 'kasten' without auth).
+    # Beyond this point we need an authenticated user. Anonymous +
+    # view='my' (or 'kasten') → explicit empty personal graph per the
+    # D1 verdict + new_apis1.md strict semantics. We deliberately do NOT
+    # fall through to the global file-store here: callers who asked for
+    # "my" must not silently receive a broader set than they requested.
     if user is None:
         return _empty_personal_graph(None)
 
