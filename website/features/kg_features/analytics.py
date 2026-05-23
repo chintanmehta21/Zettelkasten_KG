@@ -51,6 +51,13 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_HARMONIC_MAX_EDGES = 3_000
 
+# A3: hard-cap on the dense shortest_paths fallback path.
+# V > 1500 implies a V × V matrix of ~18 MB floats — risky transient
+# allocation on the 2 GB / 1 vCPU droplet under concurrent /api/graph load.
+# python-igraph builds with C cores expose ``harmonic_centrality`` directly,
+# so this cap only ever fires on builds that lack the native impl.
+_HARMONIC_FALLBACK_MAX_NODES = 1500
+
 
 # ── Data model ──────────────────────────────────────────────────────────────
 
@@ -231,6 +238,18 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         if hasattr(g, "harmonic_centrality"):
             hc = g.harmonic_centrality(mode="all", cutoff=3, normalized=True)
             return {nid: float(hc[i]) for i, nid in enumerate(node_ids)}
+        # A3: hard-cap the dense shortest_paths fallback.
+        # > 1500 nodes => ~18 MB transient V×V float matrix — risky on the
+        # 2 GB droplet under concurrent load. The native C core is the
+        # safe path; the fallback only runs on builds without it, and at
+        # graph scales where its quadratic memory cost is tolerable.
+        if g.vcount() > _HARMONIC_FALLBACK_MAX_NODES:
+            logger.warning(
+                "Harmonic fallback skipped: %d nodes > cap %d (would allocate dense V*V matrix)",
+                g.vcount(),
+                _HARMONIC_FALLBACK_MAX_NODES,
+            )
+            return {nid: 0.0 for nid in node_ids}
         # Fallback: sum(1/d for d in [1..3]) / (n-1) — matches cutoff=3.
         n = g.vcount()
         if n <= 1:
