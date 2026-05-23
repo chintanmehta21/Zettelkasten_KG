@@ -15,6 +15,8 @@ from website.api.routes import _v2_assemble_graph
 
 def _build_scope(ws_id: uuid.UUID, overlay_rows: list[dict]):
     content_repo = MagicMock()
+    # C4 inversion: assembler now calls list_workspace_zettels_by_canonical_ids.
+    content_repo.list_workspace_zettels_by_canonical_ids.return_value = overlay_rows
     content_repo.list_workspace_zettels.return_value = overlay_rows
     profile_id = uuid.uuid4()
     return content_repo, profile_id, [ws_id]

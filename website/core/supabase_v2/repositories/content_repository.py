@@ -256,6 +256,10 @@ class ContentRepository:
         user_tags, created_at) plus canonical fields (id, normalized_url, title,
         source_type, publication_date). Soft-deleted overlays
         (``deleted_at IS NOT NULL``) are filtered server-side.
+
+        B1-bonus: deterministic id tiebreaker so two zettels with the same
+        ``created_at`` (rare but possible in burst imports) come back in a
+        stable order across pages.
         """
         response = (
             self._client.schema("content")
@@ -272,10 +276,61 @@ class ContentRepository:
             .eq("workspace_id", str(workspace_id))
             .is_("deleted_at", "null")
             .order("created_at", desc=True)
+            .order("id", desc=True)
             .range(offset, offset + max(0, limit - 1))
             .execute()
         )
         return list(response.data or [])
+
+    def list_workspace_zettels_by_canonical_ids(
+        self,
+        workspace_id: UUID,
+        canonical_ids: list,
+        *,
+        batch_size: int = 500,
+    ) -> list[dict]:
+        """C4: batch-fetch overlay rows by canonical zettel id, batched.
+
+        Used by the edge-driven assembler in routes._v2_assemble_graph after the
+        edge set has been collected. Replaces the page-driven
+        `list_workspace_zettels(limit, offset)` approach which silently dropped
+        edges to zettels outside the first page.
+
+        Supports up to len(canonical_ids) overlay rows. Batched in chunks of
+        `batch_size` to keep each PostgREST request under the row-limit and to
+        cap per-request memory on the 2 GB / 1 vCPU droplet. Returns a flat list
+        of overlay rows with the canonical embed, identical shape to
+        `list_workspace_zettels`.
+
+        BOLA: SELECT is fenced to ``workspace_id``; canonical ids from another
+        tenant resolve to nothing.
+        """
+        if not canonical_ids:
+            return []
+        # Idempotent dedup; PostgREST IN-list semantics ignore duplicates anyway.
+        canonical_list = list(dict.fromkeys(str(c) for c in canonical_ids))
+        out: list[dict] = []
+        for i in range(0, len(canonical_list), batch_size):
+            batch = canonical_list[i : i + batch_size]
+            response = (
+                self._client.schema("content")
+                .table("workspace_zettels")
+                .select(
+                    "id,"
+                    "canonical_zettel_id,"
+                    "ai_summary,"
+                    "user_tags,"
+                    "created_at,"
+                    "canonical:canonical_zettels!inner("
+                    "id,normalized_url,title,source_type,publication_date)"
+                )
+                .eq("workspace_id", str(workspace_id))
+                .is_("deleted_at", "null")
+                .in_("canonical_zettel_id", batch)
+                .execute()
+            )
+            out.extend(response.data or [])
+        return out
 
     def soft_delete_workspace_zettel(
         self,

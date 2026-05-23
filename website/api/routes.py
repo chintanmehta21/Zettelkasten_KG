@@ -476,12 +476,24 @@ def _v2_assemble_graph(
     limit: int,
     offset: int,
 ) -> KGGraph | None:
-    """Assemble a v2 :class:`KGGraph` for the user across their workspaces.
+    """C4: edge-driven KG assembly across the caller's workspaces.
+
+    Order of operations (C4 inversion vs the legacy page-driven path):
+      1. Resolve scope (workspaces).
+      2. For each workspace, fetch ALL edges (deterministic ORDER BY from B1
+         fix). Collect endpoint kg_node_id set.
+      3. Resolve endpoint kg_node_ids → canonical_zettel_id sets via
+         chunk_node_mentions (primary) + metadata fallback (B8 fix).
+      4. Batch-fetch overlay rows by canonical id (C4 new repo method).
+      5. Build canonical_to_overlay from the actually-needed canonical set;
+         emit nodes + links from the resolved overlays.
+
+    LD-5: ``tier`` is NOT emitted on the wire; frontend computes it from
+    ``connection_strength`` via ``tierForStrength``.
 
     Returns ``None`` when the user lacks a v2 scope (not configured, non-UUID
     sub, or no workspace memberships). Soft-deleted overlays are filtered by
-    the repository. Edges are joined back through the workspace overlay rows
-    so the resulting source/target IDs match the node IDs we emit.
+    the repository.
     """
     scope = get_supabase_v2_scope_for_read(user_sub)
     if scope is None:
@@ -490,43 +502,13 @@ def _v2_assemble_graph(
     kg_repo = V2KGRepository()
 
     nodes: list[dict] = []
-    canonical_to_overlay: dict[str, str] = {}  # canonical_zettel_id -> frontend node id
-
-    for ws_id in workspace_ids:
-        rows = content_repo.list_workspace_zettels(ws_id, limit=limit, offset=offset)
-        for row in rows:
-            canonical = row.get("canonical") or {}
-            canonical_id = str(canonical.get("id") or row.get("canonical_zettel_id") or "")
-            if not canonical_id or canonical_id in canonical_to_overlay:
-                continue
-            source_type = str(canonical.get("source_type") or "web").lower()
-            prefix = _SOURCE_PREFIX.get(source_type, "web")
-            slug = re.sub(
-                r"[^a-z0-9]+", "-", str(canonical.get("title") or "").lower()
-            ).strip("-")[:24].rstrip("-") or "untitled"
-            node_id = f"{prefix}-{slug}-{canonical_id[:8]}"
-            canonical_to_overlay[canonical_id] = node_id
-
-            brief, _detailed = extract_summary_parts(row.get("ai_summary"), None)
-            pub_date = canonical.get("publication_date") or ""
-            nodes.append(
-                {
-                    "id": node_id,
-                    "name": str(canonical.get("title") or "Untitled"),
-                    "group": source_type,
-                    "summary": row.get("ai_summary") or "",
-                    "tags": list(row.get("user_tags") or []),
-                    "url": str(canonical.get("normalized_url") or ""),
-                    "date": str(pub_date),
-                    "node_date": str(pub_date),
-                }
-            )
-
     links: list[dict] = []
-    seen_links: set[tuple[str, str, str]] = set()  # (src, dst, relation)
+    canonical_to_overlay: dict[str, str] = {}
+    seen_links: set[tuple[str, str, str]] = set()
 
     for ws_id in workspace_ids:
-        edge_rows = kg_repo.list_workspace_edges(ws_id)
+        # 1. Fetch edges first (deterministic order; up to `limit` per ws).
+        edge_rows = kg_repo.list_workspace_edges(ws_id, limit=limit)
         if not edge_rows:
             continue
         # Phase B: resolve each edge's render strength (workspace_strength ->
@@ -535,13 +517,9 @@ def _v2_assemble_graph(
         # edges only. The classifier never sees another workspace's
         # strengths — BOLA isolation by construction (one ws per iteration).
         edge_strengths: dict[int, tuple[float, bool]] = {}
-        scored_strengths: list[float] = []
         for idx, edge in enumerate(edge_rows):
             strength, was_scored = _resolve_edge_strength(edge)
             edge_strengths[idx] = (strength, was_scored)
-            if was_scored:
-                scored_strengths.append(strength)
-        _classify_tier = _build_tier_classifier(scored_strengths)
         # Resolve the bigint kg_node ids on each edge endpoint to overlay
         # node ids via kg.chunk_node_mentions -> content.canonical_chunks ->
         # canonical_zettel_id. Without this join we'd emit self-loops
@@ -593,6 +571,48 @@ def _v2_assemble_graph(
                 )
                 node_to_canonical_meta = {}
 
+        # C4: Union of canonical ids referenced by ANY edge endpoint (either
+        # mention path or metadata fallback). Batch-fetch overlays by canonical
+        # id — replaces the page-driven first-N-zettels approach that silently
+        # dropped edges whose endpoint sat outside the first page.
+        needed_canonicals: set[str] = set()
+        for nid in sorted_endpoint_ids:
+            for z in node_to_zettels.get(nid, []):
+                needed_canonicals.add(str(z))
+            for z in node_to_canonical_meta.get(nid, []):
+                needed_canonicals.add(str(z))
+        overlay_rows = content_repo.list_workspace_zettels_by_canonical_ids(
+            ws_id, sorted(needed_canonicals)
+        )
+        for row in overlay_rows:
+            canonical = row.get("canonical") or {}
+            canonical_id = str(canonical.get("id") or row.get("canonical_zettel_id") or "")
+            if not canonical_id or canonical_id in canonical_to_overlay:
+                continue
+            source_type = str(canonical.get("source_type") or "web").lower()
+            prefix = _SOURCE_PREFIX.get(source_type, "web")
+            slug = re.sub(
+                r"[^a-z0-9]+", "-", str(canonical.get("title") or "").lower()
+            ).strip("-")[:24].rstrip("-") or "untitled"
+            # D4 fix: 16-hex canonical suffix for 64-bit collision space.
+            node_id = f"{prefix}-{slug}-{canonical_id[:16]}"
+            canonical_to_overlay[canonical_id] = node_id
+
+            brief, _detailed = extract_summary_parts(row.get("ai_summary"), None)
+            pub_date = canonical.get("publication_date") or ""
+            nodes.append(
+                {
+                    "id": node_id,
+                    "name": str(canonical.get("title") or "Untitled"),
+                    "group": source_type,
+                    "summary": row.get("ai_summary") or "",
+                    "tags": list(row.get("user_tags") or []),
+                    "url": str(canonical.get("normalized_url") or ""),
+                    "date": str(pub_date),
+                    "node_date": str(pub_date),
+                }
+            )
+
         def _resolve_overlay_ids(kg_node_id: int) -> list[str]:
             ids: list[str] = []
             for zettel_id in node_to_zettels.get(kg_node_id, ()):  # type: ignore[arg-type]
@@ -619,8 +639,10 @@ def _v2_assemble_graph(
                 dst_id = int(edge.get("dst_node_id"))
             except (TypeError, ValueError):
                 continue
-            strength, was_scored = edge_strengths[idx]
-            tier = _classify_tier(strength, was_scored)
+            strength, _was_scored = edge_strengths[idx]
+            # LD-5: tier is no longer emitted on the wire; frontend computes it
+            # from connection_strength. _classify_tier is retained for Phase 4
+            # cleanup which deletes the whole tier-classification path.
             src_overlays = _resolve_overlay_ids(src_id)
             dst_overlays = _resolve_overlay_ids(dst_id)
             if not src_overlays or not dst_overlays:
@@ -656,7 +678,6 @@ def _v2_assemble_graph(
                                 "link_type": "cooccurrence",
                                 "description": description,
                                 "connection_strength": strength,
-                                "tier": tier,
                             }
                         )
                         edges_demoted_to_comention += 1
@@ -674,7 +695,6 @@ def _v2_assemble_graph(
                             "link_type": "tag",
                             "description": description,
                             "connection_strength": strength,
-                            "tier": tier,
                         }
                     )
 
