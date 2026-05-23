@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260520a">
     <link rel="stylesheet" href="/header/css/header.css?v=20260418f">
-    <link rel="stylesheet" href="/home/css/home.css?v=20260522b">
+    <link rel="stylesheet" href="/home/css/home.css?v=20260523a">
     <link rel="stylesheet" href="/vendor/katex/katex.min.css?v=20260519c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -218,16 +218,23 @@
             </div>
         </div>
 
-        <!-- Summary Popup -->
-        <div class="home-summary-overlay" id="summary-overlay">
-            <div class="home-summary-backdrop" id="summary-backdrop"></div>
-            <div class="home-summary-popup" role="dialog" aria-modal="true" aria-labelledby="summary-title">
-                <button class="home-summary-close" id="summary-close" type="button" aria-label="Close summary">&times;</button>
-                <h2 class="home-summary-title" id="summary-title"></h2>
-                <div class="home-summary-meta" id="summary-meta"></div>
-                <div class="home-summary-text" id="summary-text"></div>
-                <div class="home-summary-tags" id="summary-tags"></div>
-            </div>
+        <!-- Summary Popup — mirror of user_zettels popup. Source of truth: website/features/user_zettels/index.html. -->
+        <div class="zettels-summary-overlay hidden" id="summary-overlay">
+            <div class="zettels-summary-backdrop" id="summary-backdrop"></div>
+            <section class="zettels-summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+                <button class="zettels-summary-close" id="summary-close" aria-label="Close summary">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                    </svg>
+                </button>
+                <div class="zettels-summary-meta-row">
+                    <span class="home-card-date" id="summary-date"></span>
+                    <span class="home-card-source" id="summary-source">Source</span>
+                </div>
+                <h2 class="zettels-summary-title" id="summary-title"></h2>
+                <div class="zettels-summary-text" id="summary-text"></div>
+                <div class="zettels-summary-tags" id="summary-tags"></div>
+            </section>
         </div>
 
         <!-- Avatar Picker Modal -->
@@ -346,7 +353,7 @@
     <script defer src="/vendor/katex/contrib/auto-render.min.js?v=20260519c"></script>
     <script src="/js/zk_skeleton_typewriter.js?v=20260521a"></script>
     <script src="/js/add_zettel_api.js?v=20260522a"></script>
-    <script src="/home/js/home.js?v=20260522b"></script>
+    <script src="/home/js/home.js?v=20260523a"></script>
 </body>
 </html>
 

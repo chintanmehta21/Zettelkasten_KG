@@ -527,38 +527,22 @@
     return div.innerHTML;
   }
 
-  function extractSummaryParts(rawSummary) {
-    var rawText = normalizeSummaryText(rawSummary || '');
-    var parsed = tryParseSummaryObject(rawText);
-
-    if (parsed) {
-      var briefFromParsed = normalizeSummaryText(
-        parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
-      );
-      var detailedFromParsed = normalizeSummaryText(
-        parsed.detailed_summary || parsed.detailedSummary || parsed.summary || ''
-      );
-
-      var resolvedBrief = briefFromParsed || detailedFromParsed;
-      var resolvedDetailed = detailedFromParsed || briefFromParsed;
-      if (resolvedBrief || resolvedDetailed) {
-        return {
-          brief: resolvedBrief || 'No summary available for this zettel.',
-          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.'
-        };
-      }
-    }
-
-    var fallback = rawText || 'No summary available for this zettel.';
-    return { brief: fallback, detailed: fallback };
-  }
+  // ── Summary popup rendering — mirror of user_zettels (source of truth).
+  // Keep this block verbatim with website/features/user_zettels/js/user_zettels.js
+  // so the popup is visually and behaviorally identical on both pages.
+  // ─────────────────────────────────────────────────────────────────
 
   function renderDualSummary(container, parts) {
     container.innerHTML = '';
     var brief = (parts && parts.brief) ? String(parts.brief).trim() : '';
     var detailed = (parts && parts.detailed) ? String(parts.detailed).trim() : '';
+    var structured = (parts && isStructuredDetailed(parts.detailedStructured))
+      ? parts.detailedStructured
+      : null;
     var hasBrief = brief && brief !== 'No summary available for this zettel.';
-    var hasDetailed = detailed && detailed !== brief && detailed !== 'No summary available for this zettel.';
+    var hasDetailed = structured
+      ? true
+      : (detailed && detailed !== brief && detailed !== 'No summary available for this zettel.');
 
     if (!hasBrief && !hasDetailed) {
       container.textContent = 'No summary available for this zettel.';
@@ -567,12 +551,12 @@
 
     if (hasBrief) {
       var briefWrap = document.createElement('div');
-      briefWrap.className = 'home-summary-section home-summary-brief';
+      briefWrap.className = 'zettels-summary-section zettels-summary-brief';
       var briefHeading = document.createElement('h3');
-      briefHeading.className = 'home-summary-section-heading';
+      briefHeading.className = 'zettels-summary-section-heading';
       briefHeading.textContent = 'Brief';
       var briefBody = document.createElement('p');
-      briefBody.className = 'home-summary-section-body';
+      briefBody.className = 'zettels-summary-section-body';
       briefBody.textContent = brief;
       briefWrap.appendChild(briefHeading);
       briefWrap.appendChild(briefBody);
@@ -582,59 +566,351 @@
     if (hasDetailed) {
       if (hasBrief) {
         var divider = document.createElement('hr');
-        divider.className = 'home-summary-divider';
+        divider.className = 'zettels-summary-divider';
         container.appendChild(divider);
       }
       var detailedWrap = document.createElement('div');
-      detailedWrap.className = 'home-summary-section home-summary-detailed';
+      detailedWrap.className = 'zettels-summary-section zettels-summary-detailed';
       var detailedHeading = document.createElement('h3');
-      detailedHeading.className = 'home-summary-section-heading';
+      detailedHeading.className = 'zettels-summary-section-heading';
       detailedHeading.textContent = 'Detailed';
       detailedWrap.appendChild(detailedHeading);
-      renderMarkdownLite(detailedWrap, detailed);
+      if (structured) {
+        renderStructuredDetailed(detailedWrap, structured);
+      } else {
+        renderMarkdownLite(detailedWrap, detailed);
+      }
       container.appendChild(detailedWrap);
     }
   }
 
-  function _hmChevron() {
-    var s = document.createElement('span');
-    s.className = 'home-summary-chevron';
-    s.setAttribute('aria-hidden', 'true');
-    s.textContent = '›'; // ›
-    return s;
+  function isStructuredDetailed(value) {
+    if (!Array.isArray(value) || value.length === 0) return false;
+    for (var i = 0; i < value.length; i++) {
+      var section = value[i];
+      if (!section || typeof section !== 'object' || Array.isArray(section)) return false;
+      if (!('heading' in section || 'bullets' in section || 'sub_sections' in section || 'subSections' in section)) {
+        return false;
+      }
+    }
+    return true;
   }
-  function _attachToggle(headingEl, panelEl) {
+
+  function coerceStructuredDetailed(value) {
+    if (value == null) return null;
+    if (isStructuredDetailed(value)) return value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      var wrapped = [value];
+      if (isStructuredDetailed(wrapped)) return wrapped;
+    }
+    if (typeof value !== 'string') return null;
+    var trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.charAt(0) === '[' || trimmed.charAt(0) === '{') {
+      var attempts = [trimmed];
+      if (trimmed.indexOf("'") !== -1) attempts.push(trimmed.replace(/'/g, '"'));
+      for (var i = 0; i < attempts.length; i++) {
+        try {
+          var parsed = JSON.parse(attempts[i]);
+          if (isStructuredDetailed(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            var wrappedParsed = [parsed];
+            if (isStructuredDetailed(wrappedParsed)) return wrappedParsed;
+          }
+        } catch (err) { void err; }
+      }
+    }
+    if (trimmed.indexOf('## ') !== -1 || trimmed.indexOf('### ') !== -1) {
+      var sections = parseMarkdownToSections(trimmed);
+      if (sections && sections.length) return sections;
+    }
+    return null;
+  }
+
+  function parseMarkdownToSections(markdown) {
+    var lines = String(markdown || '').split(/\r?\n/);
+    var sections = [];
+    var current = null;
+    var subHeading = null;
+    function ensureCurrent() {
+      if (!current) { current = { heading: 'Overview', bullets: [], sub_sections: {} }; sections.push(current); }
+      return current;
+    }
+    function pushBullet(text) {
+      var c = ensureCurrent();
+      if (subHeading) {
+        if (!c.sub_sections[subHeading]) c.sub_sections[subHeading] = [];
+        c.sub_sections[subHeading].push(text);
+      } else {
+        c.bullets.push(text);
+      }
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i];
+      var line = raw.replace(/\s+$/, '');
+      if (!line.trim()) continue;
+      var h2 = line.match(/^##\s+(.*)$/);
+      var h3 = line.match(/^###\s+(.*)$/);
+      var bullet = line.match(/^\s*[-*]\s+(.*)$/);
+      if (h2) {
+        current = { heading: h2[1].trim(), bullets: [], sub_sections: {} };
+        sections.push(current);
+        subHeading = null;
+        continue;
+      }
+      if (h3) {
+        subHeading = h3[1].trim();
+        ensureCurrent();
+        continue;
+      }
+      if (bullet) {
+        pushBullet(bullet[1].trim());
+        continue;
+      }
+      pushBullet(line.trim());
+    }
+    return sections.length ? sections : null;
+  }
+
+  var RAW_HEADING_MAP = {
+    'thesis': 'Core argument',
+    'core_argument': 'Core argument',
+    'issue_thesis': 'Core argument',
+    'chapters_or_segments': 'Chapter walkthrough',
+    'chapter_walkthrough': 'Chapter walkthrough',
+    'demonstrations': 'Demonstrations',
+    'closing_takeaway': 'Closing remarks',
+    'closing_remarks': 'Closing remarks',
+    'publication_identity': 'Publication identity',
+    'sections': 'Sections',
+    'conclusions_or_recommendations': 'Conclusions & recommendations',
+    'cta': 'Call to action',
+    'stance': 'Stance',
+    'overview': 'Overview',
+    'format': 'Format',
+    'format_and_speakers': 'Format and speakers'
+  };
+
+  function prettyHeading(raw) {
+    if (!raw) return raw;
+    var key = String(raw).trim().toLowerCase();
+    if (RAW_HEADING_MAP.hasOwnProperty(key)) return RAW_HEADING_MAP[key];
+    return String(raw)
+      .replace(/_+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^\w/, function (c) { return c.toUpperCase(); });
+  }
+
+  function stripTimestampPrefix(label) {
+    if (!label) return label;
+    return String(label)
+      .replace(/^\s*\[?\d{1,2}(?::\d{2}){1,2}\]?\s*[—\-:]\s*/, '')
+      .replace(/^\s*\[?\d{1,2}(?::\d{2}){1,2}\]?\s+/, '')
+      .replace(/^\s*\d{4}\s*[—\-]\s*/, '')
+      .trim();
+  }
+
+  function expandChapterJsonBullets(section) {
+    var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+    if (!bullets.length) return section;
+    var subs = {};
+    var leftover = [];
+    bullets.forEach(function (b) {
+      if (typeof b !== 'string') { leftover.push(b); return; }
+      var t = b.trim();
+      if (t.charAt(0) !== '{') { leftover.push(b); return; }
+      try {
+        var parsed = JSON.parse(t);
+        if (parsed && typeof parsed === 'object') {
+          var title = stripTimestampPrefix(String(parsed.title || '').trim());
+          if (!title) { leftover.push(b); return; }
+          var sub = Array.isArray(parsed.bullets) ? parsed.bullets.filter(Boolean).map(String) : [];
+          if (!sub.length && parsed.summary) sub = [String(parsed.summary)];
+          var key = title;
+          var idx = 2;
+          while (Object.prototype.hasOwnProperty.call(subs, key)) { key = title + ' (' + idx + ')'; idx += 1; }
+          subs[key] = sub;
+          return;
+        }
+      } catch (e) { void e; }
+      leftover.push(b);
+    });
+    if (!Object.keys(subs).length) return section;
+    var merged = {};
+    if (section.sub_sections && typeof section.sub_sections === 'object') {
+      Object.keys(section.sub_sections).forEach(function (k) { merged[k] = section.sub_sections[k]; });
+    }
+    Object.keys(subs).forEach(function (k) { merged[k] = subs[k]; });
+    return {
+      heading: section.heading,
+      bullets: leftover,
+      sub_sections: merged
+    };
+  }
+
+  function normalizeRawSchemaSections(sections) {
+    if (!Array.isArray(sections)) return sections;
+    var out = [];
+    sections.forEach(function (section) {
+      if (!section || typeof section !== 'object') return;
+      var rawKey = String(section.heading || '').trim().toLowerCase();
+      if (rawKey === 'format') return;
+      var working = expandChapterJsonBullets(section);
+      var prettySubs = {};
+      var subs = working.sub_sections && typeof working.sub_sections === 'object' ? working.sub_sections : {};
+      Object.keys(subs).forEach(function (sk) {
+        var cleanSk = stripTimestampPrefix(prettyHeading(sk));
+        prettySubs[cleanSk || sk] = subs[sk];
+      });
+      out.push({
+        heading: prettyHeading(working.heading || ''),
+        bullets: Array.isArray(working.bullets) ? working.bullets : [],
+        sub_sections: prettySubs
+      });
+    });
+    return out;
+  }
+
+  function buildChevronSpan() {
+    var span = document.createElement('span');
+    span.className = 'zettels-summary-h2-chevron';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = '<svg viewBox="0 0 24 24" fill="none">' +
+      '<path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+    return span;
+  }
+
+  function setSectionExpanded(headingEl, panelEl, expanded) {
+    headingEl.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    if (expanded) {
+      panelEl.removeAttribute('data-collapsed');
+      panelEl.style.maxHeight = '0px';
+      requestAnimationFrame(function () {
+        var target = panelEl.scrollHeight;
+        panelEl.style.maxHeight = target + 'px';
+      });
+      var clearMax = function () {
+        panelEl.style.maxHeight = '';
+        panelEl.removeEventListener('transitionend', clearMax);
+      };
+      panelEl.addEventListener('transitionend', clearMax);
+    } else {
+      var current = panelEl.scrollHeight;
+      panelEl.style.maxHeight = current + 'px';
+      requestAnimationFrame(function () {
+        panelEl.setAttribute('data-collapsed', 'true');
+        panelEl.style.maxHeight = '0px';
+      });
+    }
+  }
+
+  function attachToggle(headingEl, panelEl) {
     headingEl.setAttribute('role', 'button');
     headingEl.setAttribute('tabindex', '0');
     headingEl.setAttribute('aria-expanded', 'true');
-    function toggle() {
-      var collapsed = panelEl.getAttribute('data-collapsed') === 'true';
-      if (collapsed) {
-        panelEl.setAttribute('data-collapsed', 'false');
-        panelEl.style.maxHeight = panelEl.scrollHeight + 'px';
-        headingEl.setAttribute('aria-expanded', 'true');
-      } else {
-        panelEl.setAttribute('data-collapsed', 'true');
-        panelEl.style.maxHeight = '0px';
-        headingEl.setAttribute('aria-expanded', 'false');
-      }
-    }
-    headingEl.addEventListener('click', toggle);
-    headingEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault(); toggle();
+    var sectionId = 'zk-sec-' + Math.random().toString(36).slice(2, 9);
+    panelEl.id = sectionId;
+    headingEl.setAttribute('aria-controls', sectionId);
+
+    var handler = function (event) {
+      var expanded = headingEl.getAttribute('aria-expanded') === 'true';
+      setSectionExpanded(headingEl, panelEl, !expanded);
+      event.preventDefault();
+    };
+    headingEl.addEventListener('click', handler);
+    headingEl.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+        handler(event);
       }
     });
+  }
+
+  function renderStructuredDetailed(container, sections) {
+    sections = normalizeRawSchemaSections(sections) || sections;
+    var firstSectionRendered = false;
+    sections.forEach(function (section) {
+      if (!section || typeof section !== 'object') return;
+      var heading = section.heading == null ? '' : String(section.heading).trim();
+
+      var bullets = Array.isArray(section.bullets) ? section.bullets : [];
+      var subs = section.sub_sections || section.subSections;
+      var hasSubs = subs && typeof subs === 'object' && !Array.isArray(subs)
+        && Object.keys(subs).length > 0;
+
+      if (!heading) {
+        appendSectionBody(container, bullets, subs, hasSubs);
+        return;
+      }
+
+      var h4 = document.createElement('h4');
+      h4.className = 'zettels-summary-h2';
+      var labelSpan = document.createElement('span');
+      labelSpan.className = 'zettels-summary-h2-label';
+      labelSpan.textContent = heading;
+      h4.appendChild(labelSpan);
+      h4.appendChild(buildChevronSpan());
+      container.appendChild(h4);
+
+      var panel = document.createElement('div');
+      panel.className = 'zettels-summary-panel';
+      appendSectionBody(panel, bullets, subs, hasSubs);
+      container.appendChild(panel);
+
+      attachToggle(h4, panel);
+      if (firstSectionRendered) {
+        h4.setAttribute('aria-expanded', 'false');
+        panel.setAttribute('data-collapsed', 'true');
+        panel.style.maxHeight = '0px';
+      }
+      firstSectionRendered = true;
+    });
+  }
+
+  function appendSectionBody(parent, bullets, subs, hasSubs) {
+    if (bullets && bullets.length) {
+      var ul = document.createElement('ul');
+      ul.className = 'zettels-summary-list';
+      bullets.forEach(function (bullet) {
+        var text = bullet == null ? '' : String(bullet).trim();
+        if (!text) return;
+        var li = document.createElement('li');
+        li.className = 'zettels-summary-list-item';
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+      if (ul.childNodes.length) parent.appendChild(ul);
+    }
+    if (hasSubs) {
+      Object.keys(subs).forEach(function (subHeading) {
+        var subBullets = subs[subHeading];
+        if (!Array.isArray(subBullets) || !subBullets.length) return;
+        var h5 = document.createElement('h5');
+        h5.className = 'zettels-summary-h3';
+        h5.textContent = String(subHeading || '').trim();
+        parent.appendChild(h5);
+
+        var subUl = document.createElement('ul');
+        subUl.className = 'zettels-summary-list';
+        subBullets.forEach(function (bullet) {
+          var text = bullet == null ? '' : String(bullet).trim();
+          if (!text) return;
+          var li = document.createElement('li');
+          li.className = 'zettels-summary-list-item';
+          li.textContent = text;
+          subUl.appendChild(li);
+        });
+        if (subUl.childNodes.length) parent.appendChild(subUl);
+      });
+    }
   }
 
   function renderMarkdownLite(container, markdown) {
     markdown = normalizeSummaryMarkdown(markdown);
     var lines = String(markdown || '').split(/\r?\n/);
     var paraBuf = [];
-    var listStack = null; // { el: <ul>, level: number }
-    // Each ``## `` opens a collapsible section (chevron + panel + toggle,
-    // same contract as user_zettels). Content after an h2 routes into the
-    // open section's panel via currentTarget instead of the flat container.
+    var listStack = null;
     var currentTarget = container;
     var firstH2Seen = false;
 
@@ -643,42 +919,34 @@
       var joined = paraBuf.join(' ').trim();
       if (joined) {
         var p = document.createElement('p');
-        p.className = 'home-summary-para';
+        p.className = 'zettels-summary-para';
         p.textContent = joined;
         currentTarget.appendChild(p);
       }
       paraBuf = [];
     }
-    function closeList() {
-      listStack = null;
-    }
+    function closeList() { listStack = null; }
 
     for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      var trimmed = line.replace(/\s+$/, '');
-      if (!trimmed.trim()) {
-        flushPara();
-        closeList();
-        continue;
-      }
+      var trimmed = lines[i].replace(/\s+$/, '');
+      if (!trimmed.trim()) { flushPara(); closeList(); continue; }
       var h3 = trimmed.match(/^###\s+(.*)$/);
       var h2 = trimmed.match(/^##\s+(.*)$/);
       var bullet = trimmed.match(/^\s*[-*]\s+(.*)$/);
       if (h2) {
-        flushPara();
-        closeList();
+        flushPara(); closeList();
         var h4 = document.createElement('h4');
-        h4.className = 'home-summary-h2';
+        h4.className = 'zettels-summary-h2';
         var lbl = document.createElement('span');
-        lbl.className = 'home-summary-h2-label';
+        lbl.className = 'zettels-summary-h2-label';
         lbl.textContent = h2[1].trim();
         h4.appendChild(lbl);
-        h4.appendChild(_hmChevron());
+        h4.appendChild(buildChevronSpan());
         container.appendChild(h4);
         var panel = document.createElement('div');
-        panel.className = 'home-summary-panel';
+        panel.className = 'zettels-summary-panel';
         container.appendChild(panel);
-        _attachToggle(h4, panel);
+        attachToggle(h4, panel);
         if (firstH2Seen) {
           h4.setAttribute('aria-expanded', 'false');
           panel.setAttribute('data-collapsed', 'true');
@@ -689,10 +957,9 @@
         continue;
       }
       if (h3) {
-        flushPara();
-        closeList();
+        flushPara(); closeList();
         var h5 = document.createElement('h5');
-        h5.className = 'home-summary-h3';
+        h5.className = 'zettels-summary-h3';
         h5.textContent = h3[1].trim();
         currentTarget.appendChild(h5);
         continue;
@@ -701,11 +968,11 @@
         flushPara();
         if (!listStack) {
           listStack = { el: document.createElement('ul') };
-          listStack.el.className = 'home-summary-list';
+          listStack.el.className = 'zettels-summary-list';
           currentTarget.appendChild(listStack.el);
         }
         var li = document.createElement('li');
-        li.className = 'home-summary-list-item';
+        li.className = 'zettels-summary-list-item';
         li.textContent = bullet[1].trim();
         listStack.el.appendChild(li);
         continue;
@@ -718,17 +985,47 @@
   }
 
   function normalizeSummaryMarkdown(markdown) {
-    // Defense-in-depth (server render is the source of truth): split an inline
-    // ATX heading the model glued mid-line onto its own block, then drop any
-    // trailing ``#`` it appended. Whitespace required on both sides of the
-    // ``#`` run so C#, "#1" and backtick-adjacent `## x` are left alone.
     return String(markdown || '')
       .replace(/(\S)[ \t]+(#{2,6})[ \t]+(?=\S)/g, '$1\n\n$2 ')
       .replace(/^(#{2,6} .+?)[ \t]+#+[ \t]*$/gm, '$1');
   }
 
+  function extractSummaryParts(rawSummary) {
+    var isPlainObject = rawSummary && typeof rawSummary === 'object' && !Array.isArray(rawSummary);
+    var rawInput = rawSummary == null ? '' : (typeof rawSummary === 'string' ? rawSummary : '');
+    var rawText = normalizeSummaryText(rawInput);
+    var parsed = isPlainObject ? rawSummary : tryParseSummaryObject(rawInput);
+
+    if (parsed) {
+      var rawDetailed = parsed.detailed_summary != null ? parsed.detailed_summary : parsed.detailedSummary;
+      var structuredDetailed = coerceStructuredDetailed(rawDetailed);
+
+      var briefFromParsed = normalizeSummaryText(
+        parsed.brief_summary || parsed.briefSummary || parsed.one_line_summary || parsed.summary || ''
+      );
+      var detailedFromParsed = structuredDetailed
+        ? ''
+        : normalizeSummaryText(rawDetailed || parsed.summary || '');
+
+      var resolvedBrief = briefFromParsed || detailedFromParsed;
+      var resolvedDetailed = detailedFromParsed || briefFromParsed;
+      if (resolvedBrief || resolvedDetailed || structuredDetailed) {
+        return {
+          brief: resolvedBrief || 'No summary available for this zettel.',
+          detailed: resolvedDetailed || resolvedBrief || 'No summary available for this zettel.',
+          detailedStructured: structuredDetailed
+        };
+      }
+    }
+
+    var fallback = rawText || 'No summary available for this zettel.';
+    return { brief: fallback, detailed: fallback, detailedStructured: null };
+  }
+
   function tryParseSummaryObject(rawText) {
-    var cleaned = normalizeSummaryText(rawText || '');
+    var cleaned = String(rawText || '')
+      .replace(/\r\n/g, '\n')
+      .trim();
     if (!cleaned) return null;
 
     cleaned = cleaned
@@ -772,20 +1069,36 @@
   }
 
   function extractSummaryFieldByRegex(text, fieldName) {
-    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|})', 'i');
+    var pattern = new RegExp('"' + fieldName + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i');
     var match = text.match(pattern);
     if (!match || !match[1]) return '';
     return normalizeSummaryText(match[1]);
   }
 
-  function normalizeSummaryText(value) {
-    return String(value || '')
+  function normalizeSummaryText(value, options) {
+    var opts = options || {};
+    if (value != null && typeof value === 'object') return '';
+    var text = String(value || '')
       .replace(/\r\n/g, '\n')
       .replace(/\\n/g, '\n')
       .replace(/\\r/g, '\r')
       .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"')
       .trim();
+    if (!opts.preserveEscapedQuotes) {
+      text = text.replace(/\\"/g, '"');
+    }
+    if (/^(\[object Object\](,\s*)?)+$/.test(text)) return '';
+    return text;
+  }
+
+  function formatDate(value) {
+    var parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    }).format(parsed);
   }
 
   // ── My Zettels badge (UX-8) ──────────────────────────────────────
@@ -1262,26 +1575,50 @@
   function openSummaryPopup(node) {
     var loader = document.getElementById('summary-loader');
     var overlay = document.getElementById('summary-overlay');
+    var sourceEl = document.getElementById('summary-source');
+    var dateEl = document.getElementById('summary-date');
     var title = document.getElementById('summary-title');
-    var meta = document.getElementById('summary-meta');
     var text = document.getElementById('summary-text');
     var tags = document.getElementById('summary-tags');
     if (!overlay) return;
 
-    // Prepare popup content while loader plays
+    // Mirror user_zettels openSummary: date pill (mono) THEN source pill, both
+    // in the meta-row above the title. Source class drives the badge color.
+    var sourceClass = (node.group || node.source || 'web').toLowerCase();
+    var sourceLabel = node.group || node.source || 'web';
+    if (sourceEl) {
+      sourceEl.className = 'home-card-source ' + sourceClass;
+      sourceEl.textContent = sourceLabel;
+    }
+    if (dateEl) {
+      dateEl.className = 'home-card-date';
+      if (node.date) {
+        dateEl.textContent = formatDate(node.date);
+        dateEl.style.display = '';
+      } else {
+        dateEl.textContent = '';
+        dateEl.style.display = 'none';
+      }
+    }
     title.textContent = homeDisplayTitle(node);
 
-    var sourceClass = (node.group || 'web').toLowerCase();
-    // Card-parity layout: date pill (mono) THEN source pill.
-    meta.innerHTML =
-      (node.date ? '<span class="home-card-date">' + escapeHtml(node.date) + '</span>' : '') +
-      '<span class="home-card-source ' + sourceClass + '">' + escapeHtml(node.group || 'web') + '</span>';
-
-    // Brief and detailed live in separate fields — parse each independently
-    // so the popup shows the full summary, not the brief twice.
-    var briefParts = extractSummaryParts(node.summary || node.description || '');
-    var detailedParts = extractSummaryParts(node.description || node.summary || '');
-    renderDualSummary(text, { brief: briefParts.brief, detailed: detailedParts.detailed });
+    // Pass the raw summary blob through the same extractor user_zettels uses
+    // (now structured-aware). One extraction yields brief + detailed +
+    // detailedStructured — no need to call it twice on different fields.
+    var primary = node.summary || node.description || '';
+    var parts = extractSummaryParts(primary);
+    if (!parts.detailedStructured && node.description && node.description !== primary) {
+      var alt = extractSummaryParts(node.description);
+      if (alt && (alt.detailedStructured || (alt.detailed && alt.detailed !== parts.detailed))) {
+        parts.detailed = alt.detailed || parts.detailed;
+        parts.detailedStructured = alt.detailedStructured || parts.detailedStructured;
+      }
+    }
+    renderDualSummary(text, {
+      brief: parts.brief,
+      detailed: parts.detailed,
+      detailedStructured: parts.detailedStructured
+    });
 
     var _mathSrc = (node.group || node.source || '').toLowerCase();
     _maskPriceDollars(text);
@@ -1292,7 +1629,7 @@
     var nodeTags = node.tags || [];
     nodeTags.forEach(function (tag) {
       var el = document.createElement('span');
-      el.className = 'home-summary-tag';
+      el.className = 'zettels-tag';
       el.textContent = '#' + tag;
       tags.appendChild(el);
     });
@@ -1303,16 +1640,16 @@
       loader.classList.add('active');
       setTimeout(function () {
         loader.classList.remove('active');
-        overlay.classList.add('open');
+        overlay.classList.remove('hidden');
       }, 1500);
     } else {
-      overlay.classList.add('open');
+      overlay.classList.remove('hidden');
     }
   }
 
   function closeSummaryPopup() {
     var overlay = document.getElementById('summary-overlay');
-    if (overlay) overlay.classList.remove('open');
+    if (overlay) overlay.classList.add('hidden');
     setBodyScrollLocked(false);
   }
 
