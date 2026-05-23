@@ -58,6 +58,13 @@ class _Query:
         self.calls.append(("eq", col, val))
         return self
 
+    def order(self, col, **kwargs):
+        # B1 (Task 2.1): list_workspace_edges chains 3 .order() calls before
+        # .limit(). The fake only records the call; ordering is enforced
+        # contractually by `tests/unit/supabase_v2/test_kg_repository_ordering.py`.
+        self.calls.append(("order", col, kwargs))
+        return self
+
     def limit(self, n):
         self.calls.append(("limit", n))
         return _Execute([{"id": 1, "src_node_id": 2, "dst_node_id": 3}])
