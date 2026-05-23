@@ -30,6 +30,7 @@
           "  'P1 Create Kasten selection_mode=specific (async)': ['auth_token_user_a'],",
           "  'P1 Create Kasten with links (async ingest)': ['auth_token_user_a'],",
           "  'P1 Poll create_kasten operation until terminal': ['auth_token_user_a', 'kasten_op_id'],",
+          "  'P1 Unified /api/operations/{id} also serves kasten ops': ['auth_token_user_a', 'kasten_op_id'],",
           "  'P1 Idempotency-Key header overrides client_action_id': ['auth_token_user_a'],",
           "  'P1 User B cannot poll User A operation': ['auth_token_user_b', 'kasten_op_id'],",
           "  'P1 User B cannot poll User A operation via unified URL': ['auth_token_user_b', 'kasten_op_id'],",
