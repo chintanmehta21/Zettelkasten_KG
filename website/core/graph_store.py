@@ -94,7 +94,13 @@ def _normalize_tag(tag: str) -> str:
 
 
 def _find_links(node_id: str, tags: set[str], graph: dict) -> list[dict]:
-    """Find existing nodes that share tags with the new node."""
+    """Find existing nodes that share tags with the new node.
+
+    LD-3: every auto-link gets `connection_strength=1.0`, `tier="strong"`,
+    `relation_source="tag_coincidence"` so the strength-aware render path
+    (post-LD-2) treats these the same way as scored v2 edges. The file-store
+    is a curated demo surface — render at full strength.
+    """
     links = []
     for existing in graph["nodes"]:
         if existing["id"] == node_id:
@@ -102,12 +108,14 @@ def _find_links(node_id: str, tags: set[str], graph: dict) -> list[dict]:
         existing_tags = {t.lower() for t in existing.get("tags", [])}
         shared = tags & existing_tags
         if shared:
-            # Use the most specific shared tag as the relation
             relation = max(shared, key=len)
             links.append({
                 "source": node_id,
                 "target": existing["id"],
                 "relation": relation,
+                "connection_strength": 1.0,
+                "tier": "strong",
+                "relation_source": "tag_coincidence",
             })
     return links
 
