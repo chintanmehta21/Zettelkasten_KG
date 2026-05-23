@@ -473,6 +473,13 @@ async def test_dedup_caveat_resolves_real_workspace_zettel_id():
 
 @pytest.mark.asyncio
 async def test_graph_cache_invalidated_after_ingest():
+    """new_apis_1a: graph invalidation now runs off the critical path via
+    ``_schedule_graph_invalidation`` (fire-and-forget) to mirror the
+    ``zettels_routes`` pattern. The test must drain ``_BG_TASKS`` before
+    asserting the invalidation hook fired.
+    """
+    import asyncio as _aio
+
     rag_repo = MagicMock()
     rag_repo.create_kasten.return_value = _kasten_row("g")
     rag_repo.add_zettels_to_kasten.return_value = 1
@@ -495,6 +502,10 @@ async def test_graph_cache_invalidated_after_ingest():
             effective_user_id=NARUTO,
             client_action_id="cak-g",
         )
+        # Drain the off-path invalidation task scheduled into _BG_TASKS.
+        pending = list(ck._BG_TASKS)
+        if pending:
+            await _aio.gather(*pending, return_exceptions=True)
     mock_inv.assert_called_once_with(str(NARUTO))
 
 
