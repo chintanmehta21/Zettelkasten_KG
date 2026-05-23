@@ -35,9 +35,12 @@ _rate_store: dict[str, list[float]] = defaultdict(list)
 # WAVE-C 1c-A.3: the legacy ``_graph_cache`` global was dead code (never
 # populated by the read path; only nulled in mutation handlers). Replaced
 # by a per-user LRU + single-flight wrapper in ``website.api.graph_cache``.
-# ``_graph_cache_global``/``_graph_cache_global_ts`` below remain for the
-# anonymous file-store branch (no per-user keying possible there).
-_GRAPH_CACHE_TTL = 30  # seconds — anonymous file-store branch only
+# K1 (Phase 2 KG render+correctness overhaul): the anonymous file-store
+# branch was retro-fitted to share the SAME UserGraphCache via the synthetic
+# ``__anon__`` user id sentinel, so the dead ``_graph_cache_global`` /
+# ``_graph_cache_global_ts`` globals and their mutation-handler null-sets
+# were deleted. Mutation handlers now drop the ``__anon__`` cache slot
+# explicitly via ``invalidate_user_graph("__anon__")``.
 
 # WAVE-C 1c-A.4 — fields dropped from the wire payload (D-KG-9).
 # Keep node ids, names, summaries, urls, tags, and the trimmed analytics
@@ -363,9 +366,6 @@ async def update_avatar(
     return {"avatar_url": avatar_url}
 
 
-# Separate caches for global vs per-user views
-_graph_cache_global: dict | None = None
-_graph_cache_global_ts: float = 0
 
 
 # Phase B read-path strength constants.
@@ -864,7 +864,6 @@ async def delete_zettel(
     dropped in Phase 6 and the file-store graph is the public/anonymous
     surface, not a user-owned write target. Non-UUID path params get 400.
     """
-    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
@@ -889,8 +888,7 @@ async def delete_zettel(
 
     # D-KG-7: full-invalidate per-user cache + anon global cache.
     invalidate_user_graph(user.get("sub"))
-    _graph_cache_global = None
-    _graph_cache_global_ts = 0
+    invalidate_user_graph("__anon__")  # K1: drop anon file-store cache slot too.
     return {"status": "ok", "workspace_zettel_id": node_id}
 
 
@@ -972,7 +970,6 @@ async def restore_zettel(
     re-protects its canonical, so the reaper will skip the shred and the
     queue row eventually expires.
     """
-    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
@@ -994,8 +991,7 @@ async def restore_zettel(
         raise HTTPException(status_code=404, detail="Zettel not found in trash")
 
     invalidate_user_graph(user.get("sub"))
-    _graph_cache_global = None
-    _graph_cache_global_ts = 0
+    invalidate_user_graph("__anon__")  # K1: drop anon file-store cache slot too.
     return {"status": "ok", "workspace_zettel_id": node_id}
 
 
@@ -1019,7 +1015,6 @@ async def hard_delete_zettel(
     re-runs the orphan check and may enqueue a canonical shred. The queue
     insert is idempotent (``ON CONFLICT DO NOTHING``).
     """
-    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (use_supabase_v2() and _is_supabase_uuid(user.get("sub")) and _is_supabase_uuid(node_id)):
@@ -1041,8 +1036,7 @@ async def hard_delete_zettel(
         raise HTTPException(status_code=404, detail="Zettel not found in trash")
 
     invalidate_user_graph(user.get("sub"))
-    _graph_cache_global = None
-    _graph_cache_global_ts = 0
+    invalidate_user_graph("__anon__")  # K1: drop anon file-store cache slot too.
     return {"status": "ok", "workspace_zettel_id": node_id}
 
 
@@ -1074,7 +1068,6 @@ async def update_zettel(
     ``ai_summary`` in the payload is intentionally redirected into
     ``user_note`` (engine-owned vs user-owned separation).
     """
-    global _graph_cache_global, _graph_cache_global_ts
     from uuid import UUID
 
     if not (
@@ -1113,8 +1106,7 @@ async def update_zettel(
 
     # D-KG-7: full-invalidate per-user cache + anon global cache.
     invalidate_user_graph(user.get("sub"))
-    _graph_cache_global = None
-    _graph_cache_global_ts = 0
+    invalidate_user_graph("__anon__")  # K1: drop anon file-store cache slot too.
     return {"status": "ok", "workspace_zettel_id": node_id}
 
 

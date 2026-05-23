@@ -283,14 +283,26 @@ async def run_view_graph(
     # graph gets an empty personal graph, NEVER the global file-store
     # (which would silently broaden the view they asked for).
     if resolved_view == "global":
-        payload = routes_mod._enrich_graph_with_analytics(
-            _file_store_graph(), min_strength=min_strength
-        )
-        payload = routes_mod._apply_min_strength_filter(payload, min_strength)
-        payload = routes_mod._trim_graph_response(payload)
-        payload.setdefault("meta", {})["view"] = "global"
-        payload["meta"]["source"] = "file-store"
-        return payload
+        # LD-10: enrich on the FULL graph (no min_strength filter inside the
+        # cached loader) so a continuous min_strength across requests within
+        # the same bucket cannot stale-bind. The final per-request exact
+        # threshold is applied AFTER the cache lookup.
+        async def _load_global() -> dict[str, Any]:
+            payload = routes_mod._enrich_graph_with_analytics(
+                _file_store_graph(), min_strength=None
+            )
+            payload = routes_mod._trim_graph_response(payload)
+            payload.setdefault("meta", {})["view"] = "global"
+            payload["meta"]["source"] = "file-store"
+            return payload
+
+        # K1: anonymous viewers share a synthetic "__anon__" user_id so the
+        # cache de-duplicates concurrent loads of the file-store payload and
+        # invalidations from mutation handlers (which now also drop __anon__).
+        cache = _get_default_cache()
+        bucket = _bucket_label_global(min_strength)
+        cached = await cache.get_or_load("__anon__", bucket, _load_global)
+        return routes_mod._apply_min_strength_filter(cached, min_strength)
 
     # Beyond this point we need an authenticated user. Anonymous +
     # view='my' (or 'kasten') → explicit empty personal graph per the
@@ -402,6 +414,13 @@ def _bucket_label_kasten(min_strength: float | None, kasten_id: UUID) -> str:
     from website.api.graph_cache import bucket_for_strength
 
     return f"kasten:{kasten_id}:{bucket_for_strength(min_strength)}"
+
+
+def _bucket_label_global(min_strength: float | None) -> str:
+    """K1: bucket key for the anonymous file-store branch."""
+    from website.api.graph_cache import bucket_for_strength
+
+    return f"global:{bucket_for_strength(min_strength)}"
 
 
 # ───────────────────────────────────────────────────────────────────────────
