@@ -83,6 +83,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "65_reaper_threshold_10m.sql",
         "66_workspace_zettels_partial_indexes.sql",
         "67_canonical_shred_grace_30d.sql",
+        "68_hybrid_search_chunks_workspace.sql",
     ]
 
 

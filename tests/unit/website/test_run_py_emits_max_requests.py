@@ -1,7 +1,9 @@
-"""Iter-05: gunicorn must run with --max-requests 100 and --max-requests-jitter 25
-by default. Workflow override at .github/workflows/deploy-droplet.yml MUST match
-these values; the prior 5/2 hard-pin was a debug leftover and let drift events
-propagate to gunicorn-recycle storms (1 of 2 workers down every 3-7 reqs).
+"""2026-05-24 (PR #72): gunicorn defaults raised from iter-05's 100/25 to
+1000/200 after live SSE recycle bug (worker recycled mid-/api/rag/sessions/.../messages
+stream → "Lost connection mid-answer"). Per Gunicorn maintainer (discussion
+#3042) + Modexa prod guide: recycle every 15-60 min, not every few requests.
+graceful_timeout also bumped 60→200 so in-flight SSE drains before SIGKILL
+(must exceed --timeout=180).
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ def test_run_py_emits_max_requests_in_argv(monkeypatch):
     monkeypatch.delenv("ENV", raising=False)
     monkeypatch.delenv("GUNICORN_MAX_REQUESTS", raising=False)
     monkeypatch.delenv("GUNICORN_MAX_REQUESTS_JITTER", raising=False)
+    monkeypatch.delenv("GUNICORN_GRACEFUL_TIMEOUT", raising=False)
     captured: list[list[str]] = []
 
     def _fake_call(cmd):
@@ -28,10 +31,15 @@ def test_run_py_emits_max_requests_in_argv(monkeypatch):
     cmd = captured[0]
     assert "--max-requests" in cmd
     idx = cmd.index("--max-requests")
-    assert cmd[idx + 1] == "100"
+    assert cmd[idx + 1] == "1000"
     assert "--max-requests-jitter" in cmd
     jdx = cmd.index("--max-requests-jitter")
-    assert cmd[jdx + 1] == "25"
+    assert cmd[jdx + 1] == "200"
+    # graceful_timeout must exceed --timeout=180 so in-flight SSE drains
+    # before SIGKILL during a max_requests-triggered worker recycle.
+    assert "--graceful-timeout" in cmd
+    gdx = cmd.index("--graceful-timeout")
+    assert cmd[gdx + 1] == "200"
 
 
 def test_run_py_honors_env_override(monkeypatch):
