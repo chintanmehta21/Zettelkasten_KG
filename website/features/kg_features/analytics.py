@@ -202,7 +202,10 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
     communities, num_communities = _safe(
         "Louvain community detection",
         _louvain,
-        lambda: ({nid: 0 for nid in node_ids}, 1),
+        # A2: signal fallback with num_communities=0 (the success path's
+        # singleton-community trivial-graph case still returns 1) so the
+        # API enrichment layer can surface a user-visible banner.
+        lambda: ({nid: 0 for nid in node_ids}, 0),
     )
 
     # ── Components ───────────────────────────────────────────────────

@@ -167,6 +167,10 @@
   <!-- Graph container -->
   <div id="graph-container"></div>
 
+  <!-- A2: analytics-degradation banner (hidden by default; shown when
+       Louvain falls back or compute_graph_metrics raised). -->
+  <div id="kg-analytics-banner" class="kg-banner hidden" role="status" aria-live="polite"></div>
+
   <!-- Active-node title — HTML overlay (crisp browser text rendering, no
        Three.js SpriteText artefacts). Positioned each frame by app.js to
        follow the selected/hovered node's projected screen coordinates. -->
