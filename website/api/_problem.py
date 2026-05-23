@@ -30,6 +30,7 @@ def _problem_dict(
     operation_id: str | None = None,
     instance: str | None = None,
     extra: dict[str, Any] | None = None,
+    errors: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build an RFC 9457 problem-detail dict.
 
@@ -43,6 +44,11 @@ def _problem_dict(
 
     Adds the canonical ``code`` extension (== ``type_slug``) so async-finalized
     failures can be routed to the same class-specific UI as inline sync 4xxs.
+
+    ``errors`` is the RFC 9457 §3.2 extension for multi-field validation
+    failures (Spring / JSON:API community convention): each entry is a
+    sub-problem dict the frontend renders as per-field error UI. Omitted for
+    single-error problems.
 
     ``extra`` keys flow to the top level per §3.2 but cannot shadow the five
     canonical members; collisions are dropped silently (canonical wins).
@@ -67,11 +73,13 @@ def _problem_dict(
     # Canonical extension member used by the frontend for class-specific UI
     # dispatch. Identical key in sync 4xx bodies and async-finalized failures.
     body["code"] = type_slug
+    if errors:
+        body["errors"] = list(errors)
     if extra:
         for k, v in extra.items():
             if k in _CANONICAL_MEMBERS:
                 continue  # canonical fields win; extension drop silently
             if k in body:
-                continue  # don't overwrite operation_id / code either
+                continue  # don't overwrite operation_id / code / errors either
             body[k] = v
     return body
