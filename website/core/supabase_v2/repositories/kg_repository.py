@@ -117,10 +117,14 @@ class KGRepository:
     ) -> list[dict]:
         """Return raw kg_edges rows for a workspace.
 
-        Shape mirrors columns the v2 ``/api/graph`` path needs to render
-        ``KGGraphLink`` rows: src_node_id, dst_node_id, relation_type,
-        shared_tag_label, weight, evidence_canonical_zettel_id. Caller is
-        responsible for joining src/dst back to the workspace zettels.
+        B1: ORDER BY is deterministic — workspace_strength DESC NULLS LAST,
+        connection_strength DESC NULLS LAST, id ASC. If we must truncate at
+        ``limit``, we keep the strongest edges, which is exactly the
+        visualization contract. NULLS LAST keeps unscored edges from
+        masquerading as the top of the list.
+
+        B7-a: ``created_at`` is now SELECTed so callers can implement "edges
+        re-scored since T" cursor queries without an extra round trip.
 
         Phase B: ``workspace_strength`` (the per-workspace score that DRIVES
         RENDERING, _v2/46) and ``connection_strength`` (the 42-era composite,
@@ -134,9 +138,13 @@ class KGRepository:
             .select(
                 "id,src_node_id,dst_node_id,relation_type,"
                 "shared_tag_label,weight,workspace_strength,"
-                "connection_strength,evidence_canonical_zettel_id"
+                "connection_strength,evidence_canonical_zettel_id,"
+                "created_at"
             )
             .eq("workspace_id", str(workspace_id))
+            .order("workspace_strength", desc=True, nullsfirst=False)
+            .order("connection_strength", desc=True, nullsfirst=False)
+            .order("id", desc=False)
             .limit(max(1, limit))
             .execute()
         )
