@@ -991,7 +991,9 @@ function getCommunityHue(communityId) {
     graph.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     // ---- Minimal scene — no fog, no starfield, no point lights ----
-    graph.scene().add(new THREE.AmbientLight(0xffffff, 1));
+    // F9: AmbientLight removed. MeshBasicMaterial / SpriteText do not respond
+    // to scene lights, so the AmbientLight was a no-op cluttering the scene
+    // graph (cost: one extra render-list traversal per frame).
 
     // Force layout — wider spread, collision avoidance
     graph.d3Force('charge').strength(-200).distanceMax(400);
