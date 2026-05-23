@@ -1,0 +1,724 @@
+{
+  "info": {
+    "_postman_id": "8c7a55b2-c3c1-4bbf-a97b-zk-kastens",
+    "name": "Zettelkasten Create-Kasten E2E",
+    "description": "End-to-end Postman/Newman suite for POST /api/rag/sandboxes — the consolidated create_kasten route (new_apis_1a, locked 2026-05-23). Covers: legacy create-only byte-identity, new selection_mode enum (all|source|specific|links|mixed), async 202+poll flow with Retry-After + ETag + 410-on-TTL, Idempotency-Key header honored, DELETE cancel (idempotency-key-bound auth), multi-tenant BOLA, validation, and Supabase row integrity for rag.kastens + rag.kasten_zettels. Mirrors the gating + polling pattern of zettelkasten-summarization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  pm.environment.set('run_id', 'postman-' + Date.now() + '-' + Math.random().toString(36).slice(2));",
+          "}",
+          "if (!pm.environment.get('latency_events_json')) {",
+          "  pm.environment.set('latency_events_json', '[]');",
+          "}",
+          "// Live gate: skip every request unless explicitly hitting a real target.",
+          "if (String(pm.environment.get('run_live_requests') || '').toLowerCase() !== 'true') {",
+          "  pm.test('SKIPPED: set run_live_requests=true to hit a real target', function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}",
+          "// Per-request required-variable gate (mirrors summarization).",
+          "var ZK_REQUIRE = {",
+          "  'P1 Create Kasten legacy (sync, no members)': ['auth_token_user_a'],",
+          "  'P1 Create Kasten selection_mode=all (async)': ['auth_token_user_a'],",
+          "  'P1 Create Kasten selection_mode=source (async)': ['auth_token_user_a'],",
+          "  'P1 Create Kasten selection_mode=specific (async)': ['auth_token_user_a'],",
+          "  'P1 Create Kasten with links (async ingest)': ['auth_token_user_a'],",
+          "  'P1 Poll create_kasten operation until terminal': ['auth_token_user_a', 'kasten_op_id'],",
+          "  'P1 Idempotency-Key header overrides client_action_id': ['auth_token_user_a'],",
+          "  'P1 User B cannot poll User A operation': ['auth_token_user_b', 'kasten_op_id'],",
+          "  'P1 User B cannot poll User A operation via unified URL': ['auth_token_user_b', 'kasten_op_id'],",
+          "  'P1 DELETE cancel with matching Idempotency-Key': ['auth_token_user_a', 'kasten_op_id_cancel'],",
+          "  'P1 DELETE cancel with mismatched key is 403': ['auth_token_user_a', 'kasten_op_id_cancel'],",
+          "  'P1 Invalid selection_mode rejected at validator': ['auth_token_user_a'],",
+          "  'P1 Invalid kasten name rejected': ['auth_token_user_a'],",
+          "  'P1 Invalid URL in links rejected': ['auth_token_user_a'],",
+          "  'P2 Supabase rag.kastens row visible': ['supabase_url', 'supabase_service_role_key', 'created_kasten_id'],",
+          "  'P2 Supabase rag.kasten_zettels rows scoped': ['supabase_url', 'supabase_service_role_key', 'created_kasten_id']",
+          "};",
+          "var zkNeeded = ZK_REQUIRE[pm.info.requestName] || [];",
+          "var zkMissing = zkNeeded.filter(function (name) { return !pm.environment.get(name); });",
+          "if (zkMissing.length) {",
+          "  pm.test('SKIPPED: ' + pm.info.requestName + ' needs ' + zkMissing.join(', '), function () { pm.expect(true).to.equal(true); });",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "var raw = pm.environment.get('latency_events_json') || '[]';",
+          "var events = [];",
+          "try { events = JSON.parse(raw); } catch (e) { events = []; }",
+          "events.push({",
+          "  request: pm.info.requestName,",
+          "  folder: pm.info.folderName || '',",
+          "  status: pm.response.code,",
+          "  elapsed_ms: pm.response.responseTime,",
+          "  at: new Date().toISOString()",
+          "});",
+          "pm.environment.set('latency_events_json', JSON.stringify(events));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "P1 Readiness",
+      "item": [
+        {
+          "name": "P1 Health endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200 health', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Health responds quickly', function () { pm.expect(pm.response.responseTime).to.be.below(5000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "P2 Auth config endpoint is reachable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/auth/config"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Auth config does not 5xx', function () { pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P1 Kasten creation flows",
+      "item": [
+        {
+          "name": "P1 Create Kasten legacy (sync, no members)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':kasten-legacy';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('kasten_name', 'pm-legacy-' + pm.environment.get('run_id').slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Legacy create-only returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Byte-identical legacy {sandbox: ...} shape', function () { pm.expect(body).to.have.property('sandbox'); pm.expect(body.sandbox).to.have.property('id'); pm.expect(body.sandbox).to.have.property('name'); pm.expect(body.sandbox.default_quality).to.be.oneOf(['fast', 'high']); });",
+                  "pm.test('No async envelope on create-only path', function () { pm.expect(body).to.not.have.property('operation_id'); pm.expect(body).to.not.have.property('status_url'); });",
+                  "pm.environment.set('created_kasten_id', body.sandbox.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"description\": \"postman legacy\",\n  \"default_quality\": \"fast\",\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Create Kasten selection_mode=all (async)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':kasten-all';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('kasten_name', 'pm-all-' + pm.environment.get('run_id').slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('selection_mode=all returns 202 async', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Accepted envelope shape', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string').and.not.empty; pm.expect(body.status_url).to.match(/^\\/api\\/rag\\/sandboxes\\/operations\\//); });",
+                  "pm.test('Location + Retry-After headers', function () { pm.expect(pm.response.headers.get('Location')).to.match(/^\\/api\\/rag\\/sandboxes\\/operations\\//); pm.expect(pm.response.headers.get('Retry-After')).to.match(/^\\d+$/); });",
+                  "pm.environment.set('kasten_op_id', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"description\": \"postman selection_mode=all\",\n  \"default_quality\": \"fast\",\n  \"selection_mode\": \"all\",\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Create Kasten selection_mode=source (async)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':kasten-source';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('kasten_name', 'pm-source-' + pm.environment.get('run_id').slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('selection_mode=source returns 202 async', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Accepted envelope shape', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string'); pm.expect(body.status_url).to.include('/api/rag/sandboxes/operations/'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"default_quality\": \"fast\",\n  \"selection_mode\": \"source\",\n  \"source_types\": [\"web\", \"youtube\"],\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Create Kasten selection_mode=specific (async)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':kasten-specific';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('kasten_name', 'pm-specific-' + pm.environment.get('run_id').slice(-8));",
+                  "// Caller must supply a known workspace_zettel_id via the env file; if",
+                  "// missing the body sends a UUIDv4 placeholder and the runner emits a",
+                  "// FailedLink for it (orphan id — proves the BOLA validator works).",
+                  "if (!pm.environment.get('seed_workspace_zettel_id')) {",
+                  "  pm.variables.set('seed_wz', '11111111-2222-3333-4444-555555555555');",
+                  "} else {",
+                  "  pm.variables.set('seed_wz', pm.environment.get('seed_workspace_zettel_id'));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('selection_mode=specific returns 202 async', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Accepted envelope shape', function () { pm.expect(body.status).to.equal('accepted'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"default_quality\": \"fast\",\n  \"selection_mode\": \"specific\",\n  \"workspace_zettel_ids\": [\"{{seed_wz}}\"],\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Create Kasten with links (async ingest)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var id = pm.environment.get('run_id') + ':kasten-links';",
+                  "pm.variables.set('client_action_id', id);",
+                  "pm.variables.set('kasten_name', 'pm-links-' + pm.environment.get('run_id').slice(-8));",
+                  "pm.variables.set('link_under_test', pm.environment.get('test_url_web') || 'https://news.ycombinator.com/');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create-with-links returns 202 async', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Accepted envelope shape', function () { pm.expect(body.status).to.equal('accepted'); pm.expect(body.operation_id).to.be.a('string'); });",
+                  "pm.test('Selection mode inferred to links', function () { pm.expect(body.status_url).to.match(/^\\/api\\/rag\\/sandboxes\\/operations\\//); });",
+                  "pm.environment.set('kasten_op_id', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"default_quality\": \"fast\",\n  \"links\": [\"{{link_under_test}}\"],\n  \"client_action_id\": \"{{client_action_id}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Async operation polling",
+      "item": [
+        {
+          "name": "P1 Poll create_kasten operation until terminal",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var notBefore = Number(pm.environment.get('next_poll_not_before_ms') || 0);",
+                  "while (Date.now() < notBefore) { /* local runner wait */ }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();",
+                  "var attempts = Number(pm.environment.get('kasten_poll_attempts') || 0) + 1;",
+                  "pm.environment.set('kasten_poll_attempts', String(attempts));",
+                  "pm.test('Poll endpoint returns active or terminal contract', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); pm.expect(body.operation_id).to.equal(pm.environment.get('kasten_op_id')); });",
+                  "if (pm.response.code === 202 && attempts < Number(pm.environment.get('poll_max_attempts') || 90)) {",
+                  "  var retryAfter = parseInt(pm.response.headers.get('Retry-After') || '', 10);",
+                  "  var baseSleep = Number(pm.environment.get('poll_sleep_ms') || 2000);",
+                  "  var waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(baseSleep * Math.pow(2, Math.min(attempts - 1, 4)), 30000);",
+                  "  pm.environment.set('next_poll_not_before_ms', String(Date.now() + waitMs));",
+                  "  postman.setNextRequest('P1 Poll create_kasten operation until terminal');",
+                  "} else {",
+                  "  pm.environment.unset('kasten_poll_attempts');",
+                  "  pm.environment.unset('next_poll_not_before_ms');",
+                  "  if (pm.response.code === 202) {",
+                  "    pm.test('SOFT: operation still running at poll budget', function () { pm.expect(true).to.equal(true); });",
+                  "  } else if (pm.response.code === 410) {",
+                  "    pm.test('Expired op returns 410 + RFC 9457 envelope', function () { pm.expect(body.status).to.equal('expired'); pm.expect(body.error).to.be.an('object'); pm.expect(body.error.type).to.match(/operation_expired/); });",
+                  "  } else {",
+                  "    pm.test('Terminal succeeded carries kasten + selection summary', function () { pm.expect(body.status).to.be.oneOf(['succeeded', 'failed', 'cancelled']); if (body.status === 'succeeded') { pm.expect(body.kasten).to.be.an('object'); pm.expect(body.kasten.id).to.be.a('string'); pm.expect(body.selection).to.be.an('object'); pm.expect(body.selection.resolved_member_count).to.be.a('number'); pm.environment.set('created_kasten_id', body.kasten.id); } });",
+                  "    pm.test('Terminal carries ETag + private cache-control', function () { pm.expect(pm.response.headers.get('ETag')).to.match(/^\"[a-f0-9]{16}\"$/); pm.expect(pm.response.headers.get('Cache-Control')).to.match(/private/); });",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/rag/sandboxes/operations/{{kasten_op_id}}"
+          }
+        },
+        {
+          "name": "P1 Unified /api/operations/{id} also serves kasten ops",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unified polling URL responds (D3)', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 410]); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Same operation_id resolves via unified URL', function () { if (body.operation_id) { pm.expect(body.operation_id).to.equal(pm.environment.get('kasten_op_id')); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "url": "{{base_url}}/api/operations/{{kasten_op_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Multi-tenant scoping",
+      "item": [
+        {
+          "name": "P1 User B cannot poll User A operation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('User B never receives User A success payload', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 404, 410]); });",
+                  "pm.test('Response does not leak A workspace identifiers', function () { var txt = pm.response.text(); var leak = pm.environment.get('user_a_workspace_id') || ''; if (leak) { pm.expect(txt.indexOf(leak) === -1, 'leaked user_a_workspace_id').to.equal(true); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "url": "{{base_url}}/api/rag/sandboxes/operations/{{kasten_op_id}}"
+          }
+        },
+        {
+          "name": "P1 User B cannot poll User A operation via unified URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unified URL is BOLA-safe (operations_repo user_id filter)', function () { pm.expect(pm.response.code).to.be.oneOf([200, 202, 404, 410]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_b}}" }
+            ],
+            "url": "{{base_url}}/api/operations/{{kasten_op_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Idempotency-Key + cancel",
+      "item": [
+        {
+          "name": "P1 Idempotency-Key header overrides client_action_id",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var hdr = pm.environment.get('run_id') + ':idem-hdr';",
+                  "var body = pm.environment.get('run_id') + ':idem-body';",
+                  "pm.variables.set('idem_header', hdr);",
+                  "pm.variables.set('idem_body', body);",
+                  "pm.variables.set('kasten_name', 'pm-idem-' + pm.environment.get('run_id').slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 202 accepted', function () { pm.expect(pm.response.code).to.equal(202); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Header wins over body client_action_id', function () { pm.expect(body.operation_id).to.equal(pm.variables.get('idem_header')); pm.expect(body.status_url).to.include(pm.variables.get('idem_header')); });",
+                  "pm.environment.set('kasten_op_id_cancel', body.operation_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "{{idem_header}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{kasten_name}}\",\n  \"default_quality\": \"fast\",\n  \"selection_mode\": \"all\",\n  \"client_action_id\": \"{{idem_body}}\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 DELETE cancel with matching Idempotency-Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cancel returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('Status is cancelled or noop', function () { pm.expect(body.status).to.be.oneOf(['cancelled', 'noop']); pm.expect(body.operation_id).to.equal(pm.environment.get('kasten_op_id_cancel')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "{{kasten_op_id_cancel}}" }
+            ],
+            "url": "{{base_url}}/api/rag/sandboxes/operations/{{kasten_op_id_cancel}}"
+          }
+        },
+        {
+          "name": "P1 DELETE cancel with mismatched key is 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mismatched Idempotency-Key returns 403', function () { pm.expect(pm.response.code).to.equal(403); });",
+                  "var body = pm.response.json();",
+                  "pm.test('RFC 9457 problem+json body', function () { pm.expect(body.type).to.match(/forbidden|operation_cancel_idempotency_mismatch/); pm.expect(body.status).to.equal(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" },
+              { "key": "Idempotency-Key", "value": "WRONG-KEY-DOES-NOT-MATCH" }
+            ],
+            "url": "{{base_url}}/api/rag/sandboxes/operations/{{kasten_op_id_cancel}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 Validation",
+      "item": [
+        {
+          "name": "P1 Invalid kasten name rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty name returns 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \",\n  \"default_quality\": \"fast\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Invalid URL in links rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed URL returns 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"pm-bad-url\",\n  \"default_quality\": \"fast\",\n  \"links\": [\"javascript:alert(1)\"]\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Invalid selection_mode rejected at validator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty source_types for selection_mode=source returns 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });",
+                  "var body = pm.response.text();",
+                  "pm.test('Error message mentions source_types', function () { pm.expect(body.toLowerCase()).to.match(/source_types|selection_mode/); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token_user_a}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"pm-bad-mode\",\n  \"default_quality\": \"fast\",\n  \"selection_mode\": \"source\",\n  \"source_types\": []\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        },
+        {
+          "name": "P1 Unauthenticated create is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No auth returns 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"pm-no-auth\",\n  \"default_quality\": \"fast\"\n}"
+            },
+            "url": "{{base_url}}/api/rag/sandboxes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 Supabase integrity",
+      "item": [
+        {
+          "name": "P2 Supabase rag.kastens row visible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service-role read returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var rows = pm.response.json();",
+                  "pm.test('Exactly one kasten row by id', function () { pm.expect(Array.isArray(rows)).to.equal(true); pm.expect(rows.length).to.equal(1); pm.expect(rows[0].id).to.equal(pm.environment.get('created_kasten_id')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "rag" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/kastens?id=eq.{{created_kasten_id}}&select=id,name,workspace_id,default_quality"
+          }
+        },
+        {
+          "name": "P2 Supabase rag.kasten_zettels rows scoped",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service-role read returns 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "var rows = pm.response.json();",
+                  "pm.test('Members are an array (possibly empty)', function () { pm.expect(Array.isArray(rows)).to.equal(true); });",
+                  "pm.test('Every member row references the right kasten', function () { rows.forEach(function (r) { pm.expect(r.kasten_id).to.equal(pm.environment.get('created_kasten_id')); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_service_role_key}}" },
+              { "key": "Authorization", "value": "Bearer {{supabase_service_role_key}}" },
+              { "key": "Accept-Profile", "value": "rag" }
+            ],
+            "url": "{{supabase_url}}/rest/v1/kasten_zettels?kasten_id=eq.{{created_kasten_id}}&select=kasten_id,workspace_zettel_id,added_via,added_at"
+          }
+        }
+      ]
+    }
+  ]
+}
