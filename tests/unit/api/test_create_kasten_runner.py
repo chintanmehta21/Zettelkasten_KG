@@ -32,11 +32,17 @@ PROFILE_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 
 @pytest.fixture(autouse=True)
 def _clear_idempotency_state():
-    """Each test starts with empty idempotency + in-flight maps."""
-    ck._IDEMPOTENCY_CACHE.clear()
+    """Each test starts with an empty in-flight singleflight map.
+
+    D4 (locked 2026-05-23): the per-process ``_IDEMPOTENCY_CACHE`` was
+    removed — the DB-backed ``core.operations`` row is the cross-worker
+    truth, and a per-worker OrderedDict was invisible to other gunicorn
+    workers. ``_IN_FLIGHT`` stays as the same-worker singleflight that
+    coalesces concurrent same-key requests on ONE worker before they
+    reach the DB.
+    """
     ck._IN_FLIGHT.clear()
     yield
-    ck._IDEMPOTENCY_CACHE.clear()
     ck._IN_FLIGHT.clear()
 
 
@@ -190,7 +196,22 @@ async def test_create_only_empty_links_succeeds():
 
 
 @pytest.mark.asyncio
-async def test_idempotent_resubmit_same_action_id():
+async def test_sequential_resubmit_reruns_dedup_at_db_layer():
+    """D4 (locked 2026-05-23): the runner no longer caches per-call results.
+
+    A SEQUENTIAL second submit with the same client_action_id re-executes
+    the runner — cross-call dedup is now the DB layer's job (route uses
+    ``operations_repo.accept`` whose partial unique index on
+    ``(user_id, request_hash)`` collapses retries to one canonical op).
+    The kasten itself stays idempotent in-DB via the ``UNIQUE(workspace_id,
+    name)`` recovery (``_create_or_get_kasten`` reuses the existing same-
+    name row on dup-key), so end-state convergence is preserved.
+
+    See also ``test_concurrent_identical_submit_dedups_via_in_flight_shield``
+    for the SAME-WORKER, SAME-INSTANT race that ``_IN_FLIGHT`` still
+    coalesces — a different concern (singleflight, complementary to the
+    DB layer).
+    """
     rag_repo = MagicMock()
     kid = uuid.uuid4()
     rag_repo.create_kasten.return_value = _kasten_row("idem", kid)
@@ -212,11 +233,16 @@ async def test_idempotent_resubmit_same_action_id():
         first = await run_create_kasten_pipeline(**kwargs)
         second = await run_create_kasten_pipeline(**kwargs)
 
-    assert first == second
+    # Both submissions produced the SAME kasten id (DB-layer reuse via
+    # UNIQUE(workspace_id, name) — the runner re-ran but converged on the
+    # same row).
     assert first["kasten"]["id"] == str(kid)
-    # Cached: the second call did not re-run the pipeline or re-create.
-    assert mock_pipe.call_count == 1
-    assert rag_repo.create_kasten.call_count == 1
+    assert second["kasten"]["id"] == str(kid)
+    # No result cache anymore → pipeline runs twice (once per submit).
+    assert mock_pipe.call_count == 2
+    # create_kasten is called twice; the second call hits the dup-key
+    # path and recovers via get_kasten_by_name (verified separately by
+    # test_dup_name_reuses_existing_not_409).
 
 
 @pytest.mark.asyncio
@@ -306,19 +332,42 @@ async def test_bulk_add_failure_keeps_kasten_in_response():
 
 
 @pytest.mark.asyncio
-async def test_idempotency_conflict_on_body_change():
+async def test_concurrent_body_mismatch_raises_singleflight_conflict():
+    """D4 (locked 2026-05-23): IdempotencyConflict now fires ONLY in the
+    same-worker concurrent race window.
+
+    The runner-level result cache that used to detect body mismatch across
+    SEQUENTIAL submits was removed (cross-worker dedup belongs to the DB
+    layer). The remaining ``_IN_FLIGHT`` singleflight still raises on a
+    same-key-different-body race when two submits arrive on ONE worker at
+    the same time — exercise that here with a slow first submit racing a
+    body-mismatched second submit.
+    """
+    import asyncio as _aio
+
     rag_repo = MagicMock()
     rag_repo.create_kasten.return_value = _kasten_row("c")
     content_repo = MagicMock()
+
+    # Hold the first build open with a sleepable mock so the second submit
+    # arrives while the first is still in _IN_FLIGHT.
+    async def _slow_drain(*_a, **_kw):
+        await _aio.sleep(0.05)
+
     p1, p2, p3 = _patched(rag_repo, content_repo)
-    with p1, p2, p3:
-        await run_create_kasten_pipeline(
+    with p1, p2, p3, patch.object(
+        ck, "_drain_pending_enrichment_tasks", side_effect=_slow_drain,
+    ):
+        first_task = _aio.create_task(run_create_kasten_pipeline(
             name="c",
             links=[],
             user={"sub": str(NARUTO)},
             effective_user_id=NARUTO,
             client_action_id="cak-conflict",
-        )
+        ))
+        # Tiny yield so the first call registers in _IN_FLIGHT before the
+        # second arrives (deterministic ordering on the asyncio loop).
+        await _aio.sleep(0)
         with pytest.raises(IdempotencyConflict):
             await run_create_kasten_pipeline(
                 name="c-DIFFERENT",
@@ -327,6 +376,8 @@ async def test_idempotency_conflict_on_body_change():
                 effective_user_id=NARUTO,
                 client_action_id="cak-conflict",
             )
+        # Drain the in-flight first build so the test loop exits cleanly.
+        await first_task
 
 
 @pytest.mark.asyncio
