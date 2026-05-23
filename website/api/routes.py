@@ -612,6 +612,7 @@ def _v2_assemble_graph(
             return ids
 
         edges_dropped_unresolved = 0
+        edges_demoted_to_comention = 0
         for idx, edge in enumerate(edge_rows):
             try:
                 src_id = int(edge.get("src_node_id"))
@@ -634,10 +635,31 @@ def _v2_assemble_graph(
             description = edge.get("shared_tag_label")
             for src in src_overlays:
                 for dst in dst_overlays:
-                    if src == dst and src_id != dst_id:
-                        # Two different kg_nodes happen to share a canonical
-                        # zettel (multi-mention chunk). Suppress the visual
-                        # self-loop; it has no semantic meaning at this layer.
+                    if src == dst:
+                        if src_id == dst_id:
+                            # True self-loop (same kg_node on both ends);
+                            # drop silently — no semantic meaning.
+                            continue
+                        # C5: two DIFFERENT kg_nodes happen to share an overlay
+                        # (multi-mention chunk case). This is a legitimate
+                        # cross-mention signal — preserve as co_mention link.
+                        key = (src, dst, "co_mention")
+                        if key in seen_links:
+                            continue
+                        seen_links.add(key)
+                        links.append(
+                            {
+                                "source": src,
+                                "target": dst,
+                                "relation": "co_mention",
+                                "weight": None,
+                                "link_type": "cooccurrence",
+                                "description": description,
+                                "connection_strength": strength,
+                                "tier": tier,
+                            }
+                        )
+                        edges_demoted_to_comention += 1
                         continue
                     key = (src, dst, relation)
                     if key in seen_links:
@@ -668,6 +690,14 @@ def _v2_assemble_graph(
                 ws_id,
                 edges_dropped_unresolved,
                 len(edge_rows),
+            )
+        # C5 telemetry: edges promoted to co_mention (shared canonical
+        # overlay across distinct kg_nodes — multi-mention chunk case).
+        if edges_demoted_to_comention:
+            logger.info(
+                "v2 graph edges_demoted_to_comention ws=%s count=%d",
+                ws_id,
+                edges_demoted_to_comention,
             )
 
     # Use Pydantic to enforce the shape; total_nodes mirrors v1 conventions.
