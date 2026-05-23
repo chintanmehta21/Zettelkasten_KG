@@ -151,52 +151,78 @@ class KGRepository:
     ) -> dict[int, list[str]]:
         """Resolve kg_nodes.id -> set of canonical_zettel_id strings.
 
-        Joins kg.chunk_node_mentions -> content.canonical_chunks to surface
-        every canonical_zettel that mentions a given kg_node, scoped to the
-        workspace via the kg_node parent. The /api/graph assembler needs this
-        to translate edge endpoints (bigint kg_node ids) into overlay node
-        ids (which key off canonical_zettel_id).
+        2026-05-23 — PR #69 hardening (after `!fk_column` attempt failed
+        live with PGRST200 same as the `:fk_column` attempt). Live droplet
+        traceback confirmed PostgREST cannot resolve the cross-schema FK
+        ``kg.chunk_node_mentions.canonical_chunk_id -> content.canonical_chunks(id)``
+        regardless of disambiguator syntax — its schema cache simply does
+        not list a relationship between the two tables right now. Reload
+        attempts via ``NOTIFY pgrst, 'reload schema'`` from repeatable
+        migrations did not refresh it (suspected cross-schema cache
+        edge-case / Supabase pooler interplay; PostgREST issues #1438,
+        #2123 family).
 
-        Returns {} when ``kg_node_ids`` is empty. The PostgREST embed pulls
-        the chunk row in the same round-trip; we deduplicate canonical zettel
-        ids per node on the Python side.
+        Bulletproof fix: two explicit single-schema selects + Python
+        stitch. No FK embed, no cache dependency, works under any
+        PostgREST cache state. One extra round-trip per /api/graph
+        render; bounded by ``len(kg_node_ids)`` and ``limit`` (default
+        50k chunks). Returns {} when ``kg_node_ids`` is empty.
         """
         if not kg_node_ids:
             return {}
-        # Filter mentions to the requested node ids; embed canonical_chunks
-        # so we can read canonical_zettel_id without a second round-trip.
-        # PostgREST disambiguator MUST be `!fk_column`, NOT `:fk_column` — `:`
-        # is the alias separator, so `canonical_chunks:canonical_chunk_id(...)`
-        # would make PGRST search for a relationship literally named
-        # `canonical_chunk_id` and fail with PGRST200.
-        response = (
+        # Step 1: pull mentions for the requested node ids (single-schema
+        # select, no FK embed — survives any schema-cache state).
+        mentions_resp = (
             self._client.schema("kg")
             .table("chunk_node_mentions")
-            .select(
-                "kg_node_id,canonical_chunk_id,"
-                "canonical_chunks!canonical_chunk_id(canonical_zettel_id)"
-            )
+            .select("kg_node_id,canonical_chunk_id")
             .in_("kg_node_id", list(kg_node_ids))
             .limit(max(1, limit))
             .execute()
         )
-        out: dict[int, list[str]] = {}
-        seen: dict[int, set[str]] = {}
-        for row in response.data or []:
+        node_to_chunks: dict[int, list[str]] = {}
+        all_chunk_ids: set[str] = set()
+        for row in mentions_resp.data or []:
             try:
                 node_id = int(row.get("kg_node_id"))
             except (TypeError, ValueError):
                 continue
-            chunk = row.get("canonical_chunks") or {}
-            zettel_id = chunk.get("canonical_zettel_id") if isinstance(chunk, dict) else None
-            if not zettel_id:
+            chunk_id = row.get("canonical_chunk_id")
+            if not chunk_id:
                 continue
-            zettel_str = str(zettel_id)
+            chunk_str = str(chunk_id)
+            all_chunk_ids.add(chunk_str)
+            node_to_chunks.setdefault(node_id, []).append(chunk_str)
+        if not all_chunk_ids:
+            return {}
+        # Step 2: resolve chunk_id -> canonical_zettel_id in `content`
+        # (still single-schema). Capped by `limit`; missing mappings
+        # degrade gracefully to empty zettel lists, never an exception.
+        chunks_resp = (
+            self._client.schema("content")
+            .table("canonical_chunks")
+            .select("id,canonical_zettel_id")
+            .in_("id", sorted(all_chunk_ids))
+            .limit(max(1, limit))
+            .execute()
+        )
+        chunk_to_zettel: dict[str, str] = {}
+        for row in chunks_resp.data or []:
+            cid = row.get("id")
+            zid = row.get("canonical_zettel_id")
+            if cid and zid:
+                chunk_to_zettel[str(cid)] = str(zid)
+        # Stitch + dedup canonical_zettel_id per node.
+        out: dict[int, list[str]] = {}
+        seen: dict[int, set[str]] = {}
+        for node_id, chunk_ids in node_to_chunks.items():
             bucket = seen.setdefault(node_id, set())
-            if zettel_str in bucket:
-                continue
-            bucket.add(zettel_str)
-            out.setdefault(node_id, []).append(zettel_str)
+            for chunk_id in chunk_ids:
+                zettel = chunk_to_zettel.get(chunk_id)
+                if not zettel or zettel in bucket:
+                    continue
+                bucket.add(zettel)
+                out.setdefault(node_id, []).append(zettel)
         return out
 
     def list_node_canonical_zettel_metadata(

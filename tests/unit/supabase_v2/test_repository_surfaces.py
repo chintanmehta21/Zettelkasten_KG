@@ -45,24 +45,23 @@ class _SelectChain:
 
     def in_(self, col, vals):
         self.calls.append(("in_", self.schema, self.table, col, list(vals)))
-        # Inject canned chunk_node_mentions rows so list_node_zettel_mapping
-        # has data to fold into the {node_id: [zettel_id]} return value.
+        # 2026-05-23 — list_node_zettel_mapping now drives a TWO-STEP
+        # single-schema query (PR #69 hardening: master's `!fk_column`
+        # syntax still 500s with PGRST200 live, so we stopped relying on
+        # PostgREST cross-schema FK embed entirely). Inject canned rows
+        # for BOTH steps so the test's _Client can fold them into the
+        # final {node_id: [zettel_id]} return.
+        #   Step 1: kg.chunk_node_mentions → bare (kg_node_id, canonical_chunk_id).
+        #   Step 2: content.canonical_chunks → (id, canonical_zettel_id).
         if self.schema == "kg" and self.table == "chunk_node_mentions":
             self._data = [
-                {
-                    "kg_node_id": 101,
-                    "canonical_chunk_id": "chunk-aaa",
-                    "canonical_chunks": {
-                        "canonical_zettel_id": "00000000-0000-0000-0000-000000000aaa"
-                    },
-                },
-                {
-                    "kg_node_id": 102,
-                    "canonical_chunk_id": "chunk-bbb",
-                    "canonical_chunks": {
-                        "canonical_zettel_id": "00000000-0000-0000-0000-000000000bbb"
-                    },
-                },
+                {"kg_node_id": 101, "canonical_chunk_id": "chunk-aaa"},
+                {"kg_node_id": 102, "canonical_chunk_id": "chunk-bbb"},
+            ]
+        elif self.schema == "content" and self.table == "canonical_chunks":
+            self._data = [
+                {"id": "chunk-aaa", "canonical_zettel_id": "00000000-0000-0000-0000-000000000aaa"},
+                {"id": "chunk-bbb", "canonical_zettel_id": "00000000-0000-0000-0000-000000000bbb"},
             ]
         return self
 
@@ -135,17 +134,24 @@ def test_chat_repository_uses_rag_schema() -> None:
     assert ("table", "rag", "chat_sessions") in client.calls
 
 
-def test_list_node_zettel_mapping_uses_fk_hint_not_alias_separator() -> None:
+def test_list_node_zettel_mapping_uses_two_step_no_fk_embed() -> None:
     """Regression for PGRST200 on /api/graph (kg_repository.py).
 
-    PostgREST embed disambiguation MUST use `!fk_column` — `:fk_column` is
-    the *alias* separator, so `canonical_chunks:canonical_chunk_id(...)`
-    makes PGRST search for a relationship literally named
-    `canonical_chunk_id` and 500 with
-    "Could not find a relationship between 'chunk_node_mentions' and
-    'canonical_chunk_id' in the schema cache". This test captures the
-    exact select string so a future "tidy-up" PR can't silently flip the
-    `!` back to `:`.
+    Two prior attempts at one-shot PostgREST FK embed both failed live:
+      * `canonical_chunks:canonical_chunk_id(...)` — `:` is the alias
+        separator, PGRST searched for a relationship literally named
+        ``canonical_chunk_id`` and 500'd.
+      * `canonical_chunks!canonical_chunk_id(...)` — the canonical `!`
+        disambiguator. Still 500'd live with the same PGRST200, because
+        the cross-schema FK ``kg.chunk_node_mentions.canonical_chunk_id
+        → content.canonical_chunks(id)`` does not appear in PostgREST's
+        schema cache regardless of syntax (Supabase pooler / cache
+        interplay; PostgREST issues #1438, #2123 family).
+
+    Bulletproof contract (PR #69): TWO explicit single-schema selects +
+    Python stitch. No FK embed. This test pins that contract so a
+    future "tidy-up" PR cannot silently reintroduce either of the
+    broken one-shot embed shapes.
     """
     client = _Client()
     repo = KGRepository(client)
@@ -153,23 +159,40 @@ def test_list_node_zettel_mapping_uses_fk_hint_not_alias_separator() -> None:
         UUID("00000000-0000-0000-0000-000000000001"),
         [101, 102, 999],
     )
-    # Locate the select(...) call against kg.chunk_node_mentions.
-    selects = [
+
+    # Step 1: a single select on kg.chunk_node_mentions with NO embed.
+    mentions_selects = [
         call for call in client.calls
         if call[0] == "select"
         and call[1] == "kg"
         and call[2] == "chunk_node_mentions"
     ]
-    assert len(selects) == 1, f"expected exactly one select; got {selects}"
-    columns = selects[0][3]
-    assert "canonical_chunks!canonical_chunk_id(canonical_zettel_id)" in columns, (
-        f"PostgREST embed must use the `!fk_column` hint; saw: {columns!r}"
+    assert len(mentions_selects) == 1, (
+        f"expected exactly one kg.chunk_node_mentions select; got {mentions_selects}"
     )
-    assert "canonical_chunks:canonical_chunk_id" not in columns, (
-        "`:` is the alias separator and triggers PGRST200; use `!` "
-        f"instead. select string: {columns!r}"
+    columns_step1 = mentions_selects[0][3]
+    assert "canonical_chunks" not in columns_step1, (
+        "Step 1 must NOT embed canonical_chunks — both `:` and `!` embed "
+        "variants 500 live with PGRST200. Use a separate Step-2 select "
+        f"in `content` instead. saw: {columns_step1!r}"
     )
-    # End-to-end shape: rows fold into {node_id: [zettel_uuid_str]}.
+
+    # Step 2: a single select on content.canonical_chunks with NO embed.
+    chunks_selects = [
+        call for call in client.calls
+        if call[0] == "select"
+        and call[1] == "content"
+        and call[2] == "canonical_chunks"
+    ]
+    assert len(chunks_selects) == 1, (
+        f"expected exactly one content.canonical_chunks select; got {chunks_selects}"
+    )
+    columns_step2 = chunks_selects[0][3]
+    assert "id" in columns_step2 and "canonical_zettel_id" in columns_step2, (
+        f"Step 2 must select id + canonical_zettel_id; saw: {columns_step2!r}"
+    )
+
+    # End-to-end shape: stitched rows fold into {node_id: [zettel_uuid_str]}.
     assert mapping == {
         101: ["00000000-0000-0000-0000-000000000aaa"],
         102: ["00000000-0000-0000-0000-000000000bbb"],

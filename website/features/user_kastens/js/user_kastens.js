@@ -9,7 +9,7 @@
   var _supabaseClient = null;
   var _session = null;
   var _token = '';
-  var _userNodes = [];              // cached zettels from /api/graph?view=my
+  var _userNodes = [];              // cached zettels from /api/zettels (title/source/date)
   var _userNodesLoaded = false;
   var _userNodesFetchedAt = 0;
   var _userNodesInflight = null;
@@ -365,29 +365,39 @@
     if (_userNodesInflight && !opts.force) return _userNodesInflight;
     _userNodesInflight = (async function () {
       try {
-        // UX-3: source the chooser from /api/graph?view=my so newly-added
-        // zettels show up; the file-based /api/rag/nodes was lagging.
-        var resp = await fetch('/api/graph?view=my', {
+        // 2026-05-23 — source the picker from the DEDICATED /api/zettels
+        // endpoint (title + source_type + url + added_at + summary), NOT
+        // /api/graph?view=my. Reasons:
+        //   * /api/graph is the 3D-viz payload (heavy: nodes + links +
+        //     pagerank + community + KG layout); the picker only needs
+        //     the row metadata for a checkbox list.
+        //   * /api/graph?view=my has been returning 500 on the live
+        //     droplet (separate ticket), which silently emptied the
+        //     picker -> "No zettels match." with no actionable signal.
+        //   * /api/zettels is the canonical user-zettel surface used by
+        //     /home and is paginated + workspace_zettel-id keyed (the
+        //     exact id shape the create-Kasten members RPC expects).
+        var resp = await fetch('/api/zettels?limit=500', {
           credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + _token }
         });
         if (!resp.ok) {
-          console.warn('[kastens] load graph failed', resp.status);
+          console.warn('[kastens] load zettels failed', resp.status);
           _userNodes = [];
         } else {
           var data = await resp.json();
-          var nodes = data.nodes || [];
-          _userNodes = nodes.map(function (n) {
+          var zettels = Array.isArray(data.zettels) ? data.zettels : [];
+          _userNodes = zettels.map(function (z) {
             return {
-              id: n.id,
-              name: n.name || n.title || n.id,
-              source_type: n.group || n.source_type || 'web',
-              summary: n.summary || n.description || ''
+              id: z.id,                                  // workspace_zettel_id
+              name: z.title || z.id,
+              source_type: z.source_type || 'web',
+              summary: z.brief_summary || ''
             };
           });
         }
       } catch (e) {
-        console.warn('[kastens] load graph err', e);
+        console.warn('[kastens] load zettels err', e);
         _userNodes = [];
       }
       _userNodesLoaded = true;

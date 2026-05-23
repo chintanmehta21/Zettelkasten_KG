@@ -1054,17 +1054,23 @@
     }
 
     try {
-      var graphResp = await fetch('/api/graph?view=my', {
+      // 2026-05-23 — switched from /api/graph?view=my to the dedicated
+      // /api/zettels endpoint: lighter (just row metadata, no graph
+      // edges/PageRank/community), cheaper on the droplet, and avoids
+      // the /api/graph?view=my 500 path that intermittently empties
+      // this picker. Mirrors the same fix applied to user_kastens.js.
+      var graphResp = await fetch('/api/zettels?limit=500', {
         credentials: 'include',
         headers: { 'Authorization': 'Bearer ' + state.token }
       });
       if (!graphResp.ok) throw new Error('Could not load your zettels (' + graphResp.status + ').');
       var data = await graphResp.json();
-      var nodes = (data.nodes || []).map(function (n) {
+      var zettels = Array.isArray(data.zettels) ? data.zettels : [];
+      var nodes = zettels.map(function (z) {
         return {
-          id: n.id,
-          name: n.name || n.title || n.id,
-          source_type: n.group || n.source_type || 'web'
+          id: z.id,                                // workspace_zettel_id
+          name: z.title || z.id,
+          source_type: z.source_type || 'web'
         };
       }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
       state.userNodes = nodes;
