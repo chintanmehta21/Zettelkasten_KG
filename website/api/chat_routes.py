@@ -11,7 +11,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from website.api._citation_guard import check_cited_in_context
 from website.api._concurrency import QueueFull, acquire_rerank_slot
@@ -28,7 +28,15 @@ router = APIRouter(prefix="/api/rag", tags=["rag-chat"])
 
 
 class SessionCreateRequest(BaseModel):
-    sandbox_id: UUID | None = None
+    # D5 (locked 2026-05-23): accept both ``kasten_id`` (new, user-facing
+    # term) and ``sandbox_id`` (legacy internal term) on the wire. Python
+    # attribute + DB column stay ``sandbox_id`` per the verdict —
+    # Pydantic alias only, NO PG rename. Frontend can migrate to send
+    # ``kasten_id`` at leisure.
+    sandbox_id: UUID | None = Field(
+        default=None,
+        validation_alias=AliasChoices("kasten_id", "sandbox_id"),
+    )
     title: str = "New conversation"
     quality: str = "fast"
     scope_filter: ScopeFilter = Field(default_factory=ScopeFilter)
@@ -69,7 +77,11 @@ class ChatMessageRequest(BaseModel):
 
 
 class AdhocChatRequest(ChatMessageRequest):
-    sandbox_id: UUID | None = None
+    # D5: same dual-alias as SessionCreateRequest. Internal name unchanged.
+    sandbox_id: UUID | None = Field(
+        default=None,
+        validation_alias=AliasChoices("kasten_id", "sandbox_id"),
+    )
     title: str = "Quick ask"
 
 
@@ -84,12 +96,15 @@ def _runtime_for_user(user: dict):
 def _serialize_session(row: dict) -> dict:
     # v2 ``rag.chat_sessions`` exposes ``profile_id``; legacy v1 rows used
     # ``user_id``. Tolerate both so the serializer doesn't KeyError under v2.
-    # Maps to ``kasten_id`` -> ``sandbox_id`` for back-compat with the v1
-    # frontend payload shape.
+    # D5 (locked 2026-05-23): dual-emit ``sandbox_id`` (legacy) AND
+    # ``kasten_id`` (new user-facing term) so the frontend can migrate to
+    # ``kasten_id`` at its own pace without breaking existing readers.
+    sandbox_uuid = row.get("sandbox_id") or row.get("kasten_id")
     return {
         "id": row["id"],
         "user_id": row.get("user_id") or row.get("profile_id"),
-        "sandbox_id": row.get("sandbox_id") or row.get("kasten_id"),
+        "sandbox_id": sandbox_uuid,
+        "kasten_id": sandbox_uuid,
         "title": row.get("title", "New conversation"),
         "quality_mode": row.get("quality_mode", "fast"),
         "message_count": row.get("message_count", 0),
