@@ -299,6 +299,11 @@ async def run_view_graph(
         # K1: anonymous viewers share a synthetic "__anon__" user_id so the
         # cache de-duplicates concurrent loads of the file-store payload and
         # invalidations from mutation handlers (which now also drop __anon__).
+        # LD-7: bypass cache for non-default pagination — file-store has fewer
+        # than 100 nodes today, so non-default offsets are operator/admin only.
+        if not _is_cacheable_page(limit, offset):
+            uncached = await _load_global()
+            return routes_mod._apply_min_strength_filter(uncached, min_strength)
         cache = _get_default_cache()
         bucket = _bucket_label_global(min_strength)
         cached = await cache.get_or_load("__anon__", bucket, _load_global)
@@ -337,8 +342,11 @@ async def run_view_graph(
             payload["meta"]["source"] = "v2"
             return payload
 
+        # LD-7: bypass cache for non-default pagination.
+        if not _is_cacheable_page(limit, offset):
+            return await _load_my()
         cache = _get_default_cache()
-        bucket = _bucket_label_my(min_strength)
+        bucket = _bucket_label_my(min_strength, limit=limit, offset=offset)
         return await cache.get_or_load(user_sub, bucket, _load_my)
 
     # ── view='kasten' — BOLA gate + assemble + filter ────────────────────
@@ -393,8 +401,11 @@ async def run_view_graph(
         payload["meta"]["kasten_id"] = str(kasten_id)
         return payload
 
+    # LD-7: bypass cache for non-default pagination.
+    if not _is_cacheable_page(limit, offset):
+        return await _load_kasten()
     cache = _get_default_cache()
-    bucket = _bucket_label_kasten(min_strength, kasten_id)
+    bucket = _bucket_label_kasten(min_strength, kasten_id, limit=limit, offset=offset)
     return await cache.get_or_load(user_sub, bucket, _load_kasten)
 
 
@@ -404,23 +415,45 @@ def _get_default_cache() -> Any:
     return get_default_cache()
 
 
-def _bucket_label_my(min_strength: float | None) -> str:
+# K2 + LD-7: only the canonical default page is cached. Non-default pagination
+# bypasses cache entirely to avoid cardinality explosion (every distinct
+# limit/offset would otherwise occupy a slot in the per-user LRU).
+_DEFAULT_LIMIT = 5000
+_DEFAULT_OFFSET = 0
+
+
+def _is_cacheable_page(limit: int, offset: int) -> bool:
+    """LD-7: only the default (5000, 0) page is cacheable."""
+    return limit == _DEFAULT_LIMIT and offset == _DEFAULT_OFFSET
+
+
+def _bucket_label_my(
+    min_strength: float | None, *, limit: int = _DEFAULT_LIMIT, offset: int = _DEFAULT_OFFSET
+) -> str:
     from website.api.graph_cache import bucket_for_strength
 
-    return f"my:{bucket_for_strength(min_strength)}"
+    return f"my:{bucket_for_strength(min_strength)}:{limit}:{offset}"
 
 
-def _bucket_label_kasten(min_strength: float | None, kasten_id: UUID) -> str:
+def _bucket_label_kasten(
+    min_strength: float | None,
+    kasten_id: UUID,
+    *,
+    limit: int = _DEFAULT_LIMIT,
+    offset: int = _DEFAULT_OFFSET,
+) -> str:
     from website.api.graph_cache import bucket_for_strength
 
-    return f"kasten:{kasten_id}:{bucket_for_strength(min_strength)}"
+    return f"kasten:{kasten_id}:{bucket_for_strength(min_strength)}:{limit}:{offset}"
 
 
-def _bucket_label_global(min_strength: float | None) -> str:
+def _bucket_label_global(
+    min_strength: float | None, *, limit: int = _DEFAULT_LIMIT, offset: int = _DEFAULT_OFFSET
+) -> str:
     """K1: bucket key for the anonymous file-store branch."""
     from website.api.graph_cache import bucket_for_strength
 
-    return f"global:{bucket_for_strength(min_strength)}"
+    return f"global:{bucket_for_strength(min_strength)}:{limit}:{offset}"
 
 
 # ───────────────────────────────────────────────────────────────────────────
