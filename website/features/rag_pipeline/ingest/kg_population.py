@@ -364,7 +364,10 @@ def _structural_map(
     for cid in cand_ids:
         co = int(cooccur.get(cid, 0))
         a = float(aa.get(cid, 0.0))
-        effective = co + round(_ADAMIC_AA_WEIGHT * a)
+        # M5: continuous AA — never rounds away small fractional contributions.
+        # The scorer kernel `count/(count+2)` now accepts floats, so we can
+        # feed the raw `co + 0.5 * aa` directly.
+        effective = co + _ADAMIC_AA_WEIGHT * a
         sub[cid] = (co, a)
         if effective <= 0:
             continue
@@ -429,7 +432,14 @@ def score_edge(
     struct_squashed = _sc._structural_signal(a_key, b_key, structural_arg or {})
     matched_via = {
         "embedding": round(emb_sub, 4),
-        "tag": round(_sc._jaccard(a_tags, b_tags), 4),
+        # M3: _jaccard returns None for asymmetric-empty (signal-absent).
+        # Surface as null in matched_via so the metric is distinguishable
+        # from a true 0.0 (both sides empty / disjoint).
+        "tag": (
+            round(_sc._jaccard(a_tags, b_tags), 4)
+            if _sc._jaccard(a_tags, b_tags) is not None
+            else None
+        ),
         "structural": round(struct_squashed, 4),
         "structural_shared_chunks": int(struct_co),
         "structural_adamic_adar": round(float(struct_aa), 4),

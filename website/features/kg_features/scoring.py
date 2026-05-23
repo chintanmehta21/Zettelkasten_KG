@@ -93,12 +93,20 @@ def _cosine_similarity(va: Sequence[float], vb: Sequence[float]) -> float:
     return max(0.0, cos)
 
 
-def _jaccard(set_a: Iterable[str], set_b: Iterable[str]) -> float:
-    """Jaccard similarity on tag sets. Empty ∪ empty → 0.0 (no signal)."""
+def _jaccard(set_a: Iterable[str], set_b: Iterable[str]) -> float | None:
+    """Jaccard similarity on tag sets.
+
+    M3: distinguishes three semantics so the caller can redistribute weight:
+      - both empty            → 0.0 (no signal, but both sides agree)
+      - exactly one empty     → None (signal-absent; caller redistributes weight)
+      - both non-empty        → |inter| / |union|
+    """
     sa = {t for t in set_a if t}
     sb = {t for t in set_b if t}
     if not sa and not sb:
         return 0.0
+    if not sa or not sb:
+        return None  # M3: signal-absent (not signal-zero)
     inter = len(sa & sb)
     union = len(sa | sb)
     if union == 0:
@@ -109,7 +117,7 @@ def _jaccard(set_a: Iterable[str], set_b: Iterable[str]) -> float:
 def _structural_signal(
     a: str,
     b: str,
-    structural: Mapping[str, Mapping[str, int]],
+    structural: Mapping[str, Mapping[str, int | float]],
 ) -> float:
     """Co-occurrence-based structural signal mapped to [0, 1].
 
@@ -117,20 +125,29 @@ def _structural_signal(
     ``structural[b][a]``) and squashes via ``count / (count + k)`` with
     ``k=2`` so a single co-occurrence registers, but the signal saturates
     smoothly above ~5 co-occurrences without ever exceeding 1.0.
+
+    M5: accepts float-valued maps so the kg_population combiner can pass
+    ``co + 0.5 * adamic_adar`` directly without rounding away fractional AA
+    contributions on long-tail neighbours.
     """
     count_ab = structural.get(a, {}).get(b, 0) if structural else 0
     count_ba = structural.get(b, {}).get(a, 0) if structural else 0
-    count = max(int(count_ab), int(count_ba))
+    count = max(float(count_ab), float(count_ba))
     if count <= 0:
         return 0.0
     return count / (count + 2.0)
 
 
-def _temporal_signal(temporal_days: float) -> float:
-    """Exponential decay with ~30d half-life: 1.0 same day → ~0.37 @ 30d."""
+def _temporal_signal(temporal_days: float | None) -> float:
+    """Exponential decay with ~30d half-life: ~0.967 same minute → ~0.37 @ 30d.
+
+    M1: applies a minimum-age floor of 1.0 day so burst-ingest pairs don't
+    score temporal=1.0 (saturating the signal on every new pair). exp(-1/30)
+    ≈ 0.967 — still strong, no longer perfect.
+    """
     if temporal_days is None:
         return 0.0
-    days = max(0.0, float(temporal_days))
+    days = max(1.0, float(temporal_days))  # M1: floor at 1.0d
     return math.exp(-days / _TEMPORAL_HALFLIFE_DAYS)
 
 
@@ -165,12 +182,23 @@ def compute_connection_strength(
     struct = _structural_signal(node_a, node_b, structural)
     temp = _temporal_signal(temporal_days)
 
-    score = (
-        WEIGHTS["embedding"] * emb
-        + WEIGHTS["tag"] * tag
-        + WEIGHTS["structural"] * struct
-        + WEIGHTS["temporal"] * temp
-    )
+    # M3: when tag signal is signal-absent (asymmetric empty), redistribute
+    # the 0.25 tag weight proportionally over the remaining 3 signals so the
+    # composite is not silently penalised by missing-side metadata.
+    if tag is None:
+        remaining_weight = 1.0 - WEIGHTS["tag"]  # 0.75
+        score = (
+            (WEIGHTS["embedding"] / remaining_weight) * emb
+            + (WEIGHTS["structural"] / remaining_weight) * struct
+            + (WEIGHTS["temporal"] / remaining_weight) * temp
+        )
+    else:
+        score = (
+            WEIGHTS["embedding"] * emb
+            + WEIGHTS["tag"] * tag
+            + WEIGHTS["structural"] * struct
+            + WEIGHTS["temporal"] * temp
+        )
     # Defensive clamp — weights sum to 1.0 by construction so the result is
     # already in [0, 1], but guard against future weight edits.
     return max(0.0, min(1.0, score))

@@ -727,12 +727,14 @@ def test_structural_map_combination_primary_dominant():
     co20, aa20 = sub[20]
     assert co10 == 3 and aa10 == 0.0  # primary only
     assert co20 == 0 and aa20 == pytest.approx(1 / __import__("math").log(4))
-    # effective(10)=3+round(0.5*0)=3 ; effective(20)=0+round(0.5*aa20)
-    eff20 = 0 + round(kg_population._ADAMIC_AA_WEIGHT * aa20)
-    assert structural["new"]["c10"] == 3
-    assert structural["new"].get("c20", 0) == eff20
+    # M5: effective is now continuous (no round()):
+    #   effective(10) = 3 + 0.5*0 = 3.0
+    #   effective(20) = 0 + 0.5*aa20 ≈ 0.36 (was rounded to 0 pre-M5)
+    eff20 = 0 + kg_population._ADAMIC_AA_WEIGHT * aa20
+    assert structural["new"]["c10"] == pytest.approx(3.0)
+    assert structural["new"].get("c20", 0) == pytest.approx(eff20)
     # symmetric
-    assert structural["c10"]["new"] == 3
+    assert structural["c10"]["new"] == pytest.approx(3.0)
 
 
 def test_structural_map_failure_degrades_to_empty(monkeypatch):
