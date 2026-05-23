@@ -983,8 +983,8 @@
     border-radius: 1px;
 }
 
-/* Mirror of user_zettels — continuous teal rail + axis ticks. See
-   website/features/user_zettels/css/user_zettels.css for the full rationale. */
+/* Mirror of user_zettels — curved rounded-inset bar per section. See
+   website/features/user_zettels/css/user_zettels.css for the rationale. */
 .zettels-summary-h2 {
     position: relative;
     display: flex;
@@ -994,7 +994,7 @@
     font-weight: 700;
     color: var(--text-primary);
     margin: 0.9rem 0 0.45rem 0;
-    padding: 0.06rem 0 0.06rem 0.85rem;
+    padding: 0.1rem 0 0.1rem 0.85rem;
     letter-spacing: 0.005em;
     cursor: pointer;
     user-select: none;
@@ -1002,32 +1002,17 @@
     transition: margin 220ms ease, padding 220ms ease,
                 font-size 220ms ease, background 220ms ease;
 }
-/* Mirror of user_zettels — rail morphs smoothly between OPEN (brighter,
-   4px) and COLLAPSED (dim, 3px). Tick lives at top of every h2 but only
-   fades visible when the section is collapsed, so re-opening makes it
-   vanish in lockstep with the rest of the transition. */
 .zettels-summary-h2::before {
     content: "";
     position: absolute;
     left: 0;
-    top: 0;
-    bottom: 0;
+    top: 0.3rem;
+    bottom: 0.3rem;
     width: 3px;
-    border-radius: 0;
+    border-radius: 2px;
     background: var(--accent, #14b8a6);
-    opacity: 0.95;
+    opacity: 0.85;
     transition: opacity 220ms ease, width 220ms ease, background 220ms ease;
-}
-.zettels-summary-h2::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 9px;
-    height: 1px;
-    background: var(--accent, #14b8a6);
-    opacity: 0;
-    transition: opacity 220ms ease;
 }
 .zettels-summary-h2:first-child {
     margin-top: 0.25rem;
@@ -1035,7 +1020,7 @@
 .zettels-summary-h2:focus-visible {
     outline: 2px solid var(--accent, #14b8a6);
     outline-offset: 2px;
-    border-radius: 0;
+    border-radius: 3px;
 }
 .zettels-summary-h2-chevron {
     display: inline-flex;
@@ -1062,44 +1047,30 @@
     color: var(--accent, #14b8a6);
 }
 .zettels-summary-h2[aria-expanded="true"] {
-    padding-top: 0.45rem;
-    padding-bottom: 0.45rem;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
 }
 .zettels-summary-h2[aria-expanded="true"]::before {
     width: 4px;
     opacity: 1;
 }
 .zettels-summary-h2[aria-expanded="false"] {
-    margin: 0;
-    padding-top: 0.42rem;
-    padding-bottom: 0.42rem;
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.04) 0%,
-        rgba(255, 255, 255, 0.018) 40%,
+        rgba(255, 255, 255, 0.035) 0%,
+        rgba(255, 255, 255, 0.014) 45%,
         rgba(255, 255, 255, 0) 100%
     );
-    border-radius: 0;
+    border-radius: 3px;
     font-size: 0.96rem;
-}
-.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
-    margin-top: 0.5rem;
-}
-.zettels-summary-h2[aria-expanded="false"]:first-of-type {
-    margin-top: 0;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
     opacity: 0.55;
 }
-.zettels-summary-h2[aria-expanded="false"]::after {
-    opacity: 0.5;
-}
-.zettels-summary-h2[aria-expanded="false"]:first-of-type::after,
-.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"]::after {
-    opacity: 0;
-}
 .zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
-    opacity: 0.62;
+    opacity: 0.7;
     font-weight: 600;
     letter-spacing: 0.015em;
     transition: opacity 220ms ease, font-weight 220ms ease;
