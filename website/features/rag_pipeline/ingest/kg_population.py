@@ -54,12 +54,15 @@ _DEFAULT_TOP_K = 25
 # chunks yet) and a light boost when both are present.
 #
 # Combination feeds the unchanged scorer kernel count/(count+2):
-#   effective = shared_chunk_cooccur + round(_ADAMIC_AA_WEIGHT * adamic_adar)
-# _ADAMIC_AA_WEIGHT is conservative (0.5) so AA only nudges the integer "count":
-# a strong AA (~2.0 over several rare common neighbours) contributes round(1.0)=1
-# — i.e. at most "one extra co-mention" worth — keeping shared-chunk overlap
-# dominant whenever it is non-zero, while still letting AA register on a graph
-# that has edges but no shared chunks yet.
+#   effective = shared_chunk_cooccur + _ADAMIC_AA_WEIGHT * adamic_adar   (M5 continuous)
+# _ADAMIC_AA_WEIGHT is conservative (0.5) so AA gently nudges the count:
+# a strong AA (~2.0 over several rare common neighbours) contributes 1.0
+# extra co-mention's worth — keeping shared-chunk overlap dominant whenever
+# it is non-zero, while letting AA register on a graph that has edges but
+# no shared chunks yet. M5 (Phase 3 / Task 3.4): the combiner is now
+# CONTINUOUS — the old `round()` was dropping fractional AA on long-tail
+# neighbours; the scorer kernel was extended to accept floats so the raw
+# `co + 0.5 * aa` flows straight through.
 _ADAMIC_AA_WEIGHT = 0.5
 
 # Hard cap on the structural fan-out queries so per-add cost stays a small
@@ -334,7 +337,7 @@ def _structural_map(
     ``{node_key: {neighbor_key: effective_count}}`` (symmetric) and ``sub`` is
     ``{cand_id: (shared_chunk_cooccur, adamic_adar)}`` for matched_via.
 
-    Combination: ``effective = cooccur + round(_ADAMIC_AA_WEIGHT * aa)``.
+    Combination: ``effective = cooccur + _ADAMIC_AA_WEIGHT * aa`` (M5 continuous).
     Shared-chunk co-mention is PRIMARY (dominant whenever non-zero); AA is the
     graded fallback that carries the cold/no-shared-chunk case and lightly
     boosts when both fire. Any failure → empty (caller falls back to
