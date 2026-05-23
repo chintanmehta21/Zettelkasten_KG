@@ -2,9 +2,15 @@
 
 Pure functions only. No DB / no network / no global mutation. The scorer
 combines four signals into a single ``connection_strength`` value in [0, 1]
-per locked decision **D-KG-1**::
+per locked decision **D-KG-1** (Phase 3-α #operator-approved 2026-05-23)::
 
-    score = 0.55 * embedding + 0.25 * tag + 0.15 * structural + 0.05 * temporal
+    score = 0.65 * embedding + 0.20 * tag + 0.10 * structural + 0.05 * temporal
+    # fast-path: if cos >= 0.80, score = max(composite, 0.85)
+
+History: original D-KG-1 was (0.55, 0.25, 0.15, 0.05). Phase 3-α rebalanced
+to dense-leaning per 3-source convergence (8-agent dispatch + kg_fixes1
+Deep Research + kg_fixes2 Perplexity) so semantic-only related pairs (high
+cosine, no shared tags) cross the 0.50 creation threshold.
 
 Locked thresholds:
 - D-KG-2 edge-creation threshold: ``EDGE_CREATION_THRESHOLD = 0.50`` (>=)

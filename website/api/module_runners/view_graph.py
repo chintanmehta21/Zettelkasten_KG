@@ -324,6 +324,10 @@ async def run_view_graph(
         if not _use_supabase_v2():
             return _empty_personal_graph(user_sub)
 
+        # LD-10: enrich on the FULL graph (no min_strength inside the cached
+        # loader) so different exact thresholds within the same bucket can't
+        # stale-bind. The per-request exact filter is applied AFTER the cache
+        # lookup. Matches the global anon branch's K1+LD-10 wiring.
         async def _load_my() -> dict[str, Any]:
             v2_graph = routes_mod._v2_assemble_graph(
                 user_sub=user_sub, limit=limit, offset=offset
@@ -332,10 +336,7 @@ async def run_view_graph(
                 # Strict: no v2 scope → empty personal graph, NOT global.
                 return _empty_personal_graph(user_sub)
             payload = routes_mod._enrich_graph_with_analytics(
-                v2_graph.model_dump(), min_strength=min_strength
-            )
-            payload = routes_mod._apply_min_strength_filter(
-                payload, min_strength
+                v2_graph.model_dump(), min_strength=None
             )
             payload = routes_mod._trim_graph_response(payload)
             payload.setdefault("meta", {})["view"] = "my"
@@ -344,10 +345,12 @@ async def run_view_graph(
 
         # LD-7: bypass cache for non-default pagination.
         if not _is_cacheable_page(limit, offset):
-            return await _load_my()
+            uncached = await _load_my()
+            return routes_mod._apply_min_strength_filter(uncached, min_strength)
         cache = _get_default_cache()
         bucket = _bucket_label_my(min_strength, limit=limit, offset=offset)
-        return await cache.get_or_load(user_sub, bucket, _load_my)
+        cached = await cache.get_or_load(user_sub, bucket, _load_my)
+        return routes_mod._apply_min_strength_filter(cached, min_strength)
 
     # ── view='kasten' — BOLA gate + assemble + filter ────────────────────
     # Resolve caller's workspace first; without it, no kasten can possibly
@@ -364,6 +367,12 @@ async def run_view_graph(
     if kasten_row is None:
         raise KastenNotFoundError(str(kasten_id))
 
+    # LD-10: enrich on the FULL graph (no min_strength inside the cached
+    # loader) so different exact thresholds within the same bucket can't
+    # stale-bind. The kasten-subgraph intersection still happens inside the
+    # loader (it's an identity-preserving filter on canonical-id prefixes,
+    # not a strength filter). The per-request strength filter is applied
+    # AFTER the cache lookup.
     async def _load_kasten() -> dict[str, Any]:
         v2_graph = routes_mod._v2_assemble_graph(
             user_sub=user_sub, limit=limit, offset=offset
@@ -389,12 +398,11 @@ async def run_view_graph(
         # the Kasten subgraph — that way pagerank/community ids reflect the
         # workspace context the Kasten lives in.
         payload = routes_mod._enrich_graph_with_analytics(
-            v2_graph.model_dump(), min_strength=min_strength
+            v2_graph.model_dump(), min_strength=None
         )
         payload = _filter_graph_to_kasten_members(
             payload=payload, kasten_members=kasten_members
         )
-        payload = routes_mod._apply_min_strength_filter(payload, min_strength)
         payload = routes_mod._trim_graph_response(payload)
         payload.setdefault("meta", {})["view"] = "kasten"
         payload["meta"]["source"] = "v2"
@@ -403,10 +411,12 @@ async def run_view_graph(
 
     # LD-7: bypass cache for non-default pagination.
     if not _is_cacheable_page(limit, offset):
-        return await _load_kasten()
+        uncached = await _load_kasten()
+        return routes_mod._apply_min_strength_filter(uncached, min_strength)
     cache = _get_default_cache()
     bucket = _bucket_label_kasten(min_strength, kasten_id, limit=limit, offset=offset)
-    return await cache.get_or_load(user_sub, bucket, _load_kasten)
+    cached = await cache.get_or_load(user_sub, bucket, _load_kasten)
+    return routes_mod._apply_min_strength_filter(cached, min_strength)
 
 
 def _get_default_cache() -> Any:

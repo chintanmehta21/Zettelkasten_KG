@@ -506,7 +506,12 @@ async def test_graph_cache_invalidated_after_ingest():
         pending = list(ck._BG_TASKS)
         if pending:
             await _aio.gather(*pending, return_exceptions=True)
-    mock_inv.assert_called_once_with(str(NARUTO))
+    # K1 (Phase 2 KG render+correctness overhaul): the hook now invalidates
+    # both the user-specific cache slot AND the anonymous "__anon__" slot,
+    # so anonymous /api/graph callers see the new state on next fetch.
+    assert mock_inv.call_count == 2
+    assert mock_inv.call_args_list[0].args == (str(NARUTO),)
+    assert mock_inv.call_args_list[1].args == ("__anon__",)
 
 
 @pytest.mark.asyncio

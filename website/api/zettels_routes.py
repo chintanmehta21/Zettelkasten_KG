@@ -302,8 +302,9 @@ def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
         from website.api import routes as routes_mod
 
         routes_mod.invalidate_user_graph(user_sub)
-        routes_mod._graph_cache_global = None
-        routes_mod._graph_cache_global_ts = 0
+        # K1: anon cache now lives in UserGraphCache via the "__anon__"
+        # sentinel (replaces the deleted _graph_cache_global module globals).
+        routes_mod.invalidate_user_graph("__anon__")
     except Exception:
         logger.exception("Failed to invalidate graph cache after Add Zettel")
 
