@@ -24,6 +24,7 @@ from website.api.nexus import router as nexus_router
 from website.api.routes import router as api_router
 from website.api.sandbox_routes import router as sandbox_router
 from website.api.zettels_routes import router as zettels_router
+from website.features.refresh_button.refresh_routes import router as refresh_button_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
 from website.features.web_monitor import router as web_monitor_router
@@ -154,6 +155,7 @@ def create_app(lifespan=None) -> FastAPI:
     # API routes
     app.include_router(api_router)
     app.include_router(zettels_router)
+    app.include_router(refresh_button_router)
     app.include_router(engine_v2_router)
     app.include_router(chat_router)
     app.include_router(sandbox_router)
@@ -272,6 +274,15 @@ def create_app(lifespan=None) -> FastAPI:
     # Home page static assets
     app.mount("/home/css", StaticFiles(directory=str(HOME_DIR / "css")), name="home-css")
     app.mount("/home/js", StaticFiles(directory=str(HOME_DIR / "js")), name="home-js")
+
+    # refresh_button feature static (shared between user_home + user_zettels)
+    _refresh_button_static = Path(__file__).parent / "features" / "refresh_button" / "static"
+    if _refresh_button_static.exists():
+        app.mount(
+            "/refresh-button/static",
+            StaticFiles(directory=str(_refresh_button_static)),
+            name="refresh-button-static",
+        )
     if nexus_enabled:
         _mount_static_if_exists(app, "/home/nexus/css", NEXUS_DIR / "css", "home-nexus-css")
         _mount_static_if_exists(app, "/home/nexus/js", NEXUS_DIR / "js", "home-nexus-js")
