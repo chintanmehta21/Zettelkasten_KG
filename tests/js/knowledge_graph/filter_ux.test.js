@@ -140,16 +140,16 @@ describe('KG filter UX — runtime threshold culling', () => {
     helpers = sandbox.__all;
   });
 
-  it('cullLinksByStrength drops links below the threshold', () => {
+  it('cullLinksByStrength drops links below the threshold (LD-2: null passes)', () => {
     const links = [
       { source: 'a', target: 'b', connection_strength: 0.85 },
       { source: 'b', target: 'c', connection_strength: 0.55 },
       { source: 'c', target: 'd', connection_strength: 0.31 },
-      { source: 'd', target: 'e' }, // missing → treated as 0 → culled
+      { source: 'd', target: 'e' }, // LD-2: missing → visible-by-default → passes
     ];
-    expect(helpers.cullLinksByStrength(links, 0.7).length).toBe(1);
-    expect(helpers.cullLinksByStrength(links, 0.5).length).toBe(2);
-    expect(helpers.cullLinksByStrength(links, 0.3).length).toBe(3);
+    expect(helpers.cullLinksByStrength(links, 0.7).length).toBe(2); // 0.85 + null
+    expect(helpers.cullLinksByStrength(links, 0.5).length).toBe(3); // 0.85, 0.55, null
+    expect(helpers.cullLinksByStrength(links, 0.3).length).toBe(4); // all (0.31 ≥ 0.3, null passes)
     expect(helpers.cullLinksByStrength(links, 0).length).toBe(4);
   });
 
