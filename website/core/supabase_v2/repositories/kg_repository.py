@@ -165,12 +165,16 @@ class KGRepository:
             return {}
         # Filter mentions to the requested node ids; embed canonical_chunks
         # so we can read canonical_zettel_id without a second round-trip.
+        # PostgREST disambiguator MUST be `!fk_column`, NOT `:fk_column` — `:`
+        # is the alias separator, so `canonical_chunks:canonical_chunk_id(...)`
+        # would make PGRST search for a relationship literally named
+        # `canonical_chunk_id` and fail with PGRST200.
         response = (
             self._client.schema("kg")
             .table("chunk_node_mentions")
             .select(
                 "kg_node_id,canonical_chunk_id,"
-                "canonical_chunks:canonical_chunk_id(canonical_zettel_id)"
+                "canonical_chunks!canonical_chunk_id(canonical_zettel_id)"
             )
             .in_("kg_node_id", list(kg_node_ids))
             .limit(max(1, limit))
