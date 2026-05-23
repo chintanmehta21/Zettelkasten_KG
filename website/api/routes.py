@@ -577,7 +577,7 @@ def _v2_assemble_graph(
         unresolved_endpoints = [
             nid for nid in sorted_endpoint_ids if not node_to_zettels.get(nid)
         ]
-        node_to_canonical_meta: dict[int, str] = {}
+        node_to_canonical_meta: dict[int, list[str]] = {}
         if unresolved_endpoints:
             try:
                 node_to_canonical_meta = (
@@ -597,18 +597,17 @@ def _v2_assemble_graph(
             ids: list[str] = []
             for zettel_id in node_to_zettels.get(kg_node_id, ()):  # type: ignore[arg-type]
                 overlay = canonical_to_overlay.get(str(zettel_id))
-                if overlay:
+                if overlay and overlay not in ids:
                     ids.append(overlay)
             if ids:
                 return ids
-            # B1 fallback: mention join resolved nothing for this node — try
-            # the canonical_zettel_id stored on kg_nodes.metadata. Still
-            # gated by canonical_to_overlay (THIS workspace's loaded
-            # overlays), so a foreign canonical id resolves to nothing.
-            meta_zettel = node_to_canonical_meta.get(kg_node_id)
-            if meta_zettel:
+            # B8 fallback: mention join resolved nothing for this node — try
+            # EVERY canonical_zettel_id the metadata fallback returned (now
+            # plural). Still gated by canonical_to_overlay (THIS workspace's
+            # loaded overlays), so a foreign canonical id resolves to nothing.
+            for meta_zettel in node_to_canonical_meta.get(kg_node_id, ()):
                 overlay = canonical_to_overlay.get(str(meta_zettel))
-                if overlay:
+                if overlay and overlay not in ids:
                     ids.append(overlay)
             return ids
 
