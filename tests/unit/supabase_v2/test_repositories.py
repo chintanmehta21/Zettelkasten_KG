@@ -78,12 +78,19 @@ class _Schema:
     def rpc(self, name, params):
         self.calls.append(("rpc", self.schema, name, params))
         # Phase 1.C `content.upsert_canonical_zettel` returns (id, was_new).
-        # Other v2 RPCs (e.g. billing.consume_quota) historically returned a
-        # boolean; preserve that shape for non-canonical RPCs.
         if name == "upsert_canonical_zettel":
             return _Execute(
                 [{"id": "00000000-0000-0000-0000-000000000101", "was_new": True}]
             )
+        # 2026-05-23 incident fix: workspace_zettels upserts moved off
+        # `.table(...).upsert()` (which raised 42P10 after migration 66
+        # added a partial unique index) to a SECURITY DEFINER RPC that
+        # returns the workspace_zettel uuid as a scalar — supabase-py
+        # delivers it on `response.data` directly, not as a row list.
+        if name == "upsert_workspace_zettel":
+            return _Execute("00000000-0000-0000-0000-000000000102")
+        # Other v2 RPCs (e.g. billing.consume_quota) historically returned a
+        # boolean; preserve that shape as the catch-all default.
         return _Execute(True)
 
 
@@ -153,7 +160,11 @@ def test_content_repository_links_workspace_chunks_for_search() -> None:
     assert membership_upserts
     payload = membership_upserts[0][3][0]
     assert payload["workspace_id"] == "00000000-0000-0000-0000-000000000201"
-    assert payload["workspace_zettel_id"] == "00000000-0000-0000-0000-000000000101"
+    # 2026-05-23 incident fix: the workspace_zettel uuid is now sourced from
+    # the upsert_workspace_zettel RPC return value (...0102), distinct from
+    # the canonical_zettel id (...0101). The membership row links to the
+    # workspace_zettel id, never the canonical_zettel id.
+    assert payload["workspace_zettel_id"] == "00000000-0000-0000-0000-000000000102"
     assert membership_upserts[0][4]["on_conflict"] == (
         "workspace_id,canonical_chunk_id,workspace_zettel_id"
     )
