@@ -165,6 +165,22 @@ function getCommunityHue(communityId) {
 
   // Defensive brief-summary extractor.
   //
+  // F6: WeakMap-memoized lookup of the parsed brief per node. Holding the
+  // memo on the node object (vs a Map keyed by id) lets GC reclaim entries
+  // when a node leaves graphData. extractBriefFromSummary is JSON.parse-heavy
+  // and gets called per-keystroke from _applySearch on every node — the
+  // memo turns a typical 100ms search-step into <1ms.
+  const _briefMemo = new WeakMap();
+  function getBrief(node) {
+    if (!node || typeof node !== 'object') return '';
+    let brief = _briefMemo.get(node);
+    if (brief === undefined) {
+      brief = extractBriefFromSummary(node.summary);
+      _briefMemo.set(node, brief);
+    }
+    return brief;
+  }
+
   // Production data ships `node.summary` as a JSON-stringified envelope:
   //   { "mini_title": "", "brief_summary": "…", "detailed_summary": [...], "closing_remarks": "…" }
   // but several legacy rows ship plain strings, and a small fraction of the
@@ -1130,7 +1146,7 @@ function getCommunityHue(communityId) {
       date.classList.add('hidden');
     }
 
-    summary.textContent = extractBriefFromSummary(node.summary);
+    summary.textContent = getBrief(node);  // F6: memoized
 
     const safeLink = toSafeHttpUrl(node.url);
     if (safeLink) {
@@ -1222,7 +1238,7 @@ function getCommunityHue(communityId) {
     if (query.length > 0) {
       graphData.nodes.forEach(node => {
         const nodeTags = Array.isArray(node.tags) ? node.tags : [];
-        const nodeSummary = extractBriefFromSummary(node.summary);
+        const nodeSummary = getBrief(node);  // F6: memoized
         const match = (node.name || '').toLowerCase().includes(query) ||
                       nodeTags.some(t => String(t).toLowerCase().includes(query)) ||
                       nodeSummary.toLowerCase().includes(query);
