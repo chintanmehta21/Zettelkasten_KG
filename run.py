@@ -44,15 +44,26 @@ def main() -> int:
         # in /opt/zettelkasten/compose/.env (>=180s per CLAUDE.md guardrail). The
         # "90" default below is for un-configured dev; prod always overrides.
         "--timeout", os.environ.get("GUNICORN_TIMEOUT", "90"),
-        "--graceful-timeout", os.environ.get("GUNICORN_GRACEFUL_TIMEOUT", "60"),
+        # 2026-05-24 — SSE recycle hardening (Naruto E2E surfaced "Lost
+        # connection mid-answer"). Default 30s graceful_timeout killed
+        # ask_kasten streams that ran longer than the recycle window. Per
+        # Gunicorn maintainer (discussion #3042) + Modexa prod guide:
+        # graceful_timeout MUST exceed the request --timeout so in-flight
+        # SSE drains before SIGKILL. 200 > 180 (the prod TIMEOUT floor).
+        "--graceful-timeout", os.environ.get("GUNICORN_GRACEFUL_TIMEOUT", "200"),
         "--keep-alive", os.environ.get("GUNICORN_KEEPALIVE", "5"),
-        # iter-05: recycle every ~100±25 requests. iter-03 §2.7 set 100/20;
-        # workflow override briefly hard-pinned 5/2 (debug); iter-05 mem-fixes
-        # (clear_frames + aggressive_release) attack drift at source so the
-        # 5-request belt-and-braces is no longer needed. 25% jitter de-correlates
-        # the two workers' recycle clocks.
-        "--max-requests", os.environ.get("GUNICORN_MAX_REQUESTS", "100"),
-        "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "25"),
+        # 2026-05-24 — bumped from 100/25 (iter-05) to 1000/200 after live
+        # SSE drops on /api/rag/sessions/.../messages (log:
+        # "Maximum request limit of 108 exceeded. Terminating process"
+        # fired DURING an in-flight stream). Modexa / Gunicorn issue #2672
+        # recommend recycle every 15-60 min at steady QPS, not every few
+        # requests. 10x bump gives ~10x lower probability of mid-SSE kill.
+        # 20% jitter de-correlates the two workers' recycle clocks. The
+        # iter-05 mem-fix work (clear_frames + aggressive_release) made
+        # the original 100-request belt-and-braces unnecessary; bound is
+        # now enforced by graceful_timeout overlap window + 2GB cgroup.
+        "--max-requests", os.environ.get("GUNICORN_MAX_REQUESTS", "1000"),
+        "--max-requests-jitter", os.environ.get("GUNICORN_MAX_REQUESTS_JITTER", "200"),
         # iter-04: cap OS accept-queue. Default gunicorn backlog is 2048
         # which lets the kernel accept 2048 SYNs into a 240 s death-trail
         # under burst load. With 2 workers x (2 sem + 8 queue) = 20 in-
