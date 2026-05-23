@@ -237,24 +237,23 @@ class KGRepository:
         self,
         workspace_id: UUID,
         kg_node_ids: list[int],
-    ) -> dict[int, str]:
-        """Resolve kg_nodes.id -> canonical_zettel_id via node metadata.
+    ) -> dict[int, list[str]]:
+        """Resolve kg_nodes.id -> list of canonical_zettel_id strings via node metadata.
 
-        B1 read-path FALLBACK for the /api/graph assembler. The primary
-        resolver (``list_node_zettel_mapping``) joins through
-        ``kg.chunk_node_mentions``; a workspace whose nodes were upserted
-        WITHOUT mention rows (observed live for Naruto: 58 kg_edges, 20
-        kg_nodes, 0 chunk_node_mentions) yields an EMPTY mapping there, so
-        every edge endpoint is unresolved and all edges are dropped.
+        B8 fix: previously returned ``dict[int, str]`` (one canonical per node),
+        which dropped legitimate cross-edges when a kg_node was mentioned across
+        multiple chunks in different zettels. Now returns ``dict[int, list[str]]``
+        matching ``list_node_zettel_mapping``'s shape contract, so the caller's
+        overlay-id resolver can iterate the full set.
 
-        ``kg_population._node_metadata`` writes
-        ``metadata->>'canonical_zettel_id'`` (a string UUID) at node upsert,
-        so this single bounded, workspace-fenced select recovers the
-        node->zettel link the mention join is missing. Workspace isolation:
-        the SELECT is fenced to ``workspace_id`` (service-role bypasses RLS;
-        this Python filter is the tenant fence — a node id from another
-        workspace resolves to nothing and can never leak). Returns ``{}``
-        when ``kg_node_ids`` is empty.
+        Reads both ``metadata->>canonical_zettel_id`` (singular, legacy) and
+        ``metadata->canonical_zettel_ids`` (plural, future-proofing). Workspace
+        isolation: SELECT is fenced to ``workspace_id``.
+
+        B1 read-path FALLBACK for the /api/graph assembler when the primary
+        resolver (``list_node_zettel_mapping``, which joins through
+        ``kg.chunk_node_mentions``) returns nothing for a node — observed live
+        on Naruto: 58 kg_edges, 20 kg_nodes, 0 chunk_node_mentions.
         """
         if not kg_node_ids:
             return {}
@@ -266,7 +265,7 @@ class KGRepository:
             .in_("id", list(kg_node_ids))
             .execute()
         )
-        out: dict[int, str] = {}
+        out: dict[int, list[str]] = {}
         for row in response.data or []:
             try:
                 node_id = int(row.get("id"))
@@ -275,10 +274,16 @@ class KGRepository:
             meta = row.get("metadata") or {}
             if not isinstance(meta, dict):
                 continue
-            zettel_id = meta.get("canonical_zettel_id")
-            if not zettel_id:
-                continue
-            out[node_id] = str(zettel_id)
+            bucket: list[str] = []
+            # Plural takes precedence; singular is the legacy fallback.
+            plural = meta.get("canonical_zettel_ids")
+            if isinstance(plural, list):
+                bucket.extend(str(z) for z in plural if z)
+            singular = meta.get("canonical_zettel_id")
+            if singular and str(singular) not in bucket:
+                bucket.append(str(singular))
+            if bucket:
+                out[node_id] = bucket
         return out
 
     def expand_subgraph(self, *, workspace_id: UUID, node_ids: list[int], depth: int = 1) -> list[int]:
