@@ -99,7 +99,14 @@ async def test_low_conf_thin_youtube_is_quarantined_not_rejected(monkeypatch):
     monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
     url = "https://www.youtube.com/watch?v=thin123"
     ingest = _ingest(
-        SourceType.YOUTUBE, url, "## Video\nSome Title\n## Transcript\n", "low"
+        SourceType.YOUTUBE,
+        url,
+        (
+            "## Video\nLonger title with enough characters to clear the 50-char "
+            "near-empty floor but stay below the 280-char per-source floor.\n"
+            "## Transcript\n"
+        ),
+        "low",
     )
     bundle = await _run_bundle(ingest, _summary(SourceType.YOUTUBE), url)
     # NOT raised; persisted bundle carries the thin quality_flag.
@@ -145,7 +152,14 @@ async def test_reject_tier_env_flag_on_restores_hard_reject(monkeypatch):
     monkeypatch.setenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", "true")
     url = "https://www.youtube.com/watch?v=thin999"
     ingest = _ingest(
-        SourceType.YOUTUBE, url, "## Video\nX\n## Transcript\n", "low"
+        SourceType.YOUTUBE,
+        url,
+        (
+            "## Video\nLonger title with enough characters to clear the 50-char "
+            "near-empty floor but stay below the 280-char per-source floor.\n"
+            "## Transcript\n"
+        ),
+        "low",
     )
     with pytest.raises(ExtractionConfidenceError):
         await _run_bundle(ingest, _summary(SourceType.YOUTUBE), url)
@@ -156,7 +170,14 @@ async def test_reject_tier_default_off_does_not_raise(monkeypatch):
     monkeypatch.delenv("RAG_THIN_EXTRACTION_REJECT_ENABLED", raising=False)
     url = "https://www.youtube.com/watch?v=thin000"
     ingest = _ingest(
-        SourceType.YOUTUBE, url, "## Video\nX\n## Transcript\n", "low"
+        SourceType.YOUTUBE,
+        url,
+        (
+            "## Video\nLonger title with enough characters to clear the 50-char "
+            "near-empty floor but stay below the 280-char per-source floor.\n"
+            "## Transcript\n"
+        ),
+        "low",
     )
     # default OFF -> quarantine path, no raise
     bundle = await _run_bundle(ingest, _summary(SourceType.YOUTUBE), url)

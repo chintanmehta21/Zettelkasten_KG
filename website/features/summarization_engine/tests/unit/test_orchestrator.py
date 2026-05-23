@@ -189,7 +189,11 @@ async def test_orchestrator_quarantines_thin_content_not_rejects(monkeypatch):
         source_type=SourceType.YOUTUBE,
         url="https://www.youtube.com/watch?v=thin123",
         original_url="https://www.youtube.com/watch?v=thin123",
-        raw_text="## Video\nSome Title\n## Transcript\n",
+        raw_text=(
+            "## Video\nLonger title with enough characters to clear the 50-char "
+            "near-empty floor but stay below the 280-char per-source floor.\n"
+            "## Transcript\n"
+        ),
         extraction_confidence="low",
         confidence_reason="no transcript available",
         fetched_at=datetime.now(timezone.utc),
@@ -249,7 +253,11 @@ async def test_orchestrator_thin_reject_tier_env_flag_restores_raise(monkeypatch
         source_type=SourceType.YOUTUBE,
         url="https://www.youtube.com/watch?v=thin123",
         original_url="https://www.youtube.com/watch?v=thin123",
-        raw_text="## Video\nSome Title\n## Transcript\n",
+        raw_text=(
+            "## Video\nLonger title with enough characters to clear the 50-char "
+            "near-empty floor but stay below the 280-char per-source floor.\n"
+            "## Transcript\n"
+        ),
         extraction_confidence="low",
         confidence_reason="no transcript available",
         fetched_at=datetime.now(timezone.utc),
