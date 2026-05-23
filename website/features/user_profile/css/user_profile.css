@@ -255,6 +255,151 @@
     display: block;
 }
 
+/* ── Account list ─────────────────────────────────────────────────────── */
+.profile-account-list {
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.profile-account-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border, #e6ebef);
+}
+
+.profile-account-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.profile-account-row dt {
+    color: var(--text-muted, #5b6c7e);
+    font-size: 0.85rem;
+}
+
+.profile-account-row dd {
+    margin: 0;
+    font-size: 0.95rem;
+    word-break: break-word;
+}
+
+/* ── Statistics ───────────────────────────────────────────────────────── */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.profile-stat-card {
+    padding: 1rem 1.1rem;
+    background: var(--bg-secondary, rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border, #e6ebef);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-stat-label {
+    margin: 0 0 0.25rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, #5b6c7e);
+}
+
+.profile-stat-value {
+    margin: 0 0 0.3rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent, #14b8a6);
+    font-variant-numeric: tabular-nums;
+}
+
+.profile-stat-sub {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-muted, #5b6c7e);
+    min-height: 1.1em;
+}
+
+.profile-stat-cta {
+    display: inline-block;
+    margin-top: auto;
+    padding-top: 0.6rem;
+    color: var(--accent, #14b8a6);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    align-self: flex-start;
+}
+
+.profile-stat-cta:hover {
+    text-decoration: underline;
+}
+
+/* ── Danger zone ──────────────────────────────────────────────────────── */
+.profile-danger-zone {
+    border-color: hsla(355, 60%, 60%, 0.28);
+}
+
+.profile-danger-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    align-items: flex-start;
+}
+
+.profile-danger-btn {
+    padding: 0.55rem 1.1rem;
+    background: hsl(355, 60%, 55%);
+    color: #fff;
+    border: 1px solid hsl(355, 60%, 50%);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 150ms ease;
+    font-family: inherit;
+}
+
+.profile-danger-btn:hover:not(:disabled) {
+    background: hsl(355, 60%, 48%);
+}
+
+.profile-danger-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsla(355, 60%, 55%, 0.3);
+}
+
+.profile-danger-btn-secondary {
+    background: transparent;
+    color: hsl(355, 60%, 55%);
+    border-color: hsla(355, 60%, 55%, 0.4);
+}
+
+.profile-danger-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.profile-danger-help {
+    margin: 0.3rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-muted, #5b6c7e);
+}
+
+.profile-danger-help code {
+    font-family: var(--font-mono, ui-monospace, "JetBrains Mono", monospace);
+    font-size: 0.78rem;
+    padding: 0 0.3rem;
+    background: var(--bg-secondary, rgba(255, 255, 255, 0.04));
+    border-radius: 4px;
+}
+
 @media (max-width: 640px) {
     .profile-trash-card {
         grid-template-columns: 1fr;

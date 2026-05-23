@@ -38,6 +38,57 @@
                 </div>
             </section>
 
+            <section class="profile-section" aria-labelledby="account-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="account-heading">Account</h2>
+                    <p class="profile-section-help">Read-only — this is the identity Zettelkasten knows you by.</p>
+                </header>
+                <dl class="profile-account-list">
+                    <div class="profile-account-row">
+                        <dt>Display name</dt>
+                        <dd id="account-name">—</dd>
+                    </div>
+                    <div class="profile-account-row">
+                        <dt>Email</dt>
+                        <dd id="account-email">—</dd>
+                    </div>
+                    <div class="profile-account-row">
+                        <dt>Joined</dt>
+                        <dd id="account-joined">—</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="profile-section" aria-labelledby="stats-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="stats-heading">Statistics</h2>
+                    <p class="profile-section-help">Your knowledge base at a glance.</p>
+                </header>
+                <div class="profile-stats-grid">
+                    <article class="profile-stat-card" aria-labelledby="stat-zettels-label">
+                        <p class="profile-stat-label" id="stat-zettels-label">Zettels</p>
+                        <p class="profile-stat-value" id="stat-zettels-total">—</p>
+                        <p class="profile-stat-sub" id="stat-zettels-breakdown"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-kastens-label">
+                        <p class="profile-stat-label" id="stat-kastens-label">Kastens</p>
+                        <p class="profile-stat-value" id="stat-kastens-total">—</p>
+                        <p class="profile-stat-sub" id="stat-kastens-members"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-kg-label">
+                        <p class="profile-stat-label" id="stat-kg-label">Knowledge graph</p>
+                        <p class="profile-stat-value" id="stat-kg-nodes">—</p>
+                        <p class="profile-stat-sub" id="stat-kg-links"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-plan-label">
+                        <p class="profile-stat-label" id="stat-plan-label">Plan</p>
+                        <p class="profile-stat-value" id="stat-plan-tier">—</p>
+                        <p class="profile-stat-sub" id="stat-plan-usage"></p>
+                        <a class="profile-stat-cta" href="/pricing">Manage plan →</a>
+                    </article>
+                </div>
+            </section>
+
             <section class="profile-section" aria-labelledby="trash-heading">
                 <header class="profile-section-header">
                     <h2 class="profile-section-title" id="trash-heading">Trash</h2>
@@ -56,6 +107,22 @@
                 </div>
             </section>
         </main>
+
+        <section class="profile-section profile-danger-zone" aria-labelledby="danger-heading">
+            <header class="profile-section-header">
+                <h2 class="profile-section-title" id="danger-heading">Danger zone</h2>
+                <p class="profile-section-help">Sign out of this session or remove your account.</p>
+            </header>
+            <div class="profile-danger-actions">
+                <button type="button" class="profile-danger-btn" id="profile-sign-out">Sign out</button>
+                <button type="button" class="profile-danger-btn profile-danger-btn-secondary" id="profile-delete-account" disabled aria-disabled="true" title="In-app account deletion isn't wired yet. Coming soon.">Delete account (coming soon)</button>
+                <p class="profile-danger-help">
+                    Account deletion is staged in
+                    <code>website/core/account_purge.py</code>
+                    but no production endpoint is wired yet.
+                </p>
+            </div>
+        </section>
 
         <div class="profile-toast hidden" id="profile-toast" role="status" aria-live="polite">
             <span id="profile-toast-text">Restored.</span>
