@@ -35,18 +35,24 @@
   function $(id) { return document.getElementById(id); }
 
   async function initSupabase() {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      // Frontend bootstrap: same pattern as user_zettels — fetch config from
-      // /api/auth-config if present. Fall back to no-op auth → redirect home.
-      try {
-        const cfg = await fetch('/api/auth-config').then(r => r.ok ? r.json() : null);
-        if (cfg && cfg.supabase_url && cfg.supabase_anon_key) {
-          return window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key);
-        }
-      } catch (_) { /* fall through */ }
+    // Mirror user_zettels.js — share the zk-auth-token storage scope so
+    // the persisted Supabase session is found instead of bouncing to /.
+    try {
+      const resp = await fetch('/api/auth/config');
+      const config = await resp.json();
+      if (!config.supabase_url || !config.supabase_anon_key) return null;
+      return window.supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          storage: window.localStorage,
+          storageKey: 'zk-auth-token',
+        },
+      });
+    } catch (err) {
+      console.error('[user_profile] Supabase init failed:', err);
       return null;
     }
-    return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
   async function fetchProfile(token) {
