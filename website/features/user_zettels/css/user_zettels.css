@@ -1374,6 +1374,7 @@ body {
 /* Collapsed: dimmer pill bar, tighter padding, faint horizontal gradient bg,
    dim label. Each collapsed h2 still has its own self-contained curved stub. */
 .zettels-summary-h2[aria-expanded="false"] {
+    margin: 0;
     padding-top: 0.35rem;
     padding-bottom: 0.35rem;
     background: linear-gradient(
@@ -1384,6 +1385,12 @@ body {
     );
     border-radius: 4px;
     font-size: 0.96rem;
+}
+/* Collapsed h2 immediately after an OPEN panel keeps a small top margin so
+   it doesn't crowd the bullets above (the "green gap" the operator preserved
+   in the annotation). Collapsed-after-collapsed stays flush (margin: 0). */
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.55rem;
 }
 .zettels-summary-h2[aria-expanded="false"]::before {
     width: 4px;
