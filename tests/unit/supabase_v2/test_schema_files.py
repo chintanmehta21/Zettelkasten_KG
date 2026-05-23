@@ -89,6 +89,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "68_hybrid_search_chunks_workspace.sql",
         "68_kg_edges_updated_at.sql",
         "69_workspace_zettels_canonical_index.sql",
+        "70_pipeline_runs_state_machine.sql",
     ]
 
 
