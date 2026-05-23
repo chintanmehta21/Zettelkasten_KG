@@ -7,6 +7,11 @@ from website.app import create_app
 
 @pytest.fixture(scope="module")
 def client():
+    # K1 made the anon path share a singleton UserGraphCache; reset it so any
+    # in-process stub-graph state planted by earlier unit tests doesn't bleed
+    # into this integration smoke.
+    from website.api.graph_cache import get_default_cache
+    get_default_cache().invalidate("__anon__")
     return TestClient(create_app())
 
 

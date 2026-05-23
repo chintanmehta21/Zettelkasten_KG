@@ -67,6 +67,37 @@ def _register_enrichment_task(task: "asyncio.Task") -> None:
     task.add_done_callback(_PENDING_ENRICHMENT_TASKS.discard)
 
 
+def _register_enrichment_task_with_invalidation(
+    task: "asyncio.Task", *, user_sub: str | None
+) -> None:
+    """K3: register a fire-and-forget enrichment task that ALSO triggers a
+    second cache invalidation on completion.
+
+    Why: persist already invalidates the user's graph cache BEFORE the
+    background kg-populate writes edges. Without this second pass, a fetch
+    arriving in the 5-30s window after persist but before kg-populate
+    finishes sees the new node WITHOUT its new edges. The on-completion
+    callback invalidates again so the next fetch picks up edges immediately.
+
+    Failures inside the callback are logged + swallowed; the task itself is
+    already best-effort.
+    """
+    def _invalidate(_finished_task: "asyncio.Task") -> None:
+        try:
+            from website.api.routes import invalidate_user_graph
+
+            invalidate_user_graph(user_sub)
+            # K1: anon cache mirrors the file-store graph; mutations may
+            # change auto-link signal even on file-store entries.
+            invalidate_user_graph("__anon__")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("K3 post-populate invalidation failed: %s", exc)
+
+    _PENDING_ENRICHMENT_TASKS.add(task)
+    task.add_done_callback(_PENDING_ENRICHMENT_TASKS.discard)
+    task.add_done_callback(_invalidate)
+
+
 async def drain_pending_enrichment_tasks(*, timeout: float = 120.0) -> int:
     """Await every currently-registered fire-and-forget enrichment task.
 
@@ -574,6 +605,7 @@ async def persist_summarized_result(
                 captured_on=captured_on,
                 detailed_summary=detailed_summary,
                 profile_id=profile_id,
+                user_sub=user_sub,
             )
         except SupabaseV2PersistError:
             # Already structured + logged at the failure site; re-raise so the
@@ -690,6 +722,7 @@ async def _persist_supabase_v2_zettel(
     captured_on: date,
     detailed_summary: str,
     profile_id: UUID | None = None,
+    user_sub: str | None = None,
 ) -> tuple[str, bool, bool]:
     normalized_url = str(payload["source_url"])
     body_md = str(payload.get("raw_text") or detailed_summary or payload.get("summary") or "")
@@ -774,6 +807,7 @@ async def _persist_supabase_v2_zettel(
         canonical_zettel_id=result.canonical_zettel_id,
         title=zettel.title,
         summary=detailed_summary or body_md,
+        user_sub=user_sub,
     )
     return str(persisted_id), result.workspace_zettel_id is not None, not result.was_new
 
@@ -981,6 +1015,7 @@ def _schedule_kg_population(
     canonical_zettel_id: UUID,
     title: str,
     summary: str,
+    user_sub: str | None = None,
 ) -> None:
     """Phase B: populate kg nodes/edges off the Add Zettel critical path.
 
@@ -1027,7 +1062,10 @@ def _schedule_kg_population(
         logger.debug("No running event loop for KG population on %s", canonical_zettel_id)
         return
     task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-    _register_enrichment_task(task)
+    # K3: invalidate the user's graph cache AFTER kg-populate completes so the
+    # next /api/graph fetch picks up the newly-written edges immediately
+    # (without the 5-30s window where the new node appears edgeless).
+    _register_enrichment_task_with_invalidation(task, user_sub=user_sub)
 
 
 # Chunk embedding model-version stamp. Must match the row default in
