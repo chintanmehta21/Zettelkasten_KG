@@ -141,37 +141,32 @@ def _enrich_graph_with_analytics(
     Also normalizes every node's ``summary`` into the canonical JSON envelope
     so the frontend never has to defend against mixed historical shapes.
 
-    C3-d.4: ``min_strength`` is the SUBGRAPH filter for metric computation.
-    When set, links below the threshold are dropped BEFORE building the
-    KGGraph used for metrics, so PageRank / Louvain / harmonic ranks reflect
-    the strong-edge structure the user actually sees — not raw graph spam.
-    Per-bucket caching (D-KG-6) ensures each (user, bucket) pays compute once.
-    Node fields are still written on every node in the original ``graph_dict``;
-    nodes that have no surviving strong edges receive 0 metric values.
+    LD-10: compute metrics on the FULL graph (NOT the strength-filtered
+    subgraph) so node-importance values stay stable as the user moves the
+    slider. The wire-level link cull happens AFTER enrichment, outside this
+    function. ``min_strength`` is retained as a parameter for backwards
+    compatibility but is ignored at the metric-input stage.
+
+    LD-9 / A1: results memoized by BLAKE3 content hash. Two requests on the
+    same topology (different sliders, different users) share one compute.
     """
     from website.core.summary_normalizer import normalize_graph_nodes
     normalize_graph_nodes(graph_dict)
+    del min_strength  # LD-10: deliberately unused at metric-input stage.
+
     try:
-        from website.features.kg_features.analytics import compute_graph_metrics
-        # Build the metric-input graph from the SUBGRAPH the user will see.
-        metrics_input = graph_dict
-        if min_strength is not None:
-            try:
-                threshold = float(min_strength)
-            except (TypeError, ValueError):
-                threshold = 0.0
-            if threshold > 0.0:
-                # LD-2: null/missing strength PASSES (visible-by-default).
-                metrics_input = {
-                    **graph_dict,
-                    "links": [
-                        link for link in graph_dict.get("links", [])
-                        if link.get("connection_strength") is None
-                        or float(link["connection_strength"]) >= threshold
-                    ],
-                }
-        kg_graph = KGGraph(**metrics_input)
-        metrics = compute_graph_metrics(kg_graph)
+        from website.core.graph_content_hash import (
+            compute_graph_hash,
+            get_cached_metrics,
+            put_cached_metrics,
+        )
+        graph_hash = compute_graph_hash(graph_dict)
+        metrics = get_cached_metrics(graph_hash)
+        if metrics is None:
+            from website.features.kg_features.analytics import compute_graph_metrics
+            kg_graph = KGGraph(**graph_dict)
+            metrics = compute_graph_metrics(kg_graph)
+            put_cached_metrics(graph_hash, metrics)
 
         for node in graph_dict.get("nodes", []):
             nid = node["id"]
@@ -184,12 +179,16 @@ def _enrich_graph_with_analytics(
             node["harmonic_centrality"] = metrics.harmonic.get(nid, 0)
 
         graph_dict["meta"] = {
+            **graph_dict.get("meta", {}),
             "communities": metrics.num_communities,
             "components": metrics.num_components,
             "computed_at": metrics.computed_at,
+            "analytics_status": "ok",
+            "graph_hash": graph_hash[:16] if graph_hash else "",
         }
     except Exception as exc:
         logger.warning("Graph analytics enrichment failed: %s", exc)
+        graph_dict.setdefault("meta", {})["analytics_status"] = "failed"
     return graph_dict
 
 
