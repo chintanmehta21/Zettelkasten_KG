@@ -8,7 +8,9 @@ Key rotation is handled by the centralized GeminiKeyPool.
 
 from __future__ import annotations
 
+import enum
 import logging
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -102,6 +104,80 @@ def generate_embeddings_batch(
     except Exception as exc:
         logger.error("Batch embedding failed: %s", exc)
         return [[] for _ in texts]
+
+
+# ── LD-8 / O3: typed embedding result for retry-aware callers ───────────────
+
+
+class EmbeddingFailureReason(str, enum.Enum):
+    """Distinguishes the failure modes the caller must branch on."""
+    EMPTY_INPUT = "empty_input"        # terminal — never retry
+    RATE_LIMIT = "rate_limit"          # retryable with backoff
+    RPC_ERROR = "rpc_error"            # retryable with backoff
+    NETWORK = "network"                # retryable with backoff
+    EMPTY_VECTOR = "empty_vector"      # provider returned [] — treat as RPC
+
+
+@dataclass(slots=True)
+class EmbeddingResult:
+    """Typed result of an embedding call. O3 fix: callers cannot conflate
+    'no vector returned' (transient quota failure) with 'empty input'
+    (terminal). The kg-populate state machine (LD-8) keys off ``retryable``
+    to pick the right pipeline_runs terminal state."""
+
+    ok: bool
+    vectors: list[list[float]]
+    reason: "EmbeddingFailureReason | None"
+    retryable: bool
+
+
+def generate_embedding_typed(
+    text: str,
+    task_type: str = "RETRIEVAL_DOCUMENT",
+) -> EmbeddingResult:
+    """Typed counterpart of ``generate_embedding``.
+
+    Returns ``ok=True`` only when a non-empty vector landed. Empty input is a
+    terminal failure (never retried). All other failure modes are retryable
+    via exponential backoff per LD-8.
+    """
+    if not text or not text.strip():
+        return EmbeddingResult(
+            ok=False, vectors=[],
+            reason=EmbeddingFailureReason.EMPTY_INPUT,
+            retryable=False,
+        )
+    try:
+        pool = get_key_pool()
+        response = pool.embed_content_safe(
+            text,
+            config={"task_type": task_type, "output_dimensionality": _EMBEDDING_DIMS},
+        )
+        if response is None:
+            # Pool exhausted — typically rate-limit cascade.
+            return EmbeddingResult(
+                ok=False, vectors=[],
+                reason=EmbeddingFailureReason.RATE_LIMIT,
+                retryable=True,
+            )
+        vec = _normalize_embedding(response.embeddings[0].values)
+        if not vec:
+            return EmbeddingResult(
+                ok=False, vectors=[],
+                reason=EmbeddingFailureReason.EMPTY_VECTOR,
+                retryable=True,
+            )
+        return EmbeddingResult(ok=True, vectors=[vec], reason=None, retryable=False)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "429" in msg or "rate" in msg or "quota" in msg:
+            reason = EmbeddingFailureReason.RATE_LIMIT
+        elif "rpc" in msg or "postgrest" in msg:
+            reason = EmbeddingFailureReason.RPC_ERROR
+        else:
+            reason = EmbeddingFailureReason.NETWORK
+        logger.error("Embedding typed call failed (%s): %s", reason.value, exc)
+        return EmbeddingResult(ok=False, vectors=[], reason=reason, retryable=True)
 
 
 # ── Similarity helpers ──────────────────────────────────────────────────────
