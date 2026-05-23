@@ -8,7 +8,6 @@
 (function () {
   'use strict';
 
-  var AVATAR_COUNT = 60;
 
   // Conservative smart-dollar guard: only treat $...$ as math when the
   // content looks like LaTeX (no bare prices like $5 / $ 100). Display
@@ -123,7 +122,6 @@
 
   var _supabaseClient = null;
   var _currentSession = null;
-  var _currentAvatarId = null;
   var _bodyLockCount = 0;
 
   // ── DOM refs ──────────────────────────────────────────────────────
@@ -132,7 +130,6 @@
   var cardGrid, emptyState, zettelCount, userDisplayName;
   var addZettelDropdown, addZettelForm, addUrlInput, addDocumentInput, addDocumentBtn;
   var addSubmitBtn, addError, addLoading;
-  var avatarModal, avatarModalOverlay, avatarModalClose, avatarGrid;
   var menuProfile, menuNexus, menuSignout;
 
   function resolveDOM() {
@@ -156,10 +153,6 @@
     addSubmitBtn = document.getElementById('add-submit-btn');
     addError = document.getElementById('add-error');
     addLoading = document.getElementById('add-loading');
-    avatarModal = document.getElementById('avatar-modal');
-    avatarModalOverlay = document.getElementById('avatar-modal-overlay');
-    avatarModalClose = document.getElementById('avatar-modal-close');
-    avatarGrid = document.getElementById('avatar-grid');
     menuProfile = document.getElementById('menu-profile');
     menuNexus = document.getElementById('menu-nexus');
     menuSignout = document.getElementById('home-menu-signout');
@@ -272,8 +265,6 @@
     try {
       if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
         await window.ZKHeader.boot(token, { profile: profile });
-        var _idMatch = profile && profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
-        if (_idMatch) _currentAvatarId = parseInt(_idMatch[1], 10);
       } else {
         console.error('[home] ZKHeader missing — avatar will use CSS fallback only');
       }
@@ -313,13 +304,6 @@
   // All avatar load/fallback/preload logic now lives in the shared ZKHeader module
   // (website/features/header/js/header.js). These wrappers keep the local picker-grid
   // callsite working without duplicating lifecycle code.
-
-  async function updateAvatar(avatarId, token) {
-    _currentAvatarId = avatarId;
-    if (window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function') {
-      await window.ZKHeader.setAvatarById(avatarId, token, null);
-    }
-  }
 
   // ── Zettels ───────────────────────────────────────────────────────
 
@@ -1657,44 +1641,6 @@
     setBodyScrollLocked(false);
   }
 
-  // ── Avatar Picker Modal ──────────────────────────────────────────
-
-  function openAvatarPicker(token) {
-    if (!avatarModal || !avatarGrid) return;
-
-    // Populate grid
-    avatarGrid.innerHTML = '';
-    for (var i = 0; i < AVATAR_COUNT; i++) {
-      var btn = document.createElement('button');
-      btn.className = 'home-avatar-option' + (i === _currentAvatarId ? ' selected' : '');
-      btn.innerHTML = '<img src="/artifacts/avatars/avatar_' + String(i).padStart(2, '0') + '.svg" alt="Avatar ' + i + '" />';
-      btn.setAttribute('data-avatar-id', i);
-
-      btn.addEventListener('click', (function (id) {
-        return function () {
-          updateAvatar(id, token);
-          // Update selection
-          var all = avatarGrid.querySelectorAll('.home-avatar-option');
-          all.forEach(function (el) { el.classList.remove('selected'); });
-          this.classList.add('selected');
-          // Close modal after short delay
-          setTimeout(function () { closeAvatarPicker(); }, 300);
-        };
-      })(i));
-
-      avatarGrid.appendChild(btn);
-    }
-
-    avatarModal.classList.add('open');
-    setBodyScrollLocked(true);
-  }
-
-  function closeAvatarPicker() {
-    if (!avatarModal) return;
-    avatarModal.classList.remove('open');
-    setBodyScrollLocked(false);
-  }
-
   // ── Events ────────────────────────────────────────────────────────
 
   function bindEvents(token) {
@@ -1850,15 +1796,10 @@
       });
     }
 
-    // Avatar modal close
-    if (avatarModalClose) avatarModalClose.addEventListener('click', closeAvatarPicker);
-    if (avatarModalOverlay) avatarModalOverlay.addEventListener('click', closeAvatarPicker);
-
     // Escape key closes modals
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         closeSummaryPopup();
-        closeAvatarPicker();
         if (avatarDropdown) avatarDropdown.classList.remove('open');
         // m-8: keep aria-expanded in sync with the visible state so AT users
         // hear the dropdown collapse when Escape closes it.
