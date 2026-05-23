@@ -66,13 +66,15 @@ __all__ = [
 def _cosine_similarity(va: Sequence[float], vb: Sequence[float]) -> float:
     """Dim-mismatch / empty / zero-norm safe cosine sim clamped to [0, 1].
 
-    B3 fix: real cosine ranges [-1, 1]; the old ``(cos+1)/2`` affine rescale
-    compressed the usable band (orthogonal→0.5, mild-related→0.55-0.70) so
-    the composite degenerated and edge tiers collapsed. We now clamp the raw
-    cosine to ``max(0.0, cos)``: unrelated/antipodal → 0, related → its true
-    similarity, preserving spread for threshold/tier discrimination. Any
-    pathological input (length mismatch, zero vector, NaN) → 0.0 silently —
-    the score is a *signal*, not a numeric promise.
+    LD-4: keep the ``max(0, cos)`` clamp for L2-normalized Gemini
+    RETRIEVAL_DOCUMENT embeddings — per Garg 2024 25M-pair study, negative
+    cosines are <0.5% of pairs in practice and rarely carry useful signal
+    for our task type. Increment the negative-cosine counter so we can
+    alert on model-version drift (threshold: >2% triggers operator alert).
+
+    B3 history: the old ``(cos+1)/2`` affine rescale compressed the usable
+    band (orthogonal→0.5, mild-related→0.55-0.70) so the composite
+    degenerated. The raw-clamp keeps spread for tier discrimination.
     """
     if not va or not vb or len(va) != len(vb):
         return 0.0
@@ -88,7 +90,18 @@ def _cosine_similarity(va: Sequence[float], vb: Sequence[float]) -> float:
     cos = dot / math.sqrt(na * nb)
     if math.isnan(cos):
         return 0.0
-    # B3: clamp raw cosine to [0, 1] (no affine rescale — preserve spread)
+
+    # LD-4 telemetry: count every scored pair + count negatives separately.
+    # Wrapped in try/except so telemetry can never break scoring (kg_metrics
+    # degrades to a no-op when prometheus_client is missing).
+    try:
+        from website.core.kg_metrics import cosine_negative_total, cosine_pair_total
+        cosine_pair_total.inc()
+        if cos < 0.0:
+            cosine_negative_total.inc()
+    except Exception:  # pragma: no cover
+        pass
+
     cos = max(-1.0, min(1.0, cos))
     return max(0.0, cos)
 
