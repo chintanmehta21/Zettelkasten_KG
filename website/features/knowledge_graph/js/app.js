@@ -269,6 +269,11 @@ function getCommunityHue(communityId) {
   // LD-1: default min strength = 0.30 (slider minimum, weak bucket).
   let minStrength = DEFAULT_MIN_STRENGTH;
   let activeBucket = 'weak'; // LD-1: default permissive bucket
+  // X6: deep-link `?node=<id>` consumed by graph.onEngineStop once the
+  // force layout settles. `_didDeepLinkFocus` debounces so a second
+  // engine-stop (e.g. after slider-driven reheat) doesn't re-focus.
+  let _pendingFocusId = null;
+  let _didDeepLinkFocus = false;
   const longDateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
@@ -646,17 +651,15 @@ function getCommunityHue(communityId) {
           updateStats();
         }
         hideOverlay('overlay-loading');
-        // Deep-link: ?node=<id> focuses + opens a node after init.
+        // X6: deep-link `?node=<id>` is now wired through `graph.onEngineStop`
+        // (inside initGraph) so the focus fires precisely when the force
+        // layout settles — instead of the previous 1200 ms blind setTimeout
+        // that fired regardless of whether layout had actually converged.
         try {
           const params = new URLSearchParams(window.location.search);
           const focusId = params.get('node');
           if (focusId) {
-            // Allow the force-graph layout to settle before focusing so the
-            // camera fly-to has a meaningful target position.
-            setTimeout(function () {
-              const target = (graphData.nodes || []).find(n => n.id === focusId);
-              if (target) handleNodeClick(target);
-            }, 1200);
+            _pendingFocusId = focusId;
           }
         } catch (e) { /* non-fatal */ }
       })
@@ -787,6 +790,12 @@ function getCommunityHue(communityId) {
           const ring = new THREE.Mesh(new THREE.RingGeometry(radius * 1.4, radius * 1.7, 48), ringMat);
           ring.__isRing = true;
           ring.__nodeRadius = radius;
+          // F4: per-ring billboard via onBeforeRender (replaces the rAF loop
+          // that scanned every ring every frame). The renderer passes the
+          // camera in; rings face the viewer with no per-frame O(N) sweep.
+          ring.onBeforeRender = function (renderer, scene, cam) {
+            if (cam) ring.lookAt(cam.position);
+          };
           group.add(ring);
         }
 
@@ -819,6 +828,33 @@ function getCommunityHue(communityId) {
         }
         sprite.position.set(0, -(radius + 3), 0);
         group.add(sprite);
+
+        // F4: per-sprite onBeforeRender clamps scale only when the sprite is
+        // about to render. Replaces the 60Hz O(N) rAF loop that scanned every
+        // node every frame. The renderer calls this with the active camera,
+        // so we get correct frustum-culled behavior for free.
+        sprite.onBeforeRender = function (renderer, scene, cam) {
+          if (!cam) return;
+          if (sprite.__origSy === undefined) {
+            sprite.__origSy = sprite.scale.y;
+            sprite.__origSx = sprite.scale.x;
+          }
+          // Active-node SpriteText stays hidden; the HTML overlay renders that
+          // title with crisp browser text.
+          var nodeIsActive = (selectedNode && selectedNode.id === node.id) ||
+                             (hoverNode && hoverNode.id === node.id);
+          sprite.visible = !nodeIsActive;
+          var worldPos = new THREE.Vector3();
+          sprite.getWorldPosition(worldPos);
+          var dist = cam.position.distanceTo(worldPos);
+          var maxH = dist * 0.025;  // matches old MAX_LABEL_FRAC
+          if (sprite.__origSy > maxH && maxH > 0) {
+            var r = maxH / sprite.__origSy;
+            sprite.scale.set(sprite.__origSx * r, sprite.__origSy * r, 1);
+          } else {
+            sprite.scale.set(sprite.__origSx, sprite.__origSy, 1);
+          }
+        };
 
         return group;
       })
@@ -886,7 +922,19 @@ function getCommunityHue(communityId) {
       .d3AlphaDecay(0.025)
       .d3VelocityDecay(0.35)
       .warmupTicks(100)
-      .cooldownTime(2500);
+      .cooldownTime(2500)
+      // X6: settle-driven deep-link focus replaces the 1200 ms setTimeout.
+      // The callback runs the moment the force layout converges, so the
+      // camera fly-to has a real layout to aim at — slower graphs no
+      // longer fly to half-baked positions, and faster ones don't sit idle.
+      .onEngineStop(function () {
+        if (_didDeepLinkFocus || !_pendingFocusId) return;
+        try {
+          const target = (graphData.nodes || []).find(n => n.id === _pendingFocusId);
+          if (target) handleNodeClick(target);
+        } catch (e) { /* non-fatal */ }
+        _didDeepLinkFocus = true;
+      });
 
     // ---- HiDPI sharpness ----
     graph.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -934,45 +982,14 @@ function getCommunityHue(communityId) {
       graph.width(window.innerWidth).height(window.innerHeight);
     });
 
-    // ---- Text scale clamping — cap label size when camera is close ----
-    var _v3 = new THREE.Vector3();
-    var MAX_LABEL_FRAC = 0.025;
-
-    function clampLabelScales() {
-      requestAnimationFrame(clampLabelScales);
-      var cam = graph.camera();
-      if (!cam) return;
-      graphData.nodes.forEach(function (node) {
-        var obj = node.__threeObj;
-        if (!obj || !obj.children) return;
-        var nodeIsActive = (selectedNode && selectedNode.id === node.id) ||
-                           (hoverNode && hoverNode.id === node.id);
-        for (var i = 0; i < obj.children.length; i++) {
-          var child = obj.children[i];
-          if (child.__isRing) {
-            child.lookAt(cam.position);
-          }
-          if (!child.__isLabel) continue;
-          // Hide the in-canvas SpriteText for the active node — the HTML
-          // overlay below renders that title with crisp browser text.
-          child.visible = !nodeIsActive;
-          if (child.__origSy === undefined) {
-            child.__origSy = child.scale.y;
-            child.__origSx = child.scale.x;
-          }
-          obj.getWorldPosition(_v3);
-          var dist = cam.position.distanceTo(_v3);
-          var maxH = dist * MAX_LABEL_FRAC;
-          if (child.__origSy > maxH && maxH > 0) {
-            var r = maxH / child.__origSy;
-            child.scale.set(child.__origSx * r, child.__origSy * r, 1);
-          } else {
-            child.scale.set(child.__origSx, child.__origSy, 1);
-          }
-        }
-      });
-      _updateActiveLabel();
-    }
+    // F4: per-frame label clamping moved INSIDE the Sprite's onBeforeRender
+    // callback (set in nodeThreeObject). Ring billboard-toward-camera also
+    // moves to a per-ring onBeforeRender below. The old 60Hz rAF loop that
+    // touched every node every frame is gone (replaces the O(N) per-frame
+    // scan with O(rendered-visible)).
+    //
+    // The HTML active-label overlay still needs a rAF, but ONLY when there's
+    // a node to update (gated below) — typical idle frames cost nothing.
 
     // HTML title overlay for selected / hovered node — projects world coords
     // to screen each frame and parks the label just below the node.
@@ -1013,7 +1030,13 @@ function getCommunityHue(communityId) {
         _activeLabelEl.classList.remove('hidden');
       }
     }
-    requestAnimationFrame(clampLabelScales);
+    // F4: gated active-label rAF — only paints when an active node exists.
+    function _updateActiveLabelLoop() {
+      requestAnimationFrame(_updateActiveLabelLoop);
+      if (!selectedNode && !hoverNode) return;
+      _updateActiveLabel();
+    }
+    requestAnimationFrame(_updateActiveLabelLoop);
   }
 
   // ---- Node click → centre node, fly to it, then open panel ----
