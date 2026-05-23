@@ -180,18 +180,39 @@ class ContentRepository:
         canonical_zettel_id: UUID,
         workspace: WorkspaceZettelCreate,
     ) -> UUID:
-        payload = workspace.model_dump(exclude_none=True)
-        payload["workspace_id"] = str(workspace.workspace_id)
-        payload["canonical_zettel_id"] = str(canonical_zettel_id)
-
+        # Migration 66 (2026-05-23) replaced the full UNIQUE (workspace_id,
+        # canonical_zettel_id) constraint with a PARTIAL UNIQUE INDEX scoped
+        # to live rows (WHERE deleted_at IS NULL). PostgREST's `on_conflict=`
+        # URL grammar cannot specify the WHERE predicate needed for partial-
+        # index inference (PostgREST issue #2123 — open since 2022), so the
+        # previous `.table(...).upsert(...)` call raised 42P10 in prod.
+        #
+        # The fix routes the write through content.upsert_workspace_zettel
+        # (see supabase/website/_v2/repeatable/R__content_rpcs.sql) which uses
+        # native `INSERT ... ON CONFLICT (...) WHERE deleted_at IS NULL DO
+        # UPDATE ...` syntax and correctly matches the partial unique index.
+        # Atomicity + concurrency safety identical to the legacy path.
         response = (
             self._client.schema("content")
-            .table("workspace_zettels")
-            .upsert(payload, on_conflict="workspace_id,canonical_zettel_id")
+            .rpc(
+                "upsert_workspace_zettel",
+                {
+                    "p_workspace_id": str(workspace.workspace_id),
+                    "p_canonical_zettel_id": str(canonical_zettel_id),
+                    "p_ai_summary": workspace.ai_summary,
+                    "p_ai_summary_engine_version": workspace.ai_summary_engine_version,
+                    "p_user_tags": list(workspace.user_tags or []),
+                    "p_user_note": workspace.user_note,
+                    "p_pinned": workspace.pinned,
+                    "p_added_via": workspace.added_via,
+                },
+            )
             .execute()
         )
-        row = _first(response.data)
-        return UUID(str(row["id"]))
+        # supabase-py's `.rpc()` returns the scalar uuid wrapped as a string
+        # in response.data (the function's RETURNS uuid produces a single
+        # value, not a table row).
+        return UUID(str(response.data))
 
     def upsert_workspace_chunk_membership(
         self,
