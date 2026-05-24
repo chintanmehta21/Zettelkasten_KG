@@ -63,10 +63,12 @@
   // ── Sheet open/close ──
   function openSheet(mode) {
     sheet.classList.add('open');
+    document.body.classList.add('kg-sheet-open');
     setMode(mode || 'detail');
   }
   function closeSheet() {
     sheet.classList.remove('open');
+    document.body.classList.remove('kg-sheet-open');
   }
   filterToggleBtn && filterToggleBtn.addEventListener('click', function () {
     if (sheet.classList.contains('open') && !filtersPanel.hidden) {
@@ -154,6 +156,7 @@
 
   // ── Reset + Apply ──
   resetBtn && resetBtn.addEventListener('click', function () {
+    var prevView = state.view;
     state.strength = 0.30;
     state.sources = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
     state.tags = new Set();
@@ -171,7 +174,7 @@
     });
     updateBadges();
     emit('change');
-    emit('view');
+    if (prevView !== 'global') emit('view');
   });
   applyBtn && applyBtn.addEventListener('click', function () {
     updateBadges();

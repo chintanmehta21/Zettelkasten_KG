@@ -116,3 +116,12 @@ def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
     assert "zk-prefer-desktop=1" in set_cookie
     assert "Max-Age=2592000" in set_cookie
     assert "HttpOnly" in set_cookie
+
+
+def test_mobile_kg_personal_view_uses_correct_api_param() -> None:
+    """graph.js must use ?view=my (not ?scope=personal) per /api/graph contract."""
+    import pathlib
+
+    graph_js = pathlib.Path("website/mobile/js/graph.js").read_text(encoding="utf-8")
+    assert "view=my" in graph_js, "graph.js Personal view must use ?view=my param"
+    assert "scope=personal" not in graph_js, "graph.js must not use the wrong ?scope=personal param"

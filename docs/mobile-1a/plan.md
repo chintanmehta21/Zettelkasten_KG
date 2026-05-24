@@ -2085,7 +2085,7 @@ Modify `website/mobile/js/graph.js`. Required changes:
 ```javascript
   function reloadForView() {
     var fs = window.ZKMobileKGFilters.getState();
-    var url = fs.view === 'my' ? '/api/graph?scope=personal' : '/api/graph';
+    var url = fs.view === 'my' ? '/api/graph?view=my' : '/api/graph';
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .then(function (data) {
