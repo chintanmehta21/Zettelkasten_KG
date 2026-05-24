@@ -1514,6 +1514,14 @@ function getCommunityHue(communityId) {
     });
   }
 
+  // X4 (T4.12): base64url-encode the chip id so the HTML id is collision-free
+  // even for tags that differ only by punctuation/whitespace. Encodes via UTF-8
+  // (btoa needs latin1) and strips `=` padding to keep the id selector-safe.
+  function _tagFilterId(tag) {
+    const b64 = btoa(unescape(encodeURIComponent(String(tag))));
+    return 'flt-tag-' + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+
   function renderTagsSection() {
     const body = document.getElementById('filter-tags-body');
     if (!body) return;
@@ -1533,7 +1541,11 @@ function getCommunityHue(communityId) {
       return;
     }
     tags.forEach(tag => {
-      const id = 'flt-tag-' + tag.replace(/[^a-z0-9_-]/gi, '_');
+      // X4 (T4.12): round-trippable base64url-encoded id avoids the "foo bar"
+      // vs "foo_bar" collision the old `[^a-z0-9_-]` sanitizer produced (both
+      // mapped to `flt-tag-foo_bar`, so the second chip silently aliased the
+      // first checkbox state on toggle).
+      const id = _tagFilterId(tag);
       const lbl = document.createElement('label');
       lbl.className = 'kg-filter-item';
       const checked = activeTags.has(tag);
