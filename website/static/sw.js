@@ -1,7 +1,7 @@
 // Service Worker — Zettelkasten mobile shell cache (iter mobile-1a Phase 6)
 // Placeholder icons: teal-on-dark 'Z'. Replace icons before shipping to stores.
 
-const CACHE = 'zk-shell-v1';
+const CACHE = 'zk-shell-v2';  // v2: icons routed via /static/icons mount (v1 SW install failed on 404 icons)
 
 const SHELL_URLS = [
   '/m/',

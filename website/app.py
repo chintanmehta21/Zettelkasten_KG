@@ -321,6 +321,15 @@ def create_app(lifespan=None) -> FastAPI:
     # ── Desktop static assets ──
     app.mount("/css", StaticFiles(directory=str(STATIC_DIR / "css")), name="css")
     app.mount("/js", StaticFiles(directory=str(STATIC_DIR / "js")), name="js")
+    # PWA icons (manifest.webmanifest + SW SHELL_URLS reference /static/icons/*).
+    # Narrow mount — only the icons subdir, not all of /static.
+    _icons_dir = STATIC_DIR / "icons"
+    if _icons_dir.is_dir():
+        app.mount(
+            "/static/icons",
+            StaticFiles(directory=str(_icons_dir)),
+            name="static-icons",
+        )
 
     # Knowledge Graph static assets (shared by both mobile and desktop)
     app.mount("/kg/css", StaticFiles(directory=str(KG_DIR / "css")), name="kg-css")
