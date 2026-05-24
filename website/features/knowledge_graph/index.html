@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/kg/css/style.css?v=20260523a">
+  <link rel="stylesheet" href="/kg/css/style.css?v=20260524b">
+  <link rel="stylesheet" href="/css/zk_summary_popup.css?v=20260524a">
 </head>
 <body>
   <!--ZK_HEADER-->
@@ -182,13 +183,15 @@
       <header class="kg-panel-meta-row">
         <span class="kg-panel-date hidden" id="panel-date"></span>
         <span class="kg-panel-badge" id="panel-badge">source</span>
-        <a class="kg-panel-icon-btn" id="panel-link" href="#" target="_blank" rel="noopener" title="View original source" aria-label="View original source">
+        <button class="kg-panel-icon-btn" id="panel-summary" type="button" title="Open full summary" aria-label="Open full summary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="8" y1="13" x2="16" y2="13"></line>
+            <line x1="8" y1="17" x2="16" y2="17"></line>
+            <line x1="8" y1="9" x2="11" y2="9"></line>
           </svg>
-        </a>
+        </button>
         <button class="kg-panel-icon-btn" id="panel-add-kasten" type="button" title="Add to a Kasten" aria-label="Add to a Kasten">
           <span class="kg-panel-icon-mask" style="--mask-url: url(/artifacts/logo-kastens.svg)"></span>
         </button>
@@ -269,13 +272,53 @@
     </div>
   </div>
 
+  <!-- Shared summary popup: identical visual/behaviour to /home and /home/zettels.
+       Loaded with KaTeX + refresh-button so math rendering, PDF download, and
+       refresh-this-zettel work without divergence. -->
+  <div class="zettels-summary-overlay hidden" id="summary-overlay">
+    <div class="zettels-summary-backdrop" id="summary-backdrop"></div>
+    <section class="zettels-summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+      <div class="zettels-summary-actions">
+        <button class="zettels-summary-action" id="summary-download" type="button" aria-label="Download summary as PDF" title="Download PDF">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 4V16M12 16L8 12M12 16L16 12M5 20H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <button class="zettels-summary-action" id="summary-refresh" type="button" aria-label="Refresh summary. Note: -1 from Zettel balance." title="Refresh summary&#10;Note: -1 from Zettel balance">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M17 8.5A6 6 0 1 0 18 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M17 5v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <button class="zettels-summary-action zettels-summary-close" id="summary-close" type="button" aria-label="Close summary" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="zettels-summary-meta-row">
+        <span class="home-card-date" id="summary-date"></span>
+        <span class="home-card-source" id="summary-source">Source</span>
+      </div>
+      <div class="zettels-summary-refresh-note hidden" id="summary-refresh-note" role="status"></div>
+      <h2 class="zettels-summary-title" id="summary-title"></h2>
+      <div class="zettels-summary-text" id="summary-text"></div>
+      <div class="zettels-summary-tags" id="summary-tags"></div>
+    </section>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
-<script src="/user-pricing/js/purchase_launcher.js?v=20260517d"></script>
+  <script src="/user-pricing/js/purchase_launcher.js?v=20260517d"></script>
   <link rel="stylesheet" href="/functional-gates/css/quota_gate.css?v=20260517d">
   <script src="/functional-gates/js/quota_gate.js?v=20260517d"></script>
+  <link rel="stylesheet" href="/refresh-button/static/refresh_button.css?v=20260523d">
+  <script src="/refresh-button/static/refresh_button.js?v=20260523d"></script>
+  <script defer src="/vendor/katex/katex.min.js?v=20260519c"></script>
+  <script defer src="/vendor/katex/contrib/auto-render.min.js?v=20260519c"></script>
+  <script src="/js/zk_summary_popup.js?v=20260524a"></script>
   <script src="/kg/js/kasten_modal.js?v=20260523a"></script>
-  <script src="/kg/js/app.js?v=20260523a"></script>
+  <script src="/kg/js/app.js?v=20260524a"></script>
 </body>
 </html>

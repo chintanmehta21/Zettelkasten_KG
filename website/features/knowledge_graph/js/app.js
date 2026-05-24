@@ -239,6 +239,29 @@ function getCommunityHue(communityId) {
     }
   }
 
+  // Map a KG graph node onto the canonical shape consumed by ZKSummary.open().
+  // KG payloads carry `name` + `group`; user_zettels uses `title` + `source`.
+  // The popup module reads either set, but we set both so the meta-row picks
+  // the right pill colour (group → source) and renderDualSummary parses the
+  // raw envelope on `node.summary` exactly like /home does.
+  function buildSummaryNode(node) {
+    if (!node) return null;
+    const sourceKey = String(node.group || node.source || 'web').toLowerCase();
+    const label = (SOURCE_LABEL && SOURCE_LABEL[sourceKey]) || sourceKey;
+    return {
+      id: node.id,
+      title: node.name || node.title || 'Untitled',
+      source: sourceKey,
+      group: sourceKey,
+      sourceLabel: label,
+      date: node.date || null,
+      url: toSafeHttpUrl(node.url) || node.url || '',
+      tags: Array.isArray(node.tags) ? node.tags : [],
+      summary: node.summary || '',
+      description: node.description || ''
+    };
+  }
+
   // ---- DOM refs ----
   const container = document.getElementById('graph-container');
   const searchInput = document.getElementById('search-input');
@@ -1131,7 +1154,7 @@ function getCommunityHue(communityId) {
     const summary = document.getElementById('panel-summary');
     const tags = document.getElementById('panel-tags');
     const connections = document.getElementById('panel-connections');
-    const link = document.getElementById('panel-link');
+    const summaryBtn = document.getElementById('panel-summary');
     const addBtn = document.getElementById('panel-add-kasten');
 
     const nodeGroup = normalizeGroup(node.group);
@@ -1151,19 +1174,21 @@ function getCommunityHue(communityId) {
 
     summary.textContent = getBrief(node);  // F6: memoized
 
-    const safeLink = toSafeHttpUrl(node.url);
-    if (safeLink) {
-      link.href = safeLink;
-      link.removeAttribute('aria-disabled');
-      link.tabIndex = 0;
-      link.rel = 'noopener noreferrer';
-      link.target = '_blank';
-    } else {
-      link.href = '#';
-      link.setAttribute('aria-disabled', 'true');
-      link.tabIndex = -1;
-      link.rel = '';
-      link.target = '';
+    // Summary button: opens the shared zk_summary_popup modal with the
+    // node payload. Disabled state when ZKSummary isn't loaded yet (defensive).
+    if (summaryBtn) {
+      if (window.ZKSummary && typeof window.ZKSummary.open === 'function') {
+        summaryBtn.removeAttribute('aria-disabled');
+        summaryBtn.tabIndex = 0;
+        summaryBtn.onclick = function (event) {
+          event.preventDefault();
+          window.ZKSummary.open(buildSummaryNode(node));
+        };
+      } else {
+        summaryBtn.setAttribute('aria-disabled', 'true');
+        summaryBtn.tabIndex = -1;
+        summaryBtn.onclick = null;
+      }
     }
 
     // Add-to-Kasten button — three states:
