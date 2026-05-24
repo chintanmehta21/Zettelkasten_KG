@@ -317,7 +317,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         / "website"
         / "features"
         / "user_zettels"
-        / "index.html": "/home/zettels/js/user_zettels.js?v=20260523f",
+        / "index.html": "/home/zettels/js/user_zettels.js?v=20260524a",
     }
     stale_add_zettel_versions = ("20260404", "20260425", "20260512", "20260517")
 
@@ -350,7 +350,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/zettels/css/user_zettels.css?v=20260523j" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/home/zettels/js/user_zettels.js?v=20260523f" in (
+    assert "/home/zettels/js/user_zettels.js?v=20260524a" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
     # mobile.css link moved to the shared shell template in iter mobile-1a Phase 1.

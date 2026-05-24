@@ -1344,46 +1344,19 @@
   }
 
   function openSummary(node) {
-    if (!summaryOverlay || !summarySource || !summaryDate || !summaryTitle || !summaryText || !summaryTags) return;
-
-    // Match card visual pattern exactly: date pill (mono) THEN source pill.
-    summarySource.className = 'home-card-source ' + node.source;
-    summarySource.textContent = node.sourceLabel;
-    summaryDate.className = 'home-card-date';
-    summaryDate.textContent = node.date ? formatDate(node.date) : '';
-    if (!node.date) summaryDate.style.display = 'none';
-    else summaryDate.style.display = '';
-    summaryTitle.textContent = node.title;
-    renderDualSummary(summaryText, {
-      brief: node.briefSummary || '',
-      detailed: node.detailedSummary || '',
-      detailedStructured: node.detailedStructured || null
-    });
-
-    var _mathSrc = (node.source || node.group || '').toLowerCase();
-    _maskPriceDollars(summaryText);
-    _mathRenderArxiv(summaryText, _mathSrc);
-    _unmaskPriceDollars(summaryText);
-
-    summaryTags.innerHTML = '';
-    (node.tags || []).forEach(function (tag) {
-      var el = document.createElement('span');
-      el.className = 'zettels-tag';
-      el.textContent = '#' + tag;
-      summaryTags.appendChild(el);
-    });
-
-    if (window.ZkRefreshButton && typeof window.ZkRefreshButton.setCurrentNode === 'function') {
-      window.ZkRefreshButton.setCurrentNode(node);
+    // Delegates to the shared zk_summary_popup module. The node object
+    // already carries pre-extracted brief/detailed/structured fields (the
+    // card render path populates them when it builds the list), so the
+    // shared open() skips its own extractor pass.
+    if (window.ZKSummary && typeof window.ZKSummary.open === 'function') {
+      window.ZKSummary.open(node);
     }
-    summaryOverlay.classList.remove('hidden');
-    setBodyScrollLocked(true);
   }
 
   function closeSummary() {
-    if (!summaryOverlay) return;
-    summaryOverlay.classList.add('hidden');
-    setBodyScrollLocked(false);
+    if (window.ZKSummary && typeof window.ZKSummary.close === 'function') {
+      window.ZKSummary.close();
+    }
   }
 
   function openFiltersMenu() {
