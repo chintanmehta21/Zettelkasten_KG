@@ -95,8 +95,13 @@ jobs:
             # --env-file:     pulls SUPABASE_V2_DATABASE_URL + creds the live
             #                 app uses (sudoers already whitelists this path).
             # No volume mounts — the script is baked into the image already.
+            # PYTHONPATH=/app so `from website.features...` resolves; the
+            # ops scripts COPY'd into /app/ops/scripts/ aren't a package and
+            # `python <script>.py` only puts the script's own dir on sys.path
+            # (unlike gunicorn which is launched as a module).
             docker run --rm --network host \
               --env-file /opt/zettelkasten/compose/.env \
+              -e PYTHONPATH=/app \
               "$LIVE_IMAGE" \
               python ops/scripts/rescore_kg_edges.py $ARGS
 
