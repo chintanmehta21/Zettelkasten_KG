@@ -63,6 +63,8 @@ def test_escape_cookie_bypasses_mobile_redirect() -> None:
 
 def test_mobile_index_includes_oauth_modal() -> None:
     """/m/ HTML must include the OAuth modal (Phase 3)."""
+    import re
+
     resp = _client().get("/m/")
     assert resp.status_code == 200
     html = resp.text
@@ -80,6 +82,11 @@ def test_mobile_index_includes_oauth_modal() -> None:
     assert 'supabase-js@2' in html
     assert '/auth/js/auth.js' in html
     assert '/m/js/auth-modal.js' in html
+    # Apple + Twitter are in DOM but hidden until validated (plan §0 deferrals)
+    apple_btn = re.search(r'<button[^>]*data-provider="apple"[^>]*>', html)
+    twitter_btn = re.search(r'<button[^>]*data-provider="twitter"[^>]*>', html)
+    assert apple_btn and 'hidden' in apple_btn.group(0), "Apple chip must be hidden per plan defer"
+    assert twitter_btn and 'hidden' in twitter_btn.group(0), "Twitter chip must be hidden per plan defer"
 
 
 def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
