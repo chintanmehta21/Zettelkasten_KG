@@ -196,6 +196,17 @@ def create_app(lifespan=None) -> FastAPI:
         kwargs["lifespan"] = lifespan
 
     app = FastAPI(**kwargs)
+
+    # X7 (Phase 4 / Task 4.4): pre-warm tldextract's PSL during gunicorn's
+    # --preload step so all workers share the parsed tree via fork() COW
+    # (instead of each worker re-materializing ~5 MB on its first request).
+    # `suffix_list_urls=()` blocks any network fetch — fully offline call.
+    try:
+        from website.features.kg_features.pseudo_tags import _extract
+        _extract("https://example.com")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tldextract PSL pre-warm failed (non-fatal): %s", exc)
+
     nexus_enabled = _nexus_enabled()
 
     # WAVE-D WM-14: log a warning at boot for each unset SLACK_WEBHOOK_* env
