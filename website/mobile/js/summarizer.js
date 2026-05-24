@@ -11,68 +11,41 @@
   const srcSel   = document.getElementById('source-select');
   const submitBtn= document.getElementById('submit-btn');
   const loading  = document.getElementById('loading');
-  const loadTxt  = document.getElementById('loading-text');
   const errorEl  = document.getElementById('error');
   const result   = document.getElementById('result');
   const copyBtn  = document.getElementById('copy-btn');
 
-  // PR #39 / Wave-2 D5: quirky phase-aware messages, matching the
-  // desktop typewriter vocabulary. Mobile keeps its lighter rotation
-  // model (no skeleton card to mount a typewriter inside).
-  const MESSAGES_QUEUED = [
-    'Warming up the librarian…',
-    'Loading the inkwell…',
-    'Stretching the neural cortex…'
-  ];
-  const MESSAGES_RUNNING = [
-    'Skimming the source for the juicy bits…',
-    'Distilling the signal from the noise…',
-    'Compressing thoughts into Zettel-sized truth…',
-    'Polishing the prose; minor existential edits…',
-    'Tagging the constellations…'
-  ];
-  const MESSAGES_LONG = [
-    'This one\'s a marathon — sit tight…',
-    'Long-form magic in progress…',
-    'Worth the wait, promise.'
-  ];
-
-  let msgIndex = 0;
-  let msgTimer = null;
-  let currentPool = MESSAGES_QUEUED;
   let rawSummary = '';
+  var _typer = null;
 
   function showLoading() {
-    msgIndex = 0;
-    currentPool = MESSAGES_QUEUED;
-    loadTxt.textContent = currentPool[0];
     loading.classList.add('active');
     result.classList.remove('active');
     errorEl.classList.remove('active');
     submitBtn.disabled = true;
-    msgTimer = setInterval(() => {
-      msgIndex = (msgIndex + 1) % currentPool.length;
-      loadTxt.textContent = currentPool[msgIndex];
-    }, 3000);
+    var skel = document.getElementById('skeleton-card');
+    if (skel) {
+      skel.hidden = false;
+      if (window.ZKSkeletonTyper && typeof window.ZKSkeletonTyper.attach === 'function') {
+        _typer = window.ZKSkeletonTyper.attach(skel);
+      }
+    }
   }
 
   function hideLoading() {
     loading.classList.remove('active');
     submitBtn.disabled = false;
-    if (msgTimer) { clearInterval(msgTimer); msgTimer = null; }
+    if (_typer && typeof _typer.detach === 'function') {
+      _typer.detach();
+      _typer = null;
+    }
+    var skel = document.getElementById('skeleton-card');
+    if (skel) skel.hidden = true;
   }
 
   function handleStatusTick(tick) {
-    if (!tick) return;
-    const elapsed = tick.elapsedMs || 0;
-    let nextPool;
-    if (elapsed >= 90000) nextPool = MESSAGES_LONG;
-    else if (tick.phase === 'running') nextPool = MESSAGES_RUNNING;
-    else nextPool = MESSAGES_QUEUED;
-    if (nextPool !== currentPool) {
-      currentPool = nextPool;
-      msgIndex = 0;
-      if (loadTxt) loadTxt.textContent = currentPool[0];
+    if (_typer && typeof _typer.update === 'function') {
+      _typer.update(tick);
     }
   }
 
