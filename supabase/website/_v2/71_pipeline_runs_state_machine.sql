@@ -3,46 +3,64 @@
 -- (Plan-numbered "Migration 49" in 2026-05-23-kg-render-correctness-overhaul.md.
 -- First renumbered to 70 because slot 49 was occupied; bumped again to 71
 -- to stay sequential after a parallel master commit (0eaf172d) added
--- 68_hybrid_search_chunks_workspace.sql. Design content unchanged.)
+-- 68_hybrid_search_chunks_workspace.sql.)
 --
--- Today: status enum = ('pending'|'in_progress'|'succeeded'|'failed').
--- Idempotency gate blocks ALL future retries once 'succeeded' is written,
--- even for a "succeeded with edges=0" outcome that was actually a transient
--- quota failure. This causes Naruto-class permanent edgelessness.
+-- 2026-05-23 REWRITE: the plan assumed `pipelines.pipeline_run_status` was
+-- an ENUM type; CI revealed the actual schema (_v2/05_pipelines_schema.sql:11)
+-- uses a TEXT column with a CHECK constraint
+-- (status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled')).
+-- ALTER TYPE ADD VALUE is therefore inapplicable; we replace the CHECK
+-- constraint with an extended set.
 --
--- New states:
+-- Existing states (kept): 'queued', 'running', 'succeeded', 'failed', 'cancelled'.
+-- New states added:
 --   'succeeded_empty'  - terminal-but-retryable; edges=0 from a clean run
 --                        (no candidates found). Retryable after 24h grace.
 --   'failed_retryable' - transient failure (rate limit / RPC / network).
 --                        Retryable after exponential backoff.
--- Plus: retry_eligible_after timestamp for backoff scheduling.
+--   'failed_permanent' - terminal failure (corrupt input, schema invariant).
+--                        NEVER retried; idempotency gate blocks.
+--
+-- Plus: retry_eligible_after timestamp + attempt_count for backoff scheduling.
 --
 -- Backfill: existing rows with status='succeeded' AND metrics->>'edges'::int = 0
--- migrate to 'succeeded_empty' so the new gate semantics take effect.
---
--- WARNING: ALTER TYPE ADD VALUE cannot run inside a transaction with other DDL
--- on older Postgres. Supabase's PG 15+ supports this in a single statement
--- set; if you encounter `cannot run inside a transaction block`, split this
--- file into two `psql -c` invocations: enum extension first, the rest second.
+-- migrate to 'succeeded_empty' so the new gate semantics take effect for the
+-- Naruto-class workspaces that have terminally-empty KG runs.
 
-ALTER TYPE pipelines.pipeline_run_status
-  ADD VALUE IF NOT EXISTS 'succeeded_empty';
-ALTER TYPE pipelines.pipeline_run_status
-  ADD VALUE IF NOT EXISTS 'failed_retryable';
+BEGIN;
+  SET LOCAL lock_timeout = '3s';
+  SET LOCAL statement_timeout = '60s';
 
-ALTER TABLE pipelines.pipeline_runs
-  ADD COLUMN IF NOT EXISTS retry_eligible_after timestamptz;
+  -- Replace the CHECK constraint with the extended state set. The DROP/ADD
+  -- is atomic within this transaction. Name discovered via:
+  --   SELECT conname FROM pg_constraint WHERE conrelid = 'pipelines.pipeline_runs'::regclass;
+  -- Postgres auto-names CHECK constraints as <table>_<column>_check.
+  ALTER TABLE pipelines.pipeline_runs
+    DROP CONSTRAINT IF EXISTS pipeline_runs_status_check;
+  ALTER TABLE pipelines.pipeline_runs
+    ADD CONSTRAINT pipeline_runs_status_check
+    CHECK (status IN (
+      'queued', 'running', 'succeeded', 'failed', 'cancelled',
+      'succeeded_empty', 'failed_retryable', 'failed_permanent'
+    ));
 
-ALTER TABLE pipelines.pipeline_runs
-  ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 1;
+  -- LD-8: retry-scheduling columns.
+  ALTER TABLE pipelines.pipeline_runs
+    ADD COLUMN IF NOT EXISTS retry_eligible_after timestamptz;
 
--- Partial index for the retry-sweep query.
+  ALTER TABLE pipelines.pipeline_runs
+    ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 1;
+COMMIT;
+
+-- Partial index for the retry-sweep query — outside the BEGIN/COMMIT so a
+-- prior partial apply leaves a clean state. Idempotent via IF NOT EXISTS.
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_retry_eligible
   ON pipelines.pipeline_runs (kind, retry_eligible_after)
   WHERE status IN ('succeeded_empty', 'failed_retryable')
     AND retry_eligible_after IS NOT NULL;
 
 -- Backfill: zero-edge succeeded → succeeded_empty for kg_extract runs.
+-- Idempotent (the WHERE clause excludes already-converted rows).
 UPDATE pipelines.pipeline_runs
    SET status = 'succeeded_empty',
        retry_eligible_after = finished_at + interval '24 hours'
