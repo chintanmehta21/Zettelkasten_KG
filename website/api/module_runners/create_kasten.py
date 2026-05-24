@@ -852,6 +852,33 @@ async def _execute_create_kasten(
                         workspace_zettel_ids=wz_list[i : i + chunk],
                     )
             except Exception as exc:  # noqa: BLE001 — surface but keep Kasten
+                # A4 — bulk-add catastrophic failure alert. The FailedLink
+                # entry preserves the user-visible signal, but ops needs a
+                # separate alert: a single bulk error means the Kasten was
+                # built with 0–N members instead of the claimed count (AWS
+                # snowball anti-pattern + the Naruto-E2E "0 zettels" class).
+                try:
+                    from website.features.web_monitor import (
+                        _hash_id,
+                        maybe_fire_app_error,
+                    )
+
+                    maybe_fire_app_error(
+                        dedup_key=f"kasten_bulk_add:{_hash_id(str(kasten_id))}",
+                        route="create_kasten.bulk_add_zettels",
+                        exc_type=type(exc).__name__,
+                        message=str(exc)[:400],
+                        request_id=client_action_id,
+                        fields={
+                            "kasten_hash": _hash_id(str(kasten_id)),
+                            "chunk_offset": str(i),
+                            "total_members": str(len(wz_list)),
+                            "user_hash": _hash_id(str(effective_user_id)),
+                        },
+                        severity="critical",
+                    )
+                except Exception:  # noqa: BLE001 — alert must never block return
+                    logger.exception("create_kasten bulk_add alert dispatch failed")
                 failed.append(
                     FailedLink(
                         url="<bulk_add_to_kasten>",

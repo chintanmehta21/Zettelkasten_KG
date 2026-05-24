@@ -682,6 +682,32 @@ class GeminiKeyPool:
             f"all {num_keys} keys exhausted after {len(attempts)} attempts. "
             f"Last error: `{last_exc}`"
         )
+        # B1 — also fire to the canonical #app-errors channel so this state
+        # appears in the ops dashboard alongside other 5xx-class signals.
+        # The legacy SLACK_WEBHOOK_URL path above stays for backward-compat
+        # (it predates the per-channel SLACK_WEBHOOK_APP_ERRORS routing).
+        try:
+            from website.features.web_monitor import maybe_fire_app_error
+
+            maybe_fire_app_error(
+                dedup_key=f"gemini_all_exhausted:{label or 'generate_content'}",
+                route="gemini.key_pool.all_exhausted",
+                exc_type=type(last_exc).__name__ if last_exc else "RuntimeError",
+                message=str(last_exc)[:400] if last_exc else "all keys exhausted",
+                fields={
+                    "label": label or "generate_content",
+                    "num_keys": str(num_keys),
+                    "attempts": str(len(attempts)),
+                    "cooled_keys": str(len(cooled_keys) or num_keys),
+                    "external_service": "gemini",
+                },
+                severity="critical",
+                # 5-min dedup matches the subagent recommendation; an
+                # ongoing outage still produces 1 alert / 5 min.
+                dedup_seconds=5 * 60,
+            )
+        except Exception:  # noqa: BLE001 — alert must never break the raise
+            logger.debug("app_errors dispatch failed", exc_info=True)
         raise last_exc  # type: ignore[misc]
 
     async def generate_content_youtube_url(
