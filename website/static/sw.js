@@ -8,7 +8,6 @@ const SHELL_URLS = [
   '/m/knowledge-graph',
   '/m/css/mobile.css',
   '/m/js/shell.js',
-  '/m/js/capture.js',
   '/m/js/auth-modal.js',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
