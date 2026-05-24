@@ -33,19 +33,16 @@ from urllib.parse import urlsplit
 # protects the D-KG-1 tag signal if a future rule family is added.
 _MAX_PSEUDO_TAGS = 3
 
-# Multi-part public suffixes we care about (keeps eTLD+1 correct for the
-# common academic/code/news hosts this corpus sees). Anything not listed
-# falls back to the last-two-labels heuristic, which is correct for the
-# overwhelming majority of single-label TLDs (.com/.org/.io/.dev/...).
-_MULTI_PART_SUFFIXES = {
-    "co.uk",
-    "co.in",
-    "com.au",
-    "ac.uk",
-    "org.uk",
-    "gov.uk",
-    "co.jp",
-}
+# Phase 4 / Task 4.4 (X7): replaced the hand-rolled `_MULTI_PART_SUFFIXES`
+# dict with the canonical Public Suffix List via `tldextract`. The PSL
+# snapshot is bundled in the tldextract wheel; `suffix_list_urls=()` blocks
+# any runtime network fetch (no async DNS, no I/O on first call), so the
+# import and first invocation are both fully offline. The
+# `cache_dir="/tmp/tldextract"` lets multiple processes share the parsed
+# tree via COW after the lifespan-pre-warm in app.py.
+import tldextract  # noqa: E402
+
+_extract = tldextract.TLDExtract(suffix_list_urls=(), cache_dir="/tmp/tldextract")
 
 # source_type enum value -> coarse modality. Unknown/empty -> no modality tag.
 _MODALITY_BY_SOURCE_TYPE = {
@@ -79,26 +76,23 @@ _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
 def _registrable_domain(url: str | None) -> str | None:
+    """X7 (Phase 4 / Task 4.4): registrable domain via the Public Suffix List.
+
+    Replaces the hand-rolled `_MULTI_PART_SUFFIXES` heuristic with tldextract's
+    canonical PSL. Correct for every multi-label TLD (`.co.uk`, `.gov.in`,
+    `.com.au`, etc.) without an explicit allow-list, and resilient to new
+    public suffixes added to the PSL (tldextract ships a snapshot per release).
+
+    Returns None for bare hostnames, IPs, or empty input — preserves the
+    prior contract so callers don't have to change their None-checks.
+    """
     if not url:
         return None
     try:
-        host = urlsplit(url.strip()).hostname
-    except ValueError:
+        result = _extract(url.strip())
+    except Exception:
         return None
-    if not host:
-        return None
-    host = host.lower().lstrip(".")
-    if host.startswith("www."):
-        host = host[4:]
-    labels = [p for p in host.split(".") if p]
-    if len(labels) < 2:
-        # bare hostname / localhost / IP-ish — not a registrable domain.
-        return None
-    last_two = ".".join(labels[-2:])
-    last_three = ".".join(labels[-3:]) if len(labels) >= 3 else None
-    if last_two in _MULTI_PART_SUFFIXES and last_three:
-        return last_three
-    return last_two
+    return result.registered_domain or None
 
 
 def _slug(value: str, *, max_len: int = 48) -> str:
