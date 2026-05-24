@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0a0b14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon-180.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title><!--ZK_MOBILE_TITLE--></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/m/css/mobile.css?v=20260524a">
+</head>
+<body class="<!--ZK_MOBILE_BODY_CLASS-->">
+  <header class="m-header" role="banner">
+    <a class="m-header-brand" href="/m/" aria-label="Zettelkasten home">
+      <svg class="m-header-logo" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+      </svg>
+      <span class="m-header-brand-text">Zettelkasten</span>
+    </a>
+    <h1 class="m-header-title" id="m-page-title"><!--ZK_MOBILE_PAGE_TITLE--></h1>
+    <button class="m-header-avatar" id="m-avatar-btn" type="button" aria-label="Sign in or open account menu">
+      <svg class="m-header-avatar-anon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span class="m-header-avatar-image" id="m-avatar-image" hidden></span>
+    </button>
+  </header>
+
+  <main class="m-main" id="m-main">
+    <!--ZK_MOBILE_CONTENT-->
+  </main>
+
+  <nav class="m-bottom-tabs" role="navigation" aria-label="Primary">
+    <a class="m-tab" data-tab="capture" href="/m/" aria-label="Capture">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span class="m-tab-label">Capture</span>
+    </a>
+    <button class="m-tab m-tab-disabled" data-tab="notes" type="button" aria-disabled="true" aria-label="Notes — coming soon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      <span class="m-tab-label">Notes</span>
+    </button>
+    <button class="m-tab m-tab-disabled" data-tab="chat" type="button" aria-disabled="true" aria-label="Chat — coming soon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      <span class="m-tab-label">Chat</span>
+    </button>
+    <a class="m-tab" data-tab="graph" href="/m/knowledge-graph" aria-label="Graph">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="19" r="2"></circle><line x1="12" y1="7" x2="6" y2="17"></line><line x1="12" y1="7" x2="18" y2="17"></line></svg>
+      <span class="m-tab-label">Graph</span>
+    </a>
+    <button class="m-tab m-tab-disabled" data-tab="profile" type="button" aria-disabled="true" aria-label="Profile — coming soon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      <span class="m-tab-label">Profile</span>
+    </button>
+  </nav>
+
+  <footer class="m-footer">
+    <a href="/?desktop=1">Switch to desktop site</a>
+  </footer>
+
+  <script src="/m/js/shell.js?v=20260524a"></script>
+</body>
+</html>
