@@ -18,6 +18,11 @@ import re
 
 
 AUTH_JS_PATH = pathlib.Path("website/features/user_auth/js/auth.js")
+AUTH_CORE_JS_PATH = pathlib.Path("website/features/user_auth/js/auth-core.js")
+# Every JS file under the user_auth feature is in-scope for the no-token-write
+# scan. createSupabaseClient lives in auth-core.js post-extraction; the desktop
+# DOM-wiring layer stays in auth.js.
+AUTH_JS_PATHS = [AUTH_JS_PATH, AUTH_CORE_JS_PATH]
 
 # Match `localStorage.setItem("...token...", ...)` or single quotes,
 # allowing surrounding whitespace. We intentionally do NOT match the
@@ -34,33 +39,38 @@ SESSION_FORBIDDEN = re.compile(
 
 
 def test_auth_js_exists() -> None:
-    assert AUTH_JS_PATH.exists(), f"missing {AUTH_JS_PATH}"
+    for path in AUTH_JS_PATHS:
+        assert path.exists(), f"missing {path}"
 
 
 def test_auth_js_does_not_localstorage_set_tokens() -> None:
-    src = AUTH_JS_PATH.read_text(encoding="utf-8")
-    match = LOCAL_FORBIDDEN.search(src)
-    assert match is None, (
-        f"auth.js writes a token-shaped value to localStorage at offset "
-        f"{match.start() if match else -1}: {match.group(0) if match else ''}"
-    )
+    for path in AUTH_JS_PATHS:
+        src = path.read_text(encoding="utf-8")
+        match = LOCAL_FORBIDDEN.search(src)
+        assert match is None, (
+            f"{path} writes a token-shaped value to localStorage at offset "
+            f"{match.start() if match else -1}: {match.group(0) if match else ''}"
+        )
 
 
 def test_auth_js_does_not_sessionstorage_set_tokens() -> None:
-    src = AUTH_JS_PATH.read_text(encoding="utf-8")
-    match = SESSION_FORBIDDEN.search(src)
-    assert match is None, (
-        f"auth.js writes a token-shaped value to sessionStorage at offset "
-        f"{match.start() if match else -1}: {match.group(0) if match else ''}"
-    )
+    for path in AUTH_JS_PATHS:
+        src = path.read_text(encoding="utf-8")
+        match = SESSION_FORBIDDEN.search(src)
+        assert match is None, (
+            f"{path} writes a token-shaped value to sessionStorage at offset "
+            f"{match.start() if match else -1}: {match.group(0) if match else ''}"
+        )
 
 
 def test_auth_js_delegates_storage_to_supabase_sdk() -> None:
     """The SDK must be configured with `storage: window.localStorage` and
     a namespaced `storageKey` so token persistence is owned by the SDK,
-    not by hand-rolled setItem calls."""
-    src = AUTH_JS_PATH.read_text(encoding="utf-8")
+    not by hand-rolled setItem calls. createSupabaseClient was extracted
+    out of auth.js into auth-core.js so /m/ pages can share the same client
+    construction — the SDK config now lives there."""
+    src = AUTH_CORE_JS_PATH.read_text(encoding="utf-8")
     assert "storage: window.localStorage" in src, (
-        "auth.js must hand storage to the Supabase SDK explicitly"
+        "auth-core.js must hand storage to the Supabase SDK explicitly"
     )
-    assert "storageKey:" in src, "auth.js must namespace SDK storage"
+    assert "storageKey:" in src, "auth-core.js must namespace SDK storage"

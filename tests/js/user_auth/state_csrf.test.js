@@ -9,8 +9,11 @@
  *      (NOT a hand-rolled hash parser that could skip state validation).
  *   2. callback.html MUST surface SDK errors to the user — i.e. show the
  *      error block, stop the spinner, and avoid redirecting on failure.
- *   3. auth.js MUST configure `detectSessionInUrl: true` so the SDK
- *      enforces state on session restore.
+ *   3. auth-core.js MUST configure `detectSessionInUrl: true` so the SDK
+ *      enforces state on session restore. (Pre-extraction this lived in
+ *      auth.js; createSupabaseClient was moved into auth-core.js so the
+ *      mobile shell can construct the client without the desktop DOM
+ *      wiring — the SDK config moves with it.)
  *
  * If any of these invariants flips, this test fails and forces a manual
  * review before a CSRF-bypass regression ships.
@@ -23,8 +26,8 @@ const CALLBACK_HTML = readFileSync(
   resolve(__dirname, '../../../website/features/user_auth/callback.html'),
   'utf8',
 );
-const AUTH_JS = readFileSync(
-  resolve(__dirname, '../../../website/features/user_auth/js/auth.js'),
+const AUTH_CORE_JS = readFileSync(
+  resolve(__dirname, '../../../website/features/user_auth/js/auth-core.js'),
   'utf8',
 );
 
@@ -48,8 +51,8 @@ describe('UA-04 OAuth state CSRF — SDK delegation invariants', () => {
     expect(CALLBACK_HTML).toMatch(/if\s*\(\s*result\.error\s*\)\s*throw\s+result\.error/);
   });
 
-  it('auth.js enables detectSessionInUrl so SDK enforces state on restore', () => {
-    expect(AUTH_JS).toMatch(/detectSessionInUrl\s*:\s*true/);
+  it('auth-core.js enables detectSessionInUrl so SDK enforces state on restore', () => {
+    expect(AUTH_CORE_JS).toMatch(/detectSessionInUrl\s*:\s*true/);
   });
 
   it('callback.html re-applies isSafePath after consumeReturnPath (defence in depth)', () => {
