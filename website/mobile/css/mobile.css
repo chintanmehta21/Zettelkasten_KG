@@ -204,27 +204,37 @@ p { color: var(--text-secondary); }
 
 .m-loading {
   display: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 40px 16px;
+  padding: 24px 16px;
 }
-.m-loading.active { display: flex; }
+.m-loading.active { display: block; }
 
-.m-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.m-skeleton-card {
+  position: relative;
+  margin: 0 auto;
+  max-width: 480px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 180px;
+  /* Pulse the shimmer lines, not the card itself — keeps the typewriter
+     line fully visible (matches desktop home.css:603-611 fix). */
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-.m-loading-text {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  text-align: center;
+.skeleton-line {
+  border-radius: 4px;
+  background: hsla(172, 30%, 40%, 0.15);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+  margin-bottom: 8px;
+}
+.skeleton-title  { width: 70%; height: 16px; margin-bottom: 12px; }
+.skeleton-body   { width: 100%; height: 12px; }
+.skeleton-body:last-of-type { width: 80%; }
+.skeleton-meta   { width: 40%; height: 10px; margin-top: 12px; }
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.7; }
 }
 
 /* ── Result Card ───────────────────────────────────────────── */

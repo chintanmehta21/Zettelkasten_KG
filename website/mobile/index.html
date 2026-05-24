@@ -28,10 +28,14 @@
   <button type="submit" class="m-btn" id="submit-btn">Summarize</button>
 </form>
 
-<!-- Loading (skeleton typewriter injected by Phase 4) -->
+<!-- Loading: skeleton card with shimmer lines + ZKSkeletonTyper attaches a typing span inside -->
 <div class="m-loading" id="loading">
-  <div class="m-skeleton-card" id="skeleton-card" hidden></div>
-  <div class="m-loading-text" id="loading-text">Analyzing content...</div>
+  <div class="m-skeleton-card" id="skeleton-card" hidden>
+    <div class="skeleton-line skeleton-title"></div>
+    <div class="skeleton-line skeleton-body"></div>
+    <div class="skeleton-line skeleton-body"></div>
+    <div class="skeleton-line skeleton-meta"></div>
+  </div>
 </div>
 
 <!-- Error -->
@@ -57,4 +61,5 @@
 </div>
 
 <script src="/js/add_zettel_api.js?v=20260522a"></script>
+<script src="/js/zk_skeleton_typewriter.js?v=20260524a"></script>
 <script src="/m/js/summarizer.js?v=20260524a"></script>
