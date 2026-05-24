@@ -628,6 +628,10 @@ def _v2_assemble_graph(
                     "group": source_type,
                     "summary": row.get("ai_summary") or "",
                     "tags": list(row.get("user_tags") or []),
+                    # B7 (Phase 4 / Task 4.3): surface derived tags separately so
+                    # the frontend's tag panel + filter never see them. Scorer
+                    # already used both via the union baked into kg_population.
+                    "derived_tags": list(row.get("derived_tags") or []),
                     "url": str(canonical.get("normalized_url") or ""),
                     "date": str(pub_date),
                     "node_date": str(pub_date),

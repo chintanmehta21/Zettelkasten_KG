@@ -37,6 +37,11 @@ class WorkspaceZettelCreate(BaseModel):
     ai_summary: str | None = None
     ai_summary_engine_version: str | None = None
     user_tags: list[str] = Field(default_factory=list)
+    # B7 (Phase 4 / Task 4.3): system-derived tags (source_domain:/modality:/
+    # speaker: prefixes from pseudo_tags.derive_pseudo_tags). Persisted on a
+    # separate column so the user-facing UI's tag panel + filter only show
+    # `user_tags`; the scorer still unions both internally.
+    derived_tags: list[str] = Field(default_factory=list)
     user_note: str | None = None
     pinned: bool = False
     added_via: str = "website"

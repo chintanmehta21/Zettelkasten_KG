@@ -740,11 +740,21 @@ async def _persist_supabase_v2_zettel(
             "metadata": payload.get("metadata") or {},
         },
     )
+    # B7 (Phase 4 / Task 4.3): compute pseudo-tags here and persist them on
+    # the separate `derived_tags` column so they do NOT mix into user_tags.
+    # The scorer in kg_population still unions both at runtime.
+    from website.features.kg_features.pseudo_tags import derive_pseudo_tags
+    _derived = derive_pseudo_tags(
+        url=normalized_url,
+        source_type=str(payload.get("source_type") or "web"),
+        metadata=payload.get("raw_metadata") or payload.get("metadata") or {},
+    )
     workspace = WorkspaceZettelCreate(
         workspace_id=workspace_id,
         ai_summary=_encode_summary_payload(payload),
         ai_summary_engine_version=str(payload.get("engine_version") or ""),
         user_tags=list(rewrite_tags(payload.get("tags", []) or [])),
+        derived_tags=list(_derived),
         added_via="website",
     )
     # PR #39 / Wave-3 B1 (2026-05-20): chunk+embed moved off the critical
