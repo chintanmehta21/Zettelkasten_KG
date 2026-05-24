@@ -1557,88 +1557,33 @@
   // ── Summary Popup ────────────────────────────────────────────────
 
   function openSummaryPopup(node) {
+    // Delegates to the shared zk_summary_popup module; preserves the
+    // home-specific 1.5s loader-then-reveal sequencing by gating on the
+    // loader element. The shared module reads node.group/source for the
+    // pill class and parses node.summary/description for the dual view.
+    if (!window.ZKSummary || typeof window.ZKSummary.open !== 'function') return;
     var loader = document.getElementById('summary-loader');
-    var overlay = document.getElementById('summary-overlay');
-    var sourceEl = document.getElementById('summary-source');
-    var dateEl = document.getElementById('summary-date');
-    var title = document.getElementById('summary-title');
-    var text = document.getElementById('summary-text');
-    var tags = document.getElementById('summary-tags');
-    if (!overlay) return;
-
-    // Mirror user_zettels openSummary: date pill (mono) THEN source pill, both
-    // in the meta-row above the title. Source class drives the badge color.
-    var sourceClass = (node.group || node.source || 'web').toLowerCase();
-    var sourceLabel = node.group || node.source || 'web';
-    if (sourceEl) {
-      sourceEl.className = 'home-card-source ' + sourceClass;
-      sourceEl.textContent = sourceLabel;
-    }
-    if (dateEl) {
-      dateEl.className = 'home-card-date';
-      if (node.date) {
-        dateEl.textContent = formatDate(node.date);
-        dateEl.style.display = '';
-      } else {
-        dateEl.textContent = '';
-        dateEl.style.display = 'none';
-      }
-    }
-    title.textContent = homeDisplayTitle(node);
-
-    // Pass the raw summary blob through the same extractor user_zettels uses
-    // (now structured-aware). One extraction yields brief + detailed +
-    // detailedStructured — no need to call it twice on different fields.
-    var primary = node.summary || node.description || '';
-    var parts = extractSummaryParts(primary);
-    if (!parts.detailedStructured && node.description && node.description !== primary) {
-      var alt = extractSummaryParts(node.description);
-      if (alt && (alt.detailedStructured || (alt.detailed && alt.detailed !== parts.detailed))) {
-        parts.detailed = alt.detailed || parts.detailed;
-        parts.detailedStructured = alt.detailedStructured || parts.detailedStructured;
-      }
-    }
-    renderDualSummary(text, {
-      brief: parts.brief,
-      detailed: parts.detailed,
-      detailedStructured: parts.detailedStructured
+    var popupNode = Object.assign({}, node, {
+      title: homeDisplayTitle(node)
     });
-
-    var _mathSrc = (node.group || node.source || '').toLowerCase();
-    _maskPriceDollars(text);
-    _mathRenderArxiv(text, _mathSrc);
-    _unmaskPriceDollars(text);
-
-    tags.innerHTML = '';
-    var nodeTags = node.tags || [];
-    nodeTags.forEach(function (tag) {
-      var el = document.createElement('span');
-      el.className = 'zettels-tag';
-      el.textContent = '#' + tag;
-      tags.appendChild(el);
-    });
-
-    if (window.ZkRefreshButton && typeof window.ZkRefreshButton.setCurrentNode === 'function') {
-      window.ZkRefreshButton.setCurrentNode(node);
-    }
-
-    // Show loader animation first
-    setBodyScrollLocked(true);
     if (loader) {
+      setBodyScrollLocked(true);
       loader.classList.add('active');
       setTimeout(function () {
         loader.classList.remove('active');
-        overlay.classList.remove('hidden');
+        // Shared open() acquires its own scroll lock, so release ours first.
+        setBodyScrollLocked(false);
+        window.ZKSummary.open(popupNode);
       }, 1500);
     } else {
-      overlay.classList.remove('hidden');
+      window.ZKSummary.open(popupNode);
     }
   }
 
   function closeSummaryPopup() {
-    var overlay = document.getElementById('summary-overlay');
-    if (overlay) overlay.classList.add('hidden');
-    setBodyScrollLocked(false);
+    if (window.ZKSummary && typeof window.ZKSummary.close === 'function') {
+      window.ZKSummary.close();
+    }
   }
 
   // ── Events ────────────────────────────────────────────────────────
