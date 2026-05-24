@@ -332,7 +332,10 @@ async def auth_config():
 
 
 @router.get("/me")
-async def me(user: Annotated[dict, Depends(get_current_user)]):
+async def me(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+):
     """Return the authenticated user's profile.
 
     v2-only: when the JWT subject is a UUID with a valid v2 scope, read profile
@@ -341,6 +344,11 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
     metadata claims so the wire shape ``{id, email, name, avatar_url}`` is
     stable. Phase 8.0.4: v1 ``kg_users`` fallback removed (table dropped in
     Phase 6).
+
+    Side-effect (best-effort): if the profile row is freshly created (per
+    ``core.profiles.created_at``), schedule a ``notify_new_signup`` Slack
+    alert. Idempotent across rapid /api/me retries via an in-memory dedup
+    set in ``User_Activity``. Never blocks the response.
     """
     metadata = user.get("user_metadata", {})
     avatar_url = metadata.get("avatar_url", "")
@@ -351,6 +359,7 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
         if scope is not None:
             from website.core.supabase_v2.client import get_v2_client
             from website.core.supabase_v2.repositories.core_repository import CoreRepository
+            from website.features.web_monitor import maybe_fire_signup_alert
 
             _content_repo, profile_id, _workspace_ids = scope
             try:
@@ -360,6 +369,16 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
                 profile = None
 
             if profile:
+                try:
+                    maybe_fire_signup_alert(
+                        user_id=user["sub"],
+                        display_name=profile.get("display_name") or metadata.get("full_name") or metadata.get("name"),
+                        email=profile.get("email") or user.get("email"),
+                        created_at=profile.get("created_at"),
+                        country_code=request.headers.get("cf-ipcountry"),
+                    )
+                except Exception:  # noqa: BLE001 — signup alert must not break /api/me
+                    logger.exception("maybe_fire_signup_alert raised")
                 return {
                     "id": user["sub"],
                     "email": profile.get("email") or user.get("email", "") or "",

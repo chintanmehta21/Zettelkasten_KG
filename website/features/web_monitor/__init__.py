@@ -10,6 +10,8 @@ from website.features.web_monitor.App_Errors import notify_app_error
 from website.features.web_monitor.App_Errors import router as _app_errors_router
 from website.features.web_monitor.DO_Alerts import router as _do_alerts_router
 from website.features.web_monitor.User_Activity import (
+    maybe_fire_payment_alert,
+    maybe_fire_signup_alert,
     notify_new_signup,
     notify_payment,
     notify_pricing_visit,
@@ -30,4 +32,6 @@ __all__ = [
     "notify_new_signup",
     "notify_pricing_visit",
     "notify_payment",
+    "maybe_fire_signup_alert",
+    "maybe_fire_payment_alert",
 ]
