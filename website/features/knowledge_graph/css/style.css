@@ -27,7 +27,9 @@
   --node-reddit: #E09040;
   --node-github: #56C8D8;
   --node-substack: #60A5FA;
+  --node-newsletter: #60A5FA;  /* D2: matches substack; Phase 4 / Task 4.1 */
   --node-medium: #4ADE80;
+  --node-twitter: #1DA1F2;      /* D1: Phase 4 / Task 4.1 */
   --node-web: #94A3B8;
 
   /* Shared */

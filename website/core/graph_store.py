@@ -20,26 +20,26 @@ GRAPH_JSON = Path(__file__).resolve().parent.parent / "features" / "knowledge_gr
 _lock = threading.Lock()
 _graph: dict | None = None
 
-# Prefix mapping for source types
-_SOURCE_PREFIX = {
-    "youtube": "yt",
-    "reddit": "rd",
-    "github": "gh",
-    "twitter": "tw",
-    "substack": "ss",
-    "newsletter": "ss",
-    "medium": "md",
-    "web": "web",
-    # Backward compatibility for legacy stored value.
-    "generic": "web",
+# Source-type registry: D1+D2+D3 fix (Phase 4 / Task 4.1). The canonical
+# data lives in website.core.source_registry; the locals below are
+# back-compat shims so existing callers (`_SOURCE_PREFIX.get(...)`,
+# `_normalize_source_type(...)`) keep working without per-site rewrites.
+from website.core.source_registry import (  # noqa: E402
+    SOURCE_REGISTRY as _REGISTRY,
+    normalize as _registry_normalize,
+)
+
+
+_SOURCE_PREFIX: dict[str, str] = {
+    st.value: meta.prefix for st, meta in _REGISTRY.items()
 }
+# Legacy alias kept explicit so existing callers passing 'generic' resolve.
+_SOURCE_PREFIX["generic"] = "web"
 
 
 def _normalize_source_type(source_type: str) -> str:
-    normalized = (source_type or "").strip().lower()
-    if normalized in {"", "web", "generic"}:
-        return "web"
-    return normalized
+    """Normalize raw input to a registry source-type string."""
+    return _registry_normalize(source_type).value
 
 
 def _load() -> dict:

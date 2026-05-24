@@ -33,6 +33,7 @@ from website.features.web_monitor._env_validation import (
     log_web_monitor_env_warnings,
 )
 from website.api.admin_routes import router as admin_router
+from website.api.meta_routes import router as meta_router
 from website.api import _memory_guard
 
 logger = logging.getLogger("website.app")
@@ -231,6 +232,7 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(pricing_router)
     app.include_router(web_monitor_router)
     app.include_router(admin_router)
+    app.include_router(meta_router)
     if nexus_enabled:
         app.include_router(nexus_router)
     # iter-03 mem-bounded §2.9: install AFTER routers so middleware wraps every route.
