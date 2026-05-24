@@ -16,7 +16,7 @@ from pydantic import BaseModel, field_validator
 from website.api.auth import get_current_user, get_optional_user
 from website.api.graph_cache import get_default_cache
 from website.core.db_version import get_db_schema_version, use_supabase_v2
-from website.core.graph_store import _SOURCE_PREFIX
+from website.core.graph_store import _SOURCE_PREFIX, get_graph  # noqa: F401  # patched by tests/integration/v2/test_kg_payload.py via monkeypatch
 from website.core.graph_models import KGGraph
 from website.core.persist import (
     extract_summary_parts,
