@@ -323,17 +323,22 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
                     "email": profile.get("email") or user.get("email", "") or "",
                     "name": profile.get("display_name") or metadata.get("full_name", "") or "",
                     "avatar_url": profile.get("avatar_url") or avatar_url or "",
+                    "profile_source": "v2",  # Y3 (T4.9)
                 }
 
     # Phase 8.0.3 B+: v1 ``kg_users``-backed avatar fallback removed —
     # ``public.kg_users`` was dropped in Phase 6, the get_supabase_scope
     # helper retired, and the live PUT /api/me/avatar handler writes to
     # ``core.profiles.avatar_url`` (covered by the v2 branch above).
+    # Y3 (T4.9): expose profile_source so the frontend can banner when the
+    # v2 lookup missed (jwt_fallback = v2 disabled or scope/profile lookup
+    # failed; the user's display fields come from the JWT claims, not the DB).
     return {
         "id": user["sub"],
         "email": user.get("email", ""),
         "name": metadata.get("full_name", ""),
         "avatar_url": avatar_url,
+        "profile_source": "jwt_fallback",
     }
 
 

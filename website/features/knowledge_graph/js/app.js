@@ -435,7 +435,13 @@ function getCommunityHue(communityId) {
   if (authToken) {
     fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
       .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
-      .then(() => {
+      .then(profile => {
+        // Y3 (T4.9): jwt_fallback means the v2 core.profiles lookup failed; the
+        // display fields come from JWT claims, not the DB row, so avatar/name
+        // edits may not round-trip. Console-only — no UI banner, by spec.
+        if (profile && profile.profile_source === 'jwt_fallback') {
+          console.warn('Y3: profile loaded from JWT fallback; v2 lookup failed');
+        }
         isLoggedIn = true;
         setPersonalEnabled(true);
         loadKastens();
