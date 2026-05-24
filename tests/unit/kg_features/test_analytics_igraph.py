@@ -5,8 +5,9 @@ Locked decision **D-KG-5**: igraph migration NOW.
 Invariants:
 - Public surface of ``compute_graph_metrics`` is UNCHANGED (signature +
   return shape) — callers must not need to change.
-- Betweenness is DROPPED from the default; exposed via
-  ``compute_expensive_metrics`` as a separate function.
+- Betweenness is DROPPED from the default; the previous opt-in
+  ``compute_expensive_metrics`` companion was deleted as dead code in
+  Phase 4 / Task 4.16 (X1) — no live callers.
 - Louvain seed=42 determinism (D-KG-1 reproducibility).
 - Performance budget per D3 STRICT: 1k <500ms, 5k <3s, 10k <10s.
 - Edge cases: empty / single-node / disconnected components.
@@ -20,7 +21,6 @@ import pytest
 from website.core.graph_models import KGGraph, KGGraphLink, KGGraphNode
 from website.features.kg_features.analytics import (
     GraphMetrics,
-    compute_expensive_metrics,
     compute_graph_metrics,
 )
 
@@ -133,16 +133,6 @@ def test_dense_graph_skips_harmonic_to_keep_request_path_bounded() -> None:
     m = compute_graph_metrics(g)
     assert len(m.harmonic) == 1000
     assert all(v == 0.0 for v in m.harmonic.values())
-
-
-def test_compute_expensive_metrics_returns_betweenness() -> None:
-    """The opt-in expensive function exposes betweenness for callers that
-    explicitly ask for it (admin / offline analytics)."""
-    g = _erdos_renyi_kggraph(n=100, p=0.05)
-    m = compute_expensive_metrics(g)
-    # On a connected ER(100, 0.05) graph there's >1 distinct value.
-    distinct = len(set(round(v, 4) for v in m.betweenness.values()))
-    assert distinct >= 2
 
 
 # ── Edge cases ────────────────────────────────────────────────────────

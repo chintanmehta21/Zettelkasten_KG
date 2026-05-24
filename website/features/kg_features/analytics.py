@@ -17,8 +17,7 @@ Locked decisions:
   in the default path — it's O(V·E) and the production droplet
   (2GB/1vCPU) cannot afford it on every /api/graph call. The
   ``betweenness`` field on the returned dataclass is preserved for
-  backward compatibility but populated with zeros; callers that need
-  it must invoke :func:`compute_expensive_metrics` explicitly.
+  backward compatibility but populated with zeros.
 - C3-d: closeness was DROPPED from the default path and replaced by
   harmonic_centrality (Boldi-Vigna). Rationale: (a) harmonic is
   well-defined on disconnected components which the strong-edge filter
@@ -26,8 +25,10 @@ Locked decisions:
   (b) it matches Neo4j's primary distance-centrality metric;
   (c) PKM peers (Logseq, Obsidian Graph) don't render closeness anyway,
   so we lose nothing on the wire. ``closeness`` field on the dataclass
-  remains for back-compat (zero-populated); use
-  :func:`compute_expensive_metrics` for real closeness.
+  remains for back-compat (zero-populated). The previous opt-in
+  ``compute_expensive_metrics`` companion (real betweenness + closeness)
+  was deleted as dead code in Phase 4 / Task 4.16 (X1) — no live callers
+  ever materialised in production paths.
 - C3-d.1: harmonic uses ``cutoff=3``. PKM graphs have diameter ≈4-6, so
   cutoff=2 truncates too aggressively; cutoff=3 captures most distance
   mass while keeping per-source BFS bounded inside the 5k <3s budget.
@@ -66,8 +67,9 @@ class GraphMetrics:
     """Computed graph-level and node-level metrics.
 
     ``betweenness`` AND ``closeness`` are preserved for backward-compat but
-    populated with zeros by :func:`compute_graph_metrics`. Callers that need
-    real values must use :func:`compute_expensive_metrics`.
+    populated with zeros by :func:`compute_graph_metrics`. The opt-in
+    expensive companion that previously computed real values was deleted
+    in Phase 4 / Task 4.16 (X1) as dead code.
 
     C3-d: ``harmonic`` (Boldi-Vigna harmonic centrality) is the new
     default-path distance metric, replacing closeness on the wire.
@@ -156,8 +158,9 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
 
     NOTE: ``betweenness`` AND ``closeness`` are intentionally NOT computed
     here (D-KG-5 perf budget — both are O(V·E) and break the 5k <3s budget).
-    The fields are populated with zeros for backward compatibility; use
-    :func:`compute_expensive_metrics` if you need real values.
+    The fields are populated with zeros for backward compatibility. The
+    opt-in ``compute_expensive_metrics`` companion was deleted in Phase 4 /
+    Task 4.16 (X1) as dead code (no live callers).
 
     C3-d: ``harmonic`` (Boldi-Vigna harmonic centrality) IS computed in the
     default path. It replaces closeness on the wire because (a) it stays
@@ -278,7 +281,7 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
         pagerank=pagerank,
         communities=communities,
         # Backward-compat sentinels: zeros so existing callers don't KeyError.
-        # See compute_expensive_metrics() for real betweenness + closeness.
+        # Real betweenness + closeness no longer computed (Phase 4 / X1).
         betweenness={nid: 0.0 for nid in node_ids},
         closeness={nid: 0.0 for nid in node_ids},
         harmonic=harmonic,
@@ -288,40 +291,3 @@ def compute_graph_metrics(graph: KGGraph) -> GraphMetrics:
     )
 
 
-def compute_expensive_metrics(graph: KGGraph) -> GraphMetrics:
-    """Compute the same metrics PLUS betweenness AND closeness centrality.
-
-    Opt-in expensive companion to :func:`compute_graph_metrics`. Use only
-    on offline / admin paths — DO NOT invoke from the per-request
-    ``/api/graph`` handler. Both metrics are O(V·E) on connected graphs
-    and break the 5k <3s budget that protects the 2GB / 1vCPU droplet.
-    """
-    base = compute_graph_metrics(graph)
-    if not graph.nodes:
-        return base
-
-    g, node_ids = _build_igraph(graph)
-    if g.vcount() == 1:
-        return base
-
-    def _betweenness() -> dict[str, float]:
-        bt = g.betweenness()
-        # Normalise to [0, 1] as networkx did, for callers expecting that scale.
-        n = len(node_ids)
-        norm = max(1, (n - 1) * (n - 2) / 2) if n > 2 else 1
-        return {nid: float(bt[i]) / norm for i, nid in enumerate(node_ids)}
-
-    def _closeness() -> dict[str, float]:
-        cl = g.closeness(normalized=True)
-        return {nid: float(cl[i] if cl[i] is not None else 0.0)
-                for i, nid in enumerate(node_ids)}
-
-    base.betweenness = _safe(
-        "Betweenness centrality", _betweenness,
-        lambda: {nid: 0.0 for nid in node_ids},
-    )
-    base.closeness = _safe(
-        "Closeness centrality", _closeness,
-        lambda: {nid: 0.0 for nid in node_ids},
-    )
-    return base
