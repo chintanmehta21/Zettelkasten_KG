@@ -1,0 +1,19 @@
+{
+  "name": "Zettelkasten — Capture your knowledge",
+  "short_name": "Zettelkasten",
+  "id": "/m/",
+  "start_url": "/m/",
+  "scope": "/m/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0b14",
+  "background_color": "#0a0b14",
+  "lang": "en",
+  "dir": "ltr",
+  "description": "Paste a URL. Get an AI summary. Build your second brain.",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

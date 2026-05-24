@@ -68,5 +68,13 @@
   </footer>
 
   <script src="/m/js/shell.js?v=20260524a"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js', { scope: '/m/' })
+          .catch(function (err) { console.warn('SW register failed:', err); });
+      });
+    }
+  </script>
 </body>
 </html>
