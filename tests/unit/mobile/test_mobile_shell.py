@@ -79,9 +79,13 @@ def test_mobile_index_includes_oauth_modal() -> None:
     assert 'data-provider="twitter"' in html
     assert 'data-provider="facebook"' in html
     assert 'data-provider="twitch"' in html
-    # Supabase CDN + auth.js + auth-modal.js must be loaded
+    # Supabase CDN + auth-core.js + auth-modal.js must be loaded. Mobile
+    # pages skip auth.js (desktop landing DOM wiring) — auth-modal.js owns
+    # the mobile auth chrome and just needs window.ZKAuth from auth-core.
     assert 'supabase-js@2' in html
-    assert '/auth/js/auth.js' in html
+    assert '/auth/js/auth-core.js' in html
+    assert '/auth/js/auth.js' not in html, \
+        "Mobile must NOT load auth.js (desktop DOM wiring); use auth-core.js"
     assert '/m/js/auth-modal.js' in html
     # Apple + Twitter are in DOM but hidden until validated (plan §0 deferrals)
     apple_btn = re.search(r'<button[^>]*data-provider="apple"[^>]*>', html)

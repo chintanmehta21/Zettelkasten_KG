@@ -1,20 +1,27 @@
 /**
- * Zettelkasten Auth Module
+ * Zettelkasten Auth — desktop landing DOM layer.
  *
- * Landing-page auth behavior:
- * - Keeps browser storage minimal (no token persistence in custom cache)
- * - Remembers landing preference (/home) and whether user opted to keep browser login
- * - Redirects authenticated users from / to /home consistently
- * - Hydrates profile data from /api/me so avatar rendering is stable
+ * Loaded by pages with the desktop landing-style sign-in chrome (/  + /pricing).
+ * Depends on auth-core.js, which MUST be loaded first (same <script> ordering)
+ * because this file consumes window.ZKAuth for the client + session events.
+ *
+ * Owns:
+ *   - resolveDOM (login button, avatar, modal, OAuth grid, logout)
+ *   - updateUI (paints avatar + name + visibility based on session)
+ *   - openModal / closeModal for the inline sign-in modal
+ *   - signInWithProvider (OAuth) + signInWithEmail (password)
+ *   - bindEvents for all the above
+ *   - Subscribes to ZKAuth.onAuthStateChange so DOM stays in sync with auth.
+ *
+ * Does NOT own:
+ *   - Supabase client creation, config fetch, session lifecycle, redirects,
+ *     or the ZKAuth API — that all lives in auth-core.js.
  */
 
 (function () {
   'use strict';
 
   var DEFAULT_AVATAR = '/artifacts/avatars/avatar_00.svg';
-
-  var _supabaseClient = null;
-  var _currentSession = null;
 
   var loginBtn, loginArrow, providerGrid, userMenu, userAvatar, userName;
   var loginModal, modalOverlay, modalClose, loginForm, loginEmail, loginPassword;
@@ -39,42 +46,34 @@
     modalProviders = document.querySelectorAll('.modal-provider-btn');
   }
 
-  function isLandingPage() {
-    return window.location.pathname === '/';
-  }
-
   function isKnownProvider(value) {
     return AUTH_PROVIDERS.indexOf(value) !== -1;
   }
 
-  function getCacheState() {
-    if (!window.browserCache || typeof window.browserCache.getState !== 'function') {
-      return {
-        allowCredentialStorage: false,
-        hasLoggedIn: false,
-        landingPath: '/home',
-        theme: '',
-        updatedAt: 0,
-      };
-    }
-    return window.browserCache.getState();
-  }
-
   function patchCacheState(partial) {
-    if (!window.browserCache || typeof window.browserCache.patchState !== 'function') return;
-    window.browserCache.patchState(partial);
+    if (window.ZKAuth && window.ZKAuth._internal &&
+        typeof window.ZKAuth._internal.patchCacheState === 'function') {
+      window.ZKAuth._internal.patchCacheState(partial);
+    }
   }
 
   function setReturnPath(path) {
-    if (window.browserCache && typeof window.browserCache.setReturnPath === 'function') {
-      window.browserCache.setReturnPath(path);
-      return;
+    if (window.ZKAuth && window.ZKAuth._internal &&
+        typeof window.ZKAuth._internal.setReturnPath === 'function') {
+      window.ZKAuth._internal.setReturnPath(path);
     }
-    try {
-      sessionStorage.setItem('auth_return_to', path);
-    } catch (_err) {
-      // noop
-    }
+  }
+
+  function isLandingPage() {
+    return window.location.pathname === '/';
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   function buildFallbackAvatar(label) {
@@ -97,24 +96,13 @@
     return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   function normalizeAvatarUrl(avatar) {
     if (!avatar || typeof avatar !== 'string') return DEFAULT_AVATAR;
-
     var trimmed = avatar.trim();
     if (!trimmed) return DEFAULT_AVATAR;
-
     if (trimmed.indexOf('data:image/') === 0 || trimmed.indexOf('blob:') === 0) {
       return trimmed;
     }
-
     try {
       var resolved = new URL(trimmed, window.location.origin);
       if (resolved.protocol === 'https:' || resolved.protocol === 'http:') {
@@ -123,7 +111,6 @@
     } catch (_err) {
       // fall through to default avatar
     }
-
     return DEFAULT_AVATAR;
   }
 
@@ -166,26 +153,6 @@
     }
   }
 
-  async function maybeRedirectAuthenticated(session) {
-    if (!session || !session.user || !isLandingPage()) return;
-    // Prevent redirect loop: if /home just sent us back, don't bounce again
-    var lastRedirect = parseInt(sessionStorage.getItem('zk-auth-redirect') || '0', 10);
-    if (Date.now() - lastRedirect < 5000) {
-      console.warn('[auth] Redirect loop detected, staying on landing page');
-      return;
-    }
-    sessionStorage.setItem('zk-auth-redirect', String(Date.now()));
-    var state = getCacheState();
-    if (!state.hasLoggedIn) {
-      patchCacheState({
-        hasLoggedIn: true,
-        allowCredentialStorage: true,
-        landingPath: '/home',
-      });
-    }
-    window.location.replace('/home');
-  }
-
   function buildUserName(session, profile) {
     if (profile && profile.name) return profile.name;
     var meta = session && session.user ? (session.user.user_metadata || {}) : {};
@@ -219,80 +186,93 @@
     userMenu.style.display = 'none';
   }
 
-  async function handleSession(eventName, session) {
-    _currentSession = session;
+  async function onAuthChange(eventName, session) {
+    // Paint synchronously off the session first so the avatar slot fills
+    // even before /api/me returns; then upgrade with the richer profile.
     updateUI(session, null);
-
-    if (!session || !session.user) {
-      if (eventName === 'SIGNED_OUT') {
-        patchCacheState({ hasLoggedIn: false, allowCredentialStorage: false });
-      }
-      return;
+    if (eventName === 'SIGNED_IN' && loginModal) {
+      closeModal();
     }
-
+    if (!session || !session.user) return;
     var profile = await fetchProfile(session);
     updateUI(session, profile);
+  }
 
-    patchCacheState({
-      hasLoggedIn: true,
-      allowCredentialStorage: true,
-      landingPath: '/home',
+  function openModal() {
+    if (!loginModal) return;
+    loginModal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (loginEmail) loginEmail.focus();
+  }
+
+  function closeModal() {
+    if (!loginModal) return;
+    loginModal.classList.remove('open');
+    document.body.style.overflow = '';
+    if (loginError) {
+      loginError.textContent = '';
+      loginError.style.display = 'none';
+    }
+  }
+
+  async function signInWithProvider(provider) {
+    var client = window.ZKAuth && typeof window.ZKAuth.getClient === 'function'
+      ? window.ZKAuth.getClient() : null;
+    if (!client) return;
+
+    setReturnPath('/home');
+    closeModal();
+
+    var result = await client.auth.signInWithOAuth({
+      provider: provider,
+      options: {
+        redirectTo: window.location.origin + '/auth/callback',
+      },
     });
 
-    if (eventName === 'SIGNED_IN') {
-      if (loginModal) closeModal();
-      if (isLandingPage()) {
-        sessionStorage.setItem('zk-auth-redirect', String(Date.now()));
-        sessionStorage.removeItem('zk-home-redirect');
-        window.location.replace('/home');
+    if (result.error) {
+      showError('OAuth sign-in failed: ' + result.error.message);
+    }
+  }
+
+  async function signInWithEmail() {
+    var client = window.ZKAuth && typeof window.ZKAuth.getClient === 'function'
+      ? window.ZKAuth.getClient() : null;
+    if (!client || !loginEmail || !loginPassword) return;
+
+    var email = loginEmail.value.trim();
+    var password = loginPassword.value;
+
+    if (!email || !password) {
+      showError('Please enter both email and password.');
+      return;
+    }
+
+    var result = await client.auth.signInWithPassword({ email: email, password: password });
+
+    if (!result.error) {
+      patchCacheState({ hasLoggedIn: true, allowCredentialStorage: true, landingPath: '/home' });
+      if (isLandingPage()) window.location.replace('/home');
+      return;
+    }
+
+    if (result.error.message.toLowerCase().indexOf('invalid login') !== -1) {
+      var signup = await client.auth.signUp({ email: email, password: password });
+      if (signup.error) {
+        showError(signup.error.message);
+      } else if (signup.data.user && !signup.data.session) {
+        showError('Check your email to confirm your account.');
       }
       return;
     }
 
-    await maybeRedirectAuthenticated(session);
+    showError(result.error.message);
   }
 
-  function createSupabaseClient(config) {
-    return supabase.createClient(config.supabase_url, config.supabase_anon_key, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-        storageKey: 'zk-auth-token',
-      },
-    });
-  }
-
-  async function init() {
-    try {
-      var resp = await fetch('/api/auth/config');
-      var config = await resp.json();
-
-      if (!config.supabase_url || !config.supabase_anon_key) {
-        if (loginBtn) loginBtn.style.display = 'none';
-        return;
-      }
-
-      _supabaseClient = createSupabaseClient(config);
-
-      _supabaseClient.auth.onAuthStateChange(function (event, session) {
-        handleSession(event, session);
-      });
-
-      // Resolve the public ready Promise so pricing.js (and any other peer)
-      // can grab the client now instead of constructing a duplicate.
-      if (window.ZKAuth && typeof window.ZKAuth.__signalReady === 'function') {
-        window.ZKAuth.__signalReady();
-      }
-
-      var result = await _supabaseClient.auth.getSession();
-      await handleSession('RESTORE', result.data.session);
-
-      bindEvents();
-    } catch (err) {
-      console.error('[auth] Init failed:', err);
-    }
+  function showError(msg) {
+    if (!loginError) return;
+    loginError.textContent = msg;
+    loginError.style.display = 'block';
   }
 
   function bindEvents() {
@@ -355,120 +335,37 @@
     var logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', function () {
-        signOut();
+        if (window.ZKAuth && typeof window.ZKAuth.signOut === 'function') {
+          window.ZKAuth.signOut();
+        }
       });
     }
   }
 
-  function openModal() {
-    if (!loginModal) return;
-    loginModal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    if (loginEmail) loginEmail.focus();
-  }
-
-  function closeModal() {
-    if (!loginModal) return;
-    loginModal.classList.remove('open');
-    document.body.style.overflow = '';
-    if (loginError) {
-      loginError.textContent = '';
-      loginError.style.display = 'none';
-    }
-  }
-
-  async function signInWithProvider(provider) {
-    if (!_supabaseClient) return;
-
-    setReturnPath('/home');
-    closeModal();
-
-    var result = await _supabaseClient.auth.signInWithOAuth({
-      provider: provider,
-      options: {
-        redirectTo: window.location.origin + '/auth/callback',
-      },
-    });
-
-    if (result.error) {
-      showError('OAuth sign-in failed: ' + result.error.message);
-    }
-  }
-
-  async function signInWithEmail() {
-    if (!_supabaseClient || !loginEmail || !loginPassword) return;
-
-    var email = loginEmail.value.trim();
-    var password = loginPassword.value;
-
-    if (!email || !password) {
-      showError('Please enter both email and password.');
-      return;
-    }
-
-    var result = await _supabaseClient.auth.signInWithPassword({ email: email, password: password });
-
-    if (!result.error) {
-      patchCacheState({ hasLoggedIn: true, allowCredentialStorage: true, landingPath: '/home' });
-      if (isLandingPage()) window.location.replace('/home');
-      return;
-    }
-
-    if (result.error.message.toLowerCase().indexOf('invalid login') !== -1) {
-      var signup = await _supabaseClient.auth.signUp({ email: email, password: password });
-      if (signup.error) {
-        showError(signup.error.message);
-      } else if (signup.data.user && !signup.data.session) {
-        showError('Check your email to confirm your account.');
-      }
-      return;
-    }
-
-    showError(result.error.message);
-  }
-
-  function showError(msg) {
-    if (!loginError) return;
-    loginError.textContent = msg;
-    loginError.style.display = 'block';
-  }
-
-  async function signOut() {
-    if (!_supabaseClient) return;
-    await _supabaseClient.auth.signOut();
-    _currentSession = null;
-    updateUI(null, null);
-    patchCacheState({ hasLoggedIn: false, allowCredentialStorage: false });
-  }
-
-  window.getAuthToken = function () {
-    return _currentSession ? _currentSession.access_token : null;
-  };
-
+  // Compat: pages still using window.signInWithGoogle expect it to exist.
   window.signInWithGoogle = function () { signInWithProvider('google'); };
-  window.signOut = signOut;
 
-  // Expose the Supabase client (and a Promise that resolves to it after init)
-  // so peer scripts on the same page — e.g. pricing.js — can reuse this
-  // singleton instead of calling supabase.createClient again. Sharing avoids
-  // the "Multiple GoTrueClient instances detected" warning, halves the
-  // auth/config fetches on page load, and ensures both modules see the same
-  // session refreshes.
-  var _readyResolve;
-  window.ZKAuth = window.ZKAuth || {};
-  window.ZKAuth.ready = new Promise(function (resolve) { _readyResolve = resolve; });
-  window.ZKAuth.getClient = function () { return _supabaseClient; };
-  window.ZKAuth.__signalReady = function () {
-    if (_readyResolve) { _readyResolve(_supabaseClient); _readyResolve = null; }
-  };
+  function boot() {
+    resolveDOM();
+    bindEvents();
+
+    if (!window.ZKAuth || typeof window.ZKAuth.onAuthStateChange !== 'function') {
+      // auth-core hasn't loaded — render the signed-out chrome so the page
+      // is still usable (login button visible) and bail out cleanly.
+      updateUI(null, null);
+      console.warn('[auth] auth-core.js not present; sign-in disabled.');
+      return;
+    }
+
+    // Replay-aware subscription: auth-core fires 'REPLAY' synchronously with
+    // the current session if it already has one, so the avatar paints on the
+    // first frame even if auth-core's init() completed before this script.
+    window.ZKAuth.onAuthStateChange(onAuthChange);
+  }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      resolveDOM();
-      init();
-    });
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    resolveDOM();
-    init();
+    boot();
   }
 })();
