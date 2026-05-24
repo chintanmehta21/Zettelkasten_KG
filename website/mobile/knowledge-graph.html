@@ -22,10 +22,16 @@
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
 </button>
 
-<!-- Bottom Sheet (Phase 5 expands to include Filters | Detail modes) -->
+<!-- Bottom Sheet: Detail mode (default) + Filters mode (toggled via segmented control) -->
 <div class="kg-m-sheet" id="sheet">
   <div class="kg-m-sheet-handle"></div>
-  <div class="kg-m-sheet-content">
+  <div class="kg-m-sheet-tabs" role="tablist">
+    <button class="kg-m-sheet-tab is-active" id="sheet-tab-detail" role="tab" aria-selected="true" data-mode="detail">Detail</button>
+    <button class="kg-m-sheet-tab" id="sheet-tab-filters" role="tab" aria-selected="false" data-mode="filters">Filters</button>
+  </div>
+
+  <!-- Detail mode -->
+  <div class="kg-m-sheet-content" id="sheet-detail" role="tabpanel">
     <span class="kg-m-sheet-badge" id="sheet-badge">source</span>
     <h2 class="kg-m-sheet-title" id="sheet-title">Note Title</h2>
     <p class="kg-m-sheet-date" id="sheet-date"></p>
@@ -40,9 +46,57 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </a>
   </div>
+
+  <!-- Filters mode -->
+  <div class="kg-m-sheet-content" id="sheet-filters" role="tabpanel" hidden>
+    <fieldset class="kg-m-filter-block">
+      <legend>View</legend>
+      <div class="kg-m-segmented" role="radiogroup" aria-label="Graph scope">
+        <button class="kg-m-segment is-active" role="radio" aria-checked="true" data-view="global" type="button">Global</button>
+        <button class="kg-m-segment" role="radio" aria-checked="false" data-view="my" type="button" aria-disabled="true" title="Sign in to view your personal graph">My zettels</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="kg-m-filter-block">
+      <legend>Connection strength: <span id="kg-strength-readout">0.30</span></legend>
+      <input type="range" class="kg-m-slider" id="kg-strength-slider" min="0.30" max="0.85" step="0.05" value="0.30" aria-label="Minimum connection strength">
+    </fieldset>
+
+    <fieldset class="kg-m-filter-block">
+      <legend>Source</legend>
+      <div class="kg-m-chips" id="kg-source-chips">
+        <button class="kg-m-chip is-active" data-source="youtube" type="button"><span class="kg-m-chip-dot" style="background:var(--node-youtube)"></span>YouTube</button>
+        <button class="kg-m-chip is-active" data-source="reddit" type="button"><span class="kg-m-chip-dot" style="background:var(--node-reddit)"></span>Reddit</button>
+        <button class="kg-m-chip is-active" data-source="github" type="button"><span class="kg-m-chip-dot" style="background:var(--node-github)"></span>GitHub</button>
+        <button class="kg-m-chip is-active" data-source="substack" type="button"><span class="kg-m-chip-dot" style="background:var(--node-substack)"></span>Substack</button>
+        <button class="kg-m-chip is-active" data-source="medium" type="button"><span class="kg-m-chip-dot" style="background:var(--node-medium)"></span>Medium</button>
+        <button class="kg-m-chip is-active" data-source="web" type="button"><span class="kg-m-chip-dot" style="background:var(--node-web)"></span>Web</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="kg-m-filter-block">
+      <legend>Tags</legend>
+      <div class="kg-m-chips kg-m-chips-selected" id="kg-tag-chips-selected"></div>
+      <input type="text" class="kg-m-filter-search" id="kg-tag-search" placeholder="Search tags…" autocomplete="off">
+      <div class="kg-m-suggestions" id="kg-tag-suggestions"></div>
+    </fieldset>
+
+    <fieldset class="kg-m-filter-block">
+      <legend>Kastens</legend>
+      <div class="kg-m-chips kg-m-chips-selected" id="kg-kasten-chips-selected"></div>
+      <input type="text" class="kg-m-filter-search" id="kg-kasten-search" placeholder="Search kastens…" autocomplete="off">
+      <div class="kg-m-suggestions" id="kg-kasten-suggestions"></div>
+    </fieldset>
+
+    <div class="kg-m-sheet-footer">
+      <button class="kg-m-btn-secondary" id="kg-filter-reset" type="button">Reset</button>
+      <button class="kg-m-btn-primary" id="kg-filter-apply" type="button">Apply (<span id="kg-filter-count-pill">0</span>)</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three-spritetext@1.10.0/dist/three-spritetext.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.79.1/dist/3d-force-graph.min.js"></script>
+<script src="/m/js/kg-filters.js?v=20260524a"></script>
 <script src="/m/js/graph.js?v=20260524a"></script>

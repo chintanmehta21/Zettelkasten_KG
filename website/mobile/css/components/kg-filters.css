@@ -1,0 +1,289 @@
+/* ═════════════════════════════════════════════════════════════
+   KG mobile filter sheet — segmented control, slider, multi-
+   select chips, sticky footer. See plan §0 (R4) for design.
+   ═════════════════════════════════════════════════════════════ */
+
+/* ── Search strip below shell header ──────────────────────── */
+.kg-m-search-strip {
+  position: fixed;
+  top: calc(48px + var(--safe-top));
+  left: 0;
+  right: 0;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: hsla(224, 28%, 5%, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.kg-m-search { flex: 1; }
+.kg-m-search-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 6px;
+}
+.kg-m-search-clear {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Filter badge */
+.kg-m-filter-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: hsl(224, 28%, 5%);
+  border-radius: 7px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Recenter FAB ─────────────────────────────────────────── */
+.kg-m-recenter {
+  position: fixed;
+  right: 14px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 80;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.kg-m-recenter:active { background: var(--bg-elevated); color: var(--accent); }
+
+/* ── Sheet mode tabs (Detail | Filters) ───────────────────── */
+.kg-m-sheet-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.kg-m-sheet-tab {
+  height: 40px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.kg-m-sheet-tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Filter blocks ────────────────────────────────────────── */
+.kg-m-filter-block {
+  border: none;
+  margin: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.kg-m-filter-block:last-of-type { border-bottom: none; }
+.kg-m-filter-block legend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+/* ── Segmented control (Global / Personal) ────────────────── */
+.kg-m-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+}
+.kg-m-segment {
+  height: 36px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.kg-m-segment.is-active {
+  background: var(--bg-card);
+  color: var(--accent);
+}
+.kg-m-segment[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Slider ───────────────────────────────────────────────── */
+.kg-m-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 32px;
+  background: transparent;
+  cursor: pointer;
+}
+.kg-m-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.kg-m-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  margin-top: -10px;
+  cursor: pointer;
+}
+.kg-m-slider::-moz-range-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.kg-m-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+
+/* ── Chip group (sources, selected tags/kastens) ──────────── */
+.kg-m-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kg-m-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 16px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.kg-m-chip.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.kg-m-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.kg-m-chips-selected:empty {
+  display: none;
+}
+
+/* ── Filter search + async suggestions ────────────────────── */
+.kg-m-filter-search {
+  width: 100%;
+  height: 36px;
+  margin-top: 8px;
+  padding: 0 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.kg-m-suggestions {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kg-m-suggestions:empty { display: none; }
+
+/* ── Sticky footer (Reset / Apply) ────────────────────────── */
+.kg-m-sheet-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+}
+.kg-m-btn-primary {
+  flex: 1;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: hsl(224, 28%, 5%);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.kg-m-btn-secondary {
+  flex: 1;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Hide bottom-tabs when sheet is open at large detent ──── */
+body.kg-sheet-open .m-bottom-tabs { display: none; }
+
+/* ── Landscape fallback: side sheet ───────────────────────── */
+@media (orientation: landscape) and (max-height: 480px) {
+  .kg-m-sheet {
+    top: 0;
+    left: auto;
+    right: 0;
+    width: 360px;
+    max-width: 60vw;
+    max-height: 100dvh;
+    border-radius: 16px 0 0 16px;
+    border-left: 1px solid var(--border);
+    border-top: none;
+    transform: translateX(100%);
+  }
+  .kg-m-sheet.open { transform: translateX(0); }
+}

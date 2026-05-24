@@ -25,12 +25,11 @@
   };
 
   // ── DOM refs ────────────────────────────────────────────
-  var container    = document.getElementById('graph-container');
-  var searchInput  = document.getElementById('search-input');
-  var filterToggle = document.getElementById('filter-toggle');
-  var chips        = document.getElementById('filter-chips');
-  var statsEl      = document.getElementById('stats');
-  var sheet        = document.getElementById('sheet');
+  var container   = document.getElementById('graph-container');
+  var searchInput = document.getElementById('search-input');
+  var statsEl     = document.getElementById('stats');
+  var sheet       = document.getElementById('sheet');
+  // filter-toggle + filter-chips are now owned by kg-filters.js
 
   // ── URL params ──────────────────────────────────────────
   var urlParams   = new URLSearchParams(window.location.search);
@@ -43,7 +42,6 @@
   var selectedNode = null;
   var hoverNode    = null;
   var highlightNodes = new Set();
-  var activeFilters  = new Set(['youtube', 'reddit', 'github', 'substack', 'medium', 'web']);
   var nodeDegrees = {};
 
   function normalizeGroup(group) {
@@ -353,6 +351,33 @@
       });
     }
     requestAnimationFrame(clampLabelScales);
+
+    // ── Wire ZKMobileKGFilters (kg-filters.js must load before graph.js) ──
+    if (window.ZKMobileKGFilters) {
+      var tagSet = new Set(); var kastenSet = new Set();
+      (fullData.nodes || []).forEach(function (n) {
+        (n.tags || []).forEach(function (t) { tagSet.add(t); });
+        (n.kastens || []).forEach(function (k) { kastenSet.add(k); });
+      });
+      // nodes lacking .tags/.kastens is fine — sets will be empty; UI still renders
+      window.ZKMobileKGFilters.setAvailable(Array.from(tagSet).sort(), Array.from(kastenSet).sort());
+      window.ZKMobileKGFilters.on('change', applyMobileFilters);
+      window.ZKMobileKGFilters.on('recenter', function () { graph.zoomToFit(800, 40); });
+      window.ZKMobileKGFilters.on('view', reloadForView);
+
+      // Personal view requires auth; subscribe to session state.
+      if (window.ZKAuth && window.ZKAuth.ready) {
+        window.ZKAuth.ready.then(function (client) {
+          client.auth.getSession().then(function (res) {
+            var hasSession = res && res.data && res.data.session;
+            window.ZKMobileKGFilters.enablePersonalView(Boolean(hasSession));
+          });
+          client.auth.onAuthStateChange(function (_event, session) {
+            window.ZKMobileKGFilters.enablePersonalView(Boolean(session));
+          });
+        });
+      }
+    }
   }
 
   // ── Node click → fly camera + open bottom sheet ─────────
@@ -447,15 +472,21 @@
     // Source link
     document.getElementById('sheet-link').href = node.url || '#';
 
-    // Show
-    sheet.classList.add('open');
-    chips.classList.add('hidden');
+    // Show — delegate to kg-filters.js to ensure Detail mode is active
+    if (window.ZKMobileKGFilters && window.ZKMobileKGFilters.openDetail) {
+      window.ZKMobileKGFilters.openDetail();
+    } else {
+      sheet.classList.add('open');
+    }
   }
 
   function closeSheet() {
-    sheet.classList.remove('open');
+    if (window.ZKMobileKGFilters && window.ZKMobileKGFilters.closeSheet) {
+      window.ZKMobileKGFilters.closeSheet();
+    } else {
+      sheet.classList.remove('open');
+    }
     selectedNode = null;
-    chips.classList.remove('hidden');
   }
 
   function formatDate(dateStr) {
@@ -478,56 +509,92 @@
     var query = searchInput.value.toLowerCase().trim();
     highlightNodes.clear();
     selectedNode = null;
-
+    var count = 0;
     if (query.length > 0) {
       graphData.nodes.forEach(function (node) {
         var match = node.name.toLowerCase().indexOf(query) > -1 ||
                     (node.tags || []).some(function (t) { return t.toLowerCase().indexOf(query) > -1; }) ||
                     (node.summary || '').toLowerCase().indexOf(query) > -1;
-        if (match) highlightNodes.add(node.id);
+        if (match) { highlightNodes.add(node.id); count += 1; }
       });
     }
-
+    var countEl = document.getElementById('search-count');
+    var clearEl = document.getElementById('search-clear');
+    if (countEl) {
+      countEl.textContent = count + ' matches';
+      countEl.hidden = query.length === 0;
+    }
+    if (clearEl) clearEl.hidden = query.length === 0;
     graph.nodeThreeObject(graph.nodeThreeObject());
   });
 
-  // ── Filters ─────────────────────────────────────────────
-  filterToggle.addEventListener('click', function () {
-    chips.classList.toggle('hidden');
-  });
+  var searchClearEl = document.getElementById('search-clear');
+  if (searchClearEl) {
+    searchClearEl.addEventListener('click', function () {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+    });
+  }
 
-  chips.addEventListener('click', function (e) {
-    var chip = e.target.closest('.kg-m-chip');
-    if (!chip) return;
-    var src = chip.dataset.source;
-    chip.classList.toggle('active');
-    if (chip.classList.contains('active')) {
-      activeFilters.add(src);
-    } else {
-      activeFilters.delete(src);
-    }
-    applyFilters();
-  });
+  // ── Filters — owned by kg-filters.js via ZKMobileKGFilters ─
+  // filter-toggle and source-chip listeners are bound in kg-filters.js;
+  // graph.js receives filter state via the 'change' and 'view' events.
 
-  function applyFilters() {
-    var filteredNodes = fullData.nodes.filter(function (n) { return activeFilters.has(n.group); });
+  function applyMobileFilters() {
+    var fs = window.ZKMobileKGFilters.getState();
+    var filteredNodes = fullData.nodes.filter(function (n) {
+      if (!fs.sources.has(n.group)) return false;
+      if (fs.tags.size > 0) {
+        var any = (n.tags || []).some(function (t) { return fs.tags.has(t); });
+        if (!any) return false;
+      }
+      if (fs.kastens.size > 0) {
+        var anyk = (n.kastens || []).some(function (k) { return fs.kastens.has(k); });
+        if (!anyk) return false;
+      }
+      return true;
+    });
     var nodeIds = new Set(filteredNodes.map(function (n) { return n.id; }));
     var filteredLinks = fullData.links.filter(function (l) {
-      var src = typeof l.source === 'object' ? l.source.id : l.source;
-      var tgt = typeof l.target === 'object' ? l.target.id : l.target;
-      return nodeIds.has(src) && nodeIds.has(tgt);
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (!nodeIds.has(s) || !nodeIds.has(t)) return false;
+      var w = (typeof l.weight === 'number') ? l.weight : 1;
+      return w >= fs.strength;
     });
-
     graphData = { nodes: filteredNodes, links: filteredLinks };
     nodeDegrees = computeDegrees(graphData);
     graph.graphData(graphData);
     updateStats();
-
     closeSheet();
     selectedNode = null;
     highlightNodes.clear();
-
     setTimeout(function () { graph.zoomToFit(600, 40); }, 600);
+  }
+
+  function reloadForView() {
+    var fs = window.ZKMobileKGFilters.getState();
+    var url = fs.view === 'my' ? '/api/graph?scope=personal' : '/api/graph';
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
+      .then(function (data) {
+        fullData = data;
+        fullData.nodes = (fullData.nodes || []).map(function (node) {
+          node.group = normalizeGroup(node.group);
+          return node;
+        });
+        graphData = JSON.parse(JSON.stringify(data));
+        graphData.nodes = (graphData.nodes || []).map(function (node) {
+          node.group = normalizeGroup(node.group);
+          return node;
+        });
+        nodeDegrees = computeDegrees(fullData);
+        graph.graphData(graphData);
+        applyMobileFilters();
+      })
+      .catch(function () {
+        statsEl.textContent = 'Failed to load ' + fs.view + ' graph';
+      });
   }
 
   // ── Stats ───────────────────────────────────────────────
