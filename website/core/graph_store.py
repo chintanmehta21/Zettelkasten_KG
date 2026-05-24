@@ -76,8 +76,14 @@ def _load() -> dict:
 
 
 def _slugify(text: str, max_len: int = 24) -> str:
-    """Convert text to a URL-safe slug."""
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    """Convert text to a URL-safe slug.
+
+    M6 (Phase 4 audit): NFKC-normalize first so disparate Unicode forms of
+    the same visual title produce the same slug across re-renders.
+    """
+    import unicodedata  # noqa: PLC0415 - localised import to keep top lean
+    normalized = unicodedata.normalize("NFKC", str(text or "")).lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
     return slug[:max_len].rstrip("-")
 
 

@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import time
+import unicodedata
 from collections import defaultdict
 from typing import Annotated
 
@@ -63,6 +64,12 @@ _TRIMMED_EDGE_FIELDS: frozenset[str] = frozenset({
     "embedding_distance",
     "raw_score",
     "score_breakdown",
+    # m3 (Phase 4 audit): the file-store path (graph_store._find_links)
+    # writes `tier="strong"` on every auto-link, while the v2 assembler
+    # does NOT emit tier (LD-5 — client computes it from connection_strength).
+    # Strip on the wire so anonymous + logged-in payloads have a single
+    # consistent shape; the frontend tier-bucket is the source of truth.
+    "tier",
 })
 
 
@@ -637,9 +644,16 @@ def _v2_assemble_graph(
                 continue
             source_type = str(canonical.get("source_type") or "web").lower()
             prefix = _SOURCE_PREFIX.get(source_type, "web")
-            slug = re.sub(
-                r"[^a-z0-9]+", "-", str(canonical.get("title") or "").lower()
-            ).strip("-")[:24].rstrip("-") or "untitled"
+            # M6 (Phase 4 audit): NFKC-normalize the title BEFORE slug
+            # derivation. Without it, a canonical title typed as NFD vs NFC
+            # (or with full-width chars / ligatures) produces a different
+            # slug across re-renders, which would change ``node_id`` and
+            # silently desynchronise frontend ownership maps. NFKC is the
+            # same canonical form as ``text_polish.normalize_tag`` (X5).
+            _title_norm = unicodedata.normalize(
+                "NFKC", str(canonical.get("title") or "")
+            ).lower()
+            slug = re.sub(r"[^a-z0-9]+", "-", _title_norm).strip("-")[:24].rstrip("-") or "untitled"
             # D4 fix: 16-hex canonical suffix for 64-bit collision space.
             # Task 4.2: detect REAL collisions (same node_id from a different
             # canonical id) and widen to [:24] (96-bit). The cheap O(n) scan
@@ -726,8 +740,10 @@ def _v2_assemble_graph(
                     pass
                 # Y1 (T4.7): 1% sampled warning so a drop storm is visible in
                 # ops logs while keeping volume bounded under burst. Sample is
-                # deterministic per (ws, src, dst) so the same drop logs at most
-                # once per process — not per request.
+                # SHA-256 deterministic per (ws, src, dst): the same drop logs
+                # at most once across the cluster for that triplet (sampling
+                # is identical in every worker), not per process — even
+                # stronger volume bound than per-process sampling.
                 sample_key = f"{ws_id}:{src_id}:{dst_id}".encode()
                 if int(hashlib.sha256(sample_key).hexdigest(), 16) % 100 == 0:
                     logger.warning(

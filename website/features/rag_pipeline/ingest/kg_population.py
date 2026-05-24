@@ -97,9 +97,16 @@ _RELATION_TYPE = "co_occurs"  # similarity-derived edge (kg.kg_edge_relation enu
 
 
 def _slugify(text: str, *, max_len: int = 96) -> str:
+    # M6 (Phase 4 audit): NFKC-normalize first so the same visual title in
+    # different Unicode forms (NFD vs NFC, full-width, ligatures) produces
+    # the same slug — otherwise NFD ``e`` + combining acute is lowered to
+    # ``e`` + non-alnum combining mark, which the loop below collapses to
+    # ``e-``, breaking the kg.kg_nodes.slug stability invariant.
+    import unicodedata  # noqa: PLC0415 - localised import to keep top lean
+    normalized = unicodedata.normalize("NFKC", str(text or "")).strip().lower()
     out = []
     prev_dash = False
-    for ch in text.strip().lower():
+    for ch in normalized:
         if ch.isalnum():
             out.append(ch)
             prev_dash = False
@@ -840,6 +847,14 @@ async def populate_kg_for_zettel(
                 "kg-populate skip (succeeded run exists) zettel=%s", canonical_zettel_id
             )
             metrics["skipped"] = True
+            # M1 (Phase 4 audit): idempotency-skip is a TERMINAL outcome — emit
+            # it on the same counter as the LD-8 states so dashboards aren't
+            # under-counting re-ingests.
+            try:
+                from website.core.kg_metrics import kg_populate_runs_total
+                kg_populate_runs_total.labels(outcome="skipped_idempotent").inc()
+            except Exception:  # noqa: BLE001 — metrics best-effort, never fatal.
+                pass
             _observe_duration()
             return metrics
         run_id = await asyncio.to_thread(
