@@ -13,6 +13,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2].parent
 ADD_ZETTEL_ASSET_VERSION = "20260518b"
+# Mobile surface diverged in iter mobile-1a Phase 4 (skeleton typewriter port).
+ADD_ZETTEL_MOBILE_ASSET_VERSION = "20260524a"
 
 
 _NODE = shutil.which("node")
@@ -305,7 +307,7 @@ def test_add_zettel_helper_is_async_only_and_cache_busted():
 def test_add_zettel_pages_reference_fresh_surface_scripts():
     pages_to_scripts = {
         ROOT / "website" / "static" / "index.html": f"/js/app.js?v={ADD_ZETTEL_ASSET_VERSION}",
-        ROOT / "website" / "mobile" / "index.html": f"/m/js/summarizer.js?v={ADD_ZETTEL_ASSET_VERSION}",
+        ROOT / "website" / "mobile" / "index.html": f"/m/js/summarizer.js?v={ADD_ZETTEL_MOBILE_ASSET_VERSION}",
         ROOT
         / "website"
         / "features"
@@ -351,10 +353,11 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
     assert "/home/zettels/js/user_zettels.js?v=20260523f" in (
         ROOT / "website" / "features" / "user_zettels" / "index.html"
     ).read_text(encoding="utf-8")
-    assert "/m/css/mobile.css?v=20260518a" in (
-        ROOT / "website" / "mobile" / "index.html"
+    # mobile.css link moved to the shared shell template in iter mobile-1a Phase 1.
+    assert "/m/css/mobile.css?v=20260524a" in (
+        ROOT / "website" / "mobile" / "templates" / "_shell.html"
     ).read_text(encoding="utf-8")
-    assert "/m/js/summarizer.js?v=20260518b" in (
+    assert "/m/js/summarizer.js?v=20260524a" in (
         ROOT / "website" / "mobile" / "index.html"
     ).read_text(encoding="utf-8")
 
