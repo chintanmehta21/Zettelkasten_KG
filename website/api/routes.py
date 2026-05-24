@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -683,6 +684,16 @@ def _v2_assemble_graph(
                     kg_edge_drops_total.labels(reason="unresolved_endpoint").inc()
                 except Exception:  # noqa: BLE001 — never block on telemetry.
                     pass
+                # Y1 (T4.7): 1% sampled warning so a drop storm is visible in
+                # ops logs while keeping volume bounded under burst. Sample is
+                # deterministic per (ws, src, dst) so the same drop logs at most
+                # once per process — not per request.
+                sample_key = f"{ws_id}:{src_id}:{dst_id}".encode()
+                if int(hashlib.sha256(sample_key).hexdigest(), 16) % 100 == 0:
+                    logger.warning(
+                        "Y1 cross-workspace edge drop ws=%s src_kg_node=%d dst_kg_node=%d",
+                        ws_id, src_id, dst_id,
+                    )
                 continue
             relation = str(edge.get("relation_type") or "shared_tag")
             description = edge.get("shared_tag_label")
