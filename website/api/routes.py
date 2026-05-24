@@ -600,7 +600,23 @@ def _v2_assemble_graph(
                 r"[^a-z0-9]+", "-", str(canonical.get("title") or "").lower()
             ).strip("-")[:24].rstrip("-") or "untitled"
             # D4 fix: 16-hex canonical suffix for 64-bit collision space.
+            # Task 4.2: detect REAL collisions (same node_id from a different
+            # canonical id) and widen to [:24] (96-bit). The cheap O(n) scan
+            # is bounded by the per-workspace overlay count (<5k typical) and
+            # only runs at assemble time, not at request peak.
             node_id = f"{prefix}-{slug}-{canonical_id[:16]}"
+            collision = next(
+                (c for c, n in canonical_to_overlay.items() if n == node_id),
+                None,
+            )
+            if collision is not None and collision != canonical_id:
+                widened = f"{prefix}-{slug}-{canonical_id[:24]}"
+                logger.warning(
+                    "D4 node_id collision in workspace=%s; widening hash. "
+                    "existing_canonical=%s new_canonical=%s old_id=%s new_id=%s",
+                    ws_id, collision, canonical_id, node_id, widened,
+                )
+                node_id = widened
             canonical_to_overlay[canonical_id] = node_id
 
             brief, _detailed = extract_summary_parts(row.get("ai_summary"), None)
