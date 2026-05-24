@@ -198,13 +198,26 @@ Probable batch (subject to scope):
 
 ---
 
-## 9. Verification plan (post-implementation)
+## 9. Verification log (2026-05-24)
 
-Will be expanded per 1a scope. Default outline:
+| Check | Result |
+|---|---|
+| pytest -m "not live" | 4041 passed, 8 pre-existing failures (4 integration/live, 2 perf-budget flakes, 2 stale-version-string), 0 regressions |
+| ruff check website/ tests/unit/mobile/ | 0 errors |
+| TestClient smoke (/m/, /m/knowledge-graph, /manifest.webmanifest, /sw.js) | all 200 |
+| ?desktop=1 escape cookie | sets correctly (zk-prefer-desktop=1; HttpOnly; Max-Age=2592000; SameSite=lax) |
+| Mobile UA → /home | 302 → /m/ (unchanged from pre-1a) |
+| Commits ahead of master | 14 |
 
-- Local pytest (`pytest -m "not live"`) — must remain green
-- Lint pass at end of plan only (per memory: "Batch ruff at end of plan")
-- Manual: Claude in Chrome viewport-emulation pass on each new/touched mobile page (iPhone 14 Pro, Pixel 7, iPad Mini)
-- Manual: real-device test on operator's device before merge
-- Production parity: confirm anonymous user flow on `/m/` still works post-merge (do not break the unauthed summarize path)
-- Verify no new RAM-hotspot on droplet (`free -h` before/after deploy)
+**Manual verification deferred to operator** (cannot run from agent):
+- Lighthouse PWA score ≥ 90 (operator-run in Chrome DevTools)
+- 3-viewport manual test (iPhone 14 Pro, Pixel 7, iPad Mini)
+- Real-device install + sign-in flow on operator's phone
+- Droplet RAM delta (`free -h` before/after deploy)
+
+**Known acceptable items shipping in 1a:**
+- PWA icons are PIL placeholders (teal-on-dark "Z" letter). Operator should swap for branded SVG renders before promoting "Add to Home Screen" to users.
+- Apple + Twitter OAuth chips are `hidden` in DOM pending SPF/sender-domain validation (Apple) and X API tier review (Twitter). Re-enable per provider in a follow-up iteration.
+- iOS Add-to-Home-Screen instruction sheet deferred to 1b polish (no `beforeinstallprompt` on iOS Safari per R6 research).
+- Tablet-as-desktop heuristic refinement (M3.1) deferred to 1b.
+- `/m/home`, `/m/zettels`, `/m/profile`, `/m/rag`, `/m/kastens`, `/m/pricing`, `/m/about`, `/m/nexus` deferred to subsequent iterations.
