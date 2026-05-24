@@ -115,12 +115,16 @@ def _render_with_mobile_shell(
     )
     if extra_head:
         rendered = rendered.replace("</head>", f"{extra_head}\n</head>", 1)
-    # Inject OAuth modal + auth scripts before </body> (Phase 3)
+    # Inject OAuth modal + auth scripts before </body> (Phase 3).
+    # Mobile pages load ONLY auth-core.js — auth.js carries desktop-landing
+    # DOM wiring (#login-btn / #user-menu / provider grid) that mobile does
+    # not render. /m/ auth chrome is owned by auth-modal.js, which already
+    # depends on window.ZKAuth from auth-core.
     oauth_modal = _MOBILE_OAUTH_MODAL.read_text(encoding="utf-8")
     auth_block = (
         oauth_modal
         + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin></script>'
-        + '\n<script src="/auth/js/auth.js?v=20260524a"></script>'
+        + '\n<script src="/auth/js/auth-core.js?v=20260524a"></script>'
         + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
     )
     rendered = rendered.replace("</body>", auth_block + "\n</body>", 1)
