@@ -36,18 +36,6 @@ const SLIDER_DEBOUNCE_MS = 250;
 const AMBER_HUE_MIN = 30;
 const AMBER_HUE_MAX = 55;
 
-// Phase B edge color: amber, tiered by the strength tier the read path
-// computes (strong|medium|weak). All three are the #D4A024 amber family
-// (rgb 212,160,36 ≈ HSL hue 43, inside AMBER_HUE_MIN..MAX) — strong is the
-// brightest/most-saturated and most opaque, weak is a faint low-alpha amber.
-// CLAUDE.md: NEVER blue/purple on /knowledge-graph. Edge thickness/opacity
-// stay with edgeWidthFor/edgeOpacityFor; only the hue is set here.
-const EDGE_TIER_COLOR = {
-  strong: 'rgba(212, 160, 36, 0.85)',
-  medium: 'rgba(196, 150, 60, 0.45)',
-  weak:   'rgba(176, 142, 84, 0.18)'
-};
-
 function snapToBucket(name) {
   const b = STRENGTH_BUCKETS[name];
   return b ? b.min : DEFAULT_MIN_STRENGTH;
@@ -897,21 +885,13 @@ function getCommunityHue(communityId) {
       })
       .nodeThreeObjectExtend(false)
 
-      // ---- Link rendering: amber, tiered by Phase B strength tier ----
-      // CLAUDE.md hard rule: /knowledge-graph accent is amber/gold #D4A024;
-      // NEVER blue/purple. strong = brightest/most-saturated amber, medium =
-      // mid, weak = faint amber. Opacity still comes from edgeOpacityFor()
-      // via .linkOpacity (untouched); this only sets the hue/base alpha.
+      // ---- Link rendering: blue base — operator-pref UI revert (matches mobile/js/graph.js). ----
       .linkColor(link => {
         const src = typeof link.source === 'object' ? link.source : null;
         if (src && hoverNode && (src.id === hoverNode.id || (typeof link.target === 'object' && link.target.id === hoverNode.id))) {
-          // Hover keeps the source node's source-badge color (amber family
-          // in COLORS{}); fall back to the brightest amber edge tone.
-          return COLORS[src.group] || EDGE_TIER_COLOR.strong;
+          return COLORS[src.group] || 'rgba(160, 180, 240, 0.8)';
         }
-        // LD-5: compute tier from connection_strength (backend no longer ships `tier`).
-        const tier = tierForStrength(link && link.connection_strength);
-        return EDGE_TIER_COLOR[tier] || EDGE_TIER_COLOR.weak;
+        return 'rgba(100, 130, 200, 0.25)';
       })
       .linkWidth(link => {
         const src = typeof link.source === 'object' ? link.source : null;

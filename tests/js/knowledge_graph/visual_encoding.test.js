@@ -138,46 +138,14 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(APP_SRC).toMatch(/AMBER_HUE_MAX\s*=\s*55/);
   });
 
-  it('EDGE_TIER_COLOR is amber-family, tiered, never blue/purple', () => {
-    const m = APP_SRC.match(
-      /\/\* test-exports:start \*\/([\s\S]*?)\/\* test-exports:end \*\//,
-    );
-    const sandbox = {};
-    new Function('exports', m[1] + '\nexports.c = EDGE_TIER_COLOR;')(sandbox);
-    const c = sandbox.c;
-    for (const t of ['strong', 'medium', 'weak']) {
-      expect(typeof c[t]).toBe('string');
-      const rgba = c[t].match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+))?\)/);
-      expect(rgba, `${t} must be an rgb(a) amber`).toBeTruthy();
-      const r = +rgba[1], g = +rgba[2], b = +rgba[3];
-      const a = rgba[4] === undefined ? 1 : +rgba[4];
-      // Amber: R is the dominant channel, B is the smallest → warm hue.
-      // This structurally excludes blue (B dominant) and purple (R≈B high).
-      expect(r, `${t} R>G`).toBeGreaterThan(g);
-      expect(g, `${t} G>B`).toBeGreaterThan(b);
-      // Convert to HSL hue and assert it sits in the amber band 30..55.
-      const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
-      const d = max - min;
-      let h = ((g / 255 - b / 255) / d) % 6;
-      h = Math.round(h * 60); if (h < 0) h += 360;
-      expect(h, `${t} hue ${h} must be amber 30..55`).toBeGreaterThanOrEqual(30);
-      expect(h).toBeLessThanOrEqual(55);
-      c[`__a_${t}`] = a;
-    }
-    // Tiering invariant: strong is the most opaque, weak the faintest.
-    expect(c.__a_strong).toBeGreaterThan(c.__a_medium);
-    expect(c.__a_medium).toBeGreaterThan(c.__a_weak);
-  });
-
-  it('linkColor wires EDGE_TIER_COLOR by tierForStrength (LD-5) and drops the old blue', () => {
-    // LD-5: backend no longer ships `tier`; frontend computes it from
-    // link.connection_strength via tierForStrength(). The legacy blue
-    // rgba(100, 130, 200, ...) literal must still be gone from app.js.
-    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*tier\s*\]/);
-    expect(APP_SRC).toMatch(/tierForStrength\s*\(\s*link[^)]*connection_strength/);
-    expect(APP_SRC).not.toMatch(/rgba\(\s*100\s*,\s*130\s*,\s*200/);
-    expect(APP_SRC).not.toMatch(/rgba\(\s*160\s*,\s*180\s*,\s*240/);
-    // Width/opacity helpers untouched: still wired to the named helpers.
+  it('linkColor uses the blue base palette (operator-pref UI revert)', () => {
+    // UI fixes 3a: edges restored to the blue base used pre-0c8950c3.
+    // Default state = rgba(100,130,200,0.25); hover-fallback when source
+    // group is unknown = rgba(160,180,240,0.8). Width/opacity helpers
+    // remain wired to edgeWidthFor / edgeOpacityFor (unchanged).
+    expect(APP_SRC).toMatch(/rgba\(\s*100\s*,\s*130\s*,\s*200\s*,\s*0\.25/);
+    expect(APP_SRC).toMatch(/rgba\(\s*160\s*,\s*180\s*,\s*240\s*,\s*0\.8/);
+    expect(APP_SRC).not.toMatch(/EDGE_TIER_COLOR/);
     expect(APP_SRC).toMatch(/\.linkWidth\(\s*[^)]*edgeWidthFor[^)]*\)/);
     expect(APP_SRC).toMatch(/\.linkOpacity\(\s*[^)]*edgeOpacityFor[^)]*\)/);
   });
@@ -202,21 +170,16 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(CSS_SRC).toMatch(/\.kg-legend-popup\s*\{/);
   });
 
-  it('3D node source palette + amber edge tiers are UNCHANGED (invariant)', () => {
-    // Phase-B invariant: relocating/recolouring the filter chrome must NOT
-    // touch the graph render colours. Pin the exact source palette + the
-    // amber EDGE_TIER_COLOR + the linkColor wiring.
+  it('3D node source palette is UNCHANGED (invariant)', () => {
+    // Per-source node palette is load-bearing — the filter dots, the legend
+    // popup, and the 3D sphere mesh all read these literals. UI fixes 3a
+    // reverted the edge tier amber back to blue; node colours are untouched.
     expect(APP_SRC).toMatch(/youtube:\s*'#E05565'/);
     expect(APP_SRC).toMatch(/reddit:\s*'#E09040'/);
     expect(APP_SRC).toMatch(/github:\s*'#56C8D8'/);
     expect(APP_SRC).toMatch(/substack:\s*'#60A5FA'/);
     expect(APP_SRC).toMatch(/medium:\s*'#4ADE80'/);
     expect(APP_SRC).toMatch(/web:\s*'#94A3B8'/);
-    expect(APP_SRC).toMatch(/strong:\s*'rgba\(212, 160, 36, 0\.85\)'/);
-    expect(APP_SRC).toMatch(/medium:\s*'rgba\(196, 150, 60, 0\.45\)'/);
-    expect(APP_SRC).toMatch(/weak:\s*'rgba\(176, 142, 84, 0\.18\)'/);
-    // linkColor still keys off EDGE_TIER_COLOR (LD-5: tier computed by tierForStrength).
-    expect(APP_SRC).toMatch(/EDGE_TIER_COLOR\[\s*tier\s*\]/);
   });
 
   it('community hue helper clamps within amber band', () => {
