@@ -9,6 +9,9 @@ const SHELL_URLS = [
   '/m/css/mobile.css',
   '/m/js/shell.js',
   '/m/js/auth-modal.js',
+  // Shared static (loaded by mobile via /js/ mount) — added for offline shell completeness (A-2).
+  '/js/add_zettel_api.js',
+  '/js/zk_skeleton_typewriter.js',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
   '/static/icons/apple-touch-icon-180.png',
