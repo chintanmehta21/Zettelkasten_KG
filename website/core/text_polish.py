@@ -17,6 +17,7 @@ Stack of passes (in order, applied to every text fragment):
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 
@@ -418,3 +419,37 @@ def rewrite_tags(tags: Any) -> Any:
     if not isinstance(tags, list):
         return tags
     return [rewrite_reddit_tag(t) if isinstance(t, str) else t for t in tags]
+
+
+def normalize_tag(tag: Any) -> str:
+    """X5 (T4.13): NFKC + lower + strip. Idempotent and Unicode-safe.
+
+    Why this exists: tags are user-typed strings persisted to
+    ``content.workspace_zettels.user_tags`` and queried in the graph filter
+    UI. Without canonicalisation, ``Café`` and ``café`` (NFD form)
+    hash to different bucket keys and the same user-facing tag fragments
+    into two filter chips. NFKC folds compatibility forms (full-width
+    digits, ligatures) and combining sequences into a single canonical
+    representation; lower() folds case; strip() drops accidental whitespace.
+    The composition is idempotent: ``normalize_tag(normalize_tag(x)) == normalize_tag(x)``.
+    """
+    if not isinstance(tag, str):
+        return tag if tag is None else str(tag)
+    return unicodedata.normalize("NFKC", tag).strip().lower()
+
+
+def normalize_tags(tags: Any) -> Any:
+    """X5 (T4.13): list-mapped :func:`normalize_tag`, preserving order + dropping empties."""
+    if not isinstance(tags, list):
+        return tags
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in tags:
+        if not isinstance(t, str):
+            continue
+        normalized = normalize_tag(t)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        out.append(normalized)
+    return out
