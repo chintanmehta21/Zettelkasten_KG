@@ -26,7 +26,6 @@ metadata blob can never inflate the tag signal.
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 # Cardinality guard: at most this many pseudo-tags regardless of input. Three
 # rule families, one tag each, so 3 is the natural ceiling; the explicit cap

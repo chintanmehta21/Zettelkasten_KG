@@ -556,7 +556,13 @@ def extract_summary_parts(raw_summary: str | None, fallback_brief: str | None = 
 
 def _build_supabase_node_id(source_type: str, title: str) -> str:
     prefix = _SOURCE_PREFIX.get((source_type or "").strip().lower(), "web")
-    slug = re.sub(r"[^a-z0-9]+", "-", str(title or "").lower()).strip("-")[:24].rstrip("-")
+    # M6 (Phase 4 audit): NFKC-normalize the title so disparate Unicode
+    # forms (NFD/NFC, full-width, ligatures) produce the same slug. Mirrors
+    # the matching normalization in routes.py:_v2_assemble_graph so the
+    # ``node_id`` derivation is identical across persist + render paths.
+    import unicodedata  # noqa: PLC0415 - localised import to keep top-of-file lean
+    title_norm = unicodedata.normalize("NFKC", str(title or "")).lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", title_norm).strip("-")[:24].rstrip("-")
     slug = slug or "untitled"
     return f"{prefix}-{slug}"
 

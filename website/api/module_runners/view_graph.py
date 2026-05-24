@@ -215,9 +215,10 @@ def _kasten_canonical_prefixes(
         cz = row.get("canonical_zettel_id") or row.get("canonical_id")
         if not cz:
             continue
-        # _v2_assemble_graph keys by canonical_id[:8] of the dashed UUID form.
-        cz_dashed = str(cz)
-        prefixes.add(cz_dashed[:8])
+        # _v2_assemble_graph uses canonical_id[:8] of the dashed UUID form, so
+        # we match the dashed-form first 8 chars to keep Kasten membership keys
+        # aligned with the assembler's node-id derivation.
+        prefixes.add(str(cz)[:8])
     return prefixes
 
 
