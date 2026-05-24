@@ -1,0 +1,98 @@
+name: KG re-score sweep (one-shot)
+
+# Manual one-shot to re-score every existing kg_edges row under the new
+# D-KG-1 weights (0.65, 0.20, 0.10, 0.05) + embedding fast-path landed by
+# PR #71 (Phase 3-α, #operator-approved 2026-05-23). Calls
+# ops/scripts/rescore_kg_edges.py inside the latest deployed container,
+# fenced to per-workspace transactional UPDATEs.
+#
+# Safety profile (also documented in the script's docstring):
+#   * Read-only by default — mode=dry-run is the default input.
+#   * Per-workspace transactions; one ws failure doesn't block the rest.
+#   * Idempotent — skips UPDATEs with |delta| < 0.005.
+#   * Single-tenant fence in every UPDATE (workspace_id = ANY).
+#
+# Operator runbook: trigger via `gh workflow run rescore_kg_edges.yml -f mode=dry-run`
+# first; if the delta histogram looks right, re-trigger with `-f mode=apply`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        description: "dry-run (default) prints histogram only; apply commits UPDATEs"
+        options:
+          - dry-run
+          - apply
+        default: dry-run
+        required: true
+      workspace_id:
+        type: string
+        description: "Optional UUID to restrict the sweep to one workspace (leave blank for all)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  rescore:
+    name: Re-score kg_edges under new D-KG-1 weights
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: SSH to droplet and run rescore_kg_edges.py inside the live image
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          envs: MODE,WS_ID
+          command_timeout: 25m
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            MODE="${MODE:-dry-run}"
+            WS_ID="${WS_ID:-}"
+
+            # ── Resolve the currently-live image tag ──
+            # deploy.sh writes the active image tag into the compose .env via
+            # IMAGE_TAG=... or, on older deploys, infers it from the running
+            # container. We read it from the live container's image label so
+            # the rescore runs against the EXACT code that's serving traffic.
+            LIVE_IMAGE=$(docker inspect zettelkasten-blue --format '{{.Config.Image}}' 2>/dev/null \
+              || docker inspect zettelkasten-green --format '{{.Config.Image}}' 2>/dev/null \
+              || echo "")
+            if [ -z "$LIVE_IMAGE" ]; then
+              echo "ERROR: could not resolve live image tag from zettelkasten-{blue,green}"
+              exit 1
+            fi
+            echo "[rescore] live image: $LIVE_IMAGE"
+            echo "[rescore] mode: $MODE"
+            echo "[rescore] workspace: ${WS_ID:-<all>}"
+
+            # ── Build script arguments ──
+            ARGS=""
+            if [ "$MODE" = "apply" ]; then
+              ARGS="--apply"
+            fi
+            if [ -n "$WS_ID" ]; then
+              ARGS="$ARGS --workspace-id $WS_ID"
+            fi
+
+            # ── Run inside the live image ──
+            # --network host: reaches Supabase via the droplet's outbound IP,
+            #                 same path the live container uses.
+            # --env-file:     pulls SUPABASE_V2_DATABASE_URL + creds the live
+            #                 app uses (sudoers already whitelists this path).
+            # No volume mounts — the script is baked into the image already.
+            docker run --rm --network host \
+              --env-file /opt/zettelkasten/compose/.env \
+              "$LIVE_IMAGE" \
+              python ops/scripts/rescore_kg_edges.py $ARGS
+
+            echo "[rescore] DONE mode=$MODE"
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          WS_ID: ${{ github.event.inputs.workspace_id }}
