@@ -587,10 +587,24 @@ _PROFILE = str(UUID("00000000-0000-0000-0000-000000000001"))
 
 @pytest.fixture
 def _patch_embed(monkeypatch):
-    """Deterministic embedding so the kNN/score path runs offline."""
+    """Deterministic embedding so the kNN/score path runs offline.
+
+    Phase 4 / Task 4.5 (X8) switched the cold-node backfill path to call
+    ``generate_embedding_typed`` (returning an :class:`EmbeddingResult`)
+    instead of the legacy ``generate_embedding`` list-returning function.
+    Both are patched so older fixtures keep working AND the typed call
+    site picks up the deterministic vector.
+    """
+    from website.features.kg_features.embeddings import EmbeddingResult
     monkeypatch.setattr(
         "website.features.kg_features.embeddings.generate_embedding",
         lambda *_a, **_k: [0.1] * 768,
+    )
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding_typed",
+        lambda *_a, **_k: EmbeddingResult(
+            ok=True, vectors=[[0.1] * 768], reason=None, retryable=False,
+        ),
     )
 
 
@@ -835,10 +849,26 @@ def test_create_missing_cold_node_regenerates_and_persists_embedding(
 
 
 def test_create_missing_cold_node_no_embedding_skips_gracefully(monkeypatch):
-    # Embedding generation unavailable (quota/network) -> empty list.
+    # Embedding generation unavailable (quota/network) -> not-ok result.
+    # Phase 4 / T4.5: backfill path calls generate_embedding_typed and
+    # checks ok=False, so the mock returns an EmbeddingResult that the
+    # cold-node helper recognises as "skip this node".
+    from website.features.kg_features.embeddings import (
+        EmbeddingFailureReason,
+        EmbeddingResult,
+    )
     monkeypatch.setattr(
         "website.features.kg_features.embeddings.generate_embedding",
         lambda *_a, **_k: [],
+    )
+    monkeypatch.setattr(
+        "website.features.kg_features.embeddings.generate_embedding_typed",
+        lambda *_a, **_k: EmbeddingResult(
+            ok=False,
+            vectors=[],
+            reason=EmbeddingFailureReason.EMPTY_VECTOR,
+            retryable=True,
+        ),
     )
     c = FakeClient()
     c.nodes[_WS_A] = [_node(100, embedding=False)]
