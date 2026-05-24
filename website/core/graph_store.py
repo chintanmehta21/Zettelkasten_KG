@@ -1,7 +1,13 @@
 """In-memory graph store backed by graph.json.
 
-Loads the knowledge graph on first access, supports adding new nodes
-with tag-based link discovery, and persists changes to disk.
+Phase 4 X9+X10 retirement (Task 4.14): Supabase v2 is the canonical source of
+truth for user data. ``graph.json`` is a READ-ONLY mirror seed-loaded at
+process boot. In-memory ``add_node`` / ``delete_node`` mutations are kept
+ONLY for the file-store public/anonymous surface (e.g. curated demo
+enrichments) — they DO NOT persist to disk and DO NOT survive a worker
+restart. To update the curated demo graph, edit graph.json by hand and run
+``ops/scripts/backfill_graph_json_strength.py``; the next deploy will pick
+up the changes.
 """
 
 from __future__ import annotations
@@ -50,26 +56,6 @@ def _load() -> dict:
             if _graph is None:
                 _graph = json.loads(GRAPH_JSON.read_text(encoding="utf-8"))
     return _graph
-
-
-def _save() -> None:
-    """Persist the in-memory graph to disk (best-effort).
-
-    The production container image is mounted read-only; ``graph.json`` is a
-    non-canonical mirror (Supabase v2 is the source of truth), so a read-only
-    filesystem here is expected, not a fault. The in-memory graph still
-    updates and serves reads for the process — only the on-disk mirror is
-    skipped, quietly, instead of raising into a noisy WARNING on every add.
-    """
-    if _graph is None:
-        return
-    try:
-        GRAPH_JSON.write_text(
-            json.dumps(_graph, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-    except OSError as exc:
-        logger.debug("graph.json mirror not persisted (read-only fs): %s", exc)
 
 
 def _slugify(text: str, max_len: int = 24) -> str:
@@ -174,8 +160,7 @@ def add_node(
         tag_set = set(clean_tags)
         new_links = _find_links(node_id, tag_set, graph)
         graph["links"].extend(new_links)
-
-        _save()
+        # X9+X10 (T4.14): no disk write — graph.json is a read-only mirror.
 
     logger.info(
         "Added node '%s' with %d links to graph",
@@ -205,7 +190,7 @@ def delete_node(node_id: str) -> bool:
             for lk in graph["links"]
             if lk.get("source") != node_id and lk.get("target") != node_id
         ]
-        _save()
+        # X9+X10 (T4.14): no disk write — graph.json is a read-only mirror.
 
     logger.info("Deleted node '%s' from file graph store", node_id)
     return True
