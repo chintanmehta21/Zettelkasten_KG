@@ -114,7 +114,7 @@ def _render_with_mobile_shell(
     )
     if extra_head:
         rendered = rendered.replace("</head>", f"{extra_head}\n</head>", 1)
-    return HTMLResponse(content=rendered, headers={"Cache-Control": "no-store"})
+    return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
 
 # Regex to detect mobile user-agents
@@ -123,6 +123,7 @@ _MOBILE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# SameSite=Lax: survives the Supabase OAuth top-level GET return. httponly=True: no JS consumer in iter 1a (flip when adding a desktop->mobile inverse link).
 _DESKTOP_COOKIE = "zk-prefer-desktop"
 
 
@@ -151,7 +152,7 @@ def _maybe_set_desktop_cookie(request: Request, response: HTMLResponse) -> HTMLR
             max_age=60 * 60 * 24 * 30,  # 30 days
             path="/",
             samesite="lax",
-            httponly=False,  # JS-readable; not a security cookie
+            httponly=True,
         )
     return response
 

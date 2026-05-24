@@ -72,4 +72,4 @@ def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
     set_cookie = resp.headers.get("set-cookie", "")
     assert "zk-prefer-desktop=1" in set_cookie
     assert "Max-Age=2592000" in set_cookie
-    assert "HttpOnly" not in set_cookie
+    assert "HttpOnly" in set_cookie
