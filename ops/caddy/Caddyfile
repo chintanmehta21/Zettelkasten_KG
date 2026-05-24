@@ -43,6 +43,13 @@ zettelkasten.in {
     @api_graph path /api/graph
     header @api_graph Cache-Control "public, max-age=30"
 
+    # PWA: service worker must not be cached; manifest short-cached by FastAPI
+    @pwa {
+        path /sw.js /manifest.webmanifest
+    }
+    header @pwa Cache-Control "no-cache, max-age=0"
+    header /sw.js Service-Worker-Allowed "/"
+
     # Health check always passes through to upstream (bypasses maintenance gate)
     handle /api/health {
         import /etc/caddy/upstream.snippet

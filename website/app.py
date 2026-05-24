@@ -466,6 +466,28 @@ def create_app(lifespan=None) -> FastAPI:
             headers={"Cache-Control": "public, max-age=86400, immutable"},
         )
 
+    # ── PWA manifest + service worker ──
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    async def pwa_manifest():
+        path = STATIC_DIR / "manifest.webmanifest"
+        return FileResponse(
+            str(path),
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+
+    @app.get("/sw.js", include_in_schema=False)
+    async def pwa_service_worker():
+        path = STATIC_DIR / "sw.js"
+        return FileResponse(
+            str(path),
+            media_type="application/javascript",
+            headers={
+                "Cache-Control": "no-cache, max-age=0",
+                "Service-Worker-Allowed": "/",
+            },
+        )
+
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index():
