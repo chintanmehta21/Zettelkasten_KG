@@ -39,6 +39,10 @@ jobs:
     name: Re-score kg_edges under new D-KG-1 weights
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # GitHub Environment scoping for prod-touching secrets. deploy-droplet.yml
+    # uses the same env to access DROPLET_HOST / DROPLET_SSH_KEY / etc.
+    # Without this, the secrets resolve to empty strings (silent fail mode).
+    environment: production
     steps:
       - name: SSH to droplet and run rescore_kg_edges.py inside the live image
         uses: appleboy/ssh-action@v1
