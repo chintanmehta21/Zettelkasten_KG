@@ -29,6 +29,8 @@
     if (!modal.open) return;
     modal.close();
     document.body.style.overflow = '';
+    // Re-enable all provider buttons when modal closes (user may re-open after back).
+    document.querySelectorAll('.m-auth-provider').forEach(function (b) { b.disabled = false; });
   }
 
   // ── Account menu ───────────────────────────────────────────

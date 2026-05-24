@@ -226,10 +226,7 @@ def _kasten_canonical_prefixes(
         cz = row.get("canonical_zettel_id") or row.get("canonical_id")
         if not cz:
             continue
-        cz_str = str(cz).replace("-", "")
-        # canonical_zettel_id is a UUID; first 8 hex chars (no dashes).
-        # _v2_assemble_graph uses canonical_id[:8] of the dashed form so we
-        # must match the dashed-form first 8 chars.
+        # _v2_assemble_graph keys by canonical_id[:8] of the dashed UUID form.
         cz_dashed = str(cz)
         prefixes.add(cz_dashed[:8])
     return prefixes

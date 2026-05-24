@@ -55,33 +55,37 @@ self.addEventListener('fetch', function (event) {
   }
 
   // HTML in /m/* — network-first, fall back to cache.
+  // Normalize URL (strip query string) so versioned paths share one cache entry.
   if (url.pathname.startsWith('/m/') && url.pathname.indexOf('.') === -1) {
+    var canonicalHtml = new Request(url.origin + url.pathname);
     event.respondWith(
       fetch(event.request)
         .then(function (resp) {
           var clone = resp.clone();
-          caches.open(CACHE).then(function (c) { c.put(event.request, clone); });
+          caches.open(CACHE).then(function (c) { c.put(canonicalHtml, clone); });
           return resp;
         })
         .catch(function () {
-          return caches.match(event.request);
+          return caches.match(canonicalHtml, { ignoreSearch: true });
         })
     );
     return;
   }
 
   // Static assets: /static/*, /m/css/*, /m/js/*, /favicon.svg — cache-first, network fallback + update.
+  // Normalize URL (strip query string) so ?v=... cache-busters share one cache entry.
   if (
     url.pathname.startsWith('/static/') ||
     url.pathname.startsWith('/m/css/') ||
     url.pathname.startsWith('/m/js/') ||
     url.pathname === '/favicon.svg'
   ) {
+    var canonicalStatic = new Request(url.origin + url.pathname);
     event.respondWith(
-      caches.match(event.request).then(function (cached) {
+      caches.match(canonicalStatic, { ignoreSearch: true }).then(function (cached) {
         var networkFetch = fetch(event.request).then(function (resp) {
           var clone = resp.clone();
-          caches.open(CACHE).then(function (c) { c.put(event.request, clone); });
+          caches.open(CACHE).then(function (c) { c.put(canonicalStatic, clone); });
           return resp;
         });
         return cached || networkFetch;
