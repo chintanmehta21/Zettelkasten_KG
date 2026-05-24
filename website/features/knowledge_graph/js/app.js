@@ -105,34 +105,60 @@ function getCommunityHue(communityId) {
 (function () {
   'use strict';
 
-  // ---- Node colours by source. Adding a new source = add one row here. ----
-  const COLORS = {
+  // ---- Node colours by source. ----
+  // Phase 4 / Task 4.1 (D1+D2+D3): registry now lives in
+  // `website/core/source_registry.py`; this file fetches the canonical data
+  // at boot via /api/meta/source-types. The constants below seed defensive
+  // defaults so the graph still renders if the fetch fails (e.g., offline
+  // or 5xx) — overwritten on the first successful response.
+  let COLORS = {
     youtube:    '#E05565',
     reddit:     '#E09040',
     github:     '#56C8D8',
     substack:   '#60A5FA',
-    newsletter: '#60A5FA',  // matches .zettels-source-badge.newsletter HSL(205,40,68)
+    newsletter: '#60A5FA',
     medium:     '#4ADE80',
+    twitter:    '#1DA1F2',
     web:        '#94A3B8'
   };
-  const COLORS_INT = {
+  let COLORS_INT = {
     youtube:    0xE05565,
     reddit:     0xE09040,
     github:     0x56C8D8,
     substack:   0x60A5FA,
     newsletter: 0x60A5FA,
     medium:     0x4ADE80,
+    twitter:    0x1DA1F2,
     web:        0x94A3B8
   };
-  const SOURCE_LABEL = {
+  let SOURCE_LABEL = {
     youtube: 'YouTube',
     reddit: 'Reddit',
     github: 'GitHub',
     substack: 'Substack',
     newsletter: 'Newsletter',
     medium: 'Medium',
+    twitter: 'Twitter',
     web: 'Web'
   };
+
+  async function _loadSourceRegistry() {
+    try {
+      const r = await fetch('/api/meta/source-types', { cache: 'force-cache' });
+      if (!r.ok) throw new Error('source-types fetch failed: ' + r.status);
+      const data = await r.json();
+      for (const [key, meta] of Object.entries(data)) {
+        if (meta && typeof meta === 'object') {
+          if (typeof meta.color_hex === 'string') COLORS[key] = meta.color_hex;
+          if (typeof meta.color_int === 'number') COLORS_INT[key] = meta.color_int;
+          if (typeof meta.label === 'string') SOURCE_LABEL[key] = meta.label;
+        }
+      }
+    } catch (e) {
+      console.warn('source registry pickup failed; using defaults', e);
+    }
+  }
+  const _registryReady = _loadSourceRegistry();
 
   function escapeHtml(str) {
     const el = document.createElement('span');
@@ -722,8 +748,12 @@ function getCommunityHue(communityId) {
       });
   }
 
-  // Initial load
-  loadGraphData();
+  // Initial load — gated on the source-type registry being fetched so the
+  // first paint uses the canonical per-source colours (Phase 4 Task 4.1).
+  // Defaults already seed the maps, so a registry-fetch failure does NOT
+  // block the load — Promise resolves either way (loadSourceRegistry
+  // swallows errors and falls back to the seeded defaults).
+  _registryReady.then(() => loadGraphData());
 
   // ---- In-place node visual update (avoids full rebuild flicker) ----
   function _updateNodeVisual(node) {
