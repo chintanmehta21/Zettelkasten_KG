@@ -201,6 +201,14 @@ function getCommunityHue(communityId) {
   // envelope is malformed. This function NEVER returns a value that starts
   // with "{" — it always degrades to a human-readable string.
   function extractBriefFromSummary(raw) {
+    // S3 (T4.15): the server now parses the envelope at the wire boundary and
+    // returns { brief, detailed, closing }. Fast-path the common case so we
+    // don't redo JSON.parse on every panel open. Legacy file-store rows
+    // still ship strings — they fall through to the original path below.
+    if (raw && typeof raw === 'object' && typeof raw.brief === 'string') {
+      const b = raw.brief.trim();
+      if (b) return b.length > 800 ? b.slice(0, 800).trimEnd() + '…' : b;
+    }
     const text = String(raw == null ? '' : raw).trim();
     if (!text) return '';
 

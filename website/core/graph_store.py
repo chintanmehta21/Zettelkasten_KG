@@ -49,12 +49,29 @@ def _normalize_source_type(source_type: str) -> str:
 
 
 def _load() -> dict:
-    """Load graph.json into memory (once)."""
+    """Load graph.json into memory (once).
+
+    S1 (T4.15): strip pre-computed analytics fields on read. These ship in
+    older snapshots of graph.json but are recomputed at request time by the
+    /api/graph analytics pipeline; carrying them through the in-memory mirror
+    would double-account on the wire.
+    """
     global _graph
     if _graph is None:
         with _lock:
             if _graph is None:
                 _graph = json.loads(GRAPH_JSON.read_text(encoding="utf-8"))
+                for node in _graph.get("nodes", []) or []:
+                    if not isinstance(node, dict):
+                        continue
+                    for stale in (
+                        "pagerank",
+                        "community",
+                        "betweenness",
+                        "closeness",
+                        "harmonic_centrality",
+                    ):
+                        node.pop(stale, None)
     return _graph
 
 
