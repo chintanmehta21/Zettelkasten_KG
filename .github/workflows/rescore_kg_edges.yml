@@ -65,15 +65,18 @@ jobs:
             # IMAGE_TAG=... or, on older deploys, infers it from the running
             # container. We read it from the live container's image label so
             # the rescore runs against the EXACT code that's serving traffic.
-            # head -n 1 + tr defends against any stray whitespace / multi-line
-            # output from a misconfigured container (would otherwise produce
-            # an "invalid reference format" from `docker run`).
+            # Try the named blue/green containers first; fall back to scanning
+            # any zettelkasten-* container that's actually running. head -n 1 +
+            # tr defends against stray whitespace.
+            echo "[rescore] containers on droplet:"
+            docker ps -a --filter "name=zettelkasten-" --format "  {{.Names}}\t{{.Status}}\t{{.Image}}" || true
             LIVE_IMAGE=$(docker inspect zettelkasten-blue --format '{{.Config.Image}}' 2>/dev/null \
               || docker inspect zettelkasten-green --format '{{.Config.Image}}' 2>/dev/null \
+              || docker ps --filter "name=zettelkasten-" --format '{{.Image}}' | head -n 1 \
               || echo "")
             LIVE_IMAGE=$(printf '%s' "$LIVE_IMAGE" | head -n 1 | tr -d '[:space:]')
             if [ -z "$LIVE_IMAGE" ]; then
-              echo "ERROR: could not resolve live image tag from zettelkasten-{blue,green}"
+              echo "ERROR: could not resolve live image tag from any zettelkasten-* container"
               exit 1
             fi
             echo "[rescore] live image: $LIVE_IMAGE"
