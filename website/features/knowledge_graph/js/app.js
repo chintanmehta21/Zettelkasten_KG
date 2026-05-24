@@ -1522,6 +1522,15 @@ function getCommunityHue(communityId) {
     return 'flt-tag-' + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
+  // X5 (T4.13): NFKC + lowercase + strip — mirror of website.core.text_polish
+  // normalize_tag(). All Set membership for activeTags goes through this
+  // helper so visually-identical tags from disparate Unicode forms hash to
+  // the same bucket. Defence-in-depth — the server-side write path also
+  // normalises before persisting.
+  function _normalizeTag(t) {
+    return (t == null ? '' : String(t)).normalize('NFKC').trim().toLowerCase();
+  }
+
   function renderTagsSection() {
     const body = document.getElementById('filter-tags-body');
     if (!body) return;
@@ -1529,7 +1538,13 @@ function getCommunityHue(communityId) {
     const allTags = new Set();
     (fullData.nodes || []).forEach(n => {
       (Array.isArray(n.tags) ? n.tags : []).forEach(t => {
-        if (t && typeof t === 'string') allTags.add(t);
+        if (t && typeof t === 'string') {
+          // X5 (T4.13): normalize on insert so pre-backfill graphs surface a
+          // single canonical chip per logical tag (server backfill catches up
+          // on the next ingest cycle).
+          const norm = _normalizeTag(t);
+          if (norm) allTags.add(norm);
+        }
       });
     });
     const tags = [...allTags].sort((a, b) => a.localeCompare(b));
@@ -1672,7 +1687,10 @@ function getCommunityHue(communityId) {
       if (kastenAllowedIds && !kastenAllowedIds.has(n.id)) return false;
       if (activeTags.size > 0) {
         const tags = Array.isArray(n.tags) ? n.tags : [];
-        const hit = tags.some(t => activeTags.has(t));
+        // X5 (T4.13): defence-in-depth normalize at lookup so pre-backfill
+        // node tags (un-normalised in the wire payload) still match the
+        // (now-normalised) chips in activeTags.
+        const hit = tags.some(t => activeTags.has(_normalizeTag(t)));
         if (!hit) return false;
       }
       return true;

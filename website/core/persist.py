@@ -31,7 +31,7 @@ from website.core.supabase_v2.models import CanonicalChunkCreate, CanonicalZette
 from website.core.supabase_v2.repositories.content_repository import ContentRepository as V2ContentRepository
 from website.core.supabase_v2.repositories.core_repository import CoreRepository as V2CoreRepository
 from website.core.supabase_v2.client import get_v2_client as _get_v2_client
-from website.core.text_polish import polish, rewrite_tags, strip_caveats
+from website.core.text_polish import normalize_tags, polish, rewrite_tags, strip_caveats
 
 # Keep a forward reference to supabase Client only for typing; importing at
 # module top would force the supabase package even when v2 is disabled.
@@ -780,7 +780,7 @@ async def _persist_supabase_v2_zettel(
         workspace_id=workspace_id,
         ai_summary=_encode_summary_payload(payload),
         ai_summary_engine_version=str(payload.get("engine_version") or ""),
-        user_tags=list(rewrite_tags(payload.get("tags", []) or [])),
+        user_tags=list(normalize_tags(rewrite_tags(payload.get("tags", []) or []))),
         derived_tags=list(_derived),
         added_via="website",
     )
@@ -895,7 +895,7 @@ def _persist_file_node(payload: dict[str, Any], *, skip_duplicate: bool) -> str 
             source_type=str(payload["source_type"]),
             source_url=str(payload["source_url"]),
             summary=_encode_summary_payload(payload),
-            tags=list(rewrite_tags(payload.get("tags", []) or [])),
+            tags=list(normalize_tags(rewrite_tags(payload.get("tags", []) or []))),
         )
     except Exception as exc:
         logger.warning("Failed to add node to file KG: %s", exc)
@@ -1008,7 +1008,7 @@ async def build_canonical_chunks(
         source_type=source_type,
         title=str(payload.get("title") or ""),
         raw_text=source_text,
-        tags=list(rewrite_tags(payload.get("tags", []) or [])),
+        tags=list(normalize_tags(rewrite_tags(payload.get("tags", []) or []))),
         extra_metadata=dict(payload.get("raw_metadata") or payload.get("metadata") or {}),
     )
     if not chunks:
@@ -1080,7 +1080,7 @@ def _schedule_kg_population(
                 canonical_zettel_id=canonical_zettel_id,
                 title=title,
                 summary=summary,
-                tags=list(rewrite_tags(payload.get("tags", []) or [])),
+                tags=list(normalize_tags(rewrite_tags(payload.get("tags", []) or []))),
                 url=str(payload.get("source_url") or "") or None,
                 source_type=str(payload.get("source_type") or "web"),
                 supabase_client=get_v2_client(),
