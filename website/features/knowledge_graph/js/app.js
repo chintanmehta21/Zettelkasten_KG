@@ -890,24 +890,26 @@ function getCommunityHue(communityId) {
         mesh.scale.setScalar(radius);
         group.add(mesh);
 
-        // Spotlight ring (billboarded mesh — never picks up scale-stuck bug)
+        // Spotlight ring — restored to the original sprite-based glow
+        // (operator pref: "elegant" version). Sprite billboards for free
+        // against the camera, ring texture pre-rendered into _matCache as
+        // '_ringTex' near the top of the IIFE. Color is darkened 35% so it
+        // reads as an outer halo, not a copy of the node.
         if (isSpotlight) {
-          const ringMat = new THREE.MeshBasicMaterial({
-            color: color,
-            transparent: true,
-            opacity: 0.5,
-            depthWrite: false,
-            side: THREE.DoubleSide
-          });
-          const ring = new THREE.Mesh(new THREE.RingGeometry(radius * 1.4, radius * 1.7, 48), ringMat);
+          const ringKey = 'ringSpr_' + color;
+          if (!_matCache[ringKey]) {
+            _matCache[ringKey] = new THREE.SpriteMaterial({
+              map: _matCache['_ringTex'],
+              color: new THREE.Color(color).multiplyScalar(0.65),
+              transparent: true,
+              opacity: 0.8,
+              depthWrite: false
+            });
+          }
+          const ring = new THREE.Sprite(_matCache[ringKey]);
+          ring.scale.set(radius * 3, radius * 3, 1);
           ring.__isRing = true;
           ring.__nodeRadius = radius;
-          // F4: per-ring billboard via onBeforeRender (replaces the rAF loop
-          // that scanned every ring every frame). The renderer passes the
-          // camera in; rings face the viewer with no per-frame O(N) sweep.
-          ring.onBeforeRender = function (renderer, scene, cam) {
-            if (cam) ring.lookAt(cam.position);
-          };
           group.add(ring);
         }
 
@@ -996,18 +998,11 @@ function getCommunityHue(communityId) {
       .d3AlphaMin(0.01)
       .linkCurvature(0.15)
       .linkCurveRotation(0.4)
-      // F5: particles are GPU-expensive (1 cylinder per link per frame).
-      // Show only on hover/selected node's incident edges for snappy
-      // interaction at scale; idle graph has zero particles.
-      .linkDirectionalParticles(link => {
-        if (!hoverNode && !selectedNode) return 0;
-        const active = hoverNode || selectedNode;
-        if (!active) return 0;
-        const src = typeof link.source === 'object' ? link.source : null;
-        const tgt = typeof link.target === 'object' ? link.target : null;
-        const touches = (src && src.id === active.id) || (tgt && tgt.id === active.id);
-        return touches ? 1 : 0;
-      })
+      // Particles — 1 per link, always flowing. Operator pref: the elegant
+      // "alive graph" feel before F5 made them hover-only. Cost is real (1
+      // cylinder per link per frame) but visually load-bearing on
+      // /knowledge-graph.
+      .linkDirectionalParticles(1)
       .linkDirectionalParticleWidth(1.0)
       .linkDirectionalParticleSpeed(0.008)
       .linkDirectionalParticleColor(link => {
