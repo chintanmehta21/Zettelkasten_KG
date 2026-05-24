@@ -66,6 +66,22 @@
 .m-header-avatar:active { background: var(--bg-elevated); }
 .m-header-avatar.is-authed { border-color: var(--accent); color: var(--accent); }
 
+/* ── Header action button (e.g. KG filter toggle in /m/knowledge-graph search strip) ─ */
+.m-header-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.m-header-action:active { background: var(--bg-elevated); }
+
 /* ── Main content padding so bottom-tab doesn't cover content ─ */
 .m-main {
   min-height: calc(100dvh - 48px - 64px); /* header + tabs */
@@ -77,6 +93,8 @@
   min-height: 0;
 }
 
+/* z-index ladder: toast 200 > header 100 > bottom-tabs 90 > KG sheet 60.
+   Phase 5 must hide tabs (or raise sheet z-index) when sheet at large detent. */
 /* ── Bottom-tab bar ───────────────────────────────────────── */
 .m-bottom-tabs {
   position: fixed;
