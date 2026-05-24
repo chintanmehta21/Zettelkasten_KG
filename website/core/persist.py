@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import re
+import threading
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -43,6 +44,36 @@ logger = logging.getLogger("website.core.persist")
 
 _v2_core_repo: V2CoreRepository | None = None
 _v2_content_repo: V2ContentRepository | None = None
+# Y4 (T4.10): the previous ``x = x or X()`` lazy-init pattern had a
+# check-then-set race when two threads first-touched the globals at once
+# (e.g. an async route + a fire-and-forget ``asyncio.to_thread`` kg-populate
+# call on a freshly-forked worker). Both threads would call the constructor
+# and the later assignment would silently win, leaking a half-constructed
+# httpx client. The shared lock + double-checked init below makes the lazy
+# path safe under threading.to_thread without changing the global names —
+# tests reset state by setting these to ``None`` and that still re-triggers
+# init on the next call.
+_v2_repos_lock = threading.Lock()
+
+
+def _get_core_repo() -> V2CoreRepository:
+    """Thread-safe lazy init of the module-level v2 core repository."""
+    global _v2_core_repo
+    if _v2_core_repo is None:
+        with _v2_repos_lock:
+            if _v2_core_repo is None:
+                _v2_core_repo = V2CoreRepository()
+    return _v2_core_repo
+
+
+def _get_content_repo() -> V2ContentRepository:
+    """Thread-safe lazy init of the module-level v2 content repository."""
+    global _v2_content_repo
+    if _v2_content_repo is None:
+        with _v2_repos_lock:
+            if _v2_content_repo is None:
+                _v2_content_repo = V2ContentRepository()
+    return _v2_content_repo
 
 # Registry of in-flight best-effort enrichment tasks (Phase-B KG population +
 # RAG chunk ingest). These are scheduled fire-and-forget so the *website*
@@ -184,8 +215,6 @@ def get_supabase_v2_scope_for_read(
     ``None`` when v2 is not in use, the JWT subject is not a UUID, or the
     profile has no workspace memberships.
     """
-    global _v2_core_repo, _v2_content_repo
-
     if not _persist_should_attempt_v2() or not user_sub:
         return None
     try:
@@ -198,13 +227,13 @@ def get_supabase_v2_scope_for_read(
         return None
 
     try:
-        _v2_core_repo = _v2_core_repo or V2CoreRepository()
-        _v2_content_repo = _v2_content_repo or V2ContentRepository()
+        core_repo = _get_core_repo()
+        content_repo = _get_content_repo()
         # Enumerate all workspaces the profile is a member of via the same
         # core.workspace_members table CoreRepository.get_default_workspace_id
         # already uses; service-role client bypasses RLS for read fan-out.
         response = (
-            _v2_core_repo._client.schema("core")
+            core_repo._client.schema("core")
             .table("workspace_members")
             .select("workspace_id")
             .eq("profile_id", str(profile_id))
@@ -216,7 +245,7 @@ def get_supabase_v2_scope_for_read(
         ]
         if not workspace_ids:
             return None
-        return _v2_content_repo, profile_id, workspace_ids
+        return content_repo, profile_id, workspace_ids
     except Exception as exc:
         logger.warning("Supabase v2 read scope lookup failed, falling back: %s", exc)
         return None
@@ -256,8 +285,6 @@ def get_supabase_v2_scope(user_sub: str | None = None) -> tuple[V2ContentReposit
     persist failures, they are "v2 not applicable for this caller". An actual
     persist failure is surfaced later via :class:`SupabaseV2PersistError`.
     """
-    global _v2_core_repo, _v2_content_repo
-
     if not _persist_should_attempt_v2() or not user_sub:
         return None
     try:
@@ -267,12 +294,12 @@ def get_supabase_v2_scope(user_sub: str | None = None) -> tuple[V2ContentReposit
         return None
 
     try:
-        _v2_core_repo = _v2_core_repo or V2CoreRepository()
-        _v2_content_repo = _v2_content_repo or V2ContentRepository()
-        workspace_id = _v2_core_repo.get_default_workspace_id(profile_id)
+        core_repo = _get_core_repo()
+        content_repo = _get_content_repo()
+        workspace_id = core_repo.get_default_workspace_id(profile_id)
         if workspace_id is None:
             return None
-        return _v2_content_repo, profile_id, workspace_id
+        return content_repo, profile_id, workspace_id
     except Exception as exc:
         logger.warning("Supabase v2 scope lookup failed, falling back: %s", exc)
         return None
