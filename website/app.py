@@ -86,11 +86,44 @@ def _render_with_shell(path: Path) -> HTMLResponse:
 # Backward-compat alias; keep callers working while incrementally migrating.
 _render_with_header = _render_with_shell
 
+MOBILE_TEMPLATES_DIR = MOBILE_DIR / "templates"
+_MOBILE_SHELL = MOBILE_TEMPLATES_DIR / "_shell.html"
+
+
+def _render_with_mobile_shell(
+    body_path: Path,
+    *,
+    page_title: str,
+    body_class: str = "",
+    extra_head: str = "",
+) -> HTMLResponse:
+    """Inject mobile shell around a body fragment file.
+
+    Mobile shell owns <head> + header + bottom-tab nav + footer. Body fragment
+    file is expected to contain ONLY the in-<main> content (no <html>/<head>/<body>
+    wrappers).
+    """
+    shell = _MOBILE_SHELL.read_text(encoding="utf-8")
+    body = body_path.read_text(encoding="utf-8")
+    rendered = (
+        shell
+        .replace("<!--ZK_MOBILE_TITLE-->", page_title)
+        .replace("<!--ZK_MOBILE_PAGE_TITLE-->", page_title)
+        .replace("<!--ZK_MOBILE_BODY_CLASS-->", body_class)
+        .replace("<!--ZK_MOBILE_CONTENT-->", body)
+    )
+    if extra_head:
+        rendered = rendered.replace("</head>", f"{extra_head}\n</head>", 1)
+    return HTMLResponse(content=rendered, headers={"Cache-Control": "no-store"})
+
+
 # Regex to detect mobile user-agents
 _MOBILE_RE = re.compile(
     r"Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile",
     re.IGNORECASE,
 )
+
+_DESKTOP_COOKIE = "zk-prefer-desktop"
 
 
 def _nexus_enabled() -> bool:
@@ -99,8 +132,28 @@ def _nexus_enabled() -> bool:
 
 
 def _is_mobile(request: Request) -> bool:
+    # Operator escape: persistent cookie set previously OR ?desktop=1 query param.
+    if request.cookies.get(_DESKTOP_COOKIE) == "1":
+        return False
+    if request.query_params.get("desktop") == "1":
+        # First-time escape. Cookie set by the route handler after this check.
+        return False
     ua = request.headers.get("user-agent", "")
     return bool(_MOBILE_RE.search(ua))
+
+
+def _maybe_set_desktop_cookie(request: Request, response: HTMLResponse) -> HTMLResponse:
+    """If the request opted into desktop via ?desktop=1, persist a 30-day cookie."""
+    if request.query_params.get("desktop") == "1" and request.cookies.get(_DESKTOP_COOKIE) != "1":
+        response.set_cookie(
+            key=_DESKTOP_COOKIE,
+            value="1",
+            max_age=60 * 60 * 24 * 30,  # 30 days
+            path="/",
+            samesite="lax",
+            httponly=False,  # JS-readable; not a security cookie
+        )
+    return response
 
 
 def _mount_static_if_exists(app: FastAPI, url: str, directory: Path, name: str) -> None:
@@ -405,24 +458,33 @@ def create_app(lifespan=None) -> FastAPI:
     # ── Mobile routes ──
     @app.get("/m/")
     async def mobile_index():
-        return _html_file_response(MOBILE_DIR / "index.html")
+        return _render_with_mobile_shell(
+            MOBILE_DIR / "index.html",
+            page_title="Summarize",
+        )
 
     @app.get("/m/knowledge-graph")
     async def mobile_knowledge_graph():
-        return _html_file_response(MOBILE_DIR / "knowledge-graph.html")
+        return _render_with_mobile_shell(
+            MOBILE_DIR / "knowledge-graph.html",
+            page_title="Knowledge Graph",
+            body_class="kg-body",
+        )
 
     # ── Desktop routes (auto-redirect mobile browsers) ──
     @app.get("/")
     async def index(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(STATIC_DIR / "index.html")
+        response = _render_with_shell(STATIC_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/knowledge-graph")
     async def knowledge_graph(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/knowledge-graph", status_code=302)
-        return _render_with_shell(KG_DIR / "index.html")
+        response = _render_with_shell(KG_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/auth/callback")
     async def auth_callback():
@@ -432,7 +494,8 @@ def create_app(lifespan=None) -> FastAPI:
     async def home(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(HOME_DIR / "index.html")
+        response = _render_with_shell(HOME_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     if nexus_enabled:
         @app.get("/home/nexus")
@@ -442,32 +505,37 @@ def create_app(lifespan=None) -> FastAPI:
             nexus_index = NEXUS_DIR / "index.html"
             if not nexus_index.exists():
                 raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
-            return _render_with_shell(nexus_index)
+            response = _render_with_shell(nexus_index)
+            return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/zettels")
     async def user_zettels(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(USER_ZETTELS_DIR / "index.html")
+        response = _render_with_shell(USER_ZETTELS_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/profile")
     async def user_profile(request: Request):
         """Profile page — Trash recovery surface (exec/DB_delete_zettel_refine--1a)."""
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(USER_PROFILE_DIR / "index.html")
+        response = _render_with_shell(USER_PROFILE_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/kastens")
     async def user_kastens(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(USER_KASTENS_DIR / "index.html")
+        response = _render_with_shell(USER_KASTENS_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/rag")
     async def user_rag(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(USER_RAG_DIR / "index.html")
+        response = _render_with_shell(USER_RAG_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/summarization-engine")
     async def summarization_engine_dashboard(request: Request):
@@ -477,7 +545,8 @@ def create_app(lifespan=None) -> FastAPI:
     async def about(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        return _render_with_shell(ABOUT_DIR / "index.html")
+        response = _render_with_shell(ABOUT_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/pricing")
     async def pricing(request: Request):
@@ -493,6 +562,7 @@ def create_app(lifespan=None) -> FastAPI:
             asyncio.get_running_loop().create_task(notify_pricing_visit(request))
         except Exception:  # noqa: BLE001 — alert must never break the page
             logger.exception("notify_pricing_visit scheduling failed")
-        return _render_with_shell(PRICING_DIR / "index.html")
+        response = _render_with_shell(PRICING_DIR / "index.html")
+        return _maybe_set_desktop_cookie(request, response)
 
     return app
