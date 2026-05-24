@@ -58,6 +58,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from website.api.auth import get_current_user
 from website.features.web_monitor._country import format_country
 from website.features.web_monitor._slack_client import post_with_retry
+from website.features.web_monitor.App_Errors import _spawn_alerting
 
 logger = logging.getLogger("website.web_monitor.user_activity")
 
@@ -98,6 +99,12 @@ _signup_alerted: "OrderedDict[str, float]" = OrderedDict()
 # duplicate webhook deliveries — exactly what we want to dedupe on.
 _PAYMENT_DEDUP_MAX = 5000
 _payment_alerted: "OrderedDict[str, float]" = OrderedDict()
+
+# B5 — strong-ref set for the user-activity fire-and-forget tasks. CPython
+# 3.12+ may eagerly GC a Task that's only referenced by a local stack frame
+# — losing the very alerts that surface conversions. Tasks are added on
+# spawn and removed in the done-callback installed by ``_spawn_alerting``.
+_USER_ACTIVITY_TASKS: "set[asyncio.Task]" = set()
 
 
 # ---------------------------------------------------------------------------
@@ -360,23 +367,24 @@ def maybe_fire_signup_alert(
     if len(_signup_alerted) > _SIGNUP_DEDUP_MAX:
         _signup_alerted.popitem(last=False)
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        # Sync caller — should never happen for /api/me (async route),
-        # but a misuse from a script context shouldn't crash either.
-        logger.warning("user_activity: maybe_fire_signup_alert called with no event loop")
-        # Roll back the dedup entry so a later async caller can still fire.
-        _signup_alerted.pop(user_id, None)
-        return False
-    loop.create_task(
+    spawned = _spawn_alerting(
         notify_new_signup(
             user_id=user_id,
             email=email,
             display_name=display_name,
             country_code=country_code,
-        )
+        ),
+        dedup_key="user_activity_signup_task",
+        route="user_activity.notify_new_signup",
+        task_set=_USER_ACTIVITY_TASKS,
+        severity="warning",
     )
+    if spawned is None:
+        # Sync caller (no event loop) — roll back the dedup entry so a later
+        # async caller can still fire.
+        logger.warning("user_activity: maybe_fire_signup_alert called with no event loop")
+        _signup_alerted.pop(user_id, None)
+        return False
     return True
 
 
@@ -486,7 +494,7 @@ async def pricing_visit_beacon(
     email = user.get("email") or metadata.get("email") or None
     user_id = user.get("sub") or ""
 
-    asyncio.create_task(
+    _spawn_alerting(
         notify_pricing_visit(
             user_id=user_id,
             display_name=display_name,
@@ -495,7 +503,11 @@ async def pricing_visit_beacon(
             ip=_client_ip(request),
             user_agent=request.headers.get("user-agent"),
             referer=request.headers.get("referer"),
-        )
+        ),
+        dedup_key="user_activity_pricing_task",
+        route="user_activity.notify_pricing_visit",
+        task_set=_USER_ACTIVITY_TASKS,
+        severity="warning",
     )
     return {"status": "queued"}
 
@@ -584,13 +596,7 @@ def maybe_fire_payment_alert(
     if len(_payment_alerted) > _PAYMENT_DEDUP_MAX:
         _payment_alerted.popitem(last=False)
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        logger.warning("user_activity: maybe_fire_payment_alert called with no event loop")
-        _payment_alerted.pop(provider_payment_id, None)
-        return False
-    loop.create_task(
+    spawned = _spawn_alerting(
         notify_payment(
             user_id=user_id,
             email=email,
@@ -601,8 +607,16 @@ def maybe_fire_payment_alert(
             provider_payment_id=provider_payment_id,
             display_name=display_name,
             country=country_code,
-        )
+        ),
+        dedup_key="user_activity_payment_task",
+        route="user_activity.notify_payment",
+        task_set=_USER_ACTIVITY_TASKS,
+        severity="critical",
     )
+    if spawned is None:
+        logger.warning("user_activity: maybe_fire_payment_alert called with no event loop")
+        _payment_alerted.pop(provider_payment_id, None)
+        return False
     return True
 
 

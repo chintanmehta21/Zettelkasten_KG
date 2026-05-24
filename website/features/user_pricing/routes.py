@@ -509,6 +509,28 @@ async def razorpay_webhook(request: Request) -> dict:
     raw_body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")
     if not verify_webhook_signature(body=raw_body, signature=signature):
+        # B2 — alert: either RAZORPAY_WEBHOOK_SECRET is misconfigured (deploy
+        # broke payments; entitlements never grant after user paid) OR an
+        # active spoof / probe attempt. Stripe guidance: alert immediately;
+        # we dedup at 15 min so a sustained scanner doesn't flood the channel.
+        try:
+            from website.features.web_monitor import maybe_fire_app_error
+
+            maybe_fire_app_error(
+                dedup_key="razorpay_sig_fail",
+                route="POST /api/payments/webhook",
+                exc_type="InvalidSignature",
+                message="Razorpay webhook signature verification failed",
+                fields={
+                    "body_size_bytes": str(len(raw_body or b"")),
+                    "signature_present": str(bool(signature)),
+                    "external_service": "razorpay",
+                },
+                severity="critical",
+                dedup_seconds=15 * 60,
+            )
+        except Exception:  # noqa: BLE001 — alert must never block 400 response
+            logger.exception("razorpay sig-fail alert dispatch failed")
         raise HTTPException(status_code=400, detail={"code": "invalid_signature"})
 
     try:

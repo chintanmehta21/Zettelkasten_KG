@@ -149,6 +149,26 @@ async def run_worker(
         logger.exception(
             "Background async operation failed (op=%s)", operation_id
         )
+        # A2 — generic post-202 silent-5xx gap (covers create_kasten async +
+        # any future runner using run_worker). Same filter rationale as A1
+        # in zettels_routes._run.
+        from fastapi import HTTPException as _HTTPException
+
+        from website.features.web_monitor import _hash_id, maybe_fire_app_error
+
+        if not isinstance(exc, (_HTTPException, ValueError)):
+            maybe_fire_app_error(
+                dedup_key=f"async_run_worker:{type(exc).__name__}",
+                route="async_run_worker[post-202]",
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                request_id=operation_id,
+                fields={
+                    "operation_id": operation_id,
+                    "user_hash": _hash_id(str(user_id)),
+                    "stage": "post_202_pipeline",
+                },
+            )
         failed_body = failure_mapper(exc, operation_id)
         try:
             await asyncio.to_thread(

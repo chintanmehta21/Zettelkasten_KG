@@ -648,6 +648,30 @@ async def persist_summarized_result(
             # P1-2: do NOT swallow. A v2-configured path that fails must be
             # visible to the caller, not reported as 200 + supabase=false.
             logger.exception("Failed to add zettel to Supabase v2")
+            # A3 — direct-replay alert for the 2026-05-21 partial-write
+            # incident class. Fire here (NOT at the _run wrapper) so the
+            # payload carries source_url + source_type for triage.
+            try:
+                from website.features.web_monitor import (
+                    _hash_id,
+                    maybe_fire_app_error,
+                )
+
+                maybe_fire_app_error(
+                    dedup_key=f"persist_v2_error:{type(exc).__name__}",
+                    route="persist.persist_summarized_result[v2]",
+                    exc_type=type(exc).__name__,
+                    message=str(exc)[:400],
+                    request_id=None,
+                    fields={
+                        "source_url": str(payload.get("source_url") or "")[:200],
+                        "source_type": str(payload.get("source_type") or "—"),
+                        "user_hash": _hash_id(str(user_sub or "")),
+                    },
+                    severity="critical",
+                )
+            except Exception:  # noqa: BLE001 — alerting must never break persist
+                logger.exception("persist alert dispatch failed")
             raise SupabaseV2PersistError(
                 "Knowledge-graph write failed; the zettel was not saved."
             ) from exc

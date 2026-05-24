@@ -6,7 +6,12 @@ Add a new channel = add a new sibling file; no shared base to coordinate.
 
 from fastapi import APIRouter
 
-from website.features.web_monitor.App_Errors import notify_app_error
+from website.features.web_monitor.App_Errors import (
+    _hash_id,
+    _spawn_alerting,
+    maybe_fire_app_error,
+    notify_app_error,
+)
 from website.features.web_monitor.App_Errors import router as _app_errors_router
 from website.features.web_monitor.DO_Alerts import router as _do_alerts_router
 from website.features.web_monitor.User_Activity import (
@@ -34,4 +39,7 @@ __all__ = [
     "notify_payment",
     "maybe_fire_signup_alert",
     "maybe_fire_payment_alert",
+    "maybe_fire_app_error",
+    "_hash_id",
+    "_spawn_alerting",
 ]

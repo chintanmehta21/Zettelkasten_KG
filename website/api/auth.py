@@ -94,6 +94,27 @@ def _decode_token(token: str) -> dict:
                 )
         except Exception as jwks_err:
             logger.debug("JWKS validation failed: %s", jwks_err)
+            # B3a — alert ONLY on non-token-class errors (JWKS endpoint down,
+            # TLS failure, network outage). Token-validity errors (expired,
+            # invalid sig, wrong aud) are routine and would flood the channel.
+            if not isinstance(jwks_err, pyjwt.InvalidTokenError):
+                try:
+                    from website.features.web_monitor import maybe_fire_app_error
+
+                    maybe_fire_app_error(
+                        dedup_key=f"jwks_unreachable:{type(jwks_err).__name__}",
+                        route="auth._decode_token[jwks]",
+                        exc_type=type(jwks_err).__name__,
+                        message=str(jwks_err)[:400],
+                        fields={
+                            "external_service": "supabase_auth",
+                            "stage": "jwks",
+                        },
+                        severity="critical",
+                        dedup_seconds=15 * 60,
+                    )
+                except Exception:  # noqa: BLE001 — never raise from alert path
+                    logger.debug("auth alert dispatch failed", exc_info=True)
             # Fall through to HS256 if JWKS fails (e.g., legacy token)
 
     # Fallback: HS256 with shared secret (legacy Supabase projects)
@@ -106,6 +127,23 @@ def _decode_token(token: str) -> dict:
             audience="authenticated",
         )
 
+    # B3b — boot misconfig: neither JWKS URL nor HS256 secret configured.
+    # Every authenticated request will fail; this is a "deploy gone wrong"
+    # signal. Fire once per process (long dedup window) before raising.
+    try:
+        from website.features.web_monitor import maybe_fire_app_error
+
+        maybe_fire_app_error(
+            dedup_key="auth_unconfigured",
+            route="auth._decode_token",
+            exc_type="AuthUnconfigured",
+            message="No JWT verification method configured (neither JWKS nor HS256)",
+            fields={"external_service": "supabase_auth"},
+            severity="critical",
+            dedup_seconds=24 * 60 * 60,  # alert once per day per process
+        )
+    except Exception:  # noqa: BLE001 — never raise from alert path
+        logger.debug("auth boot-misconfig alert dispatch failed", exc_info=True)
     raise ValueError("No JWT verification method configured (set SUPABASE_URL for JWKS or SUPABASE_JWT_SECRET for HS256)")
 
 

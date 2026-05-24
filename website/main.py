@@ -100,7 +100,21 @@ async def _lifespan(
         worker as enrichment_worker,
     )
 
-    enrichment_task = asyncio.create_task(enrichment_worker.run_forever())
+    # B4 — alert on enrichment-worker death. The worker is supposed to run
+    # for the lifetime of the gunicorn worker; any other exit (KeyError,
+    # asyncpg connection drop, JSON decode error inside a job) silently
+    # halts lazy enrichment for THIS worker until restart. Use
+    # _spawn_alerting so the done-callback fires #app-errors if the task
+    # ends with a non-CancelledError exception.
+    from website.features.web_monitor.App_Errors import _spawn_alerting
+
+    enrichment_task = _spawn_alerting(
+        enrichment_worker.run_forever(),
+        dedup_key="enrichment_worker_died",
+        route="main._lifespan.enrichment_worker",
+        severity="critical",
+    )
+    assert enrichment_task is not None  # the lifespan always has a running loop
 
     try:
         yield

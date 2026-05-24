@@ -500,6 +500,34 @@ async def _stream_answer(
         logger.exception(
             "Streaming answer failed for session %s: %r", session["id"], exc
         )
+        # A5 — mid-stream RAG failure. The blanket SSE-error wrapper above
+        # turns this into a 200 OK with an error event, so the global
+        # FastAPI handler NEVER sees it. produced_any tells us whether the
+        # user already got partial tokens (broken-answer UX, no retry path).
+        try:
+            from website.features.web_monitor import (
+                _hash_id,
+                maybe_fire_app_error,
+            )
+
+            maybe_fire_app_error(
+                dedup_key=f"chat_stream:{type(exc).__name__}:partial={produced_any}",
+                route="POST /api/rag/sessions/.../messages[stream]",
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                request_id=effective_action_id,
+                fields={
+                    # BOLA-safe: hash kasten/session ids before posting.
+                    "kasten_hash": _hash_id(str(sandbox_id) if sandbox_id else None),
+                    "session_hash": _hash_id(str(session.get("id") or "")),
+                    "user_hash": _hash_id(str(kg_user_id)),
+                    "partial_response": str(produced_any),
+                    "quality": str(body.quality),
+                },
+                severity="critical" if produced_any else "warning",
+            )
+        except Exception:  # noqa: BLE001 — alert must never break SSE envelope
+            logger.exception("chat_stream alert dispatch failed")
         yield _sse_encode(
             {
                 "type": "error",

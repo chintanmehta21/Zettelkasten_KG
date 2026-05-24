@@ -468,6 +468,29 @@ async def _run(
         raise
     except Exception as exc:
         logger.exception("Background Add Zettel operation failed (op=%s)", operation_id)
+        # A1 — post-202 silent-5xx gap: this background task lives past the
+        # 202 ack so its exceptions never reach the FastAPI global handler.
+        # Suppress 4xx-class business errors; alert on everything else.
+        # SupabaseV2PersistError is alerted at the raise site (persist.py)
+        # with richer context — skip duplicate here.
+        from fastapi import HTTPException as _HTTPException
+
+        from website.core.persist import SupabaseV2PersistError as _SupabaseV2PersistError
+        from website.features.web_monitor import _hash_id, maybe_fire_app_error
+
+        if not isinstance(exc, (_HTTPException, ValueError, _SupabaseV2PersistError)):
+            maybe_fire_app_error(
+                dedup_key=f"add_zettel_run:{type(exc).__name__}",
+                route="/api/zettels/add[async]",
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                request_id=operation_id,
+                fields={
+                    "operation_id": operation_id,
+                    "user_hash": _hash_id(str(user_id)),
+                    "stage": "background_pipeline",
+                },
+            )
         failed_body = _failed_response_for(
             exc, operation_id=operation_id, persist_requested=persist_requested
         )
