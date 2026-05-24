@@ -359,6 +359,36 @@ if [[ "$PREWARM_OK" -ne 1 ]]; then
     log "WARN: pre-warm did not respond within 30s -- proceeding with cutover"
 fi
 
+# Multi-route SSR-HTML warm-up. The /api/health/warm probe above warms backend
+# hot paths (Supabase pool, Gemini keys, pgvector) but does NOT exercise the
+# FastAPI _render_with_shell SSR path that re-reads header.html + footer.html
+# on every request. Stress audit 2026-05-24 showed first-hit on each user-
+# facing shell route eats 400-500 ms of file-read + Jinja + brotli on a cold
+# worker. Hit each route 6x on a forced-fresh TCP socket so the kernel
+# round-robins between the 2 gunicorn workers (~98% binomial coverage
+# = 1 - 2 * (1/2)^6). Best-effort; logged but never aborts the deploy
+# (Caddy reload + caddy-smoke probe below are the actual gates).
+log "Warming SSR HTML routes on $IDLE port $IDLE_PORT..."
+SSR_ROUTES=(/ /home /home/zettels /home/kastens /home/nexus /home/rag /profile /knowledge-graph /about /pricing)
+SSR_HITS=6
+SSR_OK=0
+SSR_TOTAL=0
+for route in "${SSR_ROUTES[@]}"; do
+    for i in $(seq 1 $SSR_HITS); do
+        SSR_TOTAL=$((SSR_TOTAL + 1))
+        code=$(curl -sS -o /dev/null --max-time 8 \
+            --http1.1 -H "Connection: close" \
+            -H "Host: zettelkasten.in" \
+            -H "X-Zk-Warmup: 1" \
+            -w "%{http_code}" \
+            "http://127.0.0.1:${IDLE_PORT}${route}" 2>/dev/null || echo "000")
+        if [[ "$code" == "200" || "$code" == "302" ]]; then
+            SSR_OK=$((SSR_OK + 1))
+        fi
+    done
+done
+log "SSR warm-up: ${SSR_OK}/${SSR_TOTAL} requests returned 200/302 (best-effort)"
+
 log "Flipping Caddy upstream to $IDLE..."
 # IMPORTANT: must write in-place (truncate + rewrite) rather than via
 # `mv TMP SNIPPET`. Docker bind mounts of a single file track the inode
