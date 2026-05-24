@@ -1041,14 +1041,17 @@ def test_existing_node_creates_edges_from_warm_node():
 
 
 def test_existing_node_cold_regenerates_embedding(monkeypatch):
+    """X8 (Phase 4 / Task 4.5): cold backfill uses live-ingest embed shape via
+    generate_embedding_typed (was generate_embedding pre-X8)."""
+    from website.features.kg_features.embeddings import EmbeddingResult
     calls = {"n": 0}
 
     def _gen(*_a, **_k):
         calls["n"] += 1
-        return [0.1] * 768
+        return EmbeddingResult(ok=True, vectors=[[0.1] * 768], reason=None, retryable=False)
 
     monkeypatch.setattr(
-        "website.features.kg_features.embeddings.generate_embedding", _gen
+        "website.features.kg_features.embeddings.generate_embedding_typed", _gen
     )
     c = FakeClient()
     c._candidate_meta = [
@@ -1066,13 +1069,20 @@ def test_existing_node_cold_regenerates_embedding(monkeypatch):
     # Regenerated vector persisted back into kg_nodes.metadata.
     upd = [w for w in c.writes if w[1] == "kg_nodes" and w[2] == "update"]
     assert upd and upd[0][3]["metadata"]["embedding"] == [0.1] * 768
+    # X8: shape marker recorded — title_only when summary lookup returned nothing.
+    assert upd[0][3]["metadata"].get("embedding_input_shape") in {"title_only", "title_summary"}
     assert m["edges"] >= 1
 
 
 def test_existing_node_cold_no_embedding_skips(monkeypatch):
+    """X8: cold node whose typed-embedding call fails (rate-limit/etc.) is
+    skipped gracefully — no edges written, no crash."""
+    from website.features.kg_features.embeddings import EmbeddingFailureReason, EmbeddingResult
     monkeypatch.setattr(
-        "website.features.kg_features.embeddings.generate_embedding",
-        lambda *_a, **_k: [],  # generation unavailable
+        "website.features.kg_features.embeddings.generate_embedding_typed",
+        lambda *_a, **_k: EmbeddingResult(
+            ok=False, vectors=[], reason=EmbeddingFailureReason.RATE_LIMIT, retryable=True,
+        ),
     )
     c = FakeClient()
     c._candidate_meta = [_node_row(100, embedding=False)]

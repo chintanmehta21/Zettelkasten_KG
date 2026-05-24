@@ -1043,7 +1043,7 @@ def populate_kg_edges_for_existing_node(
     raises (per-node isolation is the caller's contract, but we also guard
     here so one bad node cannot abort the batch).
     """
-    from website.features.kg_features.embeddings import generate_embedding
+    from website.features.kg_features.embeddings import generate_embedding_typed
 
     metrics: dict = {
         "candidates": 0,
@@ -1086,25 +1086,60 @@ def populate_kg_edges_for_existing_node(
 
         node_embedding = list(meta.get("embedding") or [])
         if not node_embedding:
-            # Cold node: regenerate from stored title + tags (the same
-            # text shape the hook embeds: "title\n\ncontent"; here the
-            # node has no summary, so title + tags is the available signal).
+            # X8 (Phase 4 / Task 4.5): regenerate using the LIVE-INGEST embed
+            # shape (`"title\n\nsummary"`) so cosines are comparable across the
+            # corpus. Fetch the canonical zettel's ai_summary first; degrade
+            # gracefully to title-only with a clear meta marker.
             canonical_name = str(row.get("canonical_name") or "").strip()
-            embed_input = "\n\n".join(
-                p for p in (canonical_name, " ".join(node_tags)) if p
-            ).strip()[:2000]
-            node_embedding = (
-                generate_embedding(embed_input) if embed_input else []
+            summary_text = ""
+            canonical_zettel_id = meta.get("canonical_zettel_id")
+            if canonical_zettel_id:
+                try:
+                    cz_resp = (
+                        supabase_client.schema("content")
+                        .table("canonical_zettels")
+                        .select("title,ai_summary")
+                        .eq("id", str(canonical_zettel_id))
+                        .limit(1)
+                        .execute()
+                    )
+                    cz_rows = list(cz_resp.data or [])
+                    if cz_rows:
+                        canonical_name = (
+                            str(cz_rows[0].get("title") or "")
+                            or canonical_name
+                        )
+                        summary_text = str(cz_rows[0].get("ai_summary") or "")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "X8 backfill summary lookup failed node=%s: %s",
+                        kg_node_id, exc,
+                    )
+            embed_input = (
+                f"{canonical_name}\n\n{summary_text}".strip()[:2000]
             )
-            if not node_embedding:
-                # Embedding unavailable (quota/network) -> skip gracefully.
+            if not embed_input:
                 logger.info(
-                    "kg-backfill node id=%s has no embedding and "
-                    "regeneration unavailable; skipping",
+                    "kg-backfill node id=%s has no embed_input; skipping",
                     kg_node_id,
                 )
                 metrics["skipped"] = True
                 return metrics
+            # Mark the embed shape so downstream readers can spot mixed-shape
+            # graphs (cold-only nodes embedded with title-only are slightly
+            # less reliable than full-shape nodes).
+            meta["embedding_input_shape"] = (
+                "title_summary" if summary_text else "title_only"
+            )
+            embed_result = generate_embedding_typed(embed_input)
+            if not embed_result.ok:
+                logger.info(
+                    "kg-backfill node id=%s embedding %s; skipping",
+                    kg_node_id, embed_result.reason,
+                )
+                metrics["skipped"] = True
+                return metrics
+            node_embedding = embed_result.vectors[0]
             # Persist the regenerated vector back so future passes / the
             # live hook reuse it (best-effort: a write failure must not
             # block edge creation — the in-memory vector is enough now).
