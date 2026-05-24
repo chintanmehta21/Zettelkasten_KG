@@ -338,11 +338,26 @@ function getCommunityHue(communityId) {
   });
 
   // ---- Auth helpers ----
+  // Y2 (T4.8): scope the sb-*-auth-token discovery to the CURRENT Supabase
+  // project ref so a stale token from a different project (e.g. left over from
+  // a tenant migration) never gets sent. Resolved from /api/auth/config; until
+  // it loads, only the explicit `zk-auth-token` key is honoured.
+  let _expectedProjectRef = null;
+  async function _loadExpectedProjectRef() {
+    try {
+      const r = await fetch('/api/auth/config');
+      if (!r.ok) return;
+      const { supabase_url } = await r.json();
+      if (!supabase_url) return;
+      const m = String(supabase_url).match(/^https?:\/\/([^.]+)\.supabase\.co/);
+      if (m) _expectedProjectRef = m[1];
+    } catch (e) { /* ignore */ }
+  }
+
   function getStoredAuthToken() {
     // Production stores the JWT under `zk-auth-token` (set by user_auth feature).
-    // The Supabase-style `sb-<projectRef>-auth-token` keys are checked as a
-    // fallback for any future migration. Without the `zk-auth-token` branch
-    // logged-in users would see Personal greyed and Add-to-Kasten as a no-op.
+    // The Supabase-style `sb-<projectRef>-auth-token` is a fallback, but is now
+    // SCOPED to the current project ref (Y2): no broad sb-*-auth-token scan.
     try {
       const direct = localStorage.getItem('zk-auth-token');
       if (direct) {
@@ -350,14 +365,16 @@ function getCommunityHue(communityId) {
         if (parsed && parsed.access_token) return parsed.access_token;
       }
     } catch (e) { /* ignore */ }
-    try {
-      const keys = Object.keys(localStorage);
-      const sbKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-      if (sbKey) {
-        const data = JSON.parse(localStorage.getItem(sbKey));
-        if (data && data.access_token) return data.access_token;
-      }
-    } catch (e) { /* ignore */ }
+    if (_expectedProjectRef) {
+      try {
+        const key = 'sb-' + _expectedProjectRef + '-auth-token';
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.access_token) return data.access_token;
+        }
+      } catch (e) { /* ignore */ }
+    }
     return null;
   }
 
@@ -748,12 +765,12 @@ function getCommunityHue(communityId) {
       });
   }
 
-  // Initial load — gated on the source-type registry being fetched so the
-  // first paint uses the canonical per-source colours (Phase 4 Task 4.1).
-  // Defaults already seed the maps, so a registry-fetch failure does NOT
-  // block the load — Promise resolves either way (loadSourceRegistry
-  // swallows errors and falls back to the seeded defaults).
-  _registryReady.then(() => loadGraphData());
+  // Initial load — gated on both the source-type registry and the expected
+  // Supabase project ref being resolved (Phase 4 / Tasks 4.1 + 4.8). Both
+  // promises swallow errors internally, so a network failure on either does
+  // NOT block the load — defaults (seeded maps) and direct-key auth still
+  // work without /api/auth/config.
+  Promise.all([_loadExpectedProjectRef(), _registryReady]).then(() => loadGraphData());
 
   // ---- In-place node visual update (avoids full rebuild flicker) ----
   function _updateNodeVisual(node) {
