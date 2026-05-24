@@ -65,9 +65,13 @@ jobs:
             # IMAGE_TAG=... or, on older deploys, infers it from the running
             # container. We read it from the live container's image label so
             # the rescore runs against the EXACT code that's serving traffic.
+            # head -n 1 + tr defends against any stray whitespace / multi-line
+            # output from a misconfigured container (would otherwise produce
+            # an "invalid reference format" from `docker run`).
             LIVE_IMAGE=$(docker inspect zettelkasten-blue --format '{{.Config.Image}}' 2>/dev/null \
               || docker inspect zettelkasten-green --format '{{.Config.Image}}' 2>/dev/null \
               || echo "")
+            LIVE_IMAGE=$(printf '%s' "$LIVE_IMAGE" | head -n 1 | tr -d '[:space:]')
             if [ -z "$LIVE_IMAGE" ]; then
               echo "ERROR: could not resolve live image tag from zettelkasten-{blue,green}"
               exit 1
