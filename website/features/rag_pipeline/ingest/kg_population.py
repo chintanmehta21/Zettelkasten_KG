@@ -801,6 +801,7 @@ async def populate_kg_for_zettel(
     ``error`` key so the fire-and-forget caller stays a no-op on failure.
     """
     import asyncio
+    import time as _time
 
     from website.core.supabase_v2.repositories.kg_repository import KGRepository
     from website.core.supabase_v2.repositories.pipelines_repository import (
@@ -817,6 +818,16 @@ async def populate_kg_for_zettel(
     pipelines = PipelinesRepository(supabase_client)
     kg = KGRepository(supabase_client)
 
+    # T4.6: wall-time histogram observed at every return path. Best-effort.
+    _t0 = _time.perf_counter()
+
+    def _observe_duration() -> None:
+        try:
+            from website.core.kg_metrics import kg_populate_duration_seconds
+            kg_populate_duration_seconds.observe(_time.perf_counter() - _t0)
+        except Exception:  # noqa: BLE001 — metrics best-effort, never fatal.
+            pass
+
     # ---- 1. Idempotency gate -------------------------------------------
     try:
         if await asyncio.to_thread(
@@ -829,6 +840,7 @@ async def populate_kg_for_zettel(
                 "kg-populate skip (succeeded run exists) zettel=%s", canonical_zettel_id
             )
             metrics["skipped"] = True
+            _observe_duration()
             return metrics
         run_id = await asyncio.to_thread(
             pipelines.start_run,
@@ -839,6 +851,7 @@ async def populate_kg_for_zettel(
     except Exception as exc:
         logger.warning("kg-populate idempotency gate failed: %s", exc)
         metrics["error"] = "idempotency_gate_failed"
+        _observe_duration()
         return metrics
 
     try:
@@ -927,6 +940,7 @@ async def populate_kg_for_zettel(
                 error=error_msg,
                 retry_eligible_after=retry_after,
             )
+            _observe_duration()
             return metrics
 
         # ---- 4+5. Bounded candidate scoring + edge upsert -------------
@@ -978,6 +992,7 @@ async def populate_kg_for_zettel(
             metrics["candidates"],
             metrics["edges"],
         )
+        _observe_duration()
         return metrics
     except Exception as exc:
         logger.warning(
@@ -1000,6 +1015,7 @@ async def populate_kg_for_zettel(
             )
         except Exception as fin_exc:  # pragma: no cover - best effort
             logger.warning("kg-populate run finalize failed: %s", fin_exc)
+        _observe_duration()
         return metrics
 
 

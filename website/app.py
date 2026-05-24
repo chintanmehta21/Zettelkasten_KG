@@ -207,6 +207,17 @@ def create_app(lifespan=None) -> FastAPI:
     except Exception as exc:  # noqa: BLE001
         logger.warning("tldextract PSL pre-warm failed (non-fatal): %s", exc)
 
+    # Phase 4 / Task 4.6 (O1+O2+O4): /api/metrics Prometheus exposition.
+    # Mounted only when prometheus_client is importable so unit tests that
+    # don't install ops/requirements still build a valid app. Multiprocess
+    # exposition is handled via PROMETHEUS_MULTIPROC_DIR (set in the
+    # Dockerfile) + gunicorn's child_exit hook (ops/gunicorn.conf.py).
+    try:
+        from prometheus_client import make_asgi_app
+        app.mount("/api/metrics", make_asgi_app())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("/api/metrics Prometheus mount skipped: %s", exc)
+
     nexus_enabled = _nexus_enabled()
 
     # WAVE-D WM-14: log a warning at boot for each unset SLACK_WEBHOOK_* env
