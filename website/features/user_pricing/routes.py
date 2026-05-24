@@ -570,7 +570,71 @@ def _h_payment_captured(repo, event, payload) -> str | None:
     if pid and razorpay_payment_id:
         updated = repo.mark_payment_paid(payment_id=pid, razorpay_payment_id=razorpay_payment_id)
         _apply_fulfillment(record=updated)
+        # Fire #user-activity Slack alert. Idempotent on razorpay_payment_id
+        # so the duplicate payment.captured + order.paid delivery from
+        # Razorpay only produces one alert per real payment.
+        _fire_payment_alert(updated=updated, payment_entity=payment_entity, notes=notes)
     return pid
+
+
+def _fire_payment_alert(*, updated: dict, payment_entity: dict, notes: dict) -> None:
+    """Best-effort Slack alert dispatch — never raises, never blocks fulfillment."""
+    try:
+        from website.features.web_monitor import maybe_fire_payment_alert
+
+        razorpay_payment_id = updated.get("razorpay_payment_id") or payment_entity.get("id") or ""
+        if not razorpay_payment_id:
+            return
+
+        user_sub = updated.get("render_user_id") or ""
+        amount_paise = payment_entity.get("amount") or 0
+        try:
+            amount = float(amount_paise) / 100.0
+        except (TypeError, ValueError):
+            amount = 0.0
+        currency = payment_entity.get("currency") or "INR"
+        plan = (
+            updated.get("plan_id")
+            or updated.get("product_id")
+            or updated.get("period_id")
+            or None
+        )
+        email = payment_entity.get("email") or None
+        display_name: str | None = None
+        country_code = notes.get("country") or None
+
+        # Profile lookup for display_name + fallback email. Best-effort —
+        # if Supabase is unreachable we still fire the alert with whatever
+        # the payment entity gave us, just without the resolved name.
+        if user_sub:
+            try:
+                from uuid import UUID
+
+                from website.core.supabase_v2.client import get_v2_client
+                from website.core.supabase_v2.repositories.core_repository import (
+                    CoreRepository,
+                )
+
+                profile = CoreRepository(get_v2_client()).get_profile(UUID(user_sub))
+                if profile:
+                    display_name = profile.get("display_name")
+                    email = email or profile.get("email")
+            except Exception:  # noqa: BLE001 — profile lookup is best-effort
+                logger.debug("payment alert: profile lookup failed", exc_info=True)
+
+        maybe_fire_payment_alert(
+            provider_payment_id=razorpay_payment_id,
+            user_id=user_sub or None,
+            email=email,
+            display_name=display_name,
+            amount=amount,
+            currency=currency,
+            plan=plan,
+            provider="razorpay",
+            country_code=country_code,
+        )
+    except Exception:  # noqa: BLE001 — alerting must never break fulfillment
+        logger.exception("payment alert: dispatch failed")
 
 
 def _h_order_paid(repo, event, payload) -> str | None:

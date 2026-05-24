@@ -50,6 +50,7 @@ import os
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -78,6 +79,25 @@ SLACK_ENV_VAR = "SLACK_WEBHOOK_USER_ACTIVITY"
 _PRICING_THROTTLE_SECONDS = 60 * 60       # 1 alert / profile UUID / hour
 _PRICING_THROTTLE_MAX = 2000
 _pricing_seen_at: "OrderedDict[str, float]" = OrderedDict()
+
+# Signup-alert dedup. Per-replica in-memory set of profile UUIDs we've
+# already fired ``notify_new_signup`` for. Profiles are created by a Postgres
+# trigger (``core.handle_new_auth_user``) the Python layer never observes
+# directly — so signup detection happens at the next /api/me call, gated on
+# ``created_at`` recency to avoid alerting on every login. Worst-case
+# duplicate: blue/green cutover fires once each (2 alerts) which is
+# acceptable noise. Bounded by _SIGNUP_DEDUP_MAX with FIFO eviction.
+_SIGNUP_DEDUP_MAX = 5000
+_SIGNUP_RECENCY_SECONDS = 120
+_signup_alerted: "OrderedDict[str, float]" = OrderedDict()
+
+# Payment-alert dedup. Razorpay delivers payment.captured AND order.paid for
+# the same payment (both routed through `_h_payment_captured`), so without
+# dedup we'd post the same alert twice. Keyed by the provider's payment id
+# (Razorpay ``pay_XXX``) which is unique per real payment but shared across
+# duplicate webhook deliveries — exactly what we want to dedupe on.
+_PAYMENT_DEDUP_MAX = 5000
+_payment_alerted: "OrderedDict[str, float]" = OrderedDict()
 
 
 # ---------------------------------------------------------------------------
@@ -238,37 +258,47 @@ async def notify_new_signup(
     display_name: str | None = None,
     render_user_id: str | None = None,
     signup_source: str | None = None,
+    country_code: str | None = None,
 ) -> None:
     """A new row just landed in ``core.profiles`` — celebrate in Slack.
 
-    Called from the v2 profile-bootstrap path immediately after the
-    INSERT into ``core.profiles`` succeeds. Never called on subsequent
-    logins (that path returns early on the SELECT branch).
+    Called from the /api/me handler the FIRST time we observe a recently-
+    created profile (see ``maybe_fire_signup_alert``). The trigger
+    ``core.handle_new_auth_user`` does the actual INSERT in Postgres on
+    every OAuth/email signup, so the Python layer never sees the moment
+    of insertion directly.
 
     Args:
         user_id: our internal Supabase UUID (primary key of core.profiles).
         email: supplied by Supabase auth metadata; will be masked in Slack.
         display_name: OAuth provider display name if any.
         render_user_id: Supabase auth.users id (the ``sub`` from the JWT).
+            Optional — same as user_id under the v2 schema, kept for callers
+            that still hold the legacy distinction.
         signup_source: free-form hint ("oauth:google", "email", …) if the
             caller has it. Optional.
+        country_code: ISO-3166 alpha-2 country code (typically from
+            ``cf-ipcountry`` on the first /api/me hit). Rendered as
+            ``"Name (CC)"`` via :func:`format_country`.
     """
     # WM-15: resolved name appears in BOTH the body text AND the fields block
     # so on-call ops sees who signed up without scanning the field strip.
     resolved_name = _resolve_full_name(display_name=display_name, email=email)
+    formatted_country = format_country(country_code)
     fields = {
-        "user_id": user_id[:8] + "…",
         "name": resolved_name,
+        "user_id": user_id[:8] + "…",
         "email": _mask_email(email),
+        "country": formatted_country,
     }
-    if render_user_id:
+    if render_user_id and render_user_id != user_id:
         fields["auth_id"] = render_user_id[:8] + "…"
     if signup_source:
         fields["source"] = signup_source
 
     msg = SlackMessage(
         title=":tada: New signup",
-        body=f"A new user just joined — *{resolved_name}* ({_mask_email(email)})",
+        body=f"A new user just joined — *{resolved_name}* ({_mask_email(email)}) from *{formatted_country}*",
         severity="info",
         fields=fields,
         source="signup",
@@ -277,6 +307,77 @@ async def notify_new_signup(
         await post_to_user_activity(msg)
     except Exception:  # noqa: BLE001 — alerting must never break signup
         logger.exception("user_activity: notify_new_signup dispatch failed")
+
+
+def maybe_fire_signup_alert(
+    *,
+    user_id: str,
+    display_name: str | None,
+    email: str | None,
+    created_at: str | None,
+    country_code: str | None = None,
+) -> bool:
+    """Schedule a signup alert iff this profile is brand-new + un-alerted.
+
+    Called from ``/api/me`` on every authenticated request. The two gates:
+      * ``created_at`` is within ``_SIGNUP_RECENCY_SECONDS`` of now — keeps
+        established users from triggering on every login.
+      * ``user_id`` not already in ``_signup_alerted`` — bounded LRU dedup
+        so refresh-spam during the first page load fires exactly once.
+
+    Returns True if an alert task was scheduled, False otherwise. Never
+    raises — alerting must not break /api/me.
+    """
+    if not user_id or not created_at:
+        return False
+    # Parse the Supabase ISO-8601 timestamp. Tolerate both "...+00:00" and
+    # "...Z" suffixes; bail silently on any other shape (we'd rather skip
+    # the alert than block a /api/me response on a parse error).
+    try:
+        ts_text = created_at.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts_text)
+    except (ValueError, AttributeError):
+        return False
+    now_ts = time.time()
+    try:
+        age_seconds = now_ts - dt.timestamp()
+    except (OSError, OverflowError, ValueError):
+        return False
+    if age_seconds < 0 or age_seconds > _SIGNUP_RECENCY_SECONDS:
+        return False
+
+    # Atomic check-and-set via setdefault with a unique sentinel — a plain
+    # timestamp marker is not unique on Windows (time.time() resolution is
+    # ~15 ms) so two rapid concurrent calls can produce identical floats.
+    # Using ``object()`` guarantees identity equality only on the inserter.
+    sentinel = object()
+    prev = _signup_alerted.setdefault(user_id, sentinel)
+    if prev is not sentinel:
+        return False
+    # We won the insert; replace the sentinel with the actual timestamp
+    # so LRU eviction has a useful key, and bound the dict.
+    _signup_alerted[user_id] = now_ts
+    if len(_signup_alerted) > _SIGNUP_DEDUP_MAX:
+        _signup_alerted.popitem(last=False)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # Sync caller — should never happen for /api/me (async route),
+        # but a misuse from a script context shouldn't crash either.
+        logger.warning("user_activity: maybe_fire_signup_alert called with no event loop")
+        # Roll back the dedup entry so a later async caller can still fire.
+        _signup_alerted.pop(user_id, None)
+        return False
+    loop.create_task(
+        notify_new_signup(
+            user_id=user_id,
+            email=email,
+            display_name=display_name,
+            country_code=country_code,
+        )
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -452,6 +553,59 @@ async def notify_payment(
         logger.exception("user_activity: notify_payment dispatch failed")
 
 
+def maybe_fire_payment_alert(
+    *,
+    provider_payment_id: str,
+    user_id: str | None,
+    email: str | None,
+    display_name: str | None,
+    amount: float,
+    currency: str = "INR",
+    plan: str | None = None,
+    provider: str = "razorpay",
+    country_code: str | None = None,
+) -> bool:
+    """Schedule a payment alert iff this ``provider_payment_id`` is new.
+
+    Idempotent on the provider's payment id so Razorpay's at-least-once
+    webhook delivery (payment.captured + order.paid for the same payment)
+    only produces one Slack alert per real payment. Never raises.
+    """
+    if not provider_payment_id:
+        return False
+    # Identity-based check-and-set (see maybe_fire_signup_alert: a float
+    # marker isn't unique enough on Windows where time.time() resolution
+    # is coarse). A unique ``object()`` guarantees only the inserter wins.
+    sentinel = object()
+    prev = _payment_alerted.setdefault(provider_payment_id, sentinel)
+    if prev is not sentinel:
+        return False
+    _payment_alerted[provider_payment_id] = time.time()
+    if len(_payment_alerted) > _PAYMENT_DEDUP_MAX:
+        _payment_alerted.popitem(last=False)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning("user_activity: maybe_fire_payment_alert called with no event loop")
+        _payment_alerted.pop(provider_payment_id, None)
+        return False
+    loop.create_task(
+        notify_payment(
+            user_id=user_id,
+            email=email,
+            amount=amount,
+            currency=currency,
+            plan=plan,
+            provider=provider,
+            provider_payment_id=provider_payment_id,
+            display_name=display_name,
+            country=country_code,
+        )
+    )
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Future payment webhook (stub — provider-agnostic placeholder)
 # ---------------------------------------------------------------------------
@@ -503,4 +657,6 @@ __all__ = [
     "notify_new_signup",
     "notify_pricing_visit",
     "notify_payment",
+    "maybe_fire_signup_alert",
+    "maybe_fire_payment_alert",
 ]
