@@ -3,6 +3,8 @@
    Touch-optimized, sub-2s load, dark theme matching desktop
    ═══════════════════════════════════════════════════════════════ */
 
+@import url("/m/css/components/shell.css?v=20260524a");
+
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
 }
@@ -68,62 +70,6 @@ p { color: var(--text-secondary); }
   margin: 0 auto;
   padding: 0 16px;
 }
-
-/* ── Header ────────────────────────────────────────────────── */
-
-.m-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: hsla(224, 28%, 5%, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-}
-
-.m-header-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1;
-}
-
-.m-header-subtitle {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.m-back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: background 0.2s var(--ease);
-}
-.m-back:active { background: var(--bg-elevated); }
-
-.m-header-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.m-header-action:active { background: var(--bg-elevated); }
 
 /* ── Summarizer Page ───────────────────────────────────────── */
 
@@ -447,25 +393,6 @@ p { color: var(--text-secondary); }
 #graph-container canvas {
   display: block;
   touch-action: none;
-}
-
-/* ── KG Header (overlay) ──────────────────────────────────── */
-
-.kg-m-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  padding-top: calc(8px + var(--safe-top));
-  background: hsla(224, 28%, 5%, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsla(220, 16%, 14%, 0.5);
 }
 
 .kg-m-search {
