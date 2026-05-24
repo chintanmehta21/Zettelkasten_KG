@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -55,6 +56,7 @@ _TRIMMED_NODE_FIELDS: frozenset[str] = frozenset({
     "score_breakdown",
     "betweenness",        # raw; expose via /api/graph/expensive only
     "closeness",          # raw; expose via /api/graph/expensive only
+    "harmonic_centrality",  # S5 (T4.15): never read by the frontend
     "created_at_microseconds",
 })
 _TRIMMED_EDGE_FIELDS: frozenset[str] = frozenset({
@@ -92,6 +94,35 @@ def _apply_min_strength_filter(payload: dict, min_strength: float | None) -> dic
     return out
 
 
+def _normalize_summary_for_wire(raw) -> dict:
+    """S3 (T4.15): parse the AI-summary JSON envelope ONCE at the API boundary.
+
+    Today the wire payload ships ``summary`` as a JSON-encoded string that the
+    frontend must re-parse for every node card open. Returning a parsed dict
+    with stable keys (``brief`` / ``detailed`` / ``closing``) lets the client
+    short-circuit. Already-parsed dicts and plain-text fallbacks pass through
+    unchanged so legacy file-store entries keep rendering.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str) or not raw.strip():
+        return {"brief": "", "detailed": [], "closing": ""}
+    text = raw.strip()
+    if not text.startswith("{"):
+        return {"brief": text[:800], "detailed": [], "closing": ""}
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return {
+                "brief": parsed.get("brief_summary", parsed.get("brief", "")),
+                "detailed": parsed.get("detailed_summary", []),
+                "closing": parsed.get("closing_remarks", ""),
+            }
+    except (TypeError, ValueError):
+        pass
+    return {"brief": text[:800], "detailed": [], "closing": ""}
+
+
 def _trim_graph_response(payload: dict) -> dict:
     """Strip internal/verbose fields from /api/graph payload (D-KG-9).
 
@@ -117,6 +148,10 @@ def _trim_graph_response(payload: dict) -> dict:
         # Round pagerank to 6 sig figs to compress repr without losing rank.
         if isinstance(nd.get("pagerank"), float):
             nd["pagerank"] = round(nd["pagerank"], 6)
+        # S3 (T4.15): parse the AI-summary envelope at the wire boundary so the
+        # client doesn't re-parse it for every panel open.
+        if "summary" in nd and isinstance(nd["summary"], (str, dict)):
+            nd["summary"] = _normalize_summary_for_wire(nd["summary"])
         nodes_out.append(nd)
     out["nodes"] = nodes_out
 
