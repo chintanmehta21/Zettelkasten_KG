@@ -1,0 +1,462 @@
+/* Shared summary popup styles.
+ * Single source of truth for the .zettels-summary-overlay modal, plus the
+ * helper card-source / card-date / tag classes used in its meta row.
+ * Loaded on /home, /home/zettels, and /knowledge-graph alongside
+ * /js/zk_summary_popup.js. */
+
+/* ---- source + date pills used in the modal meta row ---- */
+.home-card-date {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    padding: 0.1rem 0.4rem;
+    border-radius: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-card-source {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 500;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid;
+    display: inline-block;
+}
+
+.home-card-source.youtube { color: hsl(355, 45%, 68%); border-color: hsla(355, 45%, 68%, 0.25); background: hsla(355, 45%, 68%, 0.08); }
+.home-card-source.github { color: hsl(192, 35%, 62%); border-color: hsla(192, 35%, 62%, 0.25); background: hsla(192, 35%, 62%, 0.08); }
+.home-card-source.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.08); }
+.home-card-source.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
+.home-card-source.substack { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.08); }
+.home-card-source.web { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.08); }
+.home-card-source.medium { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.08); }
+
+.zettels-card-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.44rem;
+    position: relative;
+}
+
+
+/* ---- modal shell + sections + collapsible structured renderer ---- */
+.zettels-summary-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zettels-summary-backdrop {
+    position: absolute;
+    inset: 0;
+    background: hsla(0, 0%, 0%, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.zettels-summary-modal {
+    position: relative;
+    width: min(620px, calc(100vw - 2rem));
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    background: linear-gradient(150deg, hsl(223, 24%, 10%), hsl(221, 20%, 8%));
+    padding: 1.3rem 1.2rem 1.1rem;
+    box-shadow: var(--shadow-lg);
+    animation: summaryIn 0.22s ease;
+}
+
+@keyframes summaryIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Top-right action row: Download | Refresh | Close.
+   All three buttons share the same bare/borderless visual contract — color
+   change on hover, no background, no border, no scale. Matches the user's
+   directive: "as simplistic and clear of their purpose as the X close". */
+.zettels-summary-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    z-index: 1;
+}
+.zettels-summary-action {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--text-muted);
+    opacity: 0.75;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.18s ease, opacity 0.18s ease;
+}
+.zettels-summary-action:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+.zettels-summary-action:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.zettels-summary-action svg {
+    width: 18px;
+    height: 18px;
+}
+.zettels-summary-action[disabled] {
+    opacity: 0.35;
+    cursor: wait;
+}
+/* Refresh-in-flight spinner: only the icon rotates so the button stays put. */
+.zettels-summary-action.is-spinning svg {
+    animation: zkRefreshSpin 0.9s linear infinite;
+}
+@keyframes zkRefreshSpin {
+    to { transform: rotate(360deg); }
+}
+/* Refreshed-by banner — small teal hairline above the title saying who
+   triggered the last refresh. Subtle, doesn't compete with the source pill. */
+.zettels-summary-refresh-note {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--accent, #14b8a6);
+    opacity: 0.85;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+}
+.zettels-summary-refresh-note svg {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+}
+.zettels-summary-refresh-note.hidden {
+    display: none;
+}
+
+.zettels-summary-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.zettels-summary-date {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.zettels-summary-title {
+    font-size: 1.18rem;
+    line-height: 1.35;
+    margin-bottom: 0.75rem;
+    text-wrap: balance;
+}
+
+.zettels-summary-text {
+    color: var(--text-secondary);
+    line-height: 1.65;
+    font-size: 0.87rem;
+    margin-bottom: 0.9rem;
+}
+
+.zettels-summary-section {
+    margin-bottom: 0.25rem;
+}
+
+.zettels-summary-section-heading {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent, #14b8a6);
+    margin: 0 0 0.3rem 0;
+}
+
+.zettels-summary-section-body {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* Single divider style: a thin teal gradient hairline between the BRIEF
+   tier-1 block and the DETAILED tier-1 block. NEVER inserted between H1
+   sections inside DETAILED — those use natural margin spacing. */
+/* Prominent BRIEF / DETAILED divider — clear visible separator with a
+   teal core that fades to transparent at both ends. */
+.zettels-summary-divider {
+    border: 0;
+    height: 1.5px;
+    background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(20, 184, 166, 0.5) 25%,
+        rgba(20, 184, 166, 0.5) 75%,
+        transparent 100%
+    );
+    margin: 0.9rem 0;
+    border-radius: 1px;
+}
+
+/* H1 — primary section ("Chapter walkthrough", "Overview", "Closing remarks").
+   Collapsible: a chevron next to the heading toggles the panel below.
+
+   Visual contract (per operator direction, 2026-05-23):
+   - Every h2 carries a short, rounded teal stub on its left edge (the curved
+     bar from the original design). Bar geometry is identical across open and
+     collapsed — what changes is opacity + width to signal which section is
+     active. NO continuous rail, NO axis ticks; each section's bar reads as a
+     self-contained accent.
+   - Open: bar full-bright (opacity 1, 4px wide), label full weight/size,
+     generous padding above/below.
+   - Collapsed: bar dim (opacity 0.55), label dimmed + slightly smaller,
+     subtle horizontal gradient bg that fades away from the rail. */
+.zettels-summary-h2 {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.9rem 0 0.45rem 0;
+    padding: 0.1rem 0 0.1rem 0.95rem;
+    letter-spacing: 0.005em;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: margin 220ms ease, padding 220ms ease,
+                font-size 220ms ease, background 220ms ease;
+}
+/* Curved rounded-inset bar. Inset top/bottom (0.35rem) leaves breathing room;
+   border-radius: 999px (pill caps) renders clearly visible rounded ends on a
+   4-5px wide bar. Open/collapsed share this geometry — only width + opacity
+   animate to signal active section. */
+.zettels-summary-h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.35rem;
+    bottom: 0.35rem;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--accent, #14b8a6);
+    opacity: 0.85;
+    transition: opacity 220ms ease, width 220ms ease, background 220ms ease;
+}
+.zettels-summary-h2:first-child {
+    margin-top: 0.25rem;
+}
+.zettels-summary-h2:focus-visible {
+    outline: 2px solid var(--accent, #14b8a6);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+.zettels-summary-h2-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-left: auto;
+    color: rgba(255, 255, 255, 0.45);
+    transition: transform 180ms ease,
+                color 200ms ease;
+    flex-shrink: 0;
+}
+.zettels-summary-h2-chevron svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-chevron {
+    transform: rotate(-90deg);
+    color: rgba(255, 255, 255, 0.6);
+}
+.zettels-summary-h2:hover .zettels-summary-h2-chevron {
+    color: var(--accent, #14b8a6);
+}
+/* Open: brighter, slightly wider pill bar; generous padding. */
+.zettels-summary-h2[aria-expanded="true"] {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}
+.zettels-summary-h2[aria-expanded="true"]::before {
+    width: 4px;
+    opacity: 1;
+}
+/* Collapsed: dimmer pill bar, tighter padding, faint horizontal gradient bg,
+   dim label. Each collapsed h2 still has its own self-contained curved stub. */
+.zettels-summary-h2[aria-expanded="false"] {
+    margin: 0;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.035) 0%,
+        rgba(255, 255, 255, 0.014) 45%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    border-radius: 4px;
+    font-size: 0.96rem;
+}
+/* Collapsed h2 immediately after an OPEN panel keeps a small top margin so
+   it doesn't crowd the bullets above (the "green gap" the operator preserved
+   in the annotation). Collapsed-after-collapsed stays flush (margin: 0). */
+.zettels-summary-panel:not([data-collapsed="true"]) + .zettels-summary-h2[aria-expanded="false"] {
+    margin-top: 0.55rem;
+}
+.zettels-summary-h2[aria-expanded="false"]::before {
+    width: 3px;
+    opacity: 0.6;
+}
+.zettels-summary-h2[aria-expanded="false"] .zettels-summary-h2-label {
+    opacity: 0.72;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    transition: opacity 220ms ease, font-weight 220ms ease;
+}
+.zettels-summary-h2[aria-expanded="true"] .zettels-summary-h2-label {
+    transition: opacity 220ms ease, font-weight 220ms ease;
+}
+
+/* Collapsible content panel that follows each H1. JS toggles
+   ``data-collapsed`` on the panel; CSS animates a smooth height/opacity
+   transition. ``overflow: hidden`` keeps inner content from poking out
+   during the animation. ``max-height`` is set inline by JS to support
+   exact heights; the fallback here keeps things sane if JS is delayed. */
+.zettels-summary-panel {
+    overflow: hidden;
+    transition: max-height 260ms cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 200ms ease,
+                margin 200ms ease;
+    opacity: 1;
+}
+.zettels-summary-panel[data-collapsed="true"] {
+    max-height: 0 !important;
+    opacity: 0;
+    margin-bottom: 0;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .zettels-summary-panel,
+    .zettels-summary-h2-chevron {
+        transition: none !important;
+    }
+}
+
+/* H2 — sub-heading under an H1 ("Introduction to Zero-Days" under
+   "Chapter walkthrough"). Subtler than the tier-1 BRIEF/DETAILED labels:
+   tiny uppercase muted off-white text with a thin hairline underline. NO
+   background, NO blur, NO chip — purely typographic. */
+.zettels-summary-h3,
+.zettels-summary-section .zettels-summary-h3,
+.zettels-summary-section-heading + * .zettels-summary-h3 {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    /* UI-6: match h1 white exactly. */
+    color: rgb(231, 235, 239) !important;
+    background: none;
+    /* UI-5: underline only spans text, not full row. */
+    border: 0;
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin: 1rem 0 0.45rem 0;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(255, 255, 255, 0.18);
+    text-underline-offset: 0.4em;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    text-shadow: none;
+    box-shadow: none;
+}
+
+.zettels-summary-para {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.65;
+    margin: 0 0 0.55rem 0;
+}
+
+.zettels-summary-list {
+    list-style: disc;
+    padding-left: 1.2rem;
+    margin: 0 0 0.6rem 0;
+}
+
+.zettels-summary-list-item {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    margin-bottom: 0.3rem;
+}
+
+.zettels-summary-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.zettels-source-badge {
+    border-radius: 999px;
+    border: 1px solid;
+    padding: 0.2rem 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* ---- alt source-badge class (kept for parity with user_zettels) ---- */
+.zettels-source-badge.youtube { color: hsl(355, 45%, 68%); border-color: hsla(355, 45%, 68%, 0.25); background: hsla(355, 45%, 68%, 0.1); }
+.zettels-source-badge.github { color: hsl(192, 35%, 62%); border-color: hsla(192, 35%, 62%, 0.25); background: hsla(192, 35%, 62%, 0.1); }
+.zettels-source-badge.reddit { color: hsl(28, 45%, 68%); border-color: hsla(28, 45%, 68%, 0.25); background: hsla(28, 45%, 68%, 0.1); }
+.zettels-source-badge.newsletter { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.1); }
+.zettels-source-badge.substack { color: hsl(205, 40%, 68%); border-color: hsla(205, 40%, 68%, 0.25); background: hsla(205, 40%, 68%, 0.1); }
+.zettels-source-badge.medium { color: hsl(142, 40%, 62%); border-color: hsla(142, 40%, 62%, 0.25); background: hsla(142, 40%, 62%, 0.1); }
+.zettels-source-badge.web { color: hsl(220, 14%, 62%); border-color: hsla(220, 14%, 62%, 0.25); background: hsla(220, 14%, 62%, 0.1); }
+
+/* ---- tag chips in modal footer ---- */
+.zettels-tag {
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 0.14rem 0.48rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+}
