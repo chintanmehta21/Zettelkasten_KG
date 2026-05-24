@@ -89,6 +89,21 @@ def test_mobile_index_includes_oauth_modal() -> None:
     assert twitter_btn and 'hidden' in twitter_btn.group(0), "Twitter chip must be hidden per plan defer"
 
 
+def test_mobile_kg_includes_filter_sheet() -> None:
+    """/m/knowledge-graph includes the dual-mode filter sheet."""
+    resp = _client().get("/m/knowledge-graph")
+    assert resp.status_code == 200
+    html = resp.text
+    assert 'id="sheet-tab-filters"' in html
+    assert 'id="kg-strength-slider"' in html
+    assert 'id="kg-tag-search"' in html
+    assert 'id="kg-kasten-search"' in html
+    assert 'id="recenter-btn"' in html
+    # Personal-view button starts disabled
+    assert 'data-view="my"' in html
+    assert 'aria-disabled="true"' in html
+
+
 def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
     client = _client()
     iphone_ua = (
