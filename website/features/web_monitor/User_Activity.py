@@ -9,9 +9,11 @@ Events surfaced:
        ``core.profiles`` (v2). Called from the v2 profile-bootstrap path
        the moment a brand-new user lands (OAuth or email signup, uniform
        path).
-    2. ``notify_pricing_visit(...)``   — GET /pricing hit, throttled to
-       one alert per IP per hour so bots / refresh-spam don't drown the
-       channel.
+    2. ``notify_pricing_visit(...)``   — authenticated user opens /pricing.
+       Fired from the client-side beacon ``POST /api/monitor/pricing-visit``
+       which requires a valid Supabase JWT, so curl/bot/internal-network
+       hits on the public GET /pricing page never trigger an alert.
+       Throttled to one alert per profile UUID per hour.
     3. ``notify_payment(...)``         — payment success. Future. Fire
        from the provider webhook handler once Stripe/Razorpay is wired in.
        The ``/webhooks/monitor/payment`` stub endpoint below is the
@@ -31,9 +33,9 @@ Wiring (one-time):
         render_user_id=render_user_id,
     ))
 
-    # website/app.py, inside the /pricing route handler
-    from website.features.web_monitor.User_Activity import notify_pricing_visit
-    asyncio.create_task(notify_pricing_visit(request))
+    # Client-side: website/footer/pricing/js/pricing.js posts to
+    # /api/monitor/pricing-visit with the user's JWT once the page boots.
+    # See ``pricing_visit_beacon`` below for the server-side handler.
 
 Env vars:
     SLACK_WEBHOOK_USER_ACTIVITY   # Slack incoming webhook URL
@@ -41,16 +43,18 @@ Env vars:
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import os
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from website.api.auth import get_current_user
 from website.features.web_monitor._country import format_country
 from website.features.web_monitor._slack_client import post_with_retry
 
@@ -58,13 +62,20 @@ logger = logging.getLogger("website.web_monitor.user_activity")
 
 router = APIRouter(prefix="/webhooks/monitor", tags=["web_monitor.user_activity"])
 
+# Authenticated beacon endpoints — distinct prefix from the webhook router
+# so JWT-gated client beacons don't share a URL space with inbound webhooks
+# from payment providers (different threat model, different rate limits).
+api_router = APIRouter(prefix="/api/monitor", tags=["web_monitor.user_activity"])
+
 SLACK_ENV_VAR = "SLACK_WEBHOOK_USER_ACTIVITY"
 
-# Per-IP throttle for pricing-visit alerts. OrderedDict[ip, last_alert_epoch].
-# Bounded by _PRICING_THROTTLE_MAX (FIFO eviction via popitem(last=False)).
-# M-4: prior dict + min() picked the smallest *value* (oldest timestamp), not
-# the LRU insertion key — switch to OrderedDict + move_to_end for O(1) LRU.
-_PRICING_THROTTLE_SECONDS = 60 * 60       # 1 alert / IP / hour
+# Per-profile throttle for pricing-visit alerts. Keyed by Supabase ``sub``
+# (profile UUID) so a single user reloading /pricing in a loop doesn't burst
+# the channel — and so curl / health-check traffic, which never has a JWT,
+# can't touch the throttle map at all (they're rejected at auth gate before
+# the throttle is consulted). OrderedDict + move_to_end for O(1) LRU; bounded
+# by _PRICING_THROTTLE_MAX with FIFO eviction.
+_PRICING_THROTTLE_SECONDS = 60 * 60       # 1 alert / profile UUID / hour
 _PRICING_THROTTLE_MAX = 2000
 _pricing_seen_at: "OrderedDict[str, float]" = OrderedDict()
 
@@ -269,46 +280,65 @@ async def notify_new_signup(
 
 
 # ---------------------------------------------------------------------------
-# Event 2 — pricing page visit
+# Event 2 — pricing page visit (authenticated only)
 # ---------------------------------------------------------------------------
 
 
-async def notify_pricing_visit(request: Request) -> None:
-    """GET /pricing fired — throttled to 1 alert per IP per hour.
+async def notify_pricing_visit(
+    *,
+    user_id: str,
+    display_name: str | None = None,
+    email: str | None = None,
+    country_code: str | None = None,
+    ip: str | None = None,
+    user_agent: str | None = None,
+    referer: str | None = None,
+) -> None:
+    """An authenticated user opened /pricing — alert #user-activity.
 
-    The throttle is in-memory, so each container replica tracks its own
-    map. That's a feature: blue/green each send at most one alert per IP
-    per hour, which caps Slack noise at ~2 alerts/hour in the worst case
-    (during a cutover).
+    Caller responsibility (the ``pricing_visit_beacon`` endpoint below
+    plus any future server-side trigger): pass a real profile UUID for
+    ``user_id``. There is no anonymous path — synthetic / curl / health-
+    check traffic gets filtered at the JWT gate, never reaches here.
+
+    Throttle: one alert per ``user_id`` per ``_PRICING_THROTTLE_SECONDS``.
+    Each blue/green replica owns its own in-memory map; during a cutover
+    the worst case is ~2 alerts per user per hour, still well below the
+    Slack-noise threshold.
     """
-    ip = _client_ip(request)
-    now = time.time()
+    if not user_id:
+        # Defensive guard: refuse to alert without a profile UUID. The
+        # whole point of the auth gate is to prevent anonymous noise.
+        logger.warning("user_activity: notify_pricing_visit called without user_id; dropping")
+        return
 
-    last = _pricing_seen_at.get(ip)
+    now = time.time()
+    last = _pricing_seen_at.get(user_id)
     if last is not None and (now - last) < _PRICING_THROTTLE_SECONDS:
-        # Touch on access so this IP stays at the LRU tail.
-        _pricing_seen_at.move_to_end(ip)
+        # Touch on access so this user_id stays at the LRU tail.
+        _pricing_seen_at.move_to_end(user_id)
         return  # throttled
 
-    # M-4: O(1) FIFO eviction via OrderedDict.popitem(last=False).
     if len(_pricing_seen_at) >= _PRICING_THROTTLE_MAX:
         _pricing_seen_at.popitem(last=False)
-    _pricing_seen_at[ip] = now
-    _pricing_seen_at.move_to_end(ip)
+    _pricing_seen_at[user_id] = now
+    _pricing_seen_at.move_to_end(user_id)
 
-    ua = (request.headers.get("user-agent") or "—")[:120]
-    referer = request.headers.get("referer") or "—"
-    # WM-16: render the bare CF ipcountry code as "Name (CC)" for ops legibility.
-    country = format_country(request.headers.get("cf-ipcountry"))
+    resolved_name = _resolve_full_name(display_name=display_name, email=email)
+    formatted_country = format_country(country_code)
+    ua = (user_agent or "—")[:120]
+    ref = (referer or "—")[:200]
 
     msg = SlackMessage(
         title=":eyes: Pricing page visit",
-        body=f"Someone is checking out the pricing page from *{country}*",
+        body=f"*{resolved_name}* is checking out the pricing page from *{formatted_country}*",
         severity="info",
         fields={
-            "ip": ip,
-            "country": country,
-            "referer": referer[:200],
+            "name": resolved_name,
+            "user_id": user_id[:8] + "…",
+            "country": formatted_country,
+            "ip": ip or "—",
+            "referer": ref,
             "user_agent": ua,
         },
         source="pricing",
@@ -317,6 +347,56 @@ async def notify_pricing_visit(request: Request) -> None:
         await post_to_user_activity(msg)
     except Exception:  # noqa: BLE001
         logger.exception("user_activity: notify_pricing_visit dispatch failed")
+
+
+# ---------------------------------------------------------------------------
+# Beacon endpoint — client-side fires this once authenticated /pricing loads
+# ---------------------------------------------------------------------------
+
+
+@api_router.post("/pricing-visit", status_code=status.HTTP_202_ACCEPTED)
+async def pricing_visit_beacon(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> dict[str, str]:
+    """Authenticated beacon — client-side fetch from /pricing JS posts here.
+
+    The gate is the ``Depends(get_current_user)`` dependency — without a
+    valid Supabase JWT the handler 401s before any work happens, which is
+    exactly the property that filters curl / health-check / docker-internal
+    probes out of the #user-activity channel.
+
+    No DB hit: ``display_name`` and ``email`` come from JWT claims (set by
+    Supabase auth from the OAuth provider's profile, or by the email-signup
+    handler). That keeps the beacon path latency-free and lets us avoid
+    coupling the alert pipeline to the v2 Supabase client. If the JWT
+    metadata is sparse we fall back to the email local-part via
+    ``_resolve_full_name``.
+    """
+    metadata = user.get("user_metadata") or {}
+    # Supabase mints both keys depending on provider — try the richer one
+    # first (Google: full_name; GitHub: name; email-signup: display_name).
+    display_name = (
+        metadata.get("full_name")
+        or metadata.get("name")
+        or metadata.get("display_name")
+        or None
+    )
+    email = user.get("email") or metadata.get("email") or None
+    user_id = user.get("sub") or ""
+
+    asyncio.create_task(
+        notify_pricing_visit(
+            user_id=user_id,
+            display_name=display_name,
+            email=email,
+            country_code=request.headers.get("cf-ipcountry"),
+            ip=_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+            referer=request.headers.get("referer"),
+        )
+    )
+    return {"status": "queued"}
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +497,7 @@ async def user_activity_healthz() -> dict[str, Any]:
 
 __all__ = [
     "router",
+    "api_router",
     "SlackMessage",
     "post_to_user_activity",
     "notify_new_signup",

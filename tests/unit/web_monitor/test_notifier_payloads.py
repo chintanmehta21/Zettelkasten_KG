@@ -42,16 +42,10 @@ def _flatten(payload: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Stub Request for notify_pricing_visit
+# Test helpers
 # ---------------------------------------------------------------------------
 
-
-class _StubRequest:
-    """Minimal FastAPI-Request-shaped object for unit-testing notify_*."""
-
-    def __init__(self, *, headers: dict[str, str] | None = None, client_host: str = "203.0.113.7"):
-        self.headers = headers or {}
-        self.client = type("C", (), {"host": client_host})()
+_SAMPLE_UUID = "abcdef01-uuid-uuid-uuid-aaaaaaaaaaaa"
 
 
 # ---------------------------------------------------------------------------
@@ -122,17 +116,19 @@ async def test_notify_new_signup_empty_display_name_treated_as_unset(slack_webho
 @pytest.mark.asyncio
 async def test_notify_pricing_visit_renders_country_with_name_and_code(slack_webhook_mock):
     rec = slack_webhook_mock()
-    req = _StubRequest(
-        headers={
-            "x-forwarded-for": "203.0.113.42",
-            "cf-ipcountry": "IN",
-            "user-agent": "test-ua",
-            "referer": "https://example.com/",
-        },
+    await notify_pricing_visit(
+        user_id=_SAMPLE_UUID,
+        display_name="Naruto Uzumaki",
+        email="naruto@example.com",
+        country_code="IN",
+        ip="203.0.113.42",
+        user_agent="test-ua",
+        referer="https://example.com/",
     )
-    await notify_pricing_visit(req)
     body = _flatten(rec.calls["SLACK_WEBHOOK_USER_ACTIVITY"][0])
     assert "India (IN)" in body, body
+    # Full name surfaces in the alert (replaces the prior IP-only payload).
+    assert "Naruto Uzumaki" in body
     # Guard the regression: bare "IN" as a standalone country field value
     # must not appear (it can appear inside "India (IN)" which is fine — we
     # use the literal field-value `"IN"` separated by quotes as the canary).
@@ -143,10 +139,24 @@ async def test_notify_pricing_visit_renders_country_with_name_and_code(slack_web
 @pytest.mark.asyncio
 async def test_notify_pricing_visit_unknown_country(slack_webhook_mock):
     rec = slack_webhook_mock()
-    req = _StubRequest(headers={"cf-ipcountry": "ZZ"})
-    await notify_pricing_visit(req)
+    await notify_pricing_visit(
+        user_id=_SAMPLE_UUID,
+        display_name="Sakura",
+        email="sakura@example.com",
+        country_code="ZZ",
+    )
     body = _flatten(rec.calls["SLACK_WEBHOOK_USER_ACTIVITY"][0])
     assert "Unknown (ZZ)" in body
+
+
+@pytest.mark.asyncio
+async def test_notify_pricing_visit_drops_when_user_id_missing(slack_webhook_mock):
+    """Defensive guard: no profile UUID = no alert. The auth gate at the
+    beacon endpoint is the primary filter; this is the belt-and-braces
+    fallback so a future bad caller can never produce an anonymous alert."""
+    rec = slack_webhook_mock()
+    await notify_pricing_visit(user_id="", country_code="IN")
+    assert rec.calls["SLACK_WEBHOOK_USER_ACTIVITY"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -193,8 +203,12 @@ async def test_no_notifier_leaks_raw_email_regex(slack_webhook_mock):
         email="eve@example.com",
         display_name="Eve",
     )
-    req = _StubRequest(headers={"cf-ipcountry": "US"})
-    await notify_pricing_visit(req)
+    await notify_pricing_visit(
+        user_id="u" * 12,
+        email="eve@example.com",
+        display_name="Eve",
+        country_code="US",
+    )
     await notify_payment(
         user_id="u" * 12,
         email="fred@example.com",
