@@ -193,19 +193,22 @@
     });
   }
 
-  if (window.ZKAuth && typeof window.ZKAuth.ready === 'object' && typeof window.ZKAuth.ready.then === 'function') {
-    window.ZKAuth.ready.then(function () {
-      boot(window.ZKAuth.getClient());
-    });
-  } else {
-    // Fallback: wait for ZKAuth to be set up
-    var _poll = setInterval(function () {
-      if (window.ZKAuth && typeof window.ZKAuth.ready !== 'undefined') {
-        clearInterval(_poll);
-        window.ZKAuth.ready.then(function () {
-          boot(window.ZKAuth.getClient());
-        });
-      }
-    }, 50);
+  // ── Bootstrap: wait for ZKAuth.ready, then bind to Supabase auth events ──
+  var _bootAttempts = 0;
+  var _BOOT_MAX = 50; // ~5s at 100ms intervals
+  function waitForZKAuth() {
+    if (window.ZKAuth && typeof window.ZKAuth.ready === 'object' && typeof window.ZKAuth.ready.then === 'function') {
+      window.ZKAuth.ready.then(function () {
+        boot(window.ZKAuth.getClient());
+      });
+      return;
+    }
+    _bootAttempts += 1;
+    if (_bootAttempts >= _BOOT_MAX) {
+      console.warn('Mobile auth: ZKAuth.ready unavailable after 5s; sign-in unavailable.');
+      return;
+    }
+    setTimeout(waitForZKAuth, 100);
   }
+  waitForZKAuth();
 })();
