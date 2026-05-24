@@ -574,7 +574,7 @@
 
   function reloadForView() {
     var fs = window.ZKMobileKGFilters.getState();
-    var url = fs.view === 'my' ? '/api/graph?scope=personal' : '/api/graph';
+    var url = fs.view === 'my' ? '/api/graph?view=my' : '/api/graph';
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .then(function (data) {
@@ -589,11 +589,30 @@
           return node;
         });
         nodeDegrees = computeDegrees(fullData);
+        // Recompute tag/kasten vocabulary from the new graph
+        if (window.ZKMobileKGFilters) {
+          var tagSet = new Set(); var kastenSet = new Set();
+          (fullData.nodes || []).forEach(function (n) {
+            (n.tags || []).forEach(function (t) { tagSet.add(t); });
+            (n.kastens || []).forEach(function (k) { kastenSet.add(k); });
+          });
+          window.ZKMobileKGFilters.setAvailable(Array.from(tagSet).sort(), Array.from(kastenSet).sort());
+        }
         graph.graphData(graphData);
         applyMobileFilters();
       })
       .catch(function () {
         statsEl.textContent = 'Failed to load ' + fs.view + ' graph';
+        // Revert state so user isn't lied to about active view
+        if (fs.view !== 'global' && window.ZKMobileKGFilters) {
+          var state = window.ZKMobileKGFilters.getState();
+          state.view = 'global';
+          var segs = document.querySelectorAll('.kg-m-segment');
+          segs.forEach(function (s) {
+            s.classList.toggle('is-active', s.dataset.view === 'global');
+            s.setAttribute('aria-checked', String(s.dataset.view === 'global'));
+          });
+        }
       });
   }
 
