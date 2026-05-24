@@ -423,14 +423,17 @@ function getCommunityHue(communityId) {
     location.href = '/?auth=login&return=' + ret;
   }
 
-  // Restore persisted view (only auto-restore "my" if we end up confirming login).
-  const savedView = localStorage.getItem(STORAGE_KEY_VIEW);
-  if (savedView === 'my' || savedView === 'global') {
-    currentView = savedView === 'my' ? 'global' : savedView; // tentatively global; flip after login confirm
-  }
+  // X3 (T4.11): explicit two-stage view state machine.
+  //   pendingView = what localStorage says the user wanted last session
+  //   currentView = what we render right now (always 'global' on boot so the
+  //                 page is never broken for an anon user)
+  // We transition to 'my' ONLY after /api/me confirms login. The previous
+  // single-variable dance ("tentatively global; flip after login confirm")
+  // was the source of subtle restore bugs (a flicker of 'my' before the
+  // auth resolver rejected, leaving the UI in a half-state).
+  const pendingView = localStorage.getItem(STORAGE_KEY_VIEW);
   setViewBtns(currentView);
 
-  // Check auth status via API.
   authToken = getStoredAuthToken();
   if (authToken) {
     fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
@@ -447,7 +450,7 @@ function getCommunityHue(communityId) {
         loadKastens();
         loadUserOwnedIds();
         refreshOpenPanelAddBtn();
-        if (savedView === 'my') {
+        if (pendingView === 'my') {
           currentView = 'my';
           setViewBtns('my');
           loadGraphData();
