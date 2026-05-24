@@ -31,14 +31,16 @@ def _reset_pricing_throttle():
     ua_mod._pricing_seen_at.clear()
 
 
-class _StubRequest:
-    def __init__(self, *, ip: str):
-        self.headers = {
-            "x-forwarded-for": ip,
-            "cf-ipcountry": "IN",
-            "user-agent": "burst-test",
-        }
-        self.client = type("C", (), {"host": ip})()
+def _kwargs_for(idx: int) -> dict:
+    """200 unique profile UUIDs so per-user throttling never trips the burst."""
+    return {
+        "user_id": f"00000000-0000-0000-0000-{idx:012d}",
+        "display_name": f"User {idx}",
+        "email": f"u{idx}@example.com",
+        "country_code": "IN",
+        "ip": f"203.0.113.{idx % 256}",
+        "user_agent": "burst-test",
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -74,9 +76,8 @@ async def test_200_pricing_visits_burst_no_task_leak(slack_webhook_mock, monkeyp
         # invokes post_to_user_activity which uses post_with_retry which
         # internally serializes via the slack_client semaphore.
         async def _one_call(i: int):
-            req = _StubRequest(ip=f"203.0.113.{i % 256}")
             try:
-                await notify_pricing_visit(req)
+                await notify_pricing_visit(**_kwargs_for(i))
             except Exception:  # noqa: BLE001 — burst must never raise
                 pytest.fail(f"notify_pricing_visit raised on call {i}")
 
@@ -116,8 +117,8 @@ async def test_200_pricing_visits_burst_no_task_leak(slack_webhook_mock, monkeyp
     )
 
     # At least one Slack call landed (the rest may have been throttled by
-    # the in-memory per-IP throttle, but with 200 unique IPs every call's
-    # FIRST visit fires through).
+    # the in-memory per-user_id throttle, but with 200 unique user_ids
+    # every call's FIRST visit fires through).
     total_calls = sum(len(v) for v in rec.calls.values())
     assert total_calls >= 1, "expected at least one Slack-mock call across the burst"
 

@@ -622,16 +622,11 @@ def create_app(lifespan=None) -> FastAPI:
     async def pricing(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        # Fire-and-forget Slack alert (throttled per-IP inside the notifier).
-        # Never awaited — we don't want Slack latency on the pricing page.
-        try:
-            import asyncio
-
-            from website.features.web_monitor import notify_pricing_visit
-
-            asyncio.get_running_loop().create_task(notify_pricing_visit(request))
-        except Exception:  # noqa: BLE001 — alert must never break the page
-            logger.exception("notify_pricing_visit scheduling failed")
+        # No server-side Slack alert here — the GET path is public and
+        # would fire on curl / health checks / docker-internal probes. The
+        # alert is now driven by ``POST /api/monitor/pricing-visit`` which
+        # the page JS fires once it has a Supabase JWT in localStorage.
+        # That auth gate is what filters synthetic traffic out.
         response = _render_with_shell(PRICING_DIR / "index.html")
         return _maybe_set_desktop_cookie(request, response)
 

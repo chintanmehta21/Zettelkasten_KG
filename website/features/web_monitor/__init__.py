@@ -14,6 +14,7 @@ from website.features.web_monitor.User_Activity import (
     notify_payment,
     notify_pricing_visit,
 )
+from website.features.web_monitor.User_Activity import api_router as _user_activity_api_router
 from website.features.web_monitor.User_Activity import router as _user_activity_router
 
 # Aggregated router so app.py only has one include_router call.
@@ -21,6 +22,7 @@ router = APIRouter()
 router.include_router(_do_alerts_router)
 router.include_router(_app_errors_router)
 router.include_router(_user_activity_router)
+router.include_router(_user_activity_api_router)
 
 __all__ = [
     "router",

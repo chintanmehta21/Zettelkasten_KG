@@ -653,6 +653,7 @@
     // round-trip again. purchase_launcher reads window.ZKPricing.cachedProfile
     // before falling back to fetching itself.
     prefetchBillingProfile();
+    pingPricingVisit();
     await Promise.all([bootSharedHeader(), refreshCurrentSubscription()]);
     renderSubscriptions();
     renderPacks();
@@ -675,6 +676,24 @@
         window.ZKPricing.cachedProfile = payload.profile || { phone: '' };
       }
     }).catch(function () { /* non-fatal */ });
+  }
+
+  // Beacon to /api/monitor/pricing-visit so #user-activity only sees
+  // alerts for real authenticated visitors. Anonymous tabs (no token in
+  // localStorage) and synthetic traffic (curl, health checks) skip the
+  // fetch entirely — that's the gate the server-side GET /pricing path
+  // no longer enforces.
+  function pingPricingVisit() {
+    var token = readAuthToken();
+    if (!token) return;
+    try {
+      fetch('/api/monitor/pricing-visit', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: '{}',
+        keepalive: true,
+      }).catch(function () { /* non-fatal — alerting must never break /pricing */ });
+    } catch (_) { /* non-fatal */ }
   }
 
   async function refreshCurrentSubscription() {
