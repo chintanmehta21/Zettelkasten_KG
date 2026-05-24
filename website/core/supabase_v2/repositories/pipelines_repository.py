@@ -181,6 +181,14 @@ class PipelinesRepository:
             .eq("id", str(run_id))
             .execute()
         )
+        # Phase 4 / Task 4.6: one metric site for ALL four terminal outcomes
+        # (succeeded / succeeded_empty / failed_retryable / failed_permanent).
+        # Wrapped in try/except so a metrics failure never blocks the gate.
+        try:
+            from website.core.kg_metrics import kg_populate_runs_total
+            kg_populate_runs_total.labels(outcome=state).inc()
+        except Exception:  # noqa: BLE001 — metrics are best-effort.
+            pass
 
     def list_retryable_runs(
         self,

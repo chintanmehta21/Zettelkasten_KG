@@ -100,7 +100,13 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PORT=10000
+    PORT=10000 \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prom_multiproc
+
+# Phase 4 / Task 4.6: multiprocess Prometheus exposition needs a shared
+# directory each worker writes its metrics shards to. Created here with
+# the appuser writable so the 2 gunicorn workers + master can all write.
+RUN mkdir -p /tmp/prom_multiproc && chown -R appuser:appuser /tmp/prom_multiproc
 
 EXPOSE 10000
 

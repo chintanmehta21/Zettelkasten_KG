@@ -675,8 +675,14 @@ def _v2_assemble_graph(
                 # B1 metadata fallback (e.g. an orphan kg_node with no chunk
                 # rows and no canonical_zettel_id in metadata) — skip rather
                 # than fake a self-loop, and COUNT it so silent edge loss is
-                # observable in the ops log (B1 telemetry).
+                # observable in the ops log (B1 telemetry) + Prometheus
+                # (Phase 4 / Task 4.6 + 4.7).
                 edges_dropped_unresolved += 1
+                try:
+                    from website.core.kg_metrics import kg_edge_drops_total
+                    kg_edge_drops_total.labels(reason="unresolved_endpoint").inc()
+                except Exception:  # noqa: BLE001 — never block on telemetry.
+                    pass
                 continue
             relation = str(edge.get("relation_type") or "shared_tag")
             description = edge.get("shared_tag_label")
