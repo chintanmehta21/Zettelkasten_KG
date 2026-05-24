@@ -16,7 +16,7 @@ os.environ.setdefault(
 
 from fastapi.testclient import TestClient
 
-from website.app import create_app
+from website.app import _DESKTOP_COOKIE, create_app
 
 
 def _client() -> TestClient:
@@ -51,12 +51,13 @@ def test_escape_cookie_bypasses_mobile_redirect() -> None:
     resp = client.get("/home", headers={"User-Agent": iphone_ua}, follow_redirects=False)
     assert resp.status_code == 302
     assert resp.headers["location"] == "/m/"
+    client.cookies.set(_DESKTOP_COOKIE, "1")
     resp = client.get(
         "/home",
         headers={"User-Agent": iphone_ua},
-        cookies={"zk-prefer-desktop": "1"},
         follow_redirects=False,
     )
+    client.cookies.clear()
     assert resp.status_code == 200
     assert "/m/" not in resp.headers.get("location", "")
 
@@ -113,7 +114,7 @@ def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
     resp = client.get("/?desktop=1", headers={"User-Agent": iphone_ua}, follow_redirects=False)
     assert resp.status_code == 200
     set_cookie = resp.headers.get("set-cookie", "")
-    assert "zk-prefer-desktop=1" in set_cookie
+    assert f"{_DESKTOP_COOKIE}=1" in set_cookie
     assert "Max-Age=2592000" in set_cookie
     assert "HttpOnly" in set_cookie
 

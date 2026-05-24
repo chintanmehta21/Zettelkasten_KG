@@ -532,7 +532,7 @@
   if (searchClearEl) {
     searchClearEl.addEventListener('click', function () {
       searchInput.value = '';
-      searchInput.dispatchEvent(new Event('input'));
+      searchInput.dispatchEvent(new InputEvent('input', { bubbles: true }));
     });
   }
 

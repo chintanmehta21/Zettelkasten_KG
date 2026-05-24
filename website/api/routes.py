@@ -14,9 +14,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from website.api.auth import get_current_user, get_optional_user
-from website.api.graph_cache import bucket_for_strength, get_default_cache
+from website.api.graph_cache import get_default_cache
 from website.core.db_version import get_db_schema_version, use_supabase_v2
-from website.core.graph_store import _SOURCE_PREFIX, get_graph
+from website.core.graph_store import _SOURCE_PREFIX
 from website.core.graph_models import KGGraph
 from website.core.persist import (
     extract_summary_parts,

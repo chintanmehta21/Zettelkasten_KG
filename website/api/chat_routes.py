@@ -18,9 +18,7 @@ from website.api._concurrency import QueueFull, acquire_rerank_slot
 from website.api.auth import get_current_user
 from website.core.supabase_v2.client import get_v2_client
 from website.features.rag_pipeline.service import get_rag_runtime, load_example_queries
-from website.features.rag_pipeline.types import ChatQuery, ScopeFilter
-from website.features.user_pricing.entitlements import require_entitlement
-from website.features.user_pricing.models import Meter
+from website.features.rag_pipeline.types import ScopeFilter
 
 logger = logging.getLogger("website.api.chat_routes")
 
