@@ -270,7 +270,8 @@
 
   async function renderStats(token) {
     // Zettels — total + breakdown by source_type
-    fetchJSON('/api/zettels/list', token).then((data) => {
+    // /api/zettels/list was wrong (returned 405); home.js loadZettels uses /api/zettels
+    fetchJSON('/api/zettels', token).then((data) => {
       const rows = data && Array.isArray(data.zettels) ? data.zettels : [];
       const totalEl = $('stat-zettels-total');
       const breakdownEl = $('stat-zettels-breakdown');
