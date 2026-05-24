@@ -114,10 +114,13 @@ def test_trim_preserves_essential_fields() -> None:
     assert out["nodes"][0] == {"id": "n1", "name": "x", "tags": ["a"], "url": "http://e"}
 
 
-def test_trim_preserves_harmonic_centrality() -> None:
-    """C3-d: harmonic_centrality is the new default-path distance signal,
-    intentionally KEPT on the wire so the frontend can use it as a
-    node-importance signal alongside pagerank. Closeness stays trimmed."""
+def test_trim_removes_harmonic_centrality_and_closeness() -> None:
+    """S5 (Phase 4 / Task 4.15): harmonic_centrality is computed for analytics
+    cache but is NOT read by any frontend code path, so it's stripped on the
+    wire alongside closeness to keep the payload tight. (Verified via
+    ``grep harmonic_centrality website/features/knowledge_graph/js/`` — no
+    consumer.) C3-d's earlier "KEEP on wire" decision was superseded by S5
+    once the frontend audit confirmed zero consumers."""
     from website.api.routes import _trim_graph_response
 
     payload = {
@@ -125,15 +128,15 @@ def test_trim_preserves_harmonic_centrality() -> None:
             {
                 "id": "n1",
                 "name": "x",
-                "harmonic_centrality": 0.42,
-                "closeness": 0.7,  # must be dropped
+                "harmonic_centrality": 0.42,  # must be dropped (S5)
+                "closeness": 0.7,              # must be dropped (back-compat zero)
                 "tags": [],
             },
         ],
         "links": [],
     }
     out = _trim_graph_response(payload)
-    assert out["nodes"][0]["harmonic_centrality"] == 0.42
+    assert "harmonic_centrality" not in out["nodes"][0]
     assert "closeness" not in out["nodes"][0]
 
 
