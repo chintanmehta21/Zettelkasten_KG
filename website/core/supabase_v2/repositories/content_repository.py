@@ -205,6 +205,9 @@ class ContentRepository:
                     "p_user_note": workspace.user_note,
                     "p_pinned": workspace.pinned,
                     "p_added_via": workspace.added_via,
+                    # B7 (Phase 4 / Task 4.3): persist derived tags on the
+                    # separate column added by Migration 72.
+                    "p_derived_tags": list(workspace.derived_tags or []),
                 },
             )
             .execute()
@@ -269,6 +272,7 @@ class ContentRepository:
                 "canonical_zettel_id,"
                 "ai_summary,"
                 "user_tags,"
+                "derived_tags,"
                 "created_at,"
                 "canonical:canonical_zettels!inner("
                 "id,normalized_url,title,source_type,publication_date)"
@@ -320,6 +324,7 @@ class ContentRepository:
                     "canonical_zettel_id,"
                     "ai_summary,"
                     "user_tags,"
+                "derived_tags,"
                     "created_at,"
                     "canonical:canonical_zettels!inner("
                     "id,normalized_url,title,source_type,publication_date)"
@@ -391,6 +396,7 @@ class ContentRepository:
                 "canonical_zettel_id,"
                 "ai_summary,"
                 "user_tags,"
+                "derived_tags,"
                 "created_at,"
                 "deleted_at,"
                 "canonical:canonical_zettels!inner("

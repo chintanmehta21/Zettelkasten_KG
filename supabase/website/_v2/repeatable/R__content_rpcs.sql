@@ -87,6 +87,16 @@ GRANT EXECUTE ON FUNCTION content.upsert_canonical_zettel(text, bytea, text, tex
 --
 -- Args / return are typed scalars (not jsonb) so supabase-py kwargs match
 -- the call site exactly and PostgREST's OpenAPI surfaces them cleanly.
+-- 2026-05-24 (Phase 4 / Task 4.3 / B7): added `p_derived_tags` for the new
+-- `workspace_zettels.derived_tags` column (Mig 72). DEFAULT NULL keeps the
+-- prior 8-arg call shape working during the deploy window, then the Python
+-- repository starts passing it explicitly. The OLD 8-arg signature is
+-- explicitly dropped because PostgreSQL overloads functions by signature
+-- and we don't want a stale GRANTed copy lingering after the redeploy.
+DROP FUNCTION IF EXISTS content.upsert_workspace_zettel(
+    uuid, uuid, text, text, text[], text, boolean, text
+);
+
 CREATE OR REPLACE FUNCTION content.upsert_workspace_zettel(
     p_workspace_id              uuid,
     p_canonical_zettel_id       uuid,
@@ -95,7 +105,8 @@ CREATE OR REPLACE FUNCTION content.upsert_workspace_zettel(
     p_user_tags                 text[],
     p_user_note                 text,
     p_pinned                    boolean,
-    p_added_via                 text
+    p_added_via                 text,
+    p_derived_tags              text[] DEFAULT NULL
 ) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -107,6 +118,7 @@ BEGIN
         ai_summary,
         ai_summary_engine_version,
         user_tags,
+        derived_tags,
         user_note,
         pinned,
         added_via
@@ -117,6 +129,7 @@ BEGIN
         p_ai_summary,
         p_ai_summary_engine_version,
         COALESCE(p_user_tags, '{}'::text[]),
+        COALESCE(p_derived_tags, '{}'::text[]),
         p_user_note,
         COALESCE(p_pinned, false),
         COALESCE(p_added_via, 'website')
@@ -126,6 +139,7 @@ BEGIN
         ai_summary                = EXCLUDED.ai_summary,
         ai_summary_engine_version = EXCLUDED.ai_summary_engine_version,
         user_tags                 = EXCLUDED.user_tags,
+        derived_tags              = EXCLUDED.derived_tags,
         user_note                 = EXCLUDED.user_note,
         pinned                    = EXCLUDED.pinned,
         added_via                 = EXCLUDED.added_via,
@@ -135,7 +149,7 @@ BEGIN
     RETURN v_id;
 END $$;
 
-GRANT EXECUTE ON FUNCTION content.upsert_workspace_zettel(uuid, uuid, text, text, text[], text, boolean, text)
+GRANT EXECUTE ON FUNCTION content.upsert_workspace_zettel(uuid, uuid, text, text, text[], text, boolean, text, text[])
     TO authenticated, service_role;
 
 
