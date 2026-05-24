@@ -88,6 +88,7 @@ _render_with_header = _render_with_shell
 
 MOBILE_TEMPLATES_DIR = MOBILE_DIR / "templates"
 _MOBILE_SHELL = MOBILE_TEMPLATES_DIR / "_shell.html"
+_MOBILE_OAUTH_MODAL = MOBILE_TEMPLATES_DIR / "_oauth_modal.html"
 
 
 def _render_with_mobile_shell(
@@ -114,6 +115,15 @@ def _render_with_mobile_shell(
     )
     if extra_head:
         rendered = rendered.replace("</head>", f"{extra_head}\n</head>", 1)
+    # Inject OAuth modal + auth scripts before </body> (Phase 3)
+    oauth_modal = _MOBILE_OAUTH_MODAL.read_text(encoding="utf-8")
+    auth_block = (
+        oauth_modal
+        + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin></script>'
+        + '\n<script src="/auth/js/auth.js?v=20260524a"></script>'
+        + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
+    )
+    rendered = rendered.replace("</body>", auth_block + "\n</body>", 1)
     return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
 

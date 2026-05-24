@@ -1,0 +1,272 @@
+/* ═══════════════════════════════════════════════════════════════
+   Mobile OAuth modal — full-screen <dialog>, 44pt+ tap targets,
+   safe-area aware, dvh-based height
+   ═══════════════════════════════════════════════════════════════ */
+
+.m-auth-modal {
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Hidden by default — browser shows only when open attribute present */
+}
+
+.m-auth-modal::backdrop {
+  background: hsla(224, 28%, 3%, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Native <dialog> hides with display:none; restore flex when open */
+.m-auth-modal[open] {
+  display: flex;
+}
+
+.m-auth-modal-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 24px
+           calc(env(safe-area-inset-bottom, 0px) + 24px) 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Close button ───────────────────────────────────────────── */
+
+.m-auth-close {
+  align-self: flex-end;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--bg-elevated);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.m-auth-close:active {
+  background: var(--border-light);
+  color: var(--text);
+}
+
+/* ── Heading ────────────────────────────────────────────────── */
+
+.m-auth-title {
+  font-size: clamp(1.6rem, 6vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.m-auth-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+/* ── Provider list ──────────────────────────────────────────── */
+
+.m-auth-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.m-auth-provider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s var(--ease), transform 0.1s;
+  border: 1px solid var(--border);
+}
+.m-auth-provider:active {
+  transform: scale(0.98);
+  opacity: 0.85;
+}
+
+/* Primary CTA — teal accent background */
+.m-auth-provider-primary {
+  background: var(--accent);
+  color: hsl(224, 28%, 5%);
+  border-color: transparent;
+  font-weight: 600;
+}
+.m-auth-provider-primary:active {
+  background: var(--accent-hover);
+}
+
+/* Secondary — card-style */
+.m-auth-provider-secondary {
+  background: var(--bg-card);
+  color: var(--text);
+}
+.m-auth-provider-secondary:active {
+  background: var(--bg-elevated);
+}
+
+/* ── More options expander ──────────────────────────────────── */
+
+.m-auth-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s var(--ease);
+  border-radius: var(--radius-sm);
+}
+.m-auth-more:active {
+  color: var(--text);
+}
+.m-auth-more svg {
+  transition: transform 0.2s var(--ease);
+  flex-shrink: 0;
+}
+.m-auth-more[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.m-auth-more-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideDown 0.2s var(--ease);
+}
+.m-auth-more-options[hidden] {
+  display: none;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Footer note ────────────────────────────────────────────── */
+
+.m-auth-foot {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.m-auth-foot a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.m-auth-foot a:active {
+  text-decoration: underline;
+}
+
+/* ── Account menu (inline-rendered when authed) ─────────────── */
+
+.m-account-menu {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 56px);
+  right: 12px;
+  z-index: 200;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.4);
+  overflow: hidden;
+  animation: fadeIn 0.15s var(--ease);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.m-account-menu-email {
+  padding: 14px 16px 10px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.m-account-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s var(--ease);
+}
+.m-account-menu-btn:active {
+  background: var(--bg-elevated);
+}
+
+/* Avatar states on the header button */
+.m-header-avatar.is-authed .m-header-avatar-anon {
+  display: none;
+}
+.m-header-avatar.is-authed .m-header-avatar-image {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+}
+.m-header-avatar.is-authed .m-header-avatar-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Fallback initials when no avatar URL */
+.m-header-avatar.is-authed .m-header-avatar-image.initials {
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+}

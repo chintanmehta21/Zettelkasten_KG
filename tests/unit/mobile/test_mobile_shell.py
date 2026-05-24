@@ -61,6 +61,27 @@ def test_escape_cookie_bypasses_mobile_redirect() -> None:
     assert "/m/" not in resp.headers.get("location", "")
 
 
+def test_mobile_index_includes_oauth_modal() -> None:
+    """/m/ HTML must include the OAuth modal (Phase 3)."""
+    resp = _client().get("/m/")
+    assert resp.status_code == 200
+    html = resp.text
+    assert 'id="m-auth-modal"' in html
+    assert 'data-provider="google"' in html
+    assert 'data-provider="apple"' in html
+    # More options must be hidden by default
+    assert 'id="m-auth-more-options"' in html and 'hidden' in html
+    # All 6 providers must be present in the modal block
+    assert 'data-provider="github"' in html
+    assert 'data-provider="twitter"' in html
+    assert 'data-provider="facebook"' in html
+    assert 'data-provider="twitch"' in html
+    # Supabase CDN + auth.js + auth-modal.js must be loaded
+    assert 'supabase-js@2' in html
+    assert '/auth/js/auth.js' in html
+    assert '/m/js/auth-modal.js' in html
+
+
 def test_query_param_sets_escape_cookie_then_serves_desktop() -> None:
     client = _client()
     iphone_ua = (
