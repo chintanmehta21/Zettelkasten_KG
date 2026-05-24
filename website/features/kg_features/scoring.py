@@ -78,7 +78,6 @@ __all__ = [
     "EDGE_CREATION_THRESHOLD",
     "EDGE_RENDER_THRESHOLD",
     "compute_connection_strength",
-    "percentile_rank",
 ]
 
 
@@ -248,22 +247,3 @@ def compute_connection_strength(
     return max(0.0, min(1.0, score))
 
 
-def percentile_rank(value: float, neighborhood: Sequence[float]) -> float:
-    """Per-node-neighborhood percentile rank in [0, 1].
-
-    Uses the "fraction of strict-less-than peers" definition (a.k.a.
-    "competition rank, normalized"). Stable for tied values and well-defined
-    on small neighborhoods.
-
-    Edge cases:
-    - Empty / singleton neighborhoods → 0.0 (no relative information).
-    - Intended (once the D-KG-1 rewire wires this module in) to *normalize*
-      candidate scores against the source node's own neighborhood before
-      applying EDGE_CREATION_THRESHOLD, so a sparsely-connected node's
-      edges aren't unfairly culled by the global threshold. No current
-      production caller.
-    """
-    if not neighborhood or len(neighborhood) <= 1:
-        return 0.0
-    strict_less = sum(1 for x in neighborhood if x < value)
-    return strict_less / (len(neighborhood) - 1)

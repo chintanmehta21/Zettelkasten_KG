@@ -145,17 +145,6 @@ def _resolve_view(user: dict | None, view: ViewKind | None) -> ViewKind:
     return "my" if user is not None else "global"
 
 
-def _serialize_global_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    """Apply enrichment + min_strength filter + trim to a file-store payload.
-
-    Same post-processing chain the existing route runs for the anonymous
-    branch. Keeps the wire shape identical (``nodes`` / ``links`` /
-    ``total_nodes`` / ``meta``) regardless of source so the frontend
-    doesn't have to branch on `meta.source`.
-    """
-    return payload
-
-
 # ───────────────────────────────────────────────────────────────────────────
 # Subgraph filter — Kasten-scoped (new)
 # ───────────────────────────────────────────────────────────────────────────

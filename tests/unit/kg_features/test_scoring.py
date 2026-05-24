@@ -18,7 +18,6 @@ from website.features.kg_features.scoring import (
     EDGE_CREATION_THRESHOLD,
     EDGE_RENDER_THRESHOLD,
     compute_connection_strength,
-    percentile_rank,
 )
 
 
@@ -187,33 +186,6 @@ def test_temporal_decay_recent_higher() -> None:
         temporal_days=365.0,
     )
     assert same_day >= year_old
-
-
-# ── Percentile rank (per-node neighborhood) ───────────────────────────
-
-
-def test_percentile_rank_monotonic() -> None:
-    """Larger value → larger percentile within the same neighborhood."""
-    neighborhood = [0.1, 0.2, 0.3, 0.4, 0.5]
-    ranks = [percentile_rank(v, neighborhood) for v in neighborhood]
-    assert ranks == sorted(ranks)
-
-
-def test_percentile_rank_bounds() -> None:
-    """Rank ∈ [0, 1]; lowest → 0.0; highest → 1.0."""
-    neighborhood = [0.1, 0.5, 0.9]
-    assert percentile_rank(0.1, neighborhood) == pytest.approx(0.0)
-    assert percentile_rank(0.9, neighborhood) == pytest.approx(1.0)
-
-
-def test_percentile_rank_empty_neighborhood_returns_zero() -> None:
-    """No peers → rank 0.0 (no signal); never NaN / divide-by-zero."""
-    assert percentile_rank(0.5, []) == 0.0
-
-
-def test_percentile_rank_singleton_returns_zero() -> None:
-    """One-peer neighborhood (the value itself) → rank 0.0 (no relative info)."""
-    assert percentile_rank(0.42, [0.42]) == 0.0
 
 
 # ── Edge-creation gate ────────────────────────────────────────────────
