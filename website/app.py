@@ -208,9 +208,9 @@ def _render_with_mobile_shell(
     file is expected to contain ONLY the in-<main> content (no <html>/<head>/<body>
     wrappers).
     """
-    body = body_path.read_text(encoding="utf-8")
     shell = _MOBILE_SHELL.read_text(encoding="utf-8")
-    html = (
+    body = body_path.read_text(encoding="utf-8")
+    rendered = (
         shell
         .replace("<!--ZK_MOBILE_TITLE-->", page_title)
         .replace("<!--ZK_MOBILE_PAGE_TITLE-->", page_title)
@@ -220,20 +220,28 @@ def _render_with_mobile_shell(
 
     # Server-side avatar preload — improves first-paint for the user's own avatar.
     avatar_url = _avatar_url_from_request(request) if request else None
-    preload = (
+    preload_tag = (
         f'<link rel="preload" as="image" type="image/svg+xml" href="{avatar_url}">'
         if avatar_url else ""
     )
-    html = html.replace("<!--ZK_MOBILE_PRELOAD-->", preload)
+    rendered = rendered.replace("<!--ZK_MOBILE_PRELOAD-->", preload_tag)
 
+    # Inject OAuth modal + auth scripts before </body> (Phase 3).
+    # Mobile pages load ONLY auth-core.js — auth.js carries desktop-landing
+    # DOM wiring (#login-btn / #user-menu / provider grid) that mobile does
+    # not render. /m/ auth chrome is owned by auth-modal.js, which already
+    # depends on window.ZKAuth from auth-core.
+    # avatar.js (T3) is the shared renderer used by mobile + desktop.
     oauth_modal = _MOBILE_OAUTH_MODAL.read_text(encoding="utf-8")
-    html = (
-        html
-        + "\n" + oauth_modal
+    auth_block = (
+        oauth_modal
+        + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin></script>'
+        + '\n<script src="/auth/js/auth-core.js?v=20260524a"></script>'
         + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
         + '\n<script src="/m/js/avatar.js?v=20260525a"></script>'
     )
-    return HTMLResponse(content=html, headers=_HTML_CACHE_HEADERS)
+    rendered = rendered.replace("</body>", auth_block + "\n</body>", 1)
+    return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
 
 def _avatar_url_from_request(request: Request) -> Optional[str]:
