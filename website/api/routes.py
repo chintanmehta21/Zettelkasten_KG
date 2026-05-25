@@ -383,6 +383,63 @@ async def me(
                 logger.warning("v2 /api/me profile lookup failed for %s: %s", profile_id, exc)
                 profile = None
 
+            if profile is None:
+                # Lazy JIT repair — the v2 scope/profile lookup missed, which
+                # means the gotrue trigger chain either hasn't propagated yet
+                # or silently failed. Call the idempotent ensure_provisioned
+                # RPC once, then retry the profile lookup. Allowlist denial
+                # (SQLSTATE 42501) is surfaced as HTTP 403.
+                try:
+                    get_v2_client().schema("core").rpc(
+                        "ensure_provisioned",
+                        {
+                            "p_auth_user_id": user["sub"],
+                            "p_email": user.get("email"),
+                            "p_display_name": (
+                                metadata.get("full_name") or metadata.get("name")
+                            ),
+                        },
+                    ).execute()
+                    try:
+                        profile = CoreRepository(get_v2_client()).get_profile(profile_id)
+                    except Exception as exc:  # noqa: BLE001 — graceful fallback on v2 hiccup
+                        logger.warning(
+                            "v2 profile re-fetch after ensure_provisioned failed for %s: %s",
+                            profile_id,
+                            exc,
+                        )
+                        profile = None
+                except Exception as exc:  # noqa: BLE001 — see allowlist branch below
+                    # Distinguish allowlist denial (42501) from other transient
+                    # errors. supabase-py wraps RPC errors as APIError with a
+                    # ``.code`` attribute (PostgREST returns the SQLSTATE in
+                    # the response body); fall back to substring match on the
+                    # message text so we don't silently bypass the gate when
+                    # the wrapper shape changes.
+                    code = getattr(exc, "code", None)
+                    if code is None:
+                        # Some wrappers nest the real error one level deep
+                        # (e.g. APIError(args=(InnerError(code='42501'),))).
+                        args = getattr(exc, "args", ())
+                        if args:
+                            code = getattr(args[0], "code", None)
+                    if code == "42501" or "allowlist" in str(exc).lower():
+                        raise HTTPException(
+                            status_code=403,
+                            detail={
+                                "code": "allowlist_denied",
+                                "message": (
+                                    "Account is not on the active allowlist. "
+                                    "Contact support if you believe this is an error."
+                                ),
+                            },
+                        )
+                    logger.warning(
+                        "ensure_provisioned RPC failed for %s: %s",
+                        profile_id,
+                        exc,
+                    )
+
             if profile:
                 try:
                     maybe_fire_signup_alert(
