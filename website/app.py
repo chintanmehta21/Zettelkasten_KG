@@ -27,6 +27,7 @@ from website.api.zettels_routes import router as zettels_router
 from website.features.refresh_button.refresh_routes import router as refresh_button_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
+from website.features.user_profile import router as profile_router
 from website.features.web_monitor import (
     _hash_id,
     maybe_fire_app_error_rate,
@@ -390,6 +391,7 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(chat_router)
     app.include_router(sandbox_router)
     app.include_router(pricing_router)
+    app.include_router(profile_router)
     app.include_router(web_monitor_router)
     app.include_router(admin_router)
     app.include_router(meta_router)
@@ -693,6 +695,19 @@ def create_app(lifespan=None) -> FastAPI:
     _mount_static_if_exists(
         app, "/vendor", STATIC_DIR / "vendor", "vendor"
     )
+
+    # Avatars — long-cache immutable static files (60 SVGs under /artifacts/avatars/).
+    # Mounted BEFORE the broad /artifacts catch-all so this subpath is matched first.
+    AVATARS_DIR = Path(__file__).parent / "artifacts" / "avatars"
+
+    class _ImmutableStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):  # type: ignore[override]
+            resp = await super().get_response(path, scope)
+            if resp.status_code == 200:
+                resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return resp
+
+    app.mount("/artifacts/avatars", _ImmutableStaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 
     # Shared artifacts (logos, icons, etc.)
     app.mount("/artifacts", StaticFiles(directory=str(ARTIFACTS_DIR)), name="artifacts")
