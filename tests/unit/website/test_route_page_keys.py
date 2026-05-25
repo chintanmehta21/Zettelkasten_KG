@@ -8,23 +8,12 @@ in header.html).
 import pytest
 from fastapi.testclient import TestClient
 
+from website.app import create_app
+
 
 @pytest.fixture(scope="module")
-def client(monkeypatch_module):
-    # Lazy import to give the env-var stub a chance to land first.
-    from website.app import create_app
+def client():
     return TestClient(create_app())
-
-
-@pytest.fixture(scope="module")
-def monkeypatch_module():
-    """Module-scoped monkeypatch (built-in is function-scoped)."""
-    from _pytest.monkeypatch import MonkeyPatch
-    mp = MonkeyPatch()
-    # Stub minimum required env so get_settings() doesn't SystemExit.
-    mp.setenv("GEMINI_API_KEY", "test-key-for-pytest")
-    yield mp
-    mp.undo()
 
 
 @pytest.mark.parametrize("path", [
