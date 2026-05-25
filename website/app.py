@@ -281,6 +281,21 @@ def _nexus_enabled() -> bool:
     return raw_value not in {"0", "false", "no", "off"}
 
 
+def _has_supabase_session(request: Request) -> bool:
+    """Best-effort check for a Supabase session cookie.
+
+    Covers legacy `sb-access-token` and modern `sb-<project-ref>-auth-token`
+    cookie names. Used by mobile route gates for first-paint redirect; NEVER
+    the source of truth for auth — API routes use Bearer JWT validation.
+    """
+    if request.cookies.get("sb-access-token") or request.cookies.get("sb-refresh-token"):
+        return True
+    for k in request.cookies:
+        if k.startswith("sb-") and (k.endswith("-auth-token") or k.endswith("-refresh-token")):
+            return True
+    return False
+
+
 def _is_mobile(request: Request) -> bool:
     # Operator escape: persistent cookie set previously OR ?desktop=1 query param.
     if request.cookies.get(_DESKTOP_COOKIE) == "1":
@@ -814,6 +829,37 @@ def create_app(lifespan=None) -> FastAPI:
             MOBILE_DIR / "knowledge-graph.html",
             page_title="Knowledge Graph",
             body_class="kg-body",
+            request=request,
+        )
+
+    @app.get("/m/zettels")
+    async def mobile_zettels(request: Request):
+        if not _has_supabase_session(request) and "just_captured" not in request.query_params:
+            return RedirectResponse("/m/profile", status_code=302)
+        return _render_with_mobile_shell(
+            MOBILE_DIR / "zettels.html",
+            page_title="Zettels",
+            body_class="m-zettels",
+            request=request,
+        )
+
+    @app.get("/m/kastens")
+    async def mobile_kastens(request: Request):
+        if not _has_supabase_session(request):
+            return RedirectResponse("/m/profile", status_code=302)
+        return _render_with_mobile_shell(
+            MOBILE_DIR / "kastens.html",
+            page_title="Kastens",
+            body_class="m-kastens",
+            request=request,
+        )
+
+    @app.get("/m/profile")
+    async def mobile_profile(request: Request):
+        return _render_with_mobile_shell(
+            MOBILE_DIR / "profile.html",
+            page_title="Profile",
+            body_class="m-profile",
             request=request,
         )
 
