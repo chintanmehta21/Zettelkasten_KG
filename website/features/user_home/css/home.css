@@ -39,9 +39,7 @@
 
 /* Avatar styles (.home-avatar-wrap / .home-avatar-btn / .home-avatar-img /
    .home-avatar-fallback) are owned by website/features/header/css/header.css.
-   The earlier duplicates here conflicted with the shared rules (fallback
-   defaulted to display:none + .visible, while header.css uses display:flex
-   + .loaded/.hidden), which left the home-page avatar permanently blank. */
+   The PR2 shared-header migration removed the local duplicate. */
 
 /* ── Avatar Dropdown Menu ─────────────────────────────────────────
    Styling lives in shared header.css — single source of truth so
