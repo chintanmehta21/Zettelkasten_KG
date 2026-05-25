@@ -24,6 +24,8 @@ RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
+-- search_path='' (stricter than sibling 53's pg_catalog,public). Auth-path
+-- function stays hardened per 2024-2026 Supabase advisory; body uses pg_catalog only.
 SET search_path = ''
 AS $$
 DECLARE

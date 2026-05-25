@@ -30,6 +30,8 @@ CREATE OR REPLACE FUNCTION core.ensure_provisioned(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
+-- search_path='' (stricter than sibling 53's pg_catalog,public). Auth-path
+-- function stays hardened per 2024-2026 Supabase advisory; body uses pg_catalog only.
 SET search_path = ''
 AS $$
 DECLARE
@@ -122,6 +124,8 @@ COMMENT ON FUNCTION core.ensure_provisioned(uuid, text, text) IS
   'owner membership for an auth user if any are missing. Called from /api/me '
   'only when v2 profile lookup returns None (rare — trigger failure window). '
   'Safe to call repeatedly: profile and membership inserts both use '
-  'ON CONFLICT DO NOTHING with the correct (partial) unique-index targets.';
+  'ON CONFLICT DO NOTHING with the correct (partial) unique-index targets. '
+  'Raises SQLSTATE 42501 via trg_workspaces_allowlist_check if the profile '
+  'allowlist_status != ''allowed''; callers must map 42501 to HTTP 403.';
 
 NOTIFY pgrst, 'reload schema';
