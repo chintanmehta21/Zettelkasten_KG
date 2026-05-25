@@ -16,6 +16,8 @@ from typing import Any, Awaitable, Callable
 
 import httpx
 
+from website.features.summarization_engine.source_ingest.youtube import tier_health
+
 logger = logging.getLogger(__name__)
 
 
@@ -162,12 +164,14 @@ class TranscriptChain:
             async with asyncio.timeout(cap_ms / 1000):
                 result = await spec.fn(video_id, config)
         except (asyncio.TimeoutError, TimeoutError):
+            elapsed_ms = int((time.monotonic() - tier_start) * 1000)
             attempts.append({
                 "tier": "tier_timeout",
                 "status": "timeout",
                 "reason": f"tier {spec.name} exceeded cap {cap_ms}ms",
-                "latency_ms": int((time.monotonic() - tier_start) * 1000),
+                "latency_ms": elapsed_ms,
             })
+            tier_health.record_failure(spec.name, f"tier_timeout cap={cap_ms}ms")
             return None
         attempts.append({
             "tier": result.tier.value,
@@ -175,6 +179,10 @@ class TranscriptChain:
             "reason": (result.error or "")[:200] if not result.success else "",
             "latency_ms": result.latency_ms,
         })
+        if result.success:
+            tier_health.record_success(spec.name, result.latency_ms)
+        else:
+            tier_health.record_failure(spec.name, result.error or "tier_returned_failure")
         return result
 
     async def _run_race(
@@ -249,7 +257,11 @@ class TranscriptChain:
         if still_running:
             await asyncio.gather(*still_running, return_exceptions=True)
 
-        # Record every spec's outcome for forensics.
+        # Record every spec's outcome for forensics. Per-tier health
+        # (``tier_health``) is also updated here: a race **loser** is NOT a
+        # tier failure — it just lost the race — so cancellations are NOT
+        # recorded as failures. Only true failures (timeout / exception /
+        # ``result.success=False``) bump the error counters.
         for task, spec in tasks_by_spec.items():
             tier_id = f"race:{spec.name}"
             if task in outcomes:
@@ -263,6 +275,7 @@ class TranscriptChain:
                             "reason": "",
                             "latency_ms": result.latency_ms,
                         })
+                        tier_health.record_success(spec.name, result.latency_ms)
                     else:
                         attempts.append({
                             "tier": tier_id,
@@ -270,6 +283,10 @@ class TranscriptChain:
                             "reason": (result.error or "")[:200] if not result.success else "",
                             "latency_ms": result.latency_ms,
                         })
+                        if not result.success:
+                            tier_health.record_failure(
+                                spec.name, result.error or "tier_returned_failure"
+                            )
                 elif kind == "timeout":
                     attempts.append({
                         "tier": tier_id,
@@ -277,6 +294,7 @@ class TranscriptChain:
                         "reason": "per-spec cap exceeded",
                         "latency_ms": int((time.monotonic() - race_start) * 1000),
                     })
+                    tier_health.record_failure(spec.name, "per-spec cap exceeded")
                 else:  # "error"
                     attempts.append({
                         "tier": tier_id,
@@ -284,8 +302,12 @@ class TranscriptChain:
                         "reason": str(payload)[:200],
                         "latency_ms": int((time.monotonic() - race_start) * 1000),
                     })
+                    tier_health.record_failure(spec.name, str(payload)[:200])
             else:
                 # Task was still running when race ended → cancelled.
+                # Cancellations do NOT bump tier_health.error_count: a tier
+                # that was healthy but lost the race to a faster sibling
+                # should not look unhealthy on /api/health.
                 attempts.append({
                     "tier": tier_id,
                     "status": "cancelled",
