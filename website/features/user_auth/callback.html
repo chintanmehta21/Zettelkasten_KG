@@ -76,15 +76,22 @@
                 auth: {
                     persistSession: true,
                     autoRefreshToken: true,
+                    // detectSessionInUrl: true auto-exchanges ?code= in createClient().
+                    // flowType: 'pkce' explicit per Supabase docs (default differs between
+                    // local and hosted projects). Calling exchangeCodeForSession again here
+                    // would burn the (single-use) verifier and surface a spurious
+                    // "Sign-in failed: …" toast (supabase/auth-js#1026, #782).
                     detectSessionInUrl: true,
+                    flowType: 'pkce',
                     storage: window.localStorage,
                     storageKey: 'zk-auth-token',
                 }
             });
 
-            var result = await sb.auth.exchangeCodeForSession(window.location.href);
-
-            if (result.error) throw result.error;
+            var sessionResult = await sb.auth.getSession();
+            if (sessionResult.error || !sessionResult.data || !sessionResult.data.session) {
+                throw sessionResult.error || new Error('No session established after OAuth redirect');
+            }
 
             statusEl.textContent = 'Signed in! Redirecting...';
             if (window.browserCache && typeof window.browserCache.patchState === 'function') {
