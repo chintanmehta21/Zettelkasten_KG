@@ -736,6 +736,7 @@ async def add_zettel(
             accepted,
             status_code=202,
             headers={
+                "X-Operation-Id": canonical_op_id,
                 "Location": f"/api/operations/{canonical_op_id}",
                 "Retry-After": "2",
             },
@@ -878,6 +879,7 @@ async def _accept_and_spawn(
         accepted,
         status_code=202,
         headers={
+            "X-Operation-Id": canonical_op_id,
             "Location": f"/api/operations/{canonical_op_id}",
             "Retry-After": "2",
         },
@@ -1030,6 +1032,7 @@ async def operation_status(
             pending,
             status_code=202,
             headers={
+                "X-Operation-Id": operation_id,
                 "Location": f"/api/operations/{operation_id}",
                 "Retry-After": "2",
                 **_NO_STORE_HEADERS,
@@ -1057,6 +1060,7 @@ async def operation_status(
             payload,
             status_code=202,
             headers={
+                "X-Operation-Id": operation_id,
                 "Location": f"/api/operations/{operation_id}",
                 "Retry-After": _retry_after_for_age(row.get("created_at")),
                 **_NO_STORE_HEADERS,
@@ -1121,7 +1125,7 @@ async def operation_status(
     return JSONResponse(
         row.get("response") or {},
         status_code=202,
-        headers={"Retry-After": "2"},
+        headers={"X-Operation-Id": operation_id, "Retry-After": "2"},
     )
 
 
