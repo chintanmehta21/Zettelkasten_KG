@@ -28,6 +28,11 @@ _EXPECTED_HREFS_BY_PAGE = {
 }
 
 
+# Note: per-page ITEM ORDER is asserted at the config layer by
+# tests/unit/website/test_page_menus_config.py::test_per_page_authed_lists_match_spec
+# (which checks `[item["key"] for item in authed] == EXPECTED_AUTHED[page_key]`).
+# Route-level tests below assert set-presence only to keep them resilient to
+# benign attribute-order changes in the rendered HTML.
 @pytest.mark.parametrize("path,expected_hrefs", list(_EXPECTED_HREFS_BY_PAGE.items()))
 def test_route_renders_expected_pr2_dropdown_items(client, path, expected_hrefs):
     resp = client.get(path)
