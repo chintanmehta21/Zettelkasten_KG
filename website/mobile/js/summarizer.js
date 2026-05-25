@@ -65,6 +65,7 @@
         }
         const data = await r.json();
         const id = data.id || data.zettel_id || data.canonical_zettel_id || '';
+        try { sessionStorage.setItem('zk_just_captured', JSON.stringify(data)); } catch {}
         window.location.assign('/m/zettels' + (id ? '?just_captured=' + encodeURIComponent(id) : ''));
       } catch (err) {
         console.error(err);
