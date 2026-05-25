@@ -29,6 +29,7 @@ def _problem_dict(
     type_slug: str,
     operation_id: str | None = None,
     instance: str | None = None,
+    url: str | None = None,
     extra: dict[str, Any] | None = None,
     errors: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -44,6 +45,14 @@ def _problem_dict(
 
     Adds the canonical ``code`` extension (== ``type_slug``) so async-finalized
     failures can be routed to the same class-specific UI as inline sync 4xxs.
+
+    ``url``, when set, surfaces the original Add-Zettel request URL as a
+    top-level extension member (`body["url"]`). This is the post-2026-05-25
+    forensic-window fix: ``core.operations.error`` previously carried no URL
+    on failure, so any failed ingest >24h old (after the operations row was
+    pruned) was unrecoverable. With ``url`` populated, ``error->>'url'``
+    is now indexable and lets the operator enumerate which URLs failed
+    without needing droplet logs (which are wiped on every blue/green flip).
 
     ``errors`` is the RFC 9457 §3.2 extension for multi-field validation
     failures (Spring / JSON:API community convention): each entry is a
@@ -73,6 +82,8 @@ def _problem_dict(
     # Canonical extension member used by the frontend for class-specific UI
     # dispatch. Identical key in sync 4xx bodies and async-finalized failures.
     body["code"] = type_slug
+    if url:
+        body["url"] = url
     if errors:
         body["errors"] = list(errors)
     if extra:
@@ -80,6 +91,6 @@ def _problem_dict(
             if k in _CANONICAL_MEMBERS:
                 continue  # canonical fields win; extension drop silently
             if k in body:
-                continue  # don't overwrite operation_id / code / errors either
+                continue  # don't overwrite operation_id / code / url / errors either
             body[k] = v
     return body
