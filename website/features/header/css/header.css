@@ -25,6 +25,13 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 1.4rem;
+    /* PR6: header sits at body root (PR4) before .container in DOM order. Without
+     * an explicit stacking context here, page content like the Add Zettel / Add
+     * Kasten circles paints on top of the avatar dropdown (their default-auto
+     * z-index beats the dropdown's z-index, which is local to header context).
+     * position:relative + z-index lifts the whole header above page content. */
+    position: relative;
+    z-index: 100;
 }
 
 .zk-header-start { display: flex; justify-content: flex-start; }
@@ -144,7 +151,11 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 0.375rem;
-    z-index: 200;
+    /* PR6: high z-index keeps the dropdown above any page-level element
+     * (Add Zettel/Kasten circles, stat cards, list items) but below the
+     * full-screen modal overlays (those use 1000+) so the dropdown still
+     * hides correctly when a modal opens. */
+    z-index: 950;
     box-shadow: var(--shadow-lg);
 }
 .home-dropdown.open,
