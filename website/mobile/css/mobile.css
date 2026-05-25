@@ -39,6 +39,13 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  /* iter-2a header + nav sizing tokens (consumed by Tasks 9–13) */
+  --m-header-h: 56px;
+  --m-bottomnav-h: 64px;
+  --m-bg: hsl(224, 28%, 5%);
+  --m-header-btn-size: 38px;
+  --m-teal: var(--accent);
+  --m-amber: #D4A024;
 }
 
 html {

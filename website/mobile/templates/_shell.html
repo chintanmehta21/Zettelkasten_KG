@@ -21,18 +21,24 @@
 <body class="<!--ZK_MOBILE_BODY_CLASS-->">
   <header class="m-header" role="banner">
     <a class="m-header-brand" href="/m/" aria-label="Zettelkasten home">
-      <svg class="m-header-logo" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="9"></circle>
-        <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
-      </svg>
+      <img class="m-header-logo" src="/artifacts/company_logo.svg" width="22" height="22" alt="">
       <span class="m-header-brand-text">Zettelkasten</span>
     </a>
-    <h1 class="m-header-title" id="m-page-title"><!--ZK_MOBILE_PAGE_TITLE--></h1>
-    <button class="m-header-avatar" id="m-avatar-btn" type="button" aria-label="Sign in or open account menu">
-      <svg class="m-header-avatar-anon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
+    <span class="m-header-spacer" aria-hidden="true"></span>
+    <button class="m-header-install" id="m-install-btn" type="button" aria-label="Install app" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M12 3v12"/>
+        <path d="M7 10l5 5 5-5"/>
+        <rect x="4" y="17" width="16" height="4" rx="1"/>
       </svg>
+    </button>
+    <button class="m-header-avatar" id="m-avatar-btn" type="button" aria-label="Sign in or open account menu">
+      <span class="m-header-avatar-anon" id="m-avatar-anon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </span>
       <span class="m-header-avatar-image" id="m-avatar-image" hidden></span>
     </button>
   </header>
