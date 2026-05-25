@@ -1,9 +1,8 @@
-/* glass-nav.css — backdrop-filter recipe scoped to .m-bottom-tabs.glass-nav.
-   Recipe sourced from iter-2a research; see specs/2026-05-25-mobile-ui-fixes-2a-design.md §10. */
+/* glass-nav.css — backdrop-filter recipe applied directly to .m-bottom-tabs.
+   Recipe sourced from iter-2a research; see specs/2026-05-25-mobile-ui-fixes-2a-design.md §10.
+   Scoped to the single .m-bottom-tabs element (the mobile bottom nav). */
 
-.m-bottom-tabs.glass-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
+.m-bottom-tabs {
   background: rgba(10, 11, 20, 0.68);
   -webkit-backdrop-filter: blur(16px) saturate(170%);
           backdrop-filter: blur(16px) saturate(170%);
@@ -15,8 +14,8 @@
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .m-bottom-tabs.glass-nav { background: rgba(10, 11, 20, 0.94); }
+  .m-bottom-tabs { background: rgba(10, 11, 20, 0.94); }
 }
 
-.m-bottom-tabs.glass-nav .m-tab.is-active .m-tab-icon { color: var(--m-teal, #14b8a6); }
-.m-bottom-tabs.glass-nav .m-tab.is-active .m-tab-label { color: var(--m-teal, #14b8a6); font-weight: 600; }
+.m-bottom-tabs .m-tab.is-active .m-tab-icon { color: var(--m-teal, #14b8a6); }
+.m-bottom-tabs .m-tab.is-active .m-tab-label { color: var(--m-teal, #14b8a6); font-weight: 600; }
