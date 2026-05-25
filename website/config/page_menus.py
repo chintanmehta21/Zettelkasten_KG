@@ -121,6 +121,8 @@ _SIGNOUT: MenuItem = {
 _SIGNIN: MenuItem = {
     "key": "signin",
     "label": "Sign in",
+    # JS-disabled fallback: send anon to landing so they can use its login modal.
+    # Primary anon path is anon_avatar_action="open-login-modal" (opens modal in-place).
     "href": "/",
     "icon": (
         '<svg viewBox="0 0 24 24" fill="none">'
