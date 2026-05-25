@@ -1,4 +1,5 @@
 """Supabase-backed reads/writes of user_metadata.avatar_url."""
+
 from __future__ import annotations
 
 import logging

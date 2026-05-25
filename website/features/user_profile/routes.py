@@ -1,4 +1,5 @@
 """GET /api/profile, PATCH /api/profile."""
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,9 @@ def _require_user(request: Request) -> dict[str, Any]:
     fallback so server-rendered mobile pages can render personalised content
     on first paint without an extra round-trip.
     """
-    from website.api.auth import _decode_token  # reuses existing JWKS/HS256 verification
+    from website.api.auth import (
+        _decode_token,
+    )  # reuses existing JWKS/HS256 verification
 
     # 1) Try Authorization header
     auth_h = request.headers.get("authorization") or ""
@@ -35,18 +38,24 @@ def _require_user(request: Request) -> dict[str, Any]:
     # and the modern ``sb-<ref>-auth-token`` cookie name.
     if not token:
         for k, v in request.cookies.items():
-            if k == "sb-access-token" or (k.startswith("sb-") and k.endswith("-auth-token")):
+            if k == "sb-access-token" or (
+                k.startswith("sb-") and k.endswith("-auth-token")
+            ):
                 token = v
                 break
 
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no session")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="no session"
+        )
 
     try:
         claims = _decode_token(token)
     except Exception as exc:
         logger.warning("profile auth: token decode failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid session")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid session"
+        )
 
     return {
         "id": claims.get("sub"),
@@ -73,7 +82,9 @@ async def patch_profile(
 ) -> UserProfile:
     # repository.update_avatar is sync (supabase-py v2 client is sync);
     # dispatch to the default thread pool to avoid blocking the event loop.
-    updated = await asyncio.to_thread(repository.update_avatar, user["id"], body.avatar_url)
+    updated = await asyncio.to_thread(
+        repository.update_avatar, user["id"], body.avatar_url
+    )
     return UserProfile(
         user_id=updated["id"],
         email=updated.get("email"),
