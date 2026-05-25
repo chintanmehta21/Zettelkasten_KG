@@ -18,6 +18,7 @@ import time
 
 import pytest
 
+from website.features.summarization_engine.source_ingest.youtube import tier_health
 from website.features.summarization_engine.source_ingest.youtube.tiers import (
     RaceStage,
     TierName,
@@ -26,6 +27,14 @@ from website.features.summarization_engine.source_ingest.youtube.tiers import (
     TranscriptChain,
     build_default_chain,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_tier_health():
+    """Each test starts with an empty tier_health table."""
+    tier_health.reset()
+    yield
+    tier_health.reset()
 
 
 # ---------- shared helpers ----------
@@ -404,3 +413,178 @@ def test_default_chain_total_budget_under_90s():
     worst_case_ms = stages[0].cap_ms + sum(s.cap_ms for s in stages[1:])
     assert worst_case_ms <= 90_000
     assert worst_case_ms <= chain._budget_ms  # noqa: SLF001
+
+
+# ---------- tier_health telemetry ----------
+
+
+@pytest.mark.asyncio
+async def test_tier_health_records_success_after_race_winner():
+    """The race winner's TierSpec.name is recorded in tier_health with a success."""
+
+    async def fast(video_id, config):
+        await asyncio.sleep(0.01)
+        return _ok("fast")
+
+    async def slow(video_id, config):
+        await asyncio.sleep(10)
+        return _ok("never")
+
+    chain = TranscriptChain(
+        stages=[
+            RaceStage(
+                specs=(
+                    TierSpec(fn=fast, name="fast", cap_ms=5_000),
+                    TierSpec(fn=slow, name="slow", cap_ms=5_000),
+                ),
+                cap_ms=5_000,
+            ),
+        ],
+        budget_ms=10_000,
+    )
+    await chain.run(video_id="x", config={})
+
+    snap = tier_health.snapshot()
+    assert "fast" in snap, f"winner should be in tier_health: {snap}"
+    assert snap["fast"]["success_count"] >= 1
+    assert snap["fast"]["last_success_at"] is not None
+    # Race loser (cancelled) MUST NOT show up as a failure — losing a race
+    # is not the tier being unhealthy.
+    if "slow" in snap:
+        assert snap["slow"]["error_count"] == 0, (
+            f"cancellation should not bump error_count: {snap['slow']}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_tier_health_records_failure_on_sequential_timeout():
+    """A sequential tier hitting its per-tier cap bumps error_count."""
+
+    async def hang(video_id, config):
+        await asyncio.sleep(5)
+        return _ok("never")
+
+    chain = TranscriptChain(
+        stages=[TierSpec(fn=hang, name="my_hang_tier", cap_ms=50)],
+        budget_ms=5_000,
+    )
+    await chain.run(video_id="x", config={})
+
+    snap = tier_health.snapshot()
+    assert "my_hang_tier" in snap
+    assert snap["my_hang_tier"]["error_count"] >= 1
+    assert snap["my_hang_tier"]["last_error_at"] is not None
+    assert "cap" in (snap["my_hang_tier"]["last_error_reason"] or "")
+
+
+@pytest.mark.asyncio
+async def test_tier_health_records_failure_when_result_success_false():
+    """A tier returning result.success=False bumps error_count."""
+
+    async def soft_fail(video_id, config):
+        return _fail("soft_fail")
+
+    chain = TranscriptChain(
+        stages=[TierSpec(fn=soft_fail, name="my_soft_fail", cap_ms=5_000)],
+        budget_ms=5_000,
+    )
+    await chain.run(video_id="x", config={})
+
+    snap = tier_health.snapshot()
+    assert "my_soft_fail" in snap
+    assert snap["my_soft_fail"]["error_count"] == 1
+    assert snap["my_soft_fail"]["success_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_tier_health_records_failure_on_race_per_spec_timeout():
+    """Per-spec timeout inside a race is recorded as a failure (not cancellation)."""
+
+    async def timeouty(video_id, config):
+        await asyncio.sleep(5)
+        return _ok("never")
+
+    async def also_timeouty(video_id, config):
+        await asyncio.sleep(5)
+        return _ok("never")
+
+    chain = TranscriptChain(
+        stages=[
+            RaceStage(
+                specs=(
+                    TierSpec(fn=timeouty, name="t_a", cap_ms=50),
+                    TierSpec(fn=also_timeouty, name="t_b", cap_ms=50),
+                ),
+                cap_ms=200,
+            ),
+        ],
+        budget_ms=5_000,
+    )
+    await chain.run(video_id="x", config={})
+
+    snap = tier_health.snapshot()
+    # Both tiers hit their per-spec cap and are recorded as failures
+    # (NOT as cancellation — they actually exceeded their cap before the
+    # race window closed; cancellation only happens when one tier wins).
+    for name in ("t_a", "t_b"):
+        assert name in snap, f"{name} should be in tier_health: {snap}"
+        assert snap[name]["error_count"] >= 1
+
+
+def test_tier_health_snapshot_is_a_copy_not_a_view():
+    """Mutating the returned snapshot must NOT affect future calls."""
+    tier_health.record_success("probe", latency_ms=100)
+    snap1 = tier_health.snapshot()
+    snap1["probe"]["success_count"] = 99999  # mutate the copy
+    snap2 = tier_health.snapshot()
+    assert snap2["probe"]["success_count"] == 1, (
+        "snapshot() must return a copy, not a live view"
+    )
+
+
+def test_tier_health_empty_when_no_activity():
+    """Fresh process → snapshot is {}."""
+    assert tier_health.snapshot() == {}
+
+
+# ---------- /api/health integration ----------
+
+
+def test_api_health_exposes_yt_tier_health_when_populated():
+    """After a tier records, /api/health returns the snapshot under ``yt_tier_health``."""
+    from fastapi.testclient import TestClient
+
+    from website.app import create_app
+
+    # Seed the per-process tier_health BEFORE the app reads it.
+    tier_health.record_success("webshare", latency_ms=42)
+    tier_health.record_failure("gemini_youtube_url", "tier_timeout cap=20000ms")
+
+    with TestClient(create_app()) as client:
+        resp = client.get("/api/health")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert "yt_tier_health" in body, f"expected yt_tier_health in /api/health: {body}"
+    snap = body["yt_tier_health"]
+    assert snap["webshare"]["success_count"] == 1
+    assert snap["webshare"]["last_success_latency_ms"] == 42
+    assert snap["gemini_youtube_url"]["error_count"] == 1
+    assert "cap" in snap["gemini_youtube_url"]["last_error_reason"]
+
+
+def test_api_health_omits_yt_tier_health_when_empty():
+    """Fresh process → /api/health does not include the key at all."""
+    from fastapi.testclient import TestClient
+
+    from website.app import create_app
+
+    # tier_health was reset by the autouse fixture; confirm empty.
+    assert tier_health.snapshot() == {}
+    with TestClient(create_app()) as client:
+        resp = client.get("/api/health")
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert "yt_tier_health" not in body, (
+        "should omit the key when no tier has reported yet"
+    )

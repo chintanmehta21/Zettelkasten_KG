@@ -259,6 +259,21 @@ async def health(request: Request):
     if monitor is not None:
         payload["event_loop_lag"] = monitor.snapshot()
 
+    # PR #91 (2026-05-25): per-tier health for the YouTube transcript chain.
+    # Per-worker state (gunicorn --preload), so values reflect THIS worker
+    # only — Caddy load-balances across workers so each is sampled over time.
+    # See website/features/summarization_engine/source_ingest/youtube/tier_health.py
+    try:
+        from website.features.summarization_engine.source_ingest.youtube import (
+            tier_health as _tier_health,
+        )
+        snapshot = _tier_health.snapshot()
+        if snapshot:
+            payload["yt_tier_health"] = snapshot
+    except Exception:
+        # Best-effort telemetry — never fatal to /health.
+        pass
+
     # iter-12 T31 R4: bandit pathology metrics (5 ops-dashboard fields).
     # All collected from in-process telemetry; never expose model/score internals.
     bandit_state = getattr(request.app.state, "bandit_telemetry_snapshot", None)
