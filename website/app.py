@@ -741,14 +741,14 @@ def create_app(lifespan=None) -> FastAPI:
             nexus_index = NEXUS_DIR / "index.html"
             if not nexus_index.exists():
                 raise HTTPException(status_code=503, detail="Nexus UI assets are not available")
-            response = _render_with_shell(nexus_index)
+            response = _render_with_shell(nexus_index, page_key="nexus")
             return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/zettels")
     async def user_zettels(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        response = _render_with_shell(USER_ZETTELS_DIR / "index.html")
+        response = _render_with_shell(USER_ZETTELS_DIR / "index.html", page_key="zettels")
         return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/profile")
@@ -756,21 +756,21 @@ def create_app(lifespan=None) -> FastAPI:
         """Profile page — Trash recovery surface (exec/DB_delete_zettel_refine--1a)."""
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        response = _render_with_shell(USER_PROFILE_DIR / "index.html")
+        response = _render_with_shell(USER_PROFILE_DIR / "index.html", page_key="profile")
         return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/kastens")
     async def user_kastens(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        response = _render_with_shell(USER_KASTENS_DIR / "index.html")
+        response = _render_with_shell(USER_KASTENS_DIR / "index.html", page_key="kastens")
         return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/home/rag")
     async def user_rag(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        response = _render_with_shell(USER_RAG_DIR / "index.html")
+        response = _render_with_shell(USER_RAG_DIR / "index.html", page_key="rag")
         return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/summarization-engine")
@@ -793,7 +793,7 @@ def create_app(lifespan=None) -> FastAPI:
         # alert is now driven by ``POST /api/monitor/pricing-visit`` which
         # the page JS fires once it has a Supabase JWT in localStorage.
         # That auth gate is what filters synthetic traffic out.
-        response = _render_with_shell(PRICING_DIR / "index.html")
+        response = _render_with_shell(PRICING_DIR / "index.html", page_key="pricing")
         return _maybe_set_desktop_cookie(request, response)
 
     return app
