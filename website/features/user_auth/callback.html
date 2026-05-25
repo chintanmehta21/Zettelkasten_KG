@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106"></script>
     <script src="/browser-cache/js/cache.js?v=20260404f"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -88,9 +88,48 @@
                 }
             });
 
+            // initialize() returns the real exchange error when detectSessionInUrl
+            // fails internally; getSession() does NOT replay it (verified in
+            // GoTrueClient.ts _initialize branch). Race against a 12s timeout to
+            // guard against the infinite-lock deadlock documented in
+            // supabase-js #1594 / #2013 (iOS WebKit + cross-tab). 12s leaves
+            // ~6s headroom over Supabase token-exchange p99 on slow 3G.
+            // Defensive typeof: initialize() is public in current auth-js but
+            // marked @experimental in some 2.x minors — fall back to a plain
+            // getSession() if absent so we never throw "is not a function".
+            var initResult = null;
+            if (typeof sb.auth.initialize === 'function') {
+                var INIT_TIMEOUT_MS = 12000;
+                initResult = await Promise.race([
+                    sb.auth.initialize(),
+                    new Promise(function (_resolve, reject) {
+                        setTimeout(function () {
+                            reject(new Error('Auth init timed out after ' + (INIT_TIMEOUT_MS / 1000) + 's (possible lock deadlock)'));
+                        }, INIT_TIMEOUT_MS);
+                    })
+                ]);
+            }
+            if (initResult && initResult.error) {
+                var initErr = initResult.error;
+                // Common cause for "No session" after a successful Supabase user
+                // creation: PKCE code_verifier missing in localStorage — the
+                // initiating client wasn't in pkce flow, or the user started OAuth
+                // in a different storage partition (PWA vs Safari tab, in-app
+                // browser). Surface the hint so the next user report is
+                // diagnosable from the toast alone.
+                var hint = '';
+                try {
+                    if (!window.localStorage.getItem('zk-auth-token-code-verifier')) {
+                        hint = ' [no PKCE verifier — retry from a fresh tab]';
+                    }
+                } catch (_storageErr) {
+                    hint = ' [localStorage blocked — Lockdown / private mode?]';
+                }
+                throw new Error('OAuth exchange failed: ' + (initErr.message || initErr.code || 'unknown') + hint);
+            }
             var sessionResult = await sb.auth.getSession();
             if (sessionResult.error || !sessionResult.data || !sessionResult.data.session) {
-                throw sessionResult.error || new Error('No session established after OAuth redirect');
+                throw sessionResult.error || new Error('OAuth completed but no session in storage (storage adapter issue?)');
             }
 
             statusEl.textContent = 'Signed in! Redirecting...';
