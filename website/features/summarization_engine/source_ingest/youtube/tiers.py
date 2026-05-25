@@ -15,25 +15,19 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 import httpx
-from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
-
-_HEALTH_CACHE_PATH = (
-    Path(__file__).resolve().parents[5]
-    / "docs"
-    / "summary_eval"
-    / "_cache"
-    / "youtube_instance_health.json"
-)
 
 
 class TierName(str, Enum):
     YTDLP_PLAYER_ROTATION = "ytdlp_player_rotation"
     GEMINI_FILEDATA = "gemini_filedata"
     TRANSCRIPT_API_DIRECT = "transcript_api_direct"
-    PIPED_POOL = "piped_pool"
-    INVIDIOUS_POOL = "invidious_pool"
+    # PIPED_POOL + INVIDIOUS_POOL retired 2026-05-25 (PR #91): public pools
+    # were mass-blocked by YouTube on 2024-12-19; only 6 Invidious instances
+    # officially listed (down from ~40 in 2023) and most have broken
+    # subtitles. Maintenance cost exceeded value contributed — see
+    # docs/claude_audits/yt_chain_research_2026-05-25.md §C.
     GEMINI_AUDIO = "gemini_audio"
     METADATA_ONLY = "metadata_only"
 
@@ -389,148 +383,15 @@ async def tier_transcript_api_via_webshare(video_id: str, config: dict) -> TierR
         )
 
 
-def _load_health() -> dict[str, str]:
-    if not _HEALTH_CACHE_PATH.exists():
-        return {}
-    try:
-        return json.loads(_HEALTH_CACHE_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _save_health(health: dict[str, str]) -> None:
-    try:
-        _HEALTH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _HEALTH_CACHE_PATH.write_text(json.dumps(health, indent=2), encoding="utf-8")
-    except OSError:
-        return
-
-
-def _is_healthy(instance: str, ttl_hours: int) -> bool:
-    health = _load_health()
-    last_bad = health.get(instance)
-    if not last_bad:
-        return True
-    try:
-        when = datetime.fromisoformat(last_bad)
-        return datetime.now(timezone.utc) - when > timedelta(hours=ttl_hours)
-    except Exception:
-        return True
-
-
-def _mark_unhealthy(instance: str) -> None:
-    health = _load_health()
-    health[instance] = datetime.now(timezone.utc).isoformat()
-    _save_health(health)
-
-
-async def _try_pool(
-    video_id: str,
-    instances: list[str],
-    pattern: str,
-    ttl_hours: int,
-    tier_name: TierName,
-) -> TierResult:
-    start = time.monotonic()
-    for instance in instances:
-        if not _is_healthy(instance, ttl_hours):
-            continue
-        url = pattern.format(instance=instance, vid=video_id)
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(url)
-                if resp.status_code != 200:
-                    _mark_unhealthy(instance)
-                    continue
-                data = resp.json()
-                caption_url = _extract_caption_url_from_pool_response(data)
-                transcript = ""
-                if caption_url:
-                    caption_resp = await client.get(urljoin(str(resp.url), caption_url))
-                    if caption_resp.status_code == 200:
-                        transcript = _caption_text_to_plaintext(caption_resp.text)
-                if transcript and len(transcript) > 100:
-                    return TierResult(
-                        tier=tier_name,
-                        transcript=transcript,
-                        success=True,
-                        confidence="high",
-                        latency_ms=int((time.monotonic() - start) * 1000),
-                        extra={"instance": instance, "caption_url": caption_url},
-                    )
-        except Exception as exc:
-            logger.warning("[%s] instance=%s exc=%s", tier_name.value, instance, exc)
-            _mark_unhealthy(instance)
-            continue
-    return TierResult(
-        tier=tier_name,
-        transcript="",
-        success=False,
-        latency_ms=int((time.monotonic() - start) * 1000),
-    )
-
-
-def _extract_caption_url_from_pool_response(data: dict) -> str:
-    """Return the first English captions URL advertised by the pool response."""
-    subtitles = data.get("subtitles") or data.get("captions") or []
-    for subtitle in subtitles:
-        code = (
-            subtitle.get("code")
-            or subtitle.get("languageCode")
-            or subtitle.get("label", "")
-        ).lower()
-        if "en" in code:
-            return subtitle.get("url", "") or ""
-    return ""
-
-
-def _caption_text_to_plaintext(text: str) -> str:
-    stripped = (text or "").lstrip()
-    if stripped.startswith("WEBVTT"):
-        return _vtt_to_plaintext(text)
-    try:
-        parsed = json.loads(text)
-    except Exception:
-        return text.strip()
-    if isinstance(parsed, list):
-        parts = []
-        for item in parsed:
-            if isinstance(item, dict):
-                value = item.get("text") or item.get("transcript") or item.get("body")
-                if value:
-                    parts.append(str(value))
-        return " ".join(parts).strip()
-    if isinstance(parsed, dict):
-        value = parsed.get("text") or parsed.get("transcript")
-        if value:
-            return str(value).strip()
-    return text.strip()
-
-
-async def tier_piped_pool(video_id: str, config: dict) -> TierResult:
-    instances = [f"https://{instance}" for instance in config.get("piped_instances", [])]
-    ttl = config.get("instance_health_ttl_hours", 1)
-    return await _try_pool(
-        video_id,
-        instances,
-        "{instance}/streams/{vid}",
-        ttl,
-        TierName.PIPED_POOL,
-    )
-
-
-async def tier_invidious_pool(video_id: str, config: dict) -> TierResult:
-    instances = [
-        f"https://{instance}" for instance in config.get("invidious_instances", [])
-    ]
-    ttl = config.get("instance_health_ttl_hours", 1)
-    return await _try_pool(
-        video_id,
-        instances,
-        "{instance}/api/v1/captions/{vid}",
-        ttl,
-        TierName.INVIDIOUS_POOL,
-    )
+# Public pool tiers (`tier_piped_pool`, `tier_invidious_pool`) and their
+# shared helpers (`_try_pool`, `_load_health`, `_save_health`, `_is_healthy`,
+# `_mark_unhealthy`, `_extract_caption_url_from_pool_response`,
+# `_caption_text_to_plaintext`) were removed 2026-05-25 (PR #91). YouTube's
+# mass-blocking event on 2024-12-19 left only 6 Invidious instances
+# officially listed (down from ~40 in 2023) and Piped's status page itself
+# was 502 in April 2025. Maintenance cost > value contributed.
+# See `docs/claude_audits/yt_chain_research_2026-05-25.md` §C.
+# git log can resurrect the code if YouTube's posture shifts.
 
 
 async def tier_gemini_audio(video_id: str, config: dict) -> TierResult:
@@ -865,15 +726,23 @@ async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
 
 
 def build_default_chain(config: dict) -> TranscriptChain:
+    """PR #91 (2026-05-25) chain shape — first stop on the 90 s budget.
+
+    Order/race logic is layered on top of this flat list by the next commit
+    (race semantics + double-bound per-tier caps). This commit only removes
+    the two dead public pools and demotes ``tier_gemini_youtube_url`` from
+    T1 to T3 — the engine-level race comes in the following commit so each
+    change is bisectable.
+    """
     return TranscriptChain(
         tiers=[
-            tier_gemini_youtube_url,            # T1 — server-side fetch (H1)
-            tier_transcript_api_via_webshare,   # T2 — Webshare proxy (H3)
-            tier_ytdlp_cookies_impersonate,     # T3 — cookies+impersonate+POT (H3)
-            tier_invidious_pool,                # T4 — Invidious pool
-            tier_piped_pool,                    # T5 — Piped pool
-            tier_gemini_audio,                  # T6 — Gemini audio fallback
-            tier_metadata_only,                 # T7 — metadata-only (H2 gate refuses)
+            tier_transcript_api_via_webshare,   # T1 — Webshare residential
+            tier_ytdlp_cookies_impersonate,     # T2 — yt-dlp + cookies + POT
+            tier_gemini_youtube_url,            # T3 — Gemini server-fetch
+                                                #      (demoted from T1; flaky per
+                                                #       python-genai #1898, #1359)
+            tier_gemini_audio,                  # T4 — Gemini audio fallback
+            tier_metadata_only,                 # T5 — metadata-only (H2 gate refuses)
         ],
         budget_ms=config.get("transcript_budget_ms", 90000),
     )
