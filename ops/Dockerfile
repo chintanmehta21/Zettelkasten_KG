@@ -101,12 +101,18 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=10000 \
-    PROMETHEUS_MULTIPROC_DIR=/tmp/prom_multiproc
+    PROMETHEUS_MULTIPROC_DIR=/app/var/prom
 
-# Phase 4 / Task 4.6: multiprocess Prometheus exposition needs a shared
-# directory each worker writes its metrics shards to. Created here with
-# the appuser writable so the 2 gunicorn workers + master can all write.
-RUN mkdir -p /tmp/prom_multiproc && chown -R appuser:appuser /tmp/prom_multiproc
+# Multiprocess Prometheus exposition needs a shared directory each worker
+# writes its metrics shards to. Phase 4 / Task 4.6 originally placed this
+# at /tmp/prom_multiproc; on 2026-05-25 the Naruto live-test repro caught
+# the host-side systemd-tmpfiles / compose-tmpfs class of bug wiping /tmp
+# mid-process, raising FileNotFoundError out of Counter.labels(...).inc().
+# Moved to /app/var/prom (in-image, app-namespaced) so no /tmp cleaner can
+# reach it. Django-Prometheus docs name `/run` or `/var/run` as the
+# canonical alternatives; we go one step further and namespace under the
+# app's own /app/var/ tree.
+RUN mkdir -p /app/var/prom && chown -R appuser:appuser /app/var/prom
 
 EXPOSE 10000
 

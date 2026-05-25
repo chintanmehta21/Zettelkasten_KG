@@ -52,12 +52,66 @@ async def _proc_stats_logger_loop() -> None:
             return
 
 
+def _ensure_prometheus_multiproc_dir() -> None:
+    """Belt-and-suspenders for ``PROMETHEUS_MULTIPROC_DIR``.
+
+    The Dockerfile creates ``/app/var/prom`` at build time, but a host-side
+    ``systemd-tmpfiles`` rule (Podman #7852 class of bug) or a stray
+    ``tmpfs:`` re-mount can still wipe in-image dirs at runtime on certain
+    runtimes. On 2026-05-25 the original ``/tmp/prom_multiproc`` placement
+    hit exactly that failure (``FileNotFoundError`` out of every
+    ``Counter.labels(...).inc()``). Two protections, both belt-and-suspenders
+    with the path move:
+
+      1. ``makedirs(exist_ok=True)`` — recreates the dir if it has been
+         removed since image build.
+      2. wipe stale ``*.db`` files from prior process generations — the
+         upstream ``prometheus_client`` README is explicit: "directory must
+         be wiped between Gunicorn runs". Avoids the Nautobot #4234 class
+         of bug (per-PID file accumulation over months → inode exhaustion).
+
+    Failures inside this helper are swallowed and logged. The harness on
+    each emit (`safe_metrics`) is the final safety net if both protections
+    somehow fail.
+    """
+    try:
+        from glob import glob
+
+        path = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        if not path:
+            return  # multiprocess mode disabled
+        os.makedirs(path, exist_ok=True)
+        # Per upstream guidance: wipe stale files left by the previous process
+        # generation; ``mark_process_dead`` only clears `live*` gauge files.
+        for stale in glob(os.path.join(path, "*.db")):
+            try:
+                os.unlink(stale)
+            except OSError:
+                # File raced into being deleted by another worker, or perms
+                # forbid the unlink — both are benign for a best-effort wipe.
+                pass
+        logger.info(
+            "PROMETHEUS_MULTIPROC_DIR ready (path=%s wiped=*.db)", path
+        )
+    except Exception:  # noqa: BLE001 — must never block lifespan startup
+        logger.exception(
+            "PROMETHEUS_MULTIPROC_DIR setup failed; safe_metrics harness "
+            "will swallow per-emit OSErrors"
+        )
+
+
 @contextlib.asynccontextmanager
 async def _lifespan(
     _app: FastAPI,
     *,
     loop_factory: Callable[[], Awaitable[None]] = _proc_stats_logger_loop,
 ):
+    # Ensure the multiprocess metrics dir is present + free of stale files
+    # BEFORE anything that might emit metrics during startup. Runs first
+    # in the lifespan so even an instrumentation-eager subsystem (heartbeat,
+    # enrichment worker) starts on a healthy substrate.
+    _ensure_prometheus_multiproc_dir()
+
     # iter-12 Class P: explicit executor sizing. Default min(32, cpu_count+4)=5
     # threads/process saturates under burst-12. PATH_F sizing per RESEARCH.md.
     _exec_workers = int(os.environ.get("RAG_EXECUTOR_MAX_WORKERS", "8"))
