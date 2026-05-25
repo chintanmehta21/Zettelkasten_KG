@@ -120,3 +120,27 @@ def test_dockerfile_pins_app_var_prom():
     assert "mkdir -p /app/var/prom" in dockerfile
     # The OLD /tmp placement must not creep back without removing the rationale.
     assert "PROMETHEUS_MULTIPROC_DIR=/tmp/prom_multiproc" not in dockerfile
+
+
+def test_compose_blue_green_mount_prom_dir_writable():
+    """Code-review blocker B1 (2026-05-25): blue + green compose set
+    ``read_only: true`` with only ``/tmp`` writable as ``tmpfs``. If
+    ``PROMETHEUS_MULTIPROC_DIR=/app/var/prom`` doesn't appear in the
+    ``tmpfs:`` list of BOTH files, the multiproc mmap writes raise EROFS at
+    runtime — same outage class as the FileNotFoundError this PR was opened
+    to fix, just with a different errno. ``safe_metrics`` would swallow it
+    but observability stays silently dead (the "silent drift" anti-pattern
+    the research doc warned about). Pin both compose files here so a
+    future refactor cannot regress this invariant."""
+    repo_root = Path(__file__).resolve().parents[3]
+    for color in ("blue", "green"):
+        compose = (repo_root / "ops" / f"docker-compose.{color}.yml").read_text(
+            encoding="utf-8"
+        )
+        assert "read_only: true" in compose, (
+            f"compose.{color} no longer read_only — security regression"
+        )
+        # The writable tmpfs declaration: path + size cap + appuser ownership.
+        assert "/app/var/prom:size=" in compose, (
+            f"compose.{color} missing /app/var/prom tmpfs mount; metrics will EROFS"
+        )

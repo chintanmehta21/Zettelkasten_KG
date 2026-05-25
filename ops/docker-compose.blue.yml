@@ -48,6 +48,14 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m
+      # PR #89 commit B (2026-05-25): PROMETHEUS_MULTIPROC_DIR moved off /tmp
+      # to /app/var/prom to escape the host-side /tmp wipe that hit the
+      # 2026-05-25 Naruto live repro. But /app lives on the read-only rootfs,
+      # so we must declare it as a writable tmpfs mount here. ~32 small .db
+      # files × 2 workers ≈ <1 MB typical, 64 MB cap with appuser ownership.
+      # Wipe-on-restart is preserved (upstream prometheus_client guidance:
+      # "directory must be wiped between Gunicorn runs").
+      - /app/var/prom:size=64m,uid=1000,gid=1000,mode=0700
     cap_drop:
       - ALL
     security_opt:
