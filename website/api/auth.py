@@ -17,7 +17,7 @@ from typing import Annotated
 
 import jwt as pyjwt
 from jwt import PyJWKClient
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
@@ -170,6 +170,7 @@ async def get_current_user(
 
 
 async def get_optional_user(
+    request: Request,
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
     ] = None,
@@ -179,11 +180,31 @@ async def get_optional_user(
     Use this for endpoints that work with or without auth
     (e.g., /api/graph returns global data when unauthenticated,
     user-scoped data when authenticated).
+
+    Observability contract (Prajeet audit 2026-05-25 §4.a): when the caller
+    sends a Bearer token that fails server-side validation, we MUST NOT
+    silently treat the request as anonymous — that path turned every one
+    of Prajeet's mobile/desktop captures into Zoro-mapped rows that he
+    couldn't find under his own user_id. Emit a structured WARNING and
+    tag ``request.state.auth_status`` so the middleware in
+    ``website/app.py`` can surface ``X-Auth-Status: jwt-dropped-to-anon``
+    on the response. Pinned by
+    ``tests/unit/website/test_auth_jwt_drop_observability.py``.
     """
     if credentials is None:
         return None
 
     try:
         return _decode_token(credentials.credentials)
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "JWT validation failed; dropping request to anonymous (%s)",
+            type(exc).__name__,
+        )
+        try:
+            request.state.auth_status = "jwt-dropped-to-anon"
+        except AttributeError:
+            # Defensive: a non-Request stub in old call sites shouldn't break
+            # the request path; observability degrades to log-only.
+            pass
         return None

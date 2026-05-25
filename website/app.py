@@ -310,6 +310,25 @@ def create_app(lifespan=None) -> FastAPI:
             headers={"Retry-After": "5"},
         )
 
+    # ── Prajeet 2026-05-25 §4.a: surface JWT-drop-to-anon to the client ──
+    # ``get_optional_user`` silently maps bad-JWT requests to anonymous (and
+    # downstream ``_effective_user_id`` to Zoro). The dep now tags
+    # ``request.state.auth_status``; this middleware reflects the tag onto
+    # the response as ``X-Auth-Status: jwt-dropped-to-anon`` so the frontend
+    # can force a re-auth modal instead of submitting under the wrong user.
+    # Legitimate anonymous traffic (no Authorization header) leaves the
+    # marker unset and the header absent — observability noise stays zero.
+    @app.middleware("http")
+    async def _auth_drop_status_header(request: Request, call_next):
+        response = await call_next(request)
+        try:
+            status = getattr(request.state, "auth_status", None)
+        except AttributeError:
+            status = None
+        if status:
+            response.headers["X-Auth-Status"] = status
+        return response
+
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
     # Sliding-window counter on global + per-IP 401 responses. Out-of-path
     # of auth.py (hot path stays fast); runs at response-egress time as a
