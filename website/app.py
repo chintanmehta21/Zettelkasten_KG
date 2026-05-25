@@ -732,7 +732,7 @@ def create_app(lifespan=None) -> FastAPI:
     async def home(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/", status_code=302)
-        response = _render_with_shell(HOME_DIR / "index.html")
+        response = _render_with_shell(HOME_DIR / "index.html", page_key="home")
         return _maybe_set_desktop_cookie(request, response)
 
     if nexus_enabled:

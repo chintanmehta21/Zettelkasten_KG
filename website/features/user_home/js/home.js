@@ -126,21 +126,15 @@
 
   // ── DOM refs ──────────────────────────────────────────────────────
 
-  var avatarBtn, avatarImg, avatarFallback, avatarDropdown, avatarWrap;
   var cardGrid, emptyState, zettelCount, userDisplayName;
   var addZettelDropdown, addZettelForm, addUrlInput, addDocumentInput, addDocumentBtn;
   var addSubmitBtn, addError, addLoading;
-  var menuProfile, menuNexus, menuSignout;
 
   function resolveDOM() {
-    // D-2 namespace: home owns its own duplicate avatar markup; header.html
-    // ships #avatar-btn/#avatar-dropdown/#menu-signout — renamed here so a
-    // future shell-injection of header on /home cannot silent-collide.
-    avatarBtn = document.getElementById('home-avatar-btn');
-    avatarImg = document.getElementById('home-avatar-img');
-    avatarFallback = document.getElementById('home-avatar-fallback');
-    avatarDropdown = document.getElementById('home-avatar-dropdown');
-    avatarWrap = document.getElementById('home-avatar-wrap');
+    // PR2 migration: /home now uses the shared header (header.html) injected
+    // by FastAPI's _render_with_shell. Avatar + dropdown + sign-out are
+    // owned by the shared ZKHeader module. home.js only resolves /home's
+    // page-specific DOM here.
     cardGrid = document.getElementById('card-grid');
     emptyState = document.getElementById('empty-state');
     zettelCount = document.getElementById('zettel-count');
@@ -153,9 +147,6 @@
     addSubmitBtn = document.getElementById('add-submit-btn');
     addError = document.getElementById('add-error');
     addLoading = document.getElementById('add-loading');
-    menuProfile = document.getElementById('menu-profile');
-    menuNexus = document.getElementById('menu-nexus');
-    menuSignout = document.getElementById('home-menu-signout');
   }
 
   function setBodyScrollLocked(locked) {
@@ -1597,50 +1588,25 @@
     // have that, so guard the whole function.
     if (window.__homeBindEventsRan) return;
     window.__homeBindEventsRan = true;
-    // Avatar dropdown toggle — IDs are home-namespaced (D-2) so header.js binds
-    // only header's #avatar-btn; the dataset.zkBound guard remains for re-init safety.
-    if (avatarBtn && !avatarBtn.dataset.zkBound) {
-      avatarBtn.dataset.zkBound = '1';
-      avatarBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        avatarDropdown.classList.toggle('open');
-        avatarBtn.setAttribute('aria-expanded', avatarDropdown.classList.contains('open') ? 'true' : 'false');
-      });
-    }
-
-    // Close dropdown on outside click
+    // Close add-zettel dropdown on outside click
     document.addEventListener('click', function (e) {
-      if (avatarDropdown && avatarWrap && !avatarWrap.contains(e.target)) {
-        avatarDropdown.classList.remove('open');
-        if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
-      }
       var addWrap = document.getElementById('add-zettel-wrap');
       if (addZettelDropdown && addWrap && !addWrap.contains(e.target)) {
         addZettelDropdown.classList.remove('open');
       }
     });
 
-    // Profile menu item → navigate to /profile (href takes over; close dropdown
-    // so the transition feels clean). Avatar picker has moved to /profile.
-    if (menuProfile) {
-      menuProfile.addEventListener('click', function () {
-        avatarDropdown.classList.remove('open');
-      });
-    }
-
-    if (menuNexus) {
-      menuNexus.addEventListener('click', function () {
-        if (avatarDropdown) avatarDropdown.classList.remove('open');
-      });
-    }
-
-    // Sign out
-    if (menuSignout) {
-      menuSignout.addEventListener('click', async function () {
-        if (_supabaseClient) {
-          await _supabaseClient.auth.signOut();
+    // PR2: sign-out owned by shared ZKHeader. Pass the Supabase teardown
+    // as the handler. ZKHeader.onSignOut idempotently binds the click.
+    if (window.ZKHeader && typeof window.ZKHeader.onSignOut === 'function') {
+      window.ZKHeader.onSignOut(async function () {
+        try {
+          if (_supabaseClient) {
+            await _supabaseClient.auth.signOut();
+          }
+        } finally {
+          window.location.href = '/';
         }
-        window.location.href = '/';
       });
     }
 
