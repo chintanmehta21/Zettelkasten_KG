@@ -27,7 +27,11 @@ from website.api.zettels_routes import router as zettels_router
 from website.features.refresh_button.refresh_routes import router as refresh_button_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
-from website.features.web_monitor import router as web_monitor_router
+from website.features.web_monitor import (
+    _hash_id,
+    maybe_fire_app_error_rate,
+    router as web_monitor_router,
+)
 from website.features.web_monitor.App_Errors import notify_app_error
 from website.features.web_monitor._env_validation import (
     log_web_monitor_env_warnings,
@@ -291,11 +295,6 @@ def create_app(lifespan=None) -> FastAPI:
             if response.status_code == 401 and not request.url.path.startswith(
                 ("/api/health", "/webhooks/monitor/")
             ):
-                from website.features.web_monitor import (
-                    _hash_id,
-                    maybe_fire_app_error_rate,
-                )
-
                 # Global rate: ≥ 100 401s / 5 min = credential-stuffing pattern.
                 maybe_fire_app_error_rate(
                     dedup_key="auth_401_global_burst",

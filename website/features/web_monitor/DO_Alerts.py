@@ -283,18 +283,15 @@ def maybe_fire_do_alert(
     sentinel = object()
     prev = _do_alert_alerted.setdefault(dedup_key, sentinel)
     if prev is not sentinel:
+        # Same inline-reset pattern as App_Errors.maybe_fire_app_error —
+        # re-arm without recursing when the dedup window has passed.
         if isinstance(prev, float) and (time.time() - prev) > dedup_seconds:
-            _do_alert_alerted.pop(dedup_key, None)
-            return maybe_fire_do_alert(
-                dedup_key=dedup_key,
-                title=title,
-                body=body,
-                severity=severity,
-                fields=fields,
-                dedup_seconds=dedup_seconds,
-            )
-        return False
-    _do_alert_alerted[dedup_key] = time.time()
+            _do_alert_alerted[dedup_key] = time.time()
+            _do_alert_alerted.move_to_end(dedup_key)
+        else:
+            return False
+    else:
+        _do_alert_alerted[dedup_key] = time.time()
     if len(_do_alert_alerted) > _DO_ALERT_DEDUP_MAX:
         _do_alert_alerted.popitem(last=False)
 

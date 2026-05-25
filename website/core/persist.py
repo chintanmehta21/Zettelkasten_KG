@@ -624,8 +624,20 @@ async def persist_summarized_result(
                     maybe_fire_app_error,
                 )
 
+                # Include PG/PostgREST error code in the dedup key so
+                # distinct upstream failures (schema-cache miss vs RLS
+                # denial vs empty result) get distinct alert windows. Per
+                # iter-1f code review: a single shared dedup_key would
+                # silently swallow the second class within the 15-min
+                # window — exactly the mixed-mode failure pattern this
+                # alert exists to catch (2026-05-21 partial-write incident).
+                _err_code = (
+                    getattr(exc, "code", None)
+                    or getattr(exc, "pgcode", None)
+                    or "?"
+                )
                 maybe_fire_app_error(
-                    dedup_key=f"persist_v2_error:{type(exc).__name__}",
+                    dedup_key=f"persist_v2_error:{type(exc).__name__}:{_err_code}",
                     route="persist.persist_summarized_result[v2]",
                     exc_type=type(exc).__name__,
                     message=str(exc)[:400],

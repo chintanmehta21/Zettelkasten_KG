@@ -245,23 +245,17 @@ def maybe_fire_app_error(
     sentinel = object()
     prev = _app_error_alerted.setdefault(dedup_key, sentinel)
     if prev is not sentinel:
-        # Already alerted within window. If the dedup window has passed,
-        # re-arm so the next incident fires. Otherwise drop.
+        # Already alerted under this key. If the dedup window has passed,
+        # re-arm INLINE (overwrite the stored timestamp) and continue to
+        # the fire path. Recursion was tail-only but added a maintenance
+        # smell flagged in the iter-1f code review — inline is clearer.
         if isinstance(prev, float) and (time.time() - prev) > dedup_seconds:
-            _app_error_alerted.pop(dedup_key, None)
-            # Recursive retry exactly once — the slot is now free.
-            return maybe_fire_app_error(
-                dedup_key=dedup_key,
-                route=route,
-                exc_type=exc_type,
-                message=message,
-                request_id=request_id,
-                fields=fields,
-                severity=severity,
-                dedup_seconds=dedup_seconds,
-            )
-        return False
-    _app_error_alerted[dedup_key] = time.time()
+            _app_error_alerted[dedup_key] = time.time()
+            _app_error_alerted.move_to_end(dedup_key)
+        else:
+            return False
+    else:
+        _app_error_alerted[dedup_key] = time.time()
     if len(_app_error_alerted) > _APP_ERROR_DEDUP_MAX:
         _app_error_alerted.popitem(last=False)
 

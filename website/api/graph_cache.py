@@ -302,7 +302,15 @@ class UserGraphCache:
                         fields={
                             "external_service": "supabase_postgrest",
                             "timeout_seconds": str(self._timeout),
-                            "bucket": str(key[1] if isinstance(key, tuple) else key)[:60],
+                            # Guard length so a future 1-tuple cache key
+                            # cannot IndexError into the outer except and
+                            # silently drop the very alert this block exists
+                            # to surface (iter-1f code review).
+                            "bucket": str(
+                                key[1]
+                                if isinstance(key, tuple) and len(key) > 1
+                                else key
+                            )[:60],
                         },
                         severity="critical",
                         alert_dedup_seconds=5 * 60,
