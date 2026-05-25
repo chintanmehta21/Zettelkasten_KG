@@ -339,6 +339,12 @@ function getCommunityHue(communityId) {
   // engine-stop (e.g. after slider-driven reheat) doesn't re-focus.
   let _pendingFocusId = null;
   let _didDeepLinkFocus = false;
+
+  // Module-level handle so the top-level click / background-click handlers
+  // (which sit outside initGraph's closure) can sync-paint the title
+  // overlay without waiting a frame for the rAF loop. initGraph rebinds
+  // this once the real _updateActiveLabel is defined inside its scope.
+  let _syncTitleOverlay = function () {};
   const longDateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
@@ -683,6 +689,12 @@ function getCommunityHue(communityId) {
   let nodeDegrees = {};
   const _activeNodeIds = new Set();
   let _maxPagerank = 0;
+  // O(1) id → node lookup. Used by .linkDirectionalParticleColor so we
+  // can colour each flowing particle by its SOURCE node's group even
+  // when the link's `.source` field is still a string ID (the case at
+  // particle-creation time before d3-force resolves it to the node
+  // object). Refreshed every time fullData/graphData is rebuilt.
+  let _nodeById = new Map();
 
   // ---- Load data ----
   function loadGraphData() {
@@ -722,6 +734,11 @@ function getCommunityHue(communityId) {
           return node;
         });
         nodeDegrees = computeDegrees(fullData);
+        // Rebuild the id-keyed lookup every time fullData changes — the
+        // particle colour accessor reads from this Map to colour each
+        // flowing dot by its source node's group regardless of whether
+        // d3-force has resolved link.source from string to object yet.
+        _nodeById = new Map((fullData.nodes || []).map(n => [n.id, n]));
         // F7: refresh the addable-neighbor set when fullData changes.
         _rebuildAddableSet();
         // A2: surface analytics degradation as a teal banner.
@@ -822,9 +839,28 @@ function getCommunityHue(communityId) {
 
       // Update text label
       if (child.__isLabel) {
+        // CRITICAL: re-assert sprite.visible against the CURRENT winner
+        // state. onBeforeRender (set in nodeThreeObject) flips
+        // sprite.visible = !nodeIsWinner every render frame — BUT once
+        // sprite.visible goes false, Three.js culls the sprite and stops
+        // calling its onBeforeRender entirely. So a sprite that became
+        // hidden because its node was hovered NEVER re-emerges when the
+        // node un-hovers, because there's no callback left to flip it
+        // back. The symptom: hover a node → move cursor away → that
+        // node's title is gone forever (until reset). Fix: re-set
+        // .visible HERE on every _updateNodeVisual call, which fires
+        // from both hover-in AND hover-out paths.
+        const _winnerForVis = hoverNode || selectedNode;
+        const _isWinnerForVis = _winnerForVis && _winnerForVis.id === node.id;
+        child.visible = !_isWinnerForVis;
+
         const label = isActive ? _wrapTitle(node.name || '', 32) : getShortLabel(node);
         if (child.text !== label) child.text = label;
-        child.position.set(0, -(radius + 3), 0);
+        // Offset 5 (was 3) keeps the title clearly below the sphere bottom
+        // edge even when the sphere grows under hover/PageRank boost. The 3
+        // unit gap was tight enough that the sphere edge cut into the top
+        // of the text glyphs at certain camera angles.
+        child.position.set(0, -(radius + 5), 0);
 
         if (isActive) {
           child.color = '#ffffff';
@@ -839,12 +875,23 @@ function getCommunityHue(communityId) {
           child.borderColor = 'rgba(255, 255, 255, 0.18)';
           child.borderRadius = 0.8;
         } else {
-          child.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
+          // Reset EVERY active-state property to its default — earlier
+          // versions skipped fontSize / textHeight / borderColor, leaving
+          // the sprite stuck at the bigger 120 px / textHeight 2.4 / 18 %
+          // border even after the node de-activated. That manifested as a
+          // ghostly "big title in dim color" stuck below previously-clicked
+          // nodes. Reset matches the construction-time defaults in
+          // nodeThreeObject.
+          child.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.35)';
           child.fontWeight = '600';
+          child.fontSize = 90;
+          child.textHeight = 1.8;
           child.backgroundColor = false;
+          child.strokeColor = '';
           child.strokeWidth = 0;
           child.padding = 0;
           child.borderWidth = 0;
+          child.borderColor = '';
         }
       }
     }
@@ -936,11 +983,23 @@ function getCommunityHue(communityId) {
           sprite.borderColor = 'rgba(255, 255, 255, 0.18)';
           sprite.borderRadius = 0.8;
         } else {
-          sprite.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.06)';
+          sprite.color = isHighlighted ? 'rgba(210, 216, 228, 0.78)' : 'rgba(200, 208, 220, 0.35)';
           sprite.backgroundColor = false;
           sprite.padding = 0;
         }
-        sprite.position.set(0, -(radius + 3), 0);
+        sprite.position.set(0, -(radius + 5), 0);
+        // Always render the title sprite on top of the sphere, regardless
+        // of camera angle. Without these the sphere geometry occluded the
+        // top of the text glyphs whenever the camera dipped or the node
+        // grew under hover. depthTest=false + renderOrder bump = sprite
+        // always wins the z-fight. Visual cost is minimal because spheres
+        // are small relative to the canvas and rarely overlap a sprite's
+        // narrow column.
+        if (sprite.material) {
+          sprite.material.depthTest = false;
+          sprite.material.depthWrite = false;
+        }
+        sprite.renderOrder = 1;
         group.add(sprite);
 
         // F4: per-sprite onBeforeRender clamps scale only when the sprite is
@@ -953,11 +1012,13 @@ function getCommunityHue(communityId) {
             sprite.__origSy = sprite.scale.y;
             sprite.__origSx = sprite.scale.x;
           }
-          // Active-node SpriteText stays hidden; the HTML overlay renders that
-          // title with crisp browser text.
-          var nodeIsActive = (selectedNode && selectedNode.id === node.id) ||
-                             (hoverNode && hoverNode.id === node.id);
-          sprite.visible = !nodeIsActive;
+          // Title-overlay precedence: hover wins over selection (operator
+          // approved). The HTML overlay shows the WINNER's big title — so
+          // ONLY the winner's sprite is hidden. The losing-selected node
+          // falls back to its small sprite label until the cursor leaves.
+          var winner = hoverNode || selectedNode;
+          var nodeIsWinner = winner && winner.id === node.id;
+          sprite.visible = !nodeIsWinner;
           var worldPos = new THREE.Vector3();
           sprite.getWorldPosition(worldPos);
           var dist = cam.position.distanceTo(worldPos);
@@ -982,16 +1043,20 @@ function getCommunityHue(communityId) {
         }
         return 'rgba(100, 130, 200, 0.25)';
       })
+      // linkWidth / linkOpacity — restored to the original UNIFORM values
+      // from 56701d69 (the elegant baseline). Connection-strength encoding
+      // via per-link width / opacity made edges look inconsistent and
+      // "sloppy" on a dark background; uniform thin lines with a hover
+      // boost is what shipped on day-one and what the operator wants back.
       .linkWidth(link => {
         const src = typeof link.source === 'object' ? link.source : null;
         const tgt = typeof link.target === 'object' ? link.target : null;
-        const base = edgeWidthFor(link.connection_strength);
         if (hoverNode && ((src && src.id === hoverNode.id) || (tgt && tgt.id === hoverNode.id))) {
-          return base + 1.0; // boost on hover, still respects strength baseline
+          return 1.8;
         }
-        return base;
+        return 0.5;
       })
-      .linkOpacity(link => edgeOpacityFor(link && link.connection_strength))
+      .linkOpacity(0.6)
       // d3AlphaMin: stop the simulation when α drops below 0.01 (default
       // 0.001). 3× faster settle, no visible quality loss after initial
       // layout. Keeps web-worker idle sooner.
@@ -1006,8 +1071,17 @@ function getCommunityHue(communityId) {
       .linkDirectionalParticleWidth(1.0)
       .linkDirectionalParticleSpeed(0.008)
       .linkDirectionalParticleColor(link => {
-        const src = typeof link.source === 'object' ? link.source : null;
-        return src ? (COLORS[src.group] || '#4466aa') : '#4466aa';
+        // Resolve source to a node object — d3-force eventually swaps the
+        // string id for the actual node, but the particle is created
+        // BEFORE that swap and 3d-force-graph bakes the colour into the
+        // particle material at creation. So at first call source is a
+        // string and we have to look it up. _nodeById is rebuilt on every
+        // fullData load.
+        let src = link.source;
+        if (typeof src !== 'object' || src === null) {
+          src = _nodeById.get(src);
+        }
+        return src && src.group ? (COLORS[src.group] || '#4466aa') : '#4466aa';
       })
 
       // ---- Interactions ----
@@ -1016,7 +1090,15 @@ function getCommunityHue(communityId) {
       .onBackgroundClick(handleBackgroundClick)
       .onNodeHover(node => {
         const prevHover = hoverNode;
-        hoverNode = node || null;
+        const newHover = node || null;
+        // Same-state noop: force-graph fires spurious enter/leave events
+        // as the sphere moves a sub-pixel under a stationary cursor while
+        // the force layout settles or the camera tweens. Without this
+        // guard, every wiggle triggers _updateNodeVisual + overlay
+        // repaint twice — that thrash is what made the title flicker
+        // when the cursor sat on a selected node.
+        if (newHover === prevHover) return;
+        hoverNode = newHover;
         container.style.cursor = node ? 'pointer' : 'default';
         if (prevHover && prevHover !== node) _updateNodeVisual(prevHover);
         if (node) {
@@ -1025,10 +1107,18 @@ function getCommunityHue(communityId) {
         } else if (prevHover) {
           _activeNodeIds.delete(prevHover.id);
         }
-        // F5: hover state drives linkDirectionalParticles. Refresh forces
-        // 3d-force-graph to re-evaluate the accessor immediately so
-        // particles appear/disappear on the same frame as the hover change.
-        if (graph && typeof graph.refresh === 'function') graph.refresh();
+        // Sync-paint the HTML overlay BEFORE returning to the renderer.
+        // Otherwise the next rAF tick is the earliest the overlay can
+        // re-project to the new hover target — that 1-frame lag shows up
+        // as the old title sticking visibly behind the previous node for
+        // ~16 ms when the user moves between nodes quickly.
+        _updateActiveLabel();
+        // NB: the old `graph.refresh()` call lived here so the hover-only
+        // particle accessor could re-evaluate. Particles are now always-on
+        // (static `1` arg, not an accessor) — refresh() is dead work and
+        // was causing a full graph repaint on every hover change, which
+        // contributed to the "everything flickers" symptom on selected
+        // nodes. Removed.
       })
 
       // ---- Physics — fast convergence ----
@@ -1079,12 +1169,27 @@ function getCommunityHue(communityId) {
     container.addEventListener('mousedown', stopOrbit);
     container.addEventListener('touchstart', stopOrbit);
 
-    // Zoom: if spotlight node, fly to it; otherwise fit all
+    // Spotlight (?node=<id>) handling. Operator-approved behaviour:
+    // treat the URL spotlight as a "pre-selection" — the big HTML title
+    // overlay must appear as soon as the data is in, NOT after the 2.2s
+    // camera-fly timer. So:
+    //   1. Set selectedNode immediately (rAF overlay picks it up next frame).
+    //   2. Repaint the node's sphere via _updateNodeVisual so the active
+    //      radius + sprite-hidden state apply right away.
+    //   3. Keep the 2.2s defer for the actual camera fly + panel open —
+    //      gives the force layout time to settle before the camera moves.
     if (spotlightId) {
+      const sNode = graphData.nodes.find(n => n.id === spotlightId);
+      if (sNode) {
+        selectedNode = sNode;
+        _activeNodeIds.add(sNode.id);
+        _updateNodeVisual(sNode);
+        _syncTitleOverlay();
+      }
       setTimeout(() => {
-        const sNode = graphData.nodes.find(n => n.id === spotlightId);
-        if (sNode) {
-          handleNodeClick(sNode);
+        const stillThere = graphData.nodes.find(n => n.id === spotlightId);
+        if (stillThere) {
+          handleNodeClick(stillThere);
         } else {
           graph.zoomToFit(1200, 50);
         }
@@ -1112,7 +1217,9 @@ function getCommunityHue(communityId) {
     var _lastActiveLabelText = '';
     function _updateActiveLabel() {
       if (!_activeLabelEl) return;
-      var active = selectedNode || hoverNode;
+      // Hover wins over selection (operator approved). Lets the user
+      // preview another node's title without losing the current selection.
+      var active = hoverNode || selectedNode;
       if (!active || active.x === undefined) {
         if (!_activeLabelEl.classList.contains('hidden')) {
           _activeLabelEl.classList.add('hidden');
@@ -1135,7 +1242,12 @@ function getCommunityHue(communityId) {
       var rect = container.getBoundingClientRect();
       var x = (screen.x * 0.5 + 0.5) * rect.width + rect.left;
       var y = (-screen.y * 0.5 + 0.5) * rect.height + rect.top;
-      _activeLabelEl.style.transform = 'translate(-50%, 0) translate3d(' + Math.round(x) + 'px, ' + Math.round(y) + 'px, 0)';
+      // Sub-pixel smooth (operator approved): toFixed(2) keeps a stable
+      // string repr without the 1-pixel snap-jitter Math.round caused
+      // during slow diagonal camera motion. translate3d still gives the
+      // GPU layer promotion needed for crisp text.
+      _activeLabelEl.style.transform =
+        'translate(-50%, 0) translate3d(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px, 0)';
       var name = active.name || '';
       if (name !== _lastActiveLabelText) {
         _activeLabelEl.textContent = name;
@@ -1145,6 +1257,11 @@ function getCommunityHue(communityId) {
         _activeLabelEl.classList.remove('hidden');
       }
     }
+    // Expose to module scope so handleNodeClick / handleBackgroundClick
+    // can fire the same sync-paint path. Defined LAST so the assignment
+    // captures the function declaration above.
+    _syncTitleOverlay = _updateActiveLabel;
+
     // F4: gated active-label rAF — only paints when an active node exists.
     function _updateActiveLabelLoop() {
       requestAnimationFrame(_updateActiveLabelLoop);
@@ -1165,8 +1282,12 @@ function getCommunityHue(communityId) {
     graph.controls().autoRotate = false;
     if (prevSelected && prevSelected !== node) _updateNodeVisual(prevSelected);
     _updateNodeVisual(node);
-    // F5: selection drives linkDirectionalParticles — refresh accessor.
-    if (graph && typeof graph.refresh === 'function') graph.refresh();
+    // Sync-paint overlay so the title switches on the same frame as the
+    // click — without this, the previous selection's overlay lingers
+    // for ~16 ms until the next rAF tick.
+    _syncTitleOverlay();
+    // NB: removed `graph.refresh()` here too — same dead-call as the
+    // hover handler now that particles are always-on.
 
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
 
@@ -1188,6 +1309,20 @@ function getCommunityHue(communityId) {
       z: nz + (dz/len)*targetDist
     }, node, 1000);
 
+    // Defensive OrbitControls re-enable. 3d-force-graph's cameraPosition
+    // tween can leave controls.enabled = false if a SECOND call interrupts
+    // an in-flight tween before its onComplete fires (which is what
+    // restores .enabled). Symptom: drag-rotate / right-pan / wheel-zoom
+    // all dead after the user clicks two nodes back-to-back. We force-
+    // restore enabled (a) immediately and (b) at tween-end + 50 ms in
+    // case the library disables it again during the new tween.
+    const _restoreCtrls = () => {
+      const ctrls = graph && typeof graph.controls === 'function' ? graph.controls() : null;
+      if (ctrls && ctrls.enabled === false) ctrls.enabled = true;
+    };
+    _restoreCtrls();
+    setTimeout(_restoreCtrls, 1050);
+
     // Open panel after camera centres (only if not already open).
     if (!panelAlreadyOpen) {
       _panelOpenTimer = setTimeout(() => { openPanel(node); _panelOpenTimer = null; }, 700);
@@ -1197,8 +1332,13 @@ function getCommunityHue(communityId) {
   function handleBackgroundClick() {
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
     closePanel();
+    const prevSelected = selectedNode;
     selectedNode = null;
     _activeNodeIds.clear();
+    // Sync-paint the overlay so it disappears the same frame the user
+    // clicks empty space — no half-frame lingering title.
+    if (prevSelected) _updateNodeVisual(prevSelected);
+    _syncTitleOverlay();
     highlightNodes.clear();
     _refreshAllNodeVisuals();
   }
@@ -1213,7 +1353,7 @@ function getCommunityHue(communityId) {
     const summary = document.getElementById('panel-summary');
     const tags = document.getElementById('panel-tags');
     const connections = document.getElementById('panel-connections');
-    const summaryBtn = document.getElementById('panel-summary');
+    const summaryBtn = document.getElementById('panel-summary-btn');
     const addBtn = document.getElementById('panel-add-kasten');
 
     const nodeGroup = normalizeGroup(node.group);
@@ -1277,11 +1417,14 @@ function getCommunityHue(communityId) {
       return { node: other, relation: l.relation };
     });
 
+    // Connected-notes row: source-coloured dot + title only. The
+    // edge.relation chip (rag / embeddings / etc.) is dropped — it
+    // duplicated tag noise and crowded the row. Title alone reads
+    // cleanly and is what the user actually clicks through to.
     connections.innerHTML = connectedNodes.map(c => `
       <div class="kg-connection" data-id="${escapeHtml(c.node.id || c.node)}">
         <span class="kg-connection-dot" style="background: ${COLORS[c.node.group] || '#888'}"></span>
         <span class="kg-connection-name">${escapeHtml(c.node.name || c.node)}</span>
-        <span class="kg-connection-relation">${escapeHtml(c.relation || '')}</span>
       </div>
     `).join('');
     connections.querySelectorAll('.kg-connection').forEach(el => {
@@ -1384,18 +1527,52 @@ function getCommunityHue(communityId) {
   }
 
   // ---- Reset view ----
+  // Restoring to "fresh page load" state: NO selection, NO hover, NO
+  // pending camera tween blocking controls, NO stale HTML overlay. The
+  // earlier version cleared selectedNode but left hoverNode, _activeNodeIds,
+  // and the overlay text in place — and the zoomToFit tween disabled
+  // OrbitControls without anyone restoring them (same root cause as the
+  // 2nd-click-freezes-controls bug). Net result: view reset, but no
+  // further interaction worked. This version drains every state slot and
+  // re-asserts controls.enabled.
   const resetViewBtn = document.getElementById('reset-view-btn');
   if (resetViewBtn) {
     resetViewBtn.addEventListener('click', () => {
       if (!graph) return;
+      if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
       // Clear highlights so all nodes are visible during the fit.
       if (searchInput) searchInput.value = '';
       _applySearch('');
+      // Drain ALL active state — selection, hover, the active-ids set.
+      const prevSelected = selectedNode;
+      const prevHover = hoverNode;
       selectedNode = null;
+      hoverNode = null;
+      _activeNodeIds.clear();
       highlightNodes.clear();
+      // Repaint the two formerly-active spheres (sprite back to small,
+      // sphere back to base radius) before the bulk refresh so they don't
+      // briefly show stale active styling.
+      if (prevSelected) _updateNodeVisual(prevSelected);
+      if (prevHover && prevHover !== prevSelected) _updateNodeVisual(prevHover);
       _refreshAllNodeVisuals();
+      // Hide the HTML title overlay synchronously — without this, the
+      // overlay text lingered for ~16 ms before the rAF loop noticed
+      // (selectedNode || hoverNode) had gone null.
+      _syncTitleOverlay();
       closePanel();
+      // Defensive OrbitControls re-enable, same pattern as handleNodeClick:
+      // zoomToFit's 800 ms tween disables controls and only restores them
+      // on its own onComplete. If anything interrupts the tween, .enabled
+      // stays false and the KG goes dead. Force it back twice — now and
+      // at tween-end + 50 ms.
       graph.zoomToFit(800, 60);
+      const _restoreCtrls = () => {
+        const ctrls = graph && typeof graph.controls === 'function' ? graph.controls() : null;
+        if (ctrls && ctrls.enabled === false) ctrls.enabled = true;
+      };
+      _restoreCtrls();
+      setTimeout(_restoreCtrls, 850);
     });
   }
 
@@ -1511,7 +1688,7 @@ function getCommunityHue(communityId) {
         lbl.classList.toggle('unchecked', !activeSources.has(src));
         const cb = lbl.querySelector('input');
         if (cb) cb.checked = activeSources.has(src);
-        applyFilters();
+        _debouncedApplyFilters();
       });
       body.appendChild(lbl);
     });
@@ -1578,10 +1755,14 @@ function getCommunityHue(communityId) {
       lbl.addEventListener('click', (e) => {
         e.preventDefault();
         if (activeTags.has(tag)) activeTags.delete(tag); else activeTags.add(tag);
-        // Re-render to refresh strikethrough across siblings (since "no filter
-        // active" → "filter active" flips the visual treatment of all items).
-        renderTagsSection();
-        applyFilters();
+        // In-place update of the clicked row only — the global "any tag
+        // active" line-through treatment was removed last round, so the
+        // sibling re-render is no longer needed. Avoids the O(tags) DOM
+        // rebuild that was making the menu feel laggy with many tags.
+        const cb = lbl.querySelector('input');
+        if (cb) cb.checked = activeTags.has(tag);
+        lbl.classList.toggle('unchecked', activeTags.size > 0 && !activeTags.has(tag));
+        _debouncedApplyFilters();
       });
       body.appendChild(lbl);
     });
@@ -1719,11 +1900,43 @@ function getCommunityHue(communityId) {
       if (typeof graph.d3ReheatSimulation === 'function') {
         graph.d3ReheatSimulation();
       }
+      // Re-apply the particle colour accessor so existing particle
+      // materials get rebuilt against the fresh _nodeById map. 3d-force-
+      // graph bakes the particle colour into each particle's material at
+      // CREATION time — without re-setting the accessor here, every
+      // particle from the initial render keeps the grey-blue fallback
+      // (the colour it received when its link.source was still a string
+      // id, before d3-force swapped it for the node object). One-time
+      // re-apply per data load only — does NOT run on hover/click so it
+      // can't reintroduce the F5-era flicker.
+      if (typeof graph.linkDirectionalParticleColor === 'function') {
+        graph.linkDirectionalParticleColor(graph.linkDirectionalParticleColor());
+      }
     }
     updateStats();
-    closePanel();
-    selectedNode = null;
-    highlightNodes.clear();
+    // Preserve user context across filter changes: keep panel + selection
+    // + highlights ONLY if the selected/hovered/highlighted node survived
+    // the filter. Pre-change behaviour wiped all three unconditionally on
+    // every checkbox toggle — disruptive when curating filters around a
+    // node you have in focus. Same predicate for hover so a leaked-hover
+    // doesn't keep the title overlay on a node that's no longer rendered.
+    if (selectedNode && !nodeIds.has(selectedNode.id)) {
+      selectedNode = null;
+      closePanel();
+    }
+    if (hoverNode && !nodeIds.has(hoverNode.id)) {
+      hoverNode = null;
+    }
+    if (highlightNodes.size > 0) {
+      // Prune highlights to surviving nodes only.
+      const surviving = new Set();
+      highlightNodes.forEach(id => { if (nodeIds.has(id)) surviving.add(id); });
+      highlightNodes.clear();
+      surviving.forEach(id => highlightNodes.add(id));
+    }
+    // Sync-paint the overlay after the filter change so a leaked hover/
+    // selection doesn't leave a stale title visible for a frame.
+    _syncTitleOverlay();
 
     // F2: empty-state covers two scenarios:
     //   (a) no nodes match filters → "No notes match these filters" + Reset.
@@ -1743,8 +1956,18 @@ function getCommunityHue(communityId) {
       }
     }
 
-    if (filteredNodes.length > 0) setTimeout(() => graph && graph.zoomToFit(800, 60), 800);
+    // No auto-zoomToFit on filter changes. Earlier the function queued a
+    // 800 ms-delayed zoomToFit on EVERY applyFilters call without ever
+    // cancelling pending timers — rapid checkbox toggles stacked multiple
+    // camera tweens, producing "the camera jumps three times after I
+    // stopped clicking" behaviour. Operator pref: filters narrow the view
+    // in place; user pans/zooms manually if needed.
   }
+
+  // Debounced applyFilters so rapid checkbox toggles don't run the full
+  // filter pipeline N times. 80 ms is short enough to feel instant on a
+  // single click but long enough to coalesce a multi-click curation pass.
+  const _debouncedApplyFilters = debounce(applyFilters, 80);
 
   // ---- Stats ----
   function updateStats() {
@@ -1893,7 +2116,7 @@ function getCommunityHue(communityId) {
         lbl.classList.toggle('unchecked', !activeKastens.has(k.id));
         const cb = lbl.querySelector('input');
         if (cb) cb.checked = activeKastens.has(k.id);
-        applyFilters();
+        _debouncedApplyFilters();
       });
       body.appendChild(lbl);
     });
@@ -1994,6 +2217,14 @@ function getCommunityHue(communityId) {
   }
 
   if (strengthControls) {
+    // Debounce bucket clicks at the same 250 ms as the slider so a rapid
+    // Weak → Medium → Strong sequence fires ONE /api/graph fetch at the
+    // end of the gesture, not three back-to-back round-trips. The UI
+    // (active pill + slider thumb) still snaps instantly via
+    // _syncStrengthUI; only the network round-trip is deferred.
+    const _debouncedBucketChange = debounce(function () {
+      _onStrengthChange({ snapBucket: false });
+    }, SLIDER_DEBOUNCE_MS);
     strengthControls.querySelectorAll('[data-bucket]').forEach(btn => {
       btn.addEventListener('click', function () {
         const b = btn.dataset.bucket;
@@ -2001,7 +2232,7 @@ function getCommunityHue(communityId) {
         activeBucket = b;
         minStrength = snapToBucket(b);
         _syncStrengthUI();
-        _onStrengthChange({ snapBucket: false });
+        _debouncedBucketChange();
       });
     });
   }
