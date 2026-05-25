@@ -30,6 +30,17 @@ body {
 a { color: inherit; }
 .hidden { display: none !important; }
 
+/* PR5: nexus is an intentionally narrow form. The effective rendered
+ * width is 760 because <div class="nexus-page container zettels-container">
+ * also picks up the global .container's max-width fallback when
+ * user_zettels.css is not loaded on this page. Overriding
+ * --zk-content-max on :root makes the body-root .zk-header back +
+ * avatar hug the narrow form edges instead of floating over the
+ * wider default rail. */
+:root {
+    --zk-content-max: 760px;
+}
+
 .nexus-page {
     width: min(1200px, calc(100vw - 2rem));
     margin: 0 auto;

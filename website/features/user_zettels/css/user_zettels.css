@@ -22,9 +22,16 @@ body {
     color-scheme: dark;
 }
 
+/* PR5: widened from 980→1120 to match the unified content rail
+ * (--zk-content-max: 1080px + 2*1.25rem padding-inline). Now the
+ * body-root .zk-header back-button lines up with the left edge of the
+ * stat-card row, and avatar-right lines up with the + Add Zettel
+ * button on the right. 1.25rem padding-inline overrides the generic
+ * .container { padding: 2rem 1.5rem } from style.css. */
 .zettels-container {
-    max-width: 980px;
+    max-width: 1120px;
     padding-top: 1.4rem;
+    padding-inline: 1.25rem;
 }
 
 .zettels-header {

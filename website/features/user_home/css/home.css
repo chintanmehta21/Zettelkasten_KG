@@ -9,8 +9,13 @@
    being squeezed into the default 760px container.
    ================================================================== */
 
+/* PR5: width unified at 1120 outer / 1080 inner (=var(--zk-content-max))
+ * so the body-root .zk-header avatar lines up with the right edge of
+ * /home content. 1.25rem padding-inline overrides the generic
+ * .container { padding: 2rem 1.5rem } from style.css. */
 .container {
-    max-width: 1180px;
+    max-width: 1120px;
+    padding-inline: 1.25rem;
 }
 
 /* ── Header styling ────────────────────────────────────────────────

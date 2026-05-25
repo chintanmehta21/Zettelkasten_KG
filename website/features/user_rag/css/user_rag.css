@@ -27,6 +27,14 @@
     outline-offset: 2px;
 }
 
+/* PR5: rag keeps a narrow reading rail (chat lines = ~65-80 chars at
+ * 16px). 912px inner = 960 max-width - 2*24px padding. Overriding
+ * --zk-content-max on :root makes the body-root .zk-header back +
+ * avatar hug *this page's* edges instead of the wider default rail. */
+:root {
+    --zk-content-max: 912px;
+}
+
 .rag-container {
     max-width: 960px;
     display: flex;
