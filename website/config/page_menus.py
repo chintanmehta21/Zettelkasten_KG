@@ -97,7 +97,7 @@ _PROFILE: MenuItem = {
 _SIGNOUT: MenuItem = {
     "key": "signout",
     "label": "Sign out",
-    "href": "",
+    "href": "",  # JS-driven action, no navigation
     "icon": (
         '<svg viewBox="0 0 24 24" fill="none">'
         '<path d="M14 17L19 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>'
@@ -119,11 +119,9 @@ _DEFAULT_PAGE: PageMenu = {
     "show_back_button": True,
 }
 
+# Each entry gets a fresh dict + fresh authed list so PR2 can mutate per-page
+# without lockstep side-effects across pages (reviewer I1(b)).
 PAGE_MENUS: dict[str, PageMenu] = {
-    "zettels":  _DEFAULT_PAGE,
-    "kastens":  _DEFAULT_PAGE,
-    "rag":      _DEFAULT_PAGE,
-    "nexus":    _DEFAULT_PAGE,
-    "profile":  _DEFAULT_PAGE,
-    "pricing":  _DEFAULT_PAGE,
+    key: {**_DEFAULT_PAGE, "authed": list(_AUTHED_DEFAULT)}
+    for key in ("zettels", "kastens", "rag", "nexus", "profile", "pricing")
 }
