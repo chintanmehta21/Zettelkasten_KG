@@ -719,7 +719,9 @@ def create_app(lifespan=None) -> FastAPI:
     async def knowledge_graph(request: Request):
         if _is_mobile(request):
             return RedirectResponse(url="/m/knowledge-graph", status_code=302)
-        response = _render_with_shell(KG_DIR / "index.html")
+        # KG ships its own dedicated <header class="kg-header">; the shared
+        # zk-header was carved out in PR1 of the shared-header refactor.
+        response = _html_file_response(KG_DIR / "index.html")
         return _maybe_set_desktop_cookie(request, response)
 
     @app.get("/auth/callback")
