@@ -21,15 +21,14 @@
   var refs = {};
 
   function resolveRefs() {
-    // The shared header markup uses `avatar-*` IDs; the user_home page hosts
-    // its own inline avatar element tree with `home-avatar-*` IDs. Look up
-    // both so ZKHeader.boot can drive the avatar on either layout.
+    // PR2: dropped the `home-*` ID fallbacks. /home now uses the shared
+    // header markup (avatar-* IDs) like every other shared-header page.
     refs.backBtn      = document.querySelector('[data-zk-back]');
-    refs.avatarBtn    = document.getElementById('avatar-btn')      || document.getElementById('home-avatar-btn');
-    refs.avatarImg    = document.getElementById('avatar-img')      || document.getElementById('home-avatar-img');
-    refs.avatarFb     = document.getElementById('avatar-fallback') || document.getElementById('home-avatar-fallback');
-    refs.avatarDrop   = document.getElementById('avatar-dropdown') || document.getElementById('home-avatar-dropdown');
-    refs.avatarWrap   = document.getElementById('avatar-wrap')     || document.getElementById('home-avatar-wrap');
+    refs.avatarBtn    = document.getElementById('avatar-btn');
+    refs.avatarImg    = document.getElementById('avatar-img');
+    refs.avatarFb     = document.getElementById('avatar-fallback');
+    refs.avatarDrop   = document.getElementById('avatar-dropdown');
+    refs.avatarWrap   = document.getElementById('avatar-wrap');
   }
 
   function avatarUrlFor(id) {
