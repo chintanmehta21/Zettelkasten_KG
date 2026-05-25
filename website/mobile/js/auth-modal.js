@@ -213,4 +213,15 @@
     setTimeout(waitForZKAuth, 100);
   }
   waitForZKAuth();
+
+  // T11: Profile page broadcasts avatar changes; refresh the header avatar.
+  document.addEventListener('zk:avatar-changed', function () {
+    if (window.ZK && typeof window.ZK.renderAvatar === 'function') {
+      const slot = document.getElementById('m-avatar-image');
+      if (slot) {
+        slot.hidden = false;
+        window.ZK.renderAvatar(slot);
+      }
+    }
+  });
 })();
