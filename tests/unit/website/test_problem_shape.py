@@ -10,6 +10,7 @@ failure.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -255,10 +256,119 @@ def test_async_extraction_confidence_carries_extras_byte_identical():
     assert async_dict == sync_dict
 
 
-def test_async_failure_error_payload_returns_none_for_generic_exception():
-    """Untyped exceptions yield None (caller falls back to plain confidence
-    reason)."""
-    assert zr._async_failure_error_payload(RuntimeError("boom")) is None
+def test_async_failure_error_payload_returns_structured_for_unmapped_exception():
+    """PR #89 commit C (2026-05-25): the previous ``return None`` fallthrough
+    for unmapped exception classes is gone. Any unmapped exception now lands
+    a structured ``internal_error`` problem body — closing the
+    ``core.operations.error IS NULL`` cohort that the 2026-05-25 Naruto live
+    repro hit (``FileNotFoundError`` from the prom multiproc dir wipe).
+
+    Critical: the wire body MUST NOT include the exception's class name,
+    message, or stack — the engineer-facing copy already reaches Slack via
+    ``maybe_fire_app_error`` upstream. The redaction is by-construction
+    (this code path never reads ``exc``)."""
+    payload = zr._async_failure_error_payload(
+        RuntimeError("boom — should NEVER appear in the wire body"),
+        operation_id="op-rt-1",
+    )
+    assert payload is not None
+    assert payload["code"] == "internal_error"
+    assert payload["status"] == 500
+    assert payload["title"] == "Internal Server Error"
+    assert payload["operation_id"] == "op-rt-1"
+    # OWASP API8:2023 redaction: exception class/message MUST NOT leak.
+    body_json = json.dumps(payload)
+    assert "boom" not in body_json
+    assert "RuntimeError" not in body_json
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        # The exact class that hit Naruto on 2026-05-25 (prom multiproc dir).
+        FileNotFoundError(
+            2, "No such file or directory", "/tmp/prom_multiproc/counter_15.db"
+        ),
+        # Common asyncpg-style ConnectionResetError.
+        ConnectionResetError("conn reset"),
+        # Asyncio race surfaced as a stale future.
+        asyncio.InvalidStateError("future already terminal"),
+        # Generic OSError family covered.
+        PermissionError(13, "Permission denied"),
+        # Pure Exception baseline.
+        Exception("anything else"),
+    ],
+)
+def test_async_catch_all_redacts_every_unmapped_class(exc):
+    """Pin the wire-body redaction across the OSError family + arbitrary
+    Exception. None of these classes should leak class name, message,
+    or path into the response body."""
+    payload = zr._async_failure_error_payload(exc, operation_id="op-c-all")
+    body_json = json.dumps(payload)
+    assert type(exc).__name__ not in body_json, (
+        f"exc class name leaked: {type(exc).__name__}"
+    )
+    # The 2026-05-24 Naruto-case prom path must NEVER reach the wire.
+    assert "/tmp/prom_multiproc" not in body_json
+    assert "/app/var/prom" not in body_json
+    # All resolve to the same canonical internal-error shape.
+    assert payload["code"] == "internal_error"
+    assert payload["status"] == 500
+
+
+def test_async_catch_all_carries_url_when_provided():
+    """Even for an unmapped exception, the URL is in scope for forensics
+    (see PR #89 commit 4 — URL persistence in ``core.operations.error``)."""
+    url = "https://www.youtube.com/watch?v=ZvO5kikFVOk"
+    payload = zr._async_failure_error_payload(
+        RuntimeError("boom"), operation_id="op-u", url=url,
+    )
+    assert payload["url"] == url
+
+
+def test_async_catch_all_does_not_clobber_typed_mappings():
+    """Regression guard for the dispatch ordering: every existing typed
+    mapping must still hit its specific ``type_slug`` / ``code`` even after
+    the catch-all is added. The catch-all must be the *last* branch."""
+    # ExtractionConfidenceError — has a specific mapping.
+    typed = zr._async_failure_error_payload(
+        ExtractionConfidenceError("low", reason="low", tier_results=[]),
+        operation_id="op-typed",
+    )
+    assert typed["code"] == "insufficient-content"
+    assert typed["code"] != "internal_error"
+
+
+# ---------------------------------------------------------------------------
+# X-Operation-Id response header (PR #89 commit C, 2026-05-25)
+# ---------------------------------------------------------------------------
+
+
+def test_sync_problem_response_emits_x_operation_id_header():
+    """Industry consensus (Anthropic, GitHub, AWS, Stripe): correlation id
+    in a response header — what curl/fetch debugging tools surface and the
+    only thing readable if the body is truncated by a CDN."""
+    resp = zr._problem(
+        status_code=422,
+        title="Insufficient content",
+        detail="x",
+        operation_id="op-hdr-1",
+        type_slug="insufficient-content",
+    )
+    assert resp.headers.get("X-Operation-Id") == "op-hdr-1"
+
+
+def test_sync_problem_response_omits_header_when_no_op_id():
+    """Anonymous 4xx (e.g. rate-limit before client_action_id is known) has
+    no operation_id; the header is then omitted rather than set to the
+    string ``"None"``."""
+    resp = zr._problem(
+        status_code=429,
+        title="Too many requests",
+        detail="back off",
+        type_slug="rate-limited",
+    )
+    assert "X-Operation-Id" not in resp.headers
 
 
 # ---------------------------------------------------------------------------

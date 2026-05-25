@@ -148,7 +148,16 @@ def _problem(
 ) -> JSONResponse:
     """Sync 4xx/5xx problem+json response. Delegates body construction to the
     shared ``_problem_dict()`` builder so the sync and async paths emit
-    physically identical RFC 9457 dicts for the same exception (Phase 3)."""
+    physically identical RFC 9457 dicts for the same exception (Phase 3).
+
+    PR #89 commit C (2026-05-25): emit ``X-Operation-Id`` as a response
+    header on every problem body when an ``operation_id`` is in scope.
+    Industry consensus (Anthropic ``request-id``, GitHub ``X-GitHub-Request-Id``,
+    AWS ``x-amzn-requestid``, Stripe ``Request-Id``): the header is what
+    curl/fetch debugging tools surface, and the only correlation id readable
+    if the response body is malformed or truncated by a CDN. Body extension
+    is kept too, for support-team copy-paste UX.
+    """
     body = _problem_dict(
         status_code=status_code,
         title=title,
@@ -157,7 +166,13 @@ def _problem(
         operation_id=operation_id,
         extra=extra,
     )
-    return JSONResponse(body, status_code=status_code, media_type="application/problem+json")
+    headers = {"X-Operation-Id": operation_id} if operation_id else None
+    return JSONResponse(
+        body,
+        status_code=status_code,
+        media_type="application/problem+json",
+        headers=headers,
+    )
 
 
 def _check_rate_limit(ip: str) -> bool:
@@ -227,15 +242,22 @@ def _async_failure_error_payload(
     *,
     operation_id: str | None = None,
     url: str | None = None,
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     """Map a background-task exception to an RFC 9457 problem-detail dict
     physically identical to the sync ``_problem(...)`` body for the same
     exception, so a failure that crossed the 20s universal-202 fast-ack
     boundary surfaces the SAME structured payload to the frontend as the
     inline sync path. Both paths funnel through ``_problem_dict(...)`` —
-    Phase 3 of the async-ops redesign. Returns None for generic exceptions
-    (no structured detail available — frontend falls back to the existing
-    confidence_reason-only generic UI).
+    Phase 3 of the async-ops redesign.
+
+    PR #89 commit C (2026-05-25): the previous ``return None`` for unmapped
+    exception classes is GONE. The catch-all branch below ALWAYS returns a
+    structured ``internal_error`` problem body — closing the
+    ``core.operations.error IS NULL`` cohort that yesterday's audit flagged
+    (4 of 8 24h failures). Engineer-facing exc class/message reach Slack
+    via ``maybe_fire_app_error`` upstream; the wire body stays
+    exception-content-agnostic by construction (RFC 9457 §3.1.4 / §5,
+    OWASP API8:2023).
 
     ``url`` is the original Add-Zettel request URL. When set, it lands as
     ``body["url"]`` so post-hoc failure analysis can `SELECT error->>'url'
@@ -306,7 +328,28 @@ def _async_failure_error_payload(
             operation_id=operation_id,
             url=url,
         )
-    return None
+    # Default-else (PR #89 commit C, 2026-05-25): any unmapped exception
+    # class — FileNotFoundError, ConnectionResetError, asyncpg DB errors not
+    # wrapped in SupabaseV2PersistError, third-party SDK errors, etc. — used
+    # to fall through here as `return None`, which landed `error JSONB = NULL`
+    # in core.operations and a literal "Summary failed." in the UI with zero
+    # diagnostic. RFC 9457 §3.1.4 / §5 + OWASP API8:2023: the wire body MUST
+    # NOT include exc message / class / stack — the redaction is by
+    # construction (this branch never reads ``exc``). The class + message
+    # already reach Slack via ``maybe_fire_app_error`` upstream of this call
+    # site, which is the correct place for engineer-facing debug info.
+    return _problem_dict(
+        status_code=500,
+        title="Internal Server Error",
+        detail=(
+            "An unexpected error occurred while processing your request. "
+            "Please contact support with the operation ID below if this "
+            "persists."
+        ),
+        type_slug="internal_error",
+        operation_id=operation_id,
+        url=url,
+    )
 
 
 def _invalidate_graph(user_sub: str | None, persisted: bool) -> None:
