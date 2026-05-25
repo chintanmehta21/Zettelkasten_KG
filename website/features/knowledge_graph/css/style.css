@@ -307,12 +307,54 @@ body {
   transition: background 0.15s, color 0.15s, opacity 0.15s;
 }
 .kg-filter-item:hover { background: rgba(255,255,255,0.04); }
-.kg-filter-item input[type="checkbox"] { display: none; }
+/* Real, visible checkbox so the multi-select affordance is unambiguous.
+   Earlier version hid the input and relied on a coloured dot + line-
+   through text to convey state — readable to power users but failed the
+   "is this clickable / multi-select?" first-glance test. Custom appearance
+   styling so the box matches the teal-accented filter chrome (matches
+   .kg-strength-bucket.active border colour). */
+.kg-filter-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(180, 192, 210, 0.45);
+  border-radius: 3px;
+  background: rgba(8, 12, 24, 0.55);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  margin: 0;
+}
+.kg-filter-item input[type="checkbox"]:hover {
+  border-color: rgba(20, 184, 166, 0.55);
+}
+.kg-filter-item input[type="checkbox"]:checked {
+  background: hsl(172, 60%, 45%);
+  border-color: hsl(172, 60%, 55%);
+}
+/* Teal-on-dark check glyph drawn as two rotated borders for crisp pixel
+   rendering at this size — beats an SVG/background-image because it
+   stays sharp at any DPR. */
+.kg-filter-item input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 .kg-filter-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: opacity 0.15s; }
 
-/* Bolder unchecked feedback (P2 #21) */
-.kg-filter-item.unchecked { color: rgba(180,192,210,0.45); text-decoration: line-through; }
-.kg-filter-item.unchecked .kg-filter-dot { opacity: 0.25; }
+/* Unchecked items dim slightly but no longer line-through — the checkbox
+   itself communicates the state cleanly, and line-through made tag names
+   harder to read at a glance. */
+.kg-filter-item.unchecked { color: rgba(180,192,210,0.55); }
+.kg-filter-item.unchecked .kg-filter-dot { opacity: 0.35; }
 
 .kg-filter-empty {
   padding: 10px;
@@ -810,8 +852,20 @@ body {
   position: fixed;
   top: 0; left: 0;
   transform: translate(-50%, 0);
+  /* width: max-content makes the box hug its text content exactly —
+     critical when the title wraps to 2 lines. Without this the block
+     default (fill-available-up-to-max-width) reserves the full max-width
+     even for short titles, AND inherits a min line-box height that
+     leaves visible empty space below the wrapped second line. Capped
+     by max-width so very long titles still wrap. */
+  width: max-content;
   max-width: min(420px, 60vw);
-  padding: 6px 14px;
+  /* Tight symmetric padding. Was 6px top/bottom + line-height 1.3 which
+     added ~4px of half-leading per line — a wrapped 2-line title ended
+     up with ~14px of visible "empty box" below the second line. Drop to
+     4px padding + 1.2 line-height to hug the text on both axes. */
+  padding: 4px 14px;
+  box-sizing: border-box;
   background: rgba(8, 12, 24, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
@@ -819,7 +873,7 @@ body {
   font-family: 'Inter', -apple-system, sans-serif;
   font-size: 0.92rem;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.2;
   text-align: center;
   white-space: normal;
   text-wrap: balance;
@@ -860,6 +914,9 @@ body {
   cursor: pointer;
 }
 .kg-overlay-btn:hover { background: rgba(20,184,166,0.25); }
+/* Legacy 3-dot pulse — kept for any consumer still referencing the
+   class, but the overlay markup now ships the .kg-loading-network SVG.
+   Safe to delete in a follow-up once we confirm no other surface uses it. */
 .kg-overlay-skeleton {
   display: flex; gap: 12px; align-items: center;
 }
@@ -873,6 +930,69 @@ body {
 @keyframes kgPulse {
   0%, 80%, 100% { opacity: 0.25; transform: scale(0.7); }
   40%           { opacity: 1;    transform: scale(1.1); }
+}
+
+/* ----------------------------------------------------------------
+   KG loading network animation — a mini 6-spoke graph that BUILDS
+   (nodes + edges fade in with staggered delay), holds briefly, then
+   CLOSES (all fade together), looping. Replaces the 3-dot pulse for
+   every KG buffer state. Pure CSS — zero JS frame cost.
+   ---------------------------------------------------------------- */
+.kg-loading-network {
+  width: 160px;
+  height: 160px;
+  overflow: visible;
+}
+/* The central hub is brightest; spokes are slightly dimmer to give
+   depth without distracting from the build sequence. */
+.kg-loading-nodes circle {
+  fill: hsl(172, 60%, 55%);
+  transform-origin: center;
+  transform-box: fill-box;
+  opacity: 0;
+  animation: kgLoadNode 2.4s ease-in-out infinite;
+}
+.kg-loading-center { fill: hsl(172, 70%, 65%); }
+/* Stagger the 6 spoke nodes so the network appears to assemble
+   spoke-by-spoke around the centre. Indices 1..6 follow the source-
+   order in index.html (top → top-right → bottom-right → bottom →
+   bottom-left → top-left). */
+.kg-loading-nodes circle:nth-child(1) { animation-delay: 0s; }
+.kg-loading-nodes circle:nth-child(2) { animation-delay: 0.15s; }
+.kg-loading-nodes circle:nth-child(3) { animation-delay: 0.25s; }
+.kg-loading-nodes circle:nth-child(4) { animation-delay: 0.35s; }
+.kg-loading-nodes circle:nth-child(5) { animation-delay: 0.45s; }
+.kg-loading-nodes circle:nth-child(6) { animation-delay: 0.55s; }
+.kg-loading-nodes circle:nth-child(7) { animation-delay: 0.65s; }
+
+.kg-loading-edges line {
+  stroke: hsla(172, 60%, 55%, 0.55);
+  stroke-width: 1.4;
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: kgLoadEdge 2.4s ease-in-out infinite;
+}
+.kg-loading-edges line:nth-child(1) { animation-delay: 0.20s; }
+.kg-loading-edges line:nth-child(2) { animation-delay: 0.30s; }
+.kg-loading-edges line:nth-child(3) { animation-delay: 0.40s; }
+.kg-loading-edges line:nth-child(4) { animation-delay: 0.50s; }
+.kg-loading-edges line:nth-child(5) { animation-delay: 0.60s; }
+.kg-loading-edges line:nth-child(6) { animation-delay: 0.70s; }
+
+@keyframes kgLoadNode {
+  0%   { opacity: 0; transform: scale(0.2); }
+  25%  { opacity: 1; transform: scale(1); }
+  65%  { opacity: 1; transform: scale(1); }
+  85%  { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(0.2); }
+}
+@keyframes kgLoadEdge {
+  0%   { opacity: 0; }
+  25%  { opacity: 0.75; }
+  65%  { opacity: 0.75; }
+  85%  { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 /* ----------------------------------------------------------------
