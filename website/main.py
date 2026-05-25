@@ -112,6 +112,15 @@ async def _lifespan(
     # enrichment worker) starts on a healthy substrate.
     _ensure_prometheus_multiproc_dir()
 
+    # JWKS pre-warm — hydrate PyJWKClient cache so the first request after
+    # deploy doesn't pay a cold network fetch (which can trigger
+    # get_optional_user's silent-drop-to-anon path during Supabase JWKS edge
+    # cache misses). Soft-fails inside the helper; 5s ceiling protects
+    # blue/green flips during a Supabase JWKS outage.
+    from website.app import _jwks_prewarm
+
+    await _jwks_prewarm()
+
     # iter-12 Class P: explicit executor sizing. Default min(32, cpu_count+4)=5
     # threads/process saturates under burst-12. PATH_F sizing per RESEARCH.md.
     _exec_workers = int(os.environ.get("RAG_EXECUTOR_MAX_WORKERS", "8"))

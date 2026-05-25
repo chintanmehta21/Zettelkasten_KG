@@ -280,21 +280,58 @@ def _mount_static_if_exists(app: FastAPI, url: str, directory: Path, name: str) 
         logger.info("Skipping missing static mount %s -> %s", url, directory)
 
 
+async def _jwks_prewarm() -> None:
+    """Hydrate PyJWKClient cache so the first JWT validation post-deploy doesn't
+    pay a cold network fetch (which would trigger ``get_optional_user``'s
+    silent-drop-to-anon path on a Supabase JWKS edge-cache miss). Soft-fails:
+    a 5s ceiling via ``asyncio.wait_for`` keeps a hung JWKS endpoint from
+    blocking startup; lazy fetch on first real request retries automatically.
+    """
+    import asyncio
+
+    try:
+        from website.api.auth import _get_jwks_client
+
+        jwks_client = _get_jwks_client()
+        if jwks_client is None:
+            return
+        await asyncio.wait_for(
+            asyncio.to_thread(jwks_client.get_signing_keys),
+            timeout=5.0,
+        )
+        logger.info("JWKS pre-warm complete")
+    except asyncio.TimeoutError:
+        logger.warning("JWKS pre-warm timed out (5s); lazy fetch will retry")
+    except Exception as exc:  # noqa: BLE001 — pre-warm must never block startup
+        logger.warning("JWKS pre-warm failed (non-fatal): %s", exc)
+
+
 def create_app(lifespan=None) -> FastAPI:
     """Create and configure the FastAPI application.
 
     Args:
         lifespan: Optional async context manager for startup/shutdown events.
                   Used by ``website.main`` for the proc-stats logger task.
+                  When None, a minimal default lifespan runs the JWKS pre-warm
+                  at startup so tests / non-prod entrypoints exercise it too.
     """
+    if lifespan is None:
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _default_lifespan(_app: FastAPI):
+            await _jwks_prewarm()
+            yield
+
+        lifespan = _default_lifespan
+
     kwargs = dict(
         title="Zettelkasten Summarizer",
         description="Summarize any link with AI",
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
     )
-    if lifespan is not None:
-        kwargs["lifespan"] = lifespan
 
     app = FastAPI(**kwargs)
 
@@ -424,6 +461,15 @@ def create_app(lifespan=None) -> FastAPI:
             status = None
         if status:
             response.headers["X-Auth-Status"] = status
+            # RFC 6750 §3: convey JWT-failure semantics to clients via
+            # WWW-Authenticate. Matches Auth0/Okta conventions.
+            response.headers["WWW-Authenticate"] = (
+                'Bearer error="invalid_token", '
+                'error_description="JWT silently downgraded to anonymous"'
+            )
+            # Cloudflare cache-security: an anon response carrying X-Auth-Status
+            # MUST NOT be cached and re-served to another caller.
+            response.headers["Cache-Control"] = "private, no-store"
         return response
 
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
