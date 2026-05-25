@@ -1581,11 +1581,10 @@
 
   function bindEvents(token) {
     // Re-entry guard: init() can be re-invoked (DOMContentLoaded vs immediate
-    // call vs auth-state change) and each call would otherwise stack a fresh
-    // document/body/menu listener — clicking Sign out would then fire signOut
-    // N times. Per-element dataset.zkBound guards below still gate the
-    // element-bound listeners, but the document/body delegated ones don't
-    // have that, so guard the whole function.
+    // call vs auth-state change). The document-level outside-click and Escape
+    // listeners below would stack on every re-entry; ZKHeader.onSignOut has
+    // its own dataset.zkSignoutBound guard, but our document listeners don't,
+    // so guard the whole function.
     if (window.__homeBindEventsRan) return;
     window.__homeBindEventsRan = true;
     // Close add-zettel dropdown on outside click
@@ -1708,13 +1707,11 @@
     }
 
     // Escape key closes modals
+    // PR2 migration: shared ZKHeader owns Escape-handling for the avatar
+    // dropdown (header.js m-8). We only handle page-local closables here.
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         closeSummaryPopup();
-        if (avatarDropdown) avatarDropdown.classList.remove('open');
-        // m-8: keep aria-expanded in sync with the visible state so AT users
-        // hear the dropdown collapse when Escape closes it.
-        if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
         if (addZettelDropdown) {
           addZettelDropdown.classList.remove('open');
         }
