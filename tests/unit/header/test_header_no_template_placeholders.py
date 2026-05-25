@@ -90,27 +90,22 @@ def test_header_html_dropdown_has_role_menu():
 
 
 def test_header_html_menu_items_have_role_menuitem():
-    """Each interactive child of #avatar-dropdown must declare role=menuitem.
+    """Each rendered dropdown item must declare role=menuitem.
 
-    Verifies the WAI-ARIA 1.2 menu pattern: every focusable item carries
-    role=menuitem. We assert per-anchor / per-button that the role token
-    appears in its open tag.
+    Updated 2026-05-25 (PR1 shared-header refactor): dropdown items now
+    render server-side via ``_render_dropdown_items`` from ``PAGE_MENUS``
+    rather than living statically inside ``header.html``. The WAI-ARIA 1.2
+    menu pattern still applies — we now verify it on the rendered output
+    for a representative ``page_key``.
     """
-    text = HEADER_HTML.read_text(encoding="utf-8")
-    # Extract the dropdown subtree to scope the assertion.
-    sub = re.search(
-        r'<div[^>]*id="avatar-dropdown"[^>]*>(.*?)</div>\s*</div>',
-        text,
-        re.DOTALL,
-    )
-    assert sub, "could not isolate dropdown subtree"
-    body = sub.group(1)
-    # Look at every <a class="home-dropdown-item"...> and <button
-    # class="home-dropdown-item"...> tag. The divider <div> is not interactive.
+    from website.app import _render_dropdown_items
+    from website.config.page_menus import PAGE_MENUS
+
+    rendered = _render_dropdown_items(PAGE_MENUS["zettels"]["authed"])
     item_tags = re.findall(
-        r'<(?:a|button)[^>]*class="[^"]*home-dropdown-item[^"]*"[^>]*>', body,
+        r'<(?:a|button)[^>]*class="[^"]*home-dropdown-item[^"]*"[^>]*>', rendered,
     )
-    assert item_tags, "no dropdown items found"
+    assert item_tags, "no dropdown items rendered"
     missing = [t for t in item_tags if 'role="menuitem"' not in t]
     assert not missing, (
         f"dropdown items missing role=\"menuitem\": {missing!r}"
