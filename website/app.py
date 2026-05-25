@@ -147,26 +147,41 @@ def _render_with_shell(path: Path, page_key: str | None = None) -> HTMLResponse:
 
     Re-reads fragment files on every request so live edits show up without
     restart. Falls back to returning the raw page unchanged if a top-level
-    placeholder is absent.
+    placeholder is absent OR if the fragment file is missing (page renders
+    with the literal placeholder still in body — better than 500).
     """
     html = path.read_text(encoding="utf-8")
 
     if _HEADER_PLACEHOLDER in html:
-        header_html = (HEADER_DIR / "header.html").read_text(encoding="utf-8")
-        if page_key is None:
-            dropdown_html = ""
-            back_btn_html = ""
+        try:
+            header_html = (HEADER_DIR / "header.html").read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning(
+                "header.html fragment missing at %s — page rendered without shared header",
+                HEADER_DIR,
+            )
         else:
-            menu = PAGE_MENUS[page_key]   # KeyError on unknown page_key — intended
-            dropdown_html = _render_dropdown_items(menu["authed"])
-            back_btn_html = _render_back_button(menu["show_back_button"])
-        header_html = header_html.replace(_HEADER_DROPDOWN_SLOT, dropdown_html)
-        header_html = header_html.replace(_BACK_BTN_SLOT, back_btn_html)
-        html = html.replace(_HEADER_PLACEHOLDER, header_html)
+            if page_key is None:
+                dropdown_html = ""
+                back_btn_html = ""
+            else:
+                menu = PAGE_MENUS[page_key]   # KeyError on unknown page_key — intended
+                dropdown_html = _render_dropdown_items(menu["authed"])
+                back_btn_html = _render_back_button(menu["show_back_button"])
+            header_html = header_html.replace(_HEADER_DROPDOWN_SLOT, dropdown_html)
+            header_html = header_html.replace(_BACK_BTN_SLOT, back_btn_html)
+            html = html.replace(_HEADER_PLACEHOLDER, header_html)
 
     if _FOOTER_PLACEHOLDER in html:
-        footer_html = (FOOTER_DIR / "footer.html").read_text(encoding="utf-8")
-        html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
+        try:
+            footer_html = (FOOTER_DIR / "footer.html").read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning(
+                "footer.html fragment missing at %s — page rendered without shared footer",
+                FOOTER_DIR,
+            )
+        else:
+            html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
     return HTMLResponse(content=html, headers=_HTML_CACHE_HEADERS)
 
 
