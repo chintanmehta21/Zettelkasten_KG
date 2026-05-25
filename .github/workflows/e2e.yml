@@ -103,6 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           pytest tests/integration/browser/ \
+            --e2e \
             -m "e2e and not live" \
             --strict-markers \
             --collect-only -q \
@@ -131,6 +132,7 @@ jobs:
           E2E_BASE_URL: "http://127.0.0.1:8000"
         run: |
           pytest tests/integration/browser/ \
+            --e2e \
             -m "e2e and not live" \
             --strict-markers \
             -v \

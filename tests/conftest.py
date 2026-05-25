@@ -46,6 +46,16 @@ def pytest_addoption(parser):
     except ValueError as exc:
         if '--destructive' not in str(exc):
             raise
+    try:
+        parser.addoption(
+            '--e2e',
+            action='store_true',
+            default=False,
+            help='Run browser-driven Playwright e2e tests',
+        )
+    except ValueError as exc:
+        if '--e2e' not in str(exc):
+            raise
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +71,18 @@ def skip_destructive(request):
         and not request.config.getoption('--destructive')
     ):
         pytest.skip('Destructive test — pass --destructive to run')
+
+
+@pytest.fixture(autouse=True)
+def skip_e2e(request):
+    """E2E tests require Chromium + the dev server. Opt-in via --e2e.
+
+    Symmetric with skip_live/skip_destructive: default pytest runs (ci.yml)
+    skip these so the workflow doesn't need Playwright browsers installed.
+    The e2e.yml workflow passes --e2e explicitly.
+    """
+    if request.node.get_closest_marker('e2e') and not request.config.getoption('--e2e'):
+        pytest.skip('E2E test — pass --e2e to run')
 
 
 @pytest.fixture

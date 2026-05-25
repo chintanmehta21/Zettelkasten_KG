@@ -36,10 +36,7 @@ def _run_poll_accepted(initial_body, poll_bodies):
         const INITIAL = %s;
         const POLLS = %s;
         let pollIdx = 0;
-        global.window = {
-          setTimeout: (fn) => fn(),  // collapse sleeps
-        };
-        global.fetch = async (url) => {
+        const stubFetch = async (url) => {
           let body;
           if (String(url).indexOf('/api/zettels/add') !== -1 && pollIdx === 0
               && String(url).indexOf('/operations/') === -1) {
@@ -56,6 +53,13 @@ def _run_poll_accepted(initial_body, poll_bodies):
             text: async () => JSON.stringify(body),
           };
         };
+        global.window = {
+          setTimeout: (fn) => fn(),  // collapse sleeps
+          fetch: stubFetch,           // post signup-failure-fixes-1a, add_zettel_api
+                                      // resolves zkFetch via window.fetch fallback
+                                      // when window.zkFetch isn't installed.
+        };
+        global.fetch = stubFetch;
         %s
         (async () => {
           try {
