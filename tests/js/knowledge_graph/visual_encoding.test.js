@@ -55,11 +55,17 @@ describe('KG visual encoding — opacity + width formulas', () => {
     expect(helpers.edgeWidthFor(-1)).toBeGreaterThanOrEqual(0.5);
   });
 
-  it('app.js wires .linkOpacity to edgeOpacityFor and .linkWidth to edgeWidthFor', () => {
-    // Find the 3d-force-graph init block. The linkOpacity / linkWidth
-    // callbacks must call the helpers; otherwise the formula is dead code.
-    expect(APP_SRC).toMatch(/\.linkOpacity\(\s*[^)]*edgeOpacityFor[^)]*\)/);
-    expect(APP_SRC).toMatch(/\.linkWidth\(\s*[^)]*edgeWidthFor[^)]*\)/);
+  it('app.js wires .linkOpacity and .linkWidth to uniform values (elegant revert)', () => {
+    // Operator UX revert: per-link strength-scaled width/opacity (which used
+    // edgeWidthFor / edgeOpacityFor) made the edges look inconsistent on the
+    // dark background. The original 56701d69 baseline used uniform values —
+    // 0.5 default width, 1.8 on hover, 0.6 opacity for every link — and the
+    // operator chose to restore that. The strength helpers stay defined in
+    // the file so the math is still test-exercised above; they're just no
+    // longer the source of truth for visual width/opacity.
+    expect(APP_SRC).toMatch(/\.linkOpacity\(\s*0\.6\s*\)/);
+    expect(APP_SRC).toMatch(/return\s+1\.8\s*;/);
+    expect(APP_SRC).toMatch(/return\s+0\.5\s*;/);
   });
 });
 
@@ -146,8 +152,12 @@ describe('KG visual encoding — no-purple color rule', () => {
     expect(APP_SRC).toMatch(/rgba\(\s*100\s*,\s*130\s*,\s*200\s*,\s*0\.25/);
     expect(APP_SRC).toMatch(/rgba\(\s*160\s*,\s*180\s*,\s*240\s*,\s*0\.8/);
     expect(APP_SRC).not.toMatch(/EDGE_TIER_COLOR/);
-    expect(APP_SRC).toMatch(/\.linkWidth\(\s*[^)]*edgeWidthFor[^)]*\)/);
-    expect(APP_SRC).toMatch(/\.linkOpacity\(\s*[^)]*edgeOpacityFor[^)]*\)/);
+    // Width/opacity now use the uniform 0.5/1.8/0.6 baseline (elegant
+    // revert) — they no longer call edgeWidthFor/edgeOpacityFor. Pinned in
+    // the dedicated test above; here we just confirm the blue-base colour
+    // assertion above isn't co-living with the old strength-scaled wiring.
+    expect(APP_SRC).toMatch(/\.linkOpacity\(\s*0\.6\s*\)/);
+    expect(APP_SRC).toMatch(/return\s+0\.5\s*;/);
   });
 
   it('strength filter CHROME is teal (not the old gold #D4A024)', () => {

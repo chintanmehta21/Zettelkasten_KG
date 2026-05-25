@@ -1,29 +1,39 @@
-"""KG route must render via shell so the global header is injected.
+"""KG route owns its own header — shared header partial is intentionally omitted.
 
-NOTE on plan deviation: the original spec assumed `id="login-modal"` lived inside
-the shared header partial and would therefore appear on the KG page after shell
-injection. Phase-0 discovery showed the login modal is only present on the
-landing page (`website/static/index.html`); the shared header partial (used by
-`/home`, `/home/zettels`, etc.) does not own it, and `auth.js` is only loaded by
-the landing page. To preserve the spirit of the test (the KG page goes through
-the shell so logged-out users have a path to authenticate) without forcing a
-cross-page architectural change, this test asserts that the header partial DOM
-itself is present (`data-zk-header`). The KG client falls back to navigating to
-`/?return=/knowledge-graph` when no in-page login affordance is reachable.
+Earlier this test pinned the OPPOSITE: it required `data-zk-header` to appear
+in the served KG body so the shared header partial was injected on top of KG's
+own `<header class="kg-header">`. Operator UX feedback flipped that decision:
+the dual-header stack caused (a) two headers visible at steady state and (b) a
+giant unstyled back-arrow SVG rendering full-viewport during the brief window
+before /kg/css/style.css applied (the shared partial's <button class="zk-back-btn">
+SVG has no width/height inline attrs). KG already has every nav affordance it
+needs in its own kg-header, so the shared partial was dead chrome here.
+
+Implementation: the `<!--ZK_HEADER-->` literal token was removed from
+`website/features/knowledge_graph/index.html`. `_render_with_shell`'s
+`if _HEADER_PLACEHOLDER in html` check fails, so nothing gets injected.
+
+This test now ASSERTS that absence — both the literal placeholder and the
+shared partial's marker class must be missing — while confirming the route
+still renders KG's own header + content.
 """
 from fastapi.testclient import TestClient
 
 from website.app import create_app
 
 
-def test_knowledge_graph_route_includes_shared_header():
+def test_knowledge_graph_route_omits_shared_header():
     app = create_app()
     client = TestClient(app)
     resp = client.get("/knowledge-graph", headers={"User-Agent": "Mozilla/5.0 (desktop)"})
     assert resp.status_code == 200
     body = resp.text
-    # Shell injection happened: placeholder is gone and header DOM is present.
-    assert "<!--ZK_HEADER-->" not in body, "Shell placeholder was not replaced"
-    assert "data-zk-header" in body, "Header partial was not injected"
-    # KG content still present.
+    # Neither the literal placeholder nor the injected partial should appear.
+    assert "<!--ZK_HEADER-->" not in body, "Stale placeholder leaked through"
+    assert "data-zk-header" not in body, (
+        "Shared header partial was injected — KG owns its own kg-header and the "
+        "shared partial was deliberately removed to avoid the dual-header stack."
+    )
+    # The route's OWN header + main content still present.
+    assert 'class="kg-header"' in body, "KG's own header is missing"
     assert 'id="graph-container"' in body
