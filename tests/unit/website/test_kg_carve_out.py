@@ -1,10 +1,14 @@
 """Asserts /knowledge-graph renders ONLY its dedicated kg-header — the shared
 zk-header must be gone (today both render stacked; this test fails until the
 carve-out lands)."""
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 from website.app import create_app
+
+_ROOT = Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture(scope="module")
@@ -38,7 +42,6 @@ def test_kg_index_html_no_longer_contains_placeholder():
     (a stronger signal than the route-level test which would also pass if the
     KG route were swapped to _html_file_response without removing the
     placeholder from the file)."""
-    from pathlib import Path
-    kg_index = Path(__file__).parent.parent.parent.parent / "website" / "features" / "knowledge_graph" / "index.html"
+    kg_index = _ROOT / "website" / "features" / "knowledge_graph" / "index.html"
     content = kg_index.read_text(encoding="utf-8")
     assert "<!--ZK_HEADER-->" not in content
