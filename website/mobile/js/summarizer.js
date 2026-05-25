@@ -35,6 +35,11 @@
 
   async function getAuthToken() {
     try {
+      // Canonical: window.getAuthToken (synchronous) from auth-core.js.
+      if (typeof window.getAuthToken === 'function') {
+        var t = window.getAuthToken();
+        if (t) return t;
+      }
       if (window.ZKAuth && typeof window.ZKAuth.getSession === 'function') {
         var s = await window.ZKAuth.getSession();
         if (s && s.access_token) return s.access_token;
