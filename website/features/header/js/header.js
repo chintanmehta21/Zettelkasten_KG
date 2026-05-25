@@ -117,18 +117,22 @@
     var profileId = (profile && profile.id) || null;
     var serverUrl = profile && profile.avatar_url;
     if (serverUrl && AVATAR_PATH_RE.test(serverUrl)) {
-      writeCached(profileId, serverUrl);
+      if (profileId) writeCached(profileId, serverUrl);
       return { url: serverUrl, source: 'server' };
     }
-    var cached = readCached(profileId);
-    if (cached) return { url: cached, source: 'cache' };
+    // PR2: skip cache lookup AND write when anon (profileId === null) so
+    // every anon page-load picks a fresh random avatar per spec §8.
+    if (profileId) {
+      var cached = readCached(profileId);
+      if (cached) return { url: cached, source: 'cache' };
+    }
 
     // Assign a deterministic-ish random avatar
     var randomId = Math.floor(Math.random() * AVATAR_COUNT);
     var url = avatarUrlFor(randomId);
-    writeCached(profileId, url);
-    // Fire-and-forget persist to server (don't block avatar render on this)
-    if (getToken) {
+    if (profileId) writeCached(profileId, url);
+    // Fire-and-forget persist to server (only for authed users)
+    if (getToken && profileId) {
       try {
         var token = typeof getToken === 'function' ? await getToken() : getToken;
         if (token) {
@@ -203,6 +207,23 @@
     });
   }
 
+  /** PR2 anon flow: when /pricing is loaded by an anon visitor and
+   * page-init calls boot({anonAction: 'open-login-modal'}), the avatar
+   * click opens the existing #login-modal directly. The dropdown wrap
+   * stays hidden via the zk-anon-no-dropdown-default class. */
+  function _installAnonLoginModalClickSwap() {
+    if (!refs.avatarBtn || refs.avatarBtn.dataset.zkAnonBound) return;
+    refs.avatarBtn.dataset.zkAnonBound = '1';
+    refs.avatarBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var modal = document.getElementById('login-modal');
+      if (modal && typeof modal.classList === 'object') {
+        modal.classList.add('open');
+      }
+    }, true);
+  }
+
   function bindAvatarDropdown() {
     if (!refs.avatarBtn || !refs.avatarDrop || refs.avatarBtn.dataset.zkBound) return;
     refs.avatarBtn.dataset.zkBound = '1';
@@ -261,6 +282,9 @@
      * @param {Function|string} getToken - () => Promise<string>|string  or raw bearer string
      * @param {Object} [options]
      * @param {Object} [options.profile] - pre-fetched profile (skips /api/me call)
+     * @param {'open-login-modal'|'none'} [options.anonAction] - PR2: for anon
+     *   visitors with anonAction='open-login-modal', the avatar click opens
+     *   #login-modal instead of toggling the dropdown.
      */
     boot: async function (getToken, options) {
       options = options || {};
@@ -271,6 +295,15 @@
           var token = typeof getToken === 'function' ? await getToken() : getToken;
           profile = await fetchProfile(token);
         } catch (_) { profile = null; }
+      }
+      var isAnon = !profile || !profile.id;
+      // PR2: anon click-swap. Wire BEFORE loadAvatar so the swap is in
+      // place even if avatar load races a fast click.
+      if (isAnon && options.anonAction === 'open-login-modal') {
+        _installAnonLoginModalClickSwap();
+      } else {
+        // Authed (or no opt-in): reveal the dropdown wrap.
+        if (refs.avatarWrap) refs.avatarWrap.classList.remove('zk-anon-no-dropdown-default');
       }
       await loadAvatar(profile, getToken);
       // iter-03 §UI: surface a stable signal harness/automation can read to
