@@ -91,11 +91,20 @@
     // KG add-to-Kasten path, which all reach into localStorage by this
     // exact key (see "Y2 auth token scoped to current Supabase project ref"
     // commit cc1a9aca).
+    // flowType: 'pkce' MUST be explicit. @supabase/auth-js default is
+    // 'implicit' (verified in DEFAULT_OPTIONS, GoTrueClient.ts) — without
+    // this override, signInWithOAuth never writes the code_verifier to
+    // localStorage, and the /auth/callback page (which IS pkce) fails the
+    // exchange with the generic "No session established" toast. The
+    // server-side user row is still created (Google OAuth handoff is
+    // independent of PKCE), masking the bug as a UI-only failure. See
+    // test_auth_core_flow_type.py and the Vedant incident on 2026-05-26.
     return supabase.createClient(config.supabase_url, config.supabase_anon_key, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        flowType: 'pkce',
         storage: window.localStorage,
         storageKey: 'zk-auth-token',
       },

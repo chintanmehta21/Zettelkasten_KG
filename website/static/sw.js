@@ -1,7 +1,7 @@
 // Service Worker — Zettelkasten mobile shell cache (iter mobile-1a Phase 6)
 // Placeholder icons: teal-on-dark 'Z'. Replace icons before shipping to stores.
 
-const CACHE = 'zk-shell-v3';  // v3: zkFetch wrapper added (signup-failure-fixes-1a)
+const CACHE = 'zk-shell-v4';  // v4: drop ignoreSearch on /m/js/ + /m/css/ + /static/ so cache-busters actually invalidate (Vedant OAuth incident 2026-05-26)
 
 const SHELL_URLS = [
   '/m/',
@@ -75,19 +75,23 @@ self.addEventListener('fetch', function (event) {
   }
 
   // Static assets: /static/*, /m/css/*, /m/js/*, /favicon.svg — cache-first, network fallback + update.
-  // Normalize URL (strip query string) so ?v=... cache-busters share one cache entry.
+  // Key cache entries on the FULL URL (including ?v=... cache-buster) so a
+  // version bump in HTML produces a cache miss → network fetch → new entry.
+  // The previous "normalize to canonical + ignoreSearch:true" pattern looked
+  // efficient but silently stripped the version key, so old JS persisted
+  // across deploys until the SW activate event purged the entire cache. See
+  // research synthesis 2026-05-26 (Vedant OAuth incident) for evidence.
   if (
     url.pathname.startsWith('/static/') ||
     url.pathname.startsWith('/m/css/') ||
     url.pathname.startsWith('/m/js/') ||
     url.pathname === '/favicon.svg'
   ) {
-    var canonicalStatic = new Request(url.origin + url.pathname);
     event.respondWith(
-      caches.match(canonicalStatic, { ignoreSearch: true }).then(function (cached) {
+      caches.match(event.request).then(function (cached) {
         var networkFetch = fetch(event.request).then(function (resp) {
           var clone = resp.clone();
-          caches.open(CACHE).then(function (c) { c.put(canonicalStatic, clone); });
+          caches.open(CACHE).then(function (c) { c.put(event.request, clone); });
           return resp;
         });
         return cached || networkFetch;
