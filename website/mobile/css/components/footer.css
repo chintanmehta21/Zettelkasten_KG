@@ -1,0 +1,20 @@
+/* footer.css — mobile footer with mini icons (T13). */
+
+.m-footer {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px 0;
+  margin-bottom: calc(var(--m-bottomnav-h, 64px) + env(safe-area-inset-bottom, 0px) + 12px);
+}
+.m-footer-icon {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  text-decoration: none;
+}
+.m-footer-icon:hover { color: var(--m-teal, #14b8a6); background: rgba(20,184,166,0.10); }
+.m-footer-icon:active { transform: scale(0.94); }
