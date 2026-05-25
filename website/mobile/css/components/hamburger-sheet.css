@@ -1,0 +1,48 @@
+/* hamburger-sheet.css — bottom-sheet styling (T7). */
+
+.zk-sheet-root {
+  position: fixed; inset: 0; z-index: 70;
+  pointer-events: none;
+}
+.zk-sheet-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: auto;
+}
+.zk-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: #11131c;
+  border-top: 1px solid rgba(20,184,166,0.16);
+  border-radius: 18px 18px 0 0;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  transform: translateY(100%);
+  transition: transform 240ms cubic-bezier(.32,.72,0,1);
+  pointer-events: auto;
+}
+.zk-sheet-root.is-open .zk-sheet-backdrop { opacity: 1; }
+.zk-sheet-root.is-open .zk-sheet { transform: translateY(0); }
+
+.zk-sheet-handle {
+  width: 36px; height: 4px;
+  background: rgba(255,255,255,0.16);
+  border-radius: 2px;
+  margin: 8px auto 12px;
+}
+.zk-sheet-title {
+  font-size: 14px; color: rgba(255,255,255,0.7);
+  margin-bottom: 8px; padding: 0 4px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.zk-sheet-list { display: flex; flex-direction: column; }
+.zk-sheet-cell {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 8px;
+  background: transparent; border: 0;
+  color: #e6e6e6; text-align: left;
+  border-radius: 10px;
+}
+.zk-sheet-cell.is-selected { background: rgba(20,184,166,0.14); color: var(--m-teal, #14b8a6); }
+.zk-sheet-cell:active { background: rgba(255,255,255,0.06); }
+.zk-sheet-cell-label { flex: 1; font-size: 16px; }
