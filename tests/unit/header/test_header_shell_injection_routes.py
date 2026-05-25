@@ -105,8 +105,14 @@ async def test_route_identity_marker(app, path, route_marker):
 # on 2026-05-12): the shell fragment IS substituted in. The other 3 routes
 # (/, /home, /about) ship inline header markup — substitution is a no-op
 # fall-through and the inline copy serves the page.
+# 2026-05-25: /knowledge-graph moved to INLINE_HEADER_ROUTES. The page's
+# own <header class="kg-header"> covers the same nav footprint, and stacking
+# the shared partial on top caused two visible headers + an unstyled-CSS
+# giant-back-arrow flash during initial load. The literal <!--ZK_HEADER-->
+# token was removed from kg/index.html so _render_with_shell skips injection.
+# The "no placeholder leaks" test above still applies — there's just nothing
+# to leak now.
 SHELL_INJECTED_ROUTES = [
-    "/knowledge-graph",
     "/home/nexus",
     "/home/zettels",
     "/home/kastens",
@@ -114,7 +120,7 @@ SHELL_INJECTED_ROUTES = [
     "/profile",
     "/pricing",
 ]
-INLINE_HEADER_ROUTES = ["/", "/home", "/about"]
+INLINE_HEADER_ROUTES = ["/", "/home", "/about", "/knowledge-graph"]
 
 
 @pytest.mark.parametrize("path,_marker", SHELL_ROUTES, ids=[p for p, _ in SHELL_ROUTES])
