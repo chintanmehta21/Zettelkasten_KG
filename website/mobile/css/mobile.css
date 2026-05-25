@@ -9,6 +9,7 @@
 @import url("./components/glass-nav.css");
 @import url("./components/hamburger-sheet.css");
 @import url("./pages/zettels.css");
+@import url("./pages/kastens.css");
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
