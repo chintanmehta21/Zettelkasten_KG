@@ -19,24 +19,27 @@ from website.config.page_menus import PAGE_MENUS
 
 def test_render_dropdown_items_emits_all_links():
     rendered = _render_dropdown_items(PAGE_MENUS["zettels"]["authed"])
-    # Spot-check every authed link href present, in order
+    # PR2 zettels page: own /home/zettels link OMITTED; new Store link present.
     assert 'href="/home"' in rendered
-    assert 'href="/home/zettels"' in rendered
+    assert 'href="/home/zettels"' not in rendered    # current page hidden
     assert 'href="/home/kastens"' in rendered
     assert 'href="/home/nexus"' in rendered
     assert 'href="/knowledge-graph"' in rendered
     assert 'href="/profile"' in rendered
-    # Sign-out is a <button>, not an <a>
+    assert 'href="/pricing"' in rendered             # Store item, new in PR2
     assert 'id="menu-signout"' in rendered
     assert "<button" in rendered
 
 
 def test_render_dropdown_items_preserves_item_order():
     rendered = _render_dropdown_items(PAGE_MENUS["zettels"]["authed"])
-    # Dashboard must appear before My Zettels in markup
-    assert rendered.find('href="/home"') < rendered.find('href="/home/zettels"')
-    assert rendered.find('href="/home/zettels"') < rendered.find('href="/home/kastens"')
-    assert rendered.find('href="/profile"') < rendered.find('id="menu-signout"')
+    # zettels order: Home → Kastens → KG → Nexus → Profile → Store → Sign out
+    assert rendered.find('href="/home"') < rendered.find('href="/home/kastens"')
+    assert rendered.find('href="/home/kastens"') < rendered.find('href="/knowledge-graph"')
+    assert rendered.find('href="/knowledge-graph"') < rendered.find('href="/home/nexus"')
+    assert rendered.find('href="/home/nexus"') < rendered.find('href="/profile"')
+    assert rendered.find('href="/profile"') < rendered.find('href="/pricing"')
+    assert rendered.find('href="/pricing"') < rendered.find('id="menu-signout"')
 
 
 def test_render_dropdown_items_includes_labs_pill_on_nexus_only():
@@ -79,15 +82,12 @@ def test_render_with_shell_substitutes_dropdown_for_known_page_key(tmp_path):
     )
     resp = _render_with_shell(page, page_key="zettels")
     body = resp.body.decode("utf-8")
-    # ZK_HEADER substituted (no raw placeholder leftover)
     assert "<!--ZK_HEADER-->" not in body
-    # HEADER_DROPDOWN substituted inside the injected header
     assert "<!--HEADER_DROPDOWN-->" not in body
-    # BACK_BTN_SLOT substituted (show_back_button=True default for zettels in PR1)
     assert "<!--BACK_BTN_SLOT-->" not in body
-    # Dropdown items render
-    assert 'href="/home/zettels"' in body
-    # Back button renders
+    # zettels page renders the OTHER pages' links, not its own
+    assert 'href="/home"' in body
+    assert 'href="/home/zettels"' not in body
     assert 'data-zk-back' in body
 
 

@@ -7,11 +7,6 @@ Consumed by website.app._render_with_shell at request time.
 Security contract: all MenuItem values are interpolated unescaped into HTML
 (``icon`` is intentional inline SVG). Keep label/href ASCII-safe; NEVER
 source values from user input.
-
-PR1 scope: schema + 6 entries all using the same 7-item default list (matches
-the static markup that used to live in header.html — zero UX change). PR2
-introduces per-page divergence, the /home entry, the "Store" item, and
-populates the anon variant for /pricing.
 """
 
 from typing import Literal, NotRequired, TypedDict
@@ -34,12 +29,10 @@ class PageMenu(TypedDict):
 
 
 # ── Canonical item registry ──────────────────────────────────────────────
-# Each item renders to the EXACT markup currently in header.html so the PR1
-# substitution is a byte-for-byte equivalent of today's static dropdown.
 
 _HOME: MenuItem = {
     "key": "home",
-    "label": "Dashboard",
+    "label": "Home",   # renamed from "Dashboard" in PR2 per spec §5.2
     "href": "/home",
     "icon": (
         '<svg viewBox="0 0 24 24" fill="none">'
@@ -98,6 +91,19 @@ _PROFILE: MenuItem = {
     "dom_id": "menu-profile",
 }
 
+_STORE: MenuItem = {
+    "key": "store",
+    "label": "Store",
+    "href": "/pricing",
+    "icon": (
+        '<svg viewBox="0 0 24 24" fill="none">'
+        '<path d="M6 7h12l-1 13H7L6 7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>'
+        '<path d="M9 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>'
+        '</svg>'
+    ),
+    "dom_id": "menu-store",
+}
+
 _SIGNOUT: MenuItem = {
     "key": "signout",
     "label": "Sign out",
@@ -112,20 +118,64 @@ _SIGNOUT: MenuItem = {
     "dom_id": "menu-signout",
 }
 
-
-# ── Per-page menu config (PR1 — all six pages share the default list) ──
-_AUTHED_DEFAULT: list[MenuItem] = [_HOME, _ZETTELS, _KASTENS, _NEXUS, _KG, _PROFILE, _SIGNOUT]
-
-_DEFAULT_PAGE: PageMenu = {
-    "authed": _AUTHED_DEFAULT,
-    "anon": None,
-    "anon_avatar_action": None,
-    "show_back_button": True,
+_SIGNIN: MenuItem = {
+    "key": "signin",
+    "label": "Sign in",
+    "href": "/",
+    "icon": (
+        '<svg viewBox="0 0 24 24" fill="none">'
+        '<path d="M10 7L5 12L10 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>'
+        '<path d="M5 12H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>'
+        '<path d="M12 4H18A1 1 0 0 1 19 5V19A1 1 0 0 1 18 20H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>'
+        '</svg>'
+    ),
+    "dom_id": "menu-signin",
 }
 
-# Each entry gets a fresh dict + fresh authed list so PR2 can mutate per-page
-# without lockstep side-effects across pages (reviewer I1(b)).
+
+# ── Per-page menu config (PR2 — divergent per-page lists per spec §5.3) ──
+
 PAGE_MENUS: dict[str, PageMenu] = {
-    key: {**_DEFAULT_PAGE, "authed": list(_AUTHED_DEFAULT)}
-    for key in ("zettels", "kastens", "rag", "nexus", "profile", "pricing")
+    "home": {
+        "authed": [_NEXUS, _PROFILE, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": False,
+    },
+    "zettels": {
+        "authed": [_HOME, _KASTENS, _KG, _NEXUS, _PROFILE, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": True,
+    },
+    "kastens": {
+        "authed": [_HOME, _ZETTELS, _KG, _NEXUS, _PROFILE, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": True,
+    },
+    "rag": {
+        "authed": [_HOME, _ZETTELS, _KASTENS, _KG, _NEXUS, _PROFILE, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": True,
+    },
+    "nexus": {
+        "authed": [_HOME, _ZETTELS, _KASTENS, _KG, _PROFILE, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": True,
+    },
+    "profile": {
+        "authed": [_HOME, _ZETTELS, _KASTENS, _KG, _NEXUS, _STORE, _SIGNOUT],
+        "anon": None,
+        "anon_avatar_action": None,
+        "show_back_button": True,
+    },
+    "pricing": {
+        "authed": [_HOME, _ZETTELS, _KASTENS, _KG, _NEXUS, _PROFILE, _SIGNOUT],
+        "anon": [_HOME, _SIGNIN],
+        "anon_avatar_action": "open-login-modal",
+        "show_back_button": True,
+    },
 }
