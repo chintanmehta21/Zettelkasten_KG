@@ -1,5 +1,19 @@
 <!-- Body fragment for /m/ — injected into mobile shell by _render_with_mobile_shell. -->
 
+<div class="m-install-banner" id="install-banner" hidden>
+  <div class="m-install-banner-body">
+    <span class="m-install-banner-icon" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><rect x="4" y="17" width="16" height="4" rx="1"/></svg>
+    </span>
+    <div class="m-install-banner-text">
+      <div class="m-install-banner-title">Install Zettelkasten</div>
+      <div class="m-install-banner-sub" id="install-banner-sub">Add to your home screen for faster access.</div>
+    </div>
+    <button type="button" class="m-install-banner-cta" id="install-banner-cta">Install</button>
+    <button type="button" class="m-install-banner-close" id="install-banner-close" aria-label="Dismiss">×</button>
+  </div>
+</div>
+
 <!-- Hero -->
 <section class="m-hero">
   <h1>Capture Knowledge</h1>
@@ -30,3 +44,15 @@
 <script src="/js/add_zettel_api.js?v=20260522a"></script>
 <script src="/js/zk_skeleton_typewriter.js?v=20260524a"></script>
 <script src="/m/js/summarizer.js?v=20260524a"></script>
+
+<div class="m-ios-install-sheet" id="ios-install-sheet" hidden>
+  <div class="m-ios-install-sheet-card">
+    <h3>Install on iOS</h3>
+    <ol>
+      <li>Tap the Share icon in Safari's bottom bar.</li>
+      <li>Choose <strong>Add to Home Screen</strong>.</li>
+      <li>Tap <strong>Add</strong>.</li>
+    </ol>
+    <button type="button" class="m-btn" id="ios-install-close">Got it</button>
+  </div>
+</div>
