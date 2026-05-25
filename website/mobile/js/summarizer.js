@@ -1,249 +1,85 @@
-/* ═══════════════════════════════════════════════════════════
-   Mobile Summarizer — Touch-optimized, minimal JS
-   ═══════════════════════════════════════════════════════════ */
+// summarizer.js — capture-form handler (iter-2a).
+// - Source picker: bottom sheet (via window.ZK.openSheet)
+// - On submit: POST /api/zettels/add → redirect to /m/zettels?just_captured=<id>
+// - No inline result rendering (removed in iter-2a; results live on /m/zettels)
+
 (function () {
-  'use strict';
+  "use strict";
 
-  const form     = document.getElementById('summarize-form');
-  const urlInput = document.getElementById('url-input');
-  const documentInput = document.getElementById('document-input');
-  const documentUploadBtn = document.getElementById('document-upload-btn');
-  const srcSel   = document.getElementById('source-select');
-  const submitBtn= document.getElementById('submit-btn');
-  const loading  = document.getElementById('loading');
-  const errorEl  = document.getElementById('error');
-  const result   = document.getElementById('result');
-  const copyBtn  = document.getElementById('copy-btn');
+  const SOURCES = [
+    { value: 'auto',       label: 'Auto-detect',   selected: true  },
+    { value: 'youtube',    label: 'YouTube'                       },
+    { value: 'github',     label: 'GitHub'                        },
+    { value: 'reddit',     label: 'Reddit'                        },
+    { value: 'newsletter', label: 'Newsletter'                    },
+    { value: 'web',        label: 'Web'                           },
+  ];
 
-  let rawSummary = '';
-  var _typer = null;
+  function attach() {
+    const form = document.getElementById('summarize-form');
+    const picker = document.getElementById('source-picker-btn');
+    if (!form || !picker) return;
 
-  function showLoading() {
-    loading.classList.add('active');
-    result.classList.remove('active');
-    errorEl.classList.remove('active');
-    submitBtn.disabled = true;
-    var skel = document.getElementById('skeleton-card');
-    if (skel) {
-      skel.hidden = false;
-      if (window.ZKSkeletonTyper && typeof window.ZKSkeletonTyper.attach === 'function') {
-        _typer = window.ZKSkeletonTyper.attach(skel);
-      }
-    }
-  }
-
-  function hideLoading() {
-    loading.classList.remove('active');
-    submitBtn.disabled = false;
-    if (_typer && typeof _typer.detach === 'function') {
-      _typer.detach();
-      _typer = null;
-    }
-    var skel = document.getElementById('skeleton-card');
-    if (skel) skel.hidden = true;
-  }
-
-  function handleStatusTick(tick) {
-    if (_typer && typeof _typer.update === 'function') {
-      _typer.update(tick);
-    }
-  }
-
-  function showError(msg) {
-    hideLoading();
-    errorEl.textContent = msg;
-    errorEl.classList.add('active');
-  }
-
-  function validateDocument(file) {
-    if (!file) return null;
-    const allowed = /\.(pdf|txt|md|markdown|docx)$/i;
-    if (!allowed.test(file.name || '')) return 'Upload PDF, TXT, Markdown, or DOCX.';
-    if (file.size > 10 * 1024 * 1024) return 'Document is too large (max 10 MB).';
-    if (file.size <= 0) return 'Document is empty.';
-    return null;
-  }
-
-  function clearSelectedDocument() {
-    if (documentInput) documentInput.value = '';
-    if (documentUploadBtn) documentUploadBtn.classList.remove('has-file');
-    if (urlInput) urlInput.placeholder = 'Paste a URL...';
-  }
-
-  function getSelectedDocument() {
-    return documentInput && documentInput.files ? documentInput.files[0] : null;
-  }
-
-  function markdownToHTML(md) {
-    if (!md) return '';
-    // Escape HTML first: summaries derive from arbitrary ingested pages, so
-    // raw innerHTML without escaping is a stored-XSS vector.
-    let html = normalizeSummaryMarkdown(md)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    // Code blocks
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Headers
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    // Bold
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Italic
-    html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-    // Lists
-    html = html.replace(/^[\s]*[-•*]\s+(.+)$/gm, '<li>$1</li>');
-    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-    // Paragraphs
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = '<p>' + html + '</p>';
-    html = html.replace(/<p>\s*<(h[23]|ul|pre)/g, '<$1');
-    html = html.replace(/<\/(h[23]|ul|pre)>\s*<\/p>/g, '</$1>');
-    return html;
-  }
-
-  function normalizeSummaryMarkdown(text) {
-    // Parity with the desktop renderers: split an inline ATX heading the model
-    // glued mid-line onto its own block, then drop any trailing ``#``.
-    return String(text || '')
-      .replace(/(\S)[ \t]+(#{2,6})[ \t]+(?=\S)/g, '$1\n\n$2 ')
-      .replace(/^(#{2,6} .+?)[ \t]+#+[ \t]*$/gm, '$1');
-  }
-
-  function showResult(data) {
-    hideLoading();
-
-    // Badge
-    const badge = document.getElementById('result-badge');
-    const src = (data.source_type === 'generic' ? 'web' : data.source_type) || 'web';
-    badge.textContent = src;
-    badge.className = 'm-result-badge ' + src.toLowerCase();
-
-    // Title
-    document.getElementById('result-title').textContent = data.title || 'Summary';
-
-    // Brief
-    document.getElementById('result-brief').textContent = data.brief_summary || data.one_line_summary || '';
-
-    // Tags
-    const tagsEl = document.getElementById('result-tags');
-    tagsEl.innerHTML = '';
-    if (data.tags && data.tags.length) {
-      data.tags.forEach(function (t) {
-        const tag = document.createElement('span');
-        tag.className = 'm-tag';
-        tag.textContent = t;
-        tagsEl.appendChild(tag);
-      });
-    }
-
-    // Detailed summary
-    rawSummary = data.summary || '';
-    document.getElementById('result-detail').innerHTML = markdownToHTML(rawSummary);
-
-    // Source link
-    const srcLink = document.getElementById('source-link');
-    srcLink.href = data.source_url || '#';
-    if (data.source_type === 'document') {
-      srcLink.removeAttribute('href');
-      srcLink.setAttribute('aria-disabled', 'true');
-    } else {
-      srcLink.setAttribute('href', data.source_url || '#');
-      srcLink.removeAttribute('aria-disabled');
-    }
-
-    result.classList.add('active');
-    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  // Copy handler
-  copyBtn.addEventListener('click', function () {
-    if (!rawSummary) return;
-    navigator.clipboard.writeText(rawSummary).then(function () {
-      copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
-      setTimeout(function () {
-        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
-      }, 2000);
-    });
-  });
-
-  if (documentUploadBtn && documentInput) {
-    documentUploadBtn.addEventListener('click', function () {
-      documentInput.click();
-    });
-    documentInput.addEventListener('change', function () {
-      const file = getSelectedDocument();
-      errorEl.classList.remove('active');
-      documentUploadBtn.classList.toggle('has-file', Boolean(file));
-      if (file) {
-        urlInput.value = '';
-        urlInput.placeholder = file.name || 'Document selected';
-      }
-    });
-  }
-
-  if (urlInput) {
-    urlInput.addEventListener('input', function () {
-      if (urlInput.value.trim()) clearSelectedDocument();
-    });
-  }
-
-  // Form submit
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var url = urlInput.value.trim();
-    var file = getSelectedDocument();
-    if (!url && !file) return showError('Please enter a URL or choose a document.');
-
-    // Basic URL validation
-    if (!file && !/^https?:\/\/.+/i.test(url)) {
-      if (/^[\w]/.test(url)) url = 'https://' + url;
-      else return showError('Please enter a valid URL.');
-    }
-    if (!file && url.length > 2048) return showError('URL is too long (max 2048 characters).');
-    const documentError = file ? validateDocument(file) : null;
-    if (documentError) return showError(documentError);
-
-    showLoading();
-
-    if (!window.ZKAddZettel || typeof window.ZKAddZettel.add !== 'function' || typeof window.ZKAddZettel.uploadDocument !== 'function') {
-      return showError('Add Zettel API helper failed to load. Please refresh and try again.');
-    }
-
-    const request = file
-      ? window.ZKAddZettel.uploadDocument({
-        file: file,
-        clientActionId: window.ZKAddZettel.makeActionId('mobile-document'),
-        persist: true,
-        surface: 'mobile',
-        onStatus: handleStatusTick
-      })
-      : window.ZKAddZettel.add({
-        url: url,
-        clientActionId: window.ZKAddZettel.makeActionId('mobile'),
-        persist: true,
-        surface: 'mobile',
-        onStatus: handleStatusTick
-      });
-
-    request
-    .then(function (data) {
-      clearSelectedDocument();
-      urlInput.value = '';
-      showResult(data.summary || {});
-    })
-    .catch(function (err) {
-      // PR #39 / Wave-2 C2: graceful exhaust — keep the user informed
-      // rather than blasting a generic failure for a still-running pipeline.
-      if (err && err.code === 'poll_exhausted') {
-        hideLoading();
-        errorEl.textContent = 'Still summarizing in the background — refresh in a moment to view.';
-        errorEl.classList.add('active');
+    picker.addEventListener('click', () => {
+      const current = form.dataset.source || 'auto';
+      if (!window.ZK || !window.ZK.openSheet) {
+        console.warn('[summarizer] hamburger-sheet primitive not loaded');
         return;
       }
-      showError(err.message || 'Something went wrong. Please try again.');
+      window.ZK.openSheet({
+        title: 'Source',
+        options: SOURCES.map(s => ({ value: s.value, label: s.label, selected: s.value === current })),
+        onSelect: (v) => { form.dataset.source = v; },
+      });
     });
-  });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const urlInput = document.getElementById('url-input');
+      const url = (urlInput && urlInput.value || '').trim();
+      if (!url) return;
+      const submitBtn = document.getElementById('submit-btn');
+      const originalLabel = submitBtn ? submitBtn.textContent : 'Summarize';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Summarizing…';
+      }
+
+      try {
+        const source = form.dataset.source && form.dataset.source !== 'auto'
+          ? form.dataset.source
+          : undefined;
+        const body = { url, surface: 'mobile' };
+        if (source) body.source_override = source;
+
+        const r = await fetch('/api/zettels/add', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+          let detail = '';
+          try { detail = (await r.json()).detail || ''; } catch {}
+          throw new Error('summarize failed: ' + r.status + (detail ? ' — ' + detail : ''));
+        }
+        const data = await r.json();
+        const id = data.id || data.zettel_id || data.canonical_zettel_id || '';
+        window.location.assign('/m/zettels' + (id ? '?just_captured=' + encodeURIComponent(id) : ''));
+      } catch (err) {
+        console.error(err);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalLabel;
+        }
+        alert('Could not summarize. Please try again.');
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach);
+  } else {
+    attach();
+  }
 })();

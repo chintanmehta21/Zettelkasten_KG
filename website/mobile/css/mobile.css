@@ -626,3 +626,26 @@ p { color: var(--text-secondary); }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* iter-2a — hamburger source-picker button inside .m-input-group */
+.m-input-group.m-input-group--hamburger {
+  position: relative;
+}
+.m-form-hamburger {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 184, 166, 0.08);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  border-radius: 8px;
+  color: var(--m-teal, #14b8a6);
+  cursor: pointer;
+}
+.m-form-hamburger:active { background: rgba(20, 184, 166, 0.2); }
+.m-input-group--hamburger .m-input { padding-right: 48px; }

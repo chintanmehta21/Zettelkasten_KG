@@ -7,8 +7,8 @@
 </section>
 
 <!-- Form -->
-<form class="m-form" id="summarize-form" autocomplete="off">
-  <div class="m-input-group">
+<form class="m-form" id="summarize-form" autocomplete="off" data-source="auto">
+  <div class="m-input-group m-input-group--hamburger">
     <input type="file" class="m-document-input" id="document-input" accept=".pdf,.txt,.md,.markdown,.docx,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
     <button type="button" class="m-document-btn" id="document-upload-btn" title="Upload document" aria-label="Upload document">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -16,49 +16,16 @@
       </svg>
     </button>
     <input type="url" class="m-input" id="url-input" placeholder="Paste a URL..." inputmode="url">
+    <button type="button" class="m-form-hamburger" id="source-picker-btn" aria-label="Source override">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
   </div>
-  <select class="m-select" id="source-select">
-    <option value="">Auto-detect source</option>
-    <option value="youtube">YouTube</option>
-    <option value="github">GitHub</option>
-    <option value="reddit">Reddit</option>
-    <option value="newsletter">Newsletter</option>
-    <option value="web">Web page</option>
-  </select>
   <button type="submit" class="m-btn" id="submit-btn">Summarize</button>
 </form>
-
-<!-- Loading: skeleton card with shimmer lines + ZKSkeletonTyper attaches a typing span inside -->
-<div class="m-loading" id="loading">
-  <div class="m-skeleton-card" id="skeleton-card" hidden>
-    <div class="skeleton-line skeleton-title"></div>
-    <div class="skeleton-line skeleton-body"></div>
-    <div class="skeleton-line skeleton-body"></div>
-    <div class="skeleton-line skeleton-meta"></div>
-  </div>
-</div>
-
-<!-- Error -->
-<div class="m-error" id="error"></div>
-
-<!-- Result -->
-<div class="m-result" id="result">
-  <span class="m-result-badge" id="result-badge"></span>
-  <h2 id="result-title"></h2>
-  <p class="m-result-brief" id="result-brief"></p>
-  <div class="m-result-tags" id="result-tags"></div>
-  <div class="m-result-detail" id="result-detail"></div>
-  <div class="m-result-actions">
-    <button class="m-btn-secondary" id="copy-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      Copy
-    </button>
-    <a class="m-btn-secondary" id="source-link" href="#" target="_blank" rel="noopener">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Source
-    </a>
-  </div>
-</div>
 
 <script src="/js/add_zettel_api.js?v=20260522a"></script>
 <script src="/js/zk_skeleton_typewriter.js?v=20260524a"></script>
