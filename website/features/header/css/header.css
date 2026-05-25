@@ -49,6 +49,14 @@
 .zk-avatar-btn:hover { border-color: var(--accent-muted); box-shadow: 0 0 0 3px var(--accent-glow); }
 .zk-avatar-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* PR2 anon-flow: dropdown wrap renders hidden by default; header.js
+ * removes this class for authed sessions, and for anon on /pricing the
+ * click handler is swapped to open #login-modal directly so the dropdown
+ * never opens. Prevents a pre-JS flash of authed-only items. */
+.zk-anon-no-dropdown-default .home-dropdown {
+    visibility: hidden;
+}
+
 /* ── Avatar Button (home-* legacy class set, kept in sync with .zk-avatar-*) ──────────── */
 .home-avatar-wrap { position: relative; }
 .home-avatar-btn {
