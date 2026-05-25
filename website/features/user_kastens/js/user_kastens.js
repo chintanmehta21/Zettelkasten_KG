@@ -68,7 +68,7 @@
         if (!profile) {
           var u = _session.user || {};
           var meta = u.user_metadata || {};
-          profile = { name: meta.full_name || u.email || 'User', email: u.email || '', avatar_url: meta.avatar_url || meta.picture || '' };
+          profile = { name: meta.full_name || u.email || 'User', email: u.email || '', avatar_url: meta.avatar_url || '' };
         }
         await window.ZKHeader.boot(_token, { profile: profile });
       } catch (e) {

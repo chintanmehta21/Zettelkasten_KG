@@ -162,7 +162,7 @@
   function buildAvatar(session, profile) {
     if (profile && profile.avatar_url) return profile.avatar_url;
     var meta = session && session.user ? (session.user.user_metadata || {}) : {};
-    return meta.avatar_url || meta.picture || DEFAULT_AVATAR;
+    return meta.avatar_url || DEFAULT_AVATAR;
   }
 
   function updateUI(session, profile) {
