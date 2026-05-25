@@ -56,6 +56,13 @@ _APP_ERROR_DEDUP_MAX = 5000
 _APP_ERROR_DEDUP_SECONDS = 15 * 60       # default 1 alert / dedup_key / 15 min
 _app_error_alerted: "OrderedDict[str, float]" = OrderedDict()
 
+# Rate-gate buckets for maybe_fire_app_error_rate. Each bucket is a list of
+# event timestamps within the rate window; older entries are evicted on each
+# tick. Bounded set of distinct keys (FIFO eviction) so a runaway key-space
+# (e.g. per-IP) cannot grow unbounded under a scanner storm.
+_APP_ERROR_RATE_KEYS_MAX = 5000
+_app_error_rate_buckets: "OrderedDict[str, list[float]]" = OrderedDict()
+
 
 # ---------------------------------------------------------------------------
 # Slack posting
@@ -281,6 +288,69 @@ def maybe_fire_app_error(
     return True
 
 
+def maybe_fire_app_error_rate(
+    *,
+    dedup_key: str,
+    threshold: int,
+    window_seconds: int,
+    route: str,
+    exc_type: str,
+    message: str,
+    request_id: str | None = None,
+    fields: dict[str, str] | None = None,
+    severity: str = "warning",
+    alert_dedup_seconds: int = 5 * 60,
+) -> bool:
+    """Sliding-window rate gate — fires #app-errors only when sustained.
+
+    Used for Tier C alerts where a single event is noise but a burst is
+    signal (Gemini 5xx burst, pgvector timeout, credential-stuffing, etc.).
+    Tick the counter; if ``count_in_window >= threshold`` AND we haven't
+    alerted on this dedup_key in the last ``alert_dedup_seconds``, fire.
+
+    Implementation: per-key list of timestamps within ``window_seconds``;
+    expired entries are pruned on each tick. Cheap (~10 µs per call) and
+    bounded by ``_APP_ERROR_RATE_KEYS_MAX`` distinct keys.
+
+    Returns True if an alert was scheduled, False otherwise.
+    """
+    if not dedup_key:
+        return False
+    now = time.time()
+    bucket = _app_error_rate_buckets.get(dedup_key)
+    if bucket is None:
+        if len(_app_error_rate_buckets) >= _APP_ERROR_RATE_KEYS_MAX:
+            _app_error_rate_buckets.popitem(last=False)
+        bucket = []
+        _app_error_rate_buckets[dedup_key] = bucket
+    cutoff = now - window_seconds
+    # Drop expired entries from the head. List-based deque is fine at our
+    # threshold scale (≤ a few hundred entries per key); for >10k events
+    # we'd switch to collections.deque.
+    while bucket and bucket[0] < cutoff:
+        bucket.pop(0)
+    bucket.append(now)
+    _app_error_rate_buckets.move_to_end(dedup_key)
+    if len(bucket) < threshold:
+        return False
+    # Threshold breached — funnel through maybe_fire_app_error so the alert
+    # itself is still deduped on a longer window (no flapping).
+    extra_fields = dict(fields or {})
+    extra_fields.setdefault("count_in_window", str(len(bucket)))
+    extra_fields.setdefault("threshold", str(threshold))
+    extra_fields.setdefault("window_seconds", str(window_seconds))
+    return maybe_fire_app_error(
+        dedup_key=f"rate:{dedup_key}",
+        route=route,
+        exc_type=exc_type,
+        message=message,
+        request_id=request_id,
+        fields=extra_fields,
+        severity=severity,
+        dedup_seconds=alert_dedup_seconds,
+    )
+
+
 def _spawn_alerting(
     coro,
     *,
@@ -358,6 +428,7 @@ __all__ = [
     "post_to_app_errors",
     "notify_app_error",
     "maybe_fire_app_error",
+    "maybe_fire_app_error_rate",
     "_hash_id",
     "_spawn_alerting",
 ]

@@ -1085,7 +1085,41 @@ def _schedule_kg_population(
     except RuntimeError:
         logger.debug("No running event loop for KG population on %s", canonical_zettel_id)
         return
-    task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+
+    def _kg_populate_done(t: asyncio.Task) -> None:
+        # C14 — kg-populate rate alert. Single failure = degraded KG for one
+        # zettel (acceptable best-effort); sustained failures = systemic
+        # regression. Threshold 3/5min keeps the channel quiet during the
+        # occasional Gemini hiccup but pages on real breakage.
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is None:
+            return
+        try:
+            from website.features.web_monitor import (
+                _hash_id,
+                maybe_fire_app_error_rate,
+            )
+
+            maybe_fire_app_error_rate(
+                dedup_key=f"kg_populate_failure:{type(exc).__name__}",
+                threshold=3,
+                window_seconds=5 * 60,
+                route="persist._schedule_kg_population",
+                exc_type=type(exc).__name__,
+                message=str(exc)[:400],
+                fields={
+                    "canonical_zettel_hash": _hash_id(str(canonical_zettel_id)),
+                    "workspace_hash": _hash_id(str(workspace_id)),
+                },
+                severity="warning",
+                alert_dedup_seconds=15 * 60,
+            )
+        except Exception:  # noqa: BLE001 — alert must never raise
+            pass
+
+    task.add_done_callback(_kg_populate_done)
     # K3: invalidate the user's graph cache AFTER kg-populate completes so the
     # next /api/graph fetch picks up the newly-written edges immediately
     # (without the 5-30s window where the new node appears edgeless).

@@ -10,6 +10,7 @@ from website.features.web_monitor.App_Errors import (
     _hash_id,
     _spawn_alerting,
     maybe_fire_app_error,
+    maybe_fire_app_error_rate,
     notify_app_error,
 )
 from website.features.web_monitor.App_Errors import router as _app_errors_router
@@ -40,6 +41,7 @@ __all__ = [
     "maybe_fire_signup_alert",
     "maybe_fire_payment_alert",
     "maybe_fire_app_error",
+    "maybe_fire_app_error_rate",
     "_hash_id",
     "_spawn_alerting",
 ]

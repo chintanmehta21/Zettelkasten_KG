@@ -229,6 +229,39 @@ def _send_slack_alert(message: str) -> None:
         logger.debug("Slack alert failed (non-critical)", exc_info=True)
 
 
+def _alert_upstream_5xx(reason: str, exc: Exception, label: str | None) -> None:
+    """C11 — tick the rate gate when Gemini returns a hard 5xx (NOT 429).
+
+    The legacy ``_is_retryable`` treats UNAVAILABLE/503/504 identically to
+    429: silent retry on the next key. That hides Google-side outages where
+    key rotation cannot help. This taps the existing classification ladder
+    (the caller already maps the exception to ``reason``) and pages when
+    sustained — threshold 5 events / 60 s window, dedup 5 min.
+    """
+    if reason not in ("unavailable", "timeout"):
+        return
+    try:
+        from website.features.web_monitor import maybe_fire_app_error_rate
+
+        maybe_fire_app_error_rate(
+            dedup_key=f"gemini_5xx_burst:{label or 'generate_content'}",
+            threshold=5,
+            window_seconds=60,
+            route="gemini.key_pool.upstream_5xx",
+            exc_type=type(exc).__name__,
+            message=str(exc)[:400],
+            fields={
+                "external_service": "gemini",
+                "label": label or "generate_content",
+                "reason": reason,
+            },
+            severity="critical",
+            alert_dedup_seconds=5 * 60,
+        )
+    except Exception:  # noqa: BLE001 — alert must never break the retry loop
+        logger.debug("gemini 5xx-burst alert dispatch failed", exc_info=True)
+
+
 def _load_keys_from_file(path: str) -> list[str | tuple[str, str]]:
     """Read API keys from an api_env file."""
     try:
@@ -640,6 +673,7 @@ class GeminiKeyPool:
                     else:
                         reason = "timeout"
                     attempts.append({"model": model, "key_index": key_index, "reason": reason})
+                    _alert_upstream_5xx(reason, exc, label)
                     logger.warning(
                         "%s %s on key[%d]/%s; failed %d slots, cooldown %.1fs",
                         label or "Gemini",
