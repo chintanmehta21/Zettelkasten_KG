@@ -56,6 +56,7 @@ def _drive_bg_to_finalize(
                 body, user=user_dict, effective_user_id=user_id
             ),
             persist_requested=body.persist,
+            url=body.url,
         )
     )
 
@@ -90,8 +91,13 @@ def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
     # symbol the route resolves at create_task time.
     captured["_real_run"] = zettels_routes._run
 
-    async def _noop_run(*, user_id, operation_id, pipeline, persist_requested):
-        del user_id, operation_id, pipeline, persist_requested
+    async def _noop_run(
+        *, user_id, operation_id, pipeline, persist_requested, url=None,
+    ):
+        # PR #89 commit 4 added `url=` kwarg to _run; mirror the signature
+        # here so the route's auto-spawned task doesn't TypeError on the new
+        # kwarg the route now passes. The no-op semantics are unchanged.
+        del user_id, operation_id, pipeline, persist_requested, url
         return None
 
     monkeypatch.setattr(zettels_routes, "_run", _noop_run)
@@ -365,7 +371,16 @@ def test_add_zettel_problem_detail_failure_lands_on_operations_row(
     as an inline 500 + RFC 9457 problem+json. Now the route 202s and the
     failure body lands on the operations row's `response`/`error` column via
     ``_run -> finalize(target='failed')``. GET /api/operations/{id} returns
-    that body to the client. The structured shape is preserved."""
+    that body to the client. The structured shape is preserved.
+
+    PR #89 commit C (2026-05-25): the previous "generic exception → error is
+    None" contract is RETIRED. Any unmapped exception now lands a structured
+    RFC 9457 ``internal_error`` body (closes the ``code=null`` cohort that the
+    2026-05-25 Naruto live repro hit with ``FileNotFoundError``). OWASP
+    API8:2023: the wire-side ``error.detail`` MUST NOT carry the exception
+    class or message — those reach Slack via ``maybe_fire_app_error``, not the
+    client. Engineer-facing exception text remains on the inner
+    ``quality.confidence_reason`` field for support triage."""
     client, zettels_routes, runner = facade_client
 
     async def fake_summarize(*_args, **_kwargs):
@@ -393,13 +408,24 @@ def test_add_zettel_problem_detail_failure_lands_on_operations_row(
     assert response_body.get("status") == "failed"
     quality = response_body.get("quality") or {}
     assert quality.get("confidence") == "failed"
-    # confidence_reason carries the exception message for generic exceptions
-    # (per _failed_response_for + _async_failure_error_payload's "no structured
-    # detail" fallback path — RuntimeError doesn't get an RFC 9457 envelope).
+    # Engineer-debug field: confidence_reason still carries the raw exception
+    # message — that's the support-triage field and lives off the wire path.
     assert "boom" in str(quality.get("confidence_reason") or "")
-    # For generic exceptions the error column is None by design — the
-    # frontend uses confidence_reason for the user-visible message.
-    assert captured.get("error") is None
+    # PR #89 commit C: the operations row's ``error`` column is now ALWAYS a
+    # structured RFC 9457 problem body for any unmapped exception. The
+    # ``code=null`` cohort (4/8 in the 24h before the fix) is closed.
+    error = captured.get("error")
+    assert error is not None, "error must be structured, not None (PR #89 commit C)"
+    assert error.get("code") == "internal_error"
+    assert error.get("status") == 500
+    assert error.get("operation_id") == "fail-1"
+    # OWASP API8:2023: wire body MUST NOT leak exception class or message.
+    import json as _json
+    body_text = _json.dumps(error)
+    assert "boom" not in body_text
+    assert "RuntimeError" not in body_text
+    # The original URL is persisted for forensics (PR #89 commit 4).
+    assert error.get("url") == "https://example.com/fail"
 
 
 def test_add_zettel_validation_failure_is_problem_json(facade_client):
