@@ -3,6 +3,38 @@
    Design system: shadcn/ui Slate dark + teal accent
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Page transitions (View Transitions API, cross-document) ──────────
+ * Same-origin navigations animate via a 180ms cross-fade — covers the
+ * dropdown-driven tab switches (Home → Zettels → Kastens → KG → Nexus →
+ * Profile → Store → back). Chromium 126+ / Brave / Edge honor it;
+ * Firefox / older Safari degrade to instant navigation (no animation,
+ * no JS dependency). Respects prefers-reduced-motion.
+ */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root) {
+    animation: 180ms cubic-bezier(0.4, 0, 0.2, 1) both zk-page-fade-out;
+}
+::view-transition-new(root) {
+    animation: 180ms cubic-bezier(0.4, 0, 0.2, 1) both zk-page-fade-in;
+}
+
+@keyframes zk-page-fade-out {
+    to { opacity: 0; }
+}
+@keyframes zk-page-fade-in {
+    from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+}
+
 /* ── Reset ────────────────────────────────────────────────────────── */
 
 *, *::before, *::after {
