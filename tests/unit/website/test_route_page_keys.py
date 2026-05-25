@@ -16,39 +16,35 @@ def client():
     return TestClient(create_app())
 
 
-@pytest.mark.parametrize("path", [
-    "/home/zettels",
-    "/home/kastens",
-    "/home/rag",
-    "/home/nexus",
-    "/profile",
-    "/pricing",
-])
-def test_route_renders_all_pr1_dropdown_items(client, path):
+# Per-page expected link hrefs (in addition to always-present Sign out button).
+# Mirrors design spec §5.3 — current page's own link is OMITTED from its dropdown.
+_EXPECTED_HREFS_BY_PAGE = {
+    "/home/zettels": {"/home", "/home/kastens", "/home/nexus", "/knowledge-graph", "/profile", "/pricing"},
+    "/home/kastens": {"/home", "/home/zettels", "/home/nexus", "/knowledge-graph", "/profile", "/pricing"},
+    "/home/rag":     {"/home", "/home/zettels", "/home/kastens", "/home/nexus", "/knowledge-graph", "/profile", "/pricing"},
+    "/home/nexus":   {"/home", "/home/zettels", "/home/kastens", "/knowledge-graph", "/profile", "/pricing"},
+    "/profile":      {"/home", "/home/zettels", "/home/kastens", "/home/nexus", "/knowledge-graph", "/pricing"},
+    "/pricing":      {"/home", "/home/zettels", "/home/kastens", "/home/nexus", "/knowledge-graph", "/profile"},
+}
+
+
+@pytest.mark.parametrize("path,expected_hrefs", list(_EXPECTED_HREFS_BY_PAGE.items()))
+def test_route_renders_expected_pr2_dropdown_items(client, path, expected_hrefs):
     resp = client.get(path)
     assert resp.status_code == 200
     body = resp.text
-    # Each PR1 dropdown item present
-    assert 'href="/home"' in body
-    assert 'href="/home/zettels"' in body
-    assert 'href="/home/kastens"' in body
-    assert 'href="/home/nexus"' in body
-    assert 'href="/knowledge-graph"' in body
-    assert 'href="/profile"' in body
-    assert 'id="menu-signout"' in body
+    for href in expected_hrefs:
+        assert f'href="{href}"' in body, f"{path} missing {href}"
+    # Current page must NOT appear as a dropdown item link
+    self_href = path
+    if self_href != "/home":
+        own_dropdown = f'class="home-dropdown-item" href="{self_href}"'
+        assert own_dropdown not in body, f"{path} dropdown includes self link"
     # Slot placeholders fully substituted
     assert "<!--ZK_HEADER-->" not in body
     assert "<!--HEADER_DROPDOWN-->" not in body
     assert "<!--BACK_BTN_SLOT-->" not in body
-    # Back-button rendered (show_back_button=True for all 6 in PR1)
+    # Sign-out button always present (authed dropdown contract)
+    assert 'id="menu-signout"' in body
+    # Back-button present (show_back_button=True for all 6 non-home pages)
     assert "data-zk-back" in body
-
-
-def test_pricing_serves_dropdown_for_anon_landing(client):
-    """PR1: /pricing is public; the authed dropdown still renders for anon.
-    PR2 will introduce anon-specific behaviour. This test pins current PR1
-    behaviour to prevent silent regressions."""
-    resp = client.get("/pricing")
-    assert resp.status_code == 200
-    assert "data-zk-back" in resp.text
-    assert 'href="/home"' in resp.text
