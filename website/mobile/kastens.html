@@ -1,2 +1,14 @@
-<!-- Body fragment for /m/kastens — filled in Task 10. -->
-<section class="m-kastens-shell"></section>
+<!-- Mobile Kastens — lean port (T10). -->
+<section class="m-kastens-page">
+  <div class="m-kastens-grid" id="kastens-grid" role="list"></div>
+  <div class="m-kastens-empty" id="kastens-empty" hidden>
+    <p>No Kastens yet. Tap + to create one.</p>
+  </div>
+  <a class="m-kastens-fab" id="kastens-create-fab" href="/home/kastens?desktop=1" aria-label="Create Kasten">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </a>
+</section>
+<script src="/m/js/kastens.js?v=20260525a"></script>
