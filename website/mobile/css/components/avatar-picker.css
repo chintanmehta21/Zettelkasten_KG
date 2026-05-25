@@ -1,0 +1,26 @@
+/* avatar-picker.css — 4-col grid of 60 avatars on /m/profile (T11). */
+
+.m-avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.m-avatar-cell {
+  background: transparent;
+  border: 2px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.m-avatar-cell img {
+  width: 100%;
+  height: auto;
+  border-radius: 50%;
+  display: block;
+}
+.m-avatar-cell.is-selected {
+  border-color: var(--m-teal, #14b8a6);
+  box-shadow: 0 0 0 2px rgba(20,184,166,0.18);
+}
+.m-avatar-cell:active { background: rgba(255,255,255,0.04); }

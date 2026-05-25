@@ -1,0 +1,40 @@
+/* profile.css — mobile Profile page (auth + unauth) (T11). */
+
+.m-profile-page {
+  padding: 16px 16px calc(var(--m-bottomnav-h, 64px) + 24px);
+}
+
+.m-profile-title { color: #e6e6e6; font-size: 22px; margin: 16px 0 4px; }
+.m-profile-sub   { color: rgba(255,255,255,0.6); margin: 0 0 20px; }
+
+.m-profile-signin { width: 100%; }
+
+.m-profile-card {
+  display: flex; align-items: center; gap: 14px;
+  background: #11131c;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+}
+.m-profile-avatar img { border-radius: 50%; display: block; }
+.m-profile-meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.m-profile-email { color: #e6e6e6; overflow: hidden; text-overflow: ellipsis; }
+.m-profile-signout {
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #e6e6e6;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.m-profile-signout:active { background: rgba(255,255,255,0.10); }
+
+.m-profile-section-title {
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  margin: 20px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

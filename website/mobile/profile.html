@@ -1,2 +1,26 @@
-<!-- Body fragment for /m/profile — filled in Task 11. -->
-<section class="m-profile-shell"></section>
+<!-- Mobile Profile — auth + unauth states with avatar picker (T11). -->
+<section class="m-profile-page">
+
+  <!-- Unauth state -->
+  <div class="m-profile-unauth" id="profile-unauth" hidden>
+    <h2 class="m-profile-title">Sign in to Zettelkasten</h2>
+    <p class="m-profile-sub">Keep your captures across devices.</p>
+    <button type="button" class="m-btn m-btn-primary m-profile-signin" id="profile-signin-btn">Sign in</button>
+  </div>
+
+  <!-- Auth state -->
+  <div class="m-profile-auth" id="profile-auth" hidden>
+    <div class="m-profile-card">
+      <span class="m-profile-avatar" id="profile-avatar"></span>
+      <div class="m-profile-meta">
+        <div class="m-profile-email" id="profile-email"></div>
+        <button type="button" class="m-profile-signout" id="profile-signout">Sign out</button>
+      </div>
+    </div>
+
+    <h3 class="m-profile-section-title">Change avatar</h3>
+    <div class="m-avatar-picker" id="avatar-picker" role="listbox" aria-label="Pick avatar"></div>
+  </div>
+
+</section>
+<script src="/m/js/profile.js?v=20260525a"></script>

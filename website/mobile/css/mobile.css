@@ -10,6 +10,8 @@
 @import url("./components/hamburger-sheet.css");
 @import url("./pages/zettels.css");
 @import url("./pages/kastens.css");
+@import url("./components/avatar-picker.css");
+@import url("./pages/profile.css");
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
