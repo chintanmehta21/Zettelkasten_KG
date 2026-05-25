@@ -87,16 +87,16 @@ def test_header_html_loads_zk_fetch():
     """Shared header includes the wrapper script BEFORE the <header> element
     so it's installed before page-specific scripts call fetch."""
     src = HEADER_HTML.read_text(encoding="utf-8")
-    assert "/static/js/zk_fetch.js" in src, (
+    assert "/js/zk_fetch.js" in src, (
         "header.html must <script src> the zk_fetch wrapper so it loads on "
         "every page that uses the shared shell."
     )
     # Ordering: script must appear BEFORE the opening <header> tag, so the
     # wrapper installs before any page-bound script that runs after header parse.
-    script_idx = src.find("/static/js/zk_fetch.js")
+    script_idx = src.find("/js/zk_fetch.js")
     header_idx = src.find("<header")
     assert 0 <= script_idx < header_idx, (
-        f"<script src='/static/js/zk_fetch.js'> must precede <header> in header.html "
+        f"<script src='/js/zk_fetch.js'> must precede <header> in header.html "
         f"(script at {script_idx}, header at {header_idx})"
     )
 
