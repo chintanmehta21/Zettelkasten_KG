@@ -114,7 +114,14 @@ async def _lifespan(
         route="main._lifespan.enrichment_worker",
         severity="critical",
     )
-    assert enrichment_task is not None  # the lifespan always has a running loop
+    if enrichment_task is None:
+        # _spawn_alerting returns None only when no event loop is running —
+        # impossible inside a FastAPI lifespan, but a Python -O optimised
+        # build would silently strip a bare `assert`. Raise loudly so the
+        # boot path can never silently degrade lazy enrichment.
+        raise RuntimeError(
+            "enrichment_worker task could not be scheduled (no running loop)"
+        )
 
     # Tier D — start the per-worker memory/asyncio-task sampler so PSI,
     # cgroup memory, and asyncio task-count breaches fire to #do-errors.
