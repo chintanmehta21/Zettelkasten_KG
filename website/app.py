@@ -63,25 +63,111 @@ SUMMARIZATION_ENGINE_DIR = Path(__file__).parent / "features" / "summarization_e
 HEADER_DIR = Path(__file__).parent / "features" / "header"
 _HEADER_PLACEHOLDER = "<!--ZK_HEADER-->"
 _FOOTER_PLACEHOLDER = "<!--ZK_FOOTER-->"
+_HEADER_DROPDOWN_SLOT = "<!--HEADER_DROPDOWN-->"
+_BACK_BTN_SLOT = "<!--BACK_BTN_SLOT-->"
 _HTML_CACHE_HEADERS = {"Cache-Control": "no-cache, max-age=0, must-revalidate"}
+
+# Back-button markup matches the static block that used to live in header.html.
+# Kept here (not in a fragment file) so the substitution is one read per request.
+_BACK_BUTTON_HTML = (
+    '<button type="button" class="zk-back-btn" data-zk-back aria-label="Go back">'
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+    '<path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>'
+    '</svg>'
+    '</button>'
+)
 
 
 def _html_file_response(path: Path) -> FileResponse:
     return FileResponse(str(path), media_type="text/html", headers=_HTML_CACHE_HEADERS)
 
 
-def _render_with_shell(path: Path) -> HTMLResponse:
-    """Read an HTML page and inject shared header and footer at their placeholders.
+def _render_link_item(item: "MenuItem") -> str:
+    """Render a MenuItem to a dropdown link <a>, matching header.html's prior static markup."""
+    dom_id = item.get("dom_id")
+    id_attr = f' id="{dom_id}"' if dom_id else ""
+    labs_html = ""
+    if item.get("labs"):
+        labs_html = (
+            '<span class="home-dropdown-labs" title="Experimental" aria-label="Experimental">'
+            '<svg viewBox="0 0 24 24" fill="none" width="14" height="14">'
+            '<path d="M9 3h6M10 3v5.5L5.5 18a2 2 0 0 0 1.8 2.9h9.4A2 2 0 0 0 18.5 18L14 8.5V3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>'
+            '<path d="M7.5 14h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>'
+            '</svg>'
+            '</span>'
+        )
+    return (
+        f'<a class="home-dropdown-item" href="{item["href"]}"{id_attr} role="menuitem">'
+        f'<span class="home-dropdown-icon" aria-hidden="true">{item["icon"]}</span>'
+        f'<span class="home-dropdown-label">{item["label"]}</span>'
+        f'{labs_html}'
+        f'</a>'
+    )
 
-    Placeholders are the literal comments ``<!--ZK_HEADER-->`` and ``<!--ZK_FOOTER-->``.
-    Re-reads on every request so live edits to the shared fragments show up without
-    restart. Falls back to returning the raw page unchanged if a placeholder or
-    fragment file is absent.
+
+def _render_signout_item(item: "MenuItem") -> str:
+    """Render the signout <button> (always preceded by a divider per the
+    original static markup)."""
+    dom_id = item.get("dom_id", "menu-signout")
+    return (
+        '<div class="home-dropdown-divider"></div>'
+        f'<button class="home-dropdown-item home-dropdown-signout" id="{dom_id}" role="menuitem">'
+        f'<span class="home-dropdown-icon" aria-hidden="true">{item["icon"]}</span>'
+        f'<span class="home-dropdown-label">{item["label"]}</span>'
+        '</button>'
+    )
+
+
+def _render_dropdown_items(items: "list[MenuItem]") -> str:
+    """Render a list of MenuItems to the inner HTML of #avatar-dropdown."""
+    parts: list[str] = []
+    for item in items:
+        if item["key"] == "signout":
+            parts.append(_render_signout_item(item))
+        else:
+            parts.append(_render_link_item(item))
+    return "".join(parts)
+
+
+def _render_back_button(show: bool) -> str:
+    return _BACK_BUTTON_HTML if show else ""
+
+
+def _render_with_shell(path: Path, page_key: str | None = None) -> HTMLResponse:
+    """Read an HTML page and inject the shared header (with per-page dropdown
+    + back-button) and footer at their placeholders.
+
+    Page placeholders: ``<!--ZK_HEADER-->`` / ``<!--ZK_FOOTER-->``.
+    Header sub-slots: ``<!--HEADER_DROPDOWN-->`` / ``<!--BACK_BTN_SLOT-->``.
+
+    Per-page items come from ``website.config.page_menus.PAGE_MENUS[page_key]``.
+    When ``page_key`` is None, both header sub-slots render empty (legacy path
+    for routes not yet migrated).
+
+    Re-reads fragment files on every request so live edits show up without
+    restart. Falls back to returning the raw page unchanged if a top-level
+    placeholder is absent.
     """
+    # Local import avoids a circular import at module load (page_menus has no
+    # runtime deps on app, but FastAPI's import graph is delicate enough that
+    # we keep the boundary cheap).
+    from website.config.page_menus import PAGE_MENUS
+
     html = path.read_text(encoding="utf-8")
+
     if _HEADER_PLACEHOLDER in html:
         header_html = (HEADER_DIR / "header.html").read_text(encoding="utf-8")
+        if page_key is None:
+            dropdown_html = ""
+            back_btn_html = ""
+        else:
+            menu = PAGE_MENUS[page_key]   # KeyError on unknown page_key — intended
+            dropdown_html = _render_dropdown_items(menu["authed"])
+            back_btn_html = _render_back_button(menu["show_back_button"])
+        header_html = header_html.replace(_HEADER_DROPDOWN_SLOT, dropdown_html)
+        header_html = header_html.replace(_BACK_BTN_SLOT, back_btn_html)
         html = html.replace(_HEADER_PLACEHOLDER, header_html)
+
     if _FOOTER_PLACEHOLDER in html:
         footer_html = (FOOTER_DIR / "footer.html").read_text(encoding="utf-8")
         html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
