@@ -4,6 +4,10 @@ Single source of truth for items rendered into the shared header's
 <!--HEADER_DROPDOWN--> slot and back-button rendered into <!--BACK_BTN_SLOT-->.
 Consumed by website.app._render_with_shell at request time.
 
+Security contract: all MenuItem values are interpolated unescaped into HTML
+(``icon`` is intentional inline SVG). Keep label/href ASCII-safe; NEVER
+source values from user input.
+
 PR1 scope: schema + 6 entries all using the same 7-item default list (matches
 the static markup that used to live in header.html — zero UX change). PR2
 introduces per-page divergence, the /home entry, the "Store" item, and
