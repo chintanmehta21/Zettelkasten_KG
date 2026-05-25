@@ -147,8 +147,14 @@ async def budget_scope(summarizer: str = "unknown") -> AsyncIterator[Budget]:
 
 # --- Prometheus-style counters (OTel gen_ai_* aligned) ---
 # Lightweight: if prometheus_client isn't available, fall back to log lines.
+# Emit calls route through the `safe_metrics` harness so a torn multiproc
+# dir (mmap_dict FileNotFoundError, observed 2026-05-25) can never break
+# the surrounding request — OpenTelemetry "MUST NOT throw" applied to a
+# library that does. See website/features/observability/safe_metrics.py.
 try:
     from prometheus_client import Counter
+
+    from website.features.observability.safe_metrics import safe_inc
 
     LLM_CALLS_TOTAL = Counter(
         "gen_ai_client_calls_total",
@@ -172,20 +178,36 @@ try:
     )
 
     def _emit_call_counter(summarizer: str, role: str) -> None:
-        LLM_CALLS_TOTAL.labels("gemini", summarizer, role).inc()
+        safe_inc(
+            LLM_CALLS_TOTAL,
+            ("gemini", summarizer, role),
+            metric_name="gen_ai_client_calls_total",
+        )
 
     def _emit_overrun_counter(summarizer: str, role: str) -> None:
-        BUDGET_EXCEEDED.labels(summarizer, role).inc()
+        safe_inc(
+            BUDGET_EXCEEDED,
+            (summarizer, role),
+            metric_name="gen_ai_client_budget_exceeded_total",
+        )
 
     def emit_rate_limited(
         *, summarizer: str, role: str, model: str, key_role: str
     ) -> None:
-        KEY_POOL_RATE_LIMITED.labels("gemini", summarizer, role, model, key_role).inc()
+        safe_inc(
+            KEY_POOL_RATE_LIMITED,
+            ("gemini", summarizer, role, model, key_role),
+            metric_name="gen_ai_client_rate_limited_total",
+        )
 
     def emit_quota_exhausted(
         *, summarizer: str, role: str, model: str, key_role: str
     ) -> None:
-        KEY_POOL_QUOTA_EXHAUSTED.labels("gemini", summarizer, role, model, key_role).inc()
+        safe_inc(
+            KEY_POOL_QUOTA_EXHAUSTED,
+            ("gemini", summarizer, role, model, key_role),
+            metric_name="gen_ai_client_quota_exhausted_total",
+        )
 
 except ImportError:  # pragma: no cover — prom optional
 
