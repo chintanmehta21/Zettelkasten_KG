@@ -1,4 +1,4 @@
--- 76_user_default_avatar.sql — assign random curated avatar to every user;
+-- 78_user_default_avatar.sql — assign random curated avatar to every user;
 -- backfill existing rows whose avatar is missing or non-curated.
 --
 -- Why: the canonical mobile + desktop UI renders avatars exclusively from the
@@ -71,7 +71,7 @@ BEGIN
      OR avatar_url !~ '^/artifacts/avatars/avatar_(0[0-9]|[1-5][0-9])\.svg$';
 
   GET DIAGNOSTICS v_count = ROW_COUNT;
-  RAISE NOTICE '76_user_default_avatar: backfilled % core.profiles rows', v_count;
+  RAISE NOTICE '78_user_default_avatar: backfilled % core.profiles rows', v_count;
 END $$;
 
 -- Step 3: pin canonical users (Zoro + Naruto). Runs AFTER the random backfill
@@ -98,7 +98,7 @@ BEGIN
     AND (raw_user_meta_data->>'avatar_url') !~ '^/artifacts/avatars/avatar_(0[0-9]|[1-5][0-9])\.svg$';
 
   GET DIAGNOSTICS v_count = ROW_COUNT;
-  RAISE NOTICE '76_user_default_avatar: stripped non-curated avatar_url from % auth.users metadata rows', v_count;
+  RAISE NOTICE '78_user_default_avatar: stripped non-curated avatar_url from % auth.users metadata rows', v_count;
 END $$;
 
 COMMIT;
