@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260526b">
     <link rel="stylesheet" href="/header/css/header.css?v=20260526b">
-    <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260526a">
+    <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260526b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106"></script>
 </head>
 <body>
@@ -23,10 +23,13 @@
             <!-- ═══ Identity hero ═══════════════════════════════════════════ -->
             <section class="profile-hero" aria-labelledby="hero-name">
                 <div class="profile-hero-row">
-                    <button type="button" class="profile-hero-avatar" id="hero-avatar-btn" aria-label="Jump to avatar picker">
+                    <button type="button" class="profile-hero-avatar" id="hero-avatar-btn" aria-label="Change avatar" aria-haspopup="dialog">
                         <img id="hero-avatar-img" alt="" hidden />
                         <span class="profile-hero-avatar-fallback" id="hero-avatar-fallback" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M5 19c1.4-3.4 4.1-5 7-5s5.6 1.6 7 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        </span>
+                        <span class="profile-hero-avatar-edit" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </span>
                     </button>
 
@@ -48,13 +51,13 @@
                         </p>
                     </div>
 
-                    <a href="#avatar-section" class="profile-hero-action" id="hero-action-pick">
+                    <button type="button" class="profile-hero-action" id="hero-action-pick" aria-haspopup="dialog">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 20h9"></path>
                             <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
                         </svg>
                         <span>Change avatar</span>
-                    </a>
+                    </button>
                 </div>
             </section>
 
@@ -111,17 +114,6 @@
                 </div>
             </section>
 
-            <!-- ═══ Avatar picker ══════════════════════════════════════════ -->
-            <section class="profile-section" id="avatar-section" aria-labelledby="avatar-heading">
-                <header class="profile-section-header">
-                    <h2 class="profile-section-title" id="avatar-heading">Avatar</h2>
-                </header>
-                <p class="profile-section-help">Pick the icon that represents you across Zettelkasten. Changes apply immediately.</p>
-                <div class="profile-avatar-grid" id="profile-avatar-grid" role="radiogroup" aria-labelledby="avatar-heading">
-                    <!-- avatar buttons injected by user_profile.js -->
-                </div>
-            </section>
-
             <!-- ═══ Trash ══════════════════════════════════════════════════ -->
             <section class="profile-section" aria-labelledby="trash-heading">
                 <header class="profile-section-header">
@@ -162,9 +154,28 @@
             <span id="profile-toast-text">Restored.</span>
         </div>
 
+        <!-- ═══ Avatar picker modal ════════════════════════════════════════ -->
+        <div class="profile-avatar-overlay hidden" id="avatar-overlay" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title">
+            <div class="profile-avatar-backdrop" data-close-avatar></div>
+            <section class="profile-avatar-dialog">
+                <header class="profile-avatar-dialog-header">
+                    <div>
+                        <h2 class="profile-avatar-dialog-title" id="avatar-modal-title">Choose your avatar</h2>
+                        <p class="profile-avatar-dialog-sub">Pick the icon that represents you. Saved automatically.</p>
+                    </div>
+                    <button type="button" class="profile-avatar-dialog-close" data-close-avatar aria-label="Close">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                </header>
+                <div class="profile-avatar-grid profile-avatar-grid-modal" id="profile-avatar-grid" role="radiogroup" aria-labelledby="avatar-modal-title">
+                    <!-- avatar buttons injected on first open by user_profile.js -->
+                </div>
+            </section>
+        </div>
+
 <!--ZK_FOOTER-->
     </div>
 
-    <script type="module" src="/profile/js/user_profile.js?v=20260526a"></script>
+    <script type="module" src="/profile/js/user_profile.js?v=20260526b"></script>
 </body>
 </html>

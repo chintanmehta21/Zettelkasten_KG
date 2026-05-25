@@ -42,6 +42,9 @@
   let _confirmId = null;
   let _confirmTimer = null;
   let avatarGridEl;
+  let avatarOverlayEl;
+  let avatarGridRendered = false;
+  let _lastFocusBeforeModal = null;
   let heatmapEl;
   let heatmapEmptyEl;
   let activityMetaEl;
@@ -110,18 +113,55 @@
       heroImg.src = profile.avatar_url;
     }
 
-    bindHeroAvatarJump();
+    bindAvatarModalOpeners();
     renderUuidPill(profile.id);
   }
 
-  function bindHeroAvatarJump() {
-    const btn = $('hero-avatar-btn');
-    if (!btn || btn.dataset.zkBound) return;
-    btn.dataset.zkBound = '1';
-    btn.addEventListener('click', () => {
-      const section = $('avatar-section');
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /* ─── Avatar modal — open / close / focus management ───────────────── */
+
+  function bindAvatarModalOpeners() {
+    [$('hero-avatar-btn'), $('hero-action-pick')].forEach((btn) => {
+      if (!btn || btn.dataset.zkBound) return;
+      btn.dataset.zkBound = '1';
+      btn.addEventListener('click', openAvatarModal);
     });
+
+    if (avatarOverlayEl && !avatarOverlayEl.dataset.zkBound) {
+      avatarOverlayEl.dataset.zkBound = '1';
+      // Close: any element marked with data-close-avatar (backdrop + X button).
+      avatarOverlayEl.querySelectorAll('[data-close-avatar]').forEach((el) => {
+        el.addEventListener('click', closeAvatarModal);
+      });
+      // Close: Escape while open.
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !avatarOverlayEl.classList.contains('hidden')) {
+          closeAvatarModal();
+        }
+      });
+    }
+  }
+
+  function openAvatarModal() {
+    if (!avatarOverlayEl) return;
+    if (!avatarGridRendered) {
+      renderAvatarGrid();
+      avatarGridRendered = true;
+    }
+    _lastFocusBeforeModal = document.activeElement;
+    avatarOverlayEl.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    // Move focus inside the dialog for keyboard users.
+    const firstFocusable = avatarOverlayEl.querySelector('.profile-avatar-option.selected, .profile-avatar-option, .profile-avatar-dialog-close');
+    if (firstFocusable) firstFocusable.focus();
+  }
+
+  function closeAvatarModal() {
+    if (!avatarOverlayEl) return;
+    avatarOverlayEl.classList.add('hidden');
+    document.body.style.overflow = '';
+    if (_lastFocusBeforeModal && typeof _lastFocusBeforeModal.focus === 'function') {
+      _lastFocusBeforeModal.focus();
+    }
   }
 
   function renderUuidPill(uuid) {
@@ -555,7 +595,11 @@
   }
 
   async function handleAvatarPick(id, btnEl) {
-    if (!_token || id === _currentAvatarId) return;
+    if (!_token) return;
+    if (id === _currentAvatarId) {
+      closeAvatarModal();
+      return;
+    }
     _currentAvatarId = id;
     avatarGridEl.querySelectorAll('.profile-avatar-option').forEach((el) => {
       el.classList.remove('selected');
@@ -573,8 +617,14 @@
       if (heroFallback) heroFallback.style.display = 'none';
     }
 
+    // Close the modal first so the toast lands over the dimmed page, not
+    // behind the backdrop. The PUT /api/me/avatar request continues in flight.
+    closeAvatarModal();
+
     try {
       if (window.ZKHeader && typeof window.ZKHeader.setAvatarById === 'function') {
+        // Persists to core.profiles.avatar_url via PUT /api/me/avatar; the
+        // shared header also re-renders its small avatar from the same call.
         await window.ZKHeader.setAvatarById(id, _token, null);
         showToast('Avatar updated.');
       }
@@ -612,6 +662,7 @@
     toastEl       = $('profile-toast');
     toastTextEl   = $('profile-toast-text');
     avatarGridEl  = $('profile-avatar-grid');
+    avatarOverlayEl = $('avatar-overlay');
     heatmapEl     = $('activity-heatmap');
     heatmapEmptyEl = $('activity-empty');
     activityMetaEl = $('activity-meta');
@@ -635,7 +686,7 @@
     if (idMatch) _currentAvatarId = parseInt(idMatch[1], 10);
 
     renderHero(profile, sessionResult.data.session);
-    renderAvatarGrid();
+    // Avatar grid is rendered lazily on first modal open; no init cost.
     renderStats(_token);          // also seeds heatmap from the same /api/zettels response
     bindDangerZone();
 
