@@ -481,6 +481,11 @@
     _supabase.auth.onAuthStateChange(function (event) {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         closeLoginModal();
+        // PR2: anon→authed transition. Tell ZKHeader to reveal the dropdown
+        // so the avatar click flips from "open login modal" to "toggle menu".
+        if (window.ZKHeader && typeof window.ZKHeader.exitAnonMode === 'function') {
+          window.ZKHeader.exitAnonMode();
+        }
         refreshCurrentSubscription().then(renderSubscriptions);
         // Replay the buy intent the user clicked before being asked to sign in.
         if (_pendingPurchase) {
