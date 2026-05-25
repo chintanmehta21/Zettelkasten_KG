@@ -29,6 +29,22 @@
   const AVATAR_COUNT = 60;
   const HEATMAP_WEEKS = 26;
 
+  // Localhost preview bypass: when running on localhost without a Supabase
+  // session, render the page with stub data instead of redirecting to "/".
+  // Production hostname (zettelkasten.in) keeps the strict redirect path.
+  const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+  function isLocalhost() {
+    return LOCALHOST_HOSTNAMES.has(window.location.hostname);
+  }
+  const LOCAL_STUB_PROFILE = {
+    id: '00000000-0000-0000-0000-0000000d3f17',
+    email: 'localhost@dev',
+    name: 'Local Preview',
+    avatar_url: '/artifacts/avatars/avatar_07.svg',
+    profile_source: 'localhost-stub',
+  };
+  const LOCAL_STUB_SESSION = { user: { created_at: new Date().toISOString() } };
+
   let _client = null;
   let _token = '';
   let _currentAvatarId = null;
@@ -669,28 +685,85 @@
     trashMetaEl   = $('trash-meta');
 
     _client = await initSupabase();
-    if (!_client) { window.location.href = '/'; return; }
+    let session = null;
+    let profile = null;
 
-    const sessionResult = await _client.auth.getSession();
-    _token = sessionResult.data.session ? sessionResult.data.session.access_token : '';
-    if (!_token) { window.location.href = '/'; return; }
+    if (_client) {
+      const sessionResult = await _client.auth.getSession();
+      session = sessionResult.data.session;
+      _token = session ? session.access_token : '';
+      if (_token) {
+        profile = await fetchProfile(_token);
+      }
+    }
 
-    const profile = await fetchProfile(_token);
-    if (!profile) { window.location.href = '/'; return; }
+    if (!profile) {
+      if (isLocalhost()) {
+        // Dev preview path: render the page with stub data so designers can
+        // inspect the layout without a working Supabase session.
+        renderLocalPreviewBanner();
+        profile = LOCAL_STUB_PROFILE;
+        session = LOCAL_STUB_SESSION;
+        _token = '';
+      } else {
+        window.location.href = '/';
+        return;
+      }
+    }
 
-    if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
+    if (_token && window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
       await window.ZKHeader.boot(_token, { profile });
     }
 
     const idMatch = profile.avatar_url && profile.avatar_url.match(/avatar_(\d+)\.svg/);
     if (idMatch) _currentAvatarId = parseInt(idMatch[1], 10);
 
-    renderHero(profile, sessionResult.data.session);
+    renderHero(profile, session);
     // Avatar grid is rendered lazily on first modal open; no init cost.
-    renderStats(_token);          // also seeds heatmap from the same /api/zettels response
-    bindDangerZone();
+    if (_token) {
+      renderStats(_token);          // also seeds heatmap from the same /api/zettels response
+      bindDangerZone();
+      await loadTrash();
+    } else {
+      // Localhost stub state — clear the skeletons, show an empty heatmap +
+      // empty trash so the layout is fully visible without real data.
+      renderLocalStubData();
+      bindDangerZone();
+    }
+  }
 
-    await loadTrash();
+  function renderLocalPreviewBanner() {
+    if (document.querySelector('.profile-local-banner')) return;
+    const banner = document.createElement('div');
+    banner.className = 'profile-local-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML =
+      '<span class="profile-local-banner-dot" aria-hidden="true"></span>' +
+      '<span><strong>Local preview</strong> &mdash; no Supabase session, showing stub data. Sign in to see your real data.</span>';
+    const container = document.querySelector('.profile-container');
+    const main = document.querySelector('.profile-main');
+    if (container && main) container.insertBefore(banner, main);
+  }
+
+  function renderLocalStubData() {
+    // Stats: clear skeletons and show "—"
+    ['stat-zettels-total', 'stat-kastens-total', 'stat-kg-nodes', 'stat-plan-tier'].forEach((id) => {
+      const el = $(id);
+      if (el) clearSkeleton(el, id === 'stat-plan-tier' ? 'Free' : '0');
+    });
+    const breakdown = $('stat-zettels-breakdown');
+    if (breakdown) breakdown.textContent = 'stub data — no zettels';
+    const members = $('stat-kastens-members');
+    if (members) members.textContent = '0 zettels grouped';
+    const kgLinks = $('stat-kg-links');
+    if (kgLinks) kgLinks.textContent = '0 connections';
+    const planUsage = $('stat-plan-usage');
+    if (planUsage) planUsage.textContent = 'Period limits & usage on /pricing';
+    // Heatmap: render the empty state
+    renderHeatmap([]);
+    // Trash: empty state
+    showLoading(false);
+    renderTrash([]);
   }
 
   document.addEventListener('DOMContentLoaded', init);

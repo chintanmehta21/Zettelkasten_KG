@@ -45,6 +45,41 @@ body { color-scheme: dark; }
     padding-top: 0.4rem;
 }
 
+/* ── Localhost preview banner ──────────────────────────────────────────
+ * Rendered only when user_profile.js detects no Supabase session AND
+ * hostname is localhost. Hidden in production (banner is never injected
+ * because the redirect path runs instead).
+ */
+.profile-local-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 1rem;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(90deg, hsla(172, 66%, 50%, 0.12), hsla(172, 66%, 50%, 0.02));
+    border: 1px solid hsla(172, 66%, 50%, 0.32);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.profile-local-banner strong { color: var(--accent); font-weight: 600; }
+.profile-local-banner-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px hsla(172, 66%, 50%, 0.7);
+    flex-shrink: 0;
+    animation: profileLocalBannerPulse 1.6s ease-in-out infinite;
+}
+@keyframes profileLocalBannerPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-local-banner-dot { animation: none; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Identity hero — Stripe-style trust block + Spotify-leaning gradient.
    Avatar (current) + display name + email + joined date + UUID copy.
