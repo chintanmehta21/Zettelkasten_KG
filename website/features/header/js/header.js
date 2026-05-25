@@ -214,6 +214,12 @@
     if (!refs.avatarBtn || refs.avatarBtn.dataset.zkAnonBound) return;
     refs.avatarBtn.dataset.zkAnonBound = '1';
     refs.avatarBtn.addEventListener('click', function (e) {
+      // If the user signed in mid-session, ZKHeader.exitAnonMode() will have
+      // removed the zk-anon-no-dropdown-default class — bail and let the
+      // bubble-phase dropdown toggle handle the click.
+      if (refs.avatarWrap && !refs.avatarWrap.classList.contains('zk-anon-no-dropdown-default')) {
+        return;
+      }
       e.stopPropagation();
       e.preventDefault();
       // Defensive: clear any stale .open on the (hidden) dropdown so a future
@@ -342,6 +348,17 @@
             }).catch(function () {});
           }
         } catch (_) {}
+      }
+    },
+
+    /** PR2: called by a page when an anon visitor signs in mid-session
+     * (e.g. /pricing after the login modal succeeds). Reveals the dropdown
+     * so the avatar click flips from "open login modal" to "toggle menu".
+     * The capture-phase anon click handler stays bound but no-ops when
+     * the class is gone, so we don't need to remove the listener. */
+    exitAnonMode: function () {
+      if (refs.avatarWrap) {
+        refs.avatarWrap.classList.remove('zk-anon-no-dropdown-default');
       }
     },
 
