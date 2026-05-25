@@ -467,6 +467,21 @@ function getCommunityHue(communityId) {
         if (pendingView === 'my') {
           currentView = 'my';
           setViewBtns('my');
+          // M2 (Phase 4 / X3 follow-up): the anon load that ran first may
+          // have already consumed a `?node=<id>` deep-link spotlight,
+          // leaving _didDeepLinkFocus=true, selectedNode pointing at an
+          // anon-graph node object, and _activeNodeIds populated with that
+          // id. The personal-view load returns a DIFFERENT node set
+          // (workspace-scoped), so all of those references go stale.
+          // Reset before re-fetching so onEngineStop re-runs the
+          // settle-focus path against the new graph and stale node refs
+          // can be GC'd. Preserves the spotlight id in _pendingFocusId so
+          // the focus actually re-applies to the personal graph if the
+          // canonical id is present there.
+          _didDeepLinkFocus = false;
+          if (spotlightId) _pendingFocusId = spotlightId;
+          selectedNode = null;
+          _activeNodeIds.clear();
           loadGraphData();
         }
       })
@@ -1113,12 +1128,16 @@ function getCommunityHue(communityId) {
         // as the old title sticking visibly behind the previous node for
         // ~16 ms when the user moves between nodes quickly.
         _updateActiveLabel();
-        // NB: the old `graph.refresh()` call lived here so the hover-only
-        // particle accessor could re-evaluate. Particles are now always-on
-        // (static `1` arg, not an accessor) — refresh() is dead work and
-        // was causing a full graph repaint on every hover change, which
-        // contributed to the "everything flickers" symptom on selected
-        // nodes. Removed.
+        // M4 (Phase 4 / KG-UI follow-up): graph.refresh() was removed when
+        // particles became always-on (no longer an accessor that needed
+        // re-eval). BUT linkWidth IS still an accessor — it returns 1.8
+        // for hover-incident links vs 0.5 otherwise — and force-graph-3d
+        // caches the per-link Line2 geometry from the previous render.
+        // Without refresh() the operator's intended "hover boost on
+        // incident edges" is dead. The original flicker concern (full
+        // repaint on every wiggle) is now solved by the same-state noop
+        // above, so refresh() only fires on real hover transitions.
+        graph.refresh();
       })
 
       // ---- Physics — fast convergence ----
@@ -1286,8 +1305,13 @@ function getCommunityHue(communityId) {
     // click — without this, the previous selection's overlay lingers
     // for ~16 ms until the next rAF tick.
     _syncTitleOverlay();
-    // NB: removed `graph.refresh()` here too — same dead-call as the
-    // hover handler now that particles are always-on.
+    // M4 (Phase 4 / KG-UI follow-up): mirror the onNodeHover refresh().
+    // linkWidth's hover-incident branch reads closure-captured `hoverNode`
+    // but is also relevant on click (selectedNode shares spotlight intent).
+    // Without refresh() the link-mesh widths stay at the previous render.
+    // The click path is rate-limited by user input so refresh-on-click is
+    // a single repaint per click — no flicker risk.
+    graph.refresh();
 
     if (_panelOpenTimer) { clearTimeout(_panelOpenTimer); _panelOpenTimer = null; }
 
