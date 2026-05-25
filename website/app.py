@@ -262,7 +262,8 @@ def _avatar_url_from_request(request: Request) -> Optional[str]:
     try:
         claims = _decode_token(token)
         return (claims.get("user_metadata") or {}).get("avatar_url")
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — best-effort preload; never raise
+        logger.debug("avatar preload: cookie token decode failed: %s", exc)
         return None
 
 

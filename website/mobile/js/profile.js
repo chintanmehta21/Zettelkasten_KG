@@ -10,6 +10,15 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  // Only allow URLs that point at our curated /artifacts/avatars/avatar_NN.svg set.
+  // Defends against any future row that slips a third-party URL into Supabase
+  // user_metadata (bypassing the DB trigger / backfill) from leaking into the UI.
+  function safeAvatarUrl(url) {
+    const s = String(url == null ? '' : url).trim();
+    return /^\/artifacts\/avatars\/avatar_(0[0-9]|[1-5][0-9])\.svg$/.test(s)
+      ? s : '/artifacts/avatars/avatar_00.svg';
+  }
+
   function hasSession() {
     return document.cookie.split(';').some(c => {
       const name = c.trim().split('=')[0];
@@ -56,7 +65,7 @@
     document.getElementById('profile-email').textContent = profile.email || '';
 
     const avatarSlot = document.getElementById('profile-avatar');
-    const currentUrl = profile.avatar_url || '/artifacts/avatars/avatar_00.svg';
+    const currentUrl = safeAvatarUrl(profile.avatar_url);
     avatarSlot.innerHTML =
       '<img src="' + escHtml(currentUrl) + '" width="72" height="72" alt="" class="zk-avatar-img">';
 
@@ -98,12 +107,13 @@
   }
 
   async function selectAvatar(url, cellEl) {
+    const safe = safeAvatarUrl(url);
     const prev = document.querySelector('.m-avatar-cell.is-selected');
     if (prev) prev.classList.remove('is-selected');
     cellEl.classList.add('is-selected');
     const avatarSlot = document.getElementById('profile-avatar');
     avatarSlot.innerHTML =
-      '<img src="' + escHtml(url) + '" width="72" height="72" alt="" class="zk-avatar-img">';
+      '<img src="' + escHtml(safe) + '" width="72" height="72" alt="" class="zk-avatar-img">';
     try {
       await patchProfile(url);
       // Broadcast so header avatar updates without reload

@@ -145,11 +145,19 @@
     return new Date(iso).toLocaleDateString();
   }
 
+  function safeHref(url) {
+    // Allow http(s):// or root-relative paths only. Blocks javascript:, data:,
+    // vbscript:, and any other scheme that could execute JS when the user taps.
+    const s = String(url == null ? '' : url).trim();
+    return /^(https?:\/\/|\/[^/])/i.test(s) ? s : '';
+  }
+
   function openDetail(z) {
     const detail = qs('#zettels-detail');
+    const href = safeHref(z.url);
     qs('#zettels-detail-content').innerHTML =
       '<h2>' + escHtml(z.titleReady ? (z.title || 'Untitled') : 'Summarizing…') + '</h2>' +
-      (z.url ? '<a class="m-zettel-detail-link" href="' + escAttr(z.url) + '" target="_blank" rel="noopener noreferrer">Open source</a>' : '') +
+      (href ? '<a class="m-zettel-detail-link" href="' + escAttr(href) + '" target="_blank" rel="noopener noreferrer">Open source</a>' : '') +
       '<p class="m-zettel-detail-brief">' + escHtml(z.brief) + '</p>' +
       '<div class="m-zettel-detail-summary">' + linesToHtml(z.detail) + '</div>';
     detail.hidden = false;
