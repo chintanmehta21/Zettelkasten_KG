@@ -28,7 +28,6 @@ from website.api.zettels_routes import router as zettels_router
 from website.features.refresh_button.refresh_routes import router as refresh_button_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
-from website.features.user_profile import router as profile_router
 from website.features.web_monitor import (
     _hash_id,
     maybe_fire_app_error_rate,
@@ -218,11 +217,16 @@ def _render_with_mobile_shell(
         .replace("<!--ZK_MOBILE_CONTENT-->", body)
     )
 
-    # Server-side avatar preload — improves first-paint for the user's own avatar.
+    # Server-side avatar preload — improves first-paint for the user's own
+    # avatar. The URL comes from JWT metadata which is OPERATOR-CONTROLLED but
+    # has historically carried provider URLs (Google / Gravatar) and could
+    # carry an attacker-controlled string if metadata is ever set from an
+    # untrusted source. Validate against the curated `/artifacts/avatars/`
+    # path pattern before injecting; anything else => no preload.
     avatar_url = _avatar_url_from_request(request) if request else None
     preload_tag = (
         f'<link rel="preload" as="image" type="image/svg+xml" href="{avatar_url}">'
-        if avatar_url else ""
+        if _is_curated_avatar_url(avatar_url) else ""
     )
     rendered = rendered.replace("<!--ZK_MOBILE_PRELOAD-->", preload_tag)
 
@@ -244,11 +248,31 @@ def _render_with_mobile_shell(
     return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
 
+_CURATED_AVATAR_RE = re.compile(
+    r"^/artifacts/avatars/avatar_(0[0-9]|[1-5][0-9])\.svg$"
+)
+
+
+def _is_curated_avatar_url(url: Optional[str]) -> bool:
+    """True iff *url* matches the curated set under /artifacts/avatars/.
+
+    XSS defense for any path that interpolates an avatar URL into HTML —
+    guarantees no attacker-controlled bytes can leak into href/src/preload
+    attributes even if metadata is ever set from an untrusted source.
+    """
+    if not url or not isinstance(url, str):
+        return False
+    return bool(_CURATED_AVATAR_RE.match(url))
+
+
 def _avatar_url_from_request(request: Request) -> Optional[str]:
     """Best-effort cookie decode; returns None if unauth or decode fails.
 
     Used for first-paint avatar preload only — never as an auth source.
-    Reuses the same JWT decoder as the API auth path.
+    Reuses the same JWT decoder as the API auth path. Note: cookies are NOT
+    the primary session store (auth-core.js persists in localStorage), so
+    this typically returns None for real signed-in users; preload silently
+    no-ops in that case and avatar.js renders post-hydration via /api/me.
     """
     from website.api.auth import _decode_token
 
@@ -280,21 +304,6 @@ _DESKTOP_COOKIE = "zk-prefer-desktop"
 def _nexus_enabled() -> bool:
     raw_value = os.environ.get("NEXUS_ENABLED", "true").strip().lower()
     return raw_value not in {"0", "false", "no", "off"}
-
-
-def _has_supabase_session(request: Request) -> bool:
-    """Best-effort check for a Supabase session cookie.
-
-    Covers legacy `sb-access-token` and modern `sb-<project-ref>-auth-token`
-    cookie names. Used by mobile route gates for first-paint redirect; NEVER
-    the source of truth for auth — API routes use Bearer JWT validation.
-    """
-    if request.cookies.get("sb-access-token") or request.cookies.get("sb-refresh-token"):
-        return True
-    for k in request.cookies:
-        if k.startswith("sb-") and (k.endswith("-auth-token") or k.endswith("-refresh-token")):
-            return True
-    return False
 
 
 def _is_mobile(request: Request) -> bool:
@@ -439,7 +448,6 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(chat_router)
     app.include_router(sandbox_router)
     app.include_router(pricing_router)
-    app.include_router(profile_router)
     app.include_router(web_monitor_router)
     app.include_router(admin_router)
     app.include_router(meta_router)
@@ -835,8 +843,12 @@ def create_app(lifespan=None) -> FastAPI:
 
     @app.get("/m/zettels")
     async def mobile_zettels(request: Request):
-        if not _has_supabase_session(request) and "just_captured" not in request.query_params:
-            return RedirectResponse("/m/profile", status_code=302)
+        # Auth gate is client-side: zettels.js calls /api/zettels with a Bearer
+        # token from window.getAuthToken(). Server-side cookie gates do NOT
+        # work here because the Supabase JS client persists the session in
+        # localStorage (storageKey 'zk-auth-token' in auth-core.js), not in
+        # cookies. The client renders an anon-banner + "Sign in" CTA when the
+        # API returns 401 (see zettels.js).
         return _render_with_mobile_shell(
             MOBILE_DIR / "zettels.html",
             page_title="Zettels",
@@ -846,8 +858,7 @@ def create_app(lifespan=None) -> FastAPI:
 
     @app.get("/m/kastens")
     async def mobile_kastens(request: Request):
-        if not _has_supabase_session(request):
-            return RedirectResponse("/m/profile", status_code=302)
+        # See mobile_zettels above for the auth-gate rationale.
         return _render_with_mobile_shell(
             MOBILE_DIR / "kastens.html",
             page_title="Kastens",

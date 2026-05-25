@@ -22,11 +22,18 @@
   function qs(sel) { return document.querySelector(sel); }
   function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
-  function hasSession() {
-    return document.cookie.split(';').some(c => {
-      const name = c.trim().split('=')[0];
-      return name === 'sb-access-token' || (name.startsWith('sb-') && name.endsWith('-auth-token'));
-    });
+  async function authToken() {
+    try {
+      if (typeof window.getAuthToken === 'function') {
+        var t = window.getAuthToken();
+        if (t) return t;
+      }
+      if (window.ZKAuth && typeof window.ZKAuth.getSession === 'function') {
+        var s = await window.ZKAuth.getSession();
+        if (s && s.access_token) return s.access_token;
+      }
+    } catch (e) { void e; }
+    return '';
   }
 
   function readJustCapturedFromStorage() {
@@ -38,15 +45,32 @@
     } catch { return null; }
   }
 
-  async function loadZettels() {
-    if (STATE.isAnon) {
+  function handleAnon() {
+    STATE.isAnon = true;
+    if (STATE.justCapturedId) {
       const stash = readJustCapturedFromStorage();
       STATE.items = stash ? [normalizeZettel(stash)] : [];
       applyFiltersAndRender();
-      return;
+      const banner = document.getElementById('zettels-anon-banner');
+      if (banner) banner.hidden = false;
+    } else {
+      // No just-captured stash → spec D6: gated page redirects to /m/profile.
+      location.assign('/m/profile');
     }
+  }
+
+  async function loadZettels() {
+    // Session detection: try /api/zettels with the Bearer token (canonical
+    // path — auth-core stores session in localStorage, not cookies). 401 or
+    // missing token => handleAnon (banner+stash if just_captured, else redir).
+    const token = await authToken();
+    if (!token) { handleAnon(); return; }
     try {
-      const r = await fetch('/api/zettels?limit=200', { credentials: 'include' });
+      const r = await fetch('/api/zettels?limit=200', {
+        credentials: 'include',
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+      if (r.status === 401) { handleAnon(); return; }
       if (!r.ok) { STATE.items = []; renderEmpty(); return; }
       const data = await r.json();
       STATE.items = (data.zettels || []).map(normalizeZettel);
@@ -266,11 +290,8 @@
   function init() {
     const qp = new URLSearchParams(location.search);
     STATE.justCapturedId = qp.get('just_captured');
-    STATE.isAnon = !hasSession();
-
-    if (STATE.justCapturedId && STATE.isAnon) {
-      qs('#zettels-anon-banner').hidden = false;
-    }
+    // STATE.isAnon is set in loadZettels() once authToken() resolves; banner
+    // visibility follows from the API response there (401 => show banner).
 
     qs('#zettels-search').addEventListener('input', (e) => {
       STATE.search = e.target.value;
@@ -284,9 +305,17 @@
     loadZettels();
   }
 
+  function bootWhenAuthReady() {
+    if (window.ZKAuth && window.ZKAuth.ready && typeof window.ZKAuth.ready.then === 'function') {
+      window.ZKAuth.ready.then(init);
+    } else {
+      init();
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', bootWhenAuthReady);
   } else {
-    init();
+    bootWhenAuthReady();
   }
 })();

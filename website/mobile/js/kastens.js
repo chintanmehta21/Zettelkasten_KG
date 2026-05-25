@@ -1,8 +1,12 @@
 // kastens.js — mobile Kasten grid + Create FAB (T10).
-// API: GET /api/sandboxes → { sandboxes: [...] }
+//
+// API: GET /api/sandboxes (Bearer auth) → { sandboxes: [...] }
 // Each kasten: { id, name, description, icon, color, default_quality,
 //                member_count, last_used_at, created_at, updated_at }
-// Tap-card opens desktop view in same tab (per design D7).
+//
+// Auth: 401 (or no token) → redirect to /m/profile (the spec's "all gated
+// pages route to Profile when unauth"). Auth-core stores the session in
+// localStorage; we wait for ZKAuth.ready before checking.
 
 (function () {
   "use strict";
@@ -13,11 +17,33 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  async function load() {
+  async function authToken() {
     try {
-      const r = await fetch('/api/sandboxes', { credentials: 'include' });
+      if (typeof window.getAuthToken === 'function') {
+        var t = window.getAuthToken();
+        if (t) return t;
+      }
+      if (window.ZKAuth && typeof window.ZKAuth.getSession === 'function') {
+        var s = await window.ZKAuth.getSession();
+        if (s && s.access_token) return s.access_token;
+      }
+    } catch (e) { void e; }
+    return '';
+  }
+
+  function gotoProfile() { location.assign('/m/profile'); }
+
+  async function load() {
+    var token = await authToken();
+    if (!token) { gotoProfile(); return null; }
+    try {
+      var r = await fetch('/api/sandboxes', {
+        credentials: 'include',
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+      if (r.status === 401) { gotoProfile(); return null; }
       if (!r.ok) return [];
-      const data = await r.json();
+      var data = await r.json();
       return data.sandboxes || [];
     } catch {
       return [];
@@ -25,17 +51,17 @@
   }
 
   function render(items) {
-    const grid = document.getElementById('kastens-grid');
-    const empty = document.getElementById('kastens-empty');
+    var grid = document.getElementById('kastens-grid');
+    var empty = document.getElementById('kastens-empty');
     grid.innerHTML = '';
     if (!items.length) { empty.hidden = false; return; }
     empty.hidden = true;
-    items.forEach(k => {
-      const quality = (k.default_quality || 'fast').toLowerCase();
-      const badgeClass = quality === 'strong' ? 'm-kasten-card-badge--strong' : 'm-kasten-card-badge--fast';
-      const id = k.id || '';
-      const href = '/home/kastens?desktop=1';  // no per-kasten mobile URL; lands on list
-      const card = document.createElement('a');
+    items.forEach(function (k) {
+      var quality = (k.default_quality || 'fast').toLowerCase();
+      var badgeClass = quality === 'strong' ? 'm-kasten-card-badge--strong' : 'm-kasten-card-badge--fast';
+      var id = k.id || '';
+      var href = '/home/kastens?desktop=1';  // no per-kasten mobile URL; lands on list
+      var card = document.createElement('a');
       card.className = 'm-kasten-card';
       card.href = href;
       card.setAttribute('role', 'listitem');
@@ -51,13 +77,22 @@
   }
 
   async function init() {
-    const items = await load();
+    var items = await load();
+    if (items === null) return;  // redirect already issued
     render(items);
   }
 
+  function bootWhenAuthReady() {
+    if (window.ZKAuth && window.ZKAuth.ready && typeof window.ZKAuth.ready.then === 'function') {
+      window.ZKAuth.ready.then(init);
+    } else {
+      init();
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', bootWhenAuthReady);
   } else {
-    init();
+    bootWhenAuthReady();
   }
 })();
