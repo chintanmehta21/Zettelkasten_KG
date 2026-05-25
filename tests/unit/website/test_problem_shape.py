@@ -262,6 +262,107 @@ def test_async_failure_error_payload_returns_none_for_generic_exception():
 
 
 # ---------------------------------------------------------------------------
+# URL persistence — 2026-05-25 forensic-window fix
+# ---------------------------------------------------------------------------
+
+
+def test_problem_dict_url_lands_as_extension_when_set():
+    """When ``url`` is passed, the body carries a top-level ``url`` member so
+    a failed-operation row in ``core.operations.error`` can be queried via
+    ``error->>'url'`` without needing droplet logs."""
+    body = _problem_dict(
+        status_code=422,
+        title="Insufficient content",
+        detail="x",
+        type_slug="insufficient-content",
+        operation_id="op-url-1",
+        url="https://www.youtube.com/watch?v=ZvO5kikFVOk",
+    )
+    assert body["url"] == "https://www.youtube.com/watch?v=ZvO5kikFVOk"
+    # Canonical members remain intact
+    assert body["status"] == 422
+    assert body["code"] == "insufficient-content"
+
+
+def test_problem_dict_url_omitted_when_unset_or_blank():
+    """No ``url`` key when not supplied OR supplied as empty string —
+    preserves byte-identical legacy bodies for callers that never pass it."""
+    body_none = _problem_dict(
+        status_code=429,
+        title="Too many requests",
+        detail="back off",
+        type_slug="rate-limited",
+    )
+    assert "url" not in body_none
+
+    body_blank = _problem_dict(
+        status_code=429,
+        title="Too many requests",
+        detail="back off",
+        type_slug="rate-limited",
+        url="",
+    )
+    assert "url" not in body_blank
+
+
+def test_problem_dict_extra_cannot_override_url():
+    """An ``extra={'url': ...}`` cannot clobber the explicit ``url=`` arg —
+    same rule as the canonical members."""
+    body = _problem_dict(
+        status_code=422,
+        title="t",
+        detail="d",
+        type_slug="insufficient-content",
+        url="https://truth.example/",
+        extra={"url": "https://evil.example/"},
+    )
+    assert body["url"] == "https://truth.example/"
+
+
+def test_async_failure_error_payload_threads_url_to_body():
+    """``_async_failure_error_payload(exc, url=...)`` propagates the URL into
+    every typed-exception body. Verified on a single representative class
+    (ExtractionConfidenceError — the one Nimit's 2026-05-24 failure hit)."""
+    url = "https://www.youtube.com/watch?v=ZvO5kikFVOk"
+    exc = ExtractionConfidenceError(
+        "low confidence", reason="low_confidence", tier_results=[],
+    )
+    payload = zr._async_failure_error_payload(
+        exc, operation_id="op-x", url=url,
+    )
+    assert payload is not None
+    assert payload["url"] == url
+    # Backward-compat: existing extension keys must still be there
+    assert payload["code"] == "insufficient-content"
+    assert payload["operation_id"] == "op-x"
+
+
+def test_async_failure_error_payload_omits_url_when_none():
+    """Default call (no url=) emits a body byte-identical to the pre-fix
+    shape — preserves the existing test_async_*_byte_identical assertions."""
+    exc = UnsupportedVideoError(reason="livestream")
+    payload = zr._async_failure_error_payload(exc, operation_id="op-y")
+    assert payload is not None
+    assert "url" not in payload
+
+
+def test_failed_response_for_threads_url_into_error_body():
+    """End-to-end: ``_failed_response_for`` wraps the URL into the
+    AddZettelResponse.error payload so it lands in
+    ``core.operations.error->>'url'`` on the failed finalize write."""
+    url = "https://www.youtube.com/watch?v=ZvO5kikFVOk"
+    body = zr._failed_response_for(
+        ExtractionConfidenceError("low", reason="low", tier_results=[]),
+        operation_id="op-z",
+        persist_requested=True,
+        url=url,
+    )
+    assert body["status"] == "failed"
+    assert body["error"]["url"] == url
+    assert body["error"]["code"] == "insufficient-content"
+
+
+# ---------------------------------------------------------------------------
 # Phase-2 cancel stub replaced by real _problem_dict
 # ---------------------------------------------------------------------------
 

@@ -223,7 +223,10 @@ def _document_request_hash(
 
 
 def _async_failure_error_payload(
-    exc: BaseException, *, operation_id: str | None = None,
+    exc: BaseException,
+    *,
+    operation_id: str | None = None,
+    url: str | None = None,
 ) -> dict[str, Any] | None:
     """Map a background-task exception to an RFC 9457 problem-detail dict
     physically identical to the sync ``_problem(...)`` body for the same
@@ -232,7 +235,12 @@ def _async_failure_error_payload(
     inline sync path. Both paths funnel through ``_problem_dict(...)`` —
     Phase 3 of the async-ops redesign. Returns None for generic exceptions
     (no structured detail available — frontend falls back to the existing
-    confidence_reason-only generic UI)."""
+    confidence_reason-only generic UI).
+
+    ``url`` is the original Add-Zettel request URL. When set, it lands as
+    ``body["url"]`` so post-hoc failure analysis can `SELECT error->>'url'
+    FROM core.operations WHERE status='failed'` without needing droplet
+    container stdout (which is wiped on every blue/green flip)."""
     if isinstance(exc, HTTPException):
         detail = exc.detail
         title = "Add Zettel request rejected"
@@ -247,6 +255,7 @@ def _async_failure_error_payload(
             detail=detail,
             type_slug=type_slug,
             operation_id=operation_id,
+            url=url,
         )
     if isinstance(exc, UnsupportedVideoError):
         return _problem_dict(
@@ -255,6 +264,7 @@ def _async_failure_error_payload(
             detail=f"Video type cannot be ingested: {exc.reason}",
             type_slug="unsupported-video",
             operation_id=operation_id,
+            url=url,
         )
     if isinstance(exc, ExtractionConfidenceError):
         return _problem_dict(
@@ -266,6 +276,7 @@ def _async_failure_error_payload(
             ),
             type_slug="insufficient-content",
             operation_id=operation_id,
+            url=url,
             extra={"reason": exc.reason, "tier_results": list(exc.tier_results)},
         )
     if isinstance(exc, DocumentUploadError):
@@ -275,6 +286,7 @@ def _async_failure_error_payload(
             detail=str(exc),
             type_slug="invalid-document",
             operation_id=operation_id,
+            url=url,
         )
     if isinstance(exc, (RoutingError, ValueError)):
         return _problem_dict(
@@ -283,6 +295,7 @@ def _async_failure_error_payload(
             detail=str(exc),
             type_slug="invalid-url",
             operation_id=operation_id,
+            url=url,
         )
     if isinstance(exc, SupabaseV2PersistError):
         return _problem_dict(
@@ -291,6 +304,7 @@ def _async_failure_error_payload(
             detail=exc.detail,
             type_slug="kg-write-failed",
             operation_id=operation_id,
+            url=url,
         )
     return None
 
@@ -376,12 +390,22 @@ async def _run_add_document(
 
 
 def _failed_response_for(
-    exc: BaseException, *, operation_id: str, persist_requested: bool
+    exc: BaseException,
+    *,
+    operation_id: str,
+    persist_requested: bool,
+    url: str | None = None,
 ) -> dict[str, Any]:
     """Build the AddZettelResponse(status='failed', ...) body for an async-
     background-worker exception. Used by `_run` on the failed / cancelled paths
     so the GET handler can return a coherent failed shape with structured
-    `.error` for the frontend's class-specific UI (`err.detail.code` keying)."""
+    `.error` for the frontend's class-specific UI (`err.detail.code` keying).
+
+    ``url`` (the original Add-Zettel request URL) is threaded through to the
+    error problem body so ``core.operations.error->>'url'`` is queryable post-
+    facto for failure forensics — the 24h TTL on the row plus the absence of
+    container-stdout persistence on the droplet previously made URL recovery
+    impossible after the fact (Nimit sweep, 2026-05-25)."""
     if isinstance(exc, asyncio.CancelledError):
         reason = "operation cancelled"
         # Phase 3: route the cancel shape through the unified builder so it
@@ -393,11 +417,12 @@ def _failed_response_for(
             type_slug="operation_cancelled",
             operation_id=operation_id,
             instance=f"/api/zettels/operations/{operation_id}",
+            url=url,
         )
     else:
         reason = str(exc) or exc.__class__.__name__
         error_payload = _async_failure_error_payload(
-            exc, operation_id=operation_id,
+            exc, operation_id=operation_id, url=url,
         )
     return AddZettelResponse(
         status="failed",
@@ -417,6 +442,7 @@ async def _run(
     operation_id: str,
     pipeline: Callable[[], Awaitable[dict[str, Any]]],
     persist_requested: bool,
+    url: str | None = None,
 ) -> None:
     """Pipeline-agnostic background worker coroutine (ADR-3).
 
@@ -425,6 +451,11 @@ async def _run(
     worker transitions the canonical DB row through the state machine via
     ops.start / ops.finalize. Strong-ref held by ``_LIVE_TASKS[operation_id]``
     until the done-callback pops it.
+
+    ``url`` is the original Add-Zettel request URL (for URL ingest pipelines;
+    None for document uploads). Threaded into the failed/cancelled finalize
+    payloads so ``core.operations.error->>'url'`` is queryable after the fact
+    — closes the URL-lost-on-failure gap the 2026-05-25 Nimit sweep flagged.
 
     The state-guarded RPCs make every transition idempotent: a stale finalize
     against an already-terminal row is a silent no-op (kills the duplicate-
@@ -451,6 +482,7 @@ async def _run(
             asyncio.CancelledError(),
             operation_id=operation_id,
             persist_requested=persist_requested,
+            url=url,
         )
         try:
             await asyncio.to_thread(
@@ -492,7 +524,10 @@ async def _run(
                 },
             )
         failed_body = _failed_response_for(
-            exc, operation_id=operation_id, persist_requested=persist_requested
+            exc,
+            operation_id=operation_id,
+            persist_requested=persist_requested,
+            url=url,
         )
         try:
             await asyncio.to_thread(
@@ -639,6 +674,7 @@ async def add_zettel(
                         body, user=user, effective_user_id=effective_user_id
                     ),
                     persist_requested=body.persist,
+                    url=body.url,
                 )
             )
             _LIVE_TASKS[canonical_op_id] = run_task
@@ -730,6 +766,7 @@ async def _accept_and_spawn(
     request_hash: str,
     persist: bool,
     pipeline: Callable[[], Awaitable[dict[str, Any]]],
+    url: str | None = None,
 ) -> JSONResponse:
     """Shared async-ops accept path (ADR-3) for URL / document / v2-summarize.
 
@@ -737,6 +774,10 @@ async def _accept_and_spawn(
     pipeline-agnostic ``_run`` worker, and returns the 202 envelope. ADR-2
     fail-closed: a retriable 503 if the operations store cannot record the
     operation, rather than spawning work the client could never poll.
+
+    ``url`` is forwarded to ``_run`` so failed/cancelled finalize payloads
+    can land the original request URL on ``core.operations.error->>'url'``.
+    None for document upload (no URL); set for URL-ingest pipelines.
     """
     accepted = AddZettelResponse(
         status="accepted",
@@ -779,6 +820,7 @@ async def _accept_and_spawn(
                 operation_id=canonical_op_id,
                 pipeline=pipeline,
                 persist_requested=persist,
+                url=url,
             )
         )
         _LIVE_TASKS[canonical_op_id] = run_task
