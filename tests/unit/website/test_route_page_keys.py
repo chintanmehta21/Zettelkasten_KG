@@ -1,9 +1,9 @@
 """Route-level integration: each shared-header route renders the expected
-PR1 dropdown items via FastAPI's TestClient.
+PR2 per-page dropdown items via FastAPI's TestClient.
 
-PR1 expectation: every page in {zettels, kastens, rag, nexus, profile, pricing}
-serves the SAME 7-item dropdown (matches the static markup that used to live
-in header.html).
+PR2 expectation (design spec §5.3): each page omits its own link from the
+dropdown; all items (Home, My Zettels, My Kastens, KG, Nexus, My Profile,
+Store, Sign out) otherwise present per the per-page matrix below.
 """
 import pytest
 from fastapi.testclient import TestClient
