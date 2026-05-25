@@ -13,6 +13,7 @@
 @import url("./components/avatar-picker.css");
 @import url("./pages/profile.css");
 @import url("./components/install-banner.css");
+@import url("./components/footer.css");
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
