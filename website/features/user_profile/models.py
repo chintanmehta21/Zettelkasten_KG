@@ -1,4 +1,5 @@
 """Pydantic models + avatar-URL validation."""
+
 from __future__ import annotations
 
 import re
@@ -29,5 +30,7 @@ class UpdateProfileRequest(BaseModel):
     @classmethod
     def _check(cls, v: str) -> str:
         if not is_valid_avatar_url(v):
-            raise ValueError("avatar_url must be /artifacts/avatars/avatar_NN.svg with NN in 00..59")
+            raise ValueError(
+                "avatar_url must be /artifacts/avatars/avatar_NN.svg with NN in 00..59"
+            )
         return v

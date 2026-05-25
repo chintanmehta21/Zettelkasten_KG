@@ -1,4 +1,5 @@
 """Auth-gate + redirect tests for /m/zettels, /m/kastens, /m/profile."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -15,13 +16,17 @@ def client():
 
 
 def test_zettels_unauth_redirects_to_profile(client):
-    r = client.get("/m/zettels", follow_redirects=False, headers={"User-Agent": "iPhone"})
+    r = client.get(
+        "/m/zettels", follow_redirects=False, headers={"User-Agent": "iPhone"}
+    )
     assert r.status_code == 302
     assert r.headers["location"] == "/m/profile"
 
 
 def test_kastens_unauth_redirects_to_profile(client):
-    r = client.get("/m/kastens", follow_redirects=False, headers={"User-Agent": "iPhone"})
+    r = client.get(
+        "/m/kastens", follow_redirects=False, headers={"User-Agent": "iPhone"}
+    )
     assert r.status_code == 302
     assert r.headers["location"] == "/m/profile"
 

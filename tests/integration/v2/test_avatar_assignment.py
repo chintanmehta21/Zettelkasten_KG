@@ -1,4 +1,5 @@
 """Tests for the default-avatar trigger and backfill (migration 76)."""
+
 from __future__ import annotations
 
 import re
@@ -56,7 +57,9 @@ async def test_no_google_or_gravatar_remains(asyncpg_pool):
     assert count == 0
 
 
-async def test_curated_url_is_not_reassigned_by_backfill(asyncpg_pool, mint_user, created_auth_user_ids):
+async def test_curated_url_is_not_reassigned_by_backfill(
+    asyncpg_pool, mint_user, created_auth_user_ids
+):
     """Re-applying the backfill UPDATE must leave a user already on the curated
     set untouched — defense-in-depth for the idempotency guard added in the
     migration review (AND NOT LIKE '/artifacts/avatars/%').
