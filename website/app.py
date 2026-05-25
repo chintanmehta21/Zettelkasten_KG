@@ -306,6 +306,72 @@ def create_app(lifespan=None) -> FastAPI:
             headers={"Retry-After": "5"},
         )
 
+    # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
+    # Sliding-window counter on global + per-IP 401 responses. Out-of-path
+    # of auth.py (hot path stays fast); runs at response-egress time as a
+    # cheap status-code check + rate-gate tick. Hashed IP only — never the
+    # raw client address (daily-rotated salt; matches OWASP cred-stuffing
+    # alert payload contract).
+    @app.middleware("http")
+    async def _auth_401_rate_monitor(request: Request, call_next):
+        response = await call_next(request)
+        try:
+            if response.status_code == 401 and not request.url.path.startswith(
+                ("/api/health", "/webhooks/monitor/")
+            ):
+                from website.features.web_monitor import (
+                    _hash_id,
+                    maybe_fire_app_error_rate,
+                )
+
+                # Global rate: ≥ 100 401s / 5 min = credential-stuffing pattern.
+                maybe_fire_app_error_rate(
+                    dedup_key="auth_401_global_burst",
+                    threshold=100,
+                    window_seconds=5 * 60,
+                    route="middleware.auth_401_rate",
+                    exc_type="AuthBurstDetected",
+                    message="High 401 rate across /api/* — possible credential stuffing",
+                    fields={
+                        "external_service": "self",
+                        "scope": "global",
+                        "route_sample": request.url.path[:80],
+                    },
+                    severity="warning",
+                    alert_dedup_seconds=15 * 60,
+                )
+                # Per-IP rate: ≥ 30 401s / 60 s = single scanner. Daily-rotated
+                # salt makes the IP hash unreversible across days but stable
+                # within one alert window.
+                raw_ip = (
+                    request.headers.get("cf-connecting-ip")
+                    or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                    or (request.client.host if request.client else "")
+                )
+                if raw_ip:
+                    import time as _t
+
+                    day_salt = str(int(_t.time()) // 86400)
+                    ip_hash = _hash_id(f"{raw_ip}:{day_salt}", prefix_len=12)
+                    maybe_fire_app_error_rate(
+                        dedup_key=f"auth_401_per_ip:{ip_hash}",
+                        threshold=30,
+                        window_seconds=60,
+                        route="middleware.auth_401_rate",
+                        exc_type="ScannerBurstDetected",
+                        message="High 401 rate from one IP — likely scanner",
+                        fields={
+                            "external_service": "self",
+                            "scope": "per_ip",
+                            "ip_hash": ip_hash,
+                        },
+                        severity="warning",
+                        alert_dedup_seconds=15 * 60,
+                    )
+        except Exception:  # noqa: BLE001 — middleware must never break response
+            logger.debug("auth 401 rate monitor failed", exc_info=True)
+        return response
+
     # ── Unhandled-exception alerting ──
     # Any uncaught error in a request handler fans out to the #app-errors
     # Slack channel via notify_app_error, then returns a generic 500 to the

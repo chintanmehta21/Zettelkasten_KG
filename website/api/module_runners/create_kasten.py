@@ -989,9 +989,42 @@ async def _ingest_links(
             )
         )
 
+    failed_before = len(failed)
     await asyncio.gather(
         *(_ingest_one(idx, link) for idx, link in enumerate(links))
     )
+
+    # C15 — per-link failure rate alert. A user-visible FailedLink per link
+    # is correct UX surface, but a 50%+ failure rate across a multi-link
+    # build is operator-actionable (Gemini quota outage, all-URLs-blocked,
+    # regex regression). Stripe + Datadog burn-rate guidance: aggregate
+    # breach is the trigger, not per-item failure. Only check when batch
+    # size is ≥ 3 so a single bad link in a 2-link build doesn't page.
+    link_failures = len(failed) - failed_before
+    if links and len(links) >= 3 and (link_failures / max(len(links), 1)) > 0.5:
+        try:
+            from website.features.web_monitor import (
+                _hash_id,
+                maybe_fire_app_error,
+            )
+
+            maybe_fire_app_error(
+                dedup_key=f"create_kasten_link_failure_rate:{_hash_id(client_action_id)}",
+                route="create_kasten._ingest_links",
+                exc_type="LinkFailureRateBreached",
+                message=f"{link_failures}/{len(links)} links failed in create_kasten",
+                request_id=client_action_id,
+                fields={
+                    "link_failures": str(link_failures),
+                    "links_total": str(len(links)),
+                    "user_hash": _hash_id(str(effective_user_id)),
+                    "workspace_hash": _hash_id(str(workspace_id)),
+                },
+                severity="warning",
+                dedup_seconds=15 * 60,
+            )
+        except Exception:  # noqa: BLE001 — never break the runner return
+            logger.debug("create_kasten link-failure-rate alert dispatch failed", exc_info=True)
 
 
 # ───────────────────────────────────────────────────────────────────────────

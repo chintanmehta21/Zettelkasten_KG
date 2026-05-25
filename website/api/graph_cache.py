@@ -282,6 +282,33 @@ class UserGraphCache:
                         exc if isinstance(exc, Exception) else RuntimeError(str(exc))
                     )
                 self._inflight.pop(key, None)
+            # C12 — upstream Supabase/pgvector statement-timeout signal.
+            # 20 s ``self._timeout`` is well above healthy p99; sustained hits
+            # mean compute saturation or HNSW degradation. Rate-gated so a
+            # transient blip doesn't page.
+            if isinstance(exc, asyncio.TimeoutError):
+                try:
+                    from website.features.web_monitor import (
+                        maybe_fire_app_error_rate,
+                    )
+
+                    maybe_fire_app_error_rate(
+                        dedup_key="graph_cache_upstream_timeout",
+                        threshold=3,
+                        window_seconds=60,
+                        route="graph_cache.UserGraphCache.get_or_load",
+                        exc_type="TimeoutError",
+                        message=f"graph_cache upstream timed out after {self._timeout}s",
+                        fields={
+                            "external_service": "supabase_postgrest",
+                            "timeout_seconds": str(self._timeout),
+                            "bucket": str(key[1] if isinstance(key, tuple) else key)[:60],
+                        },
+                        severity="critical",
+                        alert_dedup_seconds=5 * 60,
+                    )
+                except Exception:  # noqa: BLE001 — alert must never break loader
+                    logger.debug("graph_cache timeout alert dispatch failed", exc_info=True)
             raise
 
         # Phase 3: publish + resolve Future + clear inflight, all under lock.
