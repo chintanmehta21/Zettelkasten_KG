@@ -1,0 +1,54 @@
+/* kastens.css — mobile Kasten grid + FAB (T10). */
+
+.m-kastens-page {
+  padding: 16px 16px calc(var(--m-bottomnav-h, 64px) + 24px);
+}
+.m-kastens-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.m-kasten-card {
+  background: #11131c;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+  color: #e6e6e6;
+  text-decoration: none;
+  min-height: 100px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.m-kasten-card-name { font-weight: 600; font-size: 15px; }
+.m-kasten-card-meta {
+  display: flex; gap: 8px; align-items: center;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.m-kasten-card-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.m-kasten-card-badge--fast { background: rgba(20,184,166,0.16); color: var(--m-teal, #14b8a6); }
+.m-kasten-card-badge--strong { background: rgba(212,160,36,0.18); color: var(--m-amber, #D4A024); }
+.m-kasten-card-count { color: rgba(255,255,255,0.6); }
+
+.m-kastens-empty { text-align: center; color: rgba(255,255,255,0.6); padding: 60px 0; }
+
+.m-kastens-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--m-bottomnav-h, 64px) + env(safe-area-inset-bottom, 0px) + 18px);
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--m-teal, #14b8a6);
+  border: 0;
+  color: #0a0b14;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px rgba(20,184,166,0.35);
+  z-index: 20;
+  text-decoration: none;
+}
+.m-kastens-fab:active { transform: scale(0.96); }
