@@ -57,26 +57,17 @@
     visibility: hidden;
 }
 
-/* ── Avatar Button (home-* legacy class set, kept in sync with .zk-avatar-*) ──────────── */
-.home-avatar-wrap { position: relative; }
-.home-avatar-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    background: var(--bg-tertiary);
-    cursor: pointer;
-    padding: 0;
-    overflow: hidden;
-    transition: border-color var(--transition, 0.2s ease), box-shadow var(--transition, 0.2s ease);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.home-avatar-btn:hover {
-    border-color: var(--accent-muted);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-}
+/* Avatar wrap + button styling lives entirely on the .zk-avatar-* classes
+ * above (single source of truth). The .home-avatar-wrap / .home-avatar-btn
+ * classes are still on the markup (header.html) as compatibility hooks but
+ * carry no sizing rules — the legacy 36x36 .home-avatar-btn block here was
+ * deleted because it clashed with .zk-avatar-btn (44x44) and rendered
+ * inconsistently per-page depending on which CSS file loaded last.
+ *
+ * The img + fallback rules below keep the .home-avatar-* selectors only
+ * because the actual children carry those classes (and would be tedious to
+ * rename inside header.html for no functional gain). */
+
 /* Avatar display — inverted defaults for defense-in-depth:
    - Fallback is ALWAYS visible unless .loaded is set on the img.
    - Image is hidden by default; JS adds .loaded only after a successful preload.

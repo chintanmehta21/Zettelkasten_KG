@@ -13,33 +13,14 @@
     max-width: 1180px;
 }
 
-/* ── Header overrides for home page ─────────────────────────────── */
-
-.header {
-    position: relative !important;
-    display: block !important;
-    text-align: center !important;
-    width: 100% !important;
-}
-
-.header-auth {
-    position: absolute !important;
-    top: 3px !important;
-    right: 0 !important;
-    display: flex !important;
-}
-
-.branding {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-}
-
-/* ── Avatar Button ──────────────────────────────────────────────── */
-
-/* Avatar styles (.home-avatar-wrap / .home-avatar-btn / .home-avatar-img /
-   .home-avatar-fallback) are owned by website/features/header/css/header.css.
-   The PR2 shared-header migration removed the local duplicate. */
+/* ── Header styling ────────────────────────────────────────────────
+ * /home now uses the shared zk-header (PR2 migration). Header layout +
+ * avatar styles are owned by website/features/header/css/header.css —
+ * single source of truth, so any change there reflects on every page.
+ * The legacy `.header` / `.header-auth` / `.branding` overrides that
+ * lived here were deleted because they collided with `.zk-header`'s
+ * grid layout (display:block !important made the header stack
+ * vertically and pushed the avatar 70px below the logo). */
 
 /* ── Avatar Dropdown Menu ─────────────────────────────────────────
    Styling lives in shared header.css — single source of truth so
