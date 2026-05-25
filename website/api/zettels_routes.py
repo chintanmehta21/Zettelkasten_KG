@@ -91,7 +91,10 @@ class AddZettelRequest(BaseModel):
     url: str
     client_action_id: str = Field(min_length=1, max_length=160)
     persist: bool = True
-    surface: Literal["landing", "home", "zettels"]
+    # `mobile` belongs to the touch-optimized /m/ summarizer
+    # (website/mobile/js/summarizer.js); pinned by
+    # tests/unit/website/test_add_zettel_surface_mobile_contract.py.
+    surface: Literal["landing", "home", "zettels", "mobile"]
 
     @field_validator("url")
     @classmethod
@@ -892,7 +895,9 @@ async def add_zettel_document(
     file: Annotated[UploadFile, File()],
     client_action_id: Annotated[str, Form(min_length=1, max_length=160)],
     persist: Annotated[bool, Form()] = True,
-    surface: Annotated[Literal["landing", "home", "zettels"], Form()] = "landing",
+    surface: Annotated[
+        Literal["landing", "home", "zettels", "mobile"], Form()
+    ] = "landing",
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     """Document Add Zettel — async-ops (ADR-3).
