@@ -36,7 +36,12 @@ body { color-scheme: dark; }
  *   padding-inline: max(1.5rem, calc((100% - var(--zk-content-max)) / 2))
  * which collapses to the same gutter on every viewport). */
 .profile-container {
-    max-width: 1120px;
+    /* 1180px matches the shared header's centered rail (header.css:
+     *   padding: 1.5rem max(1.5rem, calc(50vw - 590px)) 1rem)
+     * so the back button + avatar in the header anchor to the same
+     * columns as the hero card / banner below. Anything narrower causes
+     * a visible misalignment between header chrome and page content. */
+    max-width: 1180px;
     margin: 0 auto;
     padding: 0 1.25rem 4rem;
 }
@@ -109,7 +114,7 @@ body { color-scheme: dark; }
 .profile-hero-row {
     position: relative;
     display: grid;
-    grid-template-columns: 84px 1fr auto;
+    grid-template-columns: 84px 1fr;
     gap: 1.4rem;
     align-items: center;
 }
@@ -141,14 +146,16 @@ body { color-scheme: dark; }
     display: block;
 }
 
-/* "Edit" pencil badge in bottom-right of hero avatar — Instagram pattern.
- * Communicates clickability without competing with the avatar art itself. */
+/* "Edit" pencil badge in bottom-right of hero avatar — the only affordance
+ * communicating "click to change". Kept deliberately small + low-chroma at
+ * rest so it doesn't compete with the avatar art; saturates teal on hover. */
+.profile-hero-avatar { position: relative; }
 .profile-hero-avatar-edit {
     position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 26px;
-    height: 26px;
+    right: 0;
+    bottom: 0;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: var(--bg-elevated);
     border: 2px solid var(--bg-card);
@@ -156,25 +163,24 @@ body { color-scheme: dark; }
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
-    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    opacity: 0.85;
+    transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
     pointer-events: none;
 }
 .profile-hero-avatar-edit svg {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     fill: none;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
-.profile-hero-avatar {
-    position: relative;
-}
 .profile-hero-avatar:hover .profile-hero-avatar-edit,
 .profile-hero-avatar:focus-visible .profile-hero-avatar-edit {
     background: var(--accent);
     color: var(--bg-primary);
-    transform: scale(1.08);
+    opacity: 1;
+    transform: scale(1.1);
 }
 .profile-hero-avatar-fallback {
     display: flex;
@@ -985,20 +991,11 @@ body { color-scheme: dark; }
     }
     .profile-hero-row {
         grid-template-columns: 64px 1fr;
-        grid-template-areas:
-            "avatar identity"
-            "action action";
         row-gap: 1rem;
     }
     .profile-hero-avatar {
         width: 64px;
         height: 64px;
-        grid-area: avatar;
-    }
-    .profile-hero-identity { grid-area: identity; }
-    .profile-hero-action {
-        grid-area: action;
-        justify-content: center;
     }
     .profile-hero-name { font-size: 1.45rem; }
     .profile-section {
