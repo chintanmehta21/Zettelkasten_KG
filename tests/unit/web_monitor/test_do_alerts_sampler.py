@@ -1,12 +1,15 @@
-"""Unit tests for the DO_Errors memory + asyncio-task sampler (iter 1e).
+"""Unit tests for the DO_Alerts memory + asyncio-task sampler (iter 1e).
 
 Drives the sampler through synthetic /proc readings + asyncio.all_tasks
 overrides to verify:
 - PSI threshold + sustained-samples + hysteresis
 - Cgroup memory ratio threshold + hysteresis
 - asyncio task count threshold + hysteresis
-- maybe_fire_do_error dedup
+- maybe_fire_do_alert dedup
 - Sampler degrades gracefully when /proc files are absent (dev / macOS)
+
+The sampler emits to the same ``#do-alerts`` channel as the inbound DO
+native-monitoring webhook — single channel, two upstream sources.
 """
 from __future__ import annotations
 
@@ -14,37 +17,37 @@ import asyncio
 
 import pytest
 
-from website.features.web_monitor import DO_Errors as do_mod
-from website.features.web_monitor.DO_Errors import (
+from website.features.web_monitor import DO_Alerts as da_mod
+from website.features.web_monitor.DO_Alerts import (
     MemorySampler,
-    maybe_fire_do_error,
+    maybe_fire_do_alert,
 )
 
 
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch):
-    do_mod._do_error_alerted.clear()
-    do_mod._sampler = None
+    da_mod._do_alert_alerted.clear()
+    da_mod._sampler = None
     yield
-    do_mod._do_error_alerted.clear()
-    do_mod._sampler = None
+    da_mod._do_alert_alerted.clear()
+    da_mod._sampler = None
 
 
 # ---------------------------------------------------------------------------
-# maybe_fire_do_error
+# maybe_fire_do_alert
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_maybe_fire_do_error_fires_first_call(monkeypatch):
+async def test_maybe_fire_do_alert_fires_first_call(monkeypatch):
     captured: list[dict] = []
 
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
 
-    fired = maybe_fire_do_error(
+    fired = maybe_fire_do_alert(
         dedup_key="test:psi",
         title=":fire: PSI breach",
         body="kernel stalling",
@@ -60,24 +63,22 @@ async def test_maybe_fire_do_error_fires_first_call(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_maybe_fire_do_error_dedups_within_window(monkeypatch):
+async def test_maybe_fire_do_alert_dedups_within_window(monkeypatch):
     captured: list[dict] = []
 
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
 
     for _ in range(5):
-        maybe_fire_do_error(
-            dedup_key="test:dup", title="t", body="b"
-        )
+        maybe_fire_do_alert(dedup_key="test:dup", title="t", body="b")
     await asyncio.sleep(0)
     assert len(captured) == 1
 
 
-def test_maybe_fire_do_error_rejects_empty_dedup_key():
-    assert maybe_fire_do_error(dedup_key="", title="t", body="b") is False
+def test_maybe_fire_do_alert_rejects_empty_dedup_key():
+    assert maybe_fire_do_alert(dedup_key="", title="t", body="b") is False
 
 
 # ---------------------------------------------------------------------------
@@ -92,20 +93,17 @@ async def test_psi_fires_after_sustained_samples_and_rearms(monkeypatch):
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
 
     sampler = MemorySampler(interval_seconds=60)
-    # /proc unavailable for non-PSI signals so they don't fire.
-    monkeypatch.setattr(do_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 0)
+    monkeypatch.setattr(da_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 0)
 
-    # Sample 1: above critical — breach=1, NOT YET fired (needs 2 samples).
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: 12.0)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: 12.0)
     sampler.sample_once()
     assert sampler.state.psi_breach == 1
     assert sampler.state.psi_armed_severity is None
 
-    # Sample 2: still above critical — breach=2, FIRES.
     sampler.sample_once()
     await asyncio.sleep(0)
     assert sampler.state.psi_breach == 2
@@ -113,18 +111,16 @@ async def test_psi_fires_after_sustained_samples_and_rearms(monkeypatch):
     assert len(captured) == 1
     assert captured[0]["fields"]["psi_full_avg10_pct"] == "12.00"
 
-    # Sample 3: drops into safe band — counter resets + armed flag cleared.
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: 0.5)
+    # Safe band → re-arm.
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: 0.5)
     sampler.sample_once()
     assert sampler.state.psi_breach == 0
     assert sampler.state.psi_armed_severity is None
 
-    # Sample 4-5: above critical AGAIN — re-arms and fires fresh alert (via
-    # the maybe_fire_do_error dedup window which is 15 min by default; for
-    # the test we manually clear the dedup state).
-    do_mod._do_error_alerted.clear()
+    # Re-fire after fresh sustained breach.
+    da_mod._do_alert_alerted.clear()
     captured.clear()
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: 11.5)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: 11.5)
     sampler.sample_once()
     sampler.sample_once()
     await asyncio.sleep(0)
@@ -138,24 +134,22 @@ async def test_psi_below_critical_does_not_fire(monkeypatch):
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
-    monkeypatch.setattr(do_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 0)
-    # Sit in the WARN band (5-10%) — should NOT fire critical.
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: 7.0)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
+    monkeypatch.setattr(da_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 0)
+    # WARN band 5-10% — should NOT fire critical.
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: 7.0)
 
     sampler = MemorySampler(interval_seconds=60)
     for _ in range(5):
         sampler.sample_once()
     await asyncio.sleep(0)
     assert captured == []
-    # In-between band: breach counter stays at 0 (doesn't increment, but
-    # doesn't reset either — that's only on the SAFE band).
     assert sampler.state.psi_armed_severity is None
 
 
 # ---------------------------------------------------------------------------
-# Cgroup memory threshold + hysteresis
+# Cgroup memory + asyncio task threshold + hysteresis
 # ---------------------------------------------------------------------------
 
 
@@ -166,37 +160,31 @@ async def test_cgroup_mem_fires_above_90pct_sustained(monkeypatch):
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: None)
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 0)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: None)
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 0)
     monkeypatch.setattr(
-        do_mod,
+        da_mod,
         "_read_cgroup_mem_ratio",
         lambda: (0.92, 1_500_000_000, 1_600_000_000),
     )
 
     sampler = MemorySampler(interval_seconds=60)
-    sampler.sample_once()  # breach=1
-    sampler.sample_once()  # breach=2, fires
+    sampler.sample_once()
+    sampler.sample_once()
     await asyncio.sleep(0)
     assert sampler.state.mem_armed_severity == "critical"
     assert len(captured) == 1
     assert captured[0]["fields"]["ratio_pct"] == "92.0"
 
-    # Drop into safe band → re-arm.
     monkeypatch.setattr(
-        do_mod,
+        da_mod,
         "_read_cgroup_mem_ratio",
         lambda: (0.50, 800_000_000, 1_600_000_000),
     )
     sampler.sample_once()
     assert sampler.state.mem_armed_severity is None
     assert sampler.state.mem_breach == 0
-
-
-# ---------------------------------------------------------------------------
-# Asyncio task-count threshold + hysteresis
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -206,13 +194,12 @@ async def test_asyncio_tasks_fires_after_sustained_high_count(monkeypatch):
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: None)
-    monkeypatch.setattr(do_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 500)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: None)
+    monkeypatch.setattr(da_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 500)
 
     sampler = MemorySampler(interval_seconds=60)
-    # Threshold sustained = 4 samples (60s). First 3: no fire. 4th: fires.
     sampler.sample_once()
     sampler.sample_once()
     sampler.sample_once()
@@ -225,31 +212,28 @@ async def test_asyncio_tasks_fires_after_sustained_high_count(monkeypatch):
     assert captured[0]["fields"]["task_count"] == "500"
     assert sampler.state.tasks_armed_severity == "warning"
 
-    # Re-arm via safe band.
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 30)
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 30)
     sampler.sample_once()
     assert sampler.state.tasks_breach == 0
     assert sampler.state.tasks_armed_severity is None
 
 
 # ---------------------------------------------------------------------------
-# Graceful degradation on hosts without /proc
+# Graceful degradation
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_sampler_degrades_gracefully_when_proc_unavailable(monkeypatch):
-    """macOS / Windows dev: /proc reads return None; sampler must not raise
-    or fire spurious alerts."""
     captured: list[dict] = []
 
     async def _capture(**kwargs):
         captured.append(kwargs)
 
-    monkeypatch.setattr(do_mod, "notify_do_error", _capture)
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: None)
-    monkeypatch.setattr(do_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 5)
+    monkeypatch.setattr(da_mod, "notify_do_alert", _capture)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: None)
+    monkeypatch.setattr(da_mod, "_read_cgroup_mem_ratio", lambda: (None, None, None))
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 5)
 
     sampler = MemorySampler(interval_seconds=60)
     for _ in range(10):
@@ -260,12 +244,12 @@ async def test_sampler_degrades_gracefully_when_proc_unavailable(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_sample_once_returns_snapshot(monkeypatch):
-    monkeypatch.setattr(do_mod, "notify_do_error", lambda **_: None)
-    monkeypatch.setattr(do_mod, "_read_psi_full_avg10", lambda: 0.0)
+    monkeypatch.setattr(da_mod, "notify_do_alert", lambda **_: None)
+    monkeypatch.setattr(da_mod, "_read_psi_full_avg10", lambda: 0.0)
     monkeypatch.setattr(
-        do_mod, "_read_cgroup_mem_ratio", lambda: (0.3, 500_000_000, 1_600_000_000)
+        da_mod, "_read_cgroup_mem_ratio", lambda: (0.3, 500_000_000, 1_600_000_000)
     )
-    monkeypatch.setattr(do_mod, "_read_asyncio_task_count", lambda: 7)
+    monkeypatch.setattr(da_mod, "_read_asyncio_task_count", lambda: 7)
     sampler = MemorySampler()
     snap = sampler.sample_once()
     assert snap["psi_full_avg10"] == 0.0

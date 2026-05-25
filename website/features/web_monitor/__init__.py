@@ -14,14 +14,13 @@ from website.features.web_monitor.App_Errors import (
     notify_app_error,
 )
 from website.features.web_monitor.App_Errors import router as _app_errors_router
-from website.features.web_monitor.DO_Alerts import router as _do_alerts_router
-from website.features.web_monitor.DO_Errors import (
-    maybe_fire_do_error,
-    notify_do_error,
+from website.features.web_monitor.DO_Alerts import (
+    maybe_fire_do_alert,
+    notify_do_alert,
     start_memory_sampler,
     stop_memory_sampler,
 )
-from website.features.web_monitor.DO_Errors import router as _do_errors_router
+from website.features.web_monitor.DO_Alerts import router as _do_alerts_router
 from website.features.web_monitor.User_Activity import (
     maybe_fire_payment_alert,
     maybe_fire_signup_alert,
@@ -35,7 +34,6 @@ from website.features.web_monitor.User_Activity import router as _user_activity_
 # Aggregated router so app.py only has one include_router call.
 router = APIRouter()
 router.include_router(_do_alerts_router)
-router.include_router(_do_errors_router)
 router.include_router(_app_errors_router)
 router.include_router(_user_activity_router)
 router.include_router(_user_activity_api_router)
@@ -46,12 +44,12 @@ __all__ = [
     "notify_new_signup",
     "notify_pricing_visit",
     "notify_payment",
-    "notify_do_error",
+    "notify_do_alert",
     "maybe_fire_signup_alert",
     "maybe_fire_payment_alert",
     "maybe_fire_app_error",
     "maybe_fire_app_error_rate",
-    "maybe_fire_do_error",
+    "maybe_fire_do_alert",
     "start_memory_sampler",
     "stop_memory_sampler",
     "_hash_id",

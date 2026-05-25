@@ -12,7 +12,6 @@ from website.features.web_monitor._env_validation import (
 _VARS = (
     "SLACK_WEBHOOK_APP_ERRORS",
     "SLACK_WEBHOOK_DO_ALERT",
-    "SLACK_WEBHOOK_DO_ERRORS",
     "SLACK_WEBHOOK_USER_ACTIVITY",
 )
 
@@ -43,11 +42,7 @@ def test_partial_unset_only_warns_for_missing(caplog, monkeypatch):
     monkeypatch.setenv("SLACK_WEBHOOK_APP_ERRORS", "https://hooks.slack.com/x/y/z")
     with caplog.at_level(logging.WARNING, logger="website.web_monitor.env_validation"):
         unset = log_web_monitor_env_warnings()
-    assert unset == [
-        "SLACK_WEBHOOK_DO_ALERT",
-        "SLACK_WEBHOOK_DO_ERRORS",
-        "SLACK_WEBHOOK_USER_ACTIVITY",
-    ]
+    assert unset == ["SLACK_WEBHOOK_DO_ALERT", "SLACK_WEBHOOK_USER_ACTIVITY"]
     msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert not any("SLACK_WEBHOOK_APP_ERRORS" in m for m in msgs)
 
