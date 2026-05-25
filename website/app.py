@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -199,7 +200,7 @@ def _render_with_mobile_shell(
     *,
     page_title: str,
     body_class: str = "",
-    extra_head: str = "",
+    request: Optional[Request] = None,
 ) -> HTMLResponse:
     """Inject mobile shell around a body fragment file.
 
@@ -207,31 +208,54 @@ def _render_with_mobile_shell(
     file is expected to contain ONLY the in-<main> content (no <html>/<head>/<body>
     wrappers).
     """
-    shell = _MOBILE_SHELL.read_text(encoding="utf-8")
     body = body_path.read_text(encoding="utf-8")
-    rendered = (
+    shell = _MOBILE_SHELL.read_text(encoding="utf-8")
+    html = (
         shell
         .replace("<!--ZK_MOBILE_TITLE-->", page_title)
         .replace("<!--ZK_MOBILE_PAGE_TITLE-->", page_title)
         .replace("<!--ZK_MOBILE_BODY_CLASS-->", body_class)
         .replace("<!--ZK_MOBILE_CONTENT-->", body)
     )
-    if extra_head:
-        rendered = rendered.replace("</head>", f"{extra_head}\n</head>", 1)
-    # Inject OAuth modal + auth scripts before </body> (Phase 3).
-    # Mobile pages load ONLY auth-core.js — auth.js carries desktop-landing
-    # DOM wiring (#login-btn / #user-menu / provider grid) that mobile does
-    # not render. /m/ auth chrome is owned by auth-modal.js, which already
-    # depends on window.ZKAuth from auth-core.
-    oauth_modal = _MOBILE_OAUTH_MODAL.read_text(encoding="utf-8")
-    auth_block = (
-        oauth_modal
-        + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin></script>'
-        + '\n<script src="/auth/js/auth-core.js?v=20260524a"></script>'
-        + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
+
+    # Server-side avatar preload — improves first-paint for the user's own avatar.
+    avatar_url = _avatar_url_from_request(request) if request else None
+    preload = (
+        f'<link rel="preload" as="image" type="image/svg+xml" href="{avatar_url}">'
+        if avatar_url else ""
     )
-    rendered = rendered.replace("</body>", auth_block + "\n</body>", 1)
-    return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
+    html = html.replace("<!--ZK_MOBILE_PRELOAD-->", preload)
+
+    oauth_modal = _MOBILE_OAUTH_MODAL.read_text(encoding="utf-8")
+    html = (
+        html
+        + "\n" + oauth_modal
+        + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
+        + '\n<script src="/m/js/avatar.js?v=20260525a"></script>'
+    )
+    return HTMLResponse(content=html, headers=_HTML_CACHE_HEADERS)
+
+
+def _avatar_url_from_request(request: Request) -> Optional[str]:
+    """Best-effort cookie decode; returns None if unauth or decode fails.
+
+    Used for first-paint avatar preload only — never as an auth source.
+    Reuses the same JWT decoder as the API auth path.
+    """
+    from website.api.auth import _decode_token
+
+    token = None
+    for k, v in request.cookies.items():
+        if k == "sb-access-token" or (k.startswith("sb-") and k.endswith("-auth-token")):
+            token = v
+            break
+    if not token:
+        return None
+    try:
+        claims = _decode_token(token)
+        return (claims.get("user_metadata") or {}).get("avatar_url")
+    except Exception:
+        return None
 
 
 # Regex to detect mobile user-agents
@@ -769,18 +793,20 @@ def create_app(lifespan=None) -> FastAPI:
 
     # ── Mobile routes ──
     @app.get("/m/")
-    async def mobile_index():
+    async def mobile_index(request: Request):
         return _render_with_mobile_shell(
             MOBILE_DIR / "index.html",
             page_title="Summarize",
+            request=request,
         )
 
     @app.get("/m/knowledge-graph")
-    async def mobile_knowledge_graph():
+    async def mobile_knowledge_graph(request: Request):
         return _render_with_mobile_shell(
             MOBILE_DIR / "knowledge-graph.html",
             page_title="Knowledge Graph",
             body_class="kg-body",
+            request=request,
         )
 
     # ── Desktop routes (auto-redirect mobile browsers) ──
