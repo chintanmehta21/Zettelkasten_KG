@@ -217,9 +217,14 @@
     refs.avatarBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       e.preventDefault();
+      // Defensive: clear any stale .open on the (hidden) dropdown so a future
+      // edit that drops zk-anon-no-dropdown-default doesn't flash open items.
+      if (refs.avatarDrop) refs.avatarDrop.classList.remove('open');
       var modal = document.getElementById('login-modal');
       if (modal && typeof modal.classList === 'object') {
         modal.classList.add('open');
+      } else {
+        console.warn('[ZKHeader] anonAction=open-login-modal but #login-modal not found in DOM');
       }
     }, true);
   }
