@@ -31,6 +31,7 @@ logger = logging.getLogger("website.web_monitor.env_validation")
 _REQUIRED_SLACK_WEBHOOKS: tuple[tuple[str, str], ...] = (
     ("SLACK_WEBHOOK_APP_ERRORS", "app_errors"),
     ("SLACK_WEBHOOK_DO_ALERT", "do_alerts"),
+    ("SLACK_WEBHOOK_DO_ERRORS", "do_errors"),
     ("SLACK_WEBHOOK_USER_ACTIVITY", "user_activity"),
 )
 
@@ -59,7 +60,10 @@ def log_web_monitor_env_warnings() -> list[str]:
                 channel,
             )
     if not unset:
-        logger.info("web_monitor: all 3 Slack webhook env vars present at boot")
+        logger.info(
+            "web_monitor: all %d Slack webhook env vars present at boot",
+            len(_REQUIRED_SLACK_WEBHOOKS),
+        )
     return unset
 
 

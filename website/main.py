@@ -116,6 +116,14 @@ async def _lifespan(
     )
     assert enrichment_task is not None  # the lifespan always has a running loop
 
+    # Tier D — start the per-worker memory/asyncio-task sampler so PSI,
+    # cgroup memory, and asyncio task-count breaches fire to #do-errors.
+    # Runs one coroutine per gunicorn worker; degrades gracefully on hosts
+    # without cgroup-v2 / PSI (returns None from the /proc reads).
+    from website.features.web_monitor import start_memory_sampler, stop_memory_sampler
+
+    memory_sampler = start_memory_sampler()
+
     try:
         yield
     finally:
@@ -123,7 +131,12 @@ async def _lifespan(
         task.cancel()
         await enrichment_worker.request_stop()
         enrichment_task.cancel()
-        for t in (task, hb_task, enrichment_task):
+        stop_memory_sampler()
+        sampler_task = memory_sampler._task if memory_sampler is not None else None
+        tasks_to_drain: list[asyncio.Task] = [task, hb_task, enrichment_task]
+        if sampler_task is not None:
+            tasks_to_drain.append(sampler_task)
+        for t in tasks_to_drain:
             try:
                 await t
             except (asyncio.CancelledError, Exception):
