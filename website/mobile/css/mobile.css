@@ -8,6 +8,7 @@
 @import url("/m/css/components/kg-filters.css?v=20260524a");
 @import url("./components/glass-nav.css");
 @import url("./components/hamburger-sheet.css");
+@import url("./pages/zettels.css");
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;

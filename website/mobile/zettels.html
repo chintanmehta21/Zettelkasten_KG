@@ -1,2 +1,27 @@
-<!-- Body fragment for /m/zettels — filled in Task 9. -->
-<section class="m-zettels-shell"></section>
+<!-- Mobile Zettels — lean port of desktop user_zettels (T9). -->
+<section class="m-zettels-page">
+  <div class="m-zettels-toolbar">
+    <input type="search" class="m-zettels-search" id="zettels-search" placeholder="Search your zettels…" autocomplete="off">
+    <button type="button" class="m-zettels-filter-btn" id="zettels-filter-btn" aria-label="Filter">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    </button>
+  </div>
+
+  <div class="m-zettels-anon-banner" id="zettels-anon-banner" hidden>
+    <p>Sign in to keep your collection.</p>
+    <button type="button" class="m-btn m-btn-primary" id="zettels-anon-signin">Sign in</button>
+  </div>
+
+  <ul class="m-zettels-list" id="zettels-list" role="list"></ul>
+
+  <div class="m-zettels-empty" id="zettels-empty" hidden>
+    <p>No zettels yet.</p>
+  </div>
+
+  <div class="m-zettels-detail" id="zettels-detail" role="dialog" aria-modal="true" hidden>
+    <button type="button" class="m-zettels-detail-close" id="zettels-detail-close" aria-label="Close">×</button>
+    <div class="m-zettels-detail-content" id="zettels-detail-content"></div>
+  </div>
+</section>
+
+<script src="/m/js/zettels.js?v=20260525a"></script>
