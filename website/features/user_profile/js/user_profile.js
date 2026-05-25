@@ -136,11 +136,13 @@
   /* ─── Avatar modal — open / close / focus management ───────────────── */
 
   function bindAvatarModalOpeners() {
-    [$('hero-avatar-btn'), $('hero-action-pick')].forEach((btn) => {
-      if (!btn || btn.dataset.zkBound) return;
-      btn.dataset.zkBound = '1';
-      btn.addEventListener('click', openAvatarModal);
-    });
+    // Hero avatar is the only opener — the dedicated "Change avatar" CTA
+    // was removed because the pencil badge already telegraphs clickability.
+    const heroBtn = $('hero-avatar-btn');
+    if (heroBtn && !heroBtn.dataset.zkBound) {
+      heroBtn.dataset.zkBound = '1';
+      heroBtn.addEventListener('click', openAvatarModal);
+    }
 
     if (avatarOverlayEl && !avatarOverlayEl.dataset.zkBound) {
       avatarOverlayEl.dataset.zkBound = '1';
