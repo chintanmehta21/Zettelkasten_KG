@@ -136,10 +136,17 @@ jobs:
               | head -50 \
               || echo "  (no kernel OOM events found, or journal not readable by deploy user)"
             if [ -n "$JCTL_SINCE" ]; then
-              echo "===== journalctl windowed (--since '$JCTL_SINCE' --lines $JCTL_LINES) ====="
+              # 2026-05-25 fix (Nimit observability PR): journalctl --since
+              # rejects RFC3339 (`2026-05-22T16:00:00Z`) — it wants
+              # `YYYY-MM-DD HH:MM:SS`. The input format the rest of the
+              # workflow accepts is RFC3339, so translate inline before
+              # passing to journalctl. Docker compose accepts both, so its
+              # branch below is unaffected by the rewrite.
+              JCTL_SINCE_FMT="$(echo "$JCTL_SINCE" | sed -e 's/T/ /' -e 's/Z$//')"
+              echo "===== journalctl windowed (--since '$JCTL_SINCE_FMT' --lines $JCTL_LINES) ====="
               # iter-09 Task 6: full windowed dump (no OOM-only filter). Used to
               # surface app tracebacks around a known incident timestamp.
-              journalctl --since "$JCTL_SINCE" --lines "$JCTL_LINES" --no-pager 2>&1 \
+              journalctl --since "$JCTL_SINCE_FMT" --lines "$JCTL_LINES" --no-pager 2>&1 \
                 || echo "  (journalctl windowed read failed)"
             fi
             echo "===== /var/log/kern.log + /var/log/syslog (OOM grep; if readable) ====="
