@@ -1,6 +1,19 @@
 /* Shared site header — single source of truth for Zettels, Nexus, and other inner pages. */
 
+/* The header BREAKS OUT of any parent .container's max-width so back
+ * button / logo / avatar land at the same absolute viewport x on every
+ * page, regardless of per-page container widths (which range from 760px
+ * on /about-style pages to 1180px on /home). Pixel-exact horizontal
+ * positioning across pages is the contract.
+ *
+ * - width: 100vw + margin-left: calc(50% - 50vw) → full viewport width
+ * - padding via max(): centers content within a 1180px max rail,
+ *   collapses to 1.5rem on viewports < 1180px */
 .zk-header {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    box-sizing: border-box;
+    padding: 0 max(1.5rem, calc(50vw - 590px));
     display: grid !important;
     grid-template-columns: 44px 1fr 44px;
     align-items: center;
