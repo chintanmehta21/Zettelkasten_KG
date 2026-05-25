@@ -9,7 +9,7 @@
   top: 0;
   z-index: 100;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 12px;
   align-items: center;
   min-height: 48px;
@@ -37,26 +37,14 @@
   letter-spacing: -0.01em;
 }
 
-.m-header-title {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-align: center;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-@media (max-width: 360px) {
-  .m-header-title { display: none; }
-}
+.m-header-title { display: none; }  /* removed per iter-2a */
 
 .m-header-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--m-header-btn-size, 38px);
+  height: var(--m-header-btn-size, 38px);
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--bg-card);
@@ -65,6 +53,32 @@
 }
 .m-header-avatar:active { background: var(--bg-elevated); }
 .m-header-avatar.is-authed { border-color: var(--accent); color: var(--accent); }
+
+.m-header-install {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--m-header-btn-size, 38px);
+  height: var(--m-header-btn-size, 38px);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  color: var(--accent);
+  cursor: pointer;
+}
+.m-header-install:active { background: var(--bg-elevated); }
+.m-header-install[hidden] { display: none; }
+
+.m-header-spacer { /* flexible middle slot — replaces removed page-title */
+  display: block;
+  min-width: 0;
+}
+
+.m-header-logo {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
 
 /* ── Header action button (e.g. KG filter toggle in /m/knowledge-graph search strip) ─ */
 .m-header-action {
