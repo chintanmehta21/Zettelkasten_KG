@@ -39,6 +39,7 @@ from website.features.web_monitor._env_validation import (
 from website.api.admin_routes import router as admin_router
 from website.api.meta_routes import router as meta_router
 from website.api import _memory_guard
+from website.config.page_menus import PAGE_MENUS, MenuItem
 
 logger = logging.getLogger("website.app")
 
@@ -82,7 +83,7 @@ def _html_file_response(path: Path) -> FileResponse:
     return FileResponse(str(path), media_type="text/html", headers=_HTML_CACHE_HEADERS)
 
 
-def _render_link_item(item: "MenuItem") -> str:
+def _render_link_item(item: MenuItem) -> str:
     """Render a MenuItem to a dropdown link <a>, matching header.html's prior static markup."""
     dom_id = item.get("dom_id")
     id_attr = f' id="{dom_id}"' if dom_id else ""
@@ -105,7 +106,7 @@ def _render_link_item(item: "MenuItem") -> str:
     )
 
 
-def _render_signout_item(item: "MenuItem") -> str:
+def _render_signout_item(item: MenuItem) -> str:
     """Render the signout <button> (always preceded by a divider per the
     original static markup)."""
     dom_id = item.get("dom_id", "menu-signout")
@@ -118,7 +119,7 @@ def _render_signout_item(item: "MenuItem") -> str:
     )
 
 
-def _render_dropdown_items(items: "list[MenuItem]") -> str:
+def _render_dropdown_items(items: list[MenuItem]) -> str:
     """Render a list of MenuItems to the inner HTML of #avatar-dropdown."""
     parts: list[str] = []
     for item in items:
@@ -148,11 +149,6 @@ def _render_with_shell(path: Path, page_key: str | None = None) -> HTMLResponse:
     restart. Falls back to returning the raw page unchanged if a top-level
     placeholder is absent.
     """
-    # Local import avoids a circular import at module load (page_menus has no
-    # runtime deps on app, but FastAPI's import graph is delicate enough that
-    # we keep the boundary cheap).
-    from website.config.page_menus import PAGE_MENUS
-
     html = path.read_text(encoding="utf-8")
 
     if _HEADER_PLACEHOLDER in html:
