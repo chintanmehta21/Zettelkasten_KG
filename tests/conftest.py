@@ -73,16 +73,22 @@ def skip_destructive(request):
         pytest.skip('Destructive test — pass --destructive to run')
 
 
-@pytest.fixture(autouse=True)
-def skip_e2e(request):
-    """E2E tests require Chromium + the dev server. Opt-in via --e2e.
+def pytest_collection_modifyitems(config, items):
+    """Deselect e2e tests at collection time unless --e2e is passed.
 
-    Symmetric with skip_live/skip_destructive: default pytest runs (ci.yml)
-    skip these so the workflow doesn't need Playwright browsers installed.
-    The e2e.yml workflow passes --e2e explicitly.
+    A function-level autouse fixture would fire too late: pytest-playwright
+    parametrizes tests that use the ``page`` fixture by browser type AND
+    activates its session-scoped ``browser`` fixture (which launches
+    Chromium) BEFORE any function-level autouse fixture runs. CI without
+    `playwright install` errors with ``BrowserType.launch: Executable
+    doesn't exist``. Collection-time skip avoids fixture activation entirely.
     """
-    if request.node.get_closest_marker('e2e') and not request.config.getoption('--e2e'):
-        pytest.skip('E2E test — pass --e2e to run')
+    if config.getoption('--e2e', default=False):
+        return
+    skip_e2e_marker = pytest.mark.skip(reason='E2E test — pass --e2e to run')
+    for item in items:
+        if 'e2e' in item.keywords:
+            item.add_marker(skip_e2e_marker)
 
 
 @pytest.fixture
