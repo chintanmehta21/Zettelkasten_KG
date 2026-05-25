@@ -2,9 +2,15 @@
 
 /* PR4: header lives at body root (moved outside per-page .container in
  * 7 HTMLs) → Y is anchored to body's natural flow top, identical on
- * every page regardless of per-page container padding. X is centered
- * within a 1180px max rail (matches the widest page container) and
- * collapses to 1.5rem on smaller viewports.
+ * every page regardless of per-page container padding.
+ *
+ * PR5: X-padding is the gap from the body edge to the inner content
+ * rail (var(--zk-content-max), default 1080px in style.css). Same
+ * formula every page uses for its own container -> back-button left
+ * lines up with the page-content left, and avatar-right lines up with
+ * the page-content right. Narrow pages (rag chat, nexus form) override
+ * --zk-content-max in their own CSS so the header tracks their
+ * narrower content frame instead of floating over empty side gutter.
  *
  * view-transition-name: persists the header as a stable element across
  * cross-document navigations (paired with @view-transition { navigation:
@@ -13,7 +19,7 @@
 .zk-header {
     view-transition-name: site-header;
     box-sizing: border-box;
-    padding: 1.5rem max(1.5rem, calc(50vw - 590px)) 1rem;
+    padding: 1.5rem max(1.5rem, calc((100% - var(--zk-content-max)) / 2)) 1rem;
     display: grid !important;
     grid-template-columns: 44px 1fr 44px;
     align-items: center;

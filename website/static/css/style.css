@@ -145,6 +145,13 @@
     --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
     --shadow-lg: 0 8px 32px hsla(0, 0%, 0%, 0.4);
     --shadow-glow: 0 0 24px hsla(172, 66%, 50%, 0.08);
+
+    /* PR5 alignment rail — INNER content width shared by per-page container
+     * and the body-root .zk-header padding formula. Pages that need a
+     * narrower reading column (chat, narrow forms) override this on :root
+     * inside their per-page CSS so the header's back/avatar still hug the
+     * page's own content edge instead of floating over empty side gutter. */
+    --zk-content-max: 1080px;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────── */
