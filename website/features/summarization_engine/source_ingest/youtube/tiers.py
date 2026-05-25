@@ -46,9 +46,63 @@ class TierResult:
 TierFn = Callable[[str, dict], Awaitable[TierResult]]
 
 
+@dataclass(frozen=True)
+class TierSpec:
+    """A single tier with its own per-tier hard cap.
+
+    The cap is the upper bound on this tier's wall-clock; at run-time it
+    is bounded by ``min(remaining_budget, cap_ms)`` so a single hung
+    tier can never exceed its own cap AND can never exceed the parent
+    budget. This is the **double-bound pattern** (Envoy ``per_try_timeout``
+    + route ``timeout``; gRPC deadline propagation; Polly v8; Resilience4j) —
+    industry-unanimous per
+    ``docs/claude_audits/yt_chain_research_2026-05-25.md`` §B.
+    """
+    fn: TierFn
+    name: str
+    cap_ms: int
+
+
+@dataclass(frozen=True)
+class RaceStage:
+    """A concurrent race over N tier specs; first success wins.
+
+    Implementation contract:
+      * Each spec runs as an asyncio task with its own per-spec timeout.
+      * ``asyncio.wait(FIRST_COMPLETED, timeout=cap_ms/1000)`` — the
+        canonical "race N, take first" primitive in Python 3.12. Not
+        ``TaskGroup`` (which only cancels siblings on *exception* not
+        success), not ``gather`` (which never cancels siblings).
+      * On winner found: cancel pending tasks, THEN
+        ``await asyncio.gather(*pending, return_exceptions=True)``.
+        **This drain is REQUIRED** to flush sockets back to the httpx
+        pool. Without it, ``CancelledError`` (a ``BaseException`` since
+        3.8) escapes any ``except Exception`` cleanup and the socket is
+        leaked. See httpcore#149, httpx#1461 (multi-year open bugs) and
+        ``docs/claude_audits/yt_chain_research_2026-05-25.md`` §A.
+    """
+    specs: tuple[TierSpec, ...]
+    cap_ms: int
+
+
+# A chain stage is either a sequential ``TierSpec`` or a concurrent
+# ``RaceStage``. The chain runner iterates stages in declaration order.
+Stage = TierSpec | RaceStage
+
+
 class TranscriptChain:
-    def __init__(self, tiers: list[TierFn], budget_ms: int = 90000) -> None:
-        self._tiers = tiers
+    """Bounded, double-budgeted tier chain with optional concurrent races.
+
+    Total-budget cap (``budget_ms``) is the parent deadline; the chain
+    NEVER runs past it. Per-tier caps (``TierSpec.cap_ms``) are the local
+    hop deadline; a single tier NEVER hangs longer than its own cap.
+    When a per-tier cap fires, the chain moves to the **next** stage;
+    only the total-budget cap fails the whole chain. Mirrors gRPC's
+    deadline-propagation semantics.
+    """
+
+    def __init__(self, stages: list[Stage], budget_ms: int = 90000) -> None:
+        self._stages = list(stages)
         self._budget_ms = budget_ms
 
     async def run(self, *, video_id: str, config: dict) -> TierResult:
@@ -56,49 +110,32 @@ class TranscriptChain:
         last_result: TierResult | None = None
         attempts: list[dict[str, Any]] = []
 
-        def _record(result: TierResult) -> None:
-            attempts.append(
-                {
-                    "tier": result.tier.value,
-                    "status": "success" if result.success else "failed",
-                    "reason": (result.error or "")[:200] if not result.success else "",
-                    "latency_ms": result.latency_ms,
-                }
-            )
-
-        for tier in self._tiers:
+        for stage in self._stages:
             elapsed_ms = int((time.monotonic() - start) * 1000)
             remaining_ms = self._budget_ms - elapsed_ms
             if remaining_ms <= 0:
-                attempts.append(
-                    {
-                        "tier": "budget_exhausted",
-                        "status": "skipped",
-                        "reason": f"budget {self._budget_ms}ms exceeded",
-                        "latency_ms": elapsed_ms,
-                    }
-                )
+                attempts.append({
+                    "tier": "budget_exhausted",
+                    "status": "skipped",
+                    "reason": f"budget {self._budget_ms}ms exceeded",
+                    "latency_ms": elapsed_ms,
+                })
                 break
-            # Real wall-clock guard: a single slow/hung tier could previously
-            # run past the whole budget because the tier was awaited directly.
-            # asyncio.timeout caps each tier at the remaining budget so the
-            # chain's total wall-clock stays bounded (Python 3.11+).
-            tier_start = time.monotonic()
-            try:
-                async with asyncio.timeout(remaining_ms / 1000):
-                    last_result = await tier(video_id, config)
-            except (asyncio.TimeoutError, TimeoutError):
-                attempts.append(
-                    {
-                        "tier": "tier_timeout",
-                        "status": "timeout",
-                        "reason": f"tier exceeded remaining budget {remaining_ms}ms",
-                        "latency_ms": int((time.monotonic() - tier_start) * 1000),
-                    }
+
+            if isinstance(stage, RaceStage):
+                result = await self._run_race(
+                    stage, remaining_ms, video_id, config, attempts
                 )
+            else:  # TierSpec — sequential single tier
+                result = await self._run_single(
+                    stage, remaining_ms, video_id, config, attempts
+                )
+
+            if result is None:
+                # tier(s) timed out or all racers failed; try next stage
                 continue
-            _record(last_result)
-            if last_result.success:
+            last_result = result
+            if result.success:
                 last_result.extra.setdefault("all_tier_results", attempts)
                 return last_result
 
@@ -109,6 +146,153 @@ class TranscriptChain:
         )
         final.extra.setdefault("all_tier_results", attempts)
         return final
+
+    async def _run_single(
+        self,
+        spec: TierSpec,
+        remaining_ms: int,
+        video_id: str,
+        config: dict,
+        attempts: list[dict[str, Any]],
+    ) -> TierResult | None:
+        """Sequential single tier, double-bound timeout."""
+        cap_ms = min(remaining_ms, spec.cap_ms)
+        tier_start = time.monotonic()
+        try:
+            async with asyncio.timeout(cap_ms / 1000):
+                result = await spec.fn(video_id, config)
+        except (asyncio.TimeoutError, TimeoutError):
+            attempts.append({
+                "tier": "tier_timeout",
+                "status": "timeout",
+                "reason": f"tier {spec.name} exceeded cap {cap_ms}ms",
+                "latency_ms": int((time.monotonic() - tier_start) * 1000),
+            })
+            return None
+        attempts.append({
+            "tier": result.tier.value,
+            "status": "success" if result.success else "failed",
+            "reason": (result.error or "")[:200] if not result.success else "",
+            "latency_ms": result.latency_ms,
+        })
+        return result
+
+    async def _run_race(
+        self,
+        stage: RaceStage,
+        remaining_ms: int,
+        video_id: str,
+        config: dict,
+        attempts: list[dict[str, Any]],
+    ) -> TierResult | None:
+        """N-way concurrent race; first **successful** completion wins.
+
+        Key contract: a fast-failing tier (exception OR ``result.success=False``)
+        does NOT end the race — the loop keeps waiting on the remaining tasks
+        until either a successful task wins, all tasks have completed without
+        success, or the race window closes. This matches the hedged-request
+        literature (Tail-at-Scale §3.2) and is the only sane behaviour when one
+        provider is faulty and the other is healthy.
+
+        Losers (still running when a winner is found OR race window closes)
+        are cancelled and the pending set is drained via
+        ``await asyncio.gather(*pending, return_exceptions=True)`` so httpx
+        returns sockets to its pool. See httpcore #149 / httpx #1461.
+        """
+        race_cap_ms = min(remaining_ms, stage.cap_ms)
+        race_start = time.monotonic()
+
+        async def _bounded_call(spec: TierSpec) -> TierResult:
+            spec_cap_ms = min(race_cap_ms, spec.cap_ms)
+            async with asyncio.timeout(spec_cap_ms / 1000):
+                return await spec.fn(video_id, config)
+
+        tasks_by_spec: dict[asyncio.Task[TierResult], TierSpec] = {
+            asyncio.create_task(_bounded_call(spec), name=f"race:{spec.name}"): spec
+            for spec in stage.specs
+        }
+        remaining: set[asyncio.Task[TierResult]] = set(tasks_by_spec.keys())
+        # task → ("result", TierResult) | ("timeout", exc) | ("error", exc)
+        outcomes: dict[asyncio.Task[TierResult], tuple[str, Any]] = {}
+        winner: TierResult | None = None
+
+        # Loop with FIRST_COMPLETED so fast-failing tiers don't kill the race.
+        while remaining and winner is None:
+            elapsed_ms = (time.monotonic() - race_start) * 1000
+            window_left_s = max(0.0, (race_cap_ms - elapsed_ms) / 1000.0)
+            if window_left_s <= 0:
+                break
+            done, pending = await asyncio.wait(
+                remaining,
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=window_left_s,
+            )
+            if not done:
+                break  # race window closed without any completion
+            for task in done:
+                try:
+                    result = task.result()
+                    outcomes[task] = ("result", result)
+                    if result.success and winner is None:
+                        winner = result
+                except (asyncio.TimeoutError, TimeoutError) as exc:
+                    outcomes[task] = ("timeout", exc)
+                except Exception as exc:  # noqa: BLE001 — recorded, not swallowed
+                    outcomes[task] = ("error", exc)
+            remaining = pending
+
+        # Cancel the still-running pending tasks then drain. Gather-after-cancel
+        # is REQUIRED — see class docstring + httpcore#149 / httpx#1461.
+        still_running = remaining - set(outcomes.keys())
+        for t in still_running:
+            t.cancel()
+        if still_running:
+            await asyncio.gather(*still_running, return_exceptions=True)
+
+        # Record every spec's outcome for forensics.
+        for task, spec in tasks_by_spec.items():
+            tier_id = f"race:{spec.name}"
+            if task in outcomes:
+                kind, payload = outcomes[task]
+                if kind == "result":
+                    result = payload
+                    if result is winner:
+                        attempts.append({
+                            "tier": tier_id,
+                            "status": "success",
+                            "reason": "",
+                            "latency_ms": result.latency_ms,
+                        })
+                    else:
+                        attempts.append({
+                            "tier": tier_id,
+                            "status": "failed" if not result.success else "loser_late_success",
+                            "reason": (result.error or "")[:200] if not result.success else "",
+                            "latency_ms": result.latency_ms,
+                        })
+                elif kind == "timeout":
+                    attempts.append({
+                        "tier": tier_id,
+                        "status": "timeout",
+                        "reason": "per-spec cap exceeded",
+                        "latency_ms": int((time.monotonic() - race_start) * 1000),
+                    })
+                else:  # "error"
+                    attempts.append({
+                        "tier": tier_id,
+                        "status": "failed",
+                        "reason": str(payload)[:200],
+                        "latency_ms": int((time.monotonic() - race_start) * 1000),
+                    })
+            else:
+                # Task was still running when race ended → cancelled.
+                attempts.append({
+                    "tier": tier_id,
+                    "status": "cancelled",
+                    "reason": "race lost" if winner is not None else "race window closed",
+                    "latency_ms": int((time.monotonic() - race_start) * 1000),
+                })
+        return winner
 
 
 def _yt_proxy_url() -> str:
@@ -726,23 +910,59 @@ async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
 
 
 def build_default_chain(config: dict) -> TranscriptChain:
-    """PR #91 (2026-05-25) chain shape — first stop on the 90 s budget.
+    """PR #91 (2026-05-25) chain shape — race-first + sequential fallback.
 
-    Order/race logic is layered on top of this flat list by the next commit
-    (race semantics + double-bound per-tier caps). This commit only removes
-    the two dead public pools and demotes ``tier_gemini_youtube_url`` from
-    T1 to T3 — the engine-level race comes in the following commit so each
-    change is bisectable.
+    Stages within the 90 s parent budget:
+
+        RaceStage  Webshare    (15 s cap)  vs   yt-dlp+cookies  (15 s cap)
+                   — race window 15 s; first success wins, loser cancelled.
+
+        TierSpec   tier_gemini_youtube_url  (20 s cap) — demoted from T1
+                   (flaky per python-genai #1898 truncation, #1359
+                   timestamp drift; "preview" feature still).
+
+        TierSpec   tier_gemini_audio        (30 s cap) — audio fallback.
+
+        TierSpec   tier_metadata_only       (5 s cap)  — H2 gate fires here.
+
+    Total worst case: 15 + 20 + 30 + 5 = 70 s — well under the 90 s parent
+    budget. Dropped: ``tier_invidious_pool`` + ``tier_piped_pool`` (public
+    pools dead post-2024-12-19; see research §C). See
+    ``docs/claude_audits/yt_chain_research_2026-05-25.md``.
     """
+    budget_ms = config.get("transcript_budget_ms", 90000)
     return TranscriptChain(
-        tiers=[
-            tier_transcript_api_via_webshare,   # T1 — Webshare residential
-            tier_ytdlp_cookies_impersonate,     # T2 — yt-dlp + cookies + POT
-            tier_gemini_youtube_url,            # T3 — Gemini server-fetch
-                                                #      (demoted from T1; flaky per
-                                                #       python-genai #1898, #1359)
-            tier_gemini_audio,                  # T4 — Gemini audio fallback
-            tier_metadata_only,                 # T5 — metadata-only (H2 gate refuses)
+        stages=[
+            RaceStage(
+                specs=(
+                    TierSpec(
+                        fn=tier_transcript_api_via_webshare,
+                        name="transcript_api_webshare",
+                        cap_ms=15_000,
+                    ),
+                    TierSpec(
+                        fn=tier_ytdlp_cookies_impersonate,
+                        name="ytdlp_cookies_impersonate",
+                        cap_ms=15_000,
+                    ),
+                ),
+                cap_ms=15_000,
+            ),
+            TierSpec(
+                fn=tier_gemini_youtube_url,
+                name="gemini_youtube_url",
+                cap_ms=20_000,
+            ),
+            TierSpec(
+                fn=tier_gemini_audio,
+                name="gemini_audio",
+                cap_ms=30_000,
+            ),
+            TierSpec(
+                fn=tier_metadata_only,
+                name="metadata_only",
+                cap_ms=5_000,
+            ),
         ],
-        budget_ms=config.get("transcript_budget_ms", 90000),
+        budget_ms=budget_ms,
     )
