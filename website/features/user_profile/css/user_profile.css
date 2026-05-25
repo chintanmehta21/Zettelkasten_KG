@@ -105,6 +105,42 @@ body { color-scheme: dark; }
     object-fit: cover;
     display: block;
 }
+
+/* "Edit" pencil badge in bottom-right of hero avatar — Instagram pattern.
+ * Communicates clickability without competing with the avatar art itself. */
+.profile-hero-avatar-edit {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 2px solid var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    pointer-events: none;
+}
+.profile-hero-avatar-edit svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.profile-hero-avatar {
+    position: relative;
+}
+.profile-hero-avatar:hover .profile-hero-avatar-edit,
+.profile-hero-avatar:focus-visible .profile-hero-avatar-edit {
+    background: var(--accent);
+    color: var(--bg-primary);
+    transform: scale(1.08);
+}
 .profile-hero-avatar-fallback {
     display: flex;
     width: 100%;
@@ -487,13 +523,136 @@ body { color-scheme: dark; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Avatar picker — refined grid + hover ring + selected fill.
+   Avatar picker — modal-launched grid (opened from hero avatar click).
+   The grid itself works in both contexts; modal-only classes scope the
+   surrounding overlay + dialog chrome.
    ═══════════════════════════════════════════════════════════════════ */
+
+.profile-avatar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    transition: opacity 0.18s ease;
+}
+.profile-avatar-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.profile-avatar-backdrop {
+    position: absolute;
+    inset: 0;
+    background: hsla(224, 30%, 4%, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.profile-avatar-dialog {
+    position: relative;
+    width: min(560px, 100%);
+    max-height: min(86vh, 720px);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 64px hsla(0, 0%, 0%, 0.55);
+    overflow: hidden;
+    animation: profileAvatarDialogIn 0.22s ease both;
+}
+@keyframes profileAvatarDialogIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-avatar-dialog { animation: none; }
+}
+
+.profile-avatar-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.35rem 1.5rem 1.05rem;
+    border-bottom: 1px solid var(--border);
+    background:
+        radial-gradient(ellipse 90% 100% at 0% 0%, hsla(172, 66%, 50%, 0.10), transparent 60%);
+}
+.profile-avatar-dialog-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+.profile-avatar-dialog-sub {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.profile-avatar-dialog-close {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.profile-avatar-dialog-close:hover,
+.profile-avatar-dialog-close:focus-visible {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-light);
+    outline: none;
+}
+.profile-avatar-dialog-close svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
 
 .profile-avatar-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
     gap: 0.55rem;
+}
+
+.profile-avatar-grid-modal {
+    padding: 1.2rem 1.5rem 1.5rem;
+    overflow-y: auto;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.6rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+}
+.profile-avatar-grid-modal::-webkit-scrollbar { width: 6px; }
+.profile-avatar-grid-modal::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+@media (max-width: 540px) {
+    .profile-avatar-grid-modal {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.5rem;
+    }
+}
+@media (max-width: 380px) {
+    .profile-avatar-grid-modal {
+        grid-template-columns: repeat(5, 1fr);
+    }
 }
 
 .profile-avatar-option {
