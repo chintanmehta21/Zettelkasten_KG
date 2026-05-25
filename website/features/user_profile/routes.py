@@ -45,7 +45,7 @@ def _require_user(request: Request) -> dict[str, Any]:
     try:
         claims = _decode_token(token)
     except Exception as exc:
-        logger.debug("profile auth: token decode failed: %s", exc)
+        logger.warning("profile auth: token decode failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid session")
 
     return {
