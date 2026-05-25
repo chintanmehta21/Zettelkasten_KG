@@ -239,7 +239,7 @@
       profile = {
         name: meta.full_name || user.email || 'User',
         email: user.email || '',
-        avatar_url: meta.avatar_url || meta.picture || ''
+        avatar_url: meta.avatar_url || ''
       };
       console.warn('[home] Profile fetch failed, using session data');
     }
