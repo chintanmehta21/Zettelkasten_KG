@@ -12,6 +12,9 @@ deepeval==3.9.7
 datasets>=2.20.0
 respx>=0.21,<0.23
 freezegun>=1.5
+# asgi-lifespan: exercise FastAPI lifespan (startup/shutdown) in unit tests
+# without spinning up a full TestClient. Used by JWKS pre-warm tests.
+asgi-lifespan>=2.1
 
 # Browser-driven E2E (WAVE-D Phase 1 — D-5 research recommendation).
 # pytest-playwright provides native pytest fixtures; axe-playwright-python

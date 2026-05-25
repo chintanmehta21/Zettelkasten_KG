@@ -216,6 +216,21 @@ def test_response_carries_x_auth_status_on_jwt_drop(_secret) -> None:
         f"Expected X-Auth-Status header on bad-JWT response; "
         f"got headers={dict(resp.headers)!r}, status={resp.status_code}"
     )
+    # RFC 6750 §3 — the WWW-Authenticate header tells the client *why*
+    # the JWT was rejected so it can prompt re-auth instead of treating
+    # the anon body as canonical.
+    assert resp.headers.get("WWW-Authenticate", "").startswith(
+        'Bearer error="invalid_token"'
+    ), (
+        f"Expected RFC 6750 WWW-Authenticate on bad-JWT response; "
+        f"got {resp.headers.get('WWW-Authenticate')!r}"
+    )
+    # Cloudflare cache-poisoning mitigation — an anonymous response with a
+    # drop marker must NEVER be cached and re-served to another caller.
+    assert resp.headers.get("Cache-Control") == "private, no-store", (
+        f"Expected Cache-Control: private, no-store on bad-JWT response; "
+        f"got {resp.headers.get('Cache-Control')!r}"
+    )
 
 
 @patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
