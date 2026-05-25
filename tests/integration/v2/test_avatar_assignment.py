@@ -54,3 +54,56 @@ async def test_no_google_or_gravatar_remains(asyncpg_pool):
             """
         )
     assert count == 0
+
+
+async def test_curated_url_is_not_reassigned_by_backfill(asyncpg_pool, mint_user, created_auth_user_ids):
+    """Re-applying the backfill UPDATE must leave a user already on the curated
+    set untouched — defense-in-depth for the idempotency guard added in the
+    migration review (AND NOT LIKE '/artifacts/avatars/%').
+    """
+    user = mint_user()
+    pinned_url = "/artifacts/avatars/avatar_42.svg"
+
+    async with asyncpg_pool.acquire() as conn:
+        # Override whatever the trigger assigned with a known curated URL.
+        await conn.execute(
+            """
+            UPDATE auth.users
+            SET raw_user_meta_data = jsonb_set(
+                COALESCE(raw_user_meta_data, '{}'::jsonb),
+                '{avatar_url}',
+                $1::jsonb
+            )
+            WHERE id = $2
+            """,
+            f'"{pinned_url}"',
+            user.auth_user_id,
+        )
+
+        # Re-run the exact backfill UPDATE from migration 76 (the idempotency guard).
+        await conn.execute(
+            """
+            UPDATE auth.users
+            SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb)
+              || jsonb_build_object(
+                   'avatar_url',
+                   '/artifacts/avatars/avatar_' || lpad((floor(random() * 60))::text, 2, '0') || '.svg'
+                 )
+            WHERE (
+                   (raw_user_meta_data->>'avatar_url') IS NULL
+                OR (raw_user_meta_data->>'avatar_url') LIKE '%googleusercontent.com%'
+                OR (raw_user_meta_data->>'avatar_url') LIKE '%gravatar.com%'
+              )
+              AND (raw_user_meta_data->>'avatar_url') NOT LIKE '/artifacts/avatars/%'
+            """
+        )
+
+        # The curated URL must be unchanged.
+        url = await conn.fetchval(
+            "SELECT raw_user_meta_data->>'avatar_url' FROM auth.users WHERE id = $1",
+            user.auth_user_id,
+        )
+
+    assert url == pinned_url, (
+        f"Backfill re-apply overwrote an already-curated avatar_url: got {url!r}"
+    )
