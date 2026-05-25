@@ -7,7 +7,7 @@
     <title>Profile | Zettelkasten</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260526b">
     <link rel="stylesheet" href="/header/css/header.css?v=20260526b">
     <link rel="stylesheet" href="/profile/css/user_profile.css?v=20260526a">
@@ -19,86 +19,120 @@
     <div class="container profile-container">
 
         <main class="main profile-main" id="main-content">
-            <section class="profile-hero">
-                <div class="profile-hero-copy">
-                    <h1 class="profile-title">My Profile</h1>
-                    <p class="profile-subtitle">Manage your account and recover removed zettels.</p>
+
+            <!-- ═══ Identity hero ═══════════════════════════════════════════ -->
+            <section class="profile-hero" aria-labelledby="hero-name">
+                <div class="profile-hero-row">
+                    <button type="button" class="profile-hero-avatar" id="hero-avatar-btn" aria-label="Jump to avatar picker">
+                        <img id="hero-avatar-img" alt="" hidden />
+                        <span class="profile-hero-avatar-fallback" id="hero-avatar-fallback" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M5 19c1.4-3.4 4.1-5 7-5s5.6 1.6 7 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        </span>
+                    </button>
+
+                    <div class="profile-hero-identity">
+                        <p class="profile-hero-kicker">Signed in</p>
+                        <h1 class="profile-hero-name" id="hero-name">—</h1>
+                        <p class="profile-hero-meta">
+                            <span class="profile-hero-meta-item" id="hero-email">—</span>
+                            <span class="profile-hero-meta-sep" aria-hidden="true"></span>
+                            <span class="profile-hero-meta-item">Joined <span id="hero-joined">—</span></span>
+                            <span class="profile-hero-meta-sep" aria-hidden="true" id="hero-uuid-sep" hidden></span>
+                            <button type="button" class="profile-hero-uuid" id="hero-uuid-btn" hidden title="Copy your account ID">
+                                <span class="profile-hero-uuid-code" id="hero-uuid-code"></span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                                    <path d="M5 15V5a2 2 0 0 1 2-2h10"></path>
+                                </svg>
+                            </button>
+                        </p>
+                    </div>
+
+                    <a href="#avatar-section" class="profile-hero-action" id="hero-action-pick">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                        </svg>
+                        <span>Change avatar</span>
+                    </a>
                 </div>
             </section>
 
-            <section class="profile-section" aria-labelledby="avatar-heading">
+            <!-- ═══ Activity heatmap ═══════════════════════════════════════ -->
+            <section class="profile-section" aria-labelledby="activity-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="activity-heading">Last 6 months</h2>
+                    <p class="profile-section-meta" id="activity-meta" aria-live="polite">—</p>
+                </header>
+                <div class="profile-heatmap-wrap">
+                    <div class="profile-heatmap" id="activity-heatmap" role="img" aria-label="Zettel-creation activity for the last 26 weeks"></div>
+                </div>
+                <p class="profile-heatmap-empty" id="activity-empty" hidden>No zettels yet — your activity will start showing here.</p>
+                <div class="profile-heatmap-legend" aria-hidden="true">
+                    <span>Less</span>
+                    <span class="profile-heatmap-legend-cells">
+                        <span class="profile-heatmap-cell"></span>
+                        <span class="profile-heatmap-cell l1"></span>
+                        <span class="profile-heatmap-cell l2"></span>
+                        <span class="profile-heatmap-cell l3"></span>
+                        <span class="profile-heatmap-cell l4"></span>
+                    </span>
+                    <span>More</span>
+                </div>
+            </section>
+
+            <!-- ═══ Stats ══════════════════════════════════════════════════ -->
+            <section class="profile-section" aria-labelledby="stats-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="stats-heading">Your knowledge base</h2>
+                </header>
+                <div class="profile-stats-grid">
+                    <article class="profile-stat-card" aria-labelledby="stat-zettels-label">
+                        <p class="profile-stat-label" id="stat-zettels-label">Zettels</p>
+                        <p class="profile-stat-value skeleton" id="stat-zettels-total" aria-busy="true">0</p>
+                        <p class="profile-stat-sub" id="stat-zettels-breakdown"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-kastens-label">
+                        <p class="profile-stat-label" id="stat-kastens-label">Kastens</p>
+                        <p class="profile-stat-value skeleton" id="stat-kastens-total" aria-busy="true">0</p>
+                        <p class="profile-stat-sub" id="stat-kastens-members"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-kg-label">
+                        <p class="profile-stat-label" id="stat-kg-label">Knowledge graph</p>
+                        <p class="profile-stat-value skeleton" id="stat-kg-nodes" aria-busy="true">0</p>
+                        <p class="profile-stat-sub" id="stat-kg-links"></p>
+                    </article>
+                    <article class="profile-stat-card" aria-labelledby="stat-plan-label">
+                        <p class="profile-stat-label" id="stat-plan-label">Plan</p>
+                        <p class="profile-stat-value skeleton" id="stat-plan-tier" aria-busy="true">Free</p>
+                        <p class="profile-stat-sub" id="stat-plan-usage"></p>
+                        <a class="profile-stat-cta" href="/pricing">Manage <span class="profile-stat-cta-arrow">→</span></a>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ═══ Avatar picker ══════════════════════════════════════════ -->
+            <section class="profile-section" id="avatar-section" aria-labelledby="avatar-heading">
                 <header class="profile-section-header">
                     <h2 class="profile-section-title" id="avatar-heading">Avatar</h2>
-                    <p class="profile-section-help">
-                        Pick the icon that represents you across Zettelkasten. Changes apply immediately.
-                    </p>
                 </header>
+                <p class="profile-section-help">Pick the icon that represents you across Zettelkasten. Changes apply immediately.</p>
                 <div class="profile-avatar-grid" id="profile-avatar-grid" role="radiogroup" aria-labelledby="avatar-heading">
                     <!-- avatar buttons injected by user_profile.js -->
                 </div>
             </section>
 
-            <section class="profile-section" aria-labelledby="account-heading">
-                <header class="profile-section-header">
-                    <h2 class="profile-section-title" id="account-heading">Account</h2>
-                    <p class="profile-section-help">Read-only — this is the identity Zettelkasten knows you by.</p>
-                </header>
-                <dl class="profile-account-list">
-                    <div class="profile-account-row">
-                        <dt>Display name</dt>
-                        <dd id="account-name">—</dd>
-                    </div>
-                    <div class="profile-account-row">
-                        <dt>Email</dt>
-                        <dd id="account-email">—</dd>
-                    </div>
-                    <div class="profile-account-row">
-                        <dt>Joined</dt>
-                        <dd id="account-joined">—</dd>
-                    </div>
-                </dl>
-            </section>
-
-            <section class="profile-section" aria-labelledby="stats-heading">
-                <header class="profile-section-header">
-                    <h2 class="profile-section-title" id="stats-heading">Statistics</h2>
-                    <p class="profile-section-help">Your knowledge base at a glance.</p>
-                </header>
-                <div class="profile-stats-grid">
-                    <article class="profile-stat-card" aria-labelledby="stat-zettels-label">
-                        <p class="profile-stat-label" id="stat-zettels-label">Zettels</p>
-                        <p class="profile-stat-value" id="stat-zettels-total">—</p>
-                        <p class="profile-stat-sub" id="stat-zettels-breakdown"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-kastens-label">
-                        <p class="profile-stat-label" id="stat-kastens-label">Kastens</p>
-                        <p class="profile-stat-value" id="stat-kastens-total">—</p>
-                        <p class="profile-stat-sub" id="stat-kastens-members"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-kg-label">
-                        <p class="profile-stat-label" id="stat-kg-label">Knowledge graph</p>
-                        <p class="profile-stat-value" id="stat-kg-nodes">—</p>
-                        <p class="profile-stat-sub" id="stat-kg-links"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-plan-label">
-                        <p class="profile-stat-label" id="stat-plan-label">Plan</p>
-                        <p class="profile-stat-value" id="stat-plan-tier">—</p>
-                        <p class="profile-stat-sub" id="stat-plan-usage"></p>
-                        <a class="profile-stat-cta" href="/pricing">Manage plan →</a>
-                    </article>
-                </div>
-            </section>
-
+            <!-- ═══ Trash ══════════════════════════════════════════════════ -->
             <section class="profile-section" aria-labelledby="trash-heading">
                 <header class="profile-section-header">
                     <h2 class="profile-section-title" id="trash-heading">Trash</h2>
-                    <p class="profile-section-help">
-                        Removed zettels are kept here for <strong>30 days</strong> before
-                        permanent deletion. Restore a zettel to put it back in your
-                        workspace, or delete it forever to free the slot immediately.
-                    </p>
+                    <p class="profile-section-meta" id="trash-meta"></p>
                 </header>
-
+                <p class="profile-section-help">
+                    Removed zettels are kept here for <strong>30 days</strong> before
+                    permanent deletion. Restore to put one back in your workspace, or
+                    delete forever to free the slot immediately.
+                </p>
                 <div class="profile-trash-list" id="trash-list" aria-live="polite">
                     <p class="profile-trash-empty" id="trash-empty" hidden>
                         Your trash is empty.
@@ -106,23 +140,23 @@
                     <p class="profile-trash-loading" id="trash-loading">Loading…</p>
                 </div>
             </section>
-        </main>
 
-        <section class="profile-section profile-danger-zone" aria-labelledby="danger-heading">
-            <header class="profile-section-header">
-                <h2 class="profile-section-title" id="danger-heading">Danger zone</h2>
-                <p class="profile-section-help">Sign out of this session or remove your account.</p>
-            </header>
-            <div class="profile-danger-actions">
-                <button type="button" class="profile-danger-btn" id="profile-sign-out">Sign out</button>
-                <button type="button" class="profile-danger-btn profile-danger-btn-secondary" id="profile-delete-account" disabled aria-disabled="true" title="In-app account deletion isn't wired yet. Coming soon.">Delete account (coming soon)</button>
-                <p class="profile-danger-help">
-                    Account deletion is staged in
-                    <code>website/core/account_purge.py</code>
-                    but no production endpoint is wired yet.
-                </p>
-            </div>
-        </section>
+            <!-- ═══ Danger zone ════════════════════════════════════════════ -->
+            <section class="profile-section profile-danger-zone" aria-labelledby="danger-heading">
+                <header class="profile-section-header">
+                    <h2 class="profile-section-title" id="danger-heading">Danger zone</h2>
+                </header>
+                <div class="profile-danger-actions">
+                    <button type="button" class="profile-danger-btn" id="profile-sign-out">Sign out</button>
+                    <button type="button" class="profile-danger-btn profile-danger-btn-secondary" id="profile-delete-account" disabled aria-disabled="true" title="In-app account deletion isn't wired yet. Coming soon.">Delete account (coming soon)</button>
+                    <p class="profile-danger-help">
+                        Account deletion is staged in
+                        <code>website/core/account_purge.py</code>
+                        but no production endpoint is wired yet.
+                    </p>
+                </div>
+            </section>
+        </main>
 
         <div class="profile-toast hidden" id="profile-toast" role="status" aria-live="polite">
             <span id="profile-toast-text">Restored.</span>
@@ -131,6 +165,6 @@
 <!--ZK_FOOTER-->
     </div>
 
-    <script type="module" src="/profile/js/user_profile.js?v=20260524a"></script>
+    <script type="module" src="/profile/js/user_profile.js?v=20260526a"></script>
 </body>
 </html>

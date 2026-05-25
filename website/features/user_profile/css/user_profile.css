@@ -1,108 +1,582 @@
-/* user_profile.css — Trash recovery surface on /profile.
+/* user_profile.css — /profile redesign (2026-05-26, exec/build-profile-page-1a)
  *
- * Minimal styling layered on top of the global teal-themed style.css. The
- * Trash list reuses the visual language of zettel cards (rounded card with
- * teal accent) but exposes Restore + "Delete forever" actions instead of
- * the live-card remove flow.
+ * Dark-theme rewrite. Uses tokens from style.css; layered on top of the
+ * shared header (header.css). The page rhythm mirrors /home and /pricing:
+ * hairline borders, no drop shadows, elevation by luminance, teal accent
+ * only. Section structure: identity hero -> 6-month activity heatmap ->
+ * stat cards -> avatar picker -> trash -> danger zone.
+ *
+ * Research basis: docs/claude_audits/profile_redesign_2026-05-26.md.
  */
 
-/* PR5: widened 1100→1120 to align with the unified content rail
- * (--zk-content-max: 1080 + 2*1.25rem padding-inline). Header back +
- * avatar now hug the profile content edges. */
+body { color-scheme: dark; }
+
+.skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 1200;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.8rem;
+    font-size: 0.82rem;
+    transition: top 0.16s ease;
+}
+.skip-link:focus-visible {
+    top: 1rem;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* PR5: 1120 outer / 1080 inner matches --zk-content-max from style.css
+ * so the shared header's back-button + avatar pixel-align with the
+ * profile content edges (header.css uses
+ *   padding-inline: max(1.5rem, calc((100% - var(--zk-content-max)) / 2))
+ * which collapses to the same gutter on every viewport). */
 .profile-container {
     max-width: 1120px;
     margin: 0 auto;
     padding: 0 1.25rem 4rem;
 }
 
+.profile-main {
+    padding-top: 0.4rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Identity hero — Stripe-style trust block + Spotify-leaning gradient.
+   Avatar (current) + display name + email + joined date + UUID copy.
+   ═══════════════════════════════════════════════════════════════════ */
+
 .profile-hero {
-    padding: 2.5rem 0 1.5rem;
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.65rem 1.75rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    background:
+        linear-gradient(135deg, hsla(172, 66%, 42%, 0.14), transparent 52%),
+        linear-gradient(160deg, hsl(220, 20%, 10%), hsl(222, 22%, 7.5%));
+    animation: profileFadeIn 0.5s ease both;
 }
 
-.profile-title {
-    margin: 0 0 0.4rem;
-    font-size: 2.1rem;
-    letter-spacing: -0.01em;
+.profile-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 12% 0%, hsla(172, 66%, 50%, 0.10), transparent 38%);
+    pointer-events: none;
 }
 
-.profile-subtitle {
+.profile-hero-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 84px 1fr auto;
+    gap: 1.4rem;
+    align-items: center;
+}
+
+.profile-hero-avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--border-light);
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px hsla(0, 0%, 100%, 0.04), 0 0 0 4px hsla(172, 66%, 50%, 0.06);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.profile-hero-avatar:hover,
+.profile-hero-avatar:focus-visible {
+    border-color: var(--accent-muted);
+    box-shadow: inset 0 0 0 1px hsla(0, 0%, 100%, 0.04), 0 0 0 4px hsla(172, 66%, 50%, 0.18);
+    outline: none;
+}
+.profile-hero-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.profile-hero-avatar-fallback {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+.profile-hero-avatar-fallback svg {
+    width: 38%;
+    height: 38%;
+}
+
+.profile-hero-identity {
+    min-width: 0;
+}
+
+.profile-hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.profile-hero-kicker::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px hsla(172, 66%, 50%, 0.7);
+}
+
+.profile-hero-name {
     margin: 0;
-    color: var(--text-muted, #5b6c7e);
-    font-size: 1rem;
+    font-size: 1.8rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
+
+.profile-hero-meta {
+    margin: 0.35rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.85rem;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+}
+.profile-hero-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.profile-hero-meta-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.profile-hero-uuid {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 26px;
+    padding: 0 0.55rem 0 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: hsla(220, 22%, 8%, 0.6);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.profile-hero-uuid:hover,
+.profile-hero-uuid:focus-visible {
+    color: var(--text-primary);
+    border-color: var(--border-light);
+    background: var(--bg-tertiary);
+    outline: none;
+}
+.profile-hero-uuid.copied {
+    color: var(--accent);
+    border-color: var(--accent-muted);
+}
+.profile-hero-uuid svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.profile-hero-uuid-code {
+    font-variant-numeric: tabular-nums;
+    max-width: 11ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-hero-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 38px;
+    padding: 0 0.95rem;
+    border: 1px solid hsla(172, 66%, 50%, 0.32);
+    border-radius: 999px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.profile-hero-action:hover {
+    background: hsla(172, 66%, 50%, 0.18);
+    border-color: var(--accent-muted);
+    transform: translateY(-1px);
+}
+.profile-hero-action svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section primitives — Linear/Vercel "tiny uppercase + hairline" header.
+   ═══════════════════════════════════════════════════════════════════ */
 
 .profile-section {
     margin-top: 1.5rem;
-    padding: 1.5rem;
-    background: var(--surface, #fdfdfd);
-    border: 1px solid var(--border, #e6ebef);
-    border-radius: 16px;
+    padding: 1.4rem 1.6rem 1.55rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    animation: profileFadeIn 0.5s ease both;
 }
+.profile-section:nth-of-type(2) { animation-delay: 0.05s; }
+.profile-section:nth-of-type(3) { animation-delay: 0.10s; }
+.profile-section:nth-of-type(4) { animation-delay: 0.15s; }
+.profile-section:nth-of-type(5) { animation-delay: 0.20s; }
 
 .profile-section-header {
-    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.15rem;
+    border-bottom: 1px solid var(--border);
 }
 
 .profile-section-title {
-    margin: 0 0 0.3rem;
-    font-size: 1.25rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.profile-section-meta {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
 }
 
 .profile-section-help {
-    margin: 0;
-    color: var(--text-muted, #5b6c7e);
-    font-size: 0.92rem;
-    line-height: 1.45;
-    max-width: 65ch;
+    margin: -0.45rem 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    max-width: 64ch;
 }
+
+@keyframes profileFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-hero,
+    .profile-section { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Activity heatmap — GitHub-style 26 weeks, computed client-side.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.profile-heatmap-wrap {
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    /* hide scrollbar on the rare mobile overflow case */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+}
+.profile-heatmap-wrap::-webkit-scrollbar {
+    height: 6px;
+}
+.profile-heatmap-wrap::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.profile-heatmap {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 12px);
+    grid-auto-columns: 12px;
+    gap: 3px;
+    min-width: 100%;
+}
+
+.profile-heatmap-cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: hsla(220, 20%, 14%, 1);
+    border: 1px solid hsla(220, 20%, 18%, 1);
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.profile-heatmap-cell.l1 { background: hsla(172, 60%, 30%, 0.32); border-color: hsla(172, 60%, 35%, 0.32); }
+.profile-heatmap-cell.l2 { background: hsla(172, 64%, 38%, 0.55); border-color: hsla(172, 64%, 42%, 0.45); }
+.profile-heatmap-cell.l3 { background: hsla(172, 66%, 46%, 0.78); border-color: hsla(172, 66%, 50%, 0.5); }
+.profile-heatmap-cell.l4 { background: hsl(172, 66%, 52%); border-color: hsla(172, 66%, 60%, 0.7); }
+.profile-heatmap-cell:hover {
+    transform: scale(1.4);
+    border-color: var(--text-primary);
+    cursor: default;
+}
+
+.profile-heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    margin-top: 0.85rem;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+.profile-heatmap-legend-cells {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+}
+.profile-heatmap-legend-cells .profile-heatmap-cell {
+    pointer-events: none;
+}
+
+.profile-heatmap-empty {
+    text-align: center;
+    padding: 1.2rem 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Initial-render pulse: cells fade in column-by-column. */
+.profile-heatmap .profile-heatmap-cell {
+    opacity: 0;
+    animation: heatmapCellIn 0.5s ease forwards;
+}
+@keyframes heatmapCellIn {
+    to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-heatmap .profile-heatmap-cell {
+        animation: none;
+        opacity: 1;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Stat cards — one question per card, tabular nums, hover by luminance.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.85rem;
+}
+
+.profile-stat-card {
+    position: relative;
+    padding: 1rem 1.1rem 1.15rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    min-height: 110px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.profile-stat-card:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border-light);
+}
+
+.profile-stat-label {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.profile-stat-value {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    line-height: 1;
+}
+
+.profile-stat-value.skeleton {
+    display: inline-block;
+    width: 2.4ch;
+    height: 1.05em;
+    background: linear-gradient(90deg, hsla(172, 66%, 50%, 0.05), hsla(172, 66%, 50%, 0.18), hsla(172, 66%, 50%, 0.05));
+    background-size: 200% 100%;
+    border-radius: 4px;
+    color: transparent;
+    animation: profileSkeletonShimmer 1.2s linear infinite;
+}
+@keyframes profileSkeletonShimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+.profile-stat-sub {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    min-height: 1.1em;
+}
+
+.profile-stat-cta {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    align-self: flex-start;
+    color: var(--accent);
+    font-size: 0.83rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+.profile-stat-cta-arrow {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+.profile-stat-cta:hover .profile-stat-cta-arrow {
+    transform: translateX(3px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Avatar picker — refined grid + hover ring + selected fill.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.profile-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 0.55rem;
+}
+
+.profile-avatar-option {
+    appearance: none;
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    padding: 3px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+    line-height: 0;
+}
+.profile-avatar-option:hover {
+    border-color: var(--accent-muted);
+    background: hsla(172, 66%, 50%, 0.05);
+}
+.profile-avatar-option:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    background: hsla(172, 66%, 50%, 0.10);
+}
+.profile-avatar-option.selected {
+    border-color: var(--accent);
+    background: hsla(172, 66%, 50%, 0.14);
+    transform: scale(1.04);
+}
+.profile-avatar-option img {
+    width: 100%;
+    height: auto;
+    border-radius: 50%;
+    display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Trash — dark-theme restyle of existing 2-click confirm pattern.
+   ═══════════════════════════════════════════════════════════════════ */
 
 .profile-trash-list {
     display: grid;
-    gap: 0.85rem;
+    gap: 0.7rem;
 }
 
 .profile-trash-empty,
 .profile-trash-loading {
-    color: var(--text-muted, #5b6c7e);
-    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-size: 0.92rem;
     padding: 1.5rem 0;
     text-align: center;
 }
 
-/* ── Trash card ───────────────────────────────────────────────────────── */
 .profile-trash-card {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.85rem;
-    padding: 1rem 1.1rem;
-    background: #fff;
-    border: 1px solid var(--border, #e6ebef);
-    border-radius: 12px;
-    transition: opacity 0.32s ease, transform 0.32s ease, max-height 0.32s ease;
+    padding: 0.9rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: opacity 0.32s ease, transform 0.32s ease, max-height 0.32s ease, background-color 0.15s ease;
 }
-
+.profile-trash-card:hover {
+    background: var(--bg-elevated);
+}
 .profile-trash-card.is-removing {
     opacity: 0;
     transform: translateY(8px);
 }
-
 .profile-trash-card.is-collapsed {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
-    margin-top: -0.85rem;  /* collapse the gap */
+    margin-top: -0.7rem;
     overflow: hidden;
     border-width: 0;
 }
 
-.profile-trash-main {
-    min-width: 0; /* allow text truncation in grid */
-}
+.profile-trash-main { min-width: 0; }
 
 .profile-trash-card-title {
     margin: 0 0 0.3rem;
-    font-size: 1rem;
+    font-size: 0.96rem;
     font-weight: 600;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -111,21 +585,34 @@
 .profile-trash-card-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 0.85rem;
-    font-size: 0.82rem;
-    color: var(--text-muted, #5b6c7e);
+    gap: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
 }
-
+.profile-trash-card-meta a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--border-light);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+.profile-trash-card-meta a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent-muted);
+}
 .profile-trash-card-meta .pill {
     display: inline-flex;
     align-items: center;
     padding: 0.1rem 0.55rem;
     border-radius: 999px;
-    background: var(--surface-muted, #f1f4f7);
-    color: var(--text, #29384a);
+    background: hsla(220, 20%, 14%, 1);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
     font-weight: 500;
     text-transform: lowercase;
-    font-size: 0.78rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
 }
 
 .profile-trash-actions {
@@ -138,58 +625,61 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.3rem;
-    height: 34px;
+    gap: 0.35rem;
+    height: 32px;
     padding: 0 0.85rem;
     border-radius: 999px;
-    border: 1px solid var(--border, #e6ebef);
-    background: #fff;
-    color: var(--text, #29384a);
-    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    background: hsla(220, 22%, 8%, 0.6);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
     font-weight: 500;
+    font-family: var(--font-body);
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-
 .profile-trash-btn:hover {
-    background: var(--surface-muted, #f1f4f7);
+    background: var(--bg-tertiary);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+.profile-trash-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .profile-trash-btn.restore {
-    color: var(--accent-teal, #0e8a8a);
-    border-color: rgba(14, 138, 138, 0.32);
+    color: var(--accent);
+    border-color: hsla(172, 66%, 50%, 0.32);
 }
-
 .profile-trash-btn.restore:hover {
-    background: rgba(14, 138, 138, 0.08);
-    border-color: rgba(14, 138, 138, 0.48);
+    background: hsla(172, 66%, 50%, 0.12);
+    border-color: var(--accent-muted);
+    color: var(--accent-hover);
 }
-
 .profile-trash-btn.forever {
-    color: #b9311c;
-    border-color: rgba(185, 49, 28, 0.32);
+    color: hsl(0, 70%, 70%);
+    border-color: hsla(0, 70%, 60%, 0.32);
 }
-
 .profile-trash-btn.forever:hover {
-    background: rgba(185, 49, 28, 0.08);
-    border-color: rgba(185, 49, 28, 0.48);
+    background: hsla(0, 70%, 60%, 0.10);
+    border-color: hsla(0, 70%, 60%, 0.55);
+    color: hsl(0, 80%, 78%);
 }
-
-/* Two-click confirm — second click commits. Same pattern as live-card
- * Remove button on /home/zettels for muscle-memory consistency. */
+/* Two-click confirm — second click commits. Same pattern as live-card. */
 .profile-trash-btn.forever.confirm {
-    background: #b9311c;
+    background: hsl(0, 70%, 50%);
     color: #fff;
-    border-color: #b9311c;
+    border-color: hsl(0, 70%, 50%);
 }
-
 .profile-trash-btn.forever.confirm:hover {
-    background: #a02a17;
+    background: hsl(0, 70%, 44%);
+    color: #fff;
 }
 
 .profile-trash-btn-icon {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     stroke: currentColor;
     fill: none;
     stroke-width: 2;
@@ -198,212 +688,128 @@
     flex-shrink: 0;
 }
 
-/* ── Toast ─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Toast — bottom-centered, same as before but dark-tuned.
+   ═══════════════════════════════════════════════════════════════════ */
+
 .profile-toast {
     position: fixed;
     bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
     padding: 0.7rem 1.1rem;
-    background: var(--text, #29384a);
-    color: #fff;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
     border-radius: 999px;
     font-size: 0.9rem;
-    box-shadow: 0 6px 24px rgba(13, 22, 38, 0.18);
+    box-shadow: 0 12px 28px hsla(0, 0%, 0%, 0.45);
+    z-index: 1100;
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 .profile-toast.hidden {
     opacity: 0;
     transform: translate(-50%, 8px);
     pointer-events: none;
 }
 
-/* ── Avatar picker ────────────────────────────────────────────────────── */
-.profile-avatar-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-    gap: 0.6rem;
-}
+/* ═══════════════════════════════════════════════════════════════════
+   Danger zone — Linear restraint: same surface, red button only.
+   ═══════════════════════════════════════════════════════════════════ */
 
-.profile-avatar-option {
-    appearance: none;
-    background: transparent;
-    border: 2px solid transparent;
-    border-radius: 50%;
-    padding: 4px;
-    cursor: pointer;
-    transition: border-color 150ms ease, transform 150ms ease;
-    line-height: 0;
-}
-
-.profile-avatar-option:hover {
-    border-color: var(--text-muted, #5b6c7e);
-}
-
-.profile-avatar-option:focus-visible {
-    outline: none;
-    border-color: var(--accent, #14b8a6);
-}
-
-.profile-avatar-option.selected {
-    border-color: var(--accent, #14b8a6);
-    transform: scale(1.05);
-}
-
-.profile-avatar-option img {
-    width: 100%;
-    height: auto;
-    border-radius: 50%;
-    display: block;
-}
-
-/* ── Account list ─────────────────────────────────────────────────────── */
-.profile-account-list {
-    margin: 0;
-    display: grid;
-    gap: 0.75rem;
-}
-
-.profile-account-row {
-    display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 1rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--border, #e6ebef);
-}
-
-.profile-account-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.profile-account-row dt {
-    color: var(--text-muted, #5b6c7e);
-    font-size: 0.85rem;
-}
-
-.profile-account-row dd {
-    margin: 0;
-    font-size: 0.95rem;
-    word-break: break-word;
-}
-
-/* ── Statistics ───────────────────────────────────────────────────────── */
-.profile-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-}
-
-.profile-stat-card {
-    padding: 1rem 1.1rem;
-    background: var(--bg-secondary, rgba(255, 255, 255, 0.02));
-    border: 1px solid var(--border, #e6ebef);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-}
-
-.profile-stat-label {
-    margin: 0 0 0.25rem;
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-muted, #5b6c7e);
-}
-
-.profile-stat-value {
-    margin: 0 0 0.3rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--accent, #14b8a6);
-    font-variant-numeric: tabular-nums;
-}
-
-.profile-stat-sub {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    color: var(--text-muted, #5b6c7e);
-    min-height: 1.1em;
-}
-
-.profile-stat-cta {
-    display: inline-block;
-    margin-top: auto;
-    padding-top: 0.6rem;
-    color: var(--accent, #14b8a6);
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    align-self: flex-start;
-}
-
-.profile-stat-cta:hover {
-    text-decoration: underline;
-}
-
-/* ── Danger zone ──────────────────────────────────────────────────────── */
 .profile-danger-zone {
-    border-color: hsla(355, 60%, 60%, 0.28);
+    margin-top: 1.5rem;
+}
+.profile-danger-zone .profile-section-title {
+    color: hsl(0, 65%, 72%);
 }
 
 .profile-danger-actions {
     display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    align-items: center;
 }
 
 .profile-danger-btn {
-    padding: 0.55rem 1.1rem;
-    background: hsl(355, 60%, 55%);
-    color: #fff;
-    border: 1px solid hsl(355, 60%, 50%);
-    border-radius: 8px;
+    height: 38px;
+    padding: 0 1.05rem;
+    border-radius: 999px;
+    background: hsla(0, 70%, 55%, 0.10);
+    color: hsl(0, 75%, 76%);
+    border: 1px solid hsla(0, 70%, 55%, 0.42);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.87rem;
     font-weight: 600;
-    transition: background 150ms ease;
     font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
-
 .profile-danger-btn:hover:not(:disabled) {
-    background: hsl(355, 60%, 48%);
+    background: hsl(0, 70%, 55%);
+    color: #fff;
+    border-color: hsl(0, 70%, 55%);
+    transform: translateY(-1px);
 }
-
 .profile-danger-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px hsla(355, 60%, 55%, 0.3);
+    outline: 2px solid hsl(0, 70%, 65%);
+    outline-offset: 2px;
+}
+.profile-danger-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .profile-danger-btn-secondary {
     background: transparent;
-    color: hsl(355, 60%, 55%);
-    border-color: hsla(355, 60%, 55%, 0.4);
-}
-
-.profile-danger-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    color: hsl(0, 60%, 75%);
 }
 
 .profile-danger-help {
-    margin: 0.3rem 0 0;
+    flex-basis: 100%;
+    margin: 0.35rem 0 0;
     font-size: 0.82rem;
-    color: var(--text-muted, #5b6c7e);
+    color: var(--text-muted);
+    line-height: 1.55;
 }
-
 .profile-danger-help code {
-    font-family: var(--font-mono, ui-monospace, "JetBrains Mono", monospace);
+    font-family: var(--font-mono);
     font-size: 0.78rem;
-    padding: 0 0.3rem;
-    background: var(--bg-secondary, rgba(255, 255, 255, 0.04));
+    padding: 0.1rem 0.4rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
     border-radius: 4px;
+    color: var(--text-secondary);
 }
 
-@media (max-width: 640px) {
+/* ═══════════════════════════════════════════════════════════════════
+   Mobile responsive — < 640px stacks identity row + adjusts grids.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 720px) {
+    .profile-hero {
+        padding: 1.3rem 1.25rem;
+    }
+    .profile-hero-row {
+        grid-template-columns: 64px 1fr;
+        grid-template-areas:
+            "avatar identity"
+            "action action";
+        row-gap: 1rem;
+    }
+    .profile-hero-avatar {
+        width: 64px;
+        height: 64px;
+        grid-area: avatar;
+    }
+    .profile-hero-identity { grid-area: identity; }
+    .profile-hero-action {
+        grid-area: action;
+        justify-content: center;
+    }
+    .profile-hero-name { font-size: 1.45rem; }
+    .profile-section {
+        padding: 1.15rem 1.1rem 1.3rem;
+    }
     .profile-trash-card {
         grid-template-columns: 1fr;
     }
@@ -411,7 +817,16 @@
         justify-content: flex-end;
     }
     .profile-avatar-grid {
-        grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
-        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+        gap: 0.45rem;
+    }
+    .profile-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 420px) {
+    .profile-stats-grid {
+        grid-template-columns: 1fr;
     }
 }
