@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll('.pricing-tab'));
   var panels = Array.prototype.slice.call(document.querySelectorAll('.pricing-panel'));
   var subscriptionGrid = document.getElementById('subscription-grid');
@@ -453,7 +455,7 @@
 
     if (typeof supabase === 'undefined' || !supabase.createClient) return null;
     try {
-      var resp = await fetch('/api/auth/config');
+      var resp = await zkFetch('/api/auth/config');
       if (!resp.ok) return null;
       var config = await resp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return null;
@@ -647,7 +649,7 @@
     // initSupabase runs before catalog so a refreshable-but-expired access
     // token gets exchanged before refreshCurrentSubscription / first buy click.
     await initSupabase();
-    var response = await fetch('/api/pricing/catalog');
+    var response = await zkFetch('/api/pricing/catalog');
     catalog = await response.json();
     // Hand the catalog to purchase_launcher so the next openPurchase call
     // skips its own redundant catalog fetch.
@@ -673,7 +675,7 @@
     if (!window.ZKPricing) return;
     var token = readAuthToken();
     if (!token) return;  // anonymous visitors will hit login modal anyway
-    fetch('/api/pricing/billing-profile', {
+    zkFetch('/api/pricing/billing-profile', {
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     }).then(function (r) {
       if (!r.ok) return null;
@@ -697,7 +699,7 @@
     var token = readAuthToken();
     if (!token) return;
     try {
-      fetch('/api/monitor/pricing-visit', {
+      zkFetch('/api/monitor/pricing-visit', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: '{}',

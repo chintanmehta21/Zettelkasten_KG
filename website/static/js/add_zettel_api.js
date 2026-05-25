@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   function makeActionId(surface) {
     return 'zettel:' + (surface || 'unknown') + ':' + Date.now() + ':' + Math.random().toString(36).slice(2);
   }
@@ -26,7 +28,7 @@
   }
 
   async function fetchStatus(statusUrl, headers) {
-    var response = await fetch(statusUrl, { headers: headers });
+    var response = await zkFetch(statusUrl, { headers: headers });
     var body = await parseResponse(response);
     if (!response.ok) {
       var error = new Error(cleanProblemDetail(body, 'Status check failed with status ' + response.status));
@@ -39,7 +41,7 @@
   }
 
   async function fetchStatusRaw(statusUrl, headers) {
-    var response = await fetch(statusUrl, { headers: headers });
+    var response = await zkFetch(statusUrl, { headers: headers });
     var body = await parseResponse(response);
     if (!response.ok && response.status !== 202) {
       var error = new Error(cleanProblemDetail(body, 'Status check failed with status ' + response.status));
@@ -137,7 +139,7 @@
     // submission; regenerated on each fresh form mount.
     headers['Idempotency-Key'] = actionId;
 
-    var response = await fetch('/api/zettels/add', {
+    var response = await zkFetch('/api/zettels/add', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
@@ -177,7 +179,7 @@
     form.append('persist', opts.persist === false ? 'false' : 'true');
     form.append('surface', opts.surface || 'landing');
 
-    var response = await fetch('/api/zettels/add/document', {
+    var response = await zkFetch('/api/zettels/add/document', {
       method: 'POST',
       headers: headers,
       body: form

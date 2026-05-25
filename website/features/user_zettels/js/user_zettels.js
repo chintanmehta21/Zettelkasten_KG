@@ -1,6 +1,8 @@
 ﻿(function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   // Conservative smart-dollar guard: only treat $...$ as math when the
   // content looks like LaTeX (no bare prices like $5 / $ 100). Display
   // ($$, \[ \]) and \( \) are unambiguous and always allowed.
@@ -279,7 +281,7 @@
 
   async function initSupabase() {
     try {
-      var resp = await fetch('/api/auth/config');
+      var resp = await zkFetch('/api/auth/config');
       var config = await resp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return null;
       return supabase.createClient(config.supabase_url, config.supabase_anon_key, {
@@ -329,7 +331,7 @@
 
   async function fetchProfile(token) {
     try {
-      var resp = await fetch('/api/me', {
+      var resp = await zkFetch('/api/me', {
         headers: { Authorization: 'Bearer ' + token }
       });
       if (!resp.ok) return null;
@@ -342,7 +344,7 @@
 
   async function loadZettels() {
     try {
-      var resp = await fetch('/api/zettels', {
+      var resp = await zkFetch('/api/zettels', {
         headers: { Authorization: 'Bearer ' + _token }
       });
       var data = await resp.json();
@@ -369,7 +371,7 @@
     var attempts = tries || 1;
     for (var i = 0; i < attempts; i++) {
       try {
-        var resp = await fetch('/api/zettels', {
+        var resp = await zkFetch('/api/zettels', {
           headers: { Authorization: 'Bearer ' + _token }
         });
         var data = await resp.json();
@@ -867,7 +869,7 @@
     hideUndoToast();
 
     try {
-      var resp = await fetch('/api/zettels/' + encodeURIComponent(pending.node.id), {
+      var resp = await zkFetch('/api/zettels/' + encodeURIComponent(pending.node.id), {
         method: 'DELETE',
         headers: {
           Authorization: 'Bearer ' + _token

@@ -11,6 +11,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var _currentNode = null;
   var _onRefreshed = null;
 
@@ -83,7 +85,7 @@
       if (token) headers['Authorization'] = 'Bearer ' + token;
 
       var actionId = 'refresh:' + (_currentNode.id || _currentNode.url) + ':' + Date.now();
-      var resp = await fetch('/api/zettels/refresh', {
+      var resp = await zkFetch('/api/zettels/refresh', {
         method: 'POST',
         credentials: 'include',
         headers: headers,

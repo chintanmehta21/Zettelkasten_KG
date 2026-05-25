@@ -1,3 +1,5 @@
+var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
 const form = document.querySelector("#batch-form");
 const output = document.querySelector("#output");
 
@@ -8,7 +10,7 @@ form.addEventListener("submit", async (event) => {
     .map((line) => line.trim())
     .filter(Boolean);
   output.textContent = "Running...";
-  const response = await fetch("/api/v2/batch", {
+  const response = await zkFetch("/api/v2/batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ urls }),

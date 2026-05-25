@@ -3,6 +3,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   const modal       = document.getElementById('kasten-modal');
   if (!modal) return; // KG page not present.
   const backdrop    = document.getElementById('kasten-modal-backdrop');
@@ -79,7 +81,7 @@
       go.disabled = true;
       clearError();
       try {
-        const resp = await fetch('/api/rag/sandboxes', {
+        const resp = await zkFetch('/api/rag/sandboxes', {
           method: 'POST',
           headers: Object.assign({ 'Content-Type': 'application/json' }, state.headersFn()),
           body: JSON.stringify({ name, client_action_id: pricingActionId })
@@ -120,7 +122,7 @@
     addBtn.disabled = true;
     clearError();
     try {
-      const resp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(state.selectedId) + '/members', {
+      const resp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(state.selectedId) + '/members', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, state.headersFn()),
         body: JSON.stringify({ node_ids: [state.node.id] })

@@ -6,6 +6,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var _supabaseClient = null;
   var _session = null;
   var _token = '';
@@ -26,7 +28,7 @@
 
   async function init() {
     try {
-      var cfgResp = await fetch('/api/auth/config');
+      var cfgResp = await zkFetch('/api/auth/config');
       var cfg = await cfgResp.json();
       if (cfg.supabase_url && cfg.supabase_anon_key) {
         _supabaseClient = supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key, {
@@ -60,7 +62,7 @@
     // Shared header (avatar + sign-out) via ZKHeader module.
     if (window.ZKHeader && typeof window.ZKHeader.boot === 'function') {
       try {
-        var meResp = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + _token } });
+        var meResp = await zkFetch('/api/me', { headers: { 'Authorization': 'Bearer ' + _token } });
         var profile = null;
         if (meResp.ok) profile = await meResp.json();
         if (!profile) {
@@ -84,7 +86,7 @@
     var grid = document.getElementById('kastens-grid');
     var emptyEl = document.getElementById('kastens-empty');
     try {
-      var resp = await fetch('/api/rag/sandboxes', {
+      var resp = await zkFetch('/api/rag/sandboxes', {
         headers: { 'Authorization': 'Bearer ' + _token }
       });
       if (!resp.ok) {
@@ -284,7 +286,7 @@
       submit.innerHTML = '<span class="btn-inline-spinner" aria-hidden="true"></span>Creating Kasten…';
       form.setAttribute('data-busy', 'true');
       try {
-        var createResp = await fetch('/api/rag/sandboxes', {
+        var createResp = await zkFetch('/api/rag/sandboxes', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: name, description: desc || null, default_quality: quality, client_action_id: pricingActionId })
@@ -327,7 +329,7 @@
           }
           if (memberBody) {
             try {
-              var addResp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(sandboxId) + '/members', {
+              var addResp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(sandboxId) + '/members', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
                 body: JSON.stringify(memberBody)
@@ -377,7 +379,7 @@
         //   * /api/zettels is the canonical user-zettel surface used by
         //     /home and is paginated + workspace_zettel-id keyed (the
         //     exact id shape the create-Kasten members RPC expects).
-        var resp = await fetch('/api/zettels?limit=500', {
+        var resp = await zkFetch('/api/zettels?limit=500', {
           credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + _token }
         });

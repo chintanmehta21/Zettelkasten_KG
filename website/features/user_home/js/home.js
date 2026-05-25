@@ -8,6 +8,7 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
 
   // Conservative smart-dollar guard: only treat $...$ as math when the
   // content looks like LaTeX (no bare prices like $5 / $ 100). Display
@@ -198,7 +199,7 @@
 
     try {
       // Init Supabase client
-      var resp = await fetch('/api/auth/config');
+      var resp = await zkFetch('/api/auth/config');
       var config = await resp.json();
       if (config.supabase_url && config.supabase_anon_key) {
         _supabaseClient = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
@@ -280,7 +281,7 @@
 
   async function fetchProfile(token) {
     try {
-      var resp = await fetch('/api/me', {
+      var resp = await zkFetch('/api/me', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (resp.status === 401) return null;
@@ -300,7 +301,7 @@
 
   async function loadKastens(token) {
     try {
-      var resp = await fetch('/api/rag/sandboxes', {
+      var resp = await zkFetch('/api/rag/sandboxes', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (!resp.ok) return;
@@ -383,7 +384,7 @@
 
   async function loadZettels(token) {
     try {
-      var resp = await fetch('/api/zettels', {
+      var resp = await zkFetch('/api/zettels', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       var data = await resp.json();
@@ -1090,7 +1091,7 @@
     if (_badgeRefreshing) return;
     _badgeRefreshing = true;
     try {
-      var resp = await fetch('/api/zettels', {
+      var resp = await zkFetch('/api/zettels', {
         credentials: 'include',
         headers: { 'Authorization': 'Bearer ' + token }
       });
@@ -1860,7 +1861,7 @@
       submit.innerHTML = '<span class="btn-inline-spinner" aria-hidden="true"></span>Creating Kasten…';
       form.setAttribute('data-busy', 'true');
       try {
-        var resp = await fetch('/api/rag/sandboxes', {
+        var resp = await zkFetch('/api/rag/sandboxes', {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + token,
@@ -1901,7 +1902,7 @@
           else if (scope === 'specific') memberBody = { node_ids: pickedNodeIds, added_via: 'manual' };
           if (memberBody) {
             try {
-              var addResp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(sandboxId) + '/members', {
+              var addResp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(sandboxId) + '/members', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
                 body: JSON.stringify(memberBody)
@@ -1941,7 +1942,7 @@
       try {
         // UX-3: source the chooser from /api/zettels so newly-added
         // zettels are always present (the dedicated per-user list).
-        var resp = await fetch('/api/zettels', {
+        var resp = await zkFetch('/api/zettels', {
           credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + token }
         });

@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var SOURCE_OPTIONS = ['youtube', 'github', 'reddit', 'substack', 'medium', 'web'];
   var HINT_KEY = 'zk-rag-hint-seen';
   var FEEDBACK_EMAIL = 'vedantbarbhaya21@gmail.com';
@@ -109,7 +111,7 @@
 
   async function getAuthToken() {
     try {
-      var configResp = await fetch('/api/auth/config');
+      var configResp = await zkFetch('/api/auth/config');
       var config = await configResp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return '';
       var client = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
@@ -522,7 +524,7 @@
           await new Promise(function (r) { setTimeout(r, 1000); });
         }
         try {
-          response = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
+          response = await zkFetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
             method: 'POST',
             headers: {
               'Authorization': 'Bearer ' + state.token,
@@ -643,7 +645,7 @@
               });
             }
             await new Promise(function (r) { setTimeout(r, 1000); });
-            var retryResp = await fetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
+            var retryResp = await zkFetch('/api/rag/sessions/' + encodeURIComponent(state.sessionId) + '/messages', {
               method: 'POST',
               headers: {
                 'Authorization': 'Bearer ' + state.token,
@@ -965,7 +967,7 @@
   }
 
   async function api(url, options) {
-    var response = await fetch(url, Object.assign({
+    var response = await zkFetch(url, Object.assign({
       headers: {
         'Authorization': 'Bearer ' + state.token,
         'Content-Type': 'application/json'
@@ -1059,7 +1061,7 @@
       // edges/PageRank/community), cheaper on the droplet, and avoids
       // the /api/graph?view=my 500 path that intermittently empties
       // this picker. Mirrors the same fix applied to user_kastens.js.
-      var graphResp = await fetch('/api/zettels?limit=500', {
+      var graphResp = await zkFetch('/api/zettels?limit=500', {
         credentials: 'include',
         headers: { 'Authorization': 'Bearer ' + state.token }
       });
@@ -1198,7 +1200,7 @@
     els.addSubmit.disabled = true;
     els.addError.classList.add('hidden');
     try {
-      var resp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(state.sandboxId) + '/members', {
+      var resp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(state.sandboxId) + '/members', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + state.token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_ids: ids, added_via: 'manual' })
@@ -1252,7 +1254,7 @@
     els.delSubmit.disabled = true;
     els.delError.classList.add('hidden');
     try {
-      var resp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(state.sandboxId), {
+      var resp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(state.sandboxId), {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + state.token }
       });
