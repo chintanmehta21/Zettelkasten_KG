@@ -211,16 +211,64 @@ async def test_ensure_provisioned_resolves_email_from_auth_users(asyncpg_pool, m
 
 
 async def test_ensure_provisioned_rejects_null_user_id(asyncpg_pool):
-    """NULL p_auth_user_id raises an explicit error (not a silent FK violation)."""
+    """NULL p_auth_user_id raises ERRCODE 22023 (not a silent FK violation)."""
     async with asyncpg_pool.acquire() as conn:
         with pytest.raises(Exception) as exc_info:
             await conn.fetchval(
                 "SELECT core.ensure_provisioned(NULL::uuid, NULL, NULL)"
             )
-    # asyncpg surfaces RAISE EXCEPTION as InvalidParameterValueError /
-    # PostgresError. Check the message rather than the type so a future
-    # asyncpg version can still pass.
-    assert "p_auth_user_id" in str(exc_info.value).lower() or "null" in str(exc_info.value).lower()
+    # asyncpg PostgresError exposes .sqlstate; pin the exact errcode the RPC
+    # raises (22023 = invalid_parameter_value, set at 77_*.sql L43).
+    assert getattr(exc_info.value, "sqlstate", None) == "22023", (
+        f"expected sqlstate 22023, got {getattr(exc_info.value, 'sqlstate', None)!r} "
+        f"(message: {exc_info.value!s})"
+    )
+
+
+async def test_ensure_provisioned_raises_42501_for_blocked_allowlist(asyncpg_pool, mint_user):
+    """Allowlist denial bubbles up cleanly as SQLSTATE 42501.
+
+    If an operator manually sets allowlist_status != 'allowed', the
+    trg_workspaces_allowlist_check trigger on core.workspaces raises 42501
+    when ensure_provisioned tries to (re-)create the personal workspace.
+    /api/me callers must map 42501 → HTTP 403. This test pins the contract
+    so a future refactor cannot silently bypass the allowlist gate.
+    """
+    user = mint_user(workspace_count=1)
+    async with asyncpg_pool.acquire() as conn:
+        # Wipe membership + workspace so the RPC will try to recreate them.
+        await conn.execute(
+            "DELETE FROM core.workspace_members WHERE profile_id = $1",
+            user.profile_id,
+        )
+        await conn.execute(
+            "DELETE FROM core.workspaces WHERE owner_profile_id = $1",
+            user.profile_id,
+        )
+        # Block the user.
+        await conn.execute(
+            "UPDATE core.profiles SET allowlist_status = 'blocked' WHERE id = $1",
+            user.profile_id,
+        )
+        try:
+            with pytest.raises(Exception) as exc_info:
+                await conn.fetchval(
+                    "SELECT core.ensure_provisioned($1::uuid, NULL, NULL)",
+                    user.auth_user_id,
+                )
+            assert getattr(exc_info.value, "sqlstate", None) == "42501", (
+                f"expected sqlstate 42501 (insufficient_privilege via allowlist trigger), "
+                f"got {getattr(exc_info.value, 'sqlstate', None)!r}"
+            )
+            assert "allowlist" in str(exc_info.value).lower(), (
+                f"expected 'allowlist' in error message, got: {exc_info.value!s}"
+            )
+        finally:
+            # Restore so the fixture cleanup path doesn't break.
+            await conn.execute(
+                "UPDATE core.profiles SET allowlist_status = 'allowed' WHERE id = $1",
+                user.profile_id,
+            )
 
 
 async def test_ensure_provisioned_grants(asyncpg_pool):

@@ -50,7 +50,7 @@ Approval status: per chat 2026-05-25, all 5 fixes pre-approved by operator. Task
 
 ## Migration strategy
 
-Both new SQL files use the project's versioned `_v2/NN_*.sql` convention (next free numbers: `54`, `55`). They include the `GRANT EXECUTE ... TO supabase_auth_admin` + `REVOKE EXECUTE ... FROM public` pattern per [feedback_v2_table_grants.md] and SECURITY DEFINER + `SET search_path = ''` per `53_set_search_path_v2_functions.sql`. CI migration manifest gets regenerated.
+Both new SQL files use the project's versioned `_v2/NN_*.sql` convention (next free numbers verified at implementation time — slots 54/55 already taken, used 76/77). They include the `GRANT EXECUTE ... TO supabase_auth_admin` + `REVOKE EXECUTE ... FROM public` pattern per [feedback_v2_table_grants.md] and SECURITY DEFINER + stricter inline `SET search_path = ''` per 2024-2026 Supabase advisory (sibling 53 uses `pg_catalog, public` for pgvector/pg_trgm reasons; new auth-path functions deliberately diverge — the function bodies use `pg_catalog` operators only). CI migration manifest gets regenerated.
 
 Dashboard registration of the Custom Access Token Hook (Supabase Dashboard → Authentication → Hooks) is an operator action **outside** this PR — the PR delivers the function; the operator wires the hook.
 
