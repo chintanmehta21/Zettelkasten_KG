@@ -630,7 +630,12 @@
     if (!window.ZKHeader || typeof window.ZKHeader.boot !== 'function') return;
     if (window.ZKHeader.__booted) return;
     var token = readAuthToken();
-    try { await window.ZKHeader.boot(token); } catch (_) { /* non-fatal */ }
+    // PR2: opt the avatar into the anon click-swap. If `token` is null/empty
+    // (anon visitor on /pricing), ZKHeader.boot wires the avatar to open
+    // #login-modal directly instead of toggling the dropdown.
+    try {
+      await window.ZKHeader.boot(token, { anonAction: 'open-login-modal' });
+    } catch (_) { /* non-fatal */ }
   }
 
   async function loadCatalog() {
