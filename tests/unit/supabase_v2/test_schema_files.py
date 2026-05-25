@@ -91,6 +91,8 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "71_pipeline_runs_state_machine.sql",
         "72_workspace_zettels_derived_tags.sql",
         "73_normalize_user_tags.sql",
+        "74_enrichment_jobs_canonical_fk_cascade.sql",
+        "75_ops_finalize_extended_ttl.sql",
     ]
 
 
