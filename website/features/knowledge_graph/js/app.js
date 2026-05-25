@@ -105,6 +105,8 @@ function getCommunityHue(communityId) {
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   // ---- Node colours by source. ----
   // Phase 4 / Task 4.1 (D1+D2+D3): registry now lives in
   // `website/core/source_registry.py`; this file fetches the canonical data
@@ -144,7 +146,7 @@ function getCommunityHue(communityId) {
 
   async function _loadSourceRegistry() {
     try {
-      const r = await fetch('/api/meta/source-types', { cache: 'force-cache' });
+      const r = await zkFetch('/api/meta/source-types', { cache: 'force-cache' });
       if (!r.ok) throw new Error('source-types fetch failed: ' + r.status);
       const data = await r.json();
       for (const [key, meta] of Object.entries(data)) {
@@ -359,7 +361,7 @@ function getCommunityHue(communityId) {
   let _expectedProjectRef = null;
   async function _loadExpectedProjectRef() {
     try {
-      const r = await fetch('/api/auth/config');
+      const r = await zkFetch('/api/auth/config');
       if (!r.ok) return;
       const { supabase_url } = await r.json();
       if (!supabase_url) return;
@@ -450,7 +452,7 @@ function getCommunityHue(communityId) {
 
   authToken = getStoredAuthToken();
   if (authToken) {
-    fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
+    zkFetch('/api/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
       .then(r => r.ok ? r.json() : Promise.reject('not logged in'))
       .then(profile => {
         // Y3 (T4.9): jwt_fallback means the v2 core.profiles lookup failed; the
@@ -495,7 +497,7 @@ function getCommunityHue(communityId) {
   // addable when it itself is user-owned OR shares a link with a user-owned
   // node — i.e. the user has earned visibility into it through their graph.
   function loadUserOwnedIds() {
-    fetch('/api/graph?view=my', { headers: authHeaders() })
+    zkFetch('/api/graph?view=my', { headers: authHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject('user-graph'))
       .then(data => {
         userOwnedIds = new Set((data.nodes || []).map(n => n.id));
@@ -724,7 +726,7 @@ function getCommunityHue(communityId) {
     params.set('min_strength', String(minStrength));
     const qs = params.toString();
     const apiUrl = '/api/graph' + (qs ? ('?' + qs) : '');
-    fetch(apiUrl, { headers: authHeaders() })
+    zkFetch(apiUrl, { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('api'); })
       .catch(function () { return fetch('/kg/content/graph.json').then(function (r) { return r.json(); }); })
       .then(data => {
@@ -2124,7 +2126,7 @@ function getCommunityHue(communityId) {
           // Lazy-load membership on first selection.
           if (!kastenMembership.has(k.id)) {
             try {
-              const resp = await fetch('/api/rag/sandboxes/' + encodeURIComponent(k.id) + '/members?limit=1000', { headers: authHeaders() });
+              const resp = await zkFetch('/api/rag/sandboxes/' + encodeURIComponent(k.id) + '/members?limit=1000', { headers: authHeaders() });
               if (resp.ok) {
                 const data = await resp.json();
                 const ids = new Set((data.members || []).map(m => m.node_id));
@@ -2148,7 +2150,7 @@ function getCommunityHue(communityId) {
 
   function loadKastens() {
     if (!isLoggedIn) { renderKastensSection(); return; }
-    fetch('/api/rag/sandboxes', { headers: authHeaders() })
+    zkFetch('/api/rag/sandboxes', { headers: authHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject('not ok'))
       .then(data => {
         kastenList = (data.sandboxes || []).map(s => ({ id: s.id, name: s.name, color: s.color, member_count: s.member_count }));

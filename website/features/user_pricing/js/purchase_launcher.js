@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
   var razorpayScriptPromise = null;
 
@@ -28,7 +30,7 @@
   async function fetchJson(path, options) {
     options = options || {};
     options.headers = Object.assign({}, options.headers || {});
-    var response = await fetch(path, options);
+    var response = await zkFetch(path, options);
     var payload = null;
     try { payload = await response.json(); } catch (_) {}
     if (!response.ok) {

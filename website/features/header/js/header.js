@@ -13,6 +13,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   var AVATAR_COUNT = 60;
   var AVATAR_PATH_RE = /\/artifacts\/avatars\/avatar_\d+\.svg/;
   var CACHE_KEY_PREFIX = 'zk-avatar-url-';
@@ -135,7 +137,7 @@
       try {
         var token = typeof getToken === 'function' ? await getToken() : getToken;
         if (token) {
-          fetch('/api/me/avatar', {
+          zkFetch('/api/me/avatar', {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ avatar_id: randomId })
@@ -188,7 +190,7 @@
   async function fetchProfile(token) {
     if (!token) return null;
     try {
-      var resp = await fetch('/api/me', {
+      var resp = await zkFetch('/api/me', {
         headers: { 'Authorization': 'Bearer ' + token },
         cache: 'no-store'
       });
@@ -341,7 +343,7 @@
         try {
           var token = typeof getToken === 'function' ? await getToken() : getToken;
           if (token) {
-            fetch('/api/me/avatar', {
+            zkFetch('/api/me/avatar', {
               method: 'PUT',
               headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
               body: JSON.stringify({ avatar_id: avatarId })

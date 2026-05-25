@@ -17,6 +17,8 @@
 (function () {
   'use strict';
 
+  var zkFetch = window.zkFetch || window.fetch;  // signup-failure-fixes-1a: fall back if wrapper not loaded
+
   const SUPABASE_URL = window.__SUPABASE_URL || '';
   const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY || '';
   const AVATAR_COUNT = 60;
@@ -41,7 +43,7 @@
     // Mirror user_zettels.js — share the zk-auth-token storage scope so
     // the persisted Supabase session is found instead of bouncing to /.
     try {
-      const resp = await fetch('/api/auth/config');
+      const resp = await zkFetch('/api/auth/config');
       const config = await resp.json();
       if (!config.supabase_url || !config.supabase_anon_key) return null;
       return window.supabase.createClient(config.supabase_url, config.supabase_anon_key, {
@@ -60,7 +62,7 @@
 
   async function fetchProfile(token) {
     try {
-      const resp = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+      const resp = await zkFetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
       if (!resp.ok) return null;
       return await resp.json();
     } catch (_) { return null; }
@@ -69,7 +71,7 @@
   async function loadTrash() {
     showLoading(true);
     try {
-      const resp = await fetch('/api/zettels/trash', {
+      const resp = await zkFetch('/api/zettels/trash', {
         headers: { Authorization: 'Bearer ' + _token }
       });
       if (!resp.ok) throw new Error('trash fetch failed: ' + resp.status);
@@ -189,7 +191,7 @@
 
   async function handleRestore(id, cardEl) {
     try {
-      const resp = await fetch('/api/zettels/' + encodeURIComponent(id) + '/restore', {
+      const resp = await zkFetch('/api/zettels/' + encodeURIComponent(id) + '/restore', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + _token }
       });
@@ -205,7 +207,7 @@
 
   async function handleForever(id, cardEl) {
     try {
-      const resp = await fetch('/api/zettels/' + encodeURIComponent(id) + '/forever', {
+      const resp = await zkFetch('/api/zettels/' + encodeURIComponent(id) + '/forever', {
         method: 'DELETE',
         headers: { Authorization: 'Bearer ' + _token }
       });
@@ -260,7 +262,7 @@
 
   async function fetchJSON(url, token) {
     try {
-      const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      const resp = await zkFetch(url, { headers: { Authorization: 'Bearer ' + token } });
       if (!resp.ok) return null;
       return await resp.json();
     } catch (_) {
