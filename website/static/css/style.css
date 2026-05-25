@@ -35,6 +35,43 @@
     }
 }
 
+/* ── Skip link (a11y) — visually hidden until focused.
+ * Global rule so pages that ship a bare `<a class="skip-link">` (e.g.
+ * /profile) don't render a visible inline anchor that pushes the shared
+ * header down. Per-page overrides (.rag-skip-link, .nexus-skip-link)
+ * remain valid; this is the baseline. */
+.skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    z-index: 1200;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 1rem;
+    margin: 0;
+    clip: auto;
+    overflow: visible;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 /* ── Reset ────────────────────────────────────────────────────────── */
 
 *, *::before, *::after {
@@ -116,6 +153,13 @@ html {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Reserve scrollbar gutter on every page so clientWidth is constant
+     * whether content overflows or not — keeps the shared header's
+     * `calc(50vw - 590px)` padding centered against the SAME visible
+     * area across pages, so back/logo/avatar land at identical x on
+     * navigation. Without this, short pages like /pricing have no
+     * scrollbar and shift the centered logo/avatar ~8.5px right. */
+    scrollbar-gutter: stable;
 }
 
 body {
