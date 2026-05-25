@@ -1,0 +1,49 @@
+/* install-banner.css — install banner + iOS sheet styling (T12). */
+
+.m-install-banner {
+  margin: 12px 16px;
+  padding: 10px 12px;
+  background: rgba(20,184,166,0.12);
+  border: 1px solid rgba(20,184,166,0.28);
+  border-radius: 12px;
+}
+.m-install-banner-body {
+  display: flex; align-items: center; gap: 10px;
+}
+.m-install-banner-icon {
+  color: var(--m-teal, #14b8a6);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.m-install-banner-text { flex: 1; min-width: 0; }
+.m-install-banner-title { color: #e6e6e6; font-weight: 600; font-size: 14px; }
+.m-install-banner-sub   { color: rgba(255,255,255,0.7); font-size: 12px; }
+.m-install-banner-cta   {
+  background: var(--m-teal, #14b8a6); color: #0a0b14;
+  border: 0; border-radius: 8px;
+  padding: 6px 14px; font-weight: 600;
+  cursor: pointer;
+}
+.m-install-banner-close {
+  width: 28px; height: 28px;
+  background: transparent; border: 0; color: rgba(255,255,255,0.7);
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+
+.m-ios-install-sheet {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 70;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.m-ios-install-sheet[hidden] { display: none; }
+.m-ios-install-sheet-card {
+  width: 100%; max-width: 480px;
+  background: #11131c;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  padding: 18px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
+}
+.m-ios-install-sheet-card h3 { color: #e6e6e6; margin-bottom: 8px; }
+.m-ios-install-sheet-card ol { padding-left: 22px; color: rgba(255,255,255,0.85); }
+.m-ios-install-sheet-card li { margin: 8px 0; line-height: 1.4; }
+.m-ios-install-sheet-card .m-btn { width: 100%; margin-top: 14px; }
