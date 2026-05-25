@@ -75,59 +75,12 @@ body {
     height: 20px;
 }
 
-.home-avatar-wrap {
-    position: relative;
-}
-
-.home-avatar-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    background: var(--bg-tertiary);
-    cursor: pointer;
-    overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.home-avatar-btn:hover {
-    border-color: var(--accent-muted);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.home-avatar-btn:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
-.home-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.home-avatar-img.hidden {
-    display: none;
-}
-
-.home-avatar-fallback {
-    display: none;
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-}
-
-.home-avatar-fallback.visible {
-    display: inline-flex;
-}
-
-/* Avatar dropdown styling lives in shared header.css — single source of
-   truth so My Kastens / My Zettels / Dashboard all behave identically
-   (including sign-out hover red on icon AND text). Do NOT override here. */
+/* Avatar wrap + button + img + fallback + dropdown styling all live in
+ * website/features/header/css/header.css (single source of truth, post-
+ * PR2 migration). The legacy duplicates that used to live here were
+ * deleted because they overrode header.css with stale 44x44 / inverted-
+ * fallback rules that happened to look right on /home/zettels but
+ * caused /home/kastens / /home and friends to render at 36x36. */
 
 .zettels-main {
     padding-top: 0.35rem;
