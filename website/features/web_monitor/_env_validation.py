@@ -31,7 +31,6 @@ logger = logging.getLogger("website.web_monitor.env_validation")
 _REQUIRED_SLACK_WEBHOOKS: tuple[tuple[str, str], ...] = (
     ("SLACK_WEBHOOK_APP_ERRORS", "app_errors"),
     ("SLACK_WEBHOOK_DO_ALERT", "do_alerts"),
-    ("SLACK_WEBHOOK_DO_ERRORS", "do_errors"),
     ("SLACK_WEBHOOK_USER_ACTIVITY", "user_activity"),
 )
 
