@@ -51,7 +51,12 @@ async def test_add_zettel_checks_entitlement_before_expensive_work(monkeypatch) 
     zettels_routes._RATE_STORE.clear()
     zettels_routes._LIVE_TASKS.pop("quota-preflight", None)
 
-    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
+    # PR #109: route reads request.state.auth_status via _compute_auth_intent.
+    request = SimpleNamespace(
+        client=SimpleNamespace(host="127.0.0.1"),
+        headers={},
+        state=SimpleNamespace(),
+    )
 
     response = await zettels_routes.add_zettel(
         zettels_routes.AddZettelRequest(
