@@ -26,6 +26,7 @@ A middleware in ``website/app.py`` reads ``request.state.auth_status`` and
 sets the ``X-Auth-Status`` response header. The integration test at the
 bottom of this file exercises the full chain through ``create_app()``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,7 +34,6 @@ import time
 from unittest.mock import patch
 
 import jwt as pyjwt
-import pytest
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 
@@ -96,7 +96,8 @@ def test_no_auth_header_does_not_log_warning(_secret, caplog) -> None:
         "Legitimate anon path must not set request.state.auth_status"
     )
     drop_warnings = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if r.name == "website.api.auth" and "jwt" in r.message.lower()
     ]
     assert not drop_warnings, (
@@ -118,7 +119,8 @@ def test_invalid_jwt_emits_structured_warning(_secret, caplog) -> None:
         resp = client.get("/probe", headers={"Authorization": "Bearer garbage"})
     assert resp.status_code == 200
     drop_warnings = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if r.name == "website.api.auth" and r.levelno == logging.WARNING
     ]
     assert len(drop_warnings) == 1, (
@@ -174,15 +176,14 @@ def test_valid_jwt_does_not_set_drop_marker(_secret, caplog) -> None:
     client = TestClient(_build_probe_app())
     token = _make_jwt()
     with caplog.at_level(logging.WARNING, logger="website.api.auth"):
-        resp = client.get(
-            "/probe", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = client.get("/probe", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["user_sub"] == "550e8400-e29b-41d4-a716-446655440000"
     assert body["auth_status"] is None
     drop_warnings = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if r.name == "website.api.auth" and r.levelno == logging.WARNING
     ]
     assert not drop_warnings, (
@@ -244,4 +245,126 @@ def test_response_has_no_x_auth_status_on_anonymous(_secret) -> None:
     resp = client.get("/api/graph")  # No Authorization header at all
     assert "X-Auth-Status" not in resp.headers, (
         f"Header must not appear on legitimate anon. Got: {dict(resp.headers)!r}"
+    )
+
+
+# ── 5. Token-missing-but-expected path (post-Prajeet 2026-05-26 03:41 UTC) ──
+#
+# Second Prajeet stranding — a request landed under Zoro NOT because the
+# JWT was rejected, but because no JWT was sent at all. Root cause: the
+# desktop landing form submits before auth-core.js finishes RESTORE; the
+# token-missing-when-expected case is invisible to the §5.2 fix (which
+# only catches sent-but-invalid JWTs). This test class pins the
+# observability contract for that gap.
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_zk_auth_intent_header_marks_token_missing_expected(_secret) -> None:
+    """When the client signals ``Zk-Auth-Intent: bearer`` but no
+    Authorization is attached, ``get_optional_user`` must mark the request
+    as ``token-missing-but-expected`` so the response surfaces
+    ``X-Auth-Status``. RFC 6648-compliant header naming (no X- prefix)."""
+    client = TestClient(_build_probe_app())
+    resp = client.get("/probe", headers={"Zk-Auth-Intent": "bearer"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["user_sub"] is None
+    assert body["auth_status"] == "token-missing-but-expected"
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_zk_auth_intent_emits_warning_log(_secret, caplog) -> None:
+    """The missing-token branch MUST log a structured WARNING on the
+    ``website.api.auth`` logger so operators can grep droplet stdout for
+    expected-but-absent auth — mirrors the JWT-drop warning channel."""
+    client = TestClient(_build_probe_app())
+    with caplog.at_level(logging.WARNING, logger="website.api.auth"):
+        resp = client.get("/probe", headers={"Zk-Auth-Intent": "bearer"})
+    assert resp.status_code == 200
+    warnings = [
+        r
+        for r in caplog.records
+        if r.name == "website.api.auth" and r.levelno == logging.WARNING
+    ]
+    assert len(warnings) == 1, (
+        f"Expected exactly 1 token-missing warning; got {len(warnings)}: "
+        f"{[r.message for r in warnings]!r}"
+    )
+    msg = warnings[0].getMessage().lower()
+    assert "expected" in msg and "missing" in msg, (
+        f"Warning must name the failure mode (expected/missing): {msg!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_no_authorization_no_hint_stays_silent(_secret, caplog) -> None:
+    """Legitimate anonymous traffic (no Authorization, no Zk-Auth-Intent)
+    must NOT emit a warning OR set request.state.auth_status. This is the
+    backstop against turning every anon visitor into log noise."""
+    client = TestClient(_build_probe_app())
+    with caplog.at_level(logging.WARNING, logger="website.api.auth"):
+        resp = client.get("/probe")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["user_sub"] is None
+    assert body["auth_status"] is None, (
+        f"Legitimate anon must NOT set auth_status. Got: {body!r}"
+    )
+    warnings = [
+        r
+        for r in caplog.records
+        if r.name == "website.api.auth" and r.levelno == logging.WARNING
+    ]
+    assert not warnings, (
+        f"Legitimate anon must produce zero WARNINGs. Got: {[r.message for r in warnings]!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_token_missing_response_has_no_www_authenticate(_secret) -> None:
+    """WWW-Authenticate carries RFC 6750 ``invalid_token`` semantics — only
+    valid when a JWT was actually sent and rejected. For the
+    token-missing-but-expected case there is no token to call invalid, so
+    the response MUST NOT include WWW-Authenticate (it would misdirect
+    clients into thinking we received a bad token). The X-Auth-Status
+    and Cache-Control: private, no-store headers still apply."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    resp = client.get("/api/graph", headers={"Zk-Auth-Intent": "bearer"})
+    assert resp.headers.get("X-Auth-Status") == "token-missing-but-expected", (
+        f"Expected X-Auth-Status on token-missing request; "
+        f"got headers={dict(resp.headers)!r}, status={resp.status_code}"
+    )
+    assert "WWW-Authenticate" not in resp.headers, (
+        f"WWW-Authenticate must not appear when no token was actually sent. "
+        f"Got: {resp.headers.get('WWW-Authenticate')!r}"
+    )
+    # Cloudflare cache-poisoning mitigation — applies to every auth_status
+    # value, not just the JWT-drop case.
+    assert resp.headers.get("Cache-Control") == "private, no-store", (
+        f"Expected Cache-Control: private, no-store on degraded-anon response; "
+        f"got {resp.headers.get('Cache-Control')!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_authorization_present_ignores_intent_hint(_secret) -> None:
+    """When BOTH Authorization (valid JWT) AND Zk-Auth-Intent are sent, the
+    JWT path wins and the hint is ignored — happy path must stay clean."""
+    client = TestClient(_build_probe_app())
+    token = _make_jwt()
+    resp = client.get(
+        "/probe",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Zk-Auth-Intent": "bearer",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["user_sub"] == "550e8400-e29b-41d4-a716-446655440000"
+    assert body["auth_status"] is None, (
+        f"Valid JWT path must not set auth_status even when hint present. Got: {body!r}"
     )

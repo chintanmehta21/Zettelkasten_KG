@@ -181,17 +181,45 @@ async def get_optional_user(
     (e.g., /api/graph returns global data when unauthenticated,
     user-scoped data when authenticated).
 
-    Observability contract (Prajeet audit 2026-05-25 §4.a): when the caller
-    sends a Bearer token that fails server-side validation, we MUST NOT
-    silently treat the request as anonymous — that path turned every one
-    of Prajeet's mobile/desktop captures into Zoro-mapped rows that he
-    couldn't find under his own user_id. Emit a structured WARNING and
-    tag ``request.state.auth_status`` so the middleware in
-    ``website/app.py`` can surface ``X-Auth-Status: jwt-dropped-to-anon``
-    on the response. Pinned by
-    ``tests/unit/website/test_auth_jwt_drop_observability.py``.
+    Two observability surfaces:
+
+    1. **JWT sent but invalid** (expired / malformed / wrong sig / JWKS miss)
+       — Prajeet audit 2026-05-25 §4.a. The except branch emits a warning
+       and tags ``request.state.auth_status = 'jwt-dropped-to-anon'``; the
+       ``_auth_drop_status_header`` middleware in ``website/app.py``
+       surfaces the X-Auth-Status response header + RFC 6750
+       WWW-Authenticate so the frontend re-auth banner fires.
+
+    2. **JWT missing when the client expected to send one** — second
+       Prajeet incident 2026-05-26 03:41 UTC. The race between page-load
+       and form-submit, or a localStorage clear, makes ``window.getAuthToken()``
+       return null and the request goes out without an Authorization
+       header. ``zk_fetch.js`` detects this (``browserCache.hasLoggedIn``
+       true while no Authorization is being attached) and signals via
+       ``Zk-Auth-Intent: bearer`` (RFC 6648-compliant — no X- prefix).
+       We surface that as ``X-Auth-Status: token-missing-but-expected``
+       so the same banner pipeline fires and the warning is greppable
+       in droplet logs.
+
+    Pinned by ``tests/unit/website/test_auth_jwt_drop_observability.py``.
     """
     if credentials is None:
+        # Auth-expected-but-absent observability. ``Zk-Auth-Intent`` is set
+        # by zk_fetch.js only when browserCache.hasLoggedIn=true AND no
+        # Authorization header was attached — never set for intentionally
+        # anonymous visitors, so legit-anon traffic stays silent.
+        # Spoofing is harmless: this header drives observability only,
+        # not any authorization decision.
+        intent = request.headers.get("zk-auth-intent")
+        if intent:
+            logger.warning(
+                "Auth expected but missing (Zk-Auth-Intent=%r); request dropped to anonymous",
+                intent,
+            )
+            try:
+                request.state.auth_status = "token-missing-but-expected"
+            except AttributeError:
+                pass
         return None
 
     try:
