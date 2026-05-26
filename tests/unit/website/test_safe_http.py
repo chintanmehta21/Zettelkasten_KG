@@ -415,3 +415,44 @@ async def test_safe_request_preserves_method_through_redirect(status):
 
     assert response.status_code == 200
     assert captured_methods == ["POST", "POST"]
+
+
+@pytest.mark.asyncio
+async def test_safe_request_caps_chunked_body_without_content_length():
+    """Transfer-Encoding: chunked + no Content-Length + body > cap →
+    ResponseTooLargeError. Pins the running-total cap in
+    safe_http.py:124-133. The cap measures DECODED bytes via aiter_bytes
+    which works regardless of Content-Length presence — the test exercises
+    the chunked-streaming branch where the server never advertises a total.
+    """
+    import httpx
+
+    async def chunked_body():
+        for _ in range(30):
+            yield b"x" * 100_000  # 30 × 100 kB = 3 MB total
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers=[(b"transfer-encoding", b"chunked")],
+            content=chunked_body(),
+        )
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        with pytest.raises(ResponseTooLargeError):
+            await safe_request(
+                "GET",
+                "https://example.com/chunked",
+                max_response_bytes=1 * 1024 * 1024,  # 1 MB cap, body is 3 MB
+                validate_initial=False,
+            )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
