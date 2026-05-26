@@ -17,6 +17,7 @@ the contract: both client instances MUST configure `flowType: 'pkce'`
 explicitly. (See research synthesis in chat 2026-05-26 — auth-js
 DEFAULT_OPTIONS confirms implicit default.)
 """
+
 from __future__ import annotations
 
 import re
@@ -79,4 +80,80 @@ def test_auth_core_keeps_local_storage_adapter():
         "auth-core.js must keep storage: window.localStorage — both the "
         "init client (here) and the callback client must use the same "
         "storage adapter for the cross-page PKCE verifier handoff."
+    )
+
+
+# ── Post-Prajeet 2026-05-26 sessionReady gate + cache-mismatch event ──────
+
+
+def test_auth_core_exposes_session_ready_promise():
+    """``ZKAuth.sessionReady`` must be exposed as the LATE ready signal —
+    resolved AFTER the initial RESTORE event populates _currentSession.
+    zk_fetch.js awaits this before reading window.getAuthToken(); without
+    it, a form-submit click in the 100–800ms restoration window emits a
+    request with no Bearer and the backend silently drops to Zoro (the
+    2026-05-26 03:41 UTC Prajeet stranding)."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert re.search(r"ZKAuth\.sessionReady\s*=\s*new Promise", source), (
+        "auth-core.js must declare ZKAuth.sessionReady as a Promise — the "
+        "late-resolve signal that zk_fetch.js awaits before reading the "
+        "caller's Authorization-header logic. Without this, the page-load "
+        "→ form-submit race is open and degraded-auth requests drop to "
+        "anonymous silently."
+    )
+    assert "__signalSessionReady" in source, (
+        "auth-core.js must define __signalSessionReady() so init() can "
+        "resolve sessionReady AFTER handleCoreSession('RESTORE', ...) "
+        "completes — preserves the existing 'signal ready early' "
+        "optimization for peer scripts that just need the SDK reference."
+    )
+
+
+def test_auth_core_session_ready_has_timeout_safety_net():
+    """``sessionReady`` must have a setTimeout safety net — if
+    /api/auth/config never responds OR the supabase CDN is unreachable,
+    awaiters must NOT hang forever. They degrade to anonymous after a
+    bounded delay so form submissions still proceed."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    # Look for the setTimeout fallback inside the sessionReady Promise body.
+    has_timeout = re.search(
+        r"sessionReady\s*=\s*new Promise[\s\S]{0,800}?setTimeout",
+        source,
+    )
+    assert has_timeout, (
+        "ZKAuth.sessionReady Promise must include a setTimeout safety net "
+        "so an unreachable /api/auth/config endpoint cannot hang the user "
+        "indefinitely. Recommended bound: 5000ms (see research synthesis "
+        "2026-05-26 — Promise.race timeout idiom)."
+    )
+
+
+def test_auth_core_emits_cache_mismatch_event():
+    """When ``browserCache.hasLoggedIn=true`` but no Supabase session was
+    restored (localStorage cleared, profile sync gap, Safari ITP), auth-core
+    must emit a structured ``zk:auth-cache-mismatch`` CustomEvent so
+    observability + future UI listeners can react. Phase-1 is event-only;
+    Phase-1.5 (after operator approval) wires the banner."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert "zk:auth-cache-mismatch" in source, (
+        "auth-core.js must dispatch a 'zk:auth-cache-mismatch' CustomEvent "
+        "when hasLoggedIn=true and !_currentSession after sessionReady "
+        "resolves — observable signal for the Gap-3 reconciliation path."
+    )
+
+
+def test_auth_core_ready_signal_preserved():
+    """Back-compat: the original ``ZKAuth.ready`` early-resolve signal must
+    still exist. Peer scripts (pricing.js, mobile auth-modal.js, auth.js)
+    use it to grab the SDK during the /api/auth/config RTT — they do NOT
+    need to wait for the session restore. sessionReady is the NEW signal
+    for the form-submit gate, not a replacement."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert re.search(r"ZKAuth\.ready\s*=\s*new Promise", source), (
+        "ZKAuth.ready must remain as the early-resolve signal for peer "
+        "scripts — must not be removed during the sessionReady split."
+    )
+    assert "__signalReady" in source, (
+        "__signalReady() must remain — init() calls it BEFORE awaiting "
+        "getSession() so peers grab the SDK during the network RTT."
     )

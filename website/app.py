@@ -502,14 +502,20 @@ def create_app(lifespan=None) -> FastAPI:
             headers={"Retry-After": "5"},
         )
 
-    # ── Prajeet 2026-05-25 §4.a: surface JWT-drop-to-anon to the client ──
-    # ``get_optional_user`` silently maps bad-JWT requests to anonymous (and
-    # downstream ``_effective_user_id`` to Zoro). The dep now tags
-    # ``request.state.auth_status``; this middleware reflects the tag onto
-    # the response as ``X-Auth-Status: jwt-dropped-to-anon`` so the frontend
-    # can force a re-auth modal instead of submitting under the wrong user.
-    # Legitimate anonymous traffic (no Authorization header) leaves the
-    # marker unset and the header absent — observability noise stays zero.
+    # ── Prajeet 2026-05-25/26: surface auth degradation to the client ──
+    # ``get_optional_user`` silently maps degraded-auth requests to anonymous
+    # (and downstream ``_effective_user_id`` to Zoro). The dep tags
+    # ``request.state.auth_status`` for two cases — this middleware reflects
+    # the tag onto the response as ``X-Auth-Status: <value>``. Legitimate
+    # anonymous traffic (no Authorization AND no Zk-Auth-Intent hint) leaves
+    # the marker unset and the header absent — observability stays silent.
+    #
+    # WWW-Authenticate is RFC 6750 ``invalid_token`` semantics — only emit
+    # when a JWT was actually sent and rejected. The
+    # ``token-missing-but-expected`` case has no token to call invalid, so
+    # the header would misdirect clients; we omit it on that branch but
+    # still set Cache-Control to prevent Cloudflare from re-serving a
+    # degraded-anon response to a different caller.
     @app.middleware("http")
     async def _auth_drop_status_header(request: Request, call_next):
         response = await call_next(request)
@@ -517,17 +523,22 @@ def create_app(lifespan=None) -> FastAPI:
             status = getattr(request.state, "auth_status", None)
         except AttributeError:
             status = None
-        if status:
-            response.headers["X-Auth-Status"] = status
-            # RFC 6750 §3: convey JWT-failure semantics to clients via
-            # WWW-Authenticate. Matches Auth0/Okta conventions.
+        if not status:
+            return response
+
+        response.headers["X-Auth-Status"] = status
+
+        if status == "jwt-dropped-to-anon":
+            # RFC 6750 §3 invalid_token semantics — JWT was sent and rejected.
             response.headers["WWW-Authenticate"] = (
                 'Bearer error="invalid_token", '
                 'error_description="JWT silently downgraded to anonymous"'
             )
-            # Cloudflare cache-security: an anon response carrying X-Auth-Status
-            # MUST NOT be cached and re-served to another caller.
-            response.headers["Cache-Control"] = "private, no-store"
+
+        # Cloudflare cache-security: an anon response carrying X-Auth-Status
+        # MUST NOT be cached and re-served to another caller. Applies to
+        # every auth_status value.
+        response.headers["Cache-Control"] = "private, no-store"
         return response
 
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──

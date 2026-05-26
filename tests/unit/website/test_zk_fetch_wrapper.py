@@ -5,6 +5,7 @@ public surface, the header inclusion, the SW bypass, and the PWA cache
 version bump. End-to-end browser behavior is pinned by the Playwright suite
 in Task H (mocks X-Auth-Status + 401 round-trip).
 """
+
 from __future__ import annotations
 
 import re
@@ -118,4 +119,68 @@ def test_sw_still_bypasses_api():
     assert "url.pathname.startsWith('/api/')" in src, (
         "sw.js must still bypass /api/ — without this, the SW would cache the "
         "X-Auth-Status header and serve it stale to other users."
+    )
+
+
+# ── Post-Prajeet 2026-05-26 race fix + Zk-Auth-Intent hint ────────────────
+
+
+def test_zk_fetch_awaits_session_ready():
+    """zkFetch must ``await window.ZKAuth.sessionReady`` before reading the
+    caller's Authorization-header logic. Without this, a click in the
+    100–800ms auth-restore window submits with no Bearer and the backend
+    silently drops the request to Zoro (the 2026-05-26 03:41 UTC Prajeet
+    stranding)."""
+    src = ZK_FETCH.read_text(encoding="utf-8")
+    assert "ZKAuth.sessionReady" in src, (
+        "zk_fetch.js must await window.ZKAuth.sessionReady at wrapper entry "
+        "so the form-submit race against auth-restore is closed at the "
+        "single integration point (rather than each call site)."
+    )
+    # Must appear BEFORE the first origFetch call so the await blocks the
+    # network round-trip, not just the post-response handling.
+    await_idx = src.find("ZKAuth.sessionReady")
+    fetch_idx = src.find("await origFetch")
+    assert 0 <= await_idx < fetch_idx, (
+        f"sessionReady await must precede origFetch call "
+        f"(await at {await_idx}, origFetch at {fetch_idx})"
+    )
+
+
+def test_zk_fetch_emits_zk_auth_intent_hint():
+    """When browserCache.hasLoggedIn=true AND no Authorization is being
+    attached, the wrapper must add ``Zk-Auth-Intent: bearer`` so the
+    backend's get_optional_user surfaces ``X-Auth-Status:
+    token-missing-but-expected``. RFC 6648-compliant naming (no X- prefix
+    on the request header)."""
+    src = ZK_FETCH.read_text(encoding="utf-8")
+    assert "Zk-Auth-Intent" in src, (
+        "zk_fetch.js must emit the Zk-Auth-Intent: bearer hint when "
+        "hasLoggedIn=true and Authorization is absent. RFC 6648 says new "
+        "headers should not use the X- prefix."
+    )
+    # The hint must be gated on hasLoggedIn — otherwise legitimate anon
+    # traffic floods the backend with token-missing-but-expected logs.
+    assert "hasLoggedIn" in src, (
+        "Zk-Auth-Intent emission must be gated on browserCache.hasLoggedIn — "
+        "without this guard, every anonymous visitor would trip the "
+        "backend's token-missing observability path and flood the logs."
+    )
+
+
+def test_zk_fetch_hint_only_when_authorization_absent():
+    """Belt-and-braces: the wrapper must NOT add Zk-Auth-Intent when the
+    caller already attached an Authorization header — the JWT path wins
+    and any hint would be misleading."""
+    src = ZK_FETCH.read_text(encoding="utf-8")
+    # Look for the guard pattern: !hdrs.has('Authorization') OR equivalent.
+    has_guard = (
+        "!hintHeaders.has('Authorization')" in src
+        or '!hintHeaders.has("Authorization")' in src
+        or "!headers.has('Authorization')" in src
+    )
+    assert has_guard, (
+        "Zk-Auth-Intent emission must be guarded by a "
+        "!headers.has('Authorization') check so the hint never accompanies "
+        "a real Bearer token."
     )

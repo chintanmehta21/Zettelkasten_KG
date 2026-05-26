@@ -192,10 +192,12 @@
       var config = await resp.json();
       if (!config.supabase_url || !config.supabase_anon_key) {
         // No config = no auth. Subscribers still get a synthetic SIGNED_OUT
-        // so they can hide their sign-in chrome cleanly.
+        // so they can hide their sign-in chrome cleanly. Both ready signals
+        // resolve immediately so callers awaiting either don't hang.
         emit('SIGNED_OUT', null);
-        if (window.ZKAuth && typeof window.ZKAuth.__signalReady === 'function') {
-          window.ZKAuth.__signalReady();
+        if (window.ZKAuth) {
+          if (typeof window.ZKAuth.__signalReady === 'function') window.ZKAuth.__signalReady();
+          if (typeof window.ZKAuth.__signalSessionReady === 'function') window.ZKAuth.__signalSessionReady();
         }
         return;
       }
@@ -208,17 +210,52 @@
         handleCoreSession(event, session);
       });
 
-      // Signal ready BEFORE awaiting getSession so peers (pricing.js,
-      // mobile auth-modal) can grab the client during the network round-trip
+      // Signal `ready` BEFORE awaiting getSession so peers (pricing.js,
+      // mobile auth-modal) can grab the SDK during the network round-trip
       // — they'll receive the initial RESTORE event via the subscription.
+      // `sessionReady` is the LATE signal — resolved after the RESTORE has
+      // populated _currentSession (so window.getAuthToken() returns the
+      // real token, not the brief null window).
       if (window.ZKAuth && typeof window.ZKAuth.__signalReady === 'function') {
         window.ZKAuth.__signalReady();
       }
 
       var result = await _supabaseClient.auth.getSession();
       handleCoreSession('RESTORE', result.data.session);
+
+      // sessionReady resolves AFTER _currentSession is populated so
+      // downstream callers (zk_fetch.js) can await it before reading
+      // window.getAuthToken(). Kills the page-load → form-submit race that
+      // produced the Prajeet stranding 2026-05-26 03:41 UTC (Race 1/2/4).
+      if (window.ZKAuth && typeof window.ZKAuth.__signalSessionReady === 'function') {
+        window.ZKAuth.__signalSessionReady();
+      }
+
+      // Gap-3 reconciliation: browserCache says "previously signed in" but
+      // no Supabase session restored — most likely cause is localStorage
+      // 'zk-auth-token' cleared (profile sync, Safari ITP, manual clear)
+      // while hasLoggedIn survived. Emit a structured event so observability
+      // and future UI listeners can react. Phase-1 = event-only, no banner.
+      try {
+        var cache = getCacheState();
+        if (cache && cache.hasLoggedIn && !_currentSession) {
+          console.warn('[auth-core] auth-cache mismatch: hasLoggedIn=true but no Supabase session restored');
+          window.dispatchEvent(new CustomEvent('zk:auth-cache-mismatch', {
+            detail: { hasLoggedIn: true, hasSession: false, at: Date.now() }
+          }));
+        }
+      } catch (mismatch_err) {
+        // CustomEvent ctor unavailable on very old browsers; non-fatal.
+        console.debug('[auth-core] cache-mismatch dispatch failed:', mismatch_err);
+      }
     } catch (err) {
       console.error('[auth-core] Init failed:', err);
+      // Even on init failure, resolve sessionReady (to anon) so awaiters
+      // proceed rather than hang forever. The 5s timeout in the Public API
+      // section below is the secondary safety net.
+      if (window.ZKAuth && typeof window.ZKAuth.__signalSessionReady === 'function') {
+        window.ZKAuth.__signalSessionReady();
+      }
     }
   }
 
@@ -274,8 +311,31 @@
   // ---- Public API ----
 
   var _readyResolve;
+  var _sessionReadyResolve;
   window.ZKAuth = window.ZKAuth || {};
+  // `ready` (existing API): resolves after createSupabaseClient — peer
+  // scripts (pricing.js, mobile auth-modal.js, auth.js dropdown wiring)
+  // grab the supabase SDK synchronously here without waiting for the
+  // getSession() RTT. DO NOT add late-resolution semantics — that's what
+  // sessionReady is for.
   window.ZKAuth.ready = new Promise(function (resolve) { _readyResolve = resolve; });
+  // `sessionReady` (post-Prajeet 2026-05-26): resolves AFTER the initial
+  // RESTORE event populates _currentSession. Form-submission paths that
+  // read window.getAuthToken() MUST await this; otherwise a click in the
+  // 100–800ms restoration window yields null and the request silently
+  // drops to anonymous (the Prajeet 03:41 UTC stranding). 5s timeout below
+  // is the safety net for /api/auth/config / supabase CDN outage so
+  // submissions degrade to anon rather than hang the user.
+  window.ZKAuth.sessionReady = new Promise(function (resolve) {
+    _sessionReadyResolve = resolve;
+    setTimeout(function () {
+      if (_sessionReadyResolve) {
+        console.warn('[auth-core] sessionReady timed out after 5s; falling through to anonymous');
+        var r = _sessionReadyResolve; _sessionReadyResolve = null;
+        r(null);
+      }
+    }, 5000);
+  });
   window.ZKAuth.getClient = function () { return _supabaseClient; };
   window.ZKAuth.getSession = function () { return _currentSession; };
   window.ZKAuth.signOut = signOut;
@@ -297,6 +357,12 @@
   };
   window.ZKAuth.__signalReady = function () {
     if (_readyResolve) { _readyResolve(_supabaseClient); _readyResolve = null; }
+  };
+  window.ZKAuth.__signalSessionReady = function () {
+    if (_sessionReadyResolve) {
+      var r = _sessionReadyResolve; _sessionReadyResolve = null;
+      r(_currentSession);
+    }
   };
 
   // Helpers that auth.js (DOM layer) and tests still need to share.

@@ -169,7 +169,41 @@
 
   // ── Wrapper ────────────────────────────────────────────────────────────
   async function zkFetch(input, init) {
-    var res = await origFetch(input, init);
+    // Phase-1 auth-race fix (post-Prajeet 2026-05-26 03:41 UTC stranding):
+    // wait for the initial RESTORE event to populate _currentSession before
+    // letting the caller's Authorization-header logic run. Without this,
+    // a click in the 100–800ms restoration window emits a request with no
+    // Bearer; backend treats it as legit-anon and data lands under Zoro.
+    // sessionReady is bounded by a 5s timeout inside auth-core.js so this
+    // never hangs (degrades to anon on /api/auth/config outage).
+    if (window.ZKAuth && window.ZKAuth.sessionReady) {
+      try { await window.ZKAuth.sessionReady; } catch (_) { /* always resolves */ }
+    }
+
+    // Phase-1 observability hint (RFC 6648-compliant — no `X-` prefix; mirror
+    // the X-Auth-Status response pipeline). When browserCache.hasLoggedIn=true
+    // AND the caller did not attach an Authorization header, tag the request
+    // so the backend's get_optional_user can surface
+    // `X-Auth-Status: token-missing-but-expected`. NEVER emitted on
+    // intentionally-anonymous traffic — no hasLoggedIn flag = no hint.
+    // Spoofing is harmless: this header drives observability only, not auth.
+    var effectiveInit = init;
+    try {
+      var state = (window.browserCache && typeof window.browserCache.getState === 'function')
+        ? window.browserCache.getState() : null;
+      if (state && state.hasLoggedIn === true) {
+        var hintHeaders = new Headers((init && init.headers) || {});
+        if (!hintHeaders.has('Authorization')) {
+          hintHeaders.set('Zk-Auth-Intent', 'bearer');
+          effectiveInit = Object.assign({}, init || {}, { headers: hintHeaders });
+        }
+      }
+    } catch (_) {
+      // browserCache read failed — fall through with the original init.
+      // Request still goes through; observability degrades to log-only.
+    }
+
+    var res = await origFetch(input, effectiveInit);
 
     if (res.headers.get('X-Auth-Status') === 'jwt-dropped-to-anon') {
       broadcastAndShow('downgraded');
