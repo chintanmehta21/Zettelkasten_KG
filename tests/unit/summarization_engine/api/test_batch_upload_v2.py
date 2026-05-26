@@ -63,3 +63,28 @@ def test_batch_upload_v2_accepts_within_cap(batch_client):
     # didn't reject. Any non-413 status from a successful processor invocation
     # is acceptable for this test's purpose.
     assert response.status_code != 413
+
+
+def test_batch_upload_v2_rejects_burst_with_429(batch_client, monkeypatch):
+    """Per-(user, ip) sliding-window limit must 429 a burst from one tenant.
+    Default cap is 5/min (batches are heavier than single docs); the 6th
+    request inside one minute must be rejected.
+    """
+    # Reset the shared limiter so prior tests don't leak state.
+    import website.features.summarization_engine.api.routes as routes_mod
+    routes_mod._BATCH_UPLOAD_LIMITER = type(routes_mod._BATCH_UPLOAD_LIMITER)(
+        limit=5, window_seconds=60
+    )
+
+    small = b'[{"url":"https://example.com/a"}]'
+    statuses: list[int] = []
+    for _ in range(6):
+        resp = batch_client.post(
+            "/api/v2/batch/upload",
+            files={"file": ("small.json", small, "application/json")},
+        )
+        statuses.append(resp.status_code)
+
+    # First 5 must not be 429; 6th must be 429.
+    assert all(s != 429 for s in statuses[:5]), f"first 5 should pass; got {statuses}"
+    assert statuses[5] == 429, f"6th call must 429; got {statuses[5]}"

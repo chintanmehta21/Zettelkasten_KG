@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from website.api._problem import _problem_dict
 from website.api.auth import get_optional_user
+from website.features.functional_gates.upload_rate_limit import UploadRateLimiter
 from website.features.api_key_switching.key_pool import (
     GeminiKeyPool,
     _load_keys_from_file,
@@ -30,6 +31,12 @@ router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
 # a single large POST. App-level guard pairs with Caddy edge enforcement at
 # ops/caddy/Caddyfile (request_body max_size). Both layers must agree.
 _MAX_BATCH_UPLOAD_BYTES = 10 * 1024 * 1024
+
+# Per-(user, ip) sliding-window limiter — batches are heavier than single
+# uploads, so cap is tighter (5/min vs the hand-rolled 10/min in
+# zettels_routes). Shared across worker calls via module-level instance;
+# blue/green flip drops the window, which is acceptable for one-minute scope.
+_BATCH_UPLOAD_LIMITER = UploadRateLimiter(limit=5, window_seconds=60)
 
 
 @router.post("/summarize")
@@ -104,9 +111,27 @@ async def batch_v2(
 
 @router.post("/batch/upload")
 async def batch_upload_v2(
+    request: Request,
     file: UploadFile,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
+    user_id = _user_id(user)
+    ip = request.client.host if request.client else "unknown"
+    if not _BATCH_UPLOAD_LIMITER.allow(str(user_id), ip):
+        body = _problem_dict(
+            status_code=429,
+            title="Too many batch uploads",
+            detail="Wait a minute before uploading another batch.",
+            type_slug="batch-upload-rate-limited",
+            instance="/api/v2/batch/upload",
+        )
+        return JSONResponse(
+            body,
+            status_code=429,
+            media_type="application/problem+json",
+            headers={"Retry-After": "60"},
+        )
+
     # Read one byte past the cap so we can distinguish "exactly N" from
     # "more than N" without buffering attacker-controlled gigabytes.
     contents = await file.read(_MAX_BATCH_UPLOAD_BYTES + 1)
@@ -121,7 +146,7 @@ async def batch_upload_v2(
         return JSONResponse(
             body, status_code=413, media_type="application/problem+json"
         )
-    processor = BatchProcessor(user_id=_user_id(user), gemini_client=_gemini_client())
+    processor = BatchProcessor(user_id=user_id, gemini_client=_gemini_client())
     return await processor.run(input_bytes=contents, filename=file.filename or "upload.csv")
 
 
