@@ -25,6 +25,16 @@ from website.features.summarization_engine.source_ingest.utils import compact_te
 SUPPORTED_EXTENSIONS = frozenset({".pdf", ".txt", ".md", ".markdown", ".docx"})
 MAX_EXTRACTED_CHARS = 180_000
 
+# Zip-bomb guard: cap the decompressed size of word/document.xml extracted
+# from a user-uploaded DOCX. Realistic DOCX text payloads are <5 MB; 50 MB
+# is ~10x headroom while keeping the 2 GB droplet safe from OOM on a single
+# upload. Python zipfile has no built-in cap (cpython #109858), so the
+# caller is responsible. Two-layer defense: (1) refuse upfront when central-
+# directory declared size already exceeds the cap; (2) stream chunked reads
+# so a forged header that lies about size still fails fast.
+MAX_DOCX_DECOMPRESSED_BYTES = 50 * 1024 * 1024
+_DOCX_READ_CHUNK = 64 * 1024
+
 
 class DocumentUploadError(ValueError):
     """Raised when an uploaded document cannot be accepted or extracted."""
@@ -74,8 +84,27 @@ def _extract_docx(data: bytes) -> tuple[str, dict[str, Any]]:
     except zipfile.BadZipFile as exc:
         raise DocumentUploadError("DOCX file is not a valid Office document.") from exc
 
+    # Pre-check: refuse upfront if the central-directory declares a total
+    # decompressed size beyond cap. Fast-reject for stated-size bombs; the
+    # streaming read below catches forged-header bombs.
+    total_declared = sum(zi.file_size for zi in archive.infolist())
+    if total_declared > MAX_DOCX_DECOMPRESSED_BYTES:
+        raise DocumentUploadError(
+            "DOCX file decompresses too large; refuse to extract."
+        )
+
     try:
-        document_xml = archive.read("word/document.xml")
+        with archive.open("word/document.xml") as fh:
+            chunks: list[bytes] = []
+            total = 0
+            while chunk := fh.read(_DOCX_READ_CHUNK):
+                total += len(chunk)
+                if total > MAX_DOCX_DECOMPRESSED_BYTES:
+                    raise DocumentUploadError(
+                        "DOCX document.xml decompresses too large; refuse to extract."
+                    )
+                chunks.append(chunk)
+            document_xml = b"".join(chunks)
     except KeyError as exc:
         raise DocumentUploadError("DOCX file is missing document text.") from exc
 

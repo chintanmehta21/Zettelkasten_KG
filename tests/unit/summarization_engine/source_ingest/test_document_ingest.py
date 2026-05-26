@@ -104,6 +104,36 @@ def test_extract_docx_rejects_internal_entity_expansion():
         )
 
 
+def test_extract_docx_rejects_zip_bomb_declared_size():
+    """Zip-bomb guard: a DOCX whose declared decompressed size exceeds the
+    50 MB cap must be rejected before extraction. The 2 GB droplet OOMs at
+    ~1.8 GB RSS; we cap DOCX decompression at 50 MB (5x headroom on realistic
+    DOCX uncompressed size of ~10 MB) so a single malicious upload cannot
+    blow worker memory.
+
+    This test builds a DOCX where ``word/document.xml`` decompressed is
+    > 50 MB. text compresses ~1000:1 so the on-wire bytes stay tiny — exactly
+    the zip-bomb shape (small compressed, huge declared expansion).
+    """
+    # 60 MB of repeating text — compresses to a few KB but expands past the cap.
+    bomb_payload = "A" * (60 * 1024 * 1024)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body><w:p><w:r><w:t>{bomb_payload}</w:t></w:r></w:p></w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+
+    with pytest.raises(DocumentUploadError, match="too large"):
+        extract_document_upload(
+            filename="bomb.docx",
+            content=buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+
+
 def test_extract_docx_rejects_external_entity():
     """XXE guard: a DOCX referencing an external SYSTEM entity must be
     rejected (defusedxml's forbid_external=True), not silently expanded into
