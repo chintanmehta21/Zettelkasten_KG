@@ -882,6 +882,10 @@ async def tier_metadata_only(video_id: str, config: dict) -> TierResult:
 
     if not description:
         try:
+            # Trusted-host bypass: `url` here is the YouTube watch URL the
+            # extractor already routed via the YouTube source type, so the
+            # host is a youtube.com / youtu.be variant. See SSRF audit
+            # 2026-05-26.
             async with httpx.AsyncClient(
                 timeout=10.0,
                 follow_redirects=True,
