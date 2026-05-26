@@ -19,6 +19,21 @@ zettelkasten.in {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "geolocation=(), camera=(), microphone=()"
+        # CSP report-only — observe violations without breaking pages. Once the
+        # report stream is quiet for a week + we resolve every legit violation
+        # (inline scripts in callback.html, KG visualizer DOM sinks, summary
+        # renderer HTML insertion), flip to enforcing Content-Security-Policy.
+        # Research basis: synthesis 2026-05-26 R3 — "strict CSP is the real XSS
+        # defense; storage choice is secondary." Violations POST to
+        # /api/csp-report (see website/api/routes.py).
+        # TODO(auth-audit follow-up): replace 'unsafe-inline' on script-src +
+        # style-src with per-request nonce/hash injection in templates; biggest
+        # inline-script holdouts are callback.html + static/index.html.
+        # Reporting-Endpoints header pairs with `report-to` directive — modern
+        # Chrome 96+ prefers it over `report-uri`. Both kept for browser parity
+        # (Firefox + Safari still on the legacy `report-uri`).
+        Reporting-Endpoints "csp-endpoint=\"/api/csp-report\""
+        Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://accounts.google.com https://lumberjack.razorpay.com https://api.razorpay.com https://fonts.googleapis.com https://cloudflareinsights.com; frame-src 'self' https://api.razorpay.com https://accounts.google.com; form-action 'self' https://api.razorpay.com; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp-endpoint"
         # Remove the default Server: Caddy banner
         -Server
     }
