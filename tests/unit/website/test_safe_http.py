@@ -9,13 +9,11 @@ allowlist before the next hop is followed.
 
 from __future__ import annotations
 
-import httpx
 import pytest
 import respx
 
 from website.core.safe_http import (
     MAX_REDIRECT_HOPS,
-    DEFAULT_MAX_RESPONSE_BYTES,
     RedirectLoopError,
     ResponseTooLargeError,
     UnsafeRedirectError,

@@ -7,8 +7,6 @@ Limit is configurable per route; default is sized for batches (5/min).
 
 from __future__ import annotations
 
-import pytest
-
 from website.features.functional_gates.upload_rate_limit import (
     UploadRateLimiter,
 )

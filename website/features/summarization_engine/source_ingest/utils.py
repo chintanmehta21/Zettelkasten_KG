@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-import httpx
 from bs4 import BeautifulSoup
 
 from website.core.safe_http import safe_request
