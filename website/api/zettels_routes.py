@@ -210,6 +210,28 @@ def _effective_user_id(user: dict | None) -> UUID:
     return _zoro_user_id()
 
 
+def _compute_auth_intent(request: Request, user: dict | None) -> str:
+    """Classify the request's auth state for forensic persistence in
+    ``core.operations.response.auth_intent`` (Phase 1.5 Item 4).
+
+    Mirrors ``request.state.auth_status`` set by ``get_optional_user``;
+    falls back to ``'ok'`` for authenticated requests and ``'anon'`` for
+    legit-anon (no token AND no Zk-Auth-Intent hint AND no SPA heuristic
+    match). Query via ``SELECT response->>'auth_intent' FROM core.operations``
+    to slice failed/succeeded ops by the auth pathway that produced them —
+    catches stranded captures the way the 2026-05-26 03:41 UTC Prajeet
+    incident was caught by hand.
+    """
+    auth_status = getattr(request.state, "auth_status", None)
+    if auth_status:
+        # auth_status carries one of: jwt-dropped-to-anon,
+        # token-missing-but-expected, spa-inferred — pass through verbatim.
+        return str(auth_status)
+    if user:
+        return "ok"
+    return "anon"
+
+
 _gemini_client = default_gemini_client
 
 
@@ -489,6 +511,7 @@ async def _run(
     pipeline: Callable[[], Awaitable[dict[str, Any]]],
     persist_requested: bool,
     url: str | None = None,
+    auth_intent: str | None = None,
 ) -> None:
     """Pipeline-agnostic background worker coroutine (ADR-3).
 
@@ -530,6 +553,8 @@ async def _run(
             persist_requested=persist_requested,
             url=url,
         )
+        if auth_intent:
+            failed_body["auth_intent"] = auth_intent
         try:
             await asyncio.to_thread(
                 operations_repo.finalize,
@@ -575,6 +600,8 @@ async def _run(
             persist_requested=persist_requested,
             url=url,
         )
+        if auth_intent:
+            failed_body["auth_intent"] = auth_intent
         try:
             await asyncio.to_thread(
                 operations_repo.finalize,
@@ -597,6 +624,8 @@ async def _run(
     # actually polling so the terminal body matches the operations row.
     if isinstance(result, dict):
         result["operation_id"] = operation_id
+        if auth_intent:
+            result["auth_intent"] = auth_intent
     try:
         await asyncio.to_thread(
             operations_repo.finalize,
@@ -712,6 +741,11 @@ async def add_zettel(
             # Spawn the background worker holding the canonical op id.
             # _LIVE_TASKS is the strong-ref + cancel target for the local
             # process; the DB row is the cross-worker truth.
+            #
+            # auth_intent captured BEFORE the background task spawns —
+            # request.state lifetime ends with the 202 ack, so _run cannot
+            # read it directly. Persisted into core.operations.response
+            # JSONB for post-hoc forensic queries (Phase 1.5 Item 4).
             run_task = asyncio.create_task(
                 _run(
                     user_id=effective_user_id,
@@ -721,6 +755,7 @@ async def add_zettel(
                     ),
                     persist_requested=body.persist,
                     url=body.url,
+                    auth_intent=_compute_auth_intent(request, user),
                 )
             )
             _LIVE_TASKS[canonical_op_id] = run_task
@@ -814,6 +849,7 @@ async def _accept_and_spawn(
     persist: bool,
     pipeline: Callable[[], Awaitable[dict[str, Any]]],
     url: str | None = None,
+    auth_intent: str | None = None,
 ) -> JSONResponse:
     """Shared async-ops accept path (ADR-3) for URL / document / v2-summarize.
 
@@ -868,6 +904,7 @@ async def _accept_and_spawn(
                 pipeline=pipeline,
                 persist_requested=persist,
                 url=url,
+                auth_intent=auth_intent,
             )
         )
         _LIVE_TASKS[canonical_op_id] = run_task
@@ -967,6 +1004,7 @@ async def add_zettel_document(
             user=user,
             effective_user_id=effective_user_id,
         ),
+        auth_intent=_compute_auth_intent(request, user),
     )
 
 

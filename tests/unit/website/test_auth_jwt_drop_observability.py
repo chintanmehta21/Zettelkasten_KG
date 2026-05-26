@@ -483,3 +483,78 @@ def test_spa_inferred_response_has_no_www_authenticate(_secret) -> None:
     assert resp.headers.get("X-Auth-Status") == "spa-inferred"
     assert "WWW-Authenticate" not in resp.headers
     assert resp.headers.get("Cache-Control") == "private, no-store"
+
+
+# ── 7. _compute_auth_intent helper (persistence into core.operations) ─────
+
+
+class _FakeRequest:
+    """Minimal Request stub for _compute_auth_intent unit tests — only the
+    ``state`` attribute matters."""
+
+    class _State:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    def __init__(self, auth_status: str | None = None):
+        self.state = self._State()
+        if auth_status is not None:
+            self.state.auth_status = auth_status
+
+
+def test_compute_auth_intent_returns_ok_for_authenticated_request() -> None:
+    """Authenticated request (user dict present, no auth_status tag) →
+    persisted ``auth_intent='ok'`` so we can grep succeeded ops by the
+    legit-authenticated pathway."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    user = {"sub": "550e8400-e29b-41d4-a716-446655440000", "email": "u@x.com"}
+    assert _compute_auth_intent(_FakeRequest(), user) == "ok"
+
+
+def test_compute_auth_intent_returns_anon_for_legit_anonymous() -> None:
+    """No user, no auth_status tag → persisted ``auth_intent='anon'``.
+    Distinguishes intentional anonymous visitors from degraded-auth cases."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    assert _compute_auth_intent(_FakeRequest(), None) == "anon"
+
+
+def test_compute_auth_intent_passes_through_auth_status_token_missing() -> None:
+    """``token-missing-but-expected`` tag set by get_optional_user (client
+    sent Zk-Auth-Intent hint) must persist verbatim as auth_intent so
+    forensic queries can join the request to its observability tier."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    req = _FakeRequest(auth_status="token-missing-but-expected")
+    assert _compute_auth_intent(req, None) == "token-missing-but-expected"
+
+
+def test_compute_auth_intent_passes_through_jwt_dropped() -> None:
+    """``jwt-dropped-to-anon`` tag (JWT sent but rejected) persists too —
+    distinguishes JWT-invalid from token-missing in the operations log."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    req = _FakeRequest(auth_status="jwt-dropped-to-anon")
+    assert _compute_auth_intent(req, None) == "jwt-dropped-to-anon"
+
+
+def test_compute_auth_intent_passes_through_spa_inferred() -> None:
+    """``spa-inferred`` tag (server-side heuristic) persists too —
+    lower-confidence than the explicit hint but still queryable."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    req = _FakeRequest(auth_status="spa-inferred")
+    assert _compute_auth_intent(req, None) == "spa-inferred"
+
+
+def test_compute_auth_intent_auth_status_wins_over_user() -> None:
+    """If somehow BOTH user is present AND auth_status is tagged (defensive
+    case — shouldn't happen in practice), prefer the tag so we don't lose
+    the forensic signal. auth_status semantics are stronger than presence."""
+    from website.api.zettels_routes import _compute_auth_intent
+
+    user = {"sub": "550e8400-e29b-41d4-a716-446655440000"}
+    req = _FakeRequest(auth_status="token-missing-but-expected")
+    assert _compute_auth_intent(req, user) == "token-missing-but-expected"
