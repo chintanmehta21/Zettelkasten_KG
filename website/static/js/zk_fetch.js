@@ -35,6 +35,10 @@
   var BANNER_ID = 'zk-reauth-banner';
   var BANNER_STYLE_ID = 'zk-reauth-banner-style';
   var BC_NAME = 'zk-auth';
+  // storage-event fallback key for legacy iOS Safari (<15.4) that lacks
+  // BroadcastChannel. Pattern: setItem + immediate removeItem fires the
+  // event in OTHER tabs without polluting storage.
+  var STORAGE_BROADCAST_KEY = 'zk-auth-broadcast';
 
   var origFetch = window.fetch.bind(window);
   var refreshInFlight = null;
@@ -93,18 +97,28 @@
   }
 
   // ── Cross-tab fan-out ──────────────────────────────────────────────────
-  if (channel) {
-    channel.addEventListener('message', function (e) {
-      if (!e.data || typeof e.data !== 'object') return;
-      if (e.data.type === 'downgraded' || e.data.type === 'expired') {
-        showBanner(e.data.type);
-        window.dispatchEvent(new CustomEvent(
-          e.data.type === 'expired' ? 'zk:auth-expired' : 'zk:auth-downgraded',
-          { detail: e.data }
-        ));
-      }
-    });
+  function applyBroadcast(data) {
+    if (!data || typeof data !== 'object') return;
+    if (data.type !== 'downgraded' && data.type !== 'expired') return;
+    showBanner(data.type);
+    window.dispatchEvent(new CustomEvent(
+      data.type === 'expired' ? 'zk:auth-expired' : 'zk:auth-downgraded',
+      { detail: data }
+    ));
   }
+
+  if (channel) {
+    channel.addEventListener('message', function (e) { applyBroadcast(e.data); });
+  }
+
+  // Storage-event fallback for iOS Safari <15.4 (no BroadcastChannel). The
+  // 'storage' event only fires in OTHER tabs, so a write+remove of the same
+  // key in the originating tab is invisible there but propagates everywhere
+  // else. Belt + braces alongside BroadcastChannel on modern browsers.
+  window.addEventListener('storage', function (e) {
+    if (e.key !== STORAGE_BROADCAST_KEY || !e.newValue) return;
+    try { applyBroadcast(JSON.parse(e.newValue)); } catch (_) {}
+  });
 
   function broadcastAndShow(type) {
     showBanner(type);
@@ -116,6 +130,16 @@
     if (channel) {
       try { channel.postMessage(detail); } catch (_) {}
     }
+    // Storage-event fan-out for tabs without BroadcastChannel support.
+    // Race-tolerant: only remove if our payload is still the current value,
+    // so a parallel broadcast from another tab isn't silently overwritten.
+    try {
+      var payload = JSON.stringify(detail);
+      localStorage.setItem(STORAGE_BROADCAST_KEY, payload);
+      if (localStorage.getItem(STORAGE_BROADCAST_KEY) === payload) {
+        localStorage.removeItem(STORAGE_BROADCAST_KEY);
+      }
+    } catch (_) {}
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────

@@ -240,7 +240,7 @@ def _render_with_mobile_shell(
     auth_block = (
         oauth_modal
         + '\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106" crossorigin></script>'
-        + '\n<script src="/auth/js/auth-core.js?v=20260526a"></script>'
+        + '\n<script src="/auth/js/auth-core.js?v=20260526b"></script>'
         + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
         + '\n<script src="/m/js/avatar.js?v=20260525a"></script>'
     )
