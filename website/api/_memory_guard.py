@@ -9,17 +9,25 @@ Path exemptions: /api/health, /api/admin/*, /favicon.*.
 These probes/ops paths must always work, even under pressure.
 
 Set RAG_MEMORY_GUARD_THRESHOLD_PERCENT=0 to disable entirely (tests/dev).
+
+Pure-ASGI MemoryGuardMiddleware replaces the prior BaseHTTPMiddleware
+decorator in PR #115 (Scope C) per encode/starlette#1438.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from pathlib import Path
+from typing import Awaitable, Callable
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
 logger = logging.getLogger("website.api._memory_guard")
+
+_ASGISend = Callable[[dict], Awaitable[None]]
+_ASGIReceive = Callable[[], Awaitable[dict]]
+_ASGIApp = Callable[[dict, _ASGIReceive, _ASGISend], Awaitable[None]]
 
 _CGROUP_V2_MEM_MAX = Path("/sys/fs/cgroup/memory.max")
 _CGROUP_V1_MEM_MAX = Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
@@ -78,32 +86,64 @@ def _threshold_percent() -> int:
         return _DEFAULT_THRESHOLD_PERCENT
 
 
-def install(app: FastAPI) -> None:
-    """Register the middleware on ``app``."""
+class MemoryGuardMiddleware:
+    """Pure-ASGI RSS-guard. Pre-dispatch RSS check; short-circuits with a
+    synthetic 503 + Retry-After: 5 if VmRSS / cgroup-mem-max exceeds the
+    configured percentage. Exempt prefixes pass through unconditionally.
+    """
 
-    @app.middleware("http")
-    async def _memory_guard_middleware(request: Request, call_next):
+    def __init__(self, app: _ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(
+        self, scope: dict, receive: _ASGIReceive, send: _ASGISend
+    ) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
         threshold = _threshold_percent()
         if threshold <= 0:
-            return await call_next(request)
-        path = request.url.path
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path", "")
         if any(path.startswith(prefix) for prefix in _EXEMPT_PREFIXES):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
         mem_max = _detect_mem_max()
         if mem_max <= 0:
-            # Cannot determine bound — guard self-disables to avoid blocking prod.
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
         rss = _read_vm_rss_bytes()
         if rss <= 0:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
         if rss * 100 >= mem_max * threshold:
             logger.warning(
                 "memory pressure shedding: rss=%d mem_max=%d threshold_pct=%d path=%s",
                 rss, mem_max, threshold, path,
             )
-            return JSONResponse(
-                {"error": "server_under_memory_pressure", "retry_after_seconds": 5},
-                status_code=503,
-                headers={"Retry-After": "5"},
+            body = json.dumps(
+                {"error": "server_under_memory_pressure", "retry_after_seconds": 5}
+            ).encode("utf-8")
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 503,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode("latin-1")),
+                        (b"retry-after", b"5"),
+                    ],
+                }
             )
-        return await call_next(request)
+            await send({"type": "http.response.body", "body": body})
+            return
+        await self.app(scope, receive, send)
+
+
+def install(app: FastAPI) -> None:
+    """Register MemoryGuardMiddleware on ``app``. Kept as a thin wrapper so
+    callers don't have to know the middleware class — but new code should
+    prefer ``app.add_middleware(MemoryGuardMiddleware)`` directly.
+    """
+    app.add_middleware(MemoryGuardMiddleware)

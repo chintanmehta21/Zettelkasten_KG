@@ -28,11 +28,7 @@ from website.api.zettels_routes import router as zettels_router
 from website.features.refresh_button.refresh_routes import router as refresh_button_router
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
-from website.features.web_monitor import (
-    _hash_id,
-    maybe_fire_app_error_rate,
-    router as web_monitor_router,
-)
+from website.features.web_monitor import router as web_monitor_router
 from website.features.web_monitor.App_Errors import notify_app_error
 from website.features.web_monitor._env_validation import (
     log_web_monitor_env_warnings,
@@ -463,29 +459,14 @@ def create_app(lifespan=None) -> FastAPI:
     # (ONNX internal buffers, Gemini/Supabase httpx body buffers, glibc
     # arena freelist). Exempts /api/health* and /favicon.* so cheap probes
     # don't pay the trim cost. Safe on non-glibc platforms (no-op).
-    from website.api._mem_release import aggressive_release as _aggressive_release
-
-    _RELEASE_EXEMPT_PREFIXES = (
-        "/api/health",
-        "/favicon.",
+    # PR #115 (Scope C): pure-ASGI — `await self.app(...)` only returns
+    # after body drain, so the prior 50ms `call_later` workaround for the
+    # h11 Content-Length race is no longer needed.
+    from website.api._middleware import PostResponseReleaseMiddleware
+    app.add_middleware(
+        PostResponseReleaseMiddleware,
+        exempt_prefixes=("/api/health", "/favicon."),
     )
-
-    @app.middleware("http")
-    async def _post_response_release(request: Request, call_next):
-        response = await call_next(request)
-        path = request.url.path
-        if not any(path.startswith(p) for p in _RELEASE_EXEMPT_PREFIXES):
-            # Defer release to next event-loop tick so gc/malloc_trim runs
-            # AFTER body chunks are drained — see encode/starlette#1438.
-            try:
-                import asyncio
-                asyncio.get_running_loop().call_later(0.05, _aggressive_release)
-            except RuntimeError:
-                try:
-                    _aggressive_release()
-                except Exception:  # noqa: BLE001
-                    logger.exception("post-response release failed")
-        return response
 
     # iter-03 §B (2026-04-29): convert intra-request stage-2 memory pressure
     # to a clean 503 with Retry-After. The middleware above only sees RSS at
@@ -511,41 +492,13 @@ def create_app(lifespan=None) -> FastAPI:
     # ── Prajeet 2026-05-25/26: surface auth degradation to the client ──
     # ``get_optional_user`` silently maps degraded-auth requests to anonymous
     # (and downstream ``_effective_user_id`` to Zoro). The dep tags
-    # ``request.state.auth_status`` for two cases — this middleware reflects
-    # the tag onto the response as ``X-Auth-Status: <value>``. Legitimate
-    # anonymous traffic (no Authorization AND no Zk-Auth-Intent hint) leaves
-    # the marker unset and the header absent — observability stays silent.
-    #
-    # WWW-Authenticate is RFC 6750 ``invalid_token`` semantics — only emit
-    # when a JWT was actually sent and rejected. The
-    # ``token-missing-but-expected`` case has no token to call invalid, so
-    # the header would misdirect clients; we omit it on that branch but
-    # still set Cache-Control to prevent Cloudflare from re-serving a
-    # degraded-anon response to a different caller.
-    @app.middleware("http")
-    async def _auth_drop_status_header(request: Request, call_next):
-        response = await call_next(request)
-        try:
-            status = getattr(request.state, "auth_status", None)
-        except AttributeError:
-            status = None
-        if not status:
-            return response
-
-        response.headers["X-Auth-Status"] = status
-
-        if status == "jwt-dropped-to-anon":
-            # RFC 6750 §3 invalid_token semantics — JWT was sent and rejected.
-            response.headers["WWW-Authenticate"] = (
-                'Bearer error="invalid_token", '
-                'error_description="JWT silently downgraded to anonymous"'
-            )
-
-        # Cloudflare cache-security: an anon response carrying X-Auth-Status
-        # MUST NOT be cached and re-served to another caller. Applies to
-        # every auth_status value.
-        response.headers["Cache-Control"] = "private, no-store"
-        return response
+    # ``request.state.auth_status`` for two cases — AuthStatusHeadersMiddleware
+    # reflects the tag onto the response as ``X-Auth-Status: <value>``.
+    # Legitimate anonymous traffic (no Authorization AND no Zk-Auth-Intent
+    # hint) leaves the marker unset and the header absent — observability
+    # stays silent. Converted to pure-ASGI in PR #115 (Scope C).
+    from website.api._middleware import AuthStatusHeadersMiddleware
+    app.add_middleware(AuthStatusHeadersMiddleware)
 
     # ── Phase 1.5 Item 3: zk-session-marker cookie ──
     # Survives a localStorage wipe so the client can detect "was signed in
@@ -559,85 +512,18 @@ def create_app(lifespan=None) -> FastAPI:
     # 2025), ``document.cookie`` writes are capped at 7 days for ITP-flagged
     # sites; ``Set-Cookie`` response headers are exempt and persist for
     # the full Max-Age. SameSite=Lax + Secure block cross-site abuse.
-    @app.middleware("http")
-    async def _session_marker_cookie(request: Request, call_next):
-        response = await call_next(request)
-        try:
-            authenticated = getattr(request.state, "authenticated", False)
-        except AttributeError:
-            authenticated = False
-        if authenticated and "zk-session-marker" not in request.cookies:
-            response.set_cookie(
-                key="zk-session-marker",
-                value="1",
-                max_age=30 * 24 * 60 * 60,  # 30 days
-                secure=True,
-                httponly=False,
-                samesite="lax",
-                path="/",
-            )
-        return response
+    # Converted to pure-ASGI in PR #115 (Scope C).
+    from website.api._middleware import SessionMarkerCookieMiddleware
+    app.add_middleware(SessionMarkerCookieMiddleware)
 
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
     # Sliding-window counter on global + per-IP 401 responses. Out-of-path
     # of auth.py (hot path stays fast); runs at response-egress time as a
     # cheap status-code check + rate-gate tick. Hashed IP only — never the
     # raw client address (daily-rotated salt; matches OWASP cred-stuffing
-    # alert payload contract).
-    @app.middleware("http")
-    async def _auth_401_rate_monitor(request: Request, call_next):
-        response = await call_next(request)
-        try:
-            if response.status_code == 401 and not request.url.path.startswith(
-                ("/api/health", "/webhooks/monitor/")
-            ):
-                # Global rate: ≥ 100 401s / 5 min = credential-stuffing pattern.
-                maybe_fire_app_error_rate(
-                    dedup_key="auth_401_global_burst",
-                    threshold=100,
-                    window_seconds=5 * 60,
-                    route="middleware.auth_401_rate",
-                    exc_type="AuthBurstDetected",
-                    message="High 401 rate across /api/* — possible credential stuffing",
-                    fields={
-                        "external_service": "self",
-                        "scope": "global",
-                        "route_sample": request.url.path[:80],
-                    },
-                    severity="warning",
-                    alert_dedup_seconds=15 * 60,
-                )
-                # Per-IP rate: ≥ 30 401s / 60 s = single scanner. Daily-rotated
-                # salt makes the IP hash unreversible across days but stable
-                # within one alert window.
-                raw_ip = (
-                    request.headers.get("cf-connecting-ip")
-                    or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-                    or (request.client.host if request.client else "")
-                )
-                if raw_ip:
-                    import time as _t
-
-                    day_salt = str(int(_t.time()) // 86400)
-                    ip_hash = _hash_id(f"{raw_ip}:{day_salt}", prefix_len=12)
-                    maybe_fire_app_error_rate(
-                        dedup_key=f"auth_401_per_ip:{ip_hash}",
-                        threshold=30,
-                        window_seconds=60,
-                        route="middleware.auth_401_rate",
-                        exc_type="ScannerBurstDetected",
-                        message="High 401 rate from one IP — likely scanner",
-                        fields={
-                            "external_service": "self",
-                            "scope": "per_ip",
-                            "ip_hash": ip_hash,
-                        },
-                        severity="warning",
-                        alert_dedup_seconds=15 * 60,
-                    )
-        except Exception:  # noqa: BLE001 — middleware must never break response
-            logger.debug("auth 401 rate monitor failed", exc_info=True)
-        return response
+    # alert payload contract). Converted to pure-ASGI in PR #115 (Scope C).
+    from website.api._middleware import Auth401RateMonitorMiddleware
+    app.add_middleware(Auth401RateMonitorMiddleware)
 
     # ── Unhandled-exception alerting ──
     # Any uncaught error in a request handler fans out to the #app-errors
