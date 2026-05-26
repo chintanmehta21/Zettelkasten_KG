@@ -175,6 +175,132 @@ async def test_safe_request_passes_response_under_cap():
 
 
 @pytest.mark.asyncio
+async def test_safe_request_decodes_gzip_response():
+    """Regression for the 2026-05-26 brotli/gzip prod failure: ``aiter_bytes``
+    returns decoded bytes, so the reconstructed Response must drop
+    ``Content-Encoding``/``Content-Length`` or httpx tries to re-decode
+    the already-decoded content (``httpx.DecodingError``). Wikipedia, Google,
+    and most modern CDNs serve gzip/br by default — without this strip the
+    entire generic-web ingestion path 5xxs.
+    """
+    import gzip
+    import httpx
+
+    plain = b"hello content-encoded world\n" * 200
+    gzipped = gzip.compress(plain)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers=[
+                (b"content-encoding", b"gzip"),
+                (b"content-type", b"text/plain; charset=utf-8"),
+                (b"content-length", str(len(gzipped)).encode()),
+            ],
+            content=gzipped,
+        )
+
+    # Patch the AsyncClient ctor used inside safe_request so we route through
+    # a MockTransport that returns the gzipped payload.
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/gz", validate_initial=False
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    # The body must be the decoded plaintext, accessible without
+    # raising DecodingError. The Content-Encoding header is preserved on
+    # the response (matches httpx.get() behaviour — _content is the
+    # decoded buffer and the decoder short-circuits on subsequent reads).
+    assert response.status_code == 200
+    assert response.content == plain
+    assert response.text == plain.decode()
+    assert response.headers["content-encoding"] == "gzip"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_decodes_brotli_response():
+    """Same regression as gzip, but for brotli — the Google failure case."""
+    import brotli  # type: ignore[import-not-found]
+    import httpx
+
+    plain = b"brotli compressed payload " * 200
+    br_bytes = brotli.compress(plain)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers=[
+                (b"content-encoding", b"br"),
+                (b"content-type", b"text/plain; charset=utf-8"),
+            ],
+            content=br_bytes,
+        )
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/br", validate_initial=False
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.content == plain
+    assert response.text == plain.decode()
+    assert response.headers["content-encoding"] == "br"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_passes_identity_unchanged():
+    """No Content-Encoding header — the strip should be a no-op and the body
+    should round-trip exactly."""
+    import httpx
+
+    plain = b"plain body, no encoding"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers=[(b"content-type", b"text/plain")],
+            content=plain,
+        )
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/plain", validate_initial=False
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.content == plain
+    assert response.text == plain.decode()
+
+
+@pytest.mark.asyncio
 async def test_safe_request_head_first_falls_back_to_get():
     """resolve_redirects callers issue HEAD first (faster); some servers
     405/403 on HEAD. The wrapper must still produce a usable final URL

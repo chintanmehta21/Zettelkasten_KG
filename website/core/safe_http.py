@@ -116,7 +116,11 @@ async def _follow_with_revalidation(
                     }
                 current_url = next_url
                 continue
-            # Terminal response — stream body with size cap.
+            # Terminal response — stream body with size cap. ``aiter_bytes``
+            # returns POST-decoded chunks (httpx already unrolled
+            # Content-Encoding via _get_content_decoder). The cap therefore
+            # measures DECODED bytes — the correct safety boundary against
+            # brotli-bomb-style decompression amplification (CVE-2025-6176).
             total = 0
             chunks: list[bytes] = []
             async for chunk in response.aiter_bytes():
@@ -127,15 +131,18 @@ async def _follow_with_revalidation(
                         f"{max_response_bytes} bytes; aborted streaming."
                     )
                 chunks.append(chunk)
-            # Reconstruct a non-streaming Response from the captured bytes —
-            # cleaner than mutating ``response._content`` (private attr,
-            # could shift across httpx majors).
-            return httpx.Response(
-                status_code=response.status_code,
-                headers=response.headers,
-                content=b"".join(chunks),
-                request=response.request,
-            )
+            # Buffer the decoded body via ``_content``. This is the same
+            # pattern httpx itself uses in Response.read()/aread() (see
+            # encode/httpx _models.py: ``self._content = b"".join(...)``),
+            # so consumers reading ``.content``/``.text``/``.json()`` get
+            # the decoded body without re-instantiating the decoder. The
+            # alternative of constructing a fresh ``httpx.Response(content=
+            # ..., headers=...)`` re-invokes the decoder against already-
+            # decoded bytes — that's the 2026-05-26 prod regression
+            # (DecodingError on every gzip/br upstream — Wikipedia, Google
+            # all 5xx'd silently in the background pipeline).
+            response._content = b"".join(chunks)
+            return response
     raise RedirectLoopError(
         f"Exceeded {max_hops} redirects starting from {url!r}."
     )
