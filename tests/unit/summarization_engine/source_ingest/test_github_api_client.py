@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 from website.features.summarization_engine.source_ingest.github.api_client import (
     GitHubApiClient,
+    _HttpError,
 )
 
 
@@ -35,12 +36,9 @@ async def test_fetch_root_dir_detects_benchmarks_tests_examples():
 
 @pytest.mark.asyncio
 async def test_fetch_pages_handles_404_as_no_pages():
+    # Uses the real _HttpError from the module: PR #115's narrowed except
+    # tuple only catches the module's class, not a same-named local stand-in.
     client = GitHubApiClient(token="x", base_url="https://api.github.com", timeout_sec=5)
     with patch.object(client, "_get", new=AsyncMock(side_effect=_HttpError(404))):
         pages = await client.fetch_pages_url("a/b")
     assert pages is None
-
-
-class _HttpError(Exception):
-    def __init__(self, status):
-        self.status = status
