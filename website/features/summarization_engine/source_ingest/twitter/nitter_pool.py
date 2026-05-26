@@ -97,6 +97,9 @@ class NitterPool:
         instance = instance.rstrip("/")
         owned_client = client is None
         if owned_client:
+            # Trusted-host bypass: instance is a pre-vetted Nitter pool
+            # entry from config, not user-controlled. See SSRF audit
+            # 2026-05-26.
             client = httpx.AsyncClient(timeout=self.probe_timeout_sec, follow_redirects=True)
         try:
             resp = await client.get(instance + "/", timeout=self.probe_timeout_sec)

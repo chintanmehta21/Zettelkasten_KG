@@ -69,6 +69,9 @@ class GitHubIngestor(BaseIngestor):
         if token:
             headers["Authorization"] = f"Bearer {token}"
 
+        # Trusted-host bypass: target is hard-coded api.github.com, not
+        # user-controlled — safe_request's per-hop revalidation overhead is
+        # unwarranted here. See SSRF audit 2026-05-26.
         async with httpx.AsyncClient(
             timeout=20.0,
             headers=headers,

@@ -35,6 +35,8 @@ class GitHubApiClient:
         }
 
     async def _get(self, path: str) -> Any:
+        # Trusted-host bypass: self._base is hard-coded api.github.com.
+        # See SSRF audit 2026-05-26.
         async with httpx.AsyncClient(
             timeout=self._timeout,
             follow_redirects=True,
