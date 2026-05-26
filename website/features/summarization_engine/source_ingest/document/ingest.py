@@ -17,6 +17,15 @@ from urllib.parse import quote
 from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
 
+# Magic-bytes pre-gate for PDF/DOCX uploads — sniffs the first ~261 bytes
+# to verify the file content matches the claimed extension. Pure-Python,
+# zero new system deps. Extension-only validation lets an attacker rename
+# arbitrary bytes as `.pdf`, which then invokes PyMuPDF (C parser, CVE
+# history) on attacker-controlled input. Defense-in-depth: PyMuPDF and
+# zipfile would error too, but the magic-bytes guard fails fast and avoids
+# invoking the vulnerable parsers on bad input.
+import filetype
+
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
 from website.features.summarization_engine.source_ingest.utils import compact_text, join_sections
@@ -153,6 +162,29 @@ def extract_document_upload(
         )
     if not content:
         raise DocumentUploadError("Uploaded document is empty.")
+
+    # Magic-bytes pre-gate for binary formats. filetype only reads the
+    # first 261 bytes (per its docs), so this is microsecond-cheap.
+    # Plain-text formats (.txt/.md/.markdown) are not sniffed — filetype
+    # cannot reliably detect text, and the downstream _decode_text fallback
+    # already handles non-decodable bytes safely.
+    if extension == ".pdf":
+        kind = filetype.guess(content)
+        if kind is None or kind.mime != "application/pdf":
+            raise DocumentUploadError("File is not a valid PDF (magic bytes mismatch).")
+    elif extension == ".docx":
+        kind = filetype.guess(content)
+        # DOCX is an Office Open XML container — a ZIP archive on the wire.
+        # filetype returns the specific DOCX mime when it can peek the inner
+        # word/document.xml; otherwise it falls back to generic application/zip.
+        # Accept both. Downstream archive.read("word/document.xml") raises if
+        # the zip isn't actually a DOCX.
+        _DOCX_MIME = (
+            "application/zip",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        if kind is None or kind.mime not in _DOCX_MIME:
+            raise DocumentUploadError("File is not a valid DOCX (magic bytes mismatch).")
 
     metadata: dict[str, Any] = {
         "filename": safe_name,

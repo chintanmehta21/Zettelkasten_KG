@@ -134,6 +134,35 @@ def test_extract_docx_rejects_zip_bomb_declared_size():
         )
 
 
+def test_extract_pdf_rejects_extension_spoof():
+    """Magic-bytes guard: a file claiming .pdf but containing non-PDF bytes
+    (extension spoof) must be rejected before the PyMuPDF parser is invoked.
+    Defense-in-depth — PyMuPDF would raise FileDataError anyway, but the
+    pre-gate gives a cleaner 415-class error and avoids invoking the C
+    parser on attacker-controlled bytes.
+    """
+    not_pdf = b"this is plain text masquerading as a PDF" * 30
+    with pytest.raises(DocumentUploadError, match="not a valid PDF"):
+        extract_document_upload(
+            filename="spoof.pdf",
+            content=not_pdf,
+            content_type="application/pdf",
+        )
+
+
+def test_extract_docx_rejects_extension_spoof():
+    """Magic-bytes guard: a file claiming .docx but containing non-ZIP bytes
+    must be rejected before zipfile.ZipFile is invoked.
+    """
+    not_docx = b"this is plain text masquerading as a DOCX" * 30
+    with pytest.raises(DocumentUploadError, match="not a valid"):
+        extract_document_upload(
+            filename="spoof.docx",
+            content=not_docx,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+
+
 def test_extract_docx_rejects_external_entity():
     """XXE guard: a DOCX referencing an external SYSTEM entity must be
     rejected (defusedxml's forbid_external=True), not silently expanded into
