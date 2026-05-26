@@ -41,10 +41,14 @@ _EMPTY_INPUT_FLOOR = 50
 
 
 def _is_youtube_url(url: str) -> bool:
+    from urllib.parse import urlparse
     try:
-        from urllib.parse import urlparse
         host = (urlparse(url).hostname or "").lower()
-    except Exception:
+    except (ValueError, AttributeError):
+        # Bad URL shape → fall-soft to False so the generic-web path picks it
+        # up. Narrower than the prior bare-Exception so programmer-error
+        # TypeErrors (e.g. caller passed an int) surface instead of routing
+        # a non-string through the YouTube tier chain.
         return False
     if host.startswith("www."):
         host = host[4:]
