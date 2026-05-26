@@ -52,7 +52,12 @@ async def check_async_backpressure(
         count = await asyncio.to_thread(
             operations_repo.count_in_flight_for_user, user_id=user_id
         )
-    except Exception:
+    except (OSError, RuntimeError, asyncio.TimeoutError):
+        # Narrow: socket/loop/timeout escapes the inner exception swallow.
+        # Programmer-bug exceptions (TypeError, AttributeError) propagate
+        # instead of silently fail-opening — pre-PR-#115 mask point.
+        # CancelledError is BaseException-derived (3.11+) and so wasn't
+        # caught by the prior `except Exception` either; this preserves it.
         return None  # fail-open
     if count < eff_limit:
         return None

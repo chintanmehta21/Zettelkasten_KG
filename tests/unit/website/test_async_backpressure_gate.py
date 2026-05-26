@@ -66,6 +66,29 @@ async def test_fail_open_on_db_error():
 
 
 @pytest.mark.asyncio
+async def test_fail_open_on_socket_error():
+    """OSError (e.g. ConnectionResetError) is the realistic socket-level
+    escape from the underlying supabase client. PR #115 narrow set must
+    keep this fail-open path."""
+    user = uuid4()
+    with patch(_PATCH, side_effect=OSError("connection reset")):
+        result = await check_async_backpressure(user_id=user)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_propagates_unexpected_programmer_error():
+    """Pre-PR-#115 the bare `except Exception` swallowed TypeError (the
+    canonical 'wrong-shape kwargs' programmer bug). Now it propagates so the
+    operator sees the failure instead of silently fail-opening the gate.
+    """
+    user = uuid4()
+    with patch(_PATCH, side_effect=TypeError("kwargs mismatch")):
+        with pytest.raises(TypeError, match="kwargs mismatch"):
+            await check_async_backpressure(user_id=user)
+
+
+@pytest.mark.asyncio
 async def test_respects_explicit_limit_arg_under():
     user = uuid4()
     with patch(_PATCH, return_value=4):
