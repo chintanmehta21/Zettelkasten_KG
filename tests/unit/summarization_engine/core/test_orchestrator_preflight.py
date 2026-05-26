@@ -46,6 +46,23 @@ def test_is_youtube_url_helper():
     assert not _is_youtube_url("https://example.com")
 
 
+def test_is_youtube_url_handles_empty_and_malformed():
+    """PR #115 narrowing: bad URL shapes must return False without raising
+    so a generic-web fallback path takes over (legitimate router behavior).
+    Before narrowing, the bare `except Exception` swallowed everything
+    including programmer-error TypeErrors that should have surfaced.
+    """
+    assert _is_youtube_url("") is False
+    assert _is_youtube_url("not://a-url{}") is False
+
+
+def test_is_youtube_url_handles_none_via_attribute_error():
+    """urlparse(None) raises AttributeError ('NoneType' has no .decode);
+    the narrowed except set catches it and returns False. Pins the deliberate
+    fail-soft for None/missing URL inputs that arrive from cache/replay paths."""
+    assert _is_youtube_url(None) is False  # type: ignore[arg-type]
+
+
 def test_livestream_refuses():
     with _patch_ydl(info={"is_live": True}):
         result = _yt_preflight_refuse("https://www.youtube.com/watch?v=abc")
