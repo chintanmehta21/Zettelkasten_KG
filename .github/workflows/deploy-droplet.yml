@@ -189,6 +189,24 @@ jobs:
           target: "/opt/zettelkasten/compose/"
           strip_components: 1  # ops/ -> /opt/zettelkasten/compose/
 
+      - name: Sync Caddy config to droplet
+        # Caddyfile + upstream.snippet are mounted into the caddy container as
+        # read-only. Without this sync, edits to ops/caddy/Caddyfile (e.g., new
+        # security headers like Content-Security-Policy-Report-Only) never
+        # reach production until someone manually scp's them — the exact gap
+        # that hid PR #107's CSP header from prod for one deploy cycle.
+        # `caddy reload` runs in the ssh script below for graceful (no-drop)
+        # apply once both files are in place.
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          source: "ops/caddy/Caddyfile,ops/caddy/upstream.snippet"
+          target: "/opt/zettelkasten/caddy/"
+          strip_components: 2  # ops/caddy/ -> /opt/zettelkasten/caddy/
+
       - name: Build container .env body from environment secrets
         id: env
         env:
@@ -414,6 +432,24 @@ jobs:
               done
             else
               echo "[caddy] Already has --init, skipping"
+            fi
+
+            # ── 3b. Graceful Caddy reload to pick up Caddyfile edits ──
+            # The scp step ahead of this stage refreshed
+            # /opt/zettelkasten/caddy/Caddyfile, which is bind-mounted read-only
+            # into the container at /etc/caddy/Caddyfile. `caddy reload` is
+            # graceful (existing connections kept, new config applied) — zero
+            # request loss on header / matcher / route updates. Validate first
+            # so a malformed Caddyfile fails the deploy instead of silently
+            # rolling back to the in-memory config.
+            if docker exec caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
+              docker exec caddy caddy reload --config /etc/caddy/Caddyfile \
+                && echo "[caddy] reload OK" \
+                || echo "[caddy] reload failed (existing config retained)"
+            else
+              echo "[caddy] ERROR: Caddyfile failed validation; aborting reload" >&2
+              docker exec caddy caddy validate --config /etc/caddy/Caddyfile >&2 || true
+              exit 1
             fi
 
             # ── 4. Ensure deploy scripts are executable and LF-terminated ──
