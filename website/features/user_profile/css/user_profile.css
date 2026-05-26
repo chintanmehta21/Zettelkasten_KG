@@ -30,18 +30,15 @@ body { color-scheme: dark; }
     outline-offset: 2px;
 }
 
-/* PR5: 1120 outer / 1080 inner matches --zk-content-max from style.css
- * so the shared header's back-button + avatar pixel-align with the
- * profile content edges (header.css uses
+/* PR5 (master): 1120 outer / 1080 inner matches --zk-content-max from
+ * style.css so the shared header's back-button + avatar pixel-align with
+ * the profile content edges (header.css uses
  *   padding-inline: max(1.5rem, calc((100% - var(--zk-content-max)) / 2))
- * which collapses to the same gutter on every viewport). */
+ * which collapses to the same gutter on every viewport). The hand-rolled
+ * `max(1.5rem, calc(50vw - 590px))` formula this branch shipped earlier
+ * was superseded by the CSS-var pattern; do not re-introduce it. */
 .profile-container {
-    /* 1180px matches the shared header's centered rail (header.css:
-     *   padding: 1.5rem max(1.5rem, calc(50vw - 590px)) 1rem)
-     * so the back button + avatar in the header anchor to the same
-     * columns as the hero card / banner below. Anything narrower causes
-     * a visible misalignment between header chrome and page content. */
-    max-width: 1180px;
+    max-width: 1120px;
     margin: 0 auto;
     padding: 0 1.25rem 4rem;
 }
