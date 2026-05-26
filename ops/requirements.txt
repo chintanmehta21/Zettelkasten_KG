@@ -77,6 +77,11 @@ python-multipart>=0.0.20
 # quadratic blowup depends on bundled libexpat.
 defusedxml>=0.7.1
 
+# Magic-bytes pre-gate for PDF/DOCX uploads. Pure-Python (no libmagic
+# system dep). Refuses extension-spoof attempts before the vulnerable
+# PyMuPDF/zipfile parsers run on attacker-controlled bytes.
+filetype>=1.2
+
 # Cascade reranker (FlashRank + BGE-base ONNX)
 flashrank>=0.2
 onnxruntime>=1.17
