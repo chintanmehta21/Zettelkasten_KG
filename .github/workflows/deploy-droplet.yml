@@ -162,6 +162,7 @@ jobs:
             ops/deploy
             ops/docker-compose.blue.yml
             ops/docker-compose.green.yml
+            ops/caddy
           sparse-checkout-cone-mode: false
 
       - name: Sync deploy scripts to droplet
