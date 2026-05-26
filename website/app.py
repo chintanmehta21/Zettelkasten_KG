@@ -475,10 +475,16 @@ def create_app(lifespan=None) -> FastAPI:
         response = await call_next(request)
         path = request.url.path
         if not any(path.startswith(p) for p in _RELEASE_EXEMPT_PREFIXES):
+            # Defer release to next event-loop tick so gc/malloc_trim runs
+            # AFTER body chunks are drained — see encode/starlette#1438.
             try:
-                _aggressive_release()
-            except Exception:  # noqa: BLE001 — never let release break the response
-                logger.exception("post-response release failed")
+                import asyncio
+                asyncio.get_running_loop().call_later(0.05, _aggressive_release)
+            except RuntimeError:
+                try:
+                    _aggressive_release()
+                except Exception:  # noqa: BLE001
+                    logger.exception("post-response release failed")
         return response
 
     # iter-03 §B (2026-04-29): convert intra-request stage-2 memory pressure
