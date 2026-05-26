@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from website.core.safe_http import safe_request
 from website.features.summarization_engine.core.errors import ExtractionError
 from website.features.summarization_engine.core.models import SourceType
 
@@ -42,10 +43,13 @@ async def fetch_text(
     headers: dict[str, str] | None = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> tuple[str, str]:
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=headers) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        return response.text, str(response.url)
+    # safe_request validates each redirect Location against the SSRF
+    # private-IP / scheme allowlist — user-controlled URLs frequently
+    # 302 to attacker-controlled hosts, and bare follow_redirects=True
+    # would bypass the initial validate_url check.
+    response = await safe_request("GET", url, timeout=timeout, headers=headers)
+    response.raise_for_status()
+    return response.text, str(response.url)
 
 
 async def fetch_json(

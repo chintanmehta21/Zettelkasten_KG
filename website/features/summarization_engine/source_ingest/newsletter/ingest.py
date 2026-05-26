@@ -8,6 +8,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
+from website.core.safe_http import SafeHttpError, safe_request
 from website.features.summarization_engine.core.errors import NewsletterURLUnreachable
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
@@ -86,30 +87,42 @@ async def _preflight_probe(url: str) -> None:
         if delay:
             await _asyncio.sleep(delay)
         try:
-            async with httpx.AsyncClient(
-                timeout=_PREFLIGHT_TIMEOUT,
-                follow_redirects=True,
-                headers=headers,
-            ) as client:
+            try:
+                resp = await safe_request(
+                    "HEAD",
+                    url,
+                    timeout=_PREFLIGHT_TIMEOUT,
+                    headers=headers,
+                )
+            except httpx.HTTPError:
+                resp = None
+            except SafeHttpError as exc:
+                # Refused redirect (private IP, non-http scheme, loop) is
+                # an authoritative "unreachable for safety reasons" — do not
+                # retry; surface as a refusal.
+                raise NewsletterURLUnreachable(url, None, f"unsafe_redirect: {exc}")
+            status = resp.status_code if resp is not None else None
+            if resp is None or status is None or status >= 400:
+                # Some servers disallow HEAD (403/405) or mis-report it;
+                # fall back to a ranged GET to confirm liveness.
                 try:
-                    resp = await client.head(url)
-                except httpx.HTTPError:
-                    resp = None
-                status = resp.status_code if resp is not None else None
-                if resp is None or status is None or status >= 400:
-                    # Some servers disallow HEAD (403/405) or mis-report it;
-                    # fall back to a ranged GET to confirm liveness.
-                    get_resp = await client.get(
+                    get_resp = await safe_request(
+                        "GET",
                         url,
+                        timeout=_PREFLIGHT_TIMEOUT,
                         headers={**headers, "Range": _PREFLIGHT_GET_RANGE},
                     )
-                    status = get_resp.status_code
-                    if status >= 400:
-                        raise NewsletterURLUnreachable(
-                            url,
-                            status,
-                            f"http_{status}",
-                        )
+                except SafeHttpError as exc:
+                    raise NewsletterURLUnreachable(
+                        url, None, f"unsafe_redirect: {exc}"
+                    )
+                status = get_resp.status_code
+                if status >= 400:
+                    raise NewsletterURLUnreachable(
+                        url,
+                        status,
+                        f"http_{status}",
+                    )
             # Success on this attempt.
             if idx > 0:
                 logger.info(
@@ -295,17 +308,17 @@ async def _fetch_and_extract(
 ) -> tuple[str, dict[str, Any], str, str]:
     """Fetch one URL and return extracted text, metadata, final URL, and raw HTML."""
     try:
-        async with httpx.AsyncClient(
-            timeout=timeout,
-            follow_redirects=True,
-            headers=headers,
-        ) as client:
-            response = await client.get(url)
-            if response.status_code >= 400:
-                return "", {}, str(response.url), ""
-            html = response.text
-            final_url = str(response.url)
+        response = await safe_request(
+            "GET", url, timeout=timeout, headers=headers
+        )
+        if response.status_code >= 400:
+            return "", {}, str(response.url), ""
+        html = response.text
+        final_url = str(response.url)
     except Exception as exc:  # noqa: BLE001
+        # SafeHttpError (refused redirect / loop) and any httpx.* error both
+        # surface as "fetch failed", letting the provider fan-out fall over
+        # to the next archive/cache provider rather than 5xx-ing the route.
         logger.warning("[newsletter] fetch failed for %s: %s", url, exc)
         return "", {}, url, ""
 
@@ -330,20 +343,20 @@ async def _try_provider(name: str, url: str) -> tuple[str, dict[str, Any], str, 
 
 async def _wayback(url: str) -> tuple[str, dict[str, Any], str, str]:
     api = f"https://archive.org/wayback/available?url={quote(url, safe='')}"
-    async with httpx.AsyncClient(
-        timeout=DEFAULT_TIMEOUT,
-        follow_redirects=True,
-    ) as client:
-        info_resp = await client.get(api)
-        if info_resp.status_code >= 400:
-            return "", {}, url, ""
-        info = info_resp.json() or {}
-        snapshot = (
-            ((info.get("archived_snapshots") or {}).get("closest") or {}).get("url")
-        )
-        if not snapshot:
-            return "", {}, url, ""
-        return await _fetch_and_extract(snapshot)
+    try:
+        info_resp = await safe_request("GET", api, timeout=DEFAULT_TIMEOUT)
+    except (SafeHttpError, httpx.HTTPError) as exc:
+        logger.warning("[newsletter] wayback API failed for %s: %s", url, exc)
+        return "", {}, url, ""
+    if info_resp.status_code >= 400:
+        return "", {}, url, ""
+    info = info_resp.json() or {}
+    snapshot = (
+        ((info.get("archived_snapshots") or {}).get("closest") or {}).get("url")
+    )
+    if not snapshot:
+        return "", {}, url, ""
+    return await _fetch_and_extract(snapshot)
 
 
 async def _archive_ph(url: str) -> tuple[str, dict[str, Any], str, str]:

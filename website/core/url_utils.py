@@ -139,15 +139,22 @@ def normalize_url(url: str) -> str:
 
 
 async def resolve_redirects(url: str) -> str:
+    # Local import: safe_http depends on validate_url defined above, so a
+    # top-level import would create a circular dependency.
+    from website.core.safe_http import SafeHttpError, safe_request
+
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
-            try:
-                response = await client.head(url)
-                if response.status_code >= 400:
-                    response = await client.get(url)
-            except httpx.UnsupportedProtocol:
-                response = await client.get(url)
-            return str(response.url)
+        response = await safe_request("GET", url, head_first=True, timeout=10.0)
+        return str(response.url)
+    except SafeHttpError as exc:
+        # Refused-redirect / loop — the original URL was validated upstream,
+        # so returning it lets the dedup gate use the original (the
+        # downstream fetcher will then refuse the same hop). Fail-open
+        # matches the legacy semantics.
+        logger.warning(
+            "Refused redirect resolving %s: %s — returning original URL", url, exc
+        )
+        return url
     except httpx.TimeoutException:
         logger.warning("Timeout resolving redirects for %s — returning original URL", url)
         return url
