@@ -235,7 +235,8 @@
       // no Supabase session restored — most likely cause is localStorage
       // 'zk-auth-token' cleared (profile sync, Safari ITP, manual clear)
       // while hasLoggedIn survived. Emit a structured event so observability
-      // and future UI listeners can react. Phase-1 = event-only, no banner.
+      // and future UI listeners can react. Phase-1.5 Item 3 will wire the
+      // banner trigger via the marker-cookie detection layer.
       try {
         var cache = getCacheState();
         if (cache && cache.hasLoggedIn && !_currentSession) {
@@ -247,6 +248,38 @@
       } catch (mismatch_err) {
         // CustomEvent ctor unavailable on very old browsers; non-fatal.
         console.debug('[auth-core] cache-mismatch dispatch failed:', mismatch_err);
+      }
+
+      // Phase-1.5 Item 2 (post-Prajeet 2026-05-26): one-shot /api/me probe
+      // at boot when we have an access_token in hand. Verifies the server
+      // still recognizes the token (catches "JWT valid client-side but
+      // expired/revoked server-side" silent failures). Uses zkFetch so the
+      // existing X-Auth-Status response → banner pipeline handles 401 →
+      // single-flight refresh → re-auth banner. Fire-and-forget; never
+      // blocks page render. Falls back to plain fetch + manual banner
+      // only when zk_fetch.js hasn't loaded yet (script-order edge case).
+      try {
+        var bootCache = getCacheState();
+        var bootSession = _currentSession;
+        if (bootCache && bootCache.hasLoggedIn && bootSession && bootSession.access_token) {
+          var bootProbeOpts = {
+            headers: { 'Authorization': 'Bearer ' + bootSession.access_token },
+          };
+          if (typeof window.zkFetch === 'function') {
+            window.zkFetch('/api/me', bootProbeOpts).catch(function () { /* best-effort */ });
+          } else {
+            // zk_fetch.js not yet loaded — degrade to plain fetch + direct
+            // banner trigger so observability still works in this edge.
+            window.fetch('/api/me', bootProbeOpts).then(function (res) {
+              if (res && res.status === 401 && window.ZKAuthUI &&
+                  typeof window.ZKAuthUI.showReauthBanner === 'function') {
+                window.ZKAuthUI.showReauthBanner('expired');
+              }
+            }).catch(function () { /* best-effort */ });
+          }
+        }
+      } catch (probe_err) {
+        console.debug('[auth-core] /api/me boot-probe failed:', probe_err);
       }
     } catch (err) {
       console.error('[auth-core] Init failed:', err);

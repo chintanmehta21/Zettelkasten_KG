@@ -157,3 +157,48 @@ def test_auth_core_ready_signal_preserved():
         "__signalReady() must remain — init() calls it BEFORE awaiting "
         "getSession() so peers grab the SDK during the network RTT."
     )
+
+
+# ── Phase-1.5 Item 2: /api/me boot probe ─────────────────────────────────
+
+
+def test_auth_core_fires_api_me_boot_probe():
+    """When ``hasLoggedIn=true`` and an access_token is in hand, init()
+    must fire a one-shot ``GET /api/me`` so the server can validate the
+    session. Catches the "JWT valid client-side but expired/revoked
+    server-side" silent failure that the §5.2 X-Auth-Status pipeline
+    converts into a banner."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert "/api/me" in source, (
+        "auth-core.js must call /api/me at boot when a session is in hand "
+        "(Phase-1.5 Item 2 server-side session validation)."
+    )
+
+
+def test_auth_core_boot_probe_uses_zkfetch_when_available():
+    """The boot probe must prefer ``window.zkFetch`` so the existing
+    X-Auth-Status response → banner pipeline (zk_fetch.js) handles 401
+    automatically. Plain fetch is only the fallback for the rare case
+    where zk_fetch.js hasn't loaded yet."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert "window.zkFetch" in source, (
+        "Boot probe must use window.zkFetch so X-Auth-Status banner "
+        "pipeline fires automatically on 401."
+    )
+
+
+def test_auth_core_boot_probe_gated_on_has_logged_in():
+    """The probe must NOT fire for anonymous visitors — emit only when
+    browserCache.hasLoggedIn=true AND a session with access_token is in
+    hand. Otherwise every anon page-load eats an extra RTT for nothing."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    # The probe block reads bootCache.hasLoggedIn before firing.
+    probe_idx = source.find("/api/me")
+    assert probe_idx > 0, "expected /api/me in source"
+    pre_probe = source[:probe_idx]
+    # Find the most-recent hasLoggedIn check before the /api/me call.
+    last_check = pre_probe.rfind("hasLoggedIn")
+    assert last_check > 0, (
+        "boot probe must be gated on browserCache.hasLoggedIn so anonymous "
+        "visitors don't pay the RTT cost."
+    )
