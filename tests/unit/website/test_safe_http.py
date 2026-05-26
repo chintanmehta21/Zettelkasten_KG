@@ -372,3 +372,46 @@ async def test_safe_request_scrubs_cookie_on_cross_host_redirect():
     assert "cookie" not in captured[2]
     assert "authorization" not in captured[2]
     assert captured[2].get("user-agent") == "ua"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [307, 308, 302, 303])
+async def test_safe_request_preserves_method_through_redirect(status):
+    """Pin: POST stays POST through ALL 3xx — including 302/303 where
+    httpx.follow_redirects=True would rewrite to GET (per RFC 7231 §6.4).
+    The wrapper deliberately keeps the caller's method so we never make
+    a network call we didn't intend. Security-relevant: an attacker can't
+    coerce a credentialed POST to leak as a GET to a different endpoint.
+    """
+    import httpx
+
+    captured_methods: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_methods.append(request.method)
+        url = str(request.url)
+        if url == "https://example.com/post":
+            return httpx.Response(
+                status, headers={"location": "https://example.com/final"}
+            )
+        if url == "https://example.com/final":
+            return httpx.Response(200, content=b"ok")
+        raise AssertionError(f"unexpected url {url}")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "POST", "https://example.com/post", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert captured_methods == ["POST", "POST"]
