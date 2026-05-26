@@ -31,10 +31,10 @@ from website.core.url_utils import validate_url
 
 logger = logging.getLogger(__name__)
 
-# Max redirect hops before giving up. 5 mirrors the legacy httpx default
-# (httpx.Client.max_redirects = 20 is way too permissive for an
-# externally-controlled URL; 5 covers legitimate chains like t.co →
-# bit.ly → final without leaving room for adversarial exhaustion).
+# Max redirect hops before giving up. Well under the httpx default of 20,
+# which is too permissive for an externally-controlled URL; 5 covers
+# legitimate chains like t.co → bit.ly → final without leaving room for
+# adversarial exhaustion.
 MAX_REDIRECT_HOPS = 5
 
 # 25 MB default body cap — matches summarization-engine's input budget
@@ -127,11 +127,15 @@ async def _follow_with_revalidation(
                         f"{max_response_bytes} bytes; aborted streaming."
                     )
                 chunks.append(chunk)
-            # Materialize the body so callers can use .text / .content / .json().
-            # aiter_bytes() above already populated _content via httpx internals,
-            # but we set it explicitly for predictability across httpx versions.
-            response._content = b"".join(chunks)
-            return response
+            # Reconstruct a non-streaming Response from the captured bytes —
+            # cleaner than mutating ``response._content`` (private attr,
+            # could shift across httpx majors).
+            return httpx.Response(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=b"".join(chunks),
+                request=response.request,
+            )
     raise RedirectLoopError(
         f"Exceeded {max_hops} redirects starting from {url!r}."
     )
@@ -155,13 +159,15 @@ async def safe_request(
     max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
     timeout: float = 20.0,
     headers: dict[str, str] | None = None,
+    validate_initial: bool = True,
 ) -> httpx.Response:
     """Manual-redirect HTTP request with per-hop SSRF revalidation
     and a streaming response-size cap.
 
     Args:
       method: Final-request method (``"GET"``, ``"POST"``, ...).
-      url: Initial URL — must already pass ``validate_url`` at the caller.
+      url: Initial URL — validated against ``validate_url`` unless
+        ``validate_initial=False`` (e.g., for trusted-host callers).
       head_first: If True, try ``HEAD`` first (cheap probe — no body fetch)
         and fall back to ``method`` if the HEAD final response is ``>=400``.
         Matches legacy ``resolve_redirects`` semantics.
@@ -171,13 +177,21 @@ async def safe_request(
       timeout: Total request timeout per hop.
       headers: Request headers (passed through; Authorization/Cookie are
         dropped on cross-host redirect).
+      validate_initial: Default ``True`` — close the latent footgun where a
+        caller forgets to pre-validate. Pass ``False`` only when the URL is
+        statically a trusted host.
 
     Raises:
-      UnsafeRedirectError: Location failed ``validate_url``.
+      UnsafeRedirectError: Location failed ``validate_url``, or the initial
+        URL did when ``validate_initial=True``.
       RedirectLoopError: chain exceeded ``max_hops``.
       ResponseTooLargeError: final body exceeded ``max_response_bytes``.
       httpx.HTTPError subclasses: connect/timeout/etc.
     """
+    if validate_initial and not validate_url(url):
+        raise UnsafeRedirectError(
+            f"Refused initial request to {url!r}: fails post-DNS / scheme allowlist."
+        )
     async with httpx.AsyncClient(
         follow_redirects=False, timeout=timeout
     ) as client:

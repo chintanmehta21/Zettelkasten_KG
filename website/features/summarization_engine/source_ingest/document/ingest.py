@@ -93,29 +93,31 @@ def _extract_docx(data: bytes) -> tuple[str, dict[str, Any]]:
     except zipfile.BadZipFile as exc:
         raise DocumentUploadError("DOCX file is not a valid Office document.") from exc
 
-    # Pre-check: refuse upfront if the central-directory declares a total
-    # decompressed size beyond cap. Fast-reject for stated-size bombs; the
-    # streaming read below catches forged-header bombs.
-    total_declared = sum(zi.file_size for zi in archive.infolist())
-    if total_declared > MAX_DOCX_DECOMPRESSED_BYTES:
+    # Pre-check: refuse upfront if the central directory declares
+    # word/document.xml past the cap. Targets only the file we'll actually
+    # open — a legitimate DOCX with embedded media in OTHER entries (images,
+    # fonts) doesn't trigger a false reject. Streaming read below still
+    # catches forged-header bombs that lie about declared size.
+    try:
+        document_info = archive.getinfo("word/document.xml")
+    except KeyError as exc:
+        raise DocumentUploadError("DOCX file is missing document text.") from exc
+    if document_info.file_size > MAX_DOCX_DECOMPRESSED_BYTES:
         raise DocumentUploadError(
             "DOCX file decompresses too large; refuse to extract."
         )
 
-    try:
-        with archive.open("word/document.xml") as fh:
-            chunks: list[bytes] = []
-            total = 0
-            while chunk := fh.read(_DOCX_READ_CHUNK):
-                total += len(chunk)
-                if total > MAX_DOCX_DECOMPRESSED_BYTES:
-                    raise DocumentUploadError(
-                        "DOCX document.xml decompresses too large; refuse to extract."
-                    )
-                chunks.append(chunk)
-            document_xml = b"".join(chunks)
-    except KeyError as exc:
-        raise DocumentUploadError("DOCX file is missing document text.") from exc
+    with archive.open("word/document.xml") as fh:
+        chunks: list[bytes] = []
+        total = 0
+        while chunk := fh.read(_DOCX_READ_CHUNK):
+            total += len(chunk)
+            if total > MAX_DOCX_DECOMPRESSED_BYTES:
+                raise DocumentUploadError(
+                    "DOCX document.xml decompresses too large; refuse to extract."
+                )
+            chunks.append(chunk)
+        document_xml = b"".join(chunks)
 
     try:
         root = ElementTree.fromstring(document_xml)
