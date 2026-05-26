@@ -677,6 +677,93 @@ async def me_export(
     )
 
 
+# CSP violation reporting endpoint — observes browser policy violations from
+# the Content-Security-Policy-Report-Only header set in ops/caddy/Caddyfile.
+# Logs to stdlib logger so journalctl captures every violation; once the log
+# is quiet for a week and we've resolved legit violations, the Caddy header
+# flips from -Report-Only to enforcing. See research synthesis 2026-05-26 R3.
+_CSP_REPORT_RATE_LIMIT_WINDOW = 60  # seconds
+# Per-IP cap: 60/min for the first week to absorb the dense initial violation
+# burst (a single /knowledge-graph load can emit 10+ reports from Three.js DOM
+# mutations). Drop to ~20/min once the known issues are resolved.
+_CSP_REPORT_RATE_LIMIT_MAX = 60
+# Cap the body size we'll parse so a hostile client can't OOM us with a huge JSON.
+_CSP_REPORT_MAX_BYTES = 8 * 1024
+
+
+@router.post("/csp-report", status_code=204)
+async def csp_report(request: Request):
+    """Receive browser CSP violation reports.
+
+    Both legacy ``application/csp-report`` (with top-level ``csp-report``
+    object) and modern ``application/reports+json`` (array of report objects)
+    are accepted. Per-IP rate-limited so a misbehaving page can't flood logs.
+    Always returns 204 — never error to the client, who can't act on it
+    anyway. Defensive: every parse/log step is wrapped so a malformed report
+    never causes a 5xx.
+    """
+    # Rate limit per Cf-Connecting-Ip (or remote IP fallback) so a single
+    # misbehaving page can't spam the log.
+    try:
+        ip = request.headers.get("cf-connecting-ip") or (
+            request.client.host if request.client else "unknown"
+        )
+    except Exception:  # noqa: BLE001
+        ip = "unknown"
+    now_ts = time.time()
+    rate_key = f"csp_report:{ip}"
+    bucket = _rate_store[rate_key]
+    bucket[:] = [ts for ts in bucket if now_ts - ts < _CSP_REPORT_RATE_LIMIT_WINDOW]
+    if len(bucket) >= _CSP_REPORT_RATE_LIMIT_MAX:
+        # Silently drop — browser can't do anything with 429 here, and we
+        # don't want CSP reports themselves to become a DDoS amplifier.
+        return JSONResponse(content=None, status_code=204)
+    bucket.append(now_ts)
+
+    try:
+        body = await request.body()
+        if len(body) > _CSP_REPORT_MAX_BYTES:
+            body = body[:_CSP_REPORT_MAX_BYTES]
+        parsed = json.loads(body) if body else {}
+    except Exception:  # noqa: BLE001 — malformed JSON is the client's problem
+        return JSONResponse(content=None, status_code=204)
+
+    # Normalise both legacy (csp-report wrapper) + modern (array of reports)
+    # into a flat list of report dicts.
+    reports: list[dict] = []
+    if isinstance(parsed, dict) and "csp-report" in parsed:
+        reports = [parsed["csp-report"]]
+    elif isinstance(parsed, list):
+        for r in parsed:
+            if isinstance(r, dict):
+                body_field = r.get("body") if isinstance(r.get("body"), dict) else r
+                reports.append(body_field)
+
+    for r in reports:
+        if not isinstance(r, dict):
+            continue
+        directive = r.get("violated-directive") or r.get("effectiveDirective")
+        blocked = r.get("blocked-uri") or r.get("blockedURL")
+        # Skip noise: some browsers send heartbeat reports with neither field —
+        # logging those just fills the journal with directive=None blocked=None.
+        if not directive and not blocked:
+            continue
+        try:
+            logger.info(
+                "csp violation: directive=%s blocked=%s document=%s source=%s line=%s ip=%s",
+                directive,
+                blocked,
+                r.get("document-uri") or r.get("documentURL"),
+                r.get("source-file") or r.get("sourceFile"),
+                r.get("line-number") or r.get("lineNumber"),
+                ip,
+            )
+        except Exception:  # noqa: BLE001 — log path must never raise
+            pass
+
+    return JSONResponse(content=None, status_code=204)
+
+
 # Phase B read-path strength constants.
 #
 # Strength column precedence (per design + verified migrations): the Phase B
