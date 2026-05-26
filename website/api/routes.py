@@ -10,9 +10,11 @@ import re
 import time
 import unicodedata
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
@@ -26,6 +28,8 @@ from website.core.persist import (
     get_supabase_v2_scope,
     get_supabase_v2_scope_for_read,
 )
+from website.core.supabase_v2.client import get_v2_client
+from website.core.supabase_v2.repositories.core_repository import CoreRepository
 from website.core.supabase_v2.repositories.kg_repository import KGRepository as V2KGRepository
 
 logger = logging.getLogger("website.api")
@@ -510,6 +514,167 @@ async def update_avatar(
     return {"avatar_url": avatar_url}
 
 
+# Data export — GDPR Art. 20 / India DPDP "right of access" self-service.
+# Pure backend endpoint; no UI surface yet (the "Download my data" button is
+# gated on operator UI approval). The user can hit it manually with a Bearer
+# JWT today; future profile-page button will just link here.
+_EXPORT_PAGE_SIZE = 500
+_EXPORT_MAX_PER_WORKSPACE = 10000  # safety cap; current users are <100
+# Rate limit: 5 exports per hour per user. Re-uses the module-level _rate_store
+# defaultdict. Prevents an authenticated attacker (stolen JWT) from looping the
+# endpoint to exfiltrate at line rate, and protects the 2GB droplet from accidental
+# UI double-clicks once the "Download my data" button lands.
+_EXPORT_RATE_LIMIT_WINDOW_SECONDS = 3600
+_EXPORT_RATE_LIMIT_MAX = 5
+# Zettel content classes NOT in this export — surfaced to the user so the export
+# is explicitly "structured, commonly used, machine-readable" (Art. 20 wording)
+# AND honest about its scope.
+_EXPORT_NOT_INCLUDED = ["kg_nodes", "kg_edges", "kasten_memberships", "chat_history"]
+
+
+@router.get("/me/export")
+async def me_export(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Self-service data export — GDPR Art. 20 / India DPDP § 11.
+
+    Returns the authenticated user's profile + workspace ids + non-deleted
+    zettel overlays (joined with canonical fields) as a single JSON download.
+    ``Content-Disposition: attachment`` so browsers prompt save instead of
+    inline-rendering. Bearer-JWT auth (Depends(get_current_user)) — anon = 401.
+
+    Audit-logged via stdlib logger (cf-connecting-ip + counts) so the journal
+    captures every export request alongside Caddy access logs.
+
+    Pagination: workspaces are walked sequentially; per-workspace zettels are
+    paged in chunks of ``_EXPORT_PAGE_SIZE``. A safety cap of
+    ``_EXPORT_MAX_PER_WORKSPACE`` per workspace sets ``truncated: true`` in the
+    payload so callers can detect a partial export (today no user is anywhere
+    close; the cap is forward-looking).
+
+    Rate limit: ``_EXPORT_RATE_LIMIT_MAX`` exports per
+    ``_EXPORT_RATE_LIMIT_WINDOW_SECONDS`` per user (in-memory per-worker;
+    multi-worker fan-out OK at this scale). 429 + Retry-After on breach.
+
+    Content scope (intentional minimisation): raw extracted page content + ML
+    embeddings are NOT included — only AI-derived summaries, user-authored
+    tags, and canonical metadata. KG/Kasten/chat data deferred to a later
+    extension of this endpoint; surfaced via ``not_included`` so the user
+    knows the export is partial.
+    """
+    if not use_supabase_v2():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "export_unavailable",
+                "message": "Data export requires the v2 schema (not configured).",
+            },
+        )
+
+    # Rate limit: keyed by user sub. Prune timestamps outside the window
+    # before counting so the in-memory dict stays bounded.
+    now_ts = time.time()
+    rate_key = f"me_export:{user['sub']}"
+    bucket = _rate_store[rate_key]
+    bucket[:] = [ts for ts in bucket if now_ts - ts < _EXPORT_RATE_LIMIT_WINDOW_SECONDS]
+    if len(bucket) >= _EXPORT_RATE_LIMIT_MAX:
+        retry_after = int(_EXPORT_RATE_LIMIT_WINDOW_SECONDS - (now_ts - bucket[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "export_rate_limited",
+                "message": f"Too many exports. Try again in {retry_after}s.",
+            },
+            headers={"Retry-After": str(max(1, retry_after))},
+        )
+    bucket.append(now_ts)
+
+    scope = get_supabase_v2_scope_for_read(user["sub"])
+    if scope is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "no_data_for_user",
+                "message": "No profile or workspace data found for this account.",
+            },
+        )
+
+    content_repo, profile_id, workspace_ids = scope
+
+    try:
+        profile = CoreRepository(get_v2_client()).get_profile(profile_id)
+    except Exception as exc:  # noqa: BLE001 — graceful: surface profile fetch failure as 503
+        logger.warning("export: profile fetch failed for %s: %s", profile_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "export_failed", "message": "Profile lookup failed; retry shortly."},
+        )
+
+    all_zettels: list[dict] = []
+    truncated = False
+    for ws_id in workspace_ids:
+        offset = 0
+        ws_count = 0
+        while ws_count < _EXPORT_MAX_PER_WORKSPACE:
+            try:
+                page = content_repo.list_workspace_zettels(
+                    ws_id, limit=_EXPORT_PAGE_SIZE, offset=offset
+                )
+            except Exception as exc:  # noqa: BLE001 — log + continue with what we have
+                logger.warning(
+                    "export: list_workspace_zettels failed for ws=%s offset=%s: %s",
+                    ws_id, offset, exc,
+                )
+                truncated = True
+                break
+            if not page:
+                break
+            all_zettels.extend(page)
+            ws_count += len(page)
+            if len(page) < _EXPORT_PAGE_SIZE:
+                break
+            offset += _EXPORT_PAGE_SIZE
+        if ws_count >= _EXPORT_MAX_PER_WORKSPACE:
+            truncated = True
+
+    now = datetime.now(timezone.utc)
+    payload = {
+        "export_version": "1",
+        "format": "application/json",
+        "exported_at": now.isoformat(),
+        "user_id": user["sub"],
+        "email": user.get("email"),
+        "profile": profile,
+        "workspaces": [str(w) for w in workspace_ids],
+        "zettels": all_zettels,
+        "truncated": truncated,
+        "not_included": _EXPORT_NOT_INCLUDED,
+    }
+
+    # Audit log — non-blocking, never raises.
+    try:
+        cf_ip = request.headers.get("cf-connecting-ip") or (
+            request.client.host if request.client else "unknown"
+        )
+        logger.info(
+            "data export: user=%s ip=%s workspaces=%d zettels=%d truncated=%s",
+            user["sub"], cf_ip, len(workspace_ids), len(all_zettels), truncated,
+        )
+    except Exception:  # noqa: BLE001 — audit log must never break the response
+        pass
+
+    # filename is a fixed-format date string — no user input interpolated. If
+    # this ever incorporates user data, switch to RFC 6266 `filename*=UTF-8''`
+    # to defend against header injection.
+    filename = f"zettelkasten-export-{now.strftime('%Y%m%d')}.json"
+    return JSONResponse(
+        content=jsonable_encoder(payload),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, must-revalidate",
+        },
+    )
 
 
 # Phase B read-path strength constants.
