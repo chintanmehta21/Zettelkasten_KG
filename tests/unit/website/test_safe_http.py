@@ -490,3 +490,128 @@ async def test_safe_request_handles_empty_body_responses(status):
     assert response.status_code == status
     assert response.content == b""
     assert response.text == ""
+
+
+@pytest.mark.asyncio
+async def test_safe_request_resolves_relative_location_with_query_and_fragment():
+    """Pin: a relative Location with query + percent-encoded path + fragment
+    is resolved via urljoin (safe_http.py:73). Fragment isn't sent on the
+    wire per RFC 9110 §7.1; we just confirm the wrapper follows to the
+    resolved path+query and accepts the percent-encoded payload.
+    """
+    import httpx
+
+    captured_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        captured_urls.append(url)
+        if url == "https://example.com/start":
+            return httpx.Response(
+                302, headers={"location": "/next?q=%E2%9C%93#frag"}
+            )
+        return httpx.Response(200, content=b"resolved")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/start", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert response.content == b"resolved"
+    # Hop 2: urljoin produced https://example.com/next?q=%E2%9C%93 (fragment
+    # MAY be stripped on the wire by httpx; that's fine, scheme/host/path/
+    # query are what matters for the SSRF gate).
+    assert captured_urls[1].startswith("https://example.com/next?q=%E2%9C%93")
+
+
+@pytest.mark.asyncio
+async def test_safe_request_resolves_protocol_relative_location():
+    """Pin: //other.example.com/path inherits scheme from current URL via
+    urljoin. Cross-host: cookie/authorization stripped on the hop. The
+    private-IP gate still applies — protocol-relative cannot escape to
+    169.254.x.y because validate_url runs on the resolved URL.
+    """
+    import httpx
+
+    captured_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        captured_urls.append(url)
+        if url == "https://current.example.com/start":
+            return httpx.Response(
+                302, headers={"location": "//other.example.com/path"}
+            )
+        return httpx.Response(200, content=b"ok")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://current.example.com/start", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert captured_urls[1] == "https://other.example.com/path"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_allows_https_to_http_downgrade_redirect():
+    """Pin: validate_url's scheme allowlist is {http, https}, so an https→http
+    redirect IS followed. The defense layer is private-IP + scheme-allowlist;
+    TLS-downgrade protection lives at Cloudflare's HSTS / always-use-https
+    policy, not in safe_http. Capturing this so a future "block all http
+    redirects" change is a deliberate decision, not a silent drift.
+    """
+    import httpx
+
+    captured_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        captured_urls.append(url)
+        if url == "https://example.com/start":
+            return httpx.Response(
+                302, headers={"location": "http://example.com/insecure"}
+            )
+        if url == "http://example.com/insecure":
+            return httpx.Response(200, content=b"plain")
+        raise AssertionError(f"unexpected url {url}")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/start", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert response.content == b"plain"
+    assert captured_urls[1] == "http://example.com/insecure"
