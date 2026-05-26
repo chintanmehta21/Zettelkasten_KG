@@ -7,7 +7,7 @@ from json import dumps
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 
 from website.api.auth import get_optional_user
 from website.features.api_key_switching.key_pool import (
@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
 @router.post("/summarize")
 async def summarize_v2(
     request: SummarizeV2Request,
+    fastapi_request: Request,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     """Summarize a URL — async-ops (ADR-3).
@@ -44,6 +45,7 @@ async def summarize_v2(
     from website.api.zettels_routes import (
         AddZettelRequest,
         _accept_and_spawn,
+        _compute_auth_intent,
         _run_add_zettel,
     )
 
@@ -76,6 +78,7 @@ async def summarize_v2(
         pipeline=lambda: _run_add_zettel(
             body, user=user_payload, effective_user_id=user_id
         ),
+        auth_intent=_compute_auth_intent(fastapi_request, user),
     )
 
 
