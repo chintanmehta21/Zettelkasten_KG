@@ -541,6 +541,37 @@ def create_app(lifespan=None) -> FastAPI:
         response.headers["Cache-Control"] = "private, no-store"
         return response
 
+    # ── Phase 1.5 Item 3: zk-session-marker cookie ──
+    # Survives a localStorage wipe so the client can detect "was signed in
+    # before but my session storage is gone" on the next page load. Set on
+    # EVERY authenticated response (idempotent — only emitted when the
+    # cookie isn't already present in the request, so it's a one-time
+    # ``Set-Cookie`` per browser per 30-day window). Non-HttpOnly because
+    # JS reads it on boot to gate the re-auth banner; the cookie value is
+    # just ``"1"`` (no secret), so an XSS reader learns nothing useful.
+    # Server-set is critical: per Safari 18.4 WebKit policy (still active
+    # 2025), ``document.cookie`` writes are capped at 7 days for ITP-flagged
+    # sites; ``Set-Cookie`` response headers are exempt and persist for
+    # the full Max-Age. SameSite=Lax + Secure block cross-site abuse.
+    @app.middleware("http")
+    async def _session_marker_cookie(request: Request, call_next):
+        response = await call_next(request)
+        try:
+            authenticated = getattr(request.state, "authenticated", False)
+        except AttributeError:
+            authenticated = False
+        if authenticated and "zk-session-marker" not in request.cookies:
+            response.set_cookie(
+                key="zk-session-marker",
+                value="1",
+                max_age=30 * 24 * 60 * 60,  # 30 days
+                secure=True,
+                httponly=False,
+                samesite="lax",
+                path="/",
+            )
+        return response
+
     # ── C13: 401 rate monitor (credential-stuffing / scanner detection) ──
     # Sliding-window counter on global + per-IP 401 responses. Out-of-path
     # of auth.py (hot path stays fast); runs at response-egress time as a

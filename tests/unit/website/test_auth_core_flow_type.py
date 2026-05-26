@@ -202,3 +202,63 @@ def test_auth_core_boot_probe_gated_on_has_logged_in():
         "boot probe must be gated on browserCache.hasLoggedIn so anonymous "
         "visitors don't pay the RTT cost."
     )
+
+
+# ── Phase-1.5 Item 3: zk-session-marker cookie ───────────────────────────
+
+
+def test_auth_core_reads_marker_cookie():
+    """auth-core.js must read the server-set zk-session-marker cookie so it
+    can detect "was signed in but localStorage was wiped" — the case where
+    the server cookie survives but ``zk-auth-token`` (Supabase session) does
+    not (Safari ITP, profile sync, manual "clear site data")."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert "zk-session-marker" in source, (
+        "auth-core.js must read the zk-session-marker cookie so the "
+        "localStorage-cleared case is observable client-side."
+    )
+    assert "document.cookie" in source, (
+        "marker cookie must be read via document.cookie (it is NOT "
+        "HttpOnly — server-set with httponly=false so JS can read)."
+    )
+
+
+def test_auth_core_clears_marker_cookie_on_signout():
+    """``signOut()`` must clear the marker cookie so the next page load
+    doesn't show a phantom re-auth banner for a user who explicitly signed
+    out (the 30-day cookie would otherwise outlive the localStorage wipe)."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    # Locate signOut() body.
+    signout_match = re.search(
+        r"async function signOut\s*\([\s\S]*?\n  \}",
+        source,
+    )
+    assert signout_match, "could not locate signOut() body"
+    signout_body = signout_match.group(0)
+    assert "clearMarkerCookie" in signout_body or "zk-session-marker" in signout_body, (
+        "signOut() must clear the zk-session-marker cookie (Max-Age=0) so "
+        "the next visit doesn't show a phantom re-auth banner."
+    )
+
+
+def test_auth_core_marker_triggers_banner_when_no_session():
+    """The reconciliation block must fire ``ZKAuthUI.showReauthBanner`` when
+    the marker cookie indicates "was signed in" but no Supabase session
+    was restored. Without this, the user silently submits anonymously."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert "showReauthBanner" in source, (
+        "reconciliation block must call ZKAuthUI.showReauthBanner so the "
+        "user sees a re-auth prompt instead of silently submitting anon "
+        "after a localStorage wipe."
+    )
+
+
+def test_auth_core_clear_marker_uses_max_age_zero():
+    """``clearMarkerCookie()`` must use ``Max-Age=0`` to expire the cookie
+    immediately. Some clients ignore ``Expires`` in the past; Max-Age=0 is
+    universally honored."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    # Find the clearMarkerCookie body and verify the Max-Age=0 expiry shape.
+    assert re.search(r"Max-Age\s*=\s*0", source), (
+        "marker cookie clearing must use 'Max-Age=0' for immediate expiry."
+    )
