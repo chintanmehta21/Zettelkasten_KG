@@ -615,3 +615,51 @@ async def test_safe_request_allows_https_to_http_downgrade_redirect():
     assert response.status_code == 200
     assert response.content == b"plain"
     assert captured_urls[1] == "http://example.com/insecure"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_follows_mixed_status_redirect_chain():
+    """Pin: 302 → 307 → 301 → 200 all handled uniformly by the loop
+    (safe_http.py:48 _REDIRECT_STATUSES). Existing tests use 302 only;
+    a status-code-specific bug introduced later would ship silently.
+    """
+    import httpx
+
+    captured_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        captured_urls.append(url)
+        if url == "https://example.com/h1":
+            return httpx.Response(302, headers={"location": "https://example.com/h2"})
+        if url == "https://example.com/h2":
+            return httpx.Response(307, headers={"location": "https://example.com/h3"})
+        if url == "https://example.com/h3":
+            return httpx.Response(301, headers={"location": "https://example.com/final"})
+        if url == "https://example.com/final":
+            return httpx.Response(200, content=b"done")
+        raise AssertionError(f"unexpected url {url}")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/h1", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert response.content == b"done"
+    assert captured_urls == [
+        "https://example.com/h1",
+        "https://example.com/h2",
+        "https://example.com/h3",
+        "https://example.com/final",
+    ]
