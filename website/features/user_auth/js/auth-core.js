@@ -27,6 +27,18 @@
   var _currentSession = null;
   var _subscribers = [];
 
+  // Client-side idle + absolute session timeout — closes the "forever session"
+  // gap that Supabase Auth has when running on the free tier (idle/inactivity
+  // timeouts are Pro-only). 7d idle aligns with Notion / Figma defaults; 30d
+  // absolute matches Linear's documented session policy. Pure client-side: no
+  // server calls, no DB writes — just a localStorage timestamp + a forced
+  // signOut() when exceeded. See research synthesis 2026-05-26 R1.
+  var IDLE_MS = 7 * 24 * 60 * 60 * 1000;
+  var ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
+  var ACTIVITY_THROTTLE_MS = 60 * 1000;
+  var ACTIVITY_KEY = 'zk-auth-last-activity';
+  var _lastActivityWrite = 0;
+
   function getCacheState() {
     if (!window.browserCache || typeof window.browserCache.getState !== 'function') {
       return {
@@ -130,6 +142,19 @@
   // the browser-cache hints, runs the landing-page redirect, then fans the
   // event out to all subscribers (desktop UI, mobile UI, pricing.js, …).
   function handleCoreSession(eventName, session) {
+    // On RESTORE / INITIAL_SESSION, validate the restored session against
+    // idle + absolute timeouts BEFORE propagating to subscribers. If the
+    // session exceeded our policy, sign out cleanly so subscribers see
+    // SIGNED_OUT (the existing zk_fetch.js banner takes over).
+    if ((eventName === 'RESTORE' || eventName === 'INITIAL_SESSION') && session) {
+      var timeoutReason = checkSessionTimeout(session);
+      if (timeoutReason) {
+        console.warn('[auth-core] Restored session timed out (' + timeoutReason + '), forcing sign-out');
+        _currentSession = null;
+        signOut();
+        return;
+      }
+    }
     _currentSession = session;
 
     if (!session || !session.user) {
@@ -202,7 +227,48 @@
     await _supabaseClient.auth.signOut();
     _currentSession = null;
     patchCacheState({ hasLoggedIn: false, allowCredentialStorage: false });
+    try { localStorage.removeItem(ACTIVITY_KEY); } catch (_) {}
     emit('SIGNED_OUT', null);
+  }
+
+  // Record activity timestamp in localStorage so multi-tab activity counts
+  // (a click in tab A keeps tab B alive). Throttled to one write/minute so
+  // mass click/keydown events don't hammer storage.
+  function recordActivity() {
+    var now = Date.now();
+    if (now - _lastActivityWrite < ACTIVITY_THROTTLE_MS) return;
+    _lastActivityWrite = now;
+    try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch (_) {}
+  }
+
+  // Returns null OR a reason string ('idle' | 'absolute') if the session
+  // should be force-signed-out. First-run users (no baseline) get the
+  // baseline set NOW so they aren't instantly logged out by the new gate.
+  function checkSessionTimeout(session) {
+    if (!session || !session.user) return null;
+    var now = Date.now();
+    var lastActivityRaw;
+    try { lastActivityRaw = localStorage.getItem(ACTIVITY_KEY); } catch (_) { return null; }
+    if (!lastActivityRaw) {
+      try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch (_) {}
+      return null;
+    }
+    var lastActivity = parseInt(lastActivityRaw, 10);
+    if (lastActivity && now - lastActivity > IDLE_MS) return 'idle';
+    var signedInAtRaw = session.user.last_sign_in_at;
+    if (signedInAtRaw) {
+      var signedInAt = new Date(signedInAtRaw).getTime();
+      if (signedInAt && now - signedInAt > ABSOLUTE_MS) return 'absolute';
+    }
+    return null;
+  }
+
+  function maybeTimeout() {
+    var reason = checkSessionTimeout(_currentSession);
+    if (reason) {
+      console.warn('[auth-core] Session timed out (' + reason + '), signing out');
+      signOut();
+    }
   }
 
   // ---- Public API ----
@@ -247,6 +313,18 @@
     return _currentSession ? _currentSession.access_token : null;
   };
   window.signOut = signOut;
+
+  // Activity listeners feed the idle-timeout baseline. Passive to avoid
+  // scroll-jank; throttled inside recordActivity() to one localStorage write
+  // per minute. visibilitychange + focus also run a timeout check so a tab
+  // returning from background instantly detects expired sessions.
+  ['click', 'keydown', 'pointerdown'].forEach(function (evt) {
+    document.addEventListener(evt, recordActivity, { passive: true, capture: true });
+  });
+  window.addEventListener('focus', function () { recordActivity(); maybeTimeout(); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { recordActivity(); maybeTimeout(); }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
