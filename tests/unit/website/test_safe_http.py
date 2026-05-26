@@ -15,7 +15,9 @@ import respx
 
 from website.core.safe_http import (
     MAX_REDIRECT_HOPS,
+    DEFAULT_MAX_RESPONSE_BYTES,
     RedirectLoopError,
+    ResponseTooLargeError,
     UnsafeRedirectError,
     safe_request,
 )
@@ -117,6 +119,39 @@ async def test_safe_request_follows_relative_location():
         response = await safe_request("GET", "https://example.com/start")
     assert response.status_code == 200
     assert response.text == "ok"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_rejects_oversize_response():
+    """Defense against runaway server bodies: a 100 MB response (or any
+    response above ``max_response_bytes``) must abort mid-stream, not
+    accumulate gigabytes in worker memory. Caps the response-size attack
+    surface on the 2 GB droplet."""
+    oversize_body = b"x" * (3 * 1024 * 1024)  # 3 MB
+    with respx.mock() as router:
+        router.get("https://example.com/big").respond(200, content=oversize_body)
+        with pytest.raises(ResponseTooLargeError):
+            await safe_request(
+                "GET",
+                "https://example.com/big",
+                max_response_bytes=1 * 1024 * 1024,  # 1 MB cap
+            )
+
+
+@pytest.mark.asyncio
+async def test_safe_request_passes_response_under_cap():
+    """A response below the cap must be returned intact and readable."""
+    small = b"hello world"
+    with respx.mock() as router:
+        router.get("https://example.com/small").respond(200, content=small)
+        response = await safe_request(
+            "GET",
+            "https://example.com/small",
+            max_response_bytes=1 * 1024 * 1024,
+        )
+    assert response.status_code == 200
+    assert response.content == small
+    assert response.text == "hello world"
 
 
 @pytest.mark.asyncio
