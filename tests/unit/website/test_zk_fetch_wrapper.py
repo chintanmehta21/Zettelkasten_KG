@@ -38,6 +38,20 @@ def test_zk_fetch_handles_x_auth_status_header():
     assert "jwt-dropped-to-anon" in src, "must check for jwt-dropped-to-anon value"
 
 
+def test_zk_fetch_banner_fires_on_token_missing_but_expected():
+    """Post-Prajeet 2026-05-26 Phase-1.5: the wrapper must also fire the
+    banner when the response carries ``X-Auth-Status:
+    token-missing-but-expected`` — same user-facing outcome as the
+    JWT-dropped case (their data didn't land under their account), so the
+    same re-auth banner is the right UX."""
+    src = ZK_FETCH.read_text(encoding="utf-8")
+    assert "token-missing-but-expected" in src, (
+        "zk_fetch.js must trigger the reauth banner on the "
+        "'token-missing-but-expected' X-Auth-Status value (the Zk-Auth-Intent "
+        "observability pipeline), not just on 'jwt-dropped-to-anon'."
+    )
+
+
 def test_zk_fetch_cloudflare_discriminator_present():
     """Must NOT try to refresh on Cloudflare-issued 401s."""
     src = ZK_FETCH.read_text(encoding="utf-8")

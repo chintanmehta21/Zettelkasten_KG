@@ -205,7 +205,16 @@
 
     var res = await origFetch(input, effectiveInit);
 
-    if (res.headers.get('X-Auth-Status') === 'jwt-dropped-to-anon') {
+    // Banner triggers on EITHER auth-degradation signal:
+    //   - 'jwt-dropped-to-anon' (§5.2 fix — JWT sent but rejected)
+    //   - 'token-missing-but-expected' (Phase-1 — Zk-Auth-Intent hint
+    //     said the client expected auth but couldn't attach one)
+    // Both render the same user-facing banner because both produce the
+    // same outcome from the user's perspective: their data didn't land
+    // under their account. Server still returned 200/202 with anon data;
+    // the banner is the visible signal to re-auth and retry.
+    var authStatus = res.headers.get('X-Auth-Status');
+    if (authStatus === 'jwt-dropped-to-anon' || authStatus === 'token-missing-but-expected') {
       broadcastAndShow('downgraded');
     }
 
