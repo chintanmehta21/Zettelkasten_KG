@@ -74,6 +74,32 @@
     return window.location.pathname === '/';
   }
 
+  // Phase 1.5 Item 3: read the server-set zk-session-marker cookie. Survives
+  // localStorage clears (Safari ITP 7-day cap, profile sync, manual "clear
+  // site data"); when present + no Supabase session restored on boot → user
+  // WAS signed in but their localStorage is gone → trigger the re-auth banner.
+  // Non-secret value ("1") so JS-readable (.httponly=false on the server).
+  function readMarkerCookie() {
+    try {
+      var parts = (document.cookie || '').split(';');
+      for (var i = 0; i < parts.length; i += 1) {
+        var kv = parts[i].split('=');
+        if (kv[0].trim() === 'zk-session-marker') return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function clearMarkerCookie() {
+    try {
+      document.cookie = 'zk-session-marker=; Max-Age=0; Path=/; SameSite=Lax; Secure';
+    } catch (_) {
+      // document.cookie may throw in sandboxed iframes — non-fatal.
+    }
+  }
+
   // Auto-redirect authenticated visitors from the public landing to /home,
   // unless a recent redirect (<5s) suggests /home just bounced us back —
   // which would indicate an auth-loop bug we should surface in the console
@@ -231,19 +257,41 @@
         window.ZKAuth.__signalSessionReady();
       }
 
-      // Gap-3 reconciliation: browserCache says "previously signed in" but
-      // no Supabase session restored — most likely cause is localStorage
-      // 'zk-auth-token' cleared (profile sync, Safari ITP, manual clear)
-      // while hasLoggedIn survived. Emit a structured event so observability
-      // and future UI listeners can react. Phase-1.5 Item 3 will wire the
-      // banner trigger via the marker-cookie detection layer.
+      // Reconciliation (Gap-3 + Phase 1.5 Item 3): the user WAS signed in
+      // before — per browserCache.hasLoggedIn OR per the server-set
+      // zk-session-marker cookie — but no Supabase session was restored
+      // this load. Two layers because they fail differently:
+      //   - browserCache: lives in the same localStorage that may have been
+      //     wiped alongside zk-auth-token (profile sync, "clear site data")
+      //   - marker cookie: server-issued, separate storage; survives most
+      //     localStorage wipes including Safari ITP's 7-day script-storage
+      //     cap (per WebKit Tracking Prevention policy, still active 2025).
+      // If EITHER signal says "was signed in" → trigger re-auth banner so
+      // the user doesn't silently submit anonymously.
       try {
         var cache = getCacheState();
-        if (cache && cache.hasLoggedIn && !_currentSession) {
-          console.warn('[auth-core] auth-cache mismatch: hasLoggedIn=true but no Supabase session restored');
+        var hadCacheFlag = !!(cache && cache.hasLoggedIn);
+        var hadMarker = readMarkerCookie();
+        if ((hadCacheFlag || hadMarker) && !_currentSession) {
+          console.warn(
+            '[auth-core] auth-cache mismatch: previously signed in '
+            + '(cache=' + hadCacheFlag + ', marker=' + hadMarker + ') '
+            + 'but no Supabase session restored'
+          );
           window.dispatchEvent(new CustomEvent('zk:auth-cache-mismatch', {
-            detail: { hasLoggedIn: true, hasSession: false, at: Date.now() }
+            detail: {
+              hasLoggedIn: hadCacheFlag,
+              markerCookie: hadMarker,
+              hasSession: false,
+              at: Date.now(),
+            },
           }));
+          // ZKAuthUI is exposed by zk_fetch.js — defensive check before
+          // calling so a script-order edge case (auth-core loaded first)
+          // degrades to event-only rather than throwing.
+          if (window.ZKAuthUI && typeof window.ZKAuthUI.showReauthBanner === 'function') {
+            window.ZKAuthUI.showReauthBanner('expired');
+          }
         }
       } catch (mismatch_err) {
         // CustomEvent ctor unavailable on very old browsers; non-fatal.
@@ -298,6 +346,11 @@
     _currentSession = null;
     patchCacheState({ hasLoggedIn: false, allowCredentialStorage: false });
     try { localStorage.removeItem(ACTIVITY_KEY); } catch (_) {}
+    // Phase 1.5 Item 3: clear the marker cookie so the next page load
+    // doesn't show a phantom "re-auth needed" banner for a user who
+    // explicitly signed out. The 30-day cookie would otherwise outlive
+    // the localStorage wipe and trigger the reconciliation false-positive.
+    clearMarkerCookie();
     emit('SIGNED_OUT', null);
   }
 

@@ -148,6 +148,7 @@ def _decode_token(token: str) -> dict:
 
 
 async def get_current_user(
+    request: Request,
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
     ] = None,
@@ -156,17 +157,27 @@ async def get_current_user(
 
     Returns a dict with keys: sub, email, aud, role, user_metadata, etc.
     Raises HTTPException(401) if token is missing, expired, or invalid.
+
+    Marks ``request.state.authenticated = True`` on success so the
+    session-marker-cookie middleware in ``website/app.py`` can issue the
+    long-lived ``zk-session-marker`` cookie (Phase 1.5 Item 3 — survives
+    localStorage clears).
     """
     if credentials is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        return _decode_token(credentials.credentials)
+        claims = _decode_token(credentials.credentials)
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except (pyjwt.InvalidTokenError, ValueError) as exc:
         logger.debug("JWT validation failed: %s", exc)
         raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        request.state.authenticated = True
+    except AttributeError:
+        pass
+    return claims
 
 
 async def get_optional_user(
@@ -259,7 +270,7 @@ async def get_optional_user(
         return None
 
     try:
-        return _decode_token(credentials.credentials)
+        claims = _decode_token(credentials.credentials)
     except Exception as exc:
         logger.warning(
             "JWT validation failed; dropping request to anonymous (%s)",
@@ -272,3 +283,11 @@ async def get_optional_user(
             # the request path; observability degrades to log-only.
             pass
         return None
+    # JWT-valid path — tag request.state for the marker-cookie middleware
+    # (Phase 1.5 Item 3). Same defensive AttributeError guard as the dropped
+    # branches for non-Request stubs in old call sites.
+    try:
+        request.state.authenticated = True
+    except AttributeError:
+        pass
+    return claims

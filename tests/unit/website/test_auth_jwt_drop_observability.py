@@ -558,3 +558,111 @@ def test_compute_auth_intent_auth_status_wins_over_user() -> None:
     user = {"sub": "550e8400-e29b-41d4-a716-446655440000"}
     req = _FakeRequest(auth_status="token-missing-but-expected")
     assert _compute_auth_intent(req, user) == "token-missing-but-expected"
+
+
+# ── 8. zk-session-marker cookie (Phase 1.5 Item 3) ────────────────────────
+#
+# Server-issued marker cookie survives localStorage clears (Safari ITP,
+# profile sync, "clear site data") and lets the client detect "was signed in
+# before but my session storage is gone" on the next page load. Non-HttpOnly
+# because JS reads it on boot to gate the re-auth banner; the cookie value
+# is just "1" (no secret), so an XSS reader learns nothing useful. Server-set
+# (Set-Cookie response header) is critical for Safari ITP exemption — JS
+# document.cookie writes are 7-day-capped on flagged sites.
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_marker_cookie_set_on_authenticated_response(_secret) -> None:
+    """A request with a VALID JWT must come back with
+    ``Set-Cookie: zk-session-marker=1`` carrying the right flags
+    (Secure, SameSite=Lax, Max-Age=30d, Path=/, NOT HttpOnly)."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    token = _make_jwt()
+    resp = client.get(
+        "/api/graph", headers={"Authorization": f"Bearer {token}"}
+    )
+    # TestClient stores cookies in resp.cookies; the raw Set-Cookie header
+    # carries the flags we care about.
+    raw_set_cookie = resp.headers.get("set-cookie") or ""
+    assert "zk-session-marker=1" in raw_set_cookie, (
+        f"Set-Cookie must carry zk-session-marker=1. Got: {raw_set_cookie!r}"
+    )
+    # Phase 1.5 Item 3 required flags:
+    assert "Max-Age=2592000" in raw_set_cookie, (
+        f"Max-Age must be 30 days (2592000s). Got: {raw_set_cookie!r}"
+    )
+    assert "Path=/" in raw_set_cookie
+    assert "Secure" in raw_set_cookie
+    # SameSite=Lax (case-insensitive — Starlette emits "lax")
+    assert "samesite=lax" in raw_set_cookie.lower()
+    # NOT HttpOnly — JS must be able to read this on the client.
+    assert "HttpOnly" not in raw_set_cookie, (
+        f"Marker cookie must be readable from JS (no HttpOnly). "
+        f"Got: {raw_set_cookie!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_marker_cookie_not_set_on_anonymous_response(_secret) -> None:
+    """A request with NO Authorization header (legit anon) must NOT receive
+    a Set-Cookie for the marker — we only mark sessions we have actual
+    evidence of."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    resp = client.get("/api/graph")
+    raw_set_cookie = resp.headers.get("set-cookie") or ""
+    assert "zk-session-marker" not in raw_set_cookie, (
+        f"Marker must not be set on legit-anon responses. "
+        f"Got: {raw_set_cookie!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_marker_cookie_not_set_on_invalid_jwt(_secret) -> None:
+    """A request with a malformed Bearer JWT goes to the
+    ``jwt-dropped-to-anon`` path — NOT the authenticated path — so the
+    marker cookie must NOT be set (no actual auth happened)."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    resp = client.get("/api/graph", headers={"Authorization": "Bearer garbage"})
+    raw_set_cookie = resp.headers.get("set-cookie") or ""
+    assert "zk-session-marker" not in raw_set_cookie, (
+        f"Marker must not be set on invalid-JWT responses. "
+        f"Got: {raw_set_cookie!r}"
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_marker_cookie_idempotent_when_already_present(_secret) -> None:
+    """When the request already carries the marker cookie, we must NOT
+    re-emit Set-Cookie — keeps response headers lean for the steady-state
+    case where every request from a signed-in user would otherwise re-send
+    the same cookie."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    token = _make_jwt()
+    resp = client.get(
+        "/api/graph",
+        headers={"Authorization": f"Bearer {token}"},
+        cookies={"zk-session-marker": "1"},
+    )
+    raw_set_cookie = resp.headers.get("set-cookie") or ""
+    assert "zk-session-marker" not in raw_set_cookie, (
+        f"Marker cookie must not be re-emitted when already present. "
+        f"Got: {raw_set_cookie!r}"
+    )
+
+
+# Unit-level get_current_user / get_optional_user state tagging is covered
+# indirectly by the marker-cookie integration tests above (the cookie is
+# only emitted when ``request.state.authenticated=True``, so green
+# marker-cookie tests imply the deps tag the state correctly).
