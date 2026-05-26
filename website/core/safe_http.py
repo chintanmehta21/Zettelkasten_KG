@@ -37,6 +37,12 @@ logger = logging.getLogger(__name__)
 # bit.ly → final without leaving room for adversarial exhaustion).
 MAX_REDIRECT_HOPS = 5
 
+# 25 MB default body cap — matches summarization-engine's input budget
+# (Gemini context, BGE chunker). Bounded so a server streaming gigabytes
+# can't exhaust the 2 GB droplet's worker memory. Per-call override via
+# the ``max_response_bytes`` kwarg.
+DEFAULT_MAX_RESPONSE_BYTES = 25 * 1024 * 1024
+
 # 3xx status codes that trigger a redirect follow. 304 (Not Modified) is
 # excluded — it's a conditional-GET response, not a redirect.
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
@@ -55,6 +61,10 @@ class RedirectLoopError(SafeHttpError):
     """Redirect chain exceeded ``max_hops`` — abort to bound work."""
 
 
+class ResponseTooLargeError(SafeHttpError):
+    """Final response body exceeded ``max_response_bytes`` — abort streaming."""
+
+
 def _resolve_location(current_url: str, location: str) -> str:
     """Resolve a possibly-relative Location header against the current URL.
     RFC 9110 §10.2.2 allows relative Locations; ``urljoin`` is the canonical
@@ -70,37 +80,58 @@ async def _follow_with_revalidation(
     *,
     max_hops: int,
     headers: dict[str, str] | None,
+    max_response_bytes: int,
 ) -> httpx.Response:
     """Issue ``method`` against ``url``; on 3xx, validate the Location and
     re-issue. Cap at ``max_hops`` total transitions (the initial request
-    counts as hop 0)."""
+    counts as hop 0). On the FINAL response, stream the body with a running
+    byte-total cap to bound worker memory."""
     current_url = url
     request_headers = dict(headers or {})
     for hop in range(max_hops + 1):
-        response = await client.request(method, current_url, headers=request_headers)
-        if response.status_code not in _REDIRECT_STATUSES:
+        async with client.stream(
+            method, current_url, headers=request_headers
+        ) as response:
+            if response.status_code in _REDIRECT_STATUSES:
+                location = response.headers.get("location")
+                if not location:
+                    # Spec-broken 3xx with no Location — surface as-is. Need
+                    # to materialize the body before the stream closes.
+                    await response.aread()
+                    return response
+                next_url = _resolve_location(current_url, location)
+                if not validate_url(next_url):
+                    raise UnsafeRedirectError(
+                        f"Refused redirect from {current_url!r} to {next_url!r}: "
+                        "Location fails post-DNS / scheme allowlist."
+                    )
+                # Drop Authorization-like headers on cross-host redirects
+                # (matches httpx's auto-redirect behavior — defense against
+                # credential leak to a different host).
+                if _is_cross_host(current_url, next_url):
+                    request_headers = {
+                        k: v
+                        for k, v in request_headers.items()
+                        if k.lower() not in _SENSITIVE_HEADERS
+                    }
+                current_url = next_url
+                continue
+            # Terminal response — stream body with size cap.
+            total = 0
+            chunks: list[bytes] = []
+            async for chunk in response.aiter_bytes():
+                total += len(chunk)
+                if total > max_response_bytes:
+                    raise ResponseTooLargeError(
+                        f"Response from {current_url!r} exceeded "
+                        f"{max_response_bytes} bytes; aborted streaming."
+                    )
+                chunks.append(chunk)
+            # Materialize the body so callers can use .text / .content / .json().
+            # aiter_bytes() above already populated _content via httpx internals,
+            # but we set it explicitly for predictability across httpx versions.
+            response._content = b"".join(chunks)
             return response
-        location = response.headers.get("location")
-        if not location:
-            # Spec-broken 3xx with no Location — surface as-is, the caller
-            # can decide if that's a problem.
-            return response
-        next_url = _resolve_location(current_url, location)
-        if not validate_url(next_url):
-            raise UnsafeRedirectError(
-                f"Refused redirect from {current_url!r} to {next_url!r}: "
-                "Location fails post-DNS / scheme allowlist."
-            )
-        # Drop Authorization-like headers on cross-host redirects (matches
-        # httpx's auto-redirect behavior — defense against credential leak
-        # to a different host).
-        if _is_cross_host(current_url, next_url):
-            request_headers = {
-                k: v
-                for k, v in request_headers.items()
-                if k.lower() not in _SENSITIVE_HEADERS
-            }
-        current_url = next_url
     raise RedirectLoopError(
         f"Exceeded {max_hops} redirects starting from {url!r}."
     )
@@ -121,10 +152,12 @@ async def safe_request(
     *,
     head_first: bool = False,
     max_hops: int = MAX_REDIRECT_HOPS,
+    max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
     timeout: float = 20.0,
     headers: dict[str, str] | None = None,
 ) -> httpx.Response:
-    """Manual-redirect HTTP request with per-hop SSRF revalidation.
+    """Manual-redirect HTTP request with per-hop SSRF revalidation
+    and a streaming response-size cap.
 
     Args:
       method: Final-request method (``"GET"``, ``"POST"``, ...).
@@ -133,6 +166,8 @@ async def safe_request(
         and fall back to ``method`` if the HEAD final response is ``>=400``.
         Matches legacy ``resolve_redirects`` semantics.
       max_hops: Per-call cap on redirect transitions.
+      max_response_bytes: Stop reading the final response once total bytes
+        exceed this. Raises ``ResponseTooLargeError`` on overflow.
       timeout: Total request timeout per hop.
       headers: Request headers (passed through; Authorization/Cookie are
         dropped on cross-host redirect).
@@ -140,6 +175,7 @@ async def safe_request(
     Raises:
       UnsafeRedirectError: Location failed ``validate_url``.
       RedirectLoopError: chain exceeded ``max_hops``.
+      ResponseTooLargeError: final body exceeded ``max_response_bytes``.
       httpx.HTTPError subclasses: connect/timeout/etc.
     """
     async with httpx.AsyncClient(
@@ -148,7 +184,12 @@ async def safe_request(
         if head_first:
             try:
                 resp = await _follow_with_revalidation(
-                    client, "HEAD", url, max_hops=max_hops, headers=headers
+                    client,
+                    "HEAD",
+                    url,
+                    max_hops=max_hops,
+                    headers=headers,
+                    max_response_bytes=max_response_bytes,
                 )
                 if resp.status_code < 400:
                     return resp
@@ -156,5 +197,10 @@ async def safe_request(
             except httpx.UnsupportedProtocol:
                 pass
         return await _follow_with_revalidation(
-            client, method, url, max_hops=max_hops, headers=headers
+            client,
+            method,
+            url,
+            max_hops=max_hops,
+            headers=headers,
+            max_response_bytes=max_response_bytes,
         )
