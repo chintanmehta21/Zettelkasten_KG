@@ -368,3 +368,118 @@ def test_authorization_present_ignores_intent_hint(_secret) -> None:
     assert body["auth_status"] is None, (
         f"Valid JWT path must not set auth_status even when hint present. Got: {body!r}"
     )
+
+
+# ── 6. Server-side heuristic: spa-inferred-anon ───────────────────────────
+#
+# When the client didn't send Zk-Auth-Intent (likely cause: auth-core.js
+# itself crashed before installing the zkFetch wrapper, or browserCache shim
+# is gone), the backend falls back to inferring "SPA-shaped anonymous" from
+# the request signature: same-origin Sec-Fetch-Site + frontend Idempotency-Key
+# shape + real-browser UA. Lower confidence than the explicit hint — it CAN
+# false-positive on a first-time anonymous visitor using the landing form —
+# but it's the only signal we have when the client side itself is broken.
+
+
+SPA_HEURISTIC_HEADERS = {
+    "Sec-Fetch-Site": "same-origin",
+    "Idempotency-Key": "zettel:landing:1779766878937:abc123xyz",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/151.0",
+}
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_heuristic_fires_on_full_signature(_secret) -> None:
+    """All three SPA signature signals present + no Authorization + no
+    Zk-Auth-Intent → ``spa-inferred`` auth_status. Catches the case where
+    the client-side init itself failed (no auth-core.js, no browserCache,
+    so no explicit hint either)."""
+    client = TestClient(_build_probe_app())
+    resp = client.get("/probe", headers=SPA_HEURISTIC_HEADERS)
+    assert resp.status_code == 200
+    assert resp.json()["auth_status"] == "spa-inferred"
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_heuristic_skipped_when_intent_present(_secret) -> None:
+    """When ``Zk-Auth-Intent`` is explicitly set, the high-confidence
+    ``token-missing-but-expected`` branch must win — the heuristic must NOT
+    overwrite it with the lower-confidence ``spa-inferred`` value."""
+    client = TestClient(_build_probe_app())
+    resp = client.get(
+        "/probe",
+        headers={**SPA_HEURISTIC_HEADERS, "Zk-Auth-Intent": "bearer"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["auth_status"] == "token-missing-but-expected", (
+        "When client explicitly hints intent, the high-confidence value "
+        "must win over the lower-confidence server heuristic."
+    )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_heuristic_skipped_for_non_browser_ua(_secret) -> None:
+    """A real browser UA is required — curl / requests-lib / bots must NOT
+    trip the heuristic (false-positive noise from API explorers)."""
+    client = TestClient(_build_probe_app())
+    for ua in [
+        "curl/8.5.0",
+        "python-requests/2.31.0",
+        "wget/1.21",
+        "Googlebot/2.1",
+        "",  # absent UA also fails the real-browser check
+    ]:
+        headers = {**SPA_HEURISTIC_HEADERS, "User-Agent": ua}
+        resp = client.get("/probe", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["auth_status"] is None, (
+            f"Non-browser UA {ua!r} must NOT trip the SPA heuristic. "
+            f"Got: {resp.json()!r}"
+        )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_heuristic_skipped_for_cross_origin(_secret) -> None:
+    """Cross-origin requests cannot be SPA-init failures of OUR SPA — they
+    must not trip the heuristic."""
+    client = TestClient(_build_probe_app())
+    headers = {**SPA_HEURISTIC_HEADERS, "Sec-Fetch-Site": "cross-site"}
+    resp = client.get("/probe", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["auth_status"] is None
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_heuristic_skipped_for_non_spa_idem_key(_secret) -> None:
+    """Idempotency-Key without the frontend op_id shape (``zettel:<surface>:
+    <ms>:<rand>``) must not trip the heuristic — only the SPA emits this
+    exact pattern via add_zettel_api.js::makeActionId."""
+    client = TestClient(_build_probe_app())
+    for idem_key in [
+        "",  # absent
+        "user-provided-key-12345",  # caller-chosen
+        "zettel:foo",  # truncated — fewer than 3 colons
+        "POST-/api/zettels/add-2026-05-26",  # generic
+    ]:
+        headers = {**SPA_HEURISTIC_HEADERS, "Idempotency-Key": idem_key}
+        resp = client.get("/probe", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["auth_status"] is None, (
+            f"Non-SPA Idempotency-Key {idem_key!r} must not trip heuristic. "
+            f"Got: {resp.json()!r}"
+        )
+
+
+@patch("website.api.auth._get_jwt_secret", return_value=TEST_SECRET)
+def test_spa_inferred_response_has_no_www_authenticate(_secret) -> None:
+    """Same RFC 6750 rule as token-missing-but-expected: no JWT was sent,
+    so WWW-Authenticate would misdirect. X-Auth-Status + Cache-Control
+    still apply."""
+    from website.app import create_app
+
+    app = create_app()
+    client = TestClient(app)
+    resp = client.get("/api/graph", headers=SPA_HEURISTIC_HEADERS)
+    assert resp.headers.get("X-Auth-Status") == "spa-inferred"
+    assert "WWW-Authenticate" not in resp.headers
+    assert resp.headers.get("Cache-Control") == "private, no-store"

@@ -220,6 +220,42 @@ async def get_optional_user(
                 request.state.auth_status = "token-missing-but-expected"
             except AttributeError:
                 pass
+            return None
+
+        # Server-side heuristic: if the client didn't send the explicit
+        # Zk-Auth-Intent hint (maybe auth-core.js itself failed to load, or
+        # the browserCache shim is gone), fall back to inference from
+        # SPA-signature headers. ``spa-inferred`` is lower-confidence than
+        # ``token-missing-but-expected`` because it CAN false-positive on a
+        # genuinely-anonymous first-time visitor using the SPA — but it's
+        # the only signal we have for "client failed before init". Keep
+        # the conditions tight: same-origin (rules out direct curl-from-
+        # script attacks), Idempotency-Key matches the frontend op_id
+        # shape (rules out generic API explorers), AND a real-browser UA.
+        idem_key = request.headers.get("idempotency-key", "")
+        sec_fetch_site = request.headers.get("sec-fetch-site", "")
+        user_agent = request.headers.get("user-agent", "")
+        # Frontend op_id format from add_zettel_api.js makeActionId:
+        #   ``'zettel:' + surface + ':' + ms + ':' + rand``
+        # where surface is one of {landing, home, zettels, mobile, ...}
+        spa_idem = idem_key.startswith("zettel:") and idem_key.count(":") >= 3
+        spa_origin = sec_fetch_site == "same-origin"
+        # Tight UA filter: skip curl, requests-lib, headless probes, bots.
+        ua_lower = user_agent.lower()
+        is_real_browser = bool(user_agent) and not any(
+            tok in ua_lower
+            for tok in ("curl/", "python-requests", "wget/", "httpie/", "bot", "spider", "scraper")
+        )
+        if spa_idem and spa_origin and is_real_browser:
+            logger.warning(
+                "SPA-shaped anonymous request (no Zk-Auth-Intent hint); "
+                "Idempotency-Key=%r — possible client init failure",
+                idem_key[:80],
+            )
+            try:
+                request.state.auth_status = "spa-inferred"
+            except AttributeError:
+                pass
         return None
 
     try:
