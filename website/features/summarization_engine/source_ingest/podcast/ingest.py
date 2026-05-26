@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
-import xml.etree.ElementTree as ET
+# defusedxml refuses DTD entity expansion + external references; user-
+# submitted feed_url means RSS bytes are untrusted input.
+import defusedxml.ElementTree as ET
 from typing import Any
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType

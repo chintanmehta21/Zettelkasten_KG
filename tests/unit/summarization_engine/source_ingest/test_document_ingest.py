@@ -71,3 +71,61 @@ def test_extract_document_upload_rejects_unsupported_extension():
             content=b"Enough body text would be here, but this format is unsupported.",
             content_type="application/msword",
         )
+
+
+def test_extract_docx_rejects_internal_entity_expansion():
+    """Billion-laughs guard: a DOCX with an internal DTD entity must be
+    rejected, not silently expanded. defusedxml.ElementTree refuses entity
+    expansion by default (forbid_entities=True), closing the canonical
+    billion-laughs / quadratic-blowup vector on user uploads.
+
+    Without defusedxml, vanilla xml.etree.ElementTree expands &greeting; to
+    "hello" and the document parses successfully — the vulnerability path.
+    """
+    filler = "Padding text to clear the 50-char minimum threshold check downstream of the parse step."
+    body = (
+        b'<?xml version="1.0"?>'
+        b'<!DOCTYPE doc [<!ENTITY greeting "hello">]>'
+        b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        b'<w:body>'
+        b'<w:p><w:r><w:t>&greeting;</w:t></w:r></w:p>'
+        + f'<w:p><w:r><w:t>{filler}</w:t></w:r></w:p>'.encode()
+        + b'</w:body></w:document>'
+    )
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", body)
+
+    with pytest.raises(DocumentUploadError):
+        extract_document_upload(
+            filename="entity.docx",
+            content=buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+
+
+def test_extract_docx_rejects_external_entity():
+    """XXE guard: a DOCX referencing an external SYSTEM entity must be
+    rejected (defusedxml's forbid_external=True), not silently expanded into
+    a file:// or http:// fetch.
+    """
+    filler = "Padding text to clear the 50-char minimum threshold check downstream of the parse step."
+    body = (
+        b'<?xml version="1.0"?>'
+        b'<!DOCTYPE doc [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+        b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        b'<w:body>'
+        b'<w:p><w:r><w:t>&xxe;</w:t></w:r></w:p>'
+        + f'<w:p><w:r><w:t>{filler}</w:t></w:r></w:p>'.encode()
+        + b'</w:body></w:document>'
+    )
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", body)
+
+    with pytest.raises(DocumentUploadError):
+        extract_document_upload(
+            filename="xxe.docx",
+            content=buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
