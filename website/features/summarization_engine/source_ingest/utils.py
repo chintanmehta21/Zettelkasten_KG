@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -12,6 +13,8 @@ from bs4 import BeautifulSoup
 from website.core.safe_http import safe_request
 from website.features.summarization_engine.core.errors import ExtractionError
 from website.features.summarization_engine.core.models import SourceType
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 20.0
 
@@ -66,10 +69,16 @@ def extract_html_text(html: str) -> tuple[str, dict[str, Any]]:
     extracted = ""
     try:
         import trafilatura
-
-        extracted = trafilatura.extract(html) or ""
-    except Exception:
-        extracted = ""
+    except ImportError as exc:
+        # Distinct from "page not extractable" — surfaces a broken install.
+        logger.warning("trafilatura import failed (%s: %s)", type(exc).__name__, exc)
+    else:
+        try:
+            extracted = trafilatura.extract(html) or ""
+        except (ValueError, AttributeError, TypeError) as exc:
+            logger.warning(
+                "trafilatura.extract failed (%s: %s)", type(exc).__name__, exc,
+            )
 
     soup = BeautifulSoup(html, "html.parser")
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
