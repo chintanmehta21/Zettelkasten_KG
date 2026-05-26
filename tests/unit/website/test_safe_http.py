@@ -314,3 +314,61 @@ async def test_safe_request_head_first_falls_back_to_get():
     # Final response is the GET fallback.
     assert response.status_code == 200
     assert response.text == "body"
+
+
+@pytest.mark.asyncio
+async def test_safe_request_scrubs_cookie_on_cross_host_redirect():
+    """Pin the cross-host sensitive-header scrub at safe_http.py:111-116.
+    3-hop chain: same-host hop preserves Cookie; cross-host hop strips it.
+    Untested before PR #115 — the gap that would have shipped a silent
+    credential leak if the netloc check ever regressed.
+    """
+    import httpx
+
+    captured: list[dict[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append({k.lower(): v for k, v in request.headers.items()})
+        url = str(request.url)
+        if url == "https://a.example.com/start":
+            return httpx.Response(
+                302, headers={"location": "https://a.example.com/mid"}
+            )
+        if url == "https://a.example.com/mid":
+            return httpx.Response(
+                302, headers={"location": "https://b.example.com/end"}
+            )
+        if url == "https://b.example.com/end":
+            return httpx.Response(200, content=b"ok")
+        raise AssertionError(f"unexpected url {url}")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET",
+            "https://a.example.com/start",
+            headers={"Cookie": "session=abc123", "Authorization": "Bearer t", "User-Agent": "ua"},
+            validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == 200
+    assert len(captured) == 3
+    # Hop 1: initial request carries the sensitive headers.
+    assert captured[0].get("cookie") == "session=abc123"
+    assert captured[0].get("authorization") == "Bearer t"
+    # Hop 2: same-host 302 → defense doesn't fire, both still present.
+    assert captured[1].get("cookie") == "session=abc123"
+    assert captured[1].get("authorization") == "Bearer t"
+    # Hop 3: cross-host 302 → cookie + authorization scrubbed; non-sensitive preserved.
+    assert "cookie" not in captured[2]
+    assert "authorization" not in captured[2]
+    assert captured[2].get("user-agent") == "ua"
