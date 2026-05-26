@@ -720,7 +720,10 @@
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 950;
+    /* PR6: moved 950→940 to sit BELOW the avatar dropdown (header.css 950).
+     * Dropdown opens above this loader if the user clicks avatar mid-summary.
+     * Full-screen modals (1000+) still cover both. */
+    z-index: 940;
     align-items: center;
     justify-content: center;
 }

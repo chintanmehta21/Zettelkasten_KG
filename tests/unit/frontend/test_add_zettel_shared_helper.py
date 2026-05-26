@@ -345,7 +345,7 @@ def test_add_zettel_pages_reference_fresh_surface_scripts():
         for stale_version in stale_add_zettel_versions:
             assert not any(stale_version in ref for ref in add_zettel_script_refs), page
 
-    assert "/home/css/home.css?v=20260526a" in (
+    assert "/home/css/home.css?v=20260526b" in (
         ROOT / "website" / "features" / "user_home" / "index.html"
     ).read_text(encoding="utf-8")
     assert "/home/js/home.js?v=20260524b" in (
@@ -519,7 +519,7 @@ def test_summary_css_cachebusted():
     caches refresh when the CSS changes. home.css bumped to 20260522b with the
     PR #44 card click/goto-button rework; user_zettels.css unchanged."""
     expected_css = {
-        "website/features/user_home/index.html": "home.css?v=20260526a",
+        "website/features/user_home/index.html": "home.css?v=20260526b",
         "website/features/user_zettels/index.html": "user_zettels.css?v=20260526a",
     }
     for rel, marker in expected_css.items():
