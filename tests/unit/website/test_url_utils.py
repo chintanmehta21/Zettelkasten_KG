@@ -22,33 +22,43 @@ def test_validate_url_rejects_private_ip() -> None:
 
 
 def test_resolve_redirects_returns_original_on_timeout(monkeypatch) -> None:
-    class FakeTimeoutException(Exception):
-        pass
+    """resolve_redirects must fail-open (return the original URL) when the
+    underlying safe_request raises a transport-level error. Covers the
+    timeout / ConnectError / DecodingError / etc. fan-in into httpx.HTTPError.
+    """
+    import httpx
+    from website.core import safe_http
 
-    class FakeClient:
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
+    async def _raise_timeout(*args, **kwargs):
+        raise httpx.TimeoutException("simulated read timeout")
 
-        async def __aenter__(self) -> "FakeClient":
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb) -> None:
-            return None
-
-        async def head(self, url: str):
-            raise FakeTimeoutException()
-
-        async def get(self, url: str):
-            raise AssertionError("GET should not be called after timeout")
-
-    monkeypatch.setattr(url_utils.httpx, "AsyncClient", FakeClient)
-    monkeypatch.setattr(url_utils.httpx, "TimeoutException", FakeTimeoutException)
+    monkeypatch.setattr(safe_http, "safe_request", _raise_timeout)
 
     original = "https://example.com/resource"
 
     result = asyncio.run(url_utils.resolve_redirects(original))
 
+    assert result == original
+
+
+def test_resolve_redirects_returns_original_on_decoding_error(monkeypatch) -> None:
+    """Regression for 2026-05-26 silent-degradation: an httpx.DecodingError
+    from a compressed upstream MUST be caught and return the original URL
+    (so the dedup gate has a stable key). Previously the bare
+    ``except Exception`` would have swallowed this; the new narrower
+    ``except (httpx.HTTPError, ...)`` still catches DecodingError because
+    DecodingError is a subclass of httpx.HTTPError.
+    """
+    import httpx
+    from website.core import safe_http
+
+    async def _raise_decoding(*args, **kwargs):
+        raise httpx.DecodingError("brotli: decoder failed")
+
+    monkeypatch.setattr(safe_http, "safe_request", _raise_decoding)
+
+    original = "https://example.com/compressed"
+    result = asyncio.run(url_utils.resolve_redirects(original))
     assert result == original
 
 

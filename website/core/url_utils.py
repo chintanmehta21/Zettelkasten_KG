@@ -158,8 +158,21 @@ async def resolve_redirects(url: str) -> str:
     except httpx.TimeoutException:
         logger.warning("Timeout resolving redirects for %s — returning original URL", url)
         return url
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Error resolving redirects for %s: %s — returning original URL", url, exc)
+    except (httpx.HTTPError, httpx.InvalidURL, UnicodeError, ValueError) as exc:
+        # Narrow catch: httpx.HTTPError covers DecodingError / ConnectError /
+        # ReadError / RemoteProtocolError / NetworkError / ProxyError —
+        # every error we want to swallow as "redirect resolution failed,
+        # use the original URL." UnicodeError / ValueError handle
+        # str(response.url) edge cases. Earlier this was bare
+        # ``except Exception`` which silently swallowed httpx.DecodingError
+        # for compressed upstream responses — caller then re-hit the same
+        # bug on the unresolved URL (silent two-layer cascade,
+        # 2026-05-26 prod regression). Don't catch BaseException /
+        # CancelledError / KeyboardInterrupt / SystemExit.
+        logger.warning(
+            "Error resolving redirects for %s (%s: %s) — returning original URL",
+            url, type(exc).__name__, exc,
+        )
         return url
 
 
