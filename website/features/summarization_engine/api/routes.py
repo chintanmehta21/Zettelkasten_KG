@@ -8,7 +8,9 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse
 
+from website.api._problem import _problem_dict
 from website.api.auth import get_optional_user
 from website.features.api_key_switching.key_pool import (
     GeminiKeyPool,
@@ -22,6 +24,12 @@ from website.features.summarization_engine.core.gemini_client import TieredGemin
 from website.features.summarization_engine.writers.supabase import SupabaseWriter
 
 router = APIRouter(prefix="/api/v2", tags=["summarization-engine-v2"])
+
+# Size cap on /batch/upload — parity with /api/zettels/add/document. Prior
+# behavior was unbounded ``file.read()`` which would OOM the 2 GB droplet on
+# a single large POST. App-level guard pairs with Caddy edge enforcement at
+# ops/caddy/Caddyfile (request_body max_size). Both layers must agree.
+_MAX_BATCH_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
 @router.post("/summarize")
@@ -99,7 +107,20 @@ async def batch_upload_v2(
     file: UploadFile,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
-    contents = await file.read()
+    # Read one byte past the cap so we can distinguish "exactly N" from
+    # "more than N" without buffering attacker-controlled gigabytes.
+    contents = await file.read(_MAX_BATCH_UPLOAD_BYTES + 1)
+    if len(contents) > _MAX_BATCH_UPLOAD_BYTES:
+        body = _problem_dict(
+            status_code=413,
+            title="Batch upload too large",
+            detail=f"Upload a file up to {_MAX_BATCH_UPLOAD_BYTES // (1024 * 1024)} MB.",
+            type_slug="batch-upload-too-large",
+            instance="/api/v2/batch/upload",
+        )
+        return JSONResponse(
+            body, status_code=413, media_type="application/problem+json"
+        )
     processor = BatchProcessor(user_id=_user_id(user), gemini_client=_gemini_client())
     return await processor.run(input_bytes=contents, filename=file.filename or "upload.csv")
 
