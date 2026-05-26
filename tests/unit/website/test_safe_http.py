@@ -456,3 +456,37 @@ async def test_safe_request_caps_chunked_body_without_content_length():
             )
     finally:
         safe_http_mod.httpx.AsyncClient = original_client
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [200, 204, 304])
+async def test_safe_request_handles_empty_body_responses(status):
+    """Pin: b"".join([]) at safe_http.py:144 round-trips empty bodies
+    without IndexError or decoder confusion. 204 No Content and 304 Not
+    Modified are common in conditional-GET / API patterns; the wrapper
+    must return them cleanly, not raise. (304 is not in _REDIRECT_STATUSES
+    so it falls through to the terminal-body branch correctly.)
+    """
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, content=b"")
+
+    import website.core.safe_http as safe_http_mod
+
+    original_client = safe_http_mod.httpx.AsyncClient
+
+    def _client_with_mock(*args, **kwargs):
+        return original_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    safe_http_mod.httpx.AsyncClient = _client_with_mock
+    try:
+        response = await safe_request(
+            "GET", "https://example.com/empty", validate_initial=False,
+        )
+    finally:
+        safe_http_mod.httpx.AsyncClient = original_client
+
+    assert response.status_code == status
+    assert response.content == b""
+    assert response.text == ""
