@@ -10,7 +10,12 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
-from xml.etree import ElementTree
+
+# defusedxml refuses DTD entity expansion + external references by default;
+# vanilla xml.etree expands internal entities (billion-laughs vector) and
+# behavior under quadratic-blowup CVE-2023-52425 depends on bundled libexpat.
+from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
 
 from website.features.summarization_engine.core.models import IngestResult, SourceType
 from website.features.summarization_engine.source_ingest.base import BaseIngestor
@@ -74,7 +79,14 @@ def _extract_docx(data: bytes) -> tuple[str, dict[str, Any]]:
     except KeyError as exc:
         raise DocumentUploadError("DOCX file is missing document text.") from exc
 
-    root = ElementTree.fromstring(document_xml)
+    try:
+        root = ElementTree.fromstring(document_xml)
+    except DefusedXmlException as exc:
+        raise DocumentUploadError(
+            "DOCX file contains forbidden XML constructs (entities or external references)."
+        ) from exc
+    except ElementTree.ParseError as exc:
+        raise DocumentUploadError("DOCX file is not valid XML.") from exc
     namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
     paragraphs: list[str] = []
     for paragraph in root.findall(".//w:p", namespace):

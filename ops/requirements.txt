@@ -71,6 +71,12 @@ sse-starlette>=2.0
 pytest-httpx>=0.34
 python-multipart>=0.0.20
 
+# XML hardening — refuses DTD entity expansion + external references in
+# user-supplied DOCX and RSS payloads. Stdlib xml.etree expands internal
+# entities (billion-laughs vector); behavior under CVE-2023-52425
+# quadratic blowup depends on bundled libexpat.
+defusedxml>=0.7.1
+
 # Cascade reranker (FlashRank + BGE-base ONNX)
 flashrank>=0.2
 onnxruntime>=1.17
