@@ -1,10 +1,14 @@
 """Thin GitHub REST API wrapper for Phase 0.5 signal enrichment."""
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +25,19 @@ class _HttpError(Exception):
     def __init__(self, status: int):
         super().__init__(f"HTTP {status}")
         self.status = status
+
+
+# Expected-error set when a fetcher's _get call fails: network/HTTP errors
+# from httpx, our 404 marker, and JSON-shape errors. Anything else
+# (RuntimeError / TypeError) PROPAGATES — silent swallow made GitHub-shape
+# regressions invisible until summary quality cratered.
+_GET_SWALLOW: tuple[type[BaseException], ...] = (
+    httpx.HTTPError,
+    _HttpError,
+    json.JSONDecodeError,
+    KeyError,
+    ValueError,
+)
 
 
 class GitHubApiClient:
@@ -53,14 +70,22 @@ class GitHubApiClient:
     async def fetch_pages_url(self, slug: str) -> str | None:
         try:
             data = await self._get(f"/repos/{slug}/pages")
-        except Exception:
+        except _GET_SWALLOW as exc:
+            logger.warning(
+                "GitHub fetch_pages_url failed for %s (%s: %s)",
+                slug, type(exc).__name__, exc,
+            )
             return None
         return (data or {}).get("html_url")
 
     async def fetch_workflows(self, slug: str) -> tuple[bool, int]:
         try:
             data = await self._get(f"/repos/{slug}/actions/workflows")
-        except Exception:
+        except _GET_SWALLOW as exc:
+            logger.warning(
+                "GitHub fetch_workflows failed for %s (%s: %s)",
+                slug, type(exc).__name__, exc,
+            )
             return False, 0
         count = int((data or {}).get("total_count", 0))
         return count > 0, count
@@ -68,7 +93,11 @@ class GitHubApiClient:
     async def fetch_releases(self, slug: str, max_count: int) -> list[dict]:
         try:
             data = await self._get(f"/repos/{slug}/releases?per_page={max_count}")
-        except Exception:
+        except _GET_SWALLOW as exc:
+            logger.warning(
+                "GitHub fetch_releases failed for %s (%s: %s)",
+                slug, type(exc).__name__, exc,
+            )
             return []
         releases = []
         for release in (data or [])[:max_count]:
@@ -85,7 +114,11 @@ class GitHubApiClient:
     async def fetch_languages(self, slug: str) -> list[tuple[str, float]]:
         try:
             data = await self._get(f"/repos/{slug}/languages")
-        except Exception:
+        except _GET_SWALLOW as exc:
+            logger.warning(
+                "GitHub fetch_languages failed for %s (%s: %s)",
+                slug, type(exc).__name__, exc,
+            )
             return []
         total = sum(data.values()) or 1
         pairs = [(language, value / total * 100.0) for language, value in data.items()]
@@ -94,7 +127,11 @@ class GitHubApiClient:
     async def fetch_root_dir_signals(self, slug: str) -> dict[str, bool]:
         try:
             entries = await self._get(f"/repos/{slug}/contents")
-        except Exception:
+        except _GET_SWALLOW as exc:
+            logger.warning(
+                "GitHub fetch_root_dir_signals failed for %s (%s: %s)",
+                slug, type(exc).__name__, exc,
+            )
             return {}
         names = {entry["name"].lower() for entry in entries if entry.get("type") == "dir"}
         return {
