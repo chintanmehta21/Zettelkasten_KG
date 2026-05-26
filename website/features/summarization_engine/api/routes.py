@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from website.api._problem import _problem_dict
 from website.api.auth import get_optional_user
+from website.core.request_ip import real_client_ip
 from website.features.functional_gates.upload_rate_limit import UploadRateLimiter
 from website.features.api_key_switching.key_pool import (
     GeminiKeyPool,
@@ -116,7 +117,9 @@ async def batch_upload_v2(
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
     user_id = _user_id(user)
-    ip = request.client.host if request.client else "unknown"
+    # Caddy fronts the app on 127.0.0.1, so request.client.host is the bridge
+    # IP; real_client_ip walks the cf-connecting-ip / x-forwarded-for chain.
+    ip = real_client_ip(request)
     if not _BATCH_UPLOAD_LIMITER.allow(str(user_id), ip):
         body = _problem_dict(
             status_code=429,

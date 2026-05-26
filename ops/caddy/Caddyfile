@@ -80,7 +80,10 @@ zettelkasten.in {
     # _MAX_DOCUMENT_UPLOAD_BYTES and routes.py _MAX_BATCH_UPLOAD_BYTES) is
     # the source of the 413 with structured detail — Caddy returns a bare
     # 413 only for grossly-oversize bodies that would still pin memory
-    # streaming through. Both layers must agree (app < edge).
+    # streaming through. Both layers must agree (app < edge). Placed
+    # outside handle blocks so the directive applies globally to matched
+    # routes (Caddy auto-orders before handle regardless of file position,
+    # but keep it at top-level for readability).
     @uploads {
         method POST
         path /api/zettels/add/document /api/v2/batch/upload

@@ -315,10 +315,12 @@ async def _fetch_and_extract(
             return "", {}, str(response.url), ""
         html = response.text
         final_url = str(response.url)
-    except Exception as exc:  # noqa: BLE001
-        # SafeHttpError (refused redirect / loop) and any httpx.* error both
-        # surface as "fetch failed", letting the provider fan-out fall over
-        # to the next archive/cache provider rather than 5xx-ing the route.
+    except (SafeHttpError, httpx.HTTPError, ValueError) as exc:
+        # Narrow catch: SafeHttpError (refused redirect / loop) and httpx.*
+        # both surface as "fetch failed", letting the provider fan-out fall
+        # over to the next archive/cache provider rather than 5xx-ing the
+        # route. NOT catching asyncio.CancelledError / MemoryError / etc.
+        # so worker recycle + SIGTERM propagate correctly.
         logger.warning("[newsletter] fetch failed for %s: %s", url, exc)
         return "", {}, url, ""
 

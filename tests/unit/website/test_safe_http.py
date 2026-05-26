@@ -137,6 +137,28 @@ async def test_safe_request_rejects_oversize_response():
 
 
 @pytest.mark.asyncio
+async def test_safe_request_rejects_initial_private_ip_url():
+    """If the caller forgets to pre-validate, the wrapper must still refuse
+    a direct private/loopback URL — closes the latent footgun. Per-hop check
+    only kicks in on Location headers; the first hop needs its own gate."""
+    with pytest.raises(UnsafeRedirectError):
+        await safe_request("GET", "http://169.254.169.254/latest/meta-data/")
+
+
+@pytest.mark.asyncio
+async def test_safe_request_validate_initial_opt_out():
+    """A trusted-host caller can opt out of the initial check (e.g., for a
+    known-good URL that's already validated upstream). Test uses a normal
+    URL to confirm opt-out doesn't break the happy path."""
+    with respx.mock() as router:
+        router.get("https://example.com/ok").respond(200, text="ok")
+        response = await safe_request(
+            "GET", "https://example.com/ok", validate_initial=False
+        )
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_safe_request_passes_response_under_cap():
     """A response below the cap must be returned intact and readable."""
     small = b"hello world"

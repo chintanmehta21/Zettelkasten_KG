@@ -34,6 +34,7 @@ from website.core.persist import (
     extract_summary_parts,
     get_supabase_v2_scope_for_read,
 )
+from website.core.request_ip import real_client_ip
 from website.core.url_utils import validate_url
 from website.features.functional_gates.async_backpressure import (
     check_async_backpressure,
@@ -647,7 +648,10 @@ async def add_zettel(
     request: Request,
     user: Annotated[dict | None, Depends(get_optional_user)] = None,
 ):
-    ip = request.client.host if request.client else "unknown"
+    # Caddy fronts the app on 127.0.0.1, so request.client.host is the bridge
+    # IP. real_client_ip walks cf-connecting-ip / x-forwarded-for so anon
+    # bursts from one tenant don't deny service for everyone else.
+    ip = real_client_ip(request)
     if not _check_rate_limit(ip):
         return _problem(
             status_code=429,
@@ -946,7 +950,10 @@ async def add_zettel_document(
     landing on different gunicorn workers).
     """
     _ = surface
-    ip = request.client.host if request.client else "unknown"
+    # Caddy fronts the app on 127.0.0.1, so request.client.host is the bridge
+    # IP. real_client_ip walks cf-connecting-ip / x-forwarded-for so anon
+    # bursts from one tenant don't deny service for everyone else.
+    ip = real_client_ip(request)
     if not _check_rate_limit(ip):
         return _problem(
             status_code=429,
