@@ -93,11 +93,11 @@ def _install_async_mocks(monkeypatch, zettels_routes) -> dict:
 
     async def _noop_run(
         *, user_id, operation_id, pipeline, persist_requested, url=None,
+        auth_intent=None,
     ):
-        # PR #89 commit 4 added `url=` kwarg to _run; mirror the signature
-        # here so the route's auto-spawned task doesn't TypeError on the new
-        # kwarg the route now passes. The no-op semantics are unchanged.
-        del user_id, operation_id, pipeline, persist_requested, url
+        # Mirror real _run signature: `url=` (PR #89), `auth_intent=` (PR #109).
+        # Route spawns _run with these kwargs; no-op semantics unchanged.
+        del user_id, operation_id, pipeline, persist_requested, url, auth_intent
         return None
 
     monkeypatch.setattr(zettels_routes, "_run", _noop_run)
