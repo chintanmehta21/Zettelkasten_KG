@@ -75,6 +75,20 @@ zettelkasten.in {
         import /etc/caddy/upstream.snippet
     }
 
+    # Edge body-size cap on upload routes (SSRF hardening 2026-05-26).
+    # 11MB ceiling on the wire so the app's 10MB cap (zettels_routes.py
+    # _MAX_DOCUMENT_UPLOAD_BYTES and routes.py _MAX_BATCH_UPLOAD_BYTES) is
+    # the source of the 413 with structured detail — Caddy returns a bare
+    # 413 only for grossly-oversize bodies that would still pin memory
+    # streaming through. Both layers must agree (app < edge).
+    @uploads {
+        method POST
+        path /api/zettels/add/document /api/v2/batch/upload
+    }
+    request_body @uploads {
+        max_size 11MB
+    }
+
     # Maintenance flag file → 503 (close connection so clients don't retry against a stale upstream)
     @maintenance file /etc/caddy/maintenance.flag
     handle @maintenance {
