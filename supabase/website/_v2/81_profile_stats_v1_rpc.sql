@@ -37,6 +37,7 @@ AS $$
 DECLARE
   v_payload jsonb;
   v_main_board jsonb;
+  v_general jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -109,6 +110,102 @@ BEGIN
     )
   ) INTO v_main_board;
 
+  -- ─── General Overview section ─────────────────────────────────────────
+  -- 1) Member since: joined_at + days_in_vault from core.profiles.created_at
+  --    of the workspace owner.
+  -- 2) Zettels last 30d: count + prev-30d count + delta_pct + 8-week sparkline
+  --    (daily buckets aggregated to weeks for compact serialization).
+  -- 3) KG size: nodes + edges count (workspace-scoped).
+  -- 4) Source diversity: distinct source_type used vs total enum cardinality.
+  --    NOTE: source_type is a CHECK constraint (text IN-list) in
+  --    45_document_source_type.sql, NOT a pg_enum — so max_sources is hard-
+  --    pinned to 13 (the IN-list cardinality at that migration). If the
+  --    IN-list ever grows, update both here and 45_document_source_type.sql.
+  --    The Python route does NOT need to compose plan here — plan tier comes
+  --    from the separate pricing_get_quota_snapshot call.
+
+  WITH owner_join AS (
+    SELECT p.created_at AS joined_at
+      FROM core.workspaces w
+      JOIN core.profiles  p ON p.id = w.owner_profile_id
+     WHERE w.id = p_workspace_id
+     LIMIT 1
+  ),
+  zettel_30d AS (
+    SELECT
+      count(*) FILTER (WHERE created_at >= now() - interval '30 days') AS last30,
+      count(*) FILTER (WHERE created_at >= now() - interval '60 days'
+                         AND created_at <  now() - interval '30 days') AS prev30
+      FROM content.workspace_zettels
+     WHERE workspace_id = p_workspace_id AND deleted_at IS NULL
+  ),
+  sparkline_days AS (
+    SELECT generate_series(
+      (now() - interval '55 days')::date,
+      now()::date,
+      interval '1 day'
+    )::date AS d
+  ),
+  sparkline_buckets AS (
+    SELECT (created_at AT TIME ZONE 'UTC')::date AS dd,
+           count(*)::int AS n
+      FROM content.workspace_zettels
+     WHERE workspace_id = p_workspace_id
+       AND deleted_at IS NULL
+       AND created_at >= now() - interval '55 days'
+     GROUP BY 1
+  ),
+  sparkline_weekly AS (
+    SELECT date_trunc('week', sparkline_days.d)::date AS week_start,
+           SUM(COALESCE(sparkline_buckets.n, 0))::int AS week_count
+      FROM sparkline_days
+      LEFT JOIN sparkline_buckets ON sparkline_buckets.dd = sparkline_days.d
+     GROUP BY 1
+  )
+  SELECT jsonb_build_object(
+    'member_since', jsonb_build_object(
+      'joined_at', (SELECT joined_at FROM owner_join),
+      'days_in_vault',
+        COALESCE((SELECT (now()::date - joined_at::date)::int FROM owner_join), 0)
+    ),
+    'zettels_30d', jsonb_build_object(
+      'count', (SELECT last30 FROM zettel_30d),
+      'prev_30d_count', (SELECT prev30 FROM zettel_30d),
+      'delta_pct', CASE
+        WHEN (SELECT prev30 FROM zettel_30d) = 0 THEN NULL
+        ELSE round(
+          100.0 *
+          ((SELECT last30 FROM zettel_30d) - (SELECT prev30 FROM zettel_30d))
+          / (SELECT prev30 FROM zettel_30d)::numeric,
+          1
+        )
+      END,
+      'sparkline_weekly', COALESCE(
+        (SELECT jsonb_agg(
+                  jsonb_build_object('week', week_start, 'count', week_count)
+                  ORDER BY week_start
+                ) FROM sparkline_weekly),
+        '[]'::jsonb
+      )
+    ),
+    'kg_size', jsonb_build_object(
+      'nodes', (SELECT count(*) FROM kg.kg_nodes WHERE workspace_id = p_workspace_id),
+      'edges', (SELECT count(*) FROM kg.kg_edges WHERE workspace_id = p_workspace_id)
+    ),
+    'source_diversity', jsonb_build_object(
+      'distinct_sources', (
+        SELECT count(DISTINCT cz.source_type)
+          FROM content.workspace_zettels wz
+          JOIN content.canonical_zettels  cz ON cz.id = wz.canonical_zettel_id
+         WHERE wz.workspace_id = p_workspace_id AND wz.deleted_at IS NULL
+      ),
+      -- Hard-pinned to the CHECK-constraint IN-list cardinality (13) in
+      -- 45_document_source_type.sql. Phase 0 discovery confirmed source_type
+      -- is text + CHECK, not a pg_enum, so we cannot introspect it via pg_enum.
+      'max_sources', 13
+    )
+  ) INTO v_general;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -125,7 +222,7 @@ BEGIN
       'schema_version', 1
     ),
     'main_board', v_main_board,
-    'general',    '{}'::jsonb,
+    'general',    v_general,
     'zettel',     '{}'::jsonb,
     'kasten',     '{}'::jsonb,
     'domain',     '{}'::jsonb,

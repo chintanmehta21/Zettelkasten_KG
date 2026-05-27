@@ -179,3 +179,56 @@ async def test_main_board_zero_state(asyncpg_pool, mint_user):
     assert mb["zettels"]["lifetime_count"] == 0
     assert mb["zettels"]["this_month_count"] == 0
     assert mb["kastens"]["lifetime_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 3.2: General Overview section (member_since + zettels_30d + kg_size + source_diversity)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_general_section(asyncpg_pool, mint_user, seed_zettels):
+    """General section returns member_since, zettels_30d (with sparkline), kg_size, source_diversity.
+
+    PURE-OLTP shape — no plan.tier / plan.period_end in the RPC payload (those
+    come from the Python route via pricing_get_quota_snapshot).
+    """
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = await mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_zettels(workspace_id, count=8)
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    payload = resp.data
+    g = payload["general"]
+
+    # member_since
+    assert "joined_at" in g["member_since"]
+    assert isinstance(g["member_since"]["days_in_vault"], int)
+    assert g["member_since"]["days_in_vault"] >= 0
+
+    # zettels_30d
+    assert isinstance(g["zettels_30d"]["count"], int)
+    assert isinstance(g["zettels_30d"]["prev_30d_count"], int)
+    assert "delta_pct" in g["zettels_30d"]
+    assert isinstance(g["zettels_30d"]["sparkline_weekly"], list)
+    # ~8 weeks worth of buckets (55-day window aggregated to weeks)
+    assert 7 <= len(g["zettels_30d"]["sparkline_weekly"]) <= 10
+    for bucket in g["zettels_30d"]["sparkline_weekly"]:
+        assert "week" in bucket and "count" in bucket
+        assert isinstance(bucket["count"], int)
+
+    # kg_size
+    assert isinstance(g["kg_size"]["nodes"], int) and g["kg_size"]["nodes"] >= 0
+    assert isinstance(g["kg_size"]["edges"], int) and g["kg_size"]["edges"] >= 0
+
+    # source_diversity (8 seeded zettels all have source_type='web' → 1 distinct)
+    assert g["source_diversity"]["distinct_sources"] >= 1
+    assert g["source_diversity"]["max_sources"] >= 1
+
+    # NEGATIVE: no plan fields in RPC payload (design-locked PURE-OLTP)
+    assert "plan" not in g
+    assert "tier" not in g
