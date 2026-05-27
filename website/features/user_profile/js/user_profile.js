@@ -665,6 +665,12 @@
         } catch (err) {
           console.error('[user_profile] signOut failed:', err);
         } finally {
+          // Drop cached stats + token so the next browser user starts clean.
+          window.ZK_PROFILE_TOKEN = null;
+          window.ZK_PROFILE = null;
+          if (window.ZKStatsCache && typeof window.ZKStatsCache.clear === 'function') {
+            try { await window.ZKStatsCache.clear(); } catch (_) {}
+          }
           window.location.href = '/';
         }
       });
@@ -695,6 +701,21 @@
       session = sessionResult.data.session;
       _token = session ? session.access_token : '';
       if (_token) {
+        // Surface token to the stats IIFE: window global for sync access +
+        // custom event so listeners awaiting init don't race the async fetch.
+        window.ZK_PROFILE_TOKEN = _token;
+        // Decode sub claim for ZKStatsCache profile_id binding (best-effort).
+        try {
+          const payloadB64 = _token.split('.')[1];
+          if (payloadB64) {
+            const json = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+            const claims = JSON.parse(json);
+            if (claims && claims.sub) {
+              window.ZK_PROFILE = Object.assign(window.ZK_PROFILE || {}, { id: claims.sub });
+            }
+          }
+        } catch (_) { /* sub claim is best-effort; cache will skip id check */ }
+        window.dispatchEvent(new CustomEvent('zk-profile-token-ready', { detail: { token: _token } }));
         profile = await fetchProfile(_token);
       }
     }
@@ -975,11 +996,23 @@
 
   // ---- Fetch with ETag support ----
   function doFetch(cachedEtag) {
+    // Route reads JWT from Authorization header; no token → 401. Bail and
+    // keep cached payload visible (if any) rather than blank the UI.
+    var token = window.ZK_PROFILE_TOKEN;
+    if (!token) {
+      return hideLoader('failed').then(function () {
+        root.dataset.statsCacheState = cachedEtag ? 'stale-from-cache' : 'empty';
+      });
+    }
+
     abortCtrl = new AbortController();
     root.dataset.statsCacheState = 'loading-fresh';
     showLoader();
 
-    var headers = { 'Accept': 'application/json' };
+    var headers = {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer ' + token,
+    };
     if (cachedEtag) headers['If-None-Match'] = cachedEtag;
 
     return fetch('/api/profile/stats', {
@@ -1070,6 +1103,24 @@
   function renderActivity(_s) { /* TODO Task 5.6 */ }
   function renderGraph(_s) { /* TODO Task 5.6 */ }
 
-  init();
+  // Gate init() on the JWT from the first IIFE. Without this the fetch
+  // races the Supabase getSession() and lands with no Authorization header.
+  function waitForToken() {
+    return new Promise(function (resolve) {
+      if (window.ZK_PROFILE_TOKEN) return resolve(window.ZK_PROFILE_TOKEN);
+      var handler = function (e) {
+        window.removeEventListener('zk-profile-token-ready', handler);
+        resolve(window.ZK_PROFILE_TOKEN || (e && e.detail && e.detail.token) || null);
+      };
+      window.addEventListener('zk-profile-token-ready', handler);
+      // Defensive timeout: cache-hit users still render after 10s without a token.
+      setTimeout(function () {
+        window.removeEventListener('zk-profile-token-ready', handler);
+        resolve(window.ZK_PROFILE_TOKEN || null);
+      }, 10000);
+    });
+  }
+
+  waitForToken().then(function () { init(); });
 })();
 
