@@ -2,73 +2,38 @@ name: Live integration tests
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 21 * * 0"
 
 permissions:
   contents: read
 
 jobs:
   live:
-    name: stats smoke temp
+    name: pytest --live (real APIs)
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
-      - name: Smoke /api/profile/stats on droplet
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
         with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          capture_stdout: false
-          command_timeout: 4m
-          script: |
-            set -euo pipefail
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            ops/requirements.txt
+            ops/requirements-dev.txt
 
-            SUPABASE_URL='${{ secrets.SUPABASE_URL }}'
-            SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}'
-            SUPABASE_ANON_KEY_LEGACY_JWT='${{ secrets.SUPABASE_ANON_KEY_LEGACY_JWT }}'
-            NARUTO_SMOKE_PASSWORD='${{ secrets.NARUTO_SMOKE_PASSWORD }}'
-            SMOKE_EMAIL='naruto@zettelkasten.local'
-            ANON_KEY="${SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY_LEGACY_JWT:-}}"
-            if [ -z "${SUPABASE_URL:-}" ] || [ -z "$ANON_KEY" ] || [ -z "${NARUTO_SMOKE_PASSWORD:-}" ]; then
-              echo "::error::Missing production smoke auth secrets"
-              exit 1
-            fi
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ops/requirements-dev.txt
 
-            AUTH_JSON="$(SMOKE_EMAIL="$SMOKE_EMAIL" NARUTO_SMOKE_PASSWORD="$NARUTO_SMOKE_PASSWORD" python3 -c 'import json, os; print(json.dumps({"email": os.environ["SMOKE_EMAIL"], "password": os.environ["NARUTO_SMOKE_PASSWORD"]}))')"
-            TOKEN_BODY="$(curl -sS -X POST "${SUPABASE_URL%/}/auth/v1/token?grant_type=password" -H "apikey: $ANON_KEY" -H "Content-Type: application/json" --data "$AUTH_JSON")"
-            TOKEN="$(TOKEN_BODY="$TOKEN_BODY" python3 -c 'import json, os, sys; body=json.loads(os.environ["TOKEN_BODY"]); token=body.get("access_token", ""); sys.exit("missing access_token") if not token else print(token)')"
-
-            ACTIVE_COLOR="$(cat /opt/zettelkasten/ACTIVE_COLOR 2>/dev/null || cat /opt/zettelkasten/deploy/active_color 2>/dev/null || echo blue)"
-            ACTIVE_COLOR="$(echo "$ACTIVE_COLOR" | tr -d '[:space:]')"
-            if [ "$ACTIVE_COLOR" = "green" ]; then PORT=10001; else PORT=10000; fi
-            STATS_URL="http://127.0.0.1:${PORT}/api/profile/stats"
-            echo "active_color=$ACTIVE_COLOR"
-            echo "stats_url=local-active-port"
-
-            curl -sSI -D /tmp/stats_head_headers.txt -o /tmp/stats_head_body.txt -H "Authorization: Bearer $TOKEN" "$STATS_URL"
-            HEAD_STATUS="$(awk 'tolower($0) ~ /^http\// {code=$2} END {print code}' /tmp/stats_head_headers.txt)"
-            HEAD_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_head_headers.txt | tail -1)"
-            echo "head_status=$HEAD_STATUS"
-            echo "head_etag_present=$([ -n "$HEAD_ETAG" ] && echo yes || echo no)"
-            test "$HEAD_STATUS" = "200"
-            test -n "$HEAD_ETAG"
-
-            curl -sS -D /tmp/stats_get_headers.txt -o /tmp/stats_get_body.json -H "Authorization: Bearer $TOKEN" "$STATS_URL"
-            GET_STATUS="$(awk 'tolower($0) ~ /^http\// {code=$2} END {print code}' /tmp/stats_get_headers.txt)"
-            GET_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_get_headers.txt | tail -1)"
-            echo "get_status=$GET_STATUS"
-            echo "get_etag_present=$([ -n "$GET_ETAG" ] && echo yes || echo no)"
-            test "$GET_STATUS" = "200"
-            test -n "$GET_ETAG"
-
-            python3 -c 'import json; body=json.load(open("/tmp/stats_get_body.json", encoding="utf-8")); keys=["main_board","general","zettel","kasten","domain","activity","graph"]; missing=[k for k in keys if k not in body]; print("section_count=%s" % (len(keys) - len(missing))); print("section_keys=%s" % ",".join(k for k in keys if k in body)); assert not missing; assert body.get("main_board", {}).get("zettels_quota"); assert body.get("main_board", {}).get("kastens_quota"); assert body.get("meta", {}).get("workspace_id")'
-
-            sleep 3
-            curl -sS -D /tmp/stats_304_headers.txt -o /tmp/stats_304_body.txt -H "Authorization: Bearer $TOKEN" -H "If-None-Match: $GET_ETAG" "$STATS_URL"
-            NOT_MODIFIED_STATUS="$(awk 'tolower($0) ~ /^http\// {code=$2} END {print code}' /tmp/stats_304_headers.txt)"
-            BODY_BYTES="$(wc -c < /tmp/stats_304_body.txt | tr -d ' ')"
-            echo "if_none_match_status=$NOT_MODIFIED_STATUS"
-            echo "if_none_match_body_bytes=$BODY_BYTES"
-            test "$NOT_MODIFIED_STATUS" = "304"
+      - name: pytest --live
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: pytest --live -q
