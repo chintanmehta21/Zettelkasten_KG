@@ -1,0 +1,98 @@
+name: Stats smoke temp
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stats-smoke:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Smoke /api/profile/stats
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_ANON_KEY_LEGACY_JWT: ${{ secrets.SUPABASE_ANON_KEY_LEGACY_JWT }}
+          NARUTO_SMOKE_PASSWORD: ${{ secrets.NARUTO_SMOKE_PASSWORD }}
+          SMOKE_EMAIL: naruto@zettelkasten.local
+          STATS_URL: https://zettelkasten.in/api/profile/stats
+        run: |
+          set -euo pipefail
+
+          ANON_KEY="${SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY_LEGACY_JWT:-}}"
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "$ANON_KEY" ] || [ -z "${NARUTO_SMOKE_PASSWORD:-}" ]; then
+            echo "::error::Missing production smoke auth secrets"
+            exit 1
+          fi
+
+          AUTH_JSON="$(python - <<'PY'
+import json, os
+print(json.dumps({
+    "email": os.environ["SMOKE_EMAIL"],
+    "password": os.environ["NARUTO_SMOKE_PASSWORD"],
+}))
+PY
+)"
+          TOKEN_BODY="$(curl -sS -X POST "${SUPABASE_URL%/}/auth/v1/token?grant_type=password" \
+            -H "apikey: $ANON_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$AUTH_JSON")"
+          TOKEN="$(TOKEN_BODY="$TOKEN_BODY" python - <<'PY'
+import json, os, sys
+body = json.loads(os.environ["TOKEN_BODY"])
+token = body.get("access_token", "")
+if not token:
+    print("missing access_token", file=sys.stderr)
+    sys.exit(1)
+print(token)
+PY
+)"
+
+          curl -sS -D /tmp/stats_head_headers.txt -o /tmp/stats_head_body.txt \
+            -X HEAD \
+            -H "Authorization: Bearer $TOKEN" \
+            "$STATS_URL"
+          HEAD_STATUS="$(awk 'tolower($0) ~ /^http\\// {code=$2} END {print code}' /tmp/stats_head_headers.txt)"
+          HEAD_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_head_headers.txt | tail -1)"
+          echo "head_status=$HEAD_STATUS"
+          echo "head_etag_present=$([ -n "$HEAD_ETAG" ] && echo yes || echo no)"
+          test "$HEAD_STATUS" = "200"
+          test -n "$HEAD_ETAG"
+
+          curl -sS -D /tmp/stats_get_headers.txt -o /tmp/stats_get_body.json \
+            -H "Authorization: Bearer $TOKEN" \
+            "$STATS_URL"
+          GET_STATUS="$(awk 'tolower($0) ~ /^http\\// {code=$2} END {print code}' /tmp/stats_get_headers.txt)"
+          GET_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_get_headers.txt | tail -1)"
+          echo "get_status=$GET_STATUS"
+          echo "get_etag_present=$([ -n "$GET_ETAG" ] && echo yes || echo no)"
+          test "$GET_STATUS" = "200"
+          test -n "$GET_ETAG"
+
+          python - <<'PY'
+import json
+body = json.load(open("/tmp/stats_get_body.json", encoding="utf-8"))
+sections = body.get("sections", [])
+keys = [s.get("key") for s in sections]
+stats_count = sum(len(s.get("stats", [])) for s in sections)
+print(f"section_count={len(sections)}")
+print(f"section_keys={','.join(keys)}")
+print(f"stats_count={stats_count}")
+assert len(sections) == 7
+assert stats_count == 28
+assert body.get("meta", {}).get("profile_id")
+PY
+
+          curl -sS -D /tmp/stats_304_headers.txt -o /tmp/stats_304_body.txt \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "If-None-Match: $GET_ETAG" \
+            "$STATS_URL"
+          NOT_MODIFIED_STATUS="$(awk 'tolower($0) ~ /^http\\// {code=$2} END {print code}' /tmp/stats_304_headers.txt)"
+          BODY_BYTES="$(wc -c < /tmp/stats_304_body.txt | tr -d ' ')"
+          echo "if_none_match_status=$NOT_MODIFIED_STATUS"
+          echo "if_none_match_body_bytes=$BODY_BYTES"
+          test "$NOT_MODIFIED_STATUS" = "304"
