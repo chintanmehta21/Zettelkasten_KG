@@ -371,3 +371,44 @@ async def test_domain_section(asyncpg_pool, mint_user, seed_zettels_with_tags):
     # And no derived_tags exposure
     serialized = str(d)
     assert "derived_tag" not in serialized
+
+
+# ---------------------------------------------------------------------------
+# Task 3.6: Activity section (streaks + week_over_week + chat_vs_capture)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_activity_section(asyncpg_pool, mint_user, seed_zettels, seed_chat_messages):
+    """Activity section: streaks + week_over_week + chat_vs_capture."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_zettels(workspace_id, count=12)
+    await seed_chat_messages(workspace_id, user_messages=3, assistant_with_citations=2)
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    a = resp.data["activity"]
+
+    # Streaks: integers >= 0; longest >= current
+    assert isinstance(a["current_streak"], int) and a["current_streak"] >= 0
+    assert isinstance(a["longest_streak"], int) and a["longest_streak"] >= a["current_streak"]
+
+    # week_over_week
+    wow = a["week_over_week"]
+    assert isinstance(wow["this_week"], int) and wow["this_week"] >= 0
+    assert isinstance(wow["last_week"], int) and wow["last_week"] >= 0
+    assert "delta_pct" in wow
+
+    # chat_vs_capture: 12 captures over 12 days, 3 chats
+    cvc = a["chat_vs_capture"]
+    assert isinstance(cvc["captures_30d"], int) and cvc["captures_30d"] >= 0
+    assert isinstance(cvc["chats_30d"], int) and cvc["chats_30d"] >= 0
+    assert "capture_pct" in cvc
+
+    # NEGATIVE — no quota/plan/billing leakage
+    assert "quota" not in a
+    assert "plan" not in a
