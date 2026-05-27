@@ -2,20 +2,20 @@ name: Live integration tests
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 21 * * 0"
 
 permissions:
   contents: read
 
 jobs:
-  profile-stats-prod-prep:
-    name: Profile stats production prep
+  live:
+    name: pytest --live (real APIs)
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: claude/fervent-blackwell-071d4c
 
       - uses: actions/setup-python@v6
         with:
@@ -25,65 +25,15 @@ jobs:
             ops/requirements.txt
             ops/requirements-dev.txt
 
-      - name: Install migration dependencies
+      - name: Install
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
           python -m pip install --upgrade pip
-          pip install -r ops/requirements.txt
+          pip install -r ops/requirements-dev.txt
 
-      - name: Apply stats migrations
+      - name: pytest --live
         env:
-          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
-          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          DEPLOY_GIT_SHA: ${{ github.sha }}
-          DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          DEPLOY_ACTOR: ${{ github.actor }}
-          MIGRATION_MANIFEST_REQUIRED: "0"
-        run: |
-          set -euo pipefail
-          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
-            SUPABASE_V2_DATABASE_URL="${SUPABASE_DATABASE_URL:-}"
-          fi
-          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
-            SUPABASE_V2_DATABASE_URL="${SUPABASE_DB_URL:-}"
-          fi
-          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
-            echo "::error::No production database URL secret is available"
-            exit 1
-          fi
-
-          echo "Applying manual migration 80 outside transaction"
-          psql "$SUPABASE_V2_DATABASE_URL" \
-            -v ON_ERROR_STOP=1 \
-            -f supabase/website/_v2/80_chat_messages_user_partial_idx.sql
-
-          echo "Reconciling migration 80 ledger row"
-          python ops/scripts/apply_migrations.py --v2 \
-            --reconcile-checksum 80_chat_messages_user_partial_idx.sql
-
-          echo "Applying standard _v2 migrations"
-          python ops/scripts/apply_migrations.py --v2
-
-          echo "Running post-apply ANALYZE"
-          psql "$SUPABASE_V2_DATABASE_URL" -v ON_ERROR_STOP=1 \
-            -c "ANALYZE rag.chat_messages, content.workspace_zettels, kg.kg_nodes, kg.kg_edges;"
-
-          echo "Verifying stats role, index, and RPCs"
-          psql "$SUPABASE_V2_DATABASE_URL" -v ON_ERROR_STOP=1 -At <<'SQL'
-          SELECT 'stats_reader_role=' || count(*) FROM pg_roles WHERE rolname='stats_reader';
-          SELECT 'stats_index=' || count(*) FROM pg_indexes WHERE schemaname='rag' AND indexname='idx_chat_messages_workspace_user_created';
-          SELECT 'stats_index_valid=' || count(*)
-            FROM pg_index
-           WHERE indexrelid = 'rag.idx_chat_messages_workspace_user_created'::regclass
-             AND indisvalid;
-          SELECT 'stats_rpcs=' || count(*)
-            FROM pg_proc p
-            JOIN pg_namespace n ON n.oid = p.pronamespace
-           WHERE (n.nspname, p.proname) IN (
-             ('core', 'profile_stats_v1'),
-             ('core', 'profile_stats_etag_probe_v1'),
-             ('billing', 'pricing_get_quota_snapshot_batch')
-           );
-          SQL
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: pytest --live -q
