@@ -1,7 +1,6 @@
 """End-to-end test for POST /api/feedback/submit with a mocked Slack client."""
 from __future__ import annotations
 
-import io
 
 import pytest
 from fastapi import FastAPI

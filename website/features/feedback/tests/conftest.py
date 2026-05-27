@@ -1,7 +1,6 @@
 """Feature-local fixtures for the feedback module's tests."""
 from __future__ import annotations
 
-import os
 import pytest
 
 

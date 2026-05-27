@@ -4,7 +4,6 @@ from __future__ import annotations
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock
 
 from website.features.feedback.api.routes import build_router
 from website.features.feedback.core.settings import get_feedback_settings

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from website.features.feedback.core.identity import (
-    Identity,
     resolve_identity,
 )
 

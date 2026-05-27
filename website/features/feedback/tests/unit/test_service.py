@@ -10,7 +10,6 @@ from website.features.feedback.intake.models import (
 )
 from website.features.feedback.service import (
     FeedbackService,
-    submit_feedback,
 )
 
 
