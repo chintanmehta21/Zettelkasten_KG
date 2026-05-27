@@ -715,7 +715,8 @@ def frozen_clock():
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Sweep any leftover ``e2e-*@test.com`` users from this session.
+    """Sweep any leftover ``e2e-*@test.com`` users + orphan test-fixture
+    canonical_zettels from this session.
 
     Backstop for per-test cleanup (which already runs via
     ``created_auth_user_ids``). When a test crashes hard or the runner is
@@ -770,5 +771,48 @@ def pytest_sessionfinish(session, exitstatus):
     except Exception as exc:  # noqa: BLE001 — never fail the session
         print(
             f"\n[pytest_sessionfinish] cleanup error: "
+            f"{type(exc).__name__}: {exc}"
+        )
+
+    # Sweep orphan canonical_zettels with RFC-2606 reserved test-domain URLs.
+    # Tests write to content.canonical_zettels (shared cross-tenant infra) via
+    # content.upsert_canonical_zettel; delete_test_user only CASCADEs through
+    # workspace-scoped rows, so canonicals leak. Scoping to example.{com,net,
+    # org,test} bounds this strictly to RFC-2606 reserved space — no real
+    # user content can live there. NOT EXISTS sub-select on workspace_zettels
+    # (which has ON DELETE RESTRICT) is the safety floor: even a bad pattern
+    # cannot reach a row that still has a live ws_zettel.
+    try:
+        import asyncio
+        import asyncpg
+        from website.core.supabase_v2.client import get_v2_database_url
+
+        async def _sweep_canonicals() -> int:
+            conn = await asyncpg.connect(get_v2_database_url())
+            try:
+                tag = await conn.execute(
+                    r"""
+                    DELETE FROM content.canonical_zettels c
+                    WHERE c.normalized_url ~
+                          '^https?://([a-z0-9][a-z0-9.-]*\.)?example\.(com|net|org|test)([/?#]|$)'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM content.workspace_zettels w
+                          WHERE w.canonical_zettel_id = c.id
+                      )
+                    """
+                )
+                return int(tag.split()[-1]) if tag.startswith("DELETE ") else 0
+            finally:
+                await conn.close()
+
+        deleted = asyncio.run(_sweep_canonicals())
+        if deleted:
+            print(
+                f"\n[pytest_sessionfinish] swept {deleted} orphan "
+                f"test-fixture canonical_zettels row(s)"
+            )
+    except Exception as exc:  # noqa: BLE001 — never fail the session
+        print(
+            f"\n[pytest_sessionfinish] canonical sweep error: "
             f"{type(exc).__name__}: {exc}"
         )
