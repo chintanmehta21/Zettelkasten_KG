@@ -42,6 +42,10 @@ class FakeCursor:
             # canonical iter-03 §1C.4 form is 7-tuple with audit columns.
             name = params[0]
             checksum = params[1]
+            if "on conflict" in sql_low:
+                self.conn.applied_rows = [
+                    r for r in self.conn.applied_rows if r[0] != name
+                ]
             self.conn.applied_rows.append((name, checksum))
         elif sql_low.startswith("update _migrations_applied"):
             assert params is not None
@@ -295,16 +299,30 @@ def test_reconcile_checksum_rewrites_existing_row(fake_psycopg, env, mig_dir):
         "--reconcile-checksum", "2026-01-01_first.sql",
     ])
     assert rc == 0
-    updates = [
+    upserts = [
         ex for ex in fake_psycopg.executed
-        if ex[0].lower().startswith("update _migrations_applied")
+        if ex[0].lower().startswith("insert into _migrations_applied")
     ]
-    assert len(updates) == 1
-    _sql, params = updates[0]
+    assert len(upserts) == 1
+    _sql, params = upserts[0]
     expected_checksum = am._checksum(
         (mig_dir / "2026-01-01_first.sql").read_text(encoding="utf-8")
     )
-    assert params == (expected_checksum, "2026-01-01_first.sql")
+    assert params[:2] == ("2026-01-01_first.sql", expected_checksum)
+    assert fake_psycopg.applied_rows == [("2026-01-01_first.sql", expected_checksum)]
+
+
+def test_reconcile_checksum_inserts_missing_manual_row(fake_psycopg, env, mig_dir):
+    am = _load()
+    rc = am.main([
+        "--migrations-dir", str(mig_dir),
+        "--reconcile-checksum", "2026-01-01_first.sql",
+    ])
+    assert rc == 0
+    expected_checksum = am._checksum(
+        (mig_dir / "2026-01-01_first.sql").read_text(encoding="utf-8")
+    )
+    assert fake_psycopg.applied_rows == [("2026-01-01_first.sql", expected_checksum)]
 
 
 def test_audit_trail_columns_populated_from_env(monkeypatch, fake_psycopg, env, mig_dir):
