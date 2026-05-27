@@ -471,96 +471,6 @@ body { color-scheme: dark; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Stat cards — one question per card, tabular nums, hover by luminance.
-   ═══════════════════════════════════════════════════════════════════ */
-
-.profile-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.85rem;
-}
-
-.profile-stat-card {
-    position: relative;
-    padding: 1rem 1.1rem 1.15rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    display: flex;
-    flex-direction: column;
-    min-height: 110px;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-.profile-stat-card:hover {
-    background: var(--bg-elevated);
-    border-color: var(--border-light);
-}
-
-.profile-stat-label {
-    margin: 0 0 0.4rem;
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-.profile-stat-value {
-    margin: 0 0 0.35rem;
-    font-family: var(--font-mono);
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--accent);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
-    line-height: 1;
-}
-
-.profile-stat-value.skeleton {
-    display: inline-block;
-    width: 2.4ch;
-    height: 1.05em;
-    background: linear-gradient(90deg, hsla(172, 66%, 50%, 0.05), hsla(172, 66%, 50%, 0.18), hsla(172, 66%, 50%, 0.05));
-    background-size: 200% 100%;
-    border-radius: 4px;
-    color: transparent;
-    animation: profileSkeletonShimmer 1.2s linear infinite;
-}
-@keyframes profileSkeletonShimmer {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
-}
-
-.profile-stat-sub {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    color: var(--text-secondary);
-    min-height: 1.1em;
-}
-
-.profile-stat-cta {
-    margin-top: auto;
-    padding-top: 0.7rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    align-self: flex-start;
-    color: var(--accent);
-    font-size: 0.83rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: color 0.15s ease;
-}
-.profile-stat-cta-arrow {
-    display: inline-block;
-    transition: transform 0.18s ease;
-}
-.profile-stat-cta:hover .profile-stat-cta-arrow {
-    transform: translateX(3px);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    Avatar picker — modal-launched grid (opened from hero avatar click).
    The grid itself works in both contexts; modal-only classes scope the
    surrounding overlay + dialog chrome.
@@ -1007,15 +917,6 @@ body { color-scheme: dark; }
     .profile-avatar-grid {
         grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
         gap: 0.45rem;
-    }
-    .profile-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 420px) {
-    .profile-stats-grid {
-        grid-template-columns: 1fr;
     }
 }
 
