@@ -204,6 +204,71 @@ def test_auth_core_boot_probe_gated_on_has_logged_in():
     )
 
 
+# ── Boot-probe tab-scoped idempotency (Option A, post-#109 follow-up) ─────
+
+
+BOOT_PROBE_KEY = "zk:boot-probe-fired"
+
+
+def test_boot_probe_uses_sessionstorage_idempotency_key():
+    """The boot probe block must reference the sessionStorage key
+    'zk:boot-probe-fired' so subsequent init() calls within the same tab
+    session skip the redundant /api/me RTT. The 2026-05-27 Caddy log review
+    showed a landing → /home full-page redirect fires the probe TWICE (once
+    per HTTP document load) — sessionStorage persists across same-tab
+    navigations so the second init() sees the flag and short-circuits."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert BOOT_PROBE_KEY in source, (
+        "boot probe block must reference sessionStorage key "
+        f"'{BOOT_PROBE_KEY}' to deduplicate redundant /api/me calls within "
+        "the same tab session. Landing → /home redirect double-fires "
+        "otherwise (1 probe per document load instead of 1 per tab)."
+    )
+
+
+def test_boot_probe_short_circuits_when_key_present():
+    """The probe block must read sessionStorage 'zk:boot-probe-fired'
+    BEFORE the actual /api/me fetch call and skip the call when the key
+    === '1'. The skip path must be inside the same try/catch that gates
+    the probe so a sessionStorage exception (private mode) degrades to
+    always-fire (no regression vs current behavior)."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    # Use the actual callsite (zkFetch | fetch with '/api/me' argument),
+    # not the first text occurrence — the comment header mentions /api/me
+    # and would otherwise produce a false-positive ordering.
+    callsite_match = re.search(r"""(?:zkFetch|fetch)\(\s*['"]/api/me['"]""", source)
+    assert callsite_match, "expected the boot probe /api/me fetch callsite in source"
+    pre_callsite = source[: callsite_match.start()]
+    assert re.search(
+        r"sessionStorage\.getItem\(\s*['\"]"
+        + re.escape(BOOT_PROBE_KEY) + r"['\"]\s*\)",
+        pre_callsite,
+    ), (
+        "boot probe must call sessionStorage.getItem('zk:boot-probe-fired') "
+        "before the /api/me fetch callsite so a re-init within the same tab "
+        "session can short-circuit and skip the redundant RTT."
+    )
+
+
+def test_boot_probe_records_fire_in_sessionstorage():
+    """After firing the probe (or before — order doesn't matter as long
+    as it's inside the gated try-block), auth-core must call
+    sessionStorage.setItem('zk:boot-probe-fired', '1') so the next init()
+    sees the flag. The setItem call must coexist with a try/catch so
+    sessionStorage-unavailable contexts (private mode, cookie-block) still
+    let the probe run — degrade-to-always-fire preserves existing behavior."""
+    source = AUTH_CORE_JS.read_text(encoding="utf-8")
+    assert re.search(
+        r"sessionStorage\.setItem\(\s*['\"]"
+        + re.escape(BOOT_PROBE_KEY) + r"['\"]\s*,\s*['\"]1['\"]\s*\)",
+        source,
+    ), (
+        "auth-core.js must call sessionStorage.setItem("
+        f"'{BOOT_PROBE_KEY}', '1') so the second init() within the same "
+        "tab session sees the flag and short-circuits the boot probe."
+    )
+
+
 # ── Phase-1.5 Item 3: zk-session-marker cookie ───────────────────────────
 
 

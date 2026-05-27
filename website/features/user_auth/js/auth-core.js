@@ -306,24 +306,37 @@
       // single-flight refresh → re-auth banner. Fire-and-forget; never
       // blocks page render. Falls back to plain fetch + manual banner
       // only when zk_fetch.js hasn't loaded yet (script-order edge case).
+      //
+      // Tab-scoped idempotency (post-2026-05-27): sessionStorage flag so a
+      // landing → /home full-page redirect (window.location.replace) doesn't
+      // double-fire — init() runs once per HTTP document, sessionStorage
+      // persists across same-tab navigations. Private-mode / cookie-block →
+      // sessionStorage throws → fall through to fire-anyway (no regression).
       try {
         var bootCache = getCacheState();
         var bootSession = _currentSession;
         if (bootCache && bootCache.hasLoggedIn && bootSession && bootSession.access_token) {
-          var bootProbeOpts = {
-            headers: { 'Authorization': 'Bearer ' + bootSession.access_token },
-          };
-          if (typeof window.zkFetch === 'function') {
-            window.zkFetch('/api/me', bootProbeOpts).catch(function () { /* best-effort */ });
-          } else {
-            // zk_fetch.js not yet loaded — degrade to plain fetch + direct
-            // banner trigger so observability still works in this edge.
-            window.fetch('/api/me', bootProbeOpts).then(function (res) {
-              if (res && res.status === 401 && window.ZKAuthUI &&
-                  typeof window.ZKAuthUI.showReauthBanner === 'function') {
-                window.ZKAuthUI.showReauthBanner('expired');
-              }
-            }).catch(function () { /* best-effort */ });
+          var alreadyFired = false;
+          try { alreadyFired = sessionStorage.getItem('zk:boot-probe-fired') === '1'; }
+          catch (_storage_read_err) { /* private mode — fire anyway */ }
+          if (!alreadyFired) {
+            try { sessionStorage.setItem('zk:boot-probe-fired', '1'); }
+            catch (_storage_write_err) { /* private mode — fire without idempotency */ }
+            var bootProbeOpts = {
+              headers: { 'Authorization': 'Bearer ' + bootSession.access_token },
+            };
+            if (typeof window.zkFetch === 'function') {
+              window.zkFetch('/api/me', bootProbeOpts).catch(function () { /* best-effort */ });
+            } else {
+              // zk_fetch.js not yet loaded — degrade to plain fetch + direct
+              // banner trigger so observability still works in this edge.
+              window.fetch('/api/me', bootProbeOpts).then(function (res) {
+                if (res && res.status === 401 && window.ZKAuthUI &&
+                    typeof window.ZKAuthUI.showReauthBanner === 'function') {
+                  window.ZKAuthUI.showReauthBanner('expired');
+                }
+              }).catch(function () { /* best-effort */ });
+            }
           }
         }
       } catch (probe_err) {
