@@ -322,3 +322,52 @@ async def test_kasten_section(asyncpg_pool, mint_user, seed_zettels, seed_kasten
     # NEGATIVE — no billing leakage
     assert "quota" not in k
     assert "plan" not in k
+
+
+# ---------------------------------------------------------------------------
+# Task 3.5: Domain / Topic section (HHI + emerging_top5 + declining_top5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_domain_section(asyncpg_pool, mint_user, seed_zettels_with_tags):
+    """Domain section: HHI + emerging_top5 + declining_top5."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    # tag_distribution counts back from now() — first tag is most recent
+    await seed_zettels_with_tags(workspace_id, {
+        "python": 8,
+        "rust": 5,
+        "ml": 4,
+        "stale": 1,
+    })
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    d = resp.data["domain"]
+
+    # HHI bound: 0 (fully diverse) to 1 (single tag)
+    hhi = float(d["concentration_hhi"])
+    assert 0.0 <= hhi <= 1.0
+
+    # emerging_top5: list of {tag, delta_share}, capped at 5
+    assert isinstance(d["emerging_top5"], list)
+    assert len(d["emerging_top5"]) <= 5
+    for item in d["emerging_top5"]:
+        assert "tag" in item and "delta_share" in item
+
+    # declining_top5: similar shape, capped at 5
+    assert isinstance(d["declining_top5"], list)
+    assert len(d["declining_top5"]) <= 5
+    for item in d["declining_top5"]:
+        assert "tag" in item and "delta_share" in item
+
+    # NEGATIVE — no quota/plan/billing leakage
+    assert "quota" not in d
+    assert "plan" not in d
+    # And no derived_tags exposure
+    serialized = str(d)
+    assert "derived_tag" not in serialized
