@@ -143,7 +143,7 @@ async def test_main_board_section(asyncpg_pool, mint_user, seed_zettels, seed_ka
 
     # Heatmap shape: 182 zero-filled daily cells (generate_series anchor)
     assert isinstance(mb["heatmap"], list)
-    assert 180 <= len(mb["heatmap"]) <= 184  # tolerance for DST / leap-day edges
+    assert len(mb["heatmap"]) == 182
     for cell in mb["heatmap"][:3]:
         assert "date" in cell and "count" in cell
         assert isinstance(cell["count"], int)

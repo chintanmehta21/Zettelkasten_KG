@@ -60,7 +60,7 @@ BEGIN
 
   WITH days AS (
     SELECT generate_series(
-      (now() - interval '182 days')::date,
+      (now() - interval '181 days')::date,
       now()::date,
       interval '1 day'
     )::date AS d
@@ -71,7 +71,7 @@ BEGIN
       FROM content.workspace_zettels
      WHERE workspace_id = p_workspace_id
        AND deleted_at IS NULL
-       AND created_at >= now() - interval '182 days'
+       AND created_at >= now() - interval '181 days'
      GROUP BY 1
   ),
   heatmap AS (
