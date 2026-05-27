@@ -134,6 +134,28 @@ def test_route_returns_payload_with_etag_header():
     assert "main_board" in body
 
 
+def test_head_route_returns_etag_header_without_body():
+    """HEAD: same auth/cache path as GET, but headers only for curl -I smoke."""
+    app = _build_app()
+    with ExitStack() as stack:
+        stack.enter_context(_patch_settings())
+        stack.enter_context(_patch_workspace_resolver())
+        stack.enter_context(_patch_supabase_client())
+        stack.enter_context(_patch_runner_ok())
+
+        client = TestClient(app)
+        resp = client.head(
+            "/api/profile/stats",
+            headers={"authorization": "Bearer test-jwt"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.headers.get("etag") == "abc123"
+    assert resp.headers.get("cache-control") == "private, max-age=60"
+    assert resp.headers.get("x-stats-cache") == "miss"
+    assert resp.content == b""
+
+
 def test_route_returns_304_on_matching_if_none_match():
     """304: If-None-Match equal to the runner's etag short-circuits the body."""
     app = _build_app()

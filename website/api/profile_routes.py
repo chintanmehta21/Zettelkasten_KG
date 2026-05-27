@@ -117,6 +117,19 @@ async def get_profile_stats(
         )
 
 
+@router.head("/stats")
+async def head_profile_stats(
+    request: Request,
+    response: Response,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> Response:
+    """HEAD /api/profile/stats — same auth/cache headers as GET, no body."""
+    result = await get_profile_stats(request, response, user)
+    if isinstance(result, Response):
+        return Response(status_code=result.status_code, headers=dict(result.headers))
+    return Response(status_code=status.HTTP_200_OK, headers=dict(response.headers))
+
+
 async def _serve_stats(
     request: Request,
     response: Response,
