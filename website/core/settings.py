@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     model_name: str = "gemini-2.5-flash"
     rag_chunks_enabled: bool = True
 
+    # User Stats endpoint controls (PR #118).
+    stats_tab_enabled: bool = True
+    # Comma-separated profile UUIDs. Non-empty list = only those users may
+    # call /api/profile/stats; empty = open to all authenticated users.
+    stats_tab_allowlist: str = ""
+
     log_level: str = "INFO"
 
     newsletter_domains: list[str] = [
