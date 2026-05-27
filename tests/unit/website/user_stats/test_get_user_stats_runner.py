@@ -101,6 +101,41 @@ async def test_runs_end_to_end_with_quota_compose(mock_fetch):
 
 @pytest.mark.asyncio
 @patch("website.api.module_runners.get_user_stats._fetch_raw_stats")
+async def test_runs_end_to_end_with_real_billing_quota_shape(mock_fetch):
+    """Production billing snapshots expose nested period usage + effective availability."""
+    mock_fetch.return_value = (StatsResponse.model_validate(_RAW), "etag-x", False)
+    quota_data = [
+        {
+            "feature": "zettel",
+            "caps": {"day": 2, "week": 10, "month": 30, "lifetime": None},
+            "used": {"day": 1, "week": 8, "month": 12, "lifetime": 20},
+            "remaining_plan": 1,
+            "remaining_wallet": 0,
+            "effective_available": 1,
+        },
+        {
+            "feature": "kasten",
+            "caps": {"day": None, "week": None, "month": None, "lifetime": 1},
+            "used": {"day": 0, "week": 0, "month": 0, "lifetime": 1},
+            "remaining_plan": 0,
+            "remaining_wallet": 0,
+            "effective_available": 0,
+        },
+    ]
+    client = _make_supabase_client(quota_data)
+    out = await runner.run_get_user_stats(
+        workspace_id=UUID("00000000-0000-0000-0000-000000000001"),
+        profile_id=UUID("00000000-0000-0000-0000-000000000002"),
+        plan_tier="free",
+        client_action_id="t-real-quota",
+        supabase_client=client,
+    )
+    assert out["main_board"]["zettels_quota"] == {"used": 1, "available": 1, "period": "day"}
+    assert out["main_board"]["kastens_quota"] == {"used": 1, "available": 0, "period": "lifetime"}
+
+
+@pytest.mark.asyncio
+@patch("website.api.module_runners.get_user_stats._fetch_raw_stats")
 async def test_fail_open_when_quota_rpc_raises(mock_fetch):
     """If pricing_get_quota_snapshot_batch raises, response still serves raw stats."""
     mock_fetch.return_value = (StatsResponse.model_validate(_RAW), "etag-x", False)

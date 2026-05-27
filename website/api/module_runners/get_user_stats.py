@@ -95,17 +95,58 @@ def _build_features_payload(
     return payload
 
 
+def _as_int(value: Any, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int | float | str):
+        return int(value or default)
+    return default
+
+
+def _select_snapshot_period(entry: dict[str, Any]) -> str:
+    caps = entry.get("caps")
+    used = entry.get("used")
+    if not isinstance(caps, dict) or not isinstance(used, dict):
+        return str(entry.get("period") or "month")
+
+    remaining_by_period: list[tuple[int, str]] = []
+    for period in ("day", "week", "month", "lifetime"):
+        cap = caps.get(period)
+        if cap is None:
+            continue
+        remaining_by_period.append((max(0, _as_int(cap) - _as_int(used.get(period))), period))
+    if not remaining_by_period:
+        return "month"
+    return min(remaining_by_period)[1]
+
+
+def _snapshot_used(entry: dict[str, Any], period: str) -> int:
+    used = entry.get("used", 0)
+    if isinstance(used, dict):
+        return _as_int(used.get(period))
+    return _as_int(used)
+
+
+def _snapshot_available(entry: dict[str, Any]) -> int | None:
+    if entry.get("available") is not None:
+        return _as_int(entry["available"])
+    if entry.get("effective_available") is not None:
+        return _as_int(entry["effective_available"])
+    return None
+
+
 def _snapshots_to_quota_dict(snapshots: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Map ``[{feature: 'zettel', used: 3, available: 27, period: 'month'}, ...]`` to ``{'zettel': {...}, ...}``."""
+    """Map billing quota snapshots to the compact UI quota contract."""
     out: dict[str, dict[str, Any]] = {}
     for entry in snapshots or []:
         feature = entry.get("feature")
         if not feature:
             continue
+        period = _select_snapshot_period(entry)
         out[feature] = {
-            "used": int(entry.get("used", 0) or 0),
-            "available": (int(entry["available"]) if entry.get("available") is not None else None),
-            "period": str(entry.get("period") or "month"),
+            "used": _snapshot_used(entry, period),
+            "available": _snapshot_available(entry),
+            "period": period,
         }
     return out
 
