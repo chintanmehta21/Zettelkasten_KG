@@ -147,9 +147,9 @@ def build_router(
                 request=req_model, identity=identity, processed_images=processed,
             )
         except SlackPostError as exc:
-            logger.warning("slack delivery failed", extra={"err": str(exc)})
+            logger.warning("slack delivery failed: %s", exc)
             raise HTTPException(
-                status_code=502,
+                status_code=503,
                 detail="Feedback delivery failed. Please try again.",
             ) from exc
 

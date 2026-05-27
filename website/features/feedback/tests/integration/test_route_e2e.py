@@ -145,7 +145,7 @@ def test_submit_with_anon_follow_up_email_posts_email_in_context(
     assert "sakura@example.com" in context["elements"][0]["text"]
 
 
-def test_slack_delivery_failure_returns_502_not_false_success(
+def test_slack_delivery_failure_returns_503_not_false_success(
     fake_slack_creds: dict, mock_slack: MagicMock,
 ) -> None:
     mock_slack.post_message = AsyncMock(side_effect=SlackPostError("channel_not_found"))
@@ -160,7 +160,7 @@ def test_slack_delivery_failure_returns_502_not_false_success(
         },
         headers={"cf-ipcountry": "IN"},
     )
-    assert r.status_code == 502
+    assert r.status_code == 503
     assert "feedback_id" not in r.text
 
 
