@@ -191,7 +191,7 @@ async def test_search_signal_weights_authz_denial(mint_user, asyncpg_pool):
         asyncpg_pool, workspace_id=ws_id, n_chunks=1
     )
     client = get_v2_user_client(intruder.jwt)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("rag").rpc(
             "search_signal_weights",
             {
@@ -243,7 +243,7 @@ async def test_chunk_share_for_kasten_authz_denial(mint_user, asyncpg_pool):
     kasten_id = await _create_kasten(asyncpg_pool, workspace_id=ws_id)
 
     client = get_v2_user_client(intruder.jwt)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("rag").rpc(
             "chunk_share_for_kasten", {"p_kasten_id": str(kasten_id)}
         ).execute()
@@ -305,7 +305,7 @@ async def test_bulk_add_to_kasten_authz_denial(mint_user, asyncpg_pool):
     kasten_id = await _create_kasten(asyncpg_pool, workspace_id=ws_id)
 
     client = get_v2_user_client(intruder.jwt)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("rag").rpc(
             "bulk_add_to_kasten",
             {"p_kasten_id": str(kasten_id), "p_workspace_zettel_ids": [str(wz_id)]},
@@ -366,7 +366,7 @@ async def test_fetch_anchor_seeds_v2_authz_denial(mint_user, asyncpg_pool):
 
     client = get_v2_user_client(intruder.jwt)
     query_emb = _embedding_literal(0.0)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("rag").rpc(
             "fetch_anchor_seeds_v2",
             {
@@ -421,7 +421,7 @@ async def test_list_kasten_zettels_authz_denial(mint_user, asyncpg_pool):
     kasten_id = await _create_kasten(asyncpg_pool, workspace_id=ws_id)
 
     client = get_v2_user_client(intruder.jwt)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("rag").rpc(
             "list_kasten_zettels", {"p_kasten_id": str(kasten_id)}
         ).execute()
