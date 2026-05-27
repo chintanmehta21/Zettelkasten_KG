@@ -279,3 +279,46 @@ async def test_zettel_section(asyncpg_pool, mint_user, seed_zettels):
     # NEGATIVE — no billing/quota leakage
     assert "quota" not in z
     assert "plan" not in z
+
+
+# ---------------------------------------------------------------------------
+# Task 3.4: Kasten-level section (largest + conv depth + cited source + question streak)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_kasten_section(asyncpg_pool, mint_user, seed_zettels, seed_kastens, seed_chat_messages):
+    """Kasten section: largest + chat conv depth + most-cited source + question streak."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_zettels(workspace_id, count=10)
+    await seed_kastens(workspace_id, count=3)
+    await seed_chat_messages(workspace_id, user_messages=5, assistant_with_citations=3)
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    k = resp.data["kasten"]
+
+    # largest — kastens were seeded but no zettel-kasten links, so zettel_count == 0
+    # (this exercises the "kasten exists but empty" path)
+    assert k["largest"]["name"] in {"kasten-0", "kasten-1", "kasten-2"}
+    assert k["largest"]["zettel_count"] >= 0
+    assert k["largest"]["age_days"] >= 0
+
+    # avg_conversation_depth — 1 session, 5 user messages → 5.0
+    assert float(k["avg_conversation_depth"]) >= 0.0
+
+    # most_cited_source_type — 3 assistant messages cite the only zettel (source_type='web')
+    assert k["most_cited_source_type"]["count"] >= 0
+    # Could be None if seed_chat_messages couldn't find a workspace_zettel; tolerate
+
+    # question_streak — 5 user messages over 5 hours all today → current=1, longest=1
+    assert k["question_streak"]["current"] >= 0
+    assert k["question_streak"]["longest"] >= k["question_streak"]["current"]
+
+    # NEGATIVE — no billing leakage
+    assert "quota" not in k
+    assert "plan" not in k

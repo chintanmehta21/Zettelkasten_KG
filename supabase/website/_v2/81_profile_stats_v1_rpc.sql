@@ -39,6 +39,7 @@ DECLARE
   v_main_board jsonb;
   v_general jsonb;
   v_zettel jsonb;
+  v_kasten jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -258,6 +259,97 @@ BEGIN
       COALESCE((SELECT round(avg((COALESCE(array_length(user_tags, 1), 0) > 0)::int)::numeric, 3) FROM zw), 0)::numeric(4,3)
   ) INTO v_zettel;
 
+  -- ─── Kasten-level section ────────────────────────────────────────────
+  -- Product decision (2026-05-27): the "Kasten" UI tab shows BOTH
+  -- Kasten-table stats AND chat retrieval stats. Stats 2-4 below technically
+  -- come from rag.chat_messages, but the operator chose to label them under
+  -- "Kasten" for the UI because users mentally associate chat sessions with
+  -- the Kastens they're scoped to. This is a UI label, not a schema claim.
+  --
+  -- 1) largest: top-1 Kasten by non-deleted zettel count, with icon/color/last-add.
+  -- 2) avg_conversation_depth: mean user-turn count per chat session (workspace-wide).
+  -- 3) most_cited_source_type: source_type of canonical zettel most-cited in
+  --    assistant messages (via chat_messages.citations jsonb array).
+  -- 4) question_streak: gaps-and-islands on distinct days with >=1 user message.
+
+  WITH kasten_sizes AS (
+    SELECT k.id, k.name, k.icon, k.color, k.created_at,
+           count(*) FILTER (WHERE wz.deleted_at IS NULL) AS n,
+           max(kz.added_at) AS last_add
+      FROM rag.kastens k
+      LEFT JOIN rag.kasten_zettels kz ON kz.kasten_id = k.id
+      LEFT JOIN content.workspace_zettels wz ON wz.id = kz.workspace_zettel_id
+     WHERE k.workspace_id = p_workspace_id
+     GROUP BY k.id
+  ),
+  largest_k AS (
+    SELECT * FROM kasten_sizes ORDER BY n DESC NULLS LAST, created_at ASC LIMIT 1
+  ),
+  conv_depth AS (
+    SELECT COALESCE(round(avg(turn_count)::numeric, 2), 0) AS d
+      FROM (
+        SELECT session_id, count(*) FILTER (WHERE role = 'user') AS turn_count
+          FROM rag.chat_messages
+         WHERE workspace_id = p_workspace_id
+         GROUP BY session_id
+         HAVING count(*) FILTER (WHERE role = 'user') > 0
+      ) sessions
+  ),
+  citation_src AS (
+    SELECT cz.source_type, count(*)::int AS n
+      FROM rag.chat_messages m,
+           LATERAL jsonb_array_elements(COALESCE(m.citations, '[]'::jsonb)) AS cit
+      JOIN content.canonical_zettels cz ON cz.id = (cit->>'canonical_zettel_id')::uuid
+     WHERE m.workspace_id = p_workspace_id AND m.role = 'assistant'
+     GROUP BY cz.source_type
+     ORDER BY n DESC NULLS LAST
+     LIMIT 1
+  ),
+  q_days AS (
+    SELECT DISTINCT (created_at AT TIME ZONE 'UTC')::date AS d
+      FROM rag.chat_messages
+     WHERE workspace_id = p_workspace_id AND role = 'user'
+  ),
+  q_runs AS (
+    SELECT d, (d - (row_number() OVER (ORDER BY d))::int) AS g FROM q_days
+  ),
+  q_groups AS (
+    SELECT g, count(*)::int AS c, min(d) AS s, max(d) AS e FROM q_runs GROUP BY g
+  ),
+  q_current AS (
+    SELECT COALESCE((
+      SELECT c FROM q_groups
+       WHERE e = (now() AT TIME ZONE 'UTC')::date
+          OR e = ((now() AT TIME ZONE 'UTC')::date - 1)
+       ORDER BY e DESC LIMIT 1
+    ), 0) AS c
+  ),
+  q_longest AS (
+    SELECT COALESCE(max(c), 0) AS c FROM q_groups
+  )
+  SELECT jsonb_build_object(
+    'largest', jsonb_build_object(
+      'name', (SELECT name FROM largest_k),
+      'icon', (SELECT icon FROM largest_k),
+      'color', (SELECT color FROM largest_k),
+      'zettel_count', COALESCE((SELECT n FROM largest_k), 0),
+      'last_added_at', (SELECT last_add FROM largest_k),
+      'age_days', COALESCE(
+        (SELECT (now()::date - created_at::date)::int FROM largest_k),
+        0
+      )
+    ),
+    'avg_conversation_depth', (SELECT d FROM conv_depth),
+    'most_cited_source_type', jsonb_build_object(
+      'source_type', (SELECT source_type FROM citation_src),
+      'count', COALESCE((SELECT n FROM citation_src), 0)
+    ),
+    'question_streak', jsonb_build_object(
+      'current', (SELECT c FROM q_current),
+      'longest', (SELECT c FROM q_longest)
+    )
+  ) INTO v_kasten;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -276,7 +368,7 @@ BEGIN
     'main_board', v_main_board,
     'general',    v_general,
     'zettel',     v_zettel,
-    'kasten',     '{}'::jsonb,
+    'kasten',     v_kasten,
     'domain',     '{}'::jsonb,
     'activity',   '{}'::jsonb,
     'graph',      '{}'::jsonb
