@@ -38,6 +38,7 @@ DECLARE
   v_payload jsonb;
   v_main_board jsonb;
   v_general jsonb;
+  v_zettel jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -206,6 +207,57 @@ BEGIN
     )
   ) INTO v_general;
 
+  -- ─── Zettel-level section ─────────────────────────────────────────────
+  -- 1) top_source: most-used source_type (count + pct of total).
+  -- 2) latest: most recently captured zettel (title + source_type + created_at).
+  -- 3) avg_summary_chars: mean / min / max length of ai_summary.
+  -- 4) avg_user_tags: mean count of entries in workspace_zettels.user_tags
+  --    array (per-zettel mean). user_tags ONLY — never derived_tags.
+  -- 5) tagged_coverage_pct: fraction (0.0-1.0) of zettels with >=1 user tag.
+
+  WITH zw AS (
+    SELECT wz.user_tags, wz.ai_summary, wz.created_at,
+           cz.source_type, cz.title
+      FROM content.workspace_zettels wz
+      JOIN content.canonical_zettels cz ON cz.id = wz.canonical_zettel_id
+     WHERE wz.workspace_id = p_workspace_id AND wz.deleted_at IS NULL
+  ),
+  top_src AS (
+    SELECT source_type, count(*)::int AS n
+      FROM zw GROUP BY source_type ORDER BY n DESC NULLS LAST LIMIT 1
+  ),
+  latest_z AS (
+    SELECT title, source_type, created_at
+      FROM zw ORDER BY created_at DESC NULLS LAST LIMIT 1
+  ),
+  totals AS (
+    SELECT count(*)::int AS n FROM zw
+  )
+  SELECT jsonb_build_object(
+    'top_source', jsonb_build_object(
+      'source_type', (SELECT source_type FROM top_src),
+      'count', COALESCE((SELECT n FROM top_src), 0),
+      'pct', CASE
+        WHEN (SELECT n FROM totals) = 0 THEN NULL
+        ELSE round(100.0 * (SELECT n FROM top_src) / (SELECT n FROM totals)::numeric, 1)
+      END
+    ),
+    'latest', jsonb_build_object(
+      'title', (SELECT title FROM latest_z),
+      'source_type', (SELECT source_type FROM latest_z),
+      'created_at', (SELECT created_at FROM latest_z)
+    ),
+    'avg_summary_chars', jsonb_build_object(
+      'mean', COALESCE((SELECT round(avg(length(ai_summary)))::int FROM zw WHERE ai_summary IS NOT NULL), 0),
+      'min', COALESCE((SELECT min(length(ai_summary)) FROM zw WHERE ai_summary IS NOT NULL), 0),
+      'max', COALESCE((SELECT max(length(ai_summary)) FROM zw WHERE ai_summary IS NOT NULL), 0)
+    ),
+    'avg_user_tags',
+      COALESCE((SELECT round(avg(COALESCE(array_length(user_tags, 1), 0))::numeric, 1) FROM zw), 0)::numeric(4,1),
+    'tagged_coverage_pct',
+      COALESCE((SELECT round(avg((COALESCE(array_length(user_tags, 1), 0) > 0)::int)::numeric, 3) FROM zw), 0)::numeric(4,3)
+  ) INTO v_zettel;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -223,7 +275,7 @@ BEGIN
     ),
     'main_board', v_main_board,
     'general',    v_general,
-    'zettel',     '{}'::jsonb,
+    'zettel',     v_zettel,
     'kasten',     '{}'::jsonb,
     'domain',     '{}'::jsonb,
     'activity',   '{}'::jsonb,

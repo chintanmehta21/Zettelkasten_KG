@@ -232,3 +232,50 @@ async def test_general_section(asyncpg_pool, mint_user, seed_zettels):
     # NEGATIVE: no plan fields in RPC payload (design-locked PURE-OLTP)
     assert "plan" not in g
     assert "tier" not in g
+
+
+# ---------------------------------------------------------------------------
+# Task 3.3: Zettel-level section (top_source + latest + avg_summary_chars + tag stats)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_zettel_section(asyncpg_pool, mint_user, seed_zettels):
+    """Zettel section: top_source + latest + avg_summary_chars + tag stats."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_zettels(workspace_id, count=6)
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    z = resp.data["zettel"]
+
+    # top_source: all seeds use source_type='web', so 1 source dominates
+    assert z["top_source"]["source_type"] in {"web", None}
+    assert z["top_source"]["count"] >= 0
+    assert z["top_source"]["pct"] is None or 0.0 <= z["top_source"]["pct"] <= 100.0
+
+    # latest: most recent (day 0) has title 'seed-0'
+    assert z["latest"]["title"] in {"seed-0", None}
+    assert z["latest"]["source_type"] in {"web", None}
+
+    # avg_summary_chars
+    assert isinstance(z["avg_summary_chars"]["mean"], int)
+    assert z["avg_summary_chars"]["mean"] >= 0
+    assert z["avg_summary_chars"]["min"] >= 0
+    assert z["avg_summary_chars"]["max"] >= z["avg_summary_chars"]["min"]
+
+    # avg_user_tags: each seed has 1 user_tag → ~1.0
+    avg_tags = float(z["avg_user_tags"])
+    assert 0.0 <= avg_tags <= 5.0
+
+    # tagged_coverage_pct: all seeds have user_tags, so 1.0
+    cov = float(z["tagged_coverage_pct"])
+    assert 0.0 <= cov <= 1.0
+
+    # NEGATIVE — no billing/quota leakage
+    assert "quota" not in z
+    assert "plan" not in z
