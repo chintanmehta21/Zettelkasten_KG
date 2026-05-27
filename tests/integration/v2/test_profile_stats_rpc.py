@@ -196,7 +196,7 @@ async def test_general_section(asyncpg_pool, mint_user, seed_zettels):
     """
     from website.core.supabase_v2.client import get_v2_user_client
 
-    user = await mint_user(workspace_count=1)
+    user = mint_user(workspace_count=1)   # no await
     workspace_id = user.workspace_ids[0]
     await seed_zettels(workspace_id, count=8)
 
@@ -216,7 +216,7 @@ async def test_general_section(asyncpg_pool, mint_user, seed_zettels):
     assert "delta_pct" in g["zettels_30d"]
     assert isinstance(g["zettels_30d"]["sparkline_weekly"], list)
     # ~8 weeks worth of buckets (55-day window aggregated to weeks)
-    assert 7 <= len(g["zettels_30d"]["sparkline_weekly"]) <= 10
+    assert 8 <= len(g["zettels_30d"]["sparkline_weekly"]) <= 9
     for bucket in g["zettels_30d"]["sparkline_weekly"]:
         assert "week" in bucket and "count" in bucket
         assert isinstance(bucket["count"], int)
