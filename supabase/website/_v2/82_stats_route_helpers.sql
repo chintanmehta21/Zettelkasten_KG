@@ -98,7 +98,7 @@ BEGIN
       v_feature_def->>'wallet_meter'
     );
     v_result := v_result || jsonb_build_array(
-      jsonb_build_object('feature', v_feature_def->>'feature') || v_snapshot
+      v_snapshot || jsonb_build_object('feature', v_feature_def->>'feature')
     );
   END LOOP;
 
