@@ -2,18 +2,16 @@ name: Live integration tests
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 21 * * 0"
 
 permissions:
   contents: read
 
 jobs:
-  live:
-    name: pytest --live (real APIs)
+  profile-stats-prod-prep:
+    name: Profile stats production prep
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -25,15 +23,88 @@ jobs:
             ops/requirements.txt
             ops/requirements-dev.txt
 
-      - name: Install
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r ops/requirements-dev.txt
+      - name: Upload swapfile script
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          source: "ops/scripts/droplet_add_swapfile.sh"
+          target: "/tmp/zk-profile-stats-prep/"
+          strip_components: 2
 
-      - name: pytest --live
+      - name: Run swapfile script
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_SSH_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            sudo bash /tmp/zk-profile-stats-prep/droplet_add_swapfile.sh
+
+      - name: Install migration dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          python -m pip install --upgrade pip
+          pip install -r ops/requirements.txt
+
+      - name: Apply stats migrations
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: pytest --live -q
+          SUPABASE_V2_DATABASE_URL: ${{ secrets.SUPABASE_V2_DATABASE_URL }}
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DEPLOY_GIT_SHA: ${{ github.sha }}
+          DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          DEPLOY_ACTOR: ${{ github.actor }}
+          MIGRATION_MANIFEST_REQUIRED: "0"
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
+            SUPABASE_V2_DATABASE_URL="${SUPABASE_DATABASE_URL:-}"
+          fi
+          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
+            SUPABASE_V2_DATABASE_URL="${SUPABASE_DB_URL:-}"
+          fi
+          if [ -z "${SUPABASE_V2_DATABASE_URL:-}" ]; then
+            echo "::error::No production database URL secret is available"
+            exit 1
+          fi
+
+          echo "Applying manual migration 80 outside transaction"
+          psql "$SUPABASE_V2_DATABASE_URL" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/website/_v2/80_chat_messages_user_partial_idx.sql
+
+          echo "Reconciling migration 80 ledger row"
+          python ops/scripts/apply_migrations.py --v2 \
+            --reconcile-checksum 80_chat_messages_user_partial_idx.sql
+
+          echo "Applying standard _v2 migrations"
+          python ops/scripts/apply_migrations.py --v2
+
+          echo "Running post-apply ANALYZE"
+          psql "$SUPABASE_V2_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "ANALYZE rag.chat_messages, content.workspace_zettels, kg.kg_nodes, kg.kg_edges;"
+
+          echo "Verifying stats role, index, and RPCs"
+          psql "$SUPABASE_V2_DATABASE_URL" -v ON_ERROR_STOP=1 -At <<'SQL'
+          SELECT 'stats_reader_role=' || count(*) FROM pg_roles WHERE rolname='stats_reader';
+          SELECT 'stats_index=' || count(*) FROM pg_indexes WHERE schemaname='rag' AND indexname='idx_chat_messages_workspace_user_created';
+          SELECT 'stats_index_valid=' || count(*)
+            FROM pg_index
+           WHERE indexrelid = 'rag.idx_chat_messages_workspace_user_created'::regclass
+             AND indisvalid;
+          SELECT 'stats_rpcs=' || count(*)
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+           WHERE (n.nspname, p.proname) IN (
+             ('core', 'profile_stats_v1'),
+             ('core', 'profile_stats_etag_probe_v1'),
+             ('billing', 'pricing_get_quota_snapshot_batch')
+           );
+          SQL
