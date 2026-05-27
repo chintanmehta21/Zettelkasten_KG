@@ -77,34 +77,134 @@
                 </div>
             </section>
 
-            <!-- ═══ Stats ══════════════════════════════════════════════════ -->
-            <section class="profile-section" aria-labelledby="stats-heading">
-                <header class="profile-section-header">
-                    <h2 class="profile-section-title" id="stats-heading">Your knowledge base</h2>
-                </header>
-                <div class="profile-stats-grid">
-                    <article class="profile-stat-card" aria-labelledby="stat-zettels-label">
-                        <p class="profile-stat-label" id="stat-zettels-label">Zettels</p>
-                        <p class="profile-stat-value skeleton" id="stat-zettels-total" aria-busy="true">0</p>
-                        <p class="profile-stat-sub" id="stat-zettels-breakdown"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-kastens-label">
-                        <p class="profile-stat-label" id="stat-kastens-label">Kastens</p>
-                        <p class="profile-stat-value skeleton" id="stat-kastens-total" aria-busy="true">0</p>
-                        <p class="profile-stat-sub" id="stat-kastens-members"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-kg-label">
-                        <p class="profile-stat-label" id="stat-kg-label">Knowledge graph</p>
-                        <p class="profile-stat-value skeleton" id="stat-kg-nodes" aria-busy="true">0</p>
-                        <p class="profile-stat-sub" id="stat-kg-links"></p>
-                    </article>
-                    <article class="profile-stat-card" aria-labelledby="stat-plan-label">
-                        <p class="profile-stat-label" id="stat-plan-label">Plan</p>
-                        <p class="profile-stat-value skeleton" id="stat-plan-tier" aria-busy="true">Free</p>
-                        <p class="profile-stat-sub" id="stat-plan-usage"></p>
-                        <a class="profile-stat-cta" href="/pricing">Manage <span class="profile-stat-cta-arrow">→</span></a>
-                    </article>
+            <!-- ═══ Statistics tab ════════════════════════════════════════════════ -->
+            <section class="profile-stats"
+                     data-profile-stats
+                     data-stats-cache-state="empty"
+                     aria-busy="true"
+                     aria-labelledby="profile-stats-heading">
+
+              <h2 id="profile-stats-heading" class="profile-stats-heading">Statistics</h2>
+
+              <!-- ─── Loading box (controller toggles .is-visible) ──────────────── -->
+              <div class="profile-stats-loader" data-stats-loader hidden>
+                <div class="profile-stats-loader__row">
+                  <span class="profile-stats-loader__type" data-stats-loader-type></span>
+                  <span class="profile-stats-loader__freshness" data-stats-freshness></span>
+                  <button type="button"
+                          class="profile-stats-loader__stop"
+                          data-stats-loader-stop
+                          aria-label="Stop loading">
+                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                      <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor"/>
+                    </svg>
+                  </button>
                 </div>
+                <div class="profile-stats-loader__progress"
+                     role="progressbar"
+                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                     data-stats-loader-progress>
+                  <span class="profile-stats-loader__bar" data-stats-loader-bar></span>
+                </div>
+              </div>
+
+              <!-- ─── Tab nav ────────────────────────────────────────────────────── -->
+              <nav class="profile-stats-tabs" role="tablist" aria-label="Statistics sections">
+                <button type="button" class="profile-stats-tab is-active" role="tab"
+                        aria-selected="true" data-stats-tab="main">Main Board</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="general">General</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="zettel">Zettel</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="kasten">Kasten</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="domain">Domain</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="activity">Activity</button>
+                <button type="button" class="profile-stats-tab" role="tab"
+                        aria-selected="false" data-stats-tab="graph">Knowledge Graph</button>
+              </nav>
+
+              <!-- ─── Tab panels ─────────────────────────────────────────────────── -->
+              <div class="profile-stats-panels" data-stats-panels>
+
+                <!-- Main Board -->
+                <div class="profile-stats-panel is-active" role="tabpanel" data-stats-panel="main">
+                  <div class="profile-stats-grid">
+                    <article class="stats-card stats-card--heatmap" data-stat="main.heatmap">
+                      <div class="stats-skeleton stats-skeleton--heatmap"></div>
+                    </article>
+                    <article class="stats-card stats-card--pie" data-stat="main.zettels_quota">
+                      <div class="stats-skeleton stats-skeleton--pie"></div>
+                    </article>
+                    <article class="stats-card stats-card--pie" data-stat="main.kastens_quota">
+                      <div class="stats-skeleton stats-skeleton--pie"></div>
+                    </article>
+                  </div>
+                </div>
+
+                <!-- General -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="general" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="general.member_since"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="general.zettels_30d"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="general.kg_size"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="general.source_diversity"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="general.plan"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+                <!-- Zettel -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="zettel" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="zettel.top_latest"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="zettel.avg_summary"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="zettel.avg_tags"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="zettel.tagged_coverage"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+                <!-- Kasten -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="kasten" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="kasten.largest"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="kasten.avg_conversation_depth"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="kasten.most_cited_source"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="kasten.question_streak"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+                <!-- Domain -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="domain" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="domain.concentration"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="domain.emerging"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="domain.declining"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+                <!-- Activity -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="activity" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="activity.current_streak"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="activity.longest_streak"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="activity.week_over_week"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="activity.chat_vs_capture"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+                <!-- Knowledge Graph -->
+                <div class="profile-stats-panel" role="tabpanel" data-stats-panel="graph" hidden>
+                  <div class="profile-stats-grid">
+                    <article class="stats-card" data-stat="graph.mean_degree"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="graph.top_hubs"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="graph.tag_coverage"><div class="stats-skeleton"></div></article>
+                    <article class="stats-card" data-stat="graph.relation_mix"><div class="stats-skeleton"></div></article>
+                  </div>
+                </div>
+
+              </div><!-- /profile-stats-panels -->
             </section>
 
             <!-- ═══ Trash ══════════════════════════════════════════════════ -->
@@ -169,6 +269,7 @@
 <!--ZK_FOOTER-->
     </div>
 
+    <script src="/static/js/zk_skeleton_typewriter.js?v=20260527a" defer></script>
     <script type="module" src="/profile/js/user_profile.js?v=20260526d"></script>
 </body>
 </html>
