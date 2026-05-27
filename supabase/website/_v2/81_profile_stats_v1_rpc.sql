@@ -41,6 +41,7 @@ DECLARE
   v_zettel jsonb;
   v_kasten jsonb;
   v_domain jsonb;
+  v_activity jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -421,6 +422,95 @@ BEGIN
     )
   ) INTO v_domain;
 
+  -- ─── Activity / Engagement section ────────────────────────────────────
+  -- Unified action stream = zettel-added UNION chat-sent (user) UNION kasten-created.
+  -- Streaks bucketed by UTC date (core.profiles.timezone column does NOT exist
+  -- per Phase 0 discovery — timezone-correct streaks are a v1.5 follow-up).
+  --
+  -- current_streak: most recent run ending today OR yesterday (UX choice:
+  -- yesterday still counts since today may not be over yet).
+  -- longest_streak: max(run_length) across all gaps-and-islands groups.
+  -- week_over_week: zettel counts for this calendar week vs prior.
+  -- chat_vs_capture: 30-day comparison of capture (zettels) vs chat (user
+  -- messages) volume.
+
+  WITH actions AS (
+    SELECT (created_at AT TIME ZONE 'UTC')::date AS d
+      FROM content.workspace_zettels
+     WHERE workspace_id = p_workspace_id AND deleted_at IS NULL
+    UNION
+    SELECT (created_at AT TIME ZONE 'UTC')::date
+      FROM rag.chat_messages
+     WHERE workspace_id = p_workspace_id AND role = 'user'
+    UNION
+    SELECT (created_at AT TIME ZONE 'UTC')::date
+      FROM rag.kastens
+     WHERE workspace_id = p_workspace_id
+  ),
+  action_runs AS (
+    SELECT d, (d - (row_number() OVER (ORDER BY d))::int) AS g FROM actions
+  ),
+  action_groups AS (
+    SELECT g, count(*)::int AS c, min(d) AS s, max(d) AS e
+      FROM action_runs GROUP BY g
+  ),
+  cur_streak AS (
+    SELECT COALESCE((
+      SELECT c FROM action_groups
+       WHERE e = (now() AT TIME ZONE 'UTC')::date
+          OR e = ((now() AT TIME ZONE 'UTC')::date - 1)
+       ORDER BY e DESC LIMIT 1
+    ), 0) AS c
+  ),
+  long_streak AS (
+    SELECT COALESCE(max(c), 0)::int AS c FROM action_groups
+  ),
+  wow AS (
+    SELECT
+      count(*) FILTER (WHERE created_at >= date_trunc('week', now() AT TIME ZONE 'UTC'))::int AS this_w,
+      count(*) FILTER (WHERE created_at >= date_trunc('week', now() AT TIME ZONE 'UTC') - interval '7 days'
+                         AND created_at <  date_trunc('week', now() AT TIME ZONE 'UTC'))::int AS last_w
+      FROM content.workspace_zettels
+     WHERE workspace_id = p_workspace_id AND deleted_at IS NULL
+  ),
+  cap_vs_chat AS (
+    SELECT
+      (SELECT count(*)::int FROM content.workspace_zettels
+        WHERE workspace_id = p_workspace_id AND deleted_at IS NULL
+          AND created_at >= now() - interval '30 days') AS caps,
+      (SELECT count(*)::int FROM rag.chat_messages
+        WHERE workspace_id = p_workspace_id AND role = 'user'
+          AND created_at >= now() - interval '30 days') AS chats
+  )
+  SELECT jsonb_build_object(
+    'current_streak', (SELECT c FROM cur_streak),
+    'longest_streak', (SELECT c FROM long_streak),
+    'week_over_week', jsonb_build_object(
+      'this_week', (SELECT this_w FROM wow),
+      'last_week', (SELECT last_w FROM wow),
+      'delta_pct', CASE
+        WHEN (SELECT last_w FROM wow) = 0 THEN NULL
+        ELSE round(
+          100.0 * ((SELECT this_w FROM wow) - (SELECT last_w FROM wow))
+          / (SELECT last_w FROM wow)::numeric,
+          1
+        )
+      END
+    ),
+    'chat_vs_capture', jsonb_build_object(
+      'captures_30d', (SELECT caps FROM cap_vs_chat),
+      'chats_30d', (SELECT chats FROM cap_vs_chat),
+      'capture_pct', CASE
+        WHEN (SELECT caps + chats FROM cap_vs_chat) = 0 THEN NULL
+        ELSE round(
+          100.0 * (SELECT caps FROM cap_vs_chat)
+          / NULLIF((SELECT caps + chats FROM cap_vs_chat), 0)::numeric,
+          1
+        )
+      END
+    )
+  ) INTO v_activity;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -441,7 +531,7 @@ BEGIN
     'zettel',     v_zettel,
     'kasten',     v_kasten,
     'domain',     v_domain,
-    'activity',   '{}'::jsonb,
+    'activity',   v_activity,
     'graph',      '{}'::jsonb
   );
 
