@@ -23,29 +23,6 @@ jobs:
             ops/requirements.txt
             ops/requirements-dev.txt
 
-      - name: Upload swapfile script
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          source: "ops/scripts/droplet_add_swapfile.sh"
-          target: "/tmp/zk-profile-stats-prep/"
-          strip_components: 2
-
-      - name: Run swapfile script
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_SSH_USER }}
-          key: ${{ secrets.DROPLET_SSH_KEY }}
-          port: ${{ secrets.DROPLET_SSH_PORT }}
-          command_timeout: 5m
-          script: |
-            set -euo pipefail
-            sudo bash /tmp/zk-profile-stats-prep/droplet_add_swapfile.sh
-
       - name: Install migration dependencies
         run: |
           sudo apt-get update
