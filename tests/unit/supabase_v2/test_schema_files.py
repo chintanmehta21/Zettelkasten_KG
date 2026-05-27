@@ -96,6 +96,10 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "76_custom_access_token_hook.sql",
         "77_ensure_provisioned.sql",
         "78_user_default_avatar.sql",
+        "79_stats_reader_role.sql",
+        "80_chat_messages_user_partial_idx.sql",
+        "81_profile_stats_v1_rpc.sql",
+        "82_stats_route_helpers.sql",
     ]
 
 
