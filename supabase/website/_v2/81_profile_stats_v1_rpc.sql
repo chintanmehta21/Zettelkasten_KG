@@ -88,5 +88,4 @@ COMMIT;
 
 -- PostgREST schema-cache reload so the RPC is callable via .rpc(...) without
 -- the post-migration 2s sleep being load-bearing.
-NOTIFY pgrst, 'reload config';
 NOTIFY pgrst, 'reload schema';
