@@ -1,0 +1,575 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Feedback UI — desktop modal + mobile bottom sheet
+   Ported from docs/mockups/feedback/{desktop,mobile,selector-variants}.html
+   - All selectors namespaced with .zk-feedback-* prefix
+   - Relies on global CSS variables defined in website/static/css/style.css
+     (--accent, --bg-*, --border-*, --text-*, --radius*, --shadow-*, etc.)
+   - Tabs variant (A) used for intent selector — teal underline on .active
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Overlay + backdrop (desktop modal) ────────────────────────────────── */
+.zk-feedback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zk-feedback-overlay[hidden] { display: none !important; }
+
+.zk-feedback-backdrop {
+  position: absolute;
+  inset: 0;
+  background: hsla(0, 0%, 0%, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Modal shell ──────────────────────────────────────────────────────── */
+.zk-feedback-modal {
+  position: relative;
+  width: min(560px, calc(100vw - 2rem));
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: linear-gradient(150deg, hsl(223, 24%, 10%), hsl(221, 20%, 8%));
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: var(--shadow-lg);
+  animation: zkFeedbackIn 0.22s ease;
+}
+@keyframes zkFeedbackIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Close button (top-right X) ───────────────────────────────────────── */
+.zk-feedback-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.65rem;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+.zk-feedback-close:hover {
+  color: var(--text-primary);
+  background: hsla(0, 0%, 100%, 0.04);
+}
+.zk-feedback-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow), 0 0 0 4px var(--accent-subtle);
+}
+.zk-feedback-close svg { width: 18px; height: 18px; }
+
+/* ── Header / title ───────────────────────────────────────────────────── */
+.zk-feedback-header {
+  margin-bottom: 1rem;
+  padding-right: 2rem;
+}
+.zk-feedback-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+.zk-feedback-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.825rem;
+}
+
+/* ── Tabs (variant A from selector-variants.html, teal underline) ─────── */
+.zk-feedback-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+  margin: -0.25rem -0.4rem 1rem;
+  padding: 0 0.2rem;
+}
+.zk-feedback-tab {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.55rem 0.9rem 0.65rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+.zk-feedback-tab:hover { color: var(--text-primary); }
+.zk-feedback-tab:focus-visible {
+  outline: none;
+  color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+  border-radius: 4px;
+}
+.zk-feedback-tab svg { width: 14px; height: 14px; }
+.zk-feedback-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Form layout ──────────────────────────────────────────────────────── */
+.zk-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.zk-feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.zk-feedback-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.zk-feedback-req {
+  color: var(--error);
+  margin-left: 2px;
+}
+.zk-feedback-opt {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.72rem;
+}
+.zk-feedback-counter {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  align-self: flex-end;
+}
+
+/* ── Inputs / textarea ────────────────────────────────────────────────── */
+.zk-feedback-field input[type="text"],
+.zk-feedback-field input[type="email"],
+.zk-feedback-field textarea {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: border 0.18s, box-shadow 0.18s;
+  width: 100%;
+  resize: vertical;
+  -webkit-appearance: none;
+}
+.zk-feedback-field input[type="text"]::placeholder,
+.zk-feedback-field input[type="email"]::placeholder,
+.zk-feedback-field textarea::placeholder {
+  color: var(--text-muted);
+}
+.zk-feedback-field input[type="text"]:focus,
+.zk-feedback-field input[type="email"]:focus,
+.zk-feedback-field textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.zk-feedback-field textarea {
+  min-height: 112px;
+  line-height: 1.55;
+}
+
+/* ── Dropzone ─────────────────────────────────────────────────────────── */
+.zk-feedback-dropzone {
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 1.2rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.825rem;
+  cursor: pointer;
+  transition: border 0.18s, background 0.18s;
+}
+.zk-feedback-dropzone:hover,
+.zk-feedback-dropzone.drag-over,
+.zk-feedback-dropzone:focus-visible {
+  border-color: var(--border-focus);
+  background: var(--accent-subtle);
+  outline: none;
+}
+.zk-feedback-dropzone svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.zk-feedback-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.zk-feedback-pick {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+.zk-feedback-pick:hover { color: var(--accent-hover); }
+.zk-feedback-pick:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow);
+  border-radius: 3px;
+}
+
+/* ── Thumbnails (screenshot previews) ─────────────────────────────────── */
+.zk-feedback-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.zk-feedback-thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-elevated);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  overflow: hidden;
+}
+.zk-feedback-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.zk-feedback-thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+.zk-feedback-thumb-remove:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* ── Privacy notice ───────────────────────────────────────────────────── */
+.zk-feedback-privacy {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  line-height: 1.45;
+}
+
+/* ── Checkbox row ─────────────────────────────────────────────────────── */
+.zk-feedback-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.zk-feedback-checkbox input {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Action bar ───────────────────────────────────────────────────────── */
+.zk-feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+.zk-feedback-btn-primary,
+.zk-feedback-btn-secondary {
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, border 0.18s, color 0.18s, transform 0.05s;
+}
+.zk-feedback-btn-primary:active,
+.zk-feedback-btn-secondary:active {
+  transform: translateY(1px);
+}
+.zk-feedback-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+.zk-feedback-btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+.zk-feedback-btn-secondary:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.zk-feedback-btn-primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+}
+.zk-feedback-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.zk-feedback-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.zk-feedback-btn-primary[disabled],
+.zk-feedback-btn-primary:disabled {
+  background: var(--accent-muted);
+  border-color: var(--accent-muted);
+  cursor: not-allowed;
+}
+
+/* ── Success state ────────────────────────────────────────────────────── */
+.zk-feedback-success {
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+}
+.zk-feedback-success-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.8rem;
+}
+.zk-feedback-success h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+.zk-feedback-success p {
+  color: var(--text-secondary);
+  font-size: 0.825rem;
+}
+.zk-feedback-id {
+  display: inline-block;
+  margin-top: 0.6rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobile bottom sheet variant
+   Ported from docs/mockups/feedback/mobile.html .sheet-* selectors.
+   The sheet pins to viewport bottom and slides up; the form body inside
+   reuses the same .zk-feedback-* selectors above.
+   ───────────────────────────────────────────────────────────────────────── */
+.zk-feedback-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+}
+.zk-feedback-sheet-overlay[hidden] { display: none !important; }
+
+.zk-feedback-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: hsla(0, 0%, 0%, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: zkFeedbackFadeIn 0.18s ease;
+}
+@keyframes zkFeedbackFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.zk-feedback-sheet {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(180deg, hsl(223, 24%, 11%), hsl(221, 20%, 8%));
+  border-radius: 18px 18px 0 0;
+  border-top: 1px solid var(--border-light);
+  padding: 0.5rem 1rem 1.5rem;
+  box-shadow: 0 -20px 60px hsla(0, 0%, 0%, 0.5);
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: zkFeedbackSheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+@keyframes zkFeedbackSheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.zk-feedback-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-light);
+  margin: 0.4rem auto 0.8rem;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.zk-feedback-sheet-handle:active { cursor: grabbing; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobile-specific overrides — tighten form rhythm inside the sheet.
+   The same .zk-feedback-* selectors above apply; this query trims spacing
+   to better suit small viewports / thumb-reach.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .zk-feedback-modal {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    margin-top: auto;
+  }
+  .zk-feedback-overlay {
+    align-items: flex-end;
+  }
+
+  .zk-feedback-sheet .zk-feedback-form {
+    gap: 0.7rem;
+  }
+  .zk-feedback-sheet .zk-feedback-title {
+    font-size: 1rem;
+  }
+  .zk-feedback-sheet .zk-feedback-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 0.2rem;
+  }
+  .zk-feedback-sheet .zk-feedback-label {
+    font-size: 0.74rem;
+  }
+  .zk-feedback-sheet .zk-feedback-field input[type="text"],
+  .zk-feedback-sheet .zk-feedback-field input[type="email"],
+  .zk-feedback-sheet .zk-feedback-field textarea {
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+  }
+  .zk-feedback-sheet .zk-feedback-field textarea {
+    min-height: 96px;
+    resize: none;
+  }
+  .zk-feedback-sheet .zk-feedback-counter {
+    font-size: 0.68rem;
+  }
+  .zk-feedback-sheet .zk-feedback-dropzone {
+    padding: 0.9rem 0.75rem;
+    font-size: 0.78rem;
+  }
+  .zk-feedback-sheet .zk-feedback-hint {
+    font-size: 0.68rem;
+  }
+  .zk-feedback-sheet .zk-feedback-privacy {
+    font-size: 0.66rem;
+  }
+  .zk-feedback-sheet .zk-feedback-checkbox {
+    font-size: 0.76rem;
+  }
+  /* Sticky submit on mobile sheet — pinned above safe area */
+  .zk-feedback-sheet .zk-feedback-actions {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, transparent, hsl(221, 20%, 8%) 35%);
+    padding: 0.65rem 0 calc(env(safe-area-inset-bottom, 12px) + 4px);
+    margin: 0.4rem -1rem -1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+  }
+  .zk-feedback-sheet .zk-feedback-btn-primary {
+    flex: 1;
+    padding: 0.78rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+  .zk-feedback-sheet .zk-feedback-btn-secondary {
+    padding: 0.78rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Respect reduced-motion preference — disable enter animations.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .zk-feedback-modal,
+  .zk-feedback-sheet,
+  .zk-feedback-sheet-backdrop {
+    animation: none;
+  }
+  .zk-feedback-btn-primary,
+  .zk-feedback-btn-secondary,
+  .zk-feedback-tab,
+  .zk-feedback-close,
+  .zk-feedback-field input[type="text"],
+  .zk-feedback-field input[type="email"],
+  .zk-feedback-field textarea,
+  .zk-feedback-dropzone {
+    transition: none;
+  }
+}

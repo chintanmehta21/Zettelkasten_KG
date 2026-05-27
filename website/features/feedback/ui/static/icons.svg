@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="zk-feedback-megaphone-solid" viewBox="0 0 24 24">
+    <path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/>
+  </symbol>
+  <symbol id="zk-feedback-megaphone-outline" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/>
+  </symbol>
+  <symbol id="zk-feedback-close" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </symbol>
+  <symbol id="zk-feedback-bug" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <rect x="8" y="6" width="8" height="14" rx="4"/>
+    <path d="M10 6V4a2 2 0 0 1 4 0v2"/>
+    <path d="M5 9l3 1M19 9l-3 1M5 19l3-1M19 19l-3-1"/>
+    <path d="M2 14h4M18 14h4M12 13v8"/>
+  </symbol>
+  <symbol id="zk-feedback-bulb" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M9 18h6M10 22h4"/>
+    <path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Z"/>
+  </symbol>
+  <symbol id="zk-feedback-upload" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </symbol>
+  <symbol id="zk-feedback-check" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </symbol>
+</svg>
