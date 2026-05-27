@@ -17,14 +17,8 @@ def fake_slack_creds(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     for k, v in creds.items():
         monkeypatch.setenv(k, v)
     # Reset the lru_cache so the next get_feedback_settings() call sees the fakes.
-    # NOTE: this fixture only takes effect AFTER Task 3 lands core/settings.py.
-    # Until then the import inside the function will fail with ImportError —
-    # tests that depend on this fixture won't run until then, which is fine.
-    try:
-        from website.features.feedback.core.settings import get_feedback_settings
-        get_feedback_settings.cache_clear()
-    except ImportError:
-        pass  # core/settings.py not yet implemented (pre-Task-3)
+    from website.features.feedback.core.settings import get_feedback_settings
+    get_feedback_settings.cache_clear()
     return creds
 
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from collections.abc import Iterator
 
 from website.features.feedback.core.settings import (
     FeedbackSettings,
@@ -10,7 +11,7 @@ from website.features.feedback.core.settings import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_cache() -> None:
+def _clear_cache() -> Iterator[None]:
     get_feedback_settings.cache_clear()
     yield
     get_feedback_settings.cache_clear()
@@ -24,7 +25,7 @@ def test_defaults_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
         "FEEDBACK_REQUIRE_TURNSTILE",
     ):
         monkeypatch.delenv(var, raising=False)
-    s = FeedbackSettings()
+    s = FeedbackSettings(_env_file=None)
     assert s.slack_bot_token_feedback == ""
     assert s.slack_channel_feedback == ""
     assert s.secret_feedback_cookie == ""
