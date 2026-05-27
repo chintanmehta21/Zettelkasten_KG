@@ -30,28 +30,12 @@ jobs:
             exit 1
           fi
 
-          AUTH_JSON="$(python - <<'PY'
-import json, os
-print(json.dumps({
-    "email": os.environ["SMOKE_EMAIL"],
-    "password": os.environ["NARUTO_SMOKE_PASSWORD"],
-}))
-PY
-)"
+          AUTH_JSON="$(python -c 'import json, os; print(json.dumps({"email": os.environ["SMOKE_EMAIL"], "password": os.environ["NARUTO_SMOKE_PASSWORD"]}))')"
           TOKEN_BODY="$(curl -sS -X POST "${SUPABASE_URL%/}/auth/v1/token?grant_type=password" \
             -H "apikey: $ANON_KEY" \
             -H "Content-Type: application/json" \
             --data "$AUTH_JSON")"
-          TOKEN="$(TOKEN_BODY="$TOKEN_BODY" python - <<'PY'
-import json, os, sys
-body = json.loads(os.environ["TOKEN_BODY"])
-token = body.get("access_token", "")
-if not token:
-    print("missing access_token", file=sys.stderr)
-    sys.exit(1)
-print(token)
-PY
-)"
+          TOKEN="$(TOKEN_BODY="$TOKEN_BODY" python -c 'import json, os, sys; body=json.loads(os.environ["TOKEN_BODY"]); token=body.get("access_token", ""); sys.exit("missing access_token") if not token else print(token)')"
 
           curl -sS -D /tmp/stats_head_headers.txt -o /tmp/stats_head_body.txt \
             -X HEAD \
@@ -74,19 +58,7 @@ PY
           test "$GET_STATUS" = "200"
           test -n "$GET_ETAG"
 
-          python - <<'PY'
-import json
-body = json.load(open("/tmp/stats_get_body.json", encoding="utf-8"))
-sections = body.get("sections", [])
-keys = [s.get("key") for s in sections]
-stats_count = sum(len(s.get("stats", [])) for s in sections)
-print(f"section_count={len(sections)}")
-print(f"section_keys={','.join(keys)}")
-print(f"stats_count={stats_count}")
-assert len(sections) == 7
-assert stats_count == 28
-assert body.get("meta", {}).get("profile_id")
-PY
+          python -c 'import json; body=json.load(open("/tmp/stats_get_body.json", encoding="utf-8")); sections=body.get("sections", []); keys=[s.get("key") for s in sections]; stats_count=sum(len(s.get("stats", [])) for s in sections); print(f"section_count={len(sections)}"); print(f"section_keys={",".join(keys)}"); print(f"stats_count={stats_count}"); assert len(sections) == 7; assert stats_count == 28; assert body.get("meta", {}).get("profile_id")'
 
           curl -sS -D /tmp/stats_304_headers.txt -o /tmp/stats_304_body.txt \
             -H "Authorization: Bearer $TOKEN" \
