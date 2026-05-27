@@ -515,6 +515,44 @@ def seed_zettels_with_tags(asyncpg_pool):
 
 
 @pytest.fixture
+def seed_kg_graph(asyncpg_pool):
+    """Seed kg_nodes + kg_edges for a workspace.
+
+    Used by Task 3.7 (graph section) tests. Creates N nodes ('n0'..'n{N-1}')
+    and a chain of edges (n0-n1, n1-n2, ...) with relation_type='shared_tag'.
+    CASCADE-cleaned via mint_user teardown (workspace drop). Note:
+    kg.kg_edges has no ``workspace_strength`` column per 03_kg_schema.sql —
+    schema is (workspace_id, src_node_id, dst_node_id, relation_type,
+    shared_tag_label, weight, evidence_canonical_zettel_id, metadata).
+    """
+    async def _seed(workspace_id, nodes: int = 10, edges: int = 15):
+        async with asyncpg_pool.acquire() as conn:
+            node_ids = []
+            for i in range(nodes):
+                nid = await conn.fetchval(
+                    """
+                    INSERT INTO kg.kg_nodes
+                        (workspace_id, type, canonical_name, slug)
+                    VALUES ($1, 'zettel', 'n' || $2::text, 'n' || $2::text)
+                    RETURNING id
+                    """,
+                    workspace_id, i,
+                )
+                node_ids.append(nid)
+            for i in range(min(edges, len(node_ids) - 1)):
+                await conn.execute(
+                    """
+                    INSERT INTO kg.kg_edges
+                        (workspace_id, src_node_id, dst_node_id,
+                         relation_type, weight)
+                    VALUES ($1, $2, $3, 'shared_tag', 1.0)
+                    """,
+                    workspace_id, node_ids[i], node_ids[i + 1],
+                )
+    return _seed
+
+
+@pytest.fixture
 def mock_gemini_pool(monkeypatch: pytest.MonkeyPatch):
     """Factory: returns a configured ``StubGeminiPool`` AND monkey-patches
     ``api_key_switching.get_key_pool`` to return it.
