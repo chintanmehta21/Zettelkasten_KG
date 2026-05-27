@@ -60,6 +60,11 @@ def _drive_bg_to_finalize(
     deadline = time.time() + settle_s
     while time.time() < deadline:
         if captured.get("called"):
+            if captured.get("target") == "cancelled":
+                # Linux TestClient can cancel the request-loop task during
+                # teardown before the deterministic fallback below runs.
+                captured.clear()
+                break
             return
         time.sleep(0.025)
 
