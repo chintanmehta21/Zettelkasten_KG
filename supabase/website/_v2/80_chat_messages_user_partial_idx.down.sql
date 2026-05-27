@@ -6,7 +6,8 @@
 -- (ops/scripts/apply_migrations.py wraps in autocommit=False) will fail.
 -- Operator runs:
 --
---   psql "$PROD_DATABASE_URL" --single-transaction=off \
+--   psql "$PROD_DATABASE_URL" \
+--        -v ON_ERROR_STOP=1 \
 --        -f supabase/website/_v2/80_chat_messages_user_partial_idx.down.sql
 --
 -- The DROP INDEX CONCURRENTLY itself takes SHARE UPDATE EXCLUSIVE briefly
