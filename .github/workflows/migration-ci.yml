@@ -120,9 +120,15 @@ jobs:
         # guard + FOREACH loop). Prod is unaffected: 54+55 are already
         # applied + checksum-locked; 58 is a no-op re-assertion via the
         # EXISTS guard on rows that already have grant=revoked.
+        #
+        # 80 is skipped because it is a manual-only CREATE INDEX CONCURRENTLY
+        # migration. The standard runner wraps each file in a transaction,
+        # which is deliberately incompatible with CONCURRENTLY. Production
+        # applies 80 with psql --single-transaction=off, then reconciles the
+        # checksum so future standard runs skip it.
         run: |
           python ops/scripts/apply_migrations.py --v2 \
-            --skip-files=15_drop_legacy_tables.sql,54_revoke_legacy_public_secdef_grants.sql,55_revoke_public_grant_on_secdef.sql
+            --skip-files=15_drop_legacy_tables.sql,54_revoke_legacy_public_secdef_grants.sql,55_revoke_public_grant_on_secdef.sql,80_chat_messages_user_partial_idx.sql
       - name: Stop local Supabase
         if: always()
         run: supabase stop --workdir . --no-backup || true
