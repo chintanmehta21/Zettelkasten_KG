@@ -3354,7 +3354,7 @@ Run from operator's machine (NOT auto-executed):
 psql "$PROD_DATABASE_URL" -f supabase/website/_v2/79_stats_reader_role.sql
 
 # 2) Partial index (CREATE INDEX CONCURRENTLY — must NOT be wrapped in BEGIN/COMMIT)
-psql "$PROD_DATABASE_URL" --single-transaction=off -f supabase/website/_v2/80_chat_messages_user_partial_idx.sql
+psql "$PROD_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/website/_v2/80_chat_messages_user_partial_idx.sql
 
 # 3) The RPC (CREATE OR REPLACE FUNCTION × 2 — safe, no data change)
 psql "$PROD_DATABASE_URL" -f supabase/website/_v2/81_profile_stats_v1_rpc.sql
@@ -3421,7 +3421,7 @@ PR body MUST include the rollback runbook below so any on-call can execute it wi
    ```bash
    gh pr revert <this-pr-number>
    psql "$PROD_DATABASE_URL" -f supabase/website/_v2/81_profile_stats_v1_rpc.down.sql
-   psql "$PROD_DATABASE_URL" --single-transaction=off -f supabase/website/_v2/80_chat_messages_user_partial_idx.down.sql
+   psql "$PROD_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/website/_v2/80_chat_messages_user_partial_idx.down.sql
    psql "$PROD_DATABASE_URL" -f supabase/website/_v2/79_stats_reader_role.down.sql
    ```
 
