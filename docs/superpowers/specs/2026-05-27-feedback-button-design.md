@@ -32,38 +32,41 @@ Add a "Send feedback" button to the website footer (desktop + mobile) that lets 
 
 ## 3. UX
 
-### 3.1 Footer trigger
+### 3.1 Footer trigger (auto-injected, no template edits)
 
-**Desktop** — append a 5th `.footer-icon` button to [`website/footer/footer.html`](../../../website/footer/footer.html) after the Buy-Me-A-Coffee link.
+The feature **does not modify** `website/footer/footer.html` or `website/mobile/templates/_shell.html`. Instead, `website/features/feedback/ui/static/feedback.js` runs at `DOMContentLoaded` and appends the button to whichever rail exists on the page:
 
-```html
-<button type="button" class="footer-icon" id="feedback-trigger"
-        title="Send feedback" aria-label="Send feedback" aria-haspopup="dialog">
-  <svg viewBox="0 0 24 24"><path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/></svg>
-</button>
+```javascript
+// Auto-inject at DOM-ready
+const desktop = document.querySelector('footer.footer');
+const mobile  = document.querySelector('footer.m-footer');
+if (desktop) desktop.appendChild(buildDesktopButton());
+if (mobile)  mobile.appendChild(buildMobileButton());
 ```
 
-Icon: Lucide `megaphone` (solid, 20×20, `fill="currentColor"` — matches the other four desktop footer icons).
+**Desktop button** (built by `buildDesktopButton()`):
+- Element: `<button class="footer-icon" data-feedback-open ...>`
+- Reuses the existing `.footer-icon` class so colour, hover, focus-ring, and spacing match the other four icons exactly (no new desktop button styles needed).
+- Icon: Lucide `megaphone`, solid, 20×20, `fill="currentColor"`.
 
-**Mobile** — append a 5th `.m-footer-icon` button to [`website/mobile/templates/_shell.html`](../../../website/mobile/templates/_shell.html) inside the `<footer class="m-footer">` block.
+**Mobile button** (built by `buildMobileButton()`):
+- Element: `<button class="m-footer-icon" data-feedback-open ...>`
+- Reuses the existing `.m-footer-icon` class.
+- Icon: Lucide `megaphone`, outline weight (18×18, stroke-width 2).
 
-```html
-<button type="button" class="m-footer-icon" id="feedback-trigger" aria-label="Send feedback">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/>
-  </svg>
-</button>
-```
+The script is loaded via `<script defer src="/feedback-ui/feedback.js">` injected into every page that has the `<!--ZK_FOOTER-->` marker. The `defer` attribute means the script runs after HTML parse but before `DOMContentLoaded` — the button appears at first paint with no visible flash.
 
-Icon: same Lucide `megaphone`, **outline** weight (18×18, stroke-width 2) — matches the other four mobile footer icons.
-
-The icon choice is reversible via [`docs/mockups/feedback/icons.html`](../../mockups/feedback/icons.html) — five alternates remain documented.
+The icon choice is reversible via [`docs/mockups/feedback/icons.html`](../../mockups/feedback/icons.html) — five alternates documented. To swap the icon: edit `feedback.js`'s `MEGAPHONE_SVG` constant; no other file changes.
 
 ### 3.2 Modal (desktop) / bottom sheet (mobile)
 
-**Desktop modal** — adapt the existing `.zettels-summary-overlay` + `.zettels-summary-backdrop` + `.zettels-summary-modal` pattern from [`website/static/css/zk_summary_popup.css`](../../../website/static/css/zk_summary_popup.css) (lines 49–88). Width: `min(560px, calc(100vw - 2rem))`. Close: backdrop click, ESC, X-button. Body-scroll lock via the existing reference-counted `setBodyScrollLocked()`.
+Both surfaces use **new feature-local classes** scoped under a `.zk-feedback-*` prefix, defined entirely in `website/features/feedback/ui/static/feedback.css`. The existing `.zettels-summary-overlay` family from `website/static/css/zk_summary_popup.css` is **referenced as a visual model** (same backdrop blur, modal shadow, animation timing) — the new CSS replicates the patterns but does not import or extend the global stylesheet. This keeps the feature self-contained.
 
-**Mobile bottom sheet** — slides up from bottom; rounded top corners; swipe-down handle; sticky full-width Submit pinned above `env(safe-area-inset-bottom)`. Animation: `cubic-bezier(0.16, 1, 0.3, 1)` over 0.28s. Backdrop blur 4px.
+**Desktop modal** — `.zk-feedback-overlay` + `.zk-feedback-backdrop` + `.zk-feedback-modal`. Width: `min(560px, calc(100vw - 2rem))`. Close: backdrop click, ESC, X-button. Body-scroll lock via a small feature-local helper (not the global `setBodyScrollLocked()`).
+
+**Mobile bottom sheet** — `.zk-feedback-sheet-overlay` + `.zk-feedback-sheet`. Slides up from bottom; rounded top corners; swipe-down handle; sticky full-width Submit pinned above `env(safe-area-inset-bottom)`. Animation: `cubic-bezier(0.16, 1, 0.3, 1)` over 0.28s. Backdrop blur 4px.
+
+**Design-token reuse, not CSS reuse:** the new `feedback.css` reads the same CSS custom properties (`--accent`, `--bg-card`, `--text-primary`, etc.) the rest of the site defines on `:root` in `style.css`. The feature does not redefine those tokens; it consumes them. This means a site-wide token rename (e.g., `--accent`) propagates into the feedback UI for free.
 
 ### 3.3 Form (both surfaces)
 
@@ -104,19 +107,90 @@ Feedback ID is generated client-side as a 4-character base32 (e.g. `FB-7K3Q`); d
 
 ## 4. Backend
 
-### 4.1 New module structure
+### 4.1 New module structure (strict containment)
+
+**Operator constraint (2026-05-27):** *"Build the full module in `website/features` only. Nowhere else."*
+
+Everything for this feature — Python code, CSS, JavaScript, HTML templates, SVG assets, and tests — lives under `website/features/feedback/`. The only changes outside this folder are minimal integration glue (one registration call in `website/app.py`) and unavoidable operational infrastructure (`ops/`). **No edits to `website/footer/footer.html`, `website/mobile/templates/_shell.html`, `website/static/`, `website/mobile/css/`, `website/mobile/js/`, `website/core/settings.py`, or any other existing module.**
 
 ```
 website/features/feedback/
-├── __init__.py
-├── routes.py             # FastAPI router
-├── service.py            # Orchestrator: validate → image pipeline → Slack post
-├── models.py             # Pydantic request/response DTOs
-├── slack_client.py       # files_upload_v2 + chat.postMessage with retry
-├── image_pipeline.py     # extension + magic-byte + PIL rewrite + EXIF strip
-├── rate_limit.py         # Cookie + user_id + IP sliding-window (daily)
-└── block_kit.py          # Build the Slack Block Kit payload
+├── __init__.py                          # Exports register(app) — sole public entry point
+├── README.md                            # Feature-local documentation
+│
+├── api/
+│   ├── __init__.py
+│   ├── routes.py                        # POST /api/feedback/submit
+│   ├── deps.py                          # FastAPI dependencies (cookie issuer, rate-limit gate)
+│   └── cookie.py                        # Signed HMAC cookie issue + validate
+│
+├── core/
+│   ├── __init__.py
+│   ├── settings.py                      # Feature-local pydantic Settings, reads env directly
+│   ├── identity.py                      # Resolve full_name + country from claims OR cf-ipcountry
+│   └── ids.py                           # FB-XXXX generator (UI-only IDs, not persisted)
+│
+├── intake/
+│   ├── __init__.py
+│   ├── models.py                        # Pydantic request/response DTOs
+│   ├── validation.py                    # Subject/description/extension whitelist
+│   ├── image_pipeline.py                # libmagic + PIL.verify + RGB convert + EXIF strip
+│   └── rate_limit.py                    # Daily sliding-window (user_id | cookie + IP)
+│
+├── slack/
+│   ├── __init__.py
+│   ├── client.py                        # AsyncWebClient wrapper, retry + Retry-After honoring
+│   └── block_kit.py                     # build_feedback_blocks(...)
+│
+├── service.py                           # Top-level orchestrator (validate → pipeline → Slack)
+│
+├── ui/
+│   ├── __init__.py
+│   ├── static/                          # Served via app.mount("/feedback-ui", ...)
+│   │   ├── feedback.css                 # ALL styles: desktop modal + mobile bottom sheet
+│   │   ├── feedback.js                  # Controller: auto-inject button, open/close, submit
+│   │   └── icons.svg                    # Megaphone (solid + outline) sprite
+│   └── templates/                       # Loaded by feature, NOT by global Jinja2 env
+│       ├── modal.html                   # Desktop popup markup (fetched async on first open)
+│       └── sheet.html                   # Mobile bottom-sheet markup (fetched async on first open)
+│
+└── tests/
+    ├── __init__.py
+    ├── conftest.py                      # Feature-local fixtures (mock Slack client, etc.)
+    ├── unit/
+    │   ├── test_image_pipeline.py
+    │   ├── test_rate_limit.py
+    │   ├── test_block_kit.py
+    │   ├── test_models.py
+    │   ├── test_ids.py
+    │   ├── test_identity.py
+    │   └── test_cookie.py
+    ├── integration/
+    │   ├── test_route_e2e.py
+    │   └── test_route_disabled.py
+    └── live/
+        └── test_slack_live.py
 ```
+
+### 4.1.1 Auto-injection (zero template touch)
+
+The footer button is added to the page **without modifying** `website/footer/footer.html` or `website/mobile/templates/_shell.html`. The mechanism:
+
+1. `website/features/feedback/__init__.py` exports `register(app)`.
+2. `register(app)` does three things, all in one call from `app.py`:
+   - `app.include_router(api.routes.router, prefix="/api/feedback")`
+   - `app.mount("/feedback-ui", StaticFiles(directory="website/features/feedback/ui/static"))`
+   - Extends app.py's existing HTML-injection pipeline (the same one that handles `<!--ZK_FOOTER-->` replacement) so that every page served with a footer also gets a single `<script defer src="/feedback-ui/feedback.js"></script>` and `<link rel="preload" as="style" href="/feedback-ui/feedback.css">` injected before `</body>`.
+3. `feedback.js` runs at `DOMContentLoaded`:
+   - Queries for `.footer` (desktop) and `.m-footer` (mobile). If found, appends a megaphone `<button>` matching the existing styling.
+   - Lazy-loads `feedback.css` and the modal/sheet HTML on first click (via `fetch` to `/feedback-ui/`).
+4. FOUC mitigation: the script is `defer` + the `preload` hint tells the browser to fetch the CSS early. The button injection happens between HTML parse and first paint, so users do not see a footer flash.
+
+If app.py's existing footer-injection logic does NOT already expose a post-process hook, the implementation PR adds a minimal one (`register_footer_post_processor(fn)` — ~8 lines) as enabling infrastructure for all future feature modules that follow this containment pattern. This is the ONLY non-trivial change to `app.py`.
+
+### 4.1.2 Settings — feature-local
+
+The new module reads its env vars **directly** rather than extending `website/core/settings.py`. `website/features/feedback/core/settings.py` is a small pydantic-settings class that loads from `os.environ` with the same precedence rules the global Settings uses. This keeps `website/core/settings.py` untouched and the feature's config self-documenting.
 
 ### 4.2 Route
 
@@ -279,16 +353,27 @@ Both calls run inside `fire_and_forget()` so the route returns 202 fast.
 
 ### 4.8 Configuration
 
-New fields in `Settings` ([`website/core/settings.py`](../../../website/core/settings.py)):
+Per the strict-containment rule, env vars are loaded by a **feature-local** `FeedbackSettings` class at `website/features/feedback/core/settings.py`. The global `website/core/settings.py` is NOT modified.
 
 ```python
-slack_bot_token_feedback: str = ""
-slack_channel_feedback: str = ""
-secret_feedback_cookie: str = ""
-feedback_require_turnstile: bool = False
+# website/features/feedback/core/settings.py
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class FeedbackSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    slack_bot_token_feedback: str = ""
+    slack_channel_feedback: str = ""
+    secret_feedback_cookie: str = ""
+    feedback_require_turnstile: bool = False
+
+@lru_cache
+def get_feedback_settings() -> FeedbackSettings:
+    return FeedbackSettings()
 ```
 
-`ops/.env.example` lists each with a comment. None are validated as required at boot — if `slack_bot_token_feedback` is empty, the route returns 503 with "Feature unavailable" but the app boots fine.
+`ops/.env.example` lists each var with a comment. None are validated as required at boot — if `slack_bot_token_feedback` is empty, the route returns 503 with "Feature unavailable" but the app boots fine.
 
 Operational setup: see [`docs/mockups/feedback/SLACK_SETUP.md`](../../mockups/feedback/SLACK_SETUP.md).
 
@@ -337,27 +422,68 @@ handle @feedback {
 - Visual review of all 4 mockup pages + the SLACK_SETUP.md walkthrough.
 - After deploy, smoke-test on production: one submission of each type from each surface; verify Slack rendering on Slack web, iOS, Android.
 
-## 6. Files changed
+## 6. Files changed (strict-containment)
 
-**New (implementation PR):**
-- `website/features/feedback/{__init__.py, routes.py, service.py, models.py, slack_client.py, image_pipeline.py, rate_limit.py, block_kit.py}`
-- `website/static/css/feedback_modal.css`
-- `website/static/js/feedback_modal.js`
-- `website/mobile/css/components/feedback_sheet.css`
-- `website/mobile/js/feedback_sheet.js`
-- `tests/unit/feedback/{...}` + `tests/integration/feedback/{...}` + `tests/integration/feedback/test_slack_live.py`
+**Inside `website/features/feedback/` (all new — implementation PR):**
 
-**Modified (implementation PR):**
-- `website/footer/footer.html` — add 5th icon button
-- `website/mobile/templates/_shell.html` — add 5th icon button to `.m-footer`
-- `website/app.py` — register `feedback.routes.router`
-- `website/static/index.html`, `website/footer/about/index.html`, `website/footer/pricing/index.html` — include the new CSS/JS bundles
-- `website/mobile/templates/*.html` — include `feedback_sheet.css/js`
-- `website/core/settings.py` — new fields
-- `ops/.env.example` — new env vars
-- `ops/Dockerfile` — `libmagic1` apt install
-- `ops/requirements.txt` — `python-magic==0.4.27`; ensure `Pillow >= 10.3`
-- `ops/caddy/Caddyfile` — route-level body-size for `/api/feedback/submit`
+| Path | Purpose |
+|---|---|
+| `__init__.py` | Exports `register(app)` — the sole integration entry point |
+| `README.md` | Feature-local docs (architecture + how to run tests) |
+| `service.py` | Top-level orchestrator |
+| `api/routes.py` | `POST /api/feedback/submit` + `GET /api/feedback/health` |
+| `api/deps.py` | FastAPI dependencies (rate-limit gate, identity resolver) |
+| `api/cookie.py` | Signed HMAC cookie issuer + validator |
+| `core/settings.py` | Feature-local pydantic Settings (reads env directly) |
+| `core/identity.py` | Resolve full_name + country |
+| `core/ids.py` | Generate FB-XXXX confirmation IDs |
+| `intake/models.py` | Pydantic request/response DTOs |
+| `intake/validation.py` | Subject + description + extension whitelist |
+| `intake/image_pipeline.py` | libmagic + Pillow rewrite + EXIF strip |
+| `intake/rate_limit.py` | Daily sliding-window (user/cookie/IP) |
+| `slack/client.py` | AsyncWebClient wrapper with retry |
+| `slack/block_kit.py` | Build Slack Block Kit payload |
+| `ui/static/feedback.css` | All styles — desktop modal + mobile sheet |
+| `ui/static/feedback.js` | Controller — auto-inject button + open/close + submit |
+| `ui/static/icons.svg` | Megaphone sprite (solid + outline) |
+| `ui/templates/modal.html` | Desktop popup markup |
+| `ui/templates/sheet.html` | Mobile bottom-sheet markup |
+| `tests/conftest.py` | Feature-local fixtures |
+| `tests/unit/test_image_pipeline.py` | Image pipeline tests |
+| `tests/unit/test_rate_limit.py` | Rate-limit tests |
+| `tests/unit/test_block_kit.py` | Block Kit payload tests |
+| `tests/unit/test_models.py` | Pydantic model tests |
+| `tests/unit/test_ids.py` | ID generator tests |
+| `tests/unit/test_identity.py` | Identity-resolver tests |
+| `tests/unit/test_cookie.py` | Cookie HMAC tests |
+| `tests/integration/test_route_e2e.py` | Full multipart POST flow with mocked Slack |
+| `tests/integration/test_route_disabled.py` | 503 when Slack creds unset |
+| `tests/live/test_slack_live.py` | Real Slack post (`--live` only) |
+
+**Outside `website/features/feedback/` (minimal — implementation PR):**
+
+| Path | Change | Why unavoidable |
+|---|---|---|
+| `website/app.py` | One line: `from website.features.feedback import register; register(app)` | FastAPI requires explicit router/static registration at app construction; cannot be done from within an isolated module without `app` reference. **Plus** ~8 lines of `register_footer_post_processor(fn)` enabling infrastructure if not already present — this is generic plumbing other feature modules can reuse. |
+| `ops/.env.example` | Add `SLACK_BOT_TOKEN_FEEDBACK`, `SLACK_CHANNEL_FEEDBACK`, `SECRET_FEEDBACK_COOKIE`, `FEEDBACK_REQUIRE_TURNSTILE` documentation lines | Operator runbook lives in `ops/` by convention |
+| `ops/Dockerfile` | Add `libmagic1` to Stage-1 `apt-get install` | System-level dependency for `python-magic` |
+| `ops/requirements.txt` | Add `python-magic==0.4.27`, ensure `Pillow >= 10.3` (CVE-2024-28219), add `slack_sdk>=3.27` | Python deps live where pip looks for them |
+| `ops/caddy/Caddyfile` | Add a route-level `request_body { max_size 18MB }` block scoped to `/api/feedback/submit` | Edge body-size cap is a Caddy concern; CLAUDE.md "protected knob" rules forbid raising the global ASGI cap |
+
+**Explicitly NOT touched (verify via diff):**
+- `website/footer/footer.html`
+- `website/mobile/templates/_shell.html`
+- `website/static/css/style.css`
+- `website/static/css/zk_summary_popup.css`
+- `website/static/js/*`
+- `website/mobile/css/components/*`
+- `website/mobile/js/*`
+- `website/core/settings.py`
+- `website/core/persist.py`
+- `website/api/*` (no new route registration anywhere except via the `register(app)` call)
+- Any existing route, dependency, or middleware in the app
+
+The implementation PR's `git diff --stat` should show new files almost entirely under `website/features/feedback/` (or `ops/`), with no modifications to `website/footer/`, `website/static/`, `website/mobile/`, `website/core/`, or `website/api/`.
 
 **Reference docs (this PR — already authored):**
 - `docs/mockups/feedback/{README.md, desktop.html, mobile.html, icons.html, selector-variants.html, SLACK_SETUP.md}` — mockups + operator runbook. Retained in the repo per operator's "might change eventually".
