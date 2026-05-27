@@ -33,12 +33,15 @@ class FeedbackSlackClient:
 
     async def upload_image(self, content: bytes, *, filename: str) -> str:
         """Upload one image; return the Slack file ID like 'F123ABC'."""
-        res = await self._sdk.files_upload_v2(
-            channel=self._channel,
-            content=content,
-            filename=filename,
-            title=filename,
-        )
+        try:
+            res = await self._sdk.files_upload_v2(
+                channel=self._channel,
+                content=content,
+                filename=filename,
+                title=filename,
+            )
+        except Exception as exc:
+            raise SlackPostError(f"files_upload_v2 failed: {exc}") from exc
         if not res.get("ok"):
             err = res.get("error", "unknown")
             raise SlackPostError(f"files_upload_v2 failed: {err}")
@@ -46,9 +49,12 @@ class FeedbackSlackClient:
 
     async def post_message(self, *, blocks: list[dict], fallback_text: str) -> str:
         """Post a Block Kit message; return the message ts."""
-        res = await self._sdk.chat_postMessage(
-            channel=self._channel, blocks=blocks, text=fallback_text,
-        )
+        try:
+            res = await self._sdk.chat_postMessage(
+                channel=self._channel, blocks=blocks, text=fallback_text,
+            )
+        except Exception as exc:
+            raise SlackPostError(f"chat.postMessage failed: {exc}") from exc
         if not res.get("ok"):
             err = res.get("error", "unknown")
             raise SlackPostError(f"chat.postMessage failed: {err}")

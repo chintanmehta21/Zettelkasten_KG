@@ -52,9 +52,27 @@ async def test_upload_raises_on_ok_false() -> None:
 
 
 @pytest.mark.asyncio
+async def test_upload_wraps_sdk_exception() -> None:
+    sdk = MagicMock()
+    sdk.files_upload_v2 = AsyncMock(side_effect=RuntimeError("network down"))
+    client = FeedbackSlackClient(sdk_client=sdk, channel="C09TEST")
+    with pytest.raises(SlackPostError, match="network down"):
+        await client.upload_image(b"x", filename="x.jpg")
+
+
+@pytest.mark.asyncio
 async def test_post_raises_on_ok_false() -> None:
     sdk = MagicMock()
     sdk.chat_postMessage = AsyncMock(return_value={"ok": False, "error": "channel_not_found"})
     client = FeedbackSlackClient(sdk_client=sdk, channel="C09TEST")
     with pytest.raises(SlackPostError, match="channel_not_found"):
+        await client.post_message(blocks=[], fallback_text="x")
+
+
+@pytest.mark.asyncio
+async def test_post_wraps_sdk_exception() -> None:
+    sdk = MagicMock()
+    sdk.chat_postMessage = AsyncMock(side_effect=RuntimeError("network down"))
+    client = FeedbackSlackClient(sdk_client=sdk, channel="C09TEST")
+    with pytest.raises(SlackPostError, match="network down"):
         await client.post_message(blocks=[], fallback_text="x")

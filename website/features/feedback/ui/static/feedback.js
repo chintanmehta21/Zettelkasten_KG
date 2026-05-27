@@ -155,9 +155,11 @@
     // Email-followup toggle reveals anon-email field
     const followup = root.querySelector('input[name="follow_up_email"]');
     const emailField = root.querySelector('.zk-feedback-field-anon-email');
+    const emailInput = root.querySelector('input[name="anon_email"]');
     followup?.addEventListener('change', () => {
       if (!emailField) return;
       emailField.hidden = !followup.checked;
+      if (emailInput) emailInput.required = followup.checked;
     });
 
     // Submit

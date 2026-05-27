@@ -50,6 +50,18 @@ def test_anonymous_with_provided_name() -> None:
     assert "approx" in id_.country_label.lower()
 
 
+def test_anonymous_follow_up_email_is_preserved() -> None:
+    id_ = resolve_identity(
+        claims=None,
+        anon_name="Sakura",
+        headers={"cf-ipcountry": "IN"},
+        profile_country_code=None,
+        anon_email="  sakura@example.com  ",
+    )
+    assert id_.full_name == "Sakura"
+    assert id_.email == "sakura@example.com"
+
+
 def test_anonymous_without_name_uses_default() -> None:
     id_ = resolve_identity(
         claims=None, anon_name=None, headers={}, profile_country_code=None,

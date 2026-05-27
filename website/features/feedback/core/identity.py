@@ -53,12 +53,14 @@ def resolve_identity(
     anon_name: str | None,
     headers: dict,
     profile_country_code: str | None,
+    anon_email: str | None = None,
 ) -> Identity:
     """Top-level resolver.
 
     Args:
         claims: decoded Supabase JWT claims dict, or None when anonymous.
         anon_name: user-typed name on the anonymous form; ignored when authed.
+        anon_email: user-typed follow-up email on the anonymous form.
         headers: request headers (lowercased keys expected); used for cf-ipcountry.
         profile_country_code: 2-letter code from core.profiles when present,
                               else None.
@@ -66,7 +68,7 @@ def resolve_identity(
     is_anonymous = claims is None
     if is_anonymous:
         name = (anon_name or "").strip() or "Anonymous"
-        email = None
+        email = (anon_email or "").strip() or None
     else:
         name = _name_from_claims(claims) or "Unknown"
         email = (claims.get("email") or None) if isinstance(claims, dict) else None

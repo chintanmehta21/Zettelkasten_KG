@@ -7,6 +7,7 @@ from typing import Callable
 from fastapi import (
     APIRouter, File, Form, HTTPException, Request, Response, UploadFile,
 )
+from pydantic import ValidationError as PydanticValidationError
 
 from website.features.feedback.api.cookie import (
     COOKIE_MAX_AGE_SECONDS, COOKIE_NAME, issue_cookie_value, validate_cookie_value,
@@ -81,6 +82,7 @@ def build_router(
         identity = resolve_identity(
             claims=claims,
             anon_name=anon_name,
+            anon_email=anon_email,
             headers={k.lower(): v for k, v in request.headers.items()},
             profile_country_code=None,
         )
@@ -112,11 +114,14 @@ def build_router(
         )
 
         # 5. Validate the model (Pydantic also catches the form-level checks above).
-        req_model = FeedbackSubmitRequest(
-            intent=intent, subject=subject, description=description,
-            anon_name=anon_name, follow_up_email=follow_up_email,
-            anon_email=anon_email,
-        )
+        try:
+            req_model = FeedbackSubmitRequest(
+                intent=intent, subject=subject, description=description,
+                anon_name=anon_name, follow_up_email=follow_up_email,
+                anon_email=anon_email,
+            )
+        except PydanticValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
         # 6. Image validation + EXIF strip.
         processed: list[tuple[str, bytes]] = []
@@ -142,9 +147,11 @@ def build_router(
                 request=req_model, identity=identity, processed_images=processed,
             )
         except SlackPostError as exc:
-            logger.warning("slack post failed but route returns id anyway", extra={"err": str(exc)})
-            from website.features.feedback.core.ids import generate_feedback_id
-            feedback_id = generate_feedback_id()
+            logger.warning("slack delivery failed", extra={"err": str(exc)})
+            raise HTTPException(
+                status_code=502,
+                detail="Feedback delivery failed. Please try again.",
+            ) from exc
 
         return FeedbackSubmitResponse(feedback_id=feedback_id, status="accepted")
 
