@@ -3,6 +3,8 @@
 -- runaway aggregations from starving OLTP / OOM-killing the 2GB droplet.
 -- Architecture audit reference: docs/claude_audits/user_stats_architecture_research_2026-05-26.md
 
+BEGIN;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'stats_reader') THEN
@@ -20,6 +22,10 @@ ALTER ROLE stats_reader SET work_mem = '32MB';
 -- discovery (supabase/website/_v2/01-04, 06 schemas + migration 44 changes).
 GRANT USAGE ON SCHEMA core, content, kg, rag, billing TO stats_reader;
 
+-- Static grant list by design: stats_reader is NOLOGIN and exists only to OWN
+-- the core.profile_stats_v1 SECURITY DEFINER RPC (migration 81). New tables
+-- added in future migrations are intentionally NOT auto-granted — the RPC's
+-- explicit table reads are the contract.
 GRANT SELECT ON
   core.profiles,
   core.workspaces,
@@ -44,3 +50,5 @@ TO stats_reader;
 
 -- Allow execution of the stats RPC (defined in migration 81)
 -- GRANT EXECUTE is deferred to migration 81 where the functions are created.
+
+COMMIT;
