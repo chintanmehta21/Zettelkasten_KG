@@ -36,6 +36,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_payload jsonb;
+  v_main_board jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -47,6 +48,66 @@ BEGIN
           OR core.is_service_role()) THEN
     RAISE EXCEPTION 'workspace not accessible' USING ERRCODE = '42501';
   END IF;
+
+  -- ─── Main Board section ─────────────────────────────────────────────
+  -- 1) 26-week activity heatmap: daily zettel count for the last 182 days,
+  --    zero-filled via generate_series so client renders a complete grid.
+  --    Bucketed by UTC date (core.profiles.timezone column does not exist;
+  --    timezone-correct streaks are a v1.5 follow-up).
+  -- 2) Lifetime + this-month zettel counts (RAW counters; quota composition
+  --    lives in the Python route via billing.pricing_get_quota_snapshot).
+  -- 3) Lifetime kasten count (RAW; quota composition same as zettels).
+
+  WITH days AS (
+    SELECT generate_series(
+      (now() - interval '182 days')::date,
+      now()::date,
+      interval '1 day'
+    )::date AS d
+  ),
+  buckets AS (
+    SELECT (created_at AT TIME ZONE 'UTC')::date AS d,
+           count(*)::int AS n
+      FROM content.workspace_zettels
+     WHERE workspace_id = p_workspace_id
+       AND deleted_at IS NULL
+       AND created_at >= now() - interval '182 days'
+     GROUP BY 1
+  ),
+  heatmap AS (
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object('date', days.d, 'count', COALESCE(buckets.n, 0))
+        ORDER BY days.d
+      ),
+      '[]'::jsonb
+    ) AS cells
+      FROM days LEFT JOIN buckets USING (d)
+  )
+  SELECT jsonb_build_object(
+    'heatmap', (SELECT cells FROM heatmap),
+    'zettels', jsonb_build_object(
+      'lifetime_count', (
+        SELECT count(*)
+          FROM content.workspace_zettels
+         WHERE workspace_id = p_workspace_id AND deleted_at IS NULL
+      ),
+      'this_month_count', (
+        SELECT count(*)
+          FROM content.workspace_zettels
+         WHERE workspace_id = p_workspace_id
+           AND deleted_at IS NULL
+           AND created_at >= date_trunc('month', now())
+      )
+    ),
+    'kastens', jsonb_build_object(
+      'lifetime_count', (
+        SELECT count(*)
+          FROM rag.kastens
+         WHERE workspace_id = p_workspace_id
+      )
+    )
+  ) INTO v_main_board;
 
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
@@ -63,7 +124,7 @@ BEGIN
       'computed_at', now(),
       'schema_version', 1
     ),
-    'main_board', '{}'::jsonb,
+    'main_board', v_main_board,
     'general',    '{}'::jsonb,
     'zettel',     '{}'::jsonb,
     'kasten',     '{}'::jsonb,

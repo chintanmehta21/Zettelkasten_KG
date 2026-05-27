@@ -338,6 +338,76 @@ def bulk_insert_zettels(asyncpg_pool: asyncpg.Pool):
 
 
 @pytest.fixture
+def seed_zettels(asyncpg_pool):
+    """Seed N workspace_zettels for the given workspace, spaced 1 day apart back from now.
+
+    Used by Task 3.1+ profile_stats RPC tests. Inserts canonical_zettels (one per
+    workspace_zettel; no dedup across calls because each gets a fresh uuid in the
+    normalized_url to bypass the UNIQUE(normalized_url, content_hash) gate) and
+    then their workspace_zettels overlay rows. CASCADE-cleaned via mint_user
+    teardown (workspace drop).
+
+    content_hash is bytea per schema 02 — synthesised via decode(md5(...), 'hex')
+    so each seed run is collision-free and the column type matches.
+    """
+    async def _seed(workspace_id, count: int = 5):
+        async with asyncpg_pool.acquire() as conn:
+            for i in range(count):
+                cz_id = await conn.fetchval(
+                    """
+                    INSERT INTO content.canonical_zettels
+                        (id, normalized_url, content_hash, source_type, title, created_at)
+                    VALUES
+                        (gen_random_uuid(),
+                         'https://example.com/seed-' || gen_random_uuid()::text,
+                         decode(md5(random()::text), 'hex'),
+                         'web',
+                         'seed-' || $1::text,
+                         now() - ($1 || ' days')::interval)
+                    RETURNING id
+                    """,
+                    i,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO content.workspace_zettels
+                        (workspace_id, canonical_zettel_id, ai_summary, user_tags, added_via, created_at)
+                    VALUES
+                        ($1, $2, 'summary ' || $3::text,
+                         ARRAY['tag-' || $3::text]::text[],
+                         'website',
+                         now() - ($3 || ' days')::interval)
+                    """,
+                    workspace_id, cz_id, i,
+                )
+    return _seed
+
+
+@pytest.fixture
+def seed_kastens(asyncpg_pool):
+    """Seed N rag.kastens for the given workspace, spaced 1 day apart back from now.
+
+    Used by Task 3.1+ profile_stats RPC tests. CASCADE-cleaned via mint_user
+    teardown (workspace drop). UNIQUE(workspace_id, name) is satisfied by the
+    sequential 'kasten-N' naming within a single workspace.
+    """
+    async def _seed(workspace_id, count: int = 3):
+        async with asyncpg_pool.acquire() as conn:
+            for i in range(count):
+                await conn.execute(
+                    """
+                    INSERT INTO rag.kastens
+                        (id, workspace_id, name, created_at)
+                    VALUES
+                        (gen_random_uuid(), $1, 'kasten-' || $2::text,
+                         now() - ($2 || ' days')::interval)
+                    """,
+                    workspace_id, i,
+                )
+    return _seed
+
+
+@pytest.fixture
 def mock_gemini_pool(monkeypatch: pytest.MonkeyPatch):
     """Factory: returns a configured ``StubGeminiPool`` AND monkey-patches
     ``api_key_switching.get_key_pool`` to return it.

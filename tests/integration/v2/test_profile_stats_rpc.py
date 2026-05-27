@@ -113,3 +113,69 @@ async def test_rpc_denies_cross_tenant_workspace(mint_user):
     assert str(owner_ws) not in str(exc_info.value), (
         f"owner workspace UUID leaked in error message: {exc_info.value!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 3.1: Main Board section (heatmap + raw zettel/kasten counters)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_main_board_section(asyncpg_pool, mint_user, seed_zettels, seed_kastens):
+    """Main Board returns 26-week heatmap (182 cells) + raw zettel/kasten counters.
+
+    No quota composition in the RPC payload — quota lives in the Python route
+    via billing.pricing_get_quota_snapshot. Asserts shape only; counter values
+    depend on seeded fixtures.
+    """
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_zettels(workspace_id, count=15)
+    await seed_kastens(workspace_id, count=3)
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    payload = resp.data
+    mb = payload["main_board"]
+
+    # Heatmap shape: 182 zero-filled daily cells (generate_series anchor)
+    assert isinstance(mb["heatmap"], list)
+    assert 180 <= len(mb["heatmap"]) <= 184  # tolerance for DST / leap-day edges
+    for cell in mb["heatmap"][:3]:
+        assert "date" in cell and "count" in cell
+        assert isinstance(cell["count"], int)
+
+    # Raw counters — NO quota fields
+    assert mb["zettels"]["lifetime_count"] == 15
+    assert mb["zettels"]["this_month_count"] >= 0  # depends on month boundary
+    assert mb["kastens"]["lifetime_count"] == 3
+
+    # Negative assertion: quota fields MUST NOT be in the RPC payload (design-locked)
+    assert "zettels_quota" not in mb
+    assert "kastens_quota" not in mb
+    assert "used" not in mb.get("zettels", {})
+    assert "available" not in mb.get("zettels", {})
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_main_board_zero_state(asyncpg_pool, mint_user):
+    """Empty workspace: heatmap is 180-184 zero cells, lifetime counters are 0."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    payload = resp.data
+    mb = payload["main_board"]
+
+    assert isinstance(mb["heatmap"], list)
+    assert all(cell["count"] == 0 for cell in mb["heatmap"])
+    assert mb["zettels"]["lifetime_count"] == 0
+    assert mb["zettels"]["this_month_count"] == 0
+    assert mb["kastens"]["lifetime_count"] == 0
