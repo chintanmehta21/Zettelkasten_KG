@@ -100,6 +100,7 @@ def test_all_v2_schema_files_exist_in_apply_order() -> None:
         "80_chat_messages_user_partial_idx.sql",
         "81_profile_stats_v1_rpc.sql",
         "82_stats_route_helpers.sql",
+        "83_stats_rpc_volatility.sql",
     ]
 
 
