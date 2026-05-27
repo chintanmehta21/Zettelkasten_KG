@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback Mockup — Icon comparison | Zettelkasten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: hsl(224, 28%, 5%);
+  --bg-secondary: hsl(222, 24%, 7.5%);
+  --bg-tertiary: hsl(220, 20%, 11%);
+  --bg-card: hsl(222, 22%, 8.5%);
+  --bg-elevated: hsl(220, 18%, 13%);
+  --accent: hsl(172, 66%, 50%);
+  --accent-hover: hsl(172, 66%, 58%);
+  --accent-muted: hsl(172, 40%, 40%);
+  --accent-glow: hsla(172, 66%, 50%, 0.12);
+  --text-primary: hsl(210, 20%, 92%);
+  --text-secondary: hsl(215, 14%, 58%);
+  --text-muted: hsl(215, 12%, 36%);
+  --border: hsl(220, 16%, 14%);
+  --border-light: hsl(220, 14%, 18%);
+  --warning: hsl(38, 92%, 60%);
+  --success: hsl(160, 60%, 52%);
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; scrollbar-gutter: stable; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 1.5rem;
+  line-height: 1.6;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% 0%, hsla(222, 30%, 10%, 0.8) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+.mockup-banner {
+  background: var(--warning);
+  color: var(--bg-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.4rem 1rem;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  max-width: 920px;
+  margin: 0 auto 1.5rem;
+}
+.mockup-banner a { color: inherit; text-decoration: underline; }
+
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+}
+.page h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.page-lede {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-bottom: 1.8rem;
+}
+.page-lede a { color: var(--accent); }
+
+.recco {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-muted);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1.4rem;
+  color: var(--text-primary);
+}
+.recco strong { color: var(--accent); }
+
+.row {
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  gap: 1.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 0.8rem;
+  align-items: center;
+}
+.row.recommended {
+  border-color: var(--accent-muted);
+  background: linear-gradient(180deg, var(--accent-subtle, transparent), var(--bg-card) 40%);
+}
+
+.meta { display: flex; flex-direction: column; gap: 0.2rem; }
+.meta .name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.meta .badge {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: var(--bg-primary);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.meta .source {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.meta .tags {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+/* Footer rail — exact replica of website/static/css/style.css */
+.footer-strip {
+  background: hsl(220, 18%, 8%);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 0.85rem 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.footer-icon {
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.footer-icon:hover { color: var(--text-secondary); }
+.footer-icon svg { display: block; width: 20px; height: 20px; fill: currentColor; }
+.footer-icon.candidate svg { color: var(--accent); }
+.footer-icon.candidate:hover svg { color: var(--accent-hover); }
+
+.judgment {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.judgment .pro { color: var(--success); font-weight: 500; }
+.judgment .con { color: var(--warning); font-weight: 500; }
+.judgment ul { padding-left: 1.1rem; margin-top: 0.3rem; }
+.judgment li { margin-bottom: 0.15rem; }
+
+.footnote {
+  margin-top: 2rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+  padding-top: 1.2rem;
+}
+.footnote a { color: var(--accent); }
+
+@media (max-width: 700px) {
+  .row { grid-template-columns: 1fr; gap: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="mockup-banner">
+  MOCKUP — footer icon candidates. Recommended icon is highlighted; pick any other by responding in the PR. See <a href="README.md">README</a>.
+</div>
+
+<div class="page">
+  <h1>Which footer icon should we use?</h1>
+  <p class="page-lede">
+    Five outline + one solid candidate from Lucide (the icon family closest in style to the live site's footer SVGs).
+    Each row shows the candidate placed in an exact-replica of the existing footer rail (using the real
+    <code>.footer</code> + <code>.footer-icon</code> classes) so you can compare in context.
+  </p>
+
+  <div class="recco">
+    <strong>Recommendation:</strong> Megaphone — Lucide tags it <em>"announcement, attention"</em>, the semantic valence
+    closest to "issue or suggestion". Bug skews issue-only; flag reads as moderation; comment-bubble is too generic.
+  </div>
+
+  <!-- Row 1: Megaphone (recommended) -->
+  <div class="row recommended">
+    <div class="meta">
+      <div class="name">Megaphone <span class="badge">Recommended</span></div>
+      <div class="source">lucide / megaphone</div>
+      <div class="tags">tags: announcement, attention, broadcast</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24"><path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="pro">+ Semantic match</span>: "broadcast a message to the team"<br>
+      <span class="pro">+ Unique silhouette</span>: doesn't collide with any other footer icon<br>
+      <span class="con">– Heavy</span>: the densest of the six — may feel busy on small screens
+    </div>
+  </div>
+
+  <!-- Row 2: Message square (chat bubble with dot) -->
+  <div class="row">
+    <div class="meta">
+      <div class="name">Message-square-text</div>
+      <div class="source">lucide / message-square-text</div>
+      <div class="tags">tags: chat, comment, reply</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="14" y2="13"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="pro">+ Familiar</span>: most commercial feedback widgets default to this<br>
+      <span class="con">– Generic</span>: reads as "support chat", not "submit issue/idea"<br>
+      <span class="con">– Outline weight</span>: visually lighter than the existing solid icons — slight inconsistency
+    </div>
+  </div>
+
+  <!-- Row 3: Bug -->
+  <div class="row">
+    <div class="meta">
+      <div class="name">Bug</div>
+      <div class="source">lucide / bug</div>
+      <div class="tags">tags: report, debug, defect, error</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M10 6V4a2 2 0 0 1 4 0v2M5 9l3 1M19 9l-3 1M5 19l3-1M19 19l-3-1M2 14h4M18 14h4M12 13v8"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="pro">+ Strong "report a problem" signal</span><br>
+      <span class="con">– Bug-only</span>: discourages suggestions; user expectation diverges from the Suggestion tab inside
+    </div>
+  </div>
+
+  <!-- Row 4: Flag -->
+  <div class="row">
+    <div class="meta">
+      <div class="name">Flag</div>
+      <div class="source">lucide / flag</div>
+      <div class="tags">tags: report, warning, mark</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24"><path d="M4 21V4a1 1 0 0 1 1-1h13l-2 4 2 4H5"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="con">– Reads as "report abusive content"</span>: in 2024-2026, flag icons in user-facing chrome almost always mean moderation/reporting other users<br>
+      <span class="con">– Wrong valence</span> for "share an idea with the team"
+    </div>
+  </div>
+
+  <!-- Row 5: Exclamation in circle -->
+  <div class="row">
+    <div class="meta">
+      <div class="name">Alert-circle</div>
+      <div class="source">lucide / alert-circle</div>
+      <div class="tags">tags: alert, warning, error</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm0 5a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V8a1 1 0 0 1 1-1Zm0 11a1.25 1.25 0 1 1 0-2.5a1.25 1.25 0 0 1 0 2.5Z"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="con">– Reads as "system alert"</span> not "user input"<br>
+      <span class="con">– Close to the existing "About" (info) icon</span> — high collision risk in the rail
+    </div>
+  </div>
+
+  <!-- Row 6: Lightbulb -->
+  <div class="row">
+    <div class="meta">
+      <div class="name">Lightbulb</div>
+      <div class="source">lucide / lightbulb</div>
+      <div class="tags">tags: idea, suggestion, hint</div>
+    </div>
+    <div class="footer-strip">
+      <a href="#" class="footer-icon" aria-label="GitHub"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="About"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Pricing"><svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg></a>
+      <a href="#" class="footer-icon" aria-label="Buy me a coffee"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
+      <button class="footer-icon candidate" aria-label="Feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      </button>
+    </div>
+    <div class="judgment">
+      <span class="pro">+ Strong "share an idea" signal</span><br>
+      <span class="con">– Suggestion-only</span>: discourages bug reports (mirror failure of the bug icon)
+    </div>
+  </div>
+
+  <div class="footnote">
+    <strong>Notes:</strong>
+    Hover any footer icon to see its hover state matches the live site (<code>color: var(--text-secondary)</code>).
+    The candidate is highlighted in teal here only so it stands out for review — the production version uses the
+    same neutral <code>--text-muted</code> color as the other footer icons. Icon files are inline SVG paths so
+    no extra HTTP request is added.
+    See <a href="https://lucide.dev/">lucide.dev</a> for the canonical SVG sources.
+  </div>
+</div>
+
+</body>
+</html>
