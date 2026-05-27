@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback Mockup — Mobile bottom-sheet | Zettelkasten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: hsl(224, 28%, 5%);
+  --bg-secondary: hsl(222, 24%, 7.5%);
+  --bg-tertiary: hsl(220, 20%, 11%);
+  --bg-card: hsl(222, 22%, 8.5%);
+  --bg-elevated: hsl(220, 18%, 13%);
+
+  --accent: hsl(172, 66%, 50%);
+  --accent-hover: hsl(172, 66%, 58%);
+  --accent-muted: hsl(172, 40%, 40%);
+  --accent-glow: hsla(172, 66%, 50%, 0.12);
+  --accent-subtle: hsla(172, 66%, 50%, 0.06);
+
+  --text-primary: hsl(210, 20%, 92%);
+  --text-secondary: hsl(215, 14%, 58%);
+  --text-muted: hsl(215, 12%, 36%);
+
+  --border: hsl(220, 16%, 14%);
+  --border-light: hsl(220, 14%, 18%);
+  --border-focus: hsla(172, 66%, 50%, 0.4);
+
+  --error: hsl(0, 72%, 63%);
+  --warning: hsl(38, 92%, 60%);
+
+  --m-teal: #14b8a6;
+
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: hsl(220, 14%, 12%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mockup-banner {
+  background: var(--warning);
+  color: var(--bg-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.4rem 1rem;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  max-width: 420px;
+}
+.mockup-banner a { color: inherit; text-decoration: underline; }
+
+.scene-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Phone frame ── */
+.phone {
+  width: 375px;
+  max-width: 100%;
+  height: 760px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 36px;
+  padding: 18px 8px 8px;
+  box-shadow: 0 24px 80px hsla(0, 0%, 0%, 0.6), 0 0 0 6px hsl(220, 14%, 16%);
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(ellipse 60% 30% at 50% 0%, hsla(222, 30%, 10%, 0.8) 0%, transparent 70%),
+    radial-gradient(circle at 50% 100%, hsla(172, 30%, 6%, 0.4) 0%, transparent 50%);
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 22px;
+  background: hsl(220, 14%, 4%);
+  border-radius: 14px;
+  z-index: 100;
+}
+
+.phone-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Mock app header ── */
+.m-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1rem 0.6rem;
+  background: linear-gradient(180deg, hsla(220, 18%, 10%, 0.8), transparent);
+}
+.m-logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 1rem; }
+.m-logo-mark {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--bg-primary); font-weight: 700; font-size: 0.78rem;
+}
+.m-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(28, 60%, 50%), hsl(28, 60%, 35%));
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.m-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.6rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.m-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+}
+.m-card h3 { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem; }
+.m-card p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* ── Mock bottom tab nav ── */
+.m-tabbar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: hsla(220, 18%, 10%, 0.9);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 0.4rem 0 0;
+  height: 64px;
+}
+.m-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.62rem;
+  text-decoration: none;
+  font-weight: 500;
+}
+.m-tab.active { color: var(--m-teal); }
+.m-tab svg { width: 20px; height: 20px; }
+
+/* ── Mock mobile footer ── */
+.m-footer {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 0 18px;
+  background: hsla(220, 18%, 8%, 0.7);
+}
+.m-footer-icon {
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  background-color: transparent;
+  cursor: pointer;
+}
+.m-footer-icon:hover { color: var(--m-teal); background: rgba(20,184,166,0.10); }
+.m-footer-icon svg { width: 16px; height: 16px; }
+
+/* Pulse on the new feedback trigger */
+.feedback-trigger {
+  position: relative;
+}
+.feedback-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  animation: pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.18); }
+}
+
+/* ── Bottom sheet ── */
+.sheet-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+}
+.sheet-overlay[hidden] { display: none !important; }
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: hsla(0, 0%, 0%, 0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.18s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.sheet {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(180deg, hsl(223, 24%, 11%), hsl(221, 20%, 8%));
+  border-radius: 18px 18px 0 0;
+  border-top: 1px solid var(--border-light);
+  padding: 0.5rem 1rem 1.5rem;
+  box-shadow: 0 -20px 60px hsla(0, 0%, 0%, 0.5);
+  max-height: 88%;
+  overflow-y: auto;
+  animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-light);
+  margin: 0.4rem auto 0.8rem;
+  cursor: grab;
+}
+.sheet-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+.sheet-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.9rem;
+}
+
+/* Segmented */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 0.9rem;
+}
+.seg button {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.5rem 0.6rem;
+  border-radius: 7px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+}
+.seg button svg { width: 14px; height: 14px; }
+.seg button.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+
+.field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.7rem; }
+.field-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+.req { color: var(--error); margin-left: 2px; }
+.opt { color: var(--text-muted); font-weight: 400; font-size: 0.7rem; }
+.field input[type="text"], .field textarea {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  width: 100%;
+  -webkit-appearance: none;
+}
+.field input[type="text"]:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.field textarea { min-height: 96px; resize: none; line-height: 1.5; }
+.counter { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); }
+
+.dropzone {
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  padding: 0.9rem 0.75rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.dropzone svg { width: 22px; height: 22px; color: var(--text-muted); margin-bottom: 0.25rem; }
+.dropzone .link-btn {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  padding: 0;
+  cursor: pointer;
+}
+.dropzone .hint { display: block; font-size: 0.68rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+.privacy {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0.8rem;
+}
+.checkbox-row input { accent-color: var(--accent); width: 14px; height: 14px; }
+
+/* Submit pinned to bottom safe area */
+.sheet-submit {
+  position: sticky;
+  bottom: 0;
+  left: 0; right: 0;
+  background: linear-gradient(180deg, transparent, hsl(221, 20%, 8%) 35%);
+  padding: 0.65rem 0 calc(env(safe-area-inset-bottom, 12px) + 4px);
+  margin: 0.4rem -1rem -1.5rem;
+  padding-left: 1rem; padding-right: 1rem;
+}
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.78rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+/* Success */
+.sheet-success {
+  text-align: center;
+  padding: 1.5rem 1rem;
+}
+.sheet-success .icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 0.7rem;
+}
+.sheet-success h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.2rem; }
+.sheet-success p { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.fb-id {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+/* Side legend */
+.legend {
+  max-width: 420px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.legend strong { color: var(--text-primary); }
+.legend kbd {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+}
+</style>
+</head>
+<body>
+
+<div class="mockup-banner">
+  MOCKUP — mobile bottom-sheet variant. Tap the megaphone in the mobile footer. See <a href="README.md">README</a>.
+</div>
+
+<span class="scene-label">375 × 760 viewport — bottom-sheet, swipe-down dismiss, sticky Submit</span>
+
+<div class="phone">
+  <div class="phone-inner">
+
+    <header class="m-header">
+      <div class="m-logo">
+        <span class="m-logo-mark">Z</span>
+        <span>Zettelkasten</span>
+      </div>
+      <span class="m-avatar">N</span>
+    </header>
+
+    <div class="m-body">
+      <div class="m-card">
+        <h3>Mock /m/home content</h3>
+        <p>The real mobile home would render here. Tap the megaphone in the footer below.</p>
+      </div>
+      <div class="m-card">
+        <h3>Why a bottom sheet, not a modal?</h3>
+        <p>On mobile, a modal centered on-screen loses page context and the user's thumb has to reach across the viewport. A bottom sheet stays in thumb-reach and keeps the page visible behind it — Material 3 + NN/G consensus for short focused tasks.</p>
+      </div>
+    </div>
+
+    <nav class="m-tabbar">
+      <a href="#" class="m-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 9 18 9 18 21 6 21 6 9 2 9 12 2"/></svg>Capture</a>
+      <a href="#" class="m-tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Zettels</a>
+      <a href="#" class="m-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Kastens</a>
+      <a href="#" class="m-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="6" y2="17"/><line x1="12" y1="7" x2="18" y2="17"/></svg>Graph</a>
+    </nav>
+
+    <footer class="m-footer">
+      <button class="m-footer-icon" aria-label="GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55v-2.16c-3.2.7-3.88-1.36-3.88-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.27-5.23-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .97-.31 3.18 1.17a11.04 11.04 0 0 1 5.79 0c2.21-1.48 3.17-1.17 3.17-1.17.63 1.57.24 2.73.12 3.02.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.36-5.25 5.64.41.36.78 1.06.78 2.13v3.16c0 .31.21.66.79.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      </button>
+      <button class="m-footer-icon" aria-label="About">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      </button>
+      <button class="m-footer-icon" aria-label="Pricing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 18 3 22 9 12 21 2 9"/></svg>
+      </button>
+      <button class="m-footer-icon" aria-label="Buy me a coffee">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      </button>
+      <button class="m-footer-icon feedback-trigger" id="feedback-trigger" aria-label="Send feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Z"/></svg>
+      </button>
+    </footer>
+
+    <!-- Bottom sheet -->
+    <div class="sheet-overlay" id="sheet-overlay" hidden>
+      <div class="sheet-backdrop" id="sheet-backdrop"></div>
+      <div class="sheet" role="dialog" aria-labelledby="sheet-title" aria-modal="true">
+        <div class="sheet-handle" id="sheet-handle"></div>
+
+        <div class="sheet-form" id="sheet-form">
+          <h2 class="sheet-title" id="sheet-title">Send feedback</h2>
+          <p class="sheet-subtitle">Your message goes straight to the team.</p>
+
+          <div class="seg" role="tablist" aria-label="Feedback type">
+            <button class="active" data-intent="issue" aria-selected="true" role="tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 2v3M16 2v3M9 14h6"/></svg>
+              Issue
+            </button>
+            <button data-intent="suggestion" aria-selected="false" role="tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+              Suggestion
+            </button>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Subject <span class="req">*</span></span>
+            <input type="text" maxlength="120" placeholder="Brief summary…" id="m-subj">
+          </div>
+
+          <div class="field">
+            <span class="field-label">
+              Description <span class="req">*</span>
+              <span class="counter" id="m-counter">0 / 4000</span>
+            </span>
+            <textarea maxlength="4000" placeholder="What happened? What did you expect?" id="m-desc"></textarea>
+          </div>
+
+          <div class="field">
+            <span class="field-label">Screenshots <span class="opt">optional · max 3</span></span>
+            <div class="dropzone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div>Tap to add or <button type="button" class="link-btn">paste image</button></div>
+              <span class="hint">PNG, JPG, WebP &middot; up to 5 MB each</span>
+            </div>
+            <p class="privacy">⚠ Please blur or crop anything sensitive (passwords, payment details, others' personal info).</p>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox">
+            <span>You can email me about this feedback</span>
+          </label>
+
+          <div class="sheet-submit">
+            <button class="btn-primary" id="m-submit">Send feedback</button>
+          </div>
+        </div>
+
+        <div class="sheet-success" id="sheet-success" hidden>
+          <div class="icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h3>Thanks — sent to the team.</h3>
+          <p>We'll triage and follow up if you opted in.</p>
+          <span class="fb-id">FB-7K3Q</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <p><strong>Interaction notes for this surface</strong></p>
+  <ul style="padding-left: 1.2rem; margin-top: 0.4rem;">
+    <li>Tap megaphone → sheet slides up <kbd>0.28s</kbd>, swipe handle visible.</li>
+    <li>Drag the handle down or tap the backdrop to dismiss.</li>
+    <li>Submit button is sticky above the safe-area, full-width, thumb-reach.</li>
+    <li>Screenshot picker opens native iOS/Android file UI; "paste image" hint surfaces because both Safari + Chrome on Android now support clipboard image paste in 2024+.</li>
+    <li>On success the form swaps to the inline ack (no toast) for ~2s, then sheet auto-dismisses.</li>
+  </ul>
+</div>
+
+<script>
+const overlay = document.getElementById('sheet-overlay');
+const trigger = document.getElementById('feedback-trigger');
+const backdrop = document.getElementById('sheet-backdrop');
+const handle = document.getElementById('sheet-handle');
+const subj = document.getElementById('m-subj');
+const desc = document.getElementById('m-desc');
+const counter = document.getElementById('m-counter');
+const submit = document.getElementById('m-submit');
+const form = document.getElementById('sheet-form');
+const success = document.getElementById('sheet-success');
+
+function open() {
+  overlay.hidden = false;
+  setTimeout(() => subj.focus(), 100);
+}
+function close() {
+  overlay.hidden = true;
+  setTimeout(() => {
+    form.hidden = false;
+    success.hidden = true;
+  }, 200);
+}
+trigger.addEventListener('click', open);
+backdrop.addEventListener('click', close);
+handle.addEventListener('click', close);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) close(); });
+
+document.querySelectorAll('.seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.seg button').forEach(x => {
+      x.classList.remove('active');
+      x.setAttribute('aria-selected', 'false');
+    });
+    b.classList.add('active');
+    b.setAttribute('aria-selected', 'true');
+  });
+});
+
+desc.addEventListener('input', () => counter.textContent = `${desc.value.length} / 4000`);
+
+submit.addEventListener('click', e => {
+  e.preventDefault();
+  form.hidden = true;
+  success.hidden = false;
+  setTimeout(close, 2200);
+});
+</script>
+
+</body>
+</html>

@@ -109,3 +109,14 @@ stamina>=26.1.0,<27
 # Experimental PageIndex RAG
 # PageIndex commit a51d97f63cedbf1d36b1121ff47386ea4e088ff5 is verified,
 # but the upstream repo is not pip-installable at that commit.
+
+# Feedback feature (website/features/feedback/)
+# python-magic: libmagic bindings for MIME sniffing of user-uploaded screenshots.
+# Requires `libmagic1` apt package on the runtime container — see ops/Dockerfile.
+python-magic>=0.4.27,<0.5
+# slack_sdk: Slack Web API client for chat.postMessage + files_upload_v2.
+# Bot Token + Block Kit pattern; replaces incoming-webhook (cannot attach files).
+slack_sdk>=3.27,<4
+Pillow>=10.3
+# Used by feedback DTOs for anon_email validation (EmailStr)
+email-validator>=2.0

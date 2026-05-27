@@ -29,6 +29,7 @@ from website.features.refresh_button.refresh_routes import router as refresh_but
 from website.features.summarization_engine.api import router as engine_v2_router
 from website.features.user_pricing.routes import router as pricing_router
 from website.features.web_monitor import router as web_monitor_router
+from website.features.feedback import register as register_feedback
 from website.features.web_monitor.App_Errors import notify_app_error
 from website.features.web_monitor._env_validation import (
     log_web_monitor_env_warnings,
@@ -64,6 +65,29 @@ _FOOTER_PLACEHOLDER = "<!--ZK_FOOTER-->"
 _HEADER_DROPDOWN_SLOT = "<!--HEADER_DROPDOWN-->"
 _BACK_BTN_SLOT = "<!--BACK_BTN_SLOT-->"
 _HTML_CACHE_HEADERS = {"Cache-Control": "no-cache, max-age=0, must-revalidate"}
+
+# Feature modules can append HTML to the rendered footer via this hook —
+# avoids editing website/footer/footer.html for every self-contained feature.
+# Each callable receives the footer fragment string and returns a (possibly)
+# modified string. See website/features/feedback/__init__.py for usage.
+_FOOTER_POST_PROCESSORS: list = []
+
+
+def register_footer_post_processor(fn) -> None:
+    """Allow self-contained features (e.g. website/features/feedback/) to
+    inject HTML into the rendered footer without modifying footer.html.
+    """
+    _FOOTER_POST_PROCESSORS.append(fn)
+
+
+def _apply_footer_post_processors(footer_html: str) -> str:
+    """Apply feature footer hooks while keeping failures non-fatal."""
+    for _fn in _FOOTER_POST_PROCESSORS:
+        try:
+            footer_html = _fn(footer_html)
+        except Exception as exc:  # never let a feature crash the page
+            logger.warning("footer post-processor raised: %s", exc)
+    return footer_html
 
 # Back-button markup matches the static block that used to live in header.html.
 # Kept here (not in a fragment file) so the substitution is one read per request.
@@ -178,6 +202,8 @@ def _render_with_shell(path: Path, page_key: str | None = None) -> HTMLResponse:
                 FOOTER_DIR,
             )
         else:
+            # Apply self-contained feature post-processors (e.g. feedback loader).
+            footer_html = _apply_footer_post_processors(footer_html)
             html = html.replace(_FOOTER_PLACEHOLDER, footer_html)
     return HTMLResponse(content=html, headers=_HTML_CACHE_HEADERS)
 
@@ -240,6 +266,9 @@ def _render_with_mobile_shell(
         + '\n<script src="/m/js/auth-modal.js?v=20260524a"></script>'
         + '\n<script src="/m/js/avatar.js?v=20260525a"></script>'
     )
+    # Mobile pages use a full shell instead of the desktop footer placeholder,
+    # so feature footer hooks are inserted directly before the shell closes.
+    rendered = rendered.replace("</body>", _apply_footer_post_processors("") + "\n</body>", 1)
     rendered = rendered.replace("</body>", auth_block + "\n</body>", 1)
     return HTMLResponse(content=rendered, headers=_HTML_CACHE_HEADERS)
 
@@ -449,6 +478,12 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(meta_router)
     if nexus_enabled:
         app.include_router(nexus_router)
+
+    # Feedback feature (website/features/feedback/) — self-contained module.
+    # Registers POST /api/feedback/submit + /api/feedback/health, mounts
+    # /feedback-ui static, and appends its loader <script>/<link> tags to
+    # the rendered footer via register_footer_post_processor().
+    register_feedback(app)
     # iter-03 mem-bounded §2.9: install AFTER routers so middleware wraps every route.
     _memory_guard.install(app)
 

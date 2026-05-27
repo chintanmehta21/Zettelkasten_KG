@@ -1,0 +1,79 @@
+<div class="zk-feedback-header" id="zk-feedback-header">
+  <h2 class="zk-feedback-title" id="zk-feedback-title">Send feedback</h2>
+  <p class="zk-feedback-subtitle">Your message goes straight to the team.</p>
+</div>
+
+<div class="zk-feedback-tabs" id="zk-feedback-tabs" role="tablist" aria-label="Feedback type">
+  <button type="button" role="tab" class="zk-feedback-tab active"
+          data-intent="issue" aria-selected="true">
+    <svg width="16" height="16"><use href="/feedback-ui/icons.svg#zk-feedback-bug"/></svg>
+    Issues
+  </button>
+  <button type="button" role="tab" class="zk-feedback-tab"
+          data-intent="suggestion" aria-selected="false">
+    <svg width="16" height="16"><use href="/feedback-ui/icons.svg#zk-feedback-bulb"/></svg>
+    Suggestions
+  </button>
+</div>
+
+<form class="zk-feedback-form" id="zk-feedback-form" novalidate>
+  <input type="hidden" name="intent" id="zk-feedback-intent" value="issue">
+
+  <label class="zk-feedback-field zk-feedback-field-anon">
+    <span class="zk-feedback-label">Your name <span class="zk-feedback-opt">optional</span></span>
+    <input type="text" name="anon_name" maxlength="80" placeholder="Anonymous">
+  </label>
+
+  <label class="zk-feedback-field">
+    <span class="zk-feedback-label">Subject <span class="zk-feedback-req">*</span></span>
+    <input type="text" name="subject" required maxlength="120" placeholder="Brief summary…">
+  </label>
+
+  <label class="zk-feedback-field">
+    <span class="zk-feedback-label">
+      Description <span class="zk-feedback-req">*</span>
+      <span class="zk-feedback-counter" id="zk-feedback-counter">0 / 4000</span>
+    </span>
+    <textarea name="description" required minlength="10" maxlength="4000"
+              placeholder="What happened? What did you expect?"></textarea>
+  </label>
+
+  <div class="zk-feedback-field">
+    <span class="zk-feedback-label">
+      Screenshots <span class="zk-feedback-opt">optional · max 3</span>
+    </span>
+    <div class="zk-feedback-dropzone" id="zk-feedback-dropzone" tabindex="0">
+      <svg width="22" height="22"><use href="/feedback-ui/icons.svg#zk-feedback-upload"/></svg>
+      <div>Drag &amp; drop, paste, or <button type="button" class="zk-feedback-pick">choose files</button></div>
+      <span class="zk-feedback-hint">PNG, JPG, WebP &middot; up to 5 MB each</span>
+    </div>
+    <div class="zk-feedback-thumbs" id="zk-feedback-thumbs"></div>
+    <p class="zk-feedback-privacy">
+      Please blur or crop anything sensitive — passwords, payment details, or other users' personal info.
+    </p>
+  </div>
+
+  <label class="zk-feedback-checkbox">
+    <input type="checkbox" name="follow_up_email" value="true">
+    <span>You can email me about this feedback</span>
+  </label>
+
+  <label class="zk-feedback-field zk-feedback-field-anon-email" hidden>
+    <span class="zk-feedback-label">Your email <span class="zk-feedback-opt">for follow-up</span></span>
+    <input type="email" name="anon_email" placeholder="you@example.com">
+  </label>
+
+  <div class="zk-feedback-actions">
+    <button type="button" class="zk-feedback-btn-secondary" data-feedback-close>Cancel</button>
+    <button type="submit" class="zk-feedback-btn-primary">Send feedback</button>
+  </div>
+</form>
+
+<div class="zk-feedback-success" id="zk-feedback-success" hidden>
+  <div class="zk-feedback-success-icon">
+    <svg width="20" height="20"><use href="/feedback-ui/icons.svg#zk-feedback-check"/></svg>
+  </div>
+  <h3>Thanks — sent to the team.</h3>
+  <p>We'll triage and follow up if you opted in.</p>
+  <span class="zk-feedback-id" id="zk-feedback-id">FB-XXXX</span>
+</div>

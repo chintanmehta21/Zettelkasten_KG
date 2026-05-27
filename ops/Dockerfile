@@ -47,7 +47,7 @@ LABEL org.opencontainers.image.title="zettelkasten-kg-website" \
       org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates tini curl \
+    && apt-get install -y --no-install-recommends ca-certificates tini curl libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1000 appuser \

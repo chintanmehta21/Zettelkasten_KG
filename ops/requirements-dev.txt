@@ -21,3 +21,6 @@ asgi-lifespan>=2.1
 # wraps axe-core injection for WCAG 2.2 AA audits. Chromium-only install in CI.
 pytest-playwright>=0.7.2,<0.8
 axe-playwright-python>=0.1.7,<0.2
+
+# Used only in feedback module's tests — see tests/conftest.py
+piexif>=1.1

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback Mockup — Issue / Suggestion selector variants | Zettelkasten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: hsl(224, 28%, 5%);
+  --bg-secondary: hsl(222, 24%, 7.5%);
+  --bg-tertiary: hsl(220, 20%, 11%);
+  --bg-card: hsl(222, 22%, 8.5%);
+  --bg-elevated: hsl(220, 18%, 13%);
+  --accent: hsl(172, 66%, 50%);
+  --accent-hover: hsl(172, 66%, 58%);
+  --accent-muted: hsl(172, 40%, 40%);
+  --accent-glow: hsla(172, 66%, 50%, 0.12);
+  --accent-subtle: hsla(172, 66%, 50%, 0.06);
+  --text-primary: hsl(210, 20%, 92%);
+  --text-secondary: hsl(215, 14%, 58%);
+  --text-muted: hsl(215, 12%, 36%);
+  --border: hsl(220, 16%, 14%);
+  --border-light: hsl(220, 14%, 18%);
+  --border-focus: hsla(172, 66%, 50%, 0.4);
+  --warning: hsl(38, 92%, 60%);
+  --success: hsl(160, 60%, 52%);
+  --error: hsl(0, 72%, 63%);
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 1.5rem 1rem 3rem;
+  line-height: 1.55;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% 0%, hsla(222, 30%, 10%, 0.8) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+.mockup-banner {
+  background: var(--warning);
+  color: var(--bg-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.4rem 1rem;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  max-width: 1180px;
+  margin: 0 auto 1.5rem;
+}
+.mockup-banner a { color: inherit; text-decoration: underline; }
+
+.page { max-width: 1180px; margin: 0 auto; }
+.page h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.3rem; }
+.page-lede { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.4rem; }
+.page-lede a { color: var(--accent); }
+
+.recco {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-muted);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1.6rem;
+  color: var(--text-primary);
+}
+.recco strong { color: var(--accent); }
+.recco code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: var(--bg-tertiary);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.2rem;
+}
+
+.variant {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+.variant.recommended { border-color: var(--accent-muted); }
+
+.variant header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+.variant h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.variant .badge {
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: var(--bg-primary);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.variant .badge.user-said {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+
+.variant .meta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: 0.6rem;
+}
+
+/* The form shell — identical in each variant */
+.form-shell {
+  background: linear-gradient(150deg, hsl(223, 24%, 10%), hsl(221, 20%, 8%));
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 0.9rem 0.95rem 1rem;
+  flex: 1;
+}
+
+/* === A. Tabs === */
+.tabs-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+  margin: -0.25rem -0.4rem 0.7rem;
+  padding: 0 0.2rem;
+}
+.tab {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.55rem 0.9rem 0.65rem;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+.tab:hover { color: var(--text-primary); }
+.tab svg { width: 14px; height: 14px; }
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* === B. Segmented control === */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 0.7rem;
+}
+.seg button {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  transition: background 0.18s, color 0.18s;
+}
+.seg button svg { width: 14px; height: 14px; }
+.seg button.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+
+/* === C. Dropdown === */
+.dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+.dropdown-row label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.feedback-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23808890' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 1.8rem;
+}
+.feedback-select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Shared form fields (compact) */
+.field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.55rem; }
+.field-label { font-size: 0.72rem; font-weight: 600; }
+.req { color: var(--error); margin-left: 2px; }
+.field input[type="text"], .field textarea {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  width: 100%;
+}
+.field textarea { min-height: 60px; resize: vertical; line-height: 1.5; }
+
+.btn-primary {
+  margin-top: 0.4rem;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+/* Trade-off list */
+.tradeoffs {
+  margin-top: 0.85rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.tradeoffs strong { color: var(--text-primary); }
+.tradeoffs ul { padding-left: 1.1rem; margin-top: 0.3rem; }
+.tradeoffs li { margin-bottom: 0.18rem; }
+.tradeoffs .pro { color: var(--success); }
+.tradeoffs .con { color: var(--warning); }
+.tradeoffs cite { font-style: normal; color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 0.4rem; }
+.tradeoffs cite a { color: var(--accent); }
+
+.footnote {
+  margin-top: 2rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+  padding-top: 1.2rem;
+}
+.footnote a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="mockup-banner">
+  MOCKUP — selector variants for Issue / Suggestion. User said "tabs" → also shown so the call is yours. See <a href="README.md">README</a>.
+</div>
+
+<div class="page">
+
+  <h1>Issue vs Suggestion — which selector pattern?</h1>
+  <p class="page-lede">
+    All three variants have <strong>identical Subject + Description + Submit fields</strong> — only the
+    type-selector differs. The variants are live: clicking inside any of them shows the active
+    state animate correctly.
+  </p>
+
+  <div class="recco">
+    <strong>Recommendation:</strong> <code>segmented control</code> (variant B). NN/G's
+    <em>Tabs, Used Right</em> reserves tabs for switching between distinct content views; bug
+    vs suggestion shares the same form so a segmented control is the correct control type.
+    <strong>However</strong> — you originally said "2 tabs", and (A) is a defensible reading of that.
+    Pick whichever you prefer; the implementation effort is identical.
+  </div>
+
+  <div class="grid">
+
+    <!-- A. TABS -->
+    <section class="variant">
+      <header>
+        <h2>A. Horizontal tabs</h2>
+        <span class="badge user-said">User's wording</span>
+      </header>
+      <div class="meta">role="tablist" + role="tabpanel"</div>
+
+      <div class="form-shell">
+        <div class="tabs-bar" role="tablist">
+          <button class="tab active" role="tab" aria-selected="true" data-intent="issue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 2v3M16 2v3M9 14h6"/></svg>
+            Issues
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-intent="suggestion">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+            Suggestions
+          </button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Subject <span class="req">*</span></span>
+          <input type="text" placeholder="Brief summary…">
+        </div>
+        <div class="field">
+          <span class="field-label">Description <span class="req">*</span></span>
+          <textarea placeholder="What happened? What did you expect?"></textarea>
+        </div>
+        <button class="btn-primary">Send feedback</button>
+      </div>
+
+      <div class="tradeoffs">
+        <strong>Trade-offs</strong>
+        <ul>
+          <li><span class="pro">+ Matches user's stated wording</span> ("2 tabs")</li>
+          <li><span class="pro">+ More visual weight</span> — selector feels primary, hard to miss</li>
+          <li><span class="con">– Implies separate content views</span> per NN/G; some users may expect each tab to be its own page/section</li>
+          <li><span class="con">– A11y nuance</span>: needs <code>tabpanel</code> per tab and arrow-key navigation between them</li>
+        </ul>
+        <cite>NN/G: <a href="https://www.nngroup.com/articles/tabs-used-right/">Tabs, Used Right</a></cite>
+      </div>
+    </section>
+
+    <!-- B. SEGMENTED CONTROL -->
+    <section class="variant recommended">
+      <header>
+        <h2>B. Segmented control</h2>
+        <span class="badge">Recommended</span>
+      </header>
+      <div class="meta">role="radiogroup" + role="radio"</div>
+
+      <div class="form-shell">
+        <div class="seg" role="radiogroup" aria-label="Feedback type">
+          <button role="radio" aria-checked="true" class="active" data-intent="issue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 2v3M16 2v3M9 14h6"/></svg>
+            Issue
+          </button>
+          <button role="radio" aria-checked="false" data-intent="suggestion">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+            Suggestion
+          </button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Subject <span class="req">*</span></span>
+          <input type="text" placeholder="Brief summary…">
+        </div>
+        <div class="field">
+          <span class="field-label">Description <span class="req">*</span></span>
+          <textarea placeholder="What happened? What did you expect?"></textarea>
+        </div>
+        <button class="btn-primary">Send feedback</button>
+      </div>
+
+      <div class="tradeoffs">
+        <strong>Trade-offs</strong>
+        <ul>
+          <li><span class="pro">+ Correct semantic</span>: a setting that modifies the same form's data shape</li>
+          <li><span class="pro">+ Both options visible</span> → faster scan; matches Vercel Geist Feedback's segmented variant</li>
+          <li><span class="pro">+ Compact</span>: takes a single row, leaves room for the form</li>
+          <li><span class="con">– Less visual weight</span> than tabs — selector feels secondary</li>
+        </ul>
+        <cite>Atlassian: <a href="https://atlassian.design/components/tabs/">"Tabs vs Segmented control"</a></cite>
+      </div>
+    </section>
+
+    <!-- C. DROPDOWN -->
+    <section class="variant">
+      <header>
+        <h2>C. Type dropdown</h2>
+      </header>
+      <div class="meta">native &lt;select&gt; — Vercel Geist Feedback's pattern</div>
+
+      <div class="form-shell">
+        <div class="dropdown-row">
+          <label for="kind-select">Type</label>
+          <select class="feedback-select" id="kind-select">
+            <option value="issue">Issue</option>
+            <option value="suggestion">Suggestion</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Subject <span class="req">*</span></span>
+          <input type="text" placeholder="Brief summary…">
+        </div>
+        <div class="field">
+          <span class="field-label">Description <span class="req">*</span></span>
+          <textarea placeholder="What happened? What did you expect?"></textarea>
+        </div>
+        <button class="btn-primary">Send feedback</button>
+      </div>
+
+      <div class="tradeoffs">
+        <strong>Trade-offs</strong>
+        <ul>
+          <li><span class="pro">+ Smallest footprint</span> in the modal — frees vertical space</li>
+          <li><span class="pro">+ Native a11y</span>: screen-reader and keyboard nav for free</li>
+          <li><span class="pro">+ Trivial to extend</span> to 3+ types later (Bug / Suggestion / Question / Praise)</li>
+          <li><span class="con">– Hidden until clicked</span> → user may submit as the default without realizing</li>
+          <li><span class="con">– Looser fit</span> for the popup chrome (small dropdown in big modal)</li>
+        </ul>
+        <cite>Vercel Geist Feedback: <a href="https://vercel.com/geist/feedback">vercel.com/geist/feedback</a></cite>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="footnote">
+    <strong>Which one ships?</strong>
+    The implementation cost is identical for all three (a few lines of HTML + a tiny click handler).
+    The Slack message format is unchanged — the bot just stamps the chosen <code>intent</code> in the
+    header block. So this is a pure UX call. Reply in the PR with A / B / C and we'll bake it into the
+    spec.
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tabs-bar').forEach(bar => {
+  bar.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      bar.querySelectorAll('.tab').forEach(x => {
+        x.classList.remove('active');
+        x.setAttribute('aria-selected', 'false');
+      });
+      t.classList.add('active');
+      t.setAttribute('aria-selected', 'true');
+    });
+  });
+});
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      seg.querySelectorAll('button').forEach(x => {
+        x.classList.remove('active');
+        x.setAttribute('aria-checked', 'false');
+      });
+      b.classList.add('active');
+      b.setAttribute('aria-checked', 'true');
+    });
+  });
+});
+</script>
+
+</body>
+</html>

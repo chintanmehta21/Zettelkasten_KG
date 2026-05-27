@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback Mockup — Desktop | Zettelkasten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (copied verbatim from website/static/css/style.css) ── */
+:root {
+  --bg-primary: hsl(224, 28%, 5%);
+  --bg-secondary: hsl(222, 24%, 7.5%);
+  --bg-tertiary: hsl(220, 20%, 11%);
+  --bg-card: hsl(222, 22%, 8.5%);
+  --bg-elevated: hsl(220, 18%, 13%);
+
+  --accent: hsl(172, 66%, 50%);
+  --accent-hover: hsl(172, 66%, 58%);
+  --accent-muted: hsl(172, 40%, 40%);
+  --accent-glow: hsla(172, 66%, 50%, 0.12);
+  --accent-subtle: hsla(172, 66%, 50%, 0.06);
+
+  --text-primary: hsl(210, 20%, 92%);
+  --text-secondary: hsl(215, 14%, 58%);
+  --text-muted: hsl(215, 12%, 36%);
+
+  --border: hsl(220, 16%, 14%);
+  --border-light: hsl(220, 14%, 18%);
+  --border-focus: hsla(172, 66%, 50%, 0.4);
+
+  --success: hsl(160, 60%, 52%);
+  --error: hsl(0, 72%, 63%);
+  --warning: hsl(38, 92%, 60%);
+
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --transition: 0.2s ease;
+
+  --shadow-sm: 0 1px 2px hsla(0, 0%, 0%, 0.2);
+  --shadow-md: 0 4px 12px hsla(0, 0%, 0%, 0.3);
+  --shadow-lg: 0 8px 32px hsla(0, 0%, 0%, 0.4);
+  --shadow-glow: 0 0 24px hsla(172, 66%, 50%, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scrollbar-gutter: stable; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% 0%, hsla(222, 30%, 10%, 0.8) 0%, transparent 70%),
+    radial-gradient(circle at 50% 100%, hsla(172, 30%, 6%, 0.4) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* ── Layout (mirrors website/static/css/style.css .container) ── */
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header { padding: 1rem 0 0; text-align: center; }
+.branding { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.logo { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.6rem; font-weight: 600; }
+.logo-mark {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--bg-primary); font-weight: 700; font-size: 1.1rem;
+}
+.tagline { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.35rem; }
+
+.main { flex: 1; padding-top: 2.5rem; }
+
+.mock-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.8rem;
+  margin-bottom: 1.5rem;
+}
+.mock-card h2 { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.4rem; }
+.mock-card p { font-size: 0.875rem; color: var(--text-secondary); }
+.mock-card kbd {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.callout-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+/* ── Footer (mirrors website/static/css/style.css .footer) ── */
+.footer {
+  text-align: center;
+  padding: 2rem 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+}
+.footer-icon {
+  color: var(--text-muted);
+  transition: color var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+.footer-icon:hover { color: var(--text-secondary); }
+.footer-icon svg { display: block; width: 20px; height: 20px; fill: currentColor; }
+.footer-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.22), 0 0 0 4px rgba(20, 184, 166, 0.08);
+  border-radius: 6px;
+}
+
+/* Pulse highlight on the new feedback trigger so it's findable in the mockup */
+.feedback-trigger {
+  position: relative;
+}
+.feedback-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  animation: pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.15); }
+}
+
+/* ── Feedback modal (adapted from .zettels-summary-overlay pattern) ── */
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.feedback-overlay[hidden] { display: none !important; }
+.feedback-backdrop {
+  position: absolute;
+  inset: 0;
+  background: hsla(0, 0%, 0%, 0.7);
+  backdrop-filter: blur(4px);
+}
+.feedback-modal {
+  position: relative;
+  width: min(560px, calc(100vw - 2rem));
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: linear-gradient(150deg, hsl(223, 24%, 10%), hsl(221, 20%, 8%));
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.22s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.feedback-close {
+  position: absolute;
+  top: 0.6rem; right: 0.65rem;
+  width: 32px; height: 32px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 0.18s ease;
+}
+.feedback-close:hover { color: var(--text-primary); }
+.feedback-close svg { width: 18px; height: 18px; }
+
+.feedback-header { margin-bottom: 1rem; padding-right: 2rem; }
+.feedback-title { font-size: 1.15rem; font-weight: 600; line-height: 1.3; margin-bottom: 0.25rem; }
+.feedback-subtitle { color: var(--text-secondary); font-size: 0.825rem; }
+
+/* ── Segmented control ── */
+.feedback-segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 1.25rem;
+  gap: 4px;
+}
+.seg-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.seg-option:hover { color: var(--text-primary); }
+.seg-option svg { width: 16px; height: 16px; }
+.seg-option.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border-focus);
+}
+
+/* ── Form fields ── */
+.feedback-form { display: flex; flex-direction: column; gap: 1rem; }
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.field-label .req { color: var(--error); margin-left: 2px; }
+.field-label .opt { color: var(--text-muted); font-weight: 400; font-size: 0.72rem; }
+
+.field input[type="text"],
+.field textarea {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: border 0.18s, box-shadow 0.18s;
+  width: 100%;
+  resize: vertical;
+}
+.field input[type="text"]:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.field textarea { min-height: 112px; line-height: 1.55; }
+.field-counter {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  align-self: flex-end;
+}
+
+/* ── Dropzone ── */
+.feedback-dropzone {
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 1.2rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.825rem;
+  cursor: pointer;
+  transition: border 0.18s, background 0.18s;
+}
+.feedback-dropzone:hover, .feedback-dropzone.drag-over {
+  border-color: var(--border-focus);
+  background: var(--accent-subtle);
+}
+.feedback-dropzone svg { width: 24px; height: 24px; color: var(--text-muted); margin-bottom: 0.4rem; }
+.feedback-dropzone .hint { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; }
+.feedback-dropzone .link-btn {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.thumb {
+  position: relative;
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-elevated);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  overflow: hidden;
+}
+.thumb .remove {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.thumb .remove:hover { color: var(--error); border-color: var(--error); }
+
+.privacy-notice {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  line-height: 1.45;
+}
+.privacy-notice svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Checkbox ── */
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.checkbox-field input { accent-color: var(--accent); width: 14px; height: 14px; }
+
+/* ── Actions ── */
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+.btn-primary, .btn-secondary {
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, border 0.18s, color 0.18s, transform 0.05s;
+}
+.btn-primary:active, .btn-secondary:active { transform: translateY(1px); }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+.btn-secondary:hover { color: var(--text-primary); border-color: var(--border-focus); }
+.btn-primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+}
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-primary[disabled] { background: var(--accent-muted); border-color: var(--accent-muted); cursor: not-allowed; }
+
+/* ── Success state ── */
+.feedback-success {
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+}
+.feedback-success .success-icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 0.8rem;
+}
+.feedback-success h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
+.feedback-success p { color: var(--text-secondary); font-size: 0.825rem; }
+.feedback-success .feedback-id {
+  display: inline-block;
+  margin-top: 0.6rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+/* ── Slack preview pane ── */
+.slack-preview {
+  position: fixed;
+  right: 24px; bottom: 24px;
+  width: min(420px, calc(100vw - 48px));
+  max-height: 70vh;
+  background: #1d1c1d;
+  color: #d1d2d3;
+  border: 1px solid #2c2d30;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px hsla(0, 0%, 0%, 0.5);
+  font-family: 'Lato', 'Segoe UI', sans-serif;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  z-index: 1100;
+}
+.slack-preview .slack-head {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #2c2d30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #19171d;
+  border-radius: 10px 10px 0 0;
+}
+.slack-channel {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.slack-channel::before { content: "#"; color: #8d8d8d; font-weight: 400; }
+.slack-toggle {
+  background: transparent;
+  border: 0;
+  color: #ababab;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.slack-body {
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem;
+  flex: 1;
+}
+.slack-preview.collapsed .slack-body { display: none; }
+.slack-preview.collapsed { max-height: unset; }
+
+.slack-msg { display: flex; gap: 0.6rem; }
+.slack-avatar {
+  width: 36px; height: 36px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.slack-msg-body { min-width: 0; flex: 1; }
+.slack-msg-head {
+  display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.2rem;
+}
+.slack-msg-name { color: #fff; font-weight: 700; }
+.slack-msg-bot {
+  background: #2c2d30;
+  color: #b6b6b6;
+  font-size: 0.62rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  margin-left: 0.15rem;
+  font-weight: 500;
+}
+.slack-msg-time { color: #8d8d8d; font-size: 0.72rem; }
+
+.slack-block-header {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0.4rem 0 0.35rem;
+}
+.slack-block-context {
+  font-size: 0.72rem;
+  color: #b6b6b6;
+  margin-bottom: 0.45rem;
+  line-height: 1.55;
+}
+.slack-block-context strong { color: #d1d2d3; font-weight: 600; }
+.slack-divider {
+  border: 0;
+  border-top: 1px solid #2c2d30;
+  margin: 0.5rem 0;
+}
+.slack-block-section { line-height: 1.55; color: #d1d2d3; }
+.slack-block-section blockquote {
+  border-left: 3px solid #565856;
+  padding-left: 0.65rem;
+  margin: 0.3rem 0;
+  color: #b6b6b6;
+}
+.slack-block-image {
+  margin-top: 0.5rem;
+  border: 1px solid #2c2d30;
+  border-radius: 6px;
+  padding: 1.1rem;
+  background: #222226;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: #8d8d8d;
+  font-size: 0.74rem;
+}
+.slack-block-image svg { width: 28px; height: 28px; color: #565856; }
+
+.slack-foot-note {
+  font-size: 0.7rem;
+  color: #8d8d8d;
+  padding: 0.5rem 0.85rem;
+  border-top: 1px solid #2c2d30;
+  background: #19171d;
+  border-radius: 0 0 10px 10px;
+}
+.slack-foot-note code {
+  font-family: var(--font-mono);
+  background: #2c2d30;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  color: #d1d2d3;
+}
+
+/* Banner */
+.mockup-banner {
+  background: var(--warning);
+  color: var(--bg-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.35rem 1rem;
+  letter-spacing: 0.04em;
+}
+.mockup-banner a { color: inherit; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="mockup-banner">
+  MOCKUP — desktop variant. Click the megaphone <span aria-hidden="true">📣</span> in the footer. See <a href="README.md">README</a> for design rationale.
+</div>
+
+<div class="container">
+
+  <header class="header">
+    <div class="branding">
+      <div class="logo">
+        <span class="logo-mark">Z</span>
+        <span>Zettelkasten</span>
+      </div>
+      <p class="tagline">The second brain you were promised!</p>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="mock-card">
+      <h2>This is a static mockup page.</h2>
+      <p>
+        The real Add Zettel form would live here. The point of this mockup is the
+        new <strong>megaphone</strong> icon at the right end of the footer below — that's
+        the new "Send feedback" trigger. Click it (or press <kbd>F</kbd>) to open the
+        popup.
+      </p>
+      <div class="callout-arrow">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        Scroll to footer
+      </div>
+    </div>
+
+    <div class="mock-card">
+      <h2>What's in the popup</h2>
+      <p>
+        Segmented control (Issue / Suggestion) → Subject → Description (with live char count) →
+        Drag-drop screenshots (or paste from clipboard) → privacy notice → "email me back"
+        opt-in (unchecked) → Submit. On submit you see an inline success state with a
+        Feedback ID like <kbd>FB-7K3Q</kbd>, then it closes.
+      </p>
+    </div>
+
+    <div class="mock-card">
+      <h2>What the team sees in Slack</h2>
+      <p>
+        The floating panel at bottom-right is a live preview of the Block Kit message that
+        would post into <strong>#zk-testing</strong>: a header, context line with
+        <em>From: Naruto Uzumaki  •  Country: India — IN  •  ID: FB-7K3Q</em>, the user's
+        subject + description in a blockquote, and any uploaded screenshots inline.
+      </p>
+    </div>
+  </main>
+
+  <!-- Footer with new megaphone trigger -->
+  <footer class="footer">
+    <a href="#" class="footer-icon" title="Meet the founder" aria-label="GitHub">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <a href="#" class="footer-icon" title="About" aria-label="About">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 5.25a1.25 1.25 0 1 1 0 2.5a1.25 1.25 0 0 1 0-2.5Zm1.5 12h-3v-1.5h1.25v-5.5h-1.25v-1.5h3v7Z"/></svg>
+    </a>
+    <a href="#" class="footer-icon" title="Pricing" aria-label="Pricing">
+      <svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22 2 12 10.59 3.41A2 2 0 0 1 12 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-.59 1.41ZM17.5 8.5A1.5 1.5 0 1 0 16 7a1.5 1.5 0 0 0 1.5 1.5Z"/></svg>
+    </a>
+    <a href="#" class="footer-icon" title="Buy me a coffee" aria-label="Buy me a coffee">
+      <svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M10 1v3 M14 1v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </a>
+    <button type="button" class="footer-icon feedback-trigger" id="feedback-trigger" title="Send feedback" aria-label="Send feedback">
+      <!-- Lucide megaphone, solid for desktop footer parity -->
+      <svg viewBox="0 0 24 24"><path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h3l-2-5h2l8 4V4l-8 4H5a2 2 0 0 0-2 2v1Zm17-6v14a3 3 0 0 0 0-14Z"/></svg>
+    </button>
+  </footer>
+</div>
+
+<!-- Feedback Modal -->
+<div class="feedback-overlay" id="feedback-overlay" hidden>
+  <div class="feedback-backdrop" id="feedback-backdrop"></div>
+  <div class="feedback-modal" role="dialog" aria-labelledby="feedback-title" aria-modal="true">
+
+    <button class="feedback-close" id="feedback-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <div class="feedback-header" id="feedback-header">
+      <h2 class="feedback-title" id="feedback-title">Send feedback</h2>
+      <p class="feedback-subtitle">Your message goes straight to the team.</p>
+    </div>
+
+    <div class="feedback-segmented" id="feedback-segmented" role="tablist" aria-label="Feedback type">
+      <button type="button" role="tab" class="seg-option active" data-intent="issue" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v3M16 2v3"/><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 14h6"/></svg>
+        Issue
+      </button>
+      <button type="button" role="tab" class="seg-option" data-intent="suggestion" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+        Suggestion
+      </button>
+    </div>
+
+    <form class="feedback-form" id="feedback-form" onsubmit="event.preventDefault(); showSuccess();">
+      <label class="field">
+        <span class="field-label">Subject <span class="req" aria-hidden="true">*</span></span>
+        <input type="text" maxlength="120" required placeholder="Brief summary…" id="subj">
+      </label>
+
+      <label class="field">
+        <span class="field-label">
+          Description <span class="req" aria-hidden="true">*</span>
+          <span class="field-counter" id="counter">0 / 4000</span>
+        </span>
+        <textarea minlength="10" maxlength="4000" required placeholder="What happened? What did you expect?" id="desc"></textarea>
+      </label>
+
+      <div class="field">
+        <span class="field-label">
+          Screenshots <span class="opt">optional · max 3</span>
+        </span>
+        <div class="feedback-dropzone" id="dropzone" tabindex="0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div>Drag &amp; drop, paste, or <button type="button" class="link-btn" id="filepick">choose files</button></div>
+          <span class="hint">PNG, JPG, WebP &middot; up to 5 MB each</span>
+        </div>
+        <div class="thumbs" id="thumbs"></div>
+        <p class="privacy-notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Please blur or crop anything sensitive — passwords, payment details, or other users' personal info.</span>
+        </p>
+      </div>
+
+      <label class="checkbox-field">
+        <input type="checkbox" id="followup">
+        <span>You can email me about this feedback</span>
+      </label>
+
+      <div class="feedback-actions">
+        <button type="button" class="btn-secondary" id="feedback-cancel">Cancel</button>
+        <button type="submit" class="btn-primary" id="feedback-submit">Send feedback</button>
+      </div>
+    </form>
+
+    <div class="feedback-success" id="feedback-success" hidden>
+      <div class="success-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>Thanks — sent to the team.</h3>
+      <p>We'll triage and follow up if you opted in.</p>
+      <span class="feedback-id" id="feedback-id">FB-7K3Q</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Slack preview panel -->
+<aside class="slack-preview" id="slack-preview">
+  <div class="slack-head">
+    <div class="slack-channel">zk-testing</div>
+    <button class="slack-toggle" id="slack-toggle">Hide preview ▾</button>
+  </div>
+  <div class="slack-body">
+    <div class="slack-msg">
+      <div class="slack-avatar">ZK</div>
+      <div class="slack-msg-body">
+        <div class="slack-msg-head">
+          <span class="slack-msg-name">Zettelkasten Feedback</span>
+          <span class="slack-msg-bot">APP</span>
+          <span class="slack-msg-time">9:42 AM</span>
+        </div>
+        <div class="slack-block-header" id="slack-header-text">📣 New feedback — Issue</div>
+        <div class="slack-block-context">
+          <strong>From:</strong> Naruto Uzumaki &nbsp;•&nbsp; <strong>Country:</strong> India — IN &nbsp;•&nbsp; <strong>ID:</strong> FB-7K3Q &nbsp;•&nbsp; <em>just now</em>
+        </div>
+        <hr class="slack-divider">
+        <div class="slack-block-section">
+          <strong id="slack-subj">Add Zettel fails on long YouTube videos</strong>
+          <blockquote id="slack-desc">I tried adding a 3-hour Lex Fridman episode and the API returns a 504 after about 90 seconds. Smaller videos work fine.</blockquote>
+        </div>
+        <div class="slack-block-image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          screenshot-1.png (uploaded via files_upload_v2)
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slack-foot-note">
+    Posted via <code>chat.postMessage</code> + <code>slack_file</code> blocks — private to the workspace, no public URLs.
+  </div>
+</aside>
+
+<script>
+const overlay = document.getElementById('feedback-overlay');
+const trigger = document.getElementById('feedback-trigger');
+const close = document.getElementById('feedback-close');
+const cancel = document.getElementById('feedback-cancel');
+const backdrop = document.getElementById('feedback-backdrop');
+const subj = document.getElementById('subj');
+const desc = document.getElementById('desc');
+const counter = document.getElementById('counter');
+const form = document.getElementById('feedback-form');
+const success = document.getElementById('feedback-success');
+const headerBlock = document.getElementById('feedback-header');
+const segBlock = document.getElementById('feedback-segmented');
+const fbId = document.getElementById('feedback-id');
+const slackHeader = document.getElementById('slack-header-text');
+const slackSubj = document.getElementById('slack-subj');
+const slackDesc = document.getElementById('slack-desc');
+
+function openModal() {
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => subj.focus(), 50);
+}
+function closeModal() {
+  overlay.hidden = true;
+  document.body.style.overflow = '';
+  // Reset to form view for next open
+  setTimeout(() => {
+    success.hidden = true;
+    form.hidden = false;
+    headerBlock.hidden = false;
+    segBlock.hidden = false;
+  }, 200);
+}
+
+trigger.addEventListener('click', openModal);
+close.addEventListener('click', closeModal);
+cancel.addEventListener('click', closeModal);
+backdrop.addEventListener('click', closeModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !overlay.hidden) closeModal();
+  if (e.key.toLowerCase() === 'f' && document.activeElement === document.body) openModal();
+});
+
+// Segmented control
+document.querySelectorAll('.seg-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.seg-option').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    // Update Slack preview header live
+    const intent = btn.dataset.intent === 'issue' ? 'Issue' : 'Suggestion';
+    const icon = btn.dataset.intent === 'issue' ? '📣' : '💡';
+    slackHeader.textContent = `${icon} New feedback — ${intent}`;
+  });
+});
+
+// Char counter
+desc.addEventListener('input', () => {
+  counter.textContent = `${desc.value.length} / 4000`;
+});
+
+// Live Slack preview wiring
+subj.addEventListener('input', () => {
+  slackSubj.textContent = subj.value || 'Add Zettel fails on long YouTube videos';
+});
+desc.addEventListener('input', () => {
+  slackDesc.textContent = desc.value || 'I tried adding a 3-hour Lex Fridman episode and the API returns a 504 after about 90 seconds.';
+});
+
+// Thumb add (mock)
+const thumbsEl = document.getElementById('thumbs');
+const dropzone = document.getElementById('dropzone');
+const filepick = document.getElementById('filepick');
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/png,image/jpeg,image/webp';
+fileInput.multiple = true;
+let mockThumbs = 0;
+function addThumb(name) {
+  if (mockThumbs >= 3) return;
+  const t = document.createElement('div');
+  t.className = 'thumb';
+  t.innerHTML = `<span>${(name || 'image').slice(0, 10)}</span><button class="remove" type="button" aria-label="Remove">×</button>`;
+  t.querySelector('.remove').addEventListener('click', () => { t.remove(); mockThumbs--; });
+  thumbsEl.appendChild(t);
+  mockThumbs++;
+}
+filepick.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  Array.from(e.target.files || []).forEach(f => addThumb(f.name));
+});
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  Array.from(e.dataTransfer.files || []).forEach(f => addThumb(f.name));
+});
+document.addEventListener('paste', e => {
+  if (overlay.hidden) return;
+  Array.from(e.clipboardData?.items || []).forEach(it => {
+    if (it.type.startsWith('image/')) addThumb('pasted.png');
+  });
+});
+
+// Submit → success state
+function showSuccess() {
+  // Random fake ID
+  const id = 'FB-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  fbId.textContent = id;
+  form.hidden = true;
+  headerBlock.hidden = true;
+  segBlock.hidden = true;
+  success.hidden = false;
+  setTimeout(closeModal, 2200);
+}
+window.showSuccess = showSuccess;
+
+// Slack panel toggle
+const slackPanel = document.getElementById('slack-preview');
+document.getElementById('slack-toggle').addEventListener('click', e => {
+  slackPanel.classList.toggle('collapsed');
+  e.target.textContent = slackPanel.classList.contains('collapsed') ? 'Show preview ▴' : 'Hide preview ▾';
+});
+</script>
+
+</body>
+</html>
