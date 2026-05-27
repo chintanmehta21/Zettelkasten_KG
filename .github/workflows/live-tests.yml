@@ -63,7 +63,7 @@ jobs:
             test "$GET_STATUS" = "200"
             test -n "$GET_ETAG"
 
-            python3 -c 'import json; body=json.load(open("/tmp/stats_get_body.json", encoding="utf-8")); sections=body.get("sections", []); keys=[s.get("key") for s in sections]; stats_count=sum(len(s.get("stats", [])) for s in sections); print("section_count=%s" % len(sections)); print("section_keys=%s" % ",".join(keys)); print("stats_count=%s" % stats_count); assert len(sections) == 7; assert stats_count == 28; assert body.get("meta", {}).get("profile_id")'
+            python3 -c 'import json; body=json.load(open("/tmp/stats_get_body.json", encoding="utf-8")); keys=["main_board","general","zettel","kasten","domain","activity","graph"]; missing=[k for k in keys if k not in body]; print("section_count=%s" % (len(keys) - len(missing))); print("section_keys=%s" % ",".join(k for k in keys if k in body)); assert not missing; assert body.get("main_board", {}).get("zettels_quota"); assert body.get("main_board", {}).get("kastens_quota"); assert body.get("meta", {}).get("workspace_id")'
 
             curl -sS -D /tmp/stats_304_headers.txt -o /tmp/stats_304_body.txt -H "Authorization: Bearer $TOKEN" -H "If-None-Match: $GET_ETAG" "$STATS_URL"
             NOT_MODIFIED_STATUS="$(awk 'tolower($0) ~ /^http\// {code=$2} END {print code}' /tmp/stats_304_headers.txt)"
