@@ -100,7 +100,7 @@ async def test_rpc_denies_cross_tenant_workspace(mint_user):
     assert owner_ws not in intruder.workspace_ids, "fixture invariant: workspaces must be disjoint"
 
     client = get_v2_user_client(intruder.jwt)
-    with pytest.raises((APIError, Exception)) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.schema("core").rpc(
             "profile_stats_v1",
             {"p_workspace_id": str(owner_ws)},
