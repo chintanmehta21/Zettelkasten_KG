@@ -42,6 +42,7 @@ DECLARE
   v_kasten jsonb;
   v_domain jsonb;
   v_activity jsonb;
+  v_graph jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -511,6 +512,70 @@ BEGIN
     )
   ) INTO v_activity;
 
+  -- ─── Knowledge Graph section ─────────────────────────────────────────
+  -- 1) mean_degree: 2*|E|/|V| (undirected graph). Zero when |V|=0.
+  -- 2) top_hubs_10: 10 most-connected nodes (degree desc). Edges are
+  --    undirected — count appearances as src OR dst.
+  -- 3) personal_vs_global_tags: count(DISTINCT user_tags) vs count(kg_nodes).
+  -- 4) relation_type_mix: edge counts by relation_type.
+
+  WITH counts AS (
+    SELECT
+      (SELECT count(*)::int FROM kg.kg_nodes WHERE workspace_id = p_workspace_id) AS nodes,
+      (SELECT count(*)::int FROM kg.kg_edges WHERE workspace_id = p_workspace_id) AS edges
+  ),
+  deg AS (
+    SELECT node_id, count(*)::int AS d FROM (
+      SELECT src_node_id AS node_id FROM kg.kg_edges WHERE workspace_id = p_workspace_id
+      UNION ALL
+      SELECT dst_node_id FROM kg.kg_edges WHERE workspace_id = p_workspace_id
+    ) e GROUP BY node_id
+  ),
+  top_hubs AS (
+    SELECT n.canonical_name, n.type::text AS node_type, deg.d AS degree
+      FROM deg
+      JOIN kg.kg_nodes n ON n.id = deg.node_id
+     WHERE n.workspace_id = p_workspace_id
+     ORDER BY deg.d DESC NULLS LAST LIMIT 10
+  ),
+  rel_mix AS (
+    SELECT relation_type::text AS relation, count(*)::int AS n
+      FROM kg.kg_edges
+     WHERE workspace_id = p_workspace_id
+     GROUP BY relation_type
+  )
+  SELECT jsonb_build_object(
+    'mean_degree', CASE
+      WHEN (SELECT nodes FROM counts) = 0 THEN 0
+      ELSE round(
+        2.0 * (SELECT edges FROM counts) / (SELECT nodes FROM counts)::numeric,
+        2
+      )
+    END,
+    'top_hubs_10', COALESCE(
+      (SELECT jsonb_agg(
+                jsonb_build_object('name', canonical_name, 'type', node_type, 'degree', degree)
+                ORDER BY degree DESC
+              ) FROM top_hubs),
+      '[]'::jsonb
+    ),
+    'personal_vs_global_tags', jsonb_build_object(
+      'user_tag_count', (
+        SELECT count(DISTINCT t)::int
+          FROM content.workspace_zettels wz, unnest(wz.user_tags) AS t
+         WHERE wz.workspace_id = p_workspace_id AND wz.deleted_at IS NULL
+      ),
+      'kg_node_count', (SELECT nodes FROM counts)
+    ),
+    'relation_type_mix', COALESCE(
+      (SELECT jsonb_agg(
+                jsonb_build_object('relation', relation, 'count', n)
+                ORDER BY n DESC
+              ) FROM rel_mix),
+      '[]'::jsonb
+    )
+  ) INTO v_graph;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -532,7 +597,7 @@ BEGIN
     'kasten',     v_kasten,
     'domain',     v_domain,
     'activity',   v_activity,
-    'graph',      '{}'::jsonb
+    'graph',      v_graph
   );
 
   RETURN v_payload;

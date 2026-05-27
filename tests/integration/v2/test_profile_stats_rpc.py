@@ -412,3 +412,43 @@ async def test_activity_section(asyncpg_pool, mint_user, seed_zettels, seed_chat
     # NEGATIVE — no quota/plan/billing leakage
     assert "quota" not in a
     assert "plan" not in a
+
+
+# ---------------------------------------------------------------------------
+# Task 3.7: Knowledge Graph section (mean_degree + top_hubs + tag coverage + relation mix)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_graph_section(asyncpg_pool, mint_user, seed_kg_graph):
+    """Graph section: mean_degree + top_hubs + tag coverage + relation mix."""
+    from website.core.supabase_v2.client import get_v2_user_client
+
+    user = mint_user(workspace_count=1)
+    workspace_id = user.workspace_ids[0]
+    await seed_kg_graph(workspace_id, nodes=10, edges=9)  # 9 edges in chain
+
+    client = get_v2_user_client(user.jwt)
+    resp = client.schema("core").rpc("profile_stats_v1", {"p_workspace_id": str(workspace_id)}).execute()
+    g = resp.data["graph"]
+
+    # mean_degree = 2*9/10 = 1.8
+    assert float(g["mean_degree"]) >= 0.0
+    # top_hubs: at most 10, items have {name, type, degree}
+    assert isinstance(g["top_hubs_10"], list) and len(g["top_hubs_10"]) <= 10
+    for h in g["top_hubs_10"]:
+        assert {"name", "type", "degree"} <= h.keys()
+
+    # tag coverage
+    assert g["personal_vs_global_tags"]["user_tag_count"] >= 0
+    assert g["personal_vs_global_tags"]["kg_node_count"] >= 0
+
+    # relation mix: all seeded edges are 'shared_tag'
+    assert isinstance(g["relation_type_mix"], list)
+    for r in g["relation_type_mix"]:
+        assert "relation" in r and "count" in r
+
+    # NEGATIVE
+    assert "quota" not in g
+    assert "plan" not in g
