@@ -92,6 +92,16 @@ zettelkasten.in {
         max_size 11MB
     }
 
+    # Feedback feature — 3 images × ~5 MB + form fields ≈ 16 MB worst case.
+    # Route-level cap (18 MB) only; global ASGI body-size guard untouched.
+    @feedback_submit {
+        method POST
+        path /api/feedback/submit
+    }
+    request_body @feedback_submit {
+        max_size 18MB
+    }
+
     # Maintenance flag file → 503 (close connection so clients don't retry against a stale upstream)
     @maintenance file /etc/caddy/maintenance.flag
     handle @maintenance {
