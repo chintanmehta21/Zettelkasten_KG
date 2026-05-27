@@ -20,7 +20,7 @@ def test_authenticated_with_profile_country() -> None:
     assert id_.full_name == "Naruto Uzumaki"
     assert id_.email == "naruto@konoha.jp"
     # Profile country wins over IP-derived
-    assert id_.country_label == "India — IN"
+    assert id_.country_label == "India (IN)"
     assert id_.is_anonymous is False
 
 

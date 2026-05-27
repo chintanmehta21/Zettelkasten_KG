@@ -20,15 +20,13 @@ def _format_country(code: str | None, *, approx: bool) -> str:
     if not code or code == "??":
         return "Unknown"
     code_upper = code.upper()
-    # Look up the bare country name via web_monitor's data dict.
-    # We don't call format_country() because it appends " (CC)" which would
-    # double up with our em-dash-CC suffix below.
+    # Reuse web_monitor's format_country verbatim — returns "India (IN)" style.
+    # Operator preference (2026-05-27): keep parens format, not em-dash.
     try:
-        from website.features.web_monitor._country import _COUNTRIES
-        name = _COUNTRIES.get(code_upper, code_upper)
+        from website.features.web_monitor._country import format_country
+        label = format_country(code_upper)
     except Exception:
-        name = code_upper
-    label = f"{name} — {code_upper}"
+        label = code_upper
     if approx:
         label += " (approx.)"
     return label
