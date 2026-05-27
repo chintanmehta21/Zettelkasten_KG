@@ -469,6 +469,52 @@ def seed_chat_messages(asyncpg_pool):
 
 
 @pytest.fixture
+def seed_zettels_with_tags(asyncpg_pool):
+    """Seed workspace_zettels with explicit tag distributions.
+
+    Args:
+        workspace_id: target workspace
+        tag_distribution: dict[str, int] mapping tag name to occurrence count.
+
+    Spreads zettels back from now() by 1 day per record so older tags
+    are present in lifetime but not in recent (30d) — exercises the
+    emerging/declining logic.
+    """
+    async def _seed(workspace_id, tag_distribution: dict):
+        async with asyncpg_pool.acquire() as conn:
+            offset = 0
+            for tag, n in tag_distribution.items():
+                for i in range(n):
+                    cz_id = await conn.fetchval(
+                        """
+                        INSERT INTO content.canonical_zettels
+                            (id, normalized_url, content_hash, source_type, title)
+                        VALUES (
+                          gen_random_uuid(),
+                          'https://example.com/' || gen_random_uuid()::text,
+                          decode(md5(random()::text), 'hex'),
+                          'web',
+                          $1::text
+                        )
+                        RETURNING id
+                        """,
+                        f"{tag}-{i}",
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO content.workspace_zettels
+                            (workspace_id, canonical_zettel_id, ai_summary,
+                             user_tags, added_via, created_at)
+                        VALUES ($1, $2, '', ARRAY[$3]::text[], 'website',
+                                now() - ($4 || ' days')::interval)
+                        """,
+                        workspace_id, cz_id, tag, offset,
+                    )
+                    offset += 1
+    return _seed
+
+
+@pytest.fixture
 def mock_gemini_pool(monkeypatch: pytest.MonkeyPatch):
     """Factory: returns a configured ``StubGeminiPool`` AND monkey-patches
     ``api_key_switching.get_key_pool`` to return it.

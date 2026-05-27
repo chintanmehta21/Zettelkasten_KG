@@ -40,6 +40,7 @@ DECLARE
   v_general jsonb;
   v_zettel jsonb;
   v_kasten jsonb;
+  v_domain jsonb;
 BEGIN
   -- Per-call safety net (independent of role-level settings on stats_reader).
   SET LOCAL statement_timeout = '45s';
@@ -350,6 +351,76 @@ BEGIN
     )
   ) INTO v_kasten;
 
+  -- ─── Domain / Topic-level section ────────────────────────────────────
+  -- Tag stats use user_tags ONLY (never derived_tags per CLAUDE.md rule).
+  --
+  -- Consultant adoption #1 (locked 2026-05-27): the LIFETIME baseline CTE
+  -- is capped to the last 365 days, NOT all-time. Rationale: gives bounded
+  -- compute (consultant report) AND makes emerging/declining semantically
+  -- meaningful — comparing "last 30d share" vs "5-year-old baseline share"
+  -- is noise. "Recent ramp vs trailing-year baseline" is what the user
+  -- actually wants to see.
+  --
+  -- HHI is computed over the full 365d baseline (no LIMIT on the source
+  -- rows; only the time window bounds the cost).
+
+  WITH tag_rows AS (
+    SELECT unnest(wz.user_tags) AS tag, wz.created_at
+      FROM content.workspace_zettels wz
+     WHERE wz.workspace_id = p_workspace_id
+       AND wz.deleted_at IS NULL
+       AND wz.created_at >= now() - interval '365 days'
+  ),
+  totals AS (
+    SELECT tag, count(*)::numeric AS c FROM tag_rows GROUP BY tag
+  ),
+  totals_with_share AS (
+    SELECT tag, c, (c / NULLIF(SUM(c) OVER (), 0)) AS share FROM totals
+  ),
+  hhi AS (
+    SELECT COALESCE(round(SUM(share * share)::numeric, 4), 0) AS h
+      FROM totals_with_share
+  ),
+  recent AS (
+    SELECT tag, count(*)::numeric AS c,
+           (count(*) / NULLIF(SUM(count(*)) OVER (), 0)) AS share
+      FROM tag_rows
+     WHERE created_at >= now() - interval '30 days'
+     GROUP BY tag
+  ),
+  emerging AS (
+    SELECT recent.tag, (recent.share - COALESCE(totals_with_share.share, 0)) AS delta
+      FROM recent
+      LEFT JOIN totals_with_share USING (tag)
+     WHERE recent.c >= 2
+     ORDER BY delta DESC LIMIT 5
+  ),
+  declining AS (
+    SELECT totals_with_share.tag,
+           (COALESCE(recent.share, 0) - totals_with_share.share) AS delta
+      FROM totals_with_share
+      LEFT JOIN recent USING (tag)
+     WHERE totals_with_share.c >= 5
+     ORDER BY delta ASC LIMIT 5
+  )
+  SELECT jsonb_build_object(
+    'concentration_hhi', (SELECT h FROM hhi LIMIT 1),
+    'emerging_top5', COALESCE(
+      (SELECT jsonb_agg(
+                jsonb_build_object('tag', tag, 'delta_share', round(delta::numeric, 4))
+                ORDER BY delta DESC
+              ) FROM emerging),
+      '[]'::jsonb
+    ),
+    'declining_top5', COALESCE(
+      (SELECT jsonb_agg(
+                jsonb_build_object('tag', tag, 'delta_share', round(delta::numeric, 4))
+                ORDER BY delta ASC
+              ) FROM declining),
+      '[]'::jsonb
+    )
+  ) INTO v_domain;
+
   -- Scaffold payload: meta + 7 empty section placeholders.
   -- Sections to be populated by Tasks 3.1-3.7:
   --   main_board   — heatmap + zettel quota + kasten quota (Task 3.1)
@@ -369,7 +440,7 @@ BEGIN
     'general',    v_general,
     'zettel',     v_zettel,
     'kasten',     v_kasten,
-    'domain',     '{}'::jsonb,
+    'domain',     v_domain,
     'activity',   '{}'::jsonb,
     'graph',      '{}'::jsonb
   );
