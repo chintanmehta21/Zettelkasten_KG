@@ -1094,14 +1094,272 @@
     });
   }
 
-  // ---- Renderer stubs (Tasks 5.4-5.6 fill these) ----
-  function renderMainBoard(_s) { /* TODO Task 5.4 */ }
-  function renderGeneral(_s) { /* TODO Task 5.5 */ }
-  function renderZettel(_s) { /* TODO Task 5.5 */ }
-  function renderKasten(_s) { /* TODO Task 5.5 */ }
-  function renderDomain(_s) { /* TODO Task 5.6 */ }
-  function renderActivity(_s) { /* TODO Task 5.6 */ }
-  function renderGraph(_s) { /* TODO Task 5.6 */ }
+  // ---- Render helpers (shared by all 7 renderers) ----
+  function fmtRelative(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    if (diff < 0) return 'in future';
+    const h = diff / 3.6e6;
+    if (h < 1) return Math.max(1, Math.round(diff / 6e4)) + 'm ago';
+    if (h < 24) return Math.round(h) + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+
+  function escHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+    });
+  }
+
+  function tile(slot, html) {
+    const el = root.querySelector('[data-stat="' + slot + '"]');
+    if (el) el.innerHTML = html;
+  }
+
+  function pieHtml(label, used, available, period) {
+    const total = (used || 0) + (available || 0);
+    const pct = total > 0 ? (used / total) : 0;
+    const r = 60;
+    const c = 2 * Math.PI * r;
+    const dash = pct * c;
+    const periodLabel = period ? ' / ' + period : '';
+    return [
+      '<div class="stats-pie">',
+        '<svg class="stats-pie__svg" viewBox="0 0 160 160">',
+          '<circle cx="80" cy="80" r="' + r + '" fill="none" stroke="var(--bg-elevated)" stroke-width="20"/>',
+          '<circle cx="80" cy="80" r="' + r + '" fill="none" stroke="var(--accent)" stroke-width="20" ',
+          'stroke-dasharray="' + dash + ' ' + (c - dash) + '" stroke-dashoffset="' + (c / 4) + '" ',
+          'transform="rotate(-90 80 80)"/>',
+          '<text x="80" y="85" text-anchor="middle" fill="var(--text-primary)" font-size="20" font-weight="600">',
+            (used || 0) + ' / ' + (total || 0),
+          '</text>',
+        '</svg>',
+        '<span class="stats-pie__label">' + escHtml(label + periodLabel) + '</span>',
+      '</div>',
+    ].join('');
+  }
+
+  function bigNumberHtml(label, value, sub) {
+    return [
+      '<h3 class="stats-card__label">' + escHtml(label) + '</h3>',
+      '<span class="stats-big-number">' + escHtml(value) + '</span>',
+      sub ? '<span class="stats-card__sub">' + escHtml(sub) + '</span>' : '',
+    ].join('');
+  }
+
+  function listHtml(label, items, emptyMsg) {
+    if (!items || !items.length) {
+      return [
+        '<h3 class="stats-card__label">' + escHtml(label) + '</h3>',
+        '<p class="stats-empty">' + escHtml(emptyMsg || 'no data yet') + '</p>',
+      ].join('');
+    }
+    const rows = items.map(function (it) {
+      const left = escHtml(it.left);
+      const right = it.right == null ? '' :
+        '<span class="' + (it.rightClass || 'stats-meta') + '">' + escHtml(it.right) + '</span>';
+      return '<li>' + left + right + '</li>';
+    }).join('');
+    return [
+      '<h3 class="stats-card__label">' + escHtml(label) + '</h3>',
+      '<ul class="stats-list">' + rows + '</ul>',
+    ].join('');
+  }
+
+  // ---- Renderers (Tasks 5.4-5.6) ----
+  function renderMainBoard(s) {
+    if (!s) return;
+
+    // Heatmap
+    const heatmapSlot = root.querySelector('[data-stat="main.heatmap"]');
+    if (heatmapSlot && Array.isArray(s.heatmap)) {
+      heatmapSlot.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.className = 'activity-heatmap';
+      s.heatmap.forEach(function (c) {
+        const cell = document.createElement('span');
+        const count = (c && c.count) || 0;
+        const lvl = count === 0 ? 0 : Math.min(4, Math.ceil(Math.log2(count + 1)));
+        cell.className = 'activity-heatmap__cell l' + lvl;
+        cell.title = (c && c.date ? c.date : '') + ': ' + count;
+        wrap.appendChild(cell);
+      });
+      heatmapSlot.appendChild(wrap);
+    }
+
+    // Zettels pie (uses composed zettels_quota; falls back to plain count if absent)
+    const zQuota = s.zettels_quota;
+    if (zQuota && zQuota.available != null) {
+      tile('main.zettels_quota', pieHtml('Zettels', zQuota.used, zQuota.available, zQuota.period));
+    } else {
+      const zCount = (s.zettels && s.zettels.this_month_count) || 0;
+      tile('main.zettels_quota', bigNumberHtml('Zettels this period', zCount, 'no quota set'));
+    }
+
+    // Kastens pie (similar)
+    const kQuota = s.kastens_quota;
+    if (kQuota && kQuota.available != null) {
+      tile('main.kastens_quota', pieHtml('Kastens', kQuota.used, kQuota.available, kQuota.period));
+    } else {
+      const kCount = (s.kastens && s.kastens.lifetime_count) || 0;
+      tile('main.kastens_quota', bigNumberHtml('Total Kastens', kCount, ''));
+    }
+  }
+
+  function renderGeneral(s) {
+    if (!s) return;
+
+    if (s.member_since) {
+      const dateLabel = s.member_since.joined_at
+        ? new Date(s.member_since.joined_at).toLocaleDateString()
+        : '—';
+      tile('general.member_since',
+        bigNumberHtml('Member since', s.member_since.days_in_vault + 'd', 'Joined ' + dateLabel));
+    }
+
+    if (s.zettels_30d) {
+      const delta = s.zettels_30d.delta_pct;
+      const deltaStr = delta == null ? '—' : (delta >= 0 ? '+' : '') + delta + '%';
+      tile('general.zettels_30d',
+        bigNumberHtml('Last 30 days', s.zettels_30d.count, deltaStr + ' vs prior 30d'));
+    }
+
+    if (s.kg_size) {
+      tile('general.kg_size',
+        bigNumberHtml('Knowledge Graph', s.kg_size.nodes, s.kg_size.edges + ' links'));
+    }
+
+    if (s.source_diversity) {
+      tile('general.source_diversity',
+        bigNumberHtml('Source diversity',
+                      s.source_diversity.distinct_sources + ' / ' + s.source_diversity.max_sources,
+                      ''));
+    }
+
+    if (s.plan) {
+      const expires = s.plan.period_end
+        ? 'Renews ' + new Date(s.plan.period_end).toLocaleDateString()
+        : '';
+      tile('general.plan', bigNumberHtml('Plan', s.plan.tier, expires));
+    }
+  }
+
+  function renderZettel(s) {
+    if (!s) return;
+
+    // Combined top-source + latest card
+    const ts = s.top_source || {};
+    const lt = s.latest || {};
+    const titleSlice = lt.title ? (lt.title.length > 40 ? lt.title.slice(0, 40) + '…' : lt.title) : '—';
+    tile('zettel.top_latest', [
+      '<h3 class="stats-card__label">Top source · Latest capture</h3>',
+      '<span class="stats-big-number">' + escHtml((ts.source_type || '—') + ' (' + (ts.pct || 0) + '%)') + '</span>',
+      '<span class="stats-card__sub">Latest: ' + escHtml(titleSlice) + ' · ' + escHtml(fmtRelative(lt.created_at)) + '</span>',
+    ].join(''));
+
+    const a = s.avg_summary_chars || { mean: 0, min: 0, max: 0 };
+    tile('zettel.avg_summary',
+      bigNumberHtml('Avg summary length', a.mean + ' chars', 'range ' + a.min + '–' + a.max));
+
+    tile('zettel.avg_tags',
+      bigNumberHtml('Avg user tags / zettel', s.avg_user_tags == null ? '0' : String(s.avg_user_tags), ''));
+
+    tile('zettel.tagged_coverage',
+      bigNumberHtml('Tagged coverage', Math.round((s.tagged_coverage_pct || 0) * 100) + '%', ''));
+  }
+
+  function renderKasten(s) {
+    if (!s) return;
+
+    const lg = s.largest || {};
+    tile('kasten.largest',
+      bigNumberHtml('Largest Kasten',
+                    lg.name || '—',
+                    (lg.zettel_count || 0) + ' zettels · last add ' + fmtRelative(lg.last_added_at)
+                    + ' · age ' + (lg.age_days || 0) + 'd'));
+
+    tile('kasten.avg_conversation_depth',
+      bigNumberHtml('Avg conversation depth', s.avg_conversation_depth || 0, 'turns per session'));
+
+    const mcs = s.most_cited_source_type || {};
+    tile('kasten.most_cited_source',
+      bigNumberHtml('Most-cited source', mcs.source_type || '—', (mcs.count || 0) + ' citations'));
+
+    const qs = s.question_streak || { current: 0, longest: 0 };
+    tile('kasten.question_streak',
+      bigNumberHtml('Question streak', qs.current + '🔥', 'longest ' + qs.longest));
+  }
+
+  function renderDomain(s) {
+    if (!s) return;
+
+    const hhi = s.concentration_hhi || 0;
+    const band = hhi < 0.15 ? 'Polymath'
+               : hhi < 0.30 ? 'Balanced'
+               : hhi < 0.50 ? 'Focused'
+               : 'Specialist';
+    tile('domain.concentration',
+      bigNumberHtml('Topic concentration', hhi.toFixed(2), band));
+
+    const emerging = (s.emerging_top5 || []).map(function (t) {
+      return { left: t.tag, right: '+' + ((t.delta_share || 0) * 100).toFixed(1) + '%',
+               rightClass: 'stats-delta-up' };
+    });
+    tile('domain.emerging', listHtml('Emerging (30d)', emerging, 'no trends yet'));
+
+    const declining = (s.declining_top5 || []).map(function (t) {
+      return { left: t.tag, right: ((t.delta_share || 0) * 100).toFixed(1) + '%',
+               rightClass: 'stats-delta-down' };
+    });
+    tile('domain.declining', listHtml('Declining (vs 365d)', declining, 'no decliners'));
+  }
+
+  function renderActivity(s) {
+    if (!s) return;
+
+    tile('activity.current_streak',
+      bigNumberHtml('Current streak', (s.current_streak || 0) + '🔥', ''));
+
+    tile('activity.longest_streak',
+      bigNumberHtml('Longest streak', s.longest_streak || 0, ''));
+
+    const wow = s.week_over_week || { this_week: 0, last_week: 0, delta_pct: null };
+    const wowDelta = wow.delta_pct == null ? '—' : (wow.delta_pct >= 0 ? '+' : '') + wow.delta_pct + '%';
+    tile('activity.week_over_week',
+      bigNumberHtml('Week over week', wow.this_week,
+                    'last week ' + wow.last_week + ' · ' + wowDelta));
+
+    const cvc = s.chat_vs_capture || { captures_30d: 0, chats_30d: 0, capture_pct: null };
+    const cvcSub = cvc.capture_pct == null ? '—' : cvc.capture_pct + '% capture';
+    tile('activity.chat_vs_capture',
+      bigNumberHtml('Capture vs Chat (30d)',
+                    cvc.captures_30d + ' / ' + cvc.chats_30d, cvcSub));
+  }
+
+  function renderGraph(s) {
+    if (!s) return;
+
+    tile('graph.mean_degree',
+      bigNumberHtml('Mean degree', s.mean_degree || 0, 'avg connections / node'));
+
+    const hubs = (s.top_hubs_10 || []).slice(0, 10).map(function (h) {
+      return { left: h.name, right: String(h.degree) };
+    });
+    tile('graph.top_hubs', listHtml('Top 10 hubs', hubs, 'graph still empty'));
+
+    const tc = s.personal_vs_global_tags || { user_tag_count: 0, kg_node_count: 0 };
+    tile('graph.tag_coverage',
+      bigNumberHtml('Personal vs Global tags',
+                    tc.user_tag_count + ' / ' + tc.kg_node_count,
+                    'your tags vs AI nodes'));
+
+    const rel = (s.relation_type_mix || []).map(function (r) {
+      return { left: r.relation, right: String(r.count) };
+    });
+    tile('graph.relation_mix', listHtml('Relation types', rel, 'no edges yet'));
+  }
 
   // Gate init() on the JWT from the first IIFE. Without this the fetch
   // races the Supabase getSession() and lands with no Authorization header.
