@@ -44,8 +44,7 @@ jobs:
           HEAD_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_head_headers.txt | tail -1)"
           echo "head_status=$HEAD_STATUS"
           echo "head_etag_present=$([ -n "$HEAD_ETAG" ] && echo yes || echo no)"
-          test "$HEAD_STATUS" = "200"
-          test -n "$HEAD_ETAG"
+          sed -E 's/(authorization: ).*/\1[redacted]/I' /tmp/stats_head_headers.txt
 
           curl -sS -D /tmp/stats_get_headers.txt -o /tmp/stats_get_body.json \
             -H "Authorization: Bearer $TOKEN" \
@@ -54,6 +53,8 @@ jobs:
           GET_ETAG="$(awk 'tolower($1)=="etag:" {gsub(/\r/,""); print $2}' /tmp/stats_get_headers.txt | tail -1)"
           echo "get_status=$GET_STATUS"
           echo "get_etag_present=$([ -n "$GET_ETAG" ] && echo yes || echo no)"
+          test "$HEAD_STATUS" = "200"
+          test -n "$HEAD_ETAG"
           test "$GET_STATUS" = "200"
           test -n "$GET_ETAG"
 
