@@ -770,3 +770,306 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * Statistics tab controller (Phase 5 Task 5.3)
+ *
+ * Independent IIFE — does NOT touch any of the legacy DOM IDs read by the
+ * controller above. Reads only DOM scoped under [data-profile-stats].
+ *
+ * Responsibilities:
+ *   • Render cached payload immediately on page open (no skeleton flash).
+ *   • Drive the loading box (progress 0→80 linear, 80→90 slow, 90→100 burst
+ *     on completion) with ZKSkeletonTyper line + freshness indicator.
+ *   • Fetch /api/profile/stats with If-None-Match for ETag-aware refresh.
+ *   • On 304 finish the sweep and collapse; no data swap.
+ *   • On 200 hot-swap panels with a soft slide.
+ *   • Stop button aborts via AbortController; cache remains visible.
+ *   • aria-busy flipped to false after first render (cached OR fresh).
+ *
+ * Renderer functions are stubs — Tasks 5.4-5.6 fill these. The dispatch
+ * wraps each call in try/catch so a missing renderer never breaks the
+ * loader UX.
+ * ─────────────────────────────────────────────────────────────────────── */
+(function initProfileStats() {
+  'use strict';
+
+  var root = document.querySelector('[data-profile-stats]');
+  if (!root) return;
+
+  // ---- DOM handles (scoped to the stats section only) ----
+  var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-stats-tab]'));
+  var panels = Array.prototype.slice.call(root.querySelectorAll('[data-stats-panel]'));
+  var panelsWrap = root.querySelector('[data-stats-panels]');
+  var loader = root.querySelector('[data-stats-loader]');
+  var loaderType = root.querySelector('[data-stats-loader-type]');
+  var loaderBar = root.querySelector('[data-stats-loader-bar]');
+  var loaderProgressEl = root.querySelector('[data-stats-loader-progress]');
+  var loaderStop = root.querySelector('[data-stats-loader-stop]');
+  var freshnessEl = root.querySelector('[data-stats-freshness]');
+
+  // Bail gracefully if any critical handle is missing.
+  if (!tabs.length || !panels.length || !loader) return;
+
+  // ---- Tab switching (purely visual; data already rendered) ----
+  function showTab(name) {
+    tabs.forEach(function (t) {
+      var active = t.dataset.statsTab === name;
+      t.classList.toggle('is-active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach(function (p) {
+      var active = p.dataset.statsPanel === name;
+      p.classList.toggle('is-active', active);
+      if (active) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { showTab(t.dataset.statsTab); });
+  });
+
+  // ---- Progress simulator (0→80 linear over fastMs, 80→90 slow, 90 hold) --
+  var progressRaf = 0;
+  var progressStart = 0;
+  var typer = null;
+  var abortCtrl = null;
+  var PROGRESS = { fastMs: 3000, slowMs: 5000, burstMs: 400 };
+
+  function setProgress(pct) {
+    var clamped = Math.max(0, Math.min(100, pct));
+    if (loaderBar) loaderBar.style.width = clamped + '%';
+    if (loaderProgressEl) loaderProgressEl.setAttribute('aria-valuenow', String(Math.round(clamped)));
+  }
+
+  function startProgressSimulator() {
+    cancelAnimationFrame(progressRaf);
+    progressStart = performance.now();
+    if (loaderBar) loaderBar.style.transition = 'width 0.12s linear';
+    var tick = function () {
+      var t = performance.now() - progressStart;
+      var p;
+      if (t < PROGRESS.fastMs) {
+        p = (t / PROGRESS.fastMs) * 80;
+      } else if (t < PROGRESS.fastMs + PROGRESS.slowMs) {
+        var slowT = t - PROGRESS.fastMs;
+        p = 80 + (slowT / PROGRESS.slowMs) * 10;
+      } else {
+        p = 90;
+      }
+      setProgress(p);
+      if (p < 90) progressRaf = requestAnimationFrame(tick);
+    };
+    progressRaf = requestAnimationFrame(tick);
+  }
+
+  function finishProgress() {
+    cancelAnimationFrame(progressRaf);
+    return new Promise(function (resolve) {
+      if (loaderBar) {
+        loaderBar.style.transition = 'width ' + PROGRESS.burstMs + 'ms ease-out';
+        void loaderBar.offsetWidth; // force reflow so the transition applies
+      }
+      setProgress(100);
+      setTimeout(resolve, PROGRESS.burstMs + 30);
+    });
+  }
+
+  // ---- Loader show/hide ----
+  function showLoader() {
+    if (loader) {
+      loader.hidden = false;
+      void loader.offsetWidth;
+      loader.classList.add('is-visible');
+    }
+    if (window.ZKSkeletonTyper && !typer && loaderType) {
+      try { typer = window.ZKSkeletonTyper.attach(loaderType, { initialPhase: 'queued' }); }
+      catch (_) { typer = null; }
+    }
+    startProgressSimulator();
+    // Promote queued → running → long at the same cadence the bar slows down.
+    setTimeout(function () {
+      if (typer) { try { typer.update({ phase: 'running', elapsedMs: 3000 }); } catch (_) {} }
+    }, 3000);
+    setTimeout(function () {
+      if (typer) { try { typer.update({ phase: 'long', elapsedMs: 8000 }); } catch (_) {} }
+    }, 8000);
+  }
+
+  function hideLoader(finalPhase) {
+    if (typer) {
+      try {
+        typer.update({
+          phase: finalPhase || 'succeeded',
+          elapsedMs: performance.now() - progressStart,
+        });
+      } catch (_) {}
+    }
+    if (loader) loader.classList.remove('is-visible');
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        if (typer) { try { typer.detach(); } catch (_) {} typer = null; }
+        if (loader) loader.hidden = true;
+        setProgress(0);
+        resolve();
+      }, 340);
+    });
+  }
+
+  // ---- Freshness indicator ("updated 2m ago • refreshing…") ----
+  function setFreshness(payload, opts) {
+    if (!freshnessEl) return;
+    var ts = payload && payload.meta && payload.meta.computed_at;
+    if (!ts) { freshnessEl.textContent = ''; return; }
+    var ageMs = Date.now() - new Date(ts).getTime();
+    var label;
+    if (ageMs < 60000) label = 'updated just now';
+    else if (ageMs < 3600000) label = 'updated ' + Math.round(ageMs / 60000) + 'm ago';
+    else if (ageMs < 86400000) label = 'updated ' + Math.round(ageMs / 3600000) + 'h ago';
+    else label = 'updated ' + Math.round(ageMs / 86400000) + 'd ago';
+    if (opts && opts.refreshing) label += ' • refreshing…';
+    freshnessEl.textContent = label;
+  }
+
+  function showCancelHint() {
+    var hint = root.querySelector('.profile-stats-cancel-hint');
+    if (!hint) {
+      hint = document.createElement('p');
+      hint.className = 'profile-stats-cancel-hint';
+      hint.textContent = 'Update cancelled — showing cached data.';
+      if (loader && loader.parentNode) loader.parentNode.insertBefore(hint, loader.nextSibling);
+    }
+    void hint.offsetWidth;
+    hint.classList.add('is-visible');
+    setTimeout(function () { hint.classList.remove('is-visible'); }, 4000);
+  }
+
+  // ---- Render dispatch (defensive — each stub wrapped in try/catch) ----
+  function renderAll(payload) {
+    if (!payload) return;
+    try { renderMainBoard(payload.main_board); } catch (e) { console.warn('renderMainBoard failed', e); }
+    try { renderGeneral(payload.general); } catch (e) { console.warn('renderGeneral failed', e); }
+    try { renderZettel(payload.zettel); } catch (e) { console.warn('renderZettel failed', e); }
+    try { renderKasten(payload.kasten); } catch (e) { console.warn('renderKasten failed', e); }
+    try { renderDomain(payload.domain); } catch (e) { console.warn('renderDomain failed', e); }
+    try { renderActivity(payload.activity); } catch (e) { console.warn('renderActivity failed', e); }
+    try { renderGraph(payload.graph); } catch (e) { console.warn('renderGraph failed', e); }
+  }
+
+  // ---- Hot-swap (soft slide) ----
+  function swapInFresh(payload) {
+    return new Promise(function (resolve) {
+      if (panelsWrap) {
+        panelsWrap.classList.add('is-swapping-in');
+        setTimeout(function () {
+          renderAll(payload);
+          if (panelsWrap) panelsWrap.classList.remove('is-swapping-in');
+          resolve();
+        }, 200);
+      } else {
+        renderAll(payload);
+        resolve();
+      }
+    });
+  }
+
+  // ---- Fetch with ETag support ----
+  function doFetch(cachedEtag) {
+    abortCtrl = new AbortController();
+    root.dataset.statsCacheState = 'loading-fresh';
+    showLoader();
+
+    var headers = { 'Accept': 'application/json' };
+    if (cachedEtag) headers['If-None-Match'] = cachedEtag;
+
+    return fetch('/api/profile/stats', {
+      method: 'GET',
+      credentials: 'include',
+      headers: headers,
+      signal: abortCtrl.signal,
+    }).then(function (resp) {
+      if (resp.status === 304) {
+        return finishProgress()
+          .then(function () { return hideLoader('succeeded'); })
+          .then(function () { root.dataset.statsCacheState = 'live'; });
+      }
+
+      if (!resp.ok) {
+        console.warn('stats fetch non-OK', resp.status);
+        return hideLoader('failed').then(function () {
+          root.dataset.statsCacheState = cachedEtag ? 'stale-from-cache' : 'empty';
+        });
+      }
+
+      return resp.json().then(function (payload) {
+        var etag = resp.headers.get('ETag') || resp.headers.get('etag') || '';
+        var writeP = (window.ZKStatsCache && etag)
+          ? window.ZKStatsCache.write(etag, payload).catch(function () {})
+          : Promise.resolve();
+        return writeP
+          .then(function () { return finishProgress(); })
+          .then(function () { return hideLoader('succeeded'); })
+          .then(function () { return swapInFresh(payload); })
+          .then(function () {
+            setFreshness(payload, { refreshing: false });
+            root.dataset.statsCacheState = 'live';
+            root.setAttribute('aria-busy', 'false');
+          });
+      }).catch(function (e) {
+        console.warn('stats parse failed', e);
+        return hideLoader('failed');
+      });
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') {
+        return hideLoader('failed').then(function () {
+          showCancelHint();
+          root.dataset.statsCacheState = cachedEtag ? 'stale-from-cache' : 'empty';
+        });
+      }
+      console.warn('stats fetch failed', err);
+      return hideLoader('failed').then(function () {
+        root.dataset.statsCacheState = cachedEtag ? 'stale-from-cache' : 'empty';
+      });
+    });
+  }
+
+  // ---- Init ----
+  function init() {
+    var readP = (window.ZKStatsCache)
+      ? window.ZKStatsCache.read().catch(function () { return null; })
+      : Promise.resolve(null);
+
+    return readP.then(function (cached) {
+      if (cached && cached.payload) {
+        renderAll(cached.payload);
+        setFreshness(cached.payload, { refreshing: true });
+        root.dataset.statsCacheState = 'stale-from-cache';
+        // a11y review nit from Task 5.1: flip aria-busy as soon as something
+        // is on-screen, even if we're still refreshing in the background.
+        root.setAttribute('aria-busy', 'false');
+      } else {
+        root.dataset.statsCacheState = 'empty';
+      }
+      return doFetch(cached ? cached.etag : null);
+    });
+  }
+
+  // ---- Stop button ----
+  if (loaderStop) {
+    loaderStop.addEventListener('click', function () {
+      if (abortCtrl) abortCtrl.abort();
+    });
+  }
+
+  // ---- Renderer stubs (Tasks 5.4-5.6 fill these) ----
+  function renderMainBoard(_s) { /* TODO Task 5.4 */ }
+  function renderGeneral(_s) { /* TODO Task 5.5 */ }
+  function renderZettel(_s) { /* TODO Task 5.5 */ }
+  function renderKasten(_s) { /* TODO Task 5.5 */ }
+  function renderDomain(_s) { /* TODO Task 5.6 */ }
+  function renderActivity(_s) { /* TODO Task 5.6 */ }
+  function renderGraph(_s) { /* TODO Task 5.6 */ }
+
+  init();
+})();
+
