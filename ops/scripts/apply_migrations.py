@@ -691,8 +691,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             new_checksum = _checksum(sql_path.read_text(encoding="utf-8"))
             with conn.cursor() as cur:
                 cur.execute(
-                    f"UPDATE {_migration_table(args.v2)} SET checksum = %s WHERE name = %s",
-                    (new_checksum, name),
+                    f"INSERT INTO {_migration_table(args.v2)} "
+                    "(name, checksum, applied_by, deploy_git_sha, deploy_id, "
+                    "deploy_actor, runner_hostname) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (name) DO UPDATE SET "
+                    "checksum = EXCLUDED.checksum, "
+                    "applied_by = EXCLUDED.applied_by, "
+                    "deploy_git_sha = EXCLUDED.deploy_git_sha, "
+                    "deploy_id = EXCLUDED.deploy_id, "
+                    "deploy_actor = EXCLUDED.deploy_actor, "
+                    "runner_hostname = EXCLUDED.runner_hostname",
+                    (
+                        name,
+                        new_checksum,
+                        hostname,
+                        os.environ.get("DEPLOY_GIT_SHA"),
+                        os.environ.get("DEPLOY_ID"),
+                        os.environ.get("DEPLOY_ACTOR"),
+                        hostname,
+                    ),
                 )
             conn.commit()
             logger.warning(
