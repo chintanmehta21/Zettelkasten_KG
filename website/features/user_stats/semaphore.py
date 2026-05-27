@@ -16,6 +16,15 @@ class SemaphoreFullError(RuntimeError):
 
 
 class StatsSemaphore:
+    """Bounded async semaphore with explicit queue depth + typed backpressure.
+
+    Two-counter accounting (``_in_flight`` and ``_waiting``) lets the gate raise
+    ``SemaphoreFullError`` BEFORE parking a new caller when the queue is full —
+    the route layer maps that to HTTP 503. State invariants are restored on
+    both ``SemaphoreFullError`` (rejection before increment) and on cancellation
+    or any other exception while parked on the underlying ``asyncio.Semaphore``.
+    """
+
     def __init__(self, *, max_concurrent: int = 1, max_queued: int = 2) -> None:
         if max_concurrent < 1:
             raise ValueError("max_concurrent must be >= 1")
@@ -30,6 +39,8 @@ class StatsSemaphore:
 
     @asynccontextmanager
     async def acquire(self) -> AsyncIterator[None]:
+        # Entry gate: raise FullError BEFORE incrementing _waiting so the
+        # cleanup path has nothing to undo on this raise.
         async with self._lock:
             total = self._in_flight + self._waiting
             if total >= self._max_concurrent + self._max_queued:
@@ -37,8 +48,11 @@ class StatsSemaphore:
                     f"stats endpoint at capacity ({total}/{self._max_concurrent + self._max_queued})"
                 )
             self._waiting += 1
+
+        acquired = False
         try:
             await self._sem.acquire()
+            acquired = True
             async with self._lock:
                 self._waiting -= 1
                 self._in_flight += 1
@@ -48,7 +62,9 @@ class StatsSemaphore:
                 async with self._lock:
                     self._in_flight -= 1
                 self._sem.release()
-        except SemaphoreFullError:
-            async with self._lock:
-                self._waiting -= 1
-            raise
+        finally:
+            # Cancellation or any exception BEFORE acquire() returned must
+            # restore _waiting — otherwise the counter poisons the gate.
+            if not acquired:
+                async with self._lock:
+                    self._waiting -= 1
