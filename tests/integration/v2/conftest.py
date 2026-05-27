@@ -408,6 +408,67 @@ def seed_kastens(asyncpg_pool):
 
 
 @pytest.fixture
+def seed_chat_messages(asyncpg_pool):
+    """Seed chat session + messages for a workspace.
+
+    Creates one chat_session under the workspace, then N user messages and
+    M assistant messages with citations pointing at the first available
+    workspace_zettel (so most_cited_source_type has something to find).
+    """
+    async def _seed(workspace_id, user_messages: int = 3, assistant_with_citations: int = 0):
+        async with asyncpg_pool.acquire() as conn:
+            session_id = await conn.fetchval(
+                """
+                INSERT INTO rag.chat_sessions (id, workspace_id, profile_id, created_at)
+                VALUES (
+                  gen_random_uuid(),
+                  $1,
+                  (SELECT owner_profile_id FROM core.workspaces WHERE id = $1),
+                  now()
+                )
+                RETURNING id
+                """,
+                workspace_id,
+            )
+            for i in range(user_messages):
+                await conn.execute(
+                    """
+                    INSERT INTO rag.chat_messages
+                        (id, session_id, workspace_id, role, content, created_at)
+                    VALUES (gen_random_uuid(), $1, $2, 'user', 'q' || $3::text,
+                            now() - ($3 || ' hours')::interval)
+                    """,
+                    session_id, workspace_id, i,
+                )
+            # Lookup a canonical_zettel_id for citation payloads.
+            cz_id = await conn.fetchval(
+                """
+                SELECT cz.id
+                  FROM content.workspace_zettels wz
+                  JOIN content.canonical_zettels cz ON cz.id = wz.canonical_zettel_id
+                 WHERE wz.workspace_id = $1 AND wz.deleted_at IS NULL
+                 LIMIT 1
+                """,
+                workspace_id,
+            )
+            for i in range(assistant_with_citations):
+                await conn.execute(
+                    """
+                    INSERT INTO rag.chat_messages
+                        (id, session_id, workspace_id, role, content,
+                         citations, verdict, created_at)
+                    VALUES (gen_random_uuid(), $1, $2, 'assistant', 'a' || $3::text,
+                            CASE WHEN $4::uuid IS NULL THEN '[]'::jsonb
+                                 ELSE jsonb_build_array(jsonb_build_object('canonical_zettel_id', $4::text))
+                            END,
+                            'supported', now())
+                    """,
+                    session_id, workspace_id, i, cz_id,
+                )
+    return _seed
+
+
+@pytest.fixture
 def mock_gemini_pool(monkeypatch: pytest.MonkeyPatch):
     """Factory: returns a configured ``StubGeminiPool`` AND monkey-patches
     ``api_key_switching.get_key_pool`` to return it.
