@@ -37,8 +37,7 @@ jobs:
             --data "$AUTH_JSON")"
           TOKEN="$(TOKEN_BODY="$TOKEN_BODY" python -c 'import json, os, sys; body=json.loads(os.environ["TOKEN_BODY"]); token=body.get("access_token", ""); sys.exit("missing access_token") if not token else print(token)')"
 
-          curl -sS -D /tmp/stats_head_headers.txt -o /tmp/stats_head_body.txt \
-            -X HEAD \
+          curl -sSI -D /tmp/stats_head_headers.txt -o /tmp/stats_head_body.txt \
             -H "Authorization: Bearer $TOKEN" \
             "$STATS_URL"
           HEAD_STATUS="$(awk 'tolower($0) ~ /^http\// {code=$2} END {print code}' /tmp/stats_head_headers.txt)"
