@@ -21,6 +21,16 @@ import httpx
 
 logger = logging.getLogger("website.heartbeat")
 
+# 2026-05-28 dedup: pre-fix, every failed beat fired ``logger.exception`` with
+# a full traceback every cadence cycle (~288/day at 300s interval). One
+# sustained outbound outage drowned out real signals in droplet log triage.
+# Now: first failure of a given exception class fires WARNING; subsequent same-
+# class failures suppress to DEBUG; a new failure class re-arms WARNING;
+# recovery emits an INFO line counting the suppressed streak. No backoff
+# cadence (rejected as over-engineering — 0 confirmed firings in the 3-day
+# 2026-05-25 → 2026-05-28 droplet log window).
+_FAILURE_STATE: dict[str, object] = {"class": None, "count": 0}
+
 
 def _ping_url() -> Optional[str]:
     """Resolved at call-time so tests can monkeypatch env."""
@@ -86,11 +96,35 @@ async def heartbeat_loop(
     while not stop.is_set():
         try:
             await _one_beat(key_pool_getter=key_pool_getter)
-        except Exception:  # noqa: BLE001 — never raise out of the loop
+        except Exception as exc:  # noqa: BLE001 — never raise out of the loop
             # Transient blip → no Slack alert from here. The absence-of-ping
             # after the healthchecks.io grace window will produce one. See
             # anti-pattern #5 (double-alerting on the same incident).
-            logger.exception("heartbeat beat failed; continuing")
+            exc_class = type(exc).__name__
+            if exc_class == _FAILURE_STATE["class"]:
+                # Same failure class as the previous cycle — suppress to DEBUG.
+                _FAILURE_STATE["count"] = int(_FAILURE_STATE["count"]) + 1  # type: ignore[arg-type]
+                logger.debug(
+                    "heartbeat beat failed (suppressed; %d consecutive %s)",
+                    _FAILURE_STATE["count"],
+                    exc_class,
+                )
+            else:
+                # First failure ever, or new failure class — re-arm WARNING.
+                logger.exception("heartbeat beat failed; continuing")
+                _FAILURE_STATE["class"] = exc_class
+                _FAILURE_STATE["count"] = 1
+        else:
+            # Successful beat — if we were in a failure streak, log recovery.
+            count = int(_FAILURE_STATE["count"])  # type: ignore[arg-type]
+            if count > 0:
+                logger.info(
+                    "heartbeat recovered after %d suppressed %s failures",
+                    count,
+                    _FAILURE_STATE["class"],
+                )
+                _FAILURE_STATE["class"] = None
+                _FAILURE_STATE["count"] = 0
         try:
             await asyncio.wait_for(stop.wait(), timeout=interval)
         except asyncio.TimeoutError:
