@@ -83,7 +83,16 @@ def _decode_token(token: str) -> dict:
         try:
             unverified_header = pyjwt.get_unverified_header(token)
             jwt_alg = unverified_header.get("alg")
-            if jwt_alg in {"ES256", "RS256"}:
+            # Supabase 2025-05-01 flipped new projects to asymmetric JWT signing
+            # keys: default RS256, optional ES256/Ed25519, with PS256 supported
+            # via PyJWT for forward-compat. The pre-2026-05-28 allowlist
+            # ``{"ES256","RS256"}`` rejected EdDSA tokens, which fell through to
+            # HS256 fallback and raised the misleading InvalidAlgorithmError
+            # observed in production droplet logs. Algorithm-confusion (CVE-
+            # 2022-29217) is safe here because each branch passes a distinct
+            # ``algorithms=[jwt_alg]`` allowlist scoped to one signing-key type
+            # (JWKS public-key for asymmetric, separate HS256 secret below).
+            if jwt_alg in {"ES256", "RS256", "EdDSA", "PS256"}:
                 signing_key = jwks.get_signing_key_from_jwt(token)
                 return pyjwt.decode(
                     token,
