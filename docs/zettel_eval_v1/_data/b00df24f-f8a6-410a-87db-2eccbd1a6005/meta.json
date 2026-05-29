@@ -1,0 +1,301 @@
+{
+  "workspace_zettel_id": "b00df24f-f8a6-410a-87db-2eccbd1a6005",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "9511ea28-7b5f-48de-ad00-3e7820a62996",
+  "normalized_url": "https://github.com/rapid7/metasploit-framework",
+  "title": "rapid7/metasploit-framework",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:36:34.474083+00:00",
+  "ai_summary_len": 3715,
+  "body_md_len": 3160,
+  "content_hash_hex": "a16557fbb99b39c194b6ad9750c29be7773641ccd99593dfcecbd85544620ff4",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/rapid7/metasploit-framework",
+      "author": "rapid7",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "metasploit-framework",
+        "forks": 14860,
+        "owner": "rapid7",
+        "stars": 38253,
+        "topics": [
+          "hacktoberfest"
+        ],
+        "license": "NOASSERTION",
+        "has_demo": false,
+        "language": "Ruby",
+        "releases": [],
+        "full_name": "rapid7/metasploit-framework",
+        "has_tests": true,
+        "languages": [
+          [
+            "Ruby",
+            94.83612771661609
+          ],
+          [
+            "PowerShell",
+            2.742420491545159
+          ],
+          [
+            "C",
+            1.2662702763612552
+          ],
+          [
+            "Python",
+            0.47214508220728946
+          ],
+          [
+            "HTML",
+            0.16537185076719485
+          ],
+          [
+            "JavaScript",
+            0.11490039681668507
+          ],
+          [
+            "Assembly",
+            0.09700633280900532
+          ],
+          [
+            "Rich Text Format",
+            0.07314890290626928
+          ],
+          [
+            "Java",
+            0.042699444990507894
+          ],
+          [
+            "Go",
+            0.032299747367070836
+          ],
+          [
+            "PostScript",
+            0.02607460418629872
+          ],
+          [
+            "Makefile",
+            0.02277859017978606
+          ],
+          [
+            "Shell",
+            0.021824689615927702
+          ],
+          [
+            "PHP",
+            0.018070565359412382
+          ],
+          [
+            "Dockerfile",
+            0.016470154226286195
+          ],
+          [
+            "Objective-C",
+            0.012666450938385301
+          ],
+          [
+            "Go Template",
+            0.01058214845893596
+          ],
+          [
+            "CSS",
+            0.010526619943784121
+          ],
+          [
+            "VBScript",
+            0.004684226885308608
+          ],
+          [
+            "C++",
+            0.004234049280327637
+          ],
+          [
+            "Mustache",
+            0.003105630525992075
+          ],
+          [
+            "Batchfile",
+            0.002742712016249706
+          ],
+          [
+            "ActionScript",
+            0.0012612905584488887
+          ],
+          [
+            "TypeScript",
+            0.0009836479826896992
+          ],
+          [
+            "Emacs Lisp",
+            0.000850776178576373
+          ],
+          [
+            "Vim Script",
+            0.0006187463116919076
+          ],
+          [
+            "DIGITAL Command Language",
+            0.0001348549653687491
+          ]
+        ],
+        "pages_url": "https://docs.metasploit.com/",
+        "updated_at": "2026-05-28T08:34:30Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 23,
+        "extra_doc_files": [
+          "CONTRIBUTING.md",
+          "CODE_OF_CONDUCT.md",
+          "docs/README.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "The Metasploit Framework repository includes `docs_dir` for comprehensive documentation, including usage guides and API information for writing modules. It also contains a `tests` directory, which supports the framework's development by providing a test suite."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 18655,
+      "confidence_reason": "repo metadata, README, and 3 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2885,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-rapid7-metasploit-framework",
+          "python",
+          "cli-tool",
+          "penetration-testing",
+          "security",
+          "exploit-framework",
+          "ruby",
+          "command-line-tool",
+          "cybersecurity",
+          "vulnerability-exploitation"
+        ],
+        "mini_title": "rapid7/metasploit-framework",
+        "owner_login": "rapid7",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "rapid7/metasploit-framework is an open-source penetration testing framework. It is primarily built with Ruby, with components in PowerShell, C, and Python. The framework integrates various modules, including exploits, persistence mechanisms, and scanners. Users adopt it via official nightly installers for Linux or macOS, or through pre-installation in Kali Linux. The core public interface is the `msfconsole` command, along with `msfvenom` flags like `--list formats` and `--list-options`.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "The rapid7/metasploit-framework is an open-source tool.",
+              "It is released under a BSD-style license, detailed in the `COPYING` file.",
+              "Documentation is available at docs.metasploit.com, generated from `metasploit-framework.wiki/` markdown files using a `build.rb` script.",
+              "Community support channels include GitHub Discussions, a Metasploit Slack, and GitHub Issues (using `MSF-BUGv1` form).",
+              "Updates are posted on X (@metasploit) and Mastodon (@infosec.exchange | @metasploit.com | @rapid7.com).",
+              "The project adheres to a Code of Conduct adapted from the Contributor Covenant v1.3.0, with reporting contacts at msfdev@metasploit.com."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Ruby",
+              "PowerShell",
+              "C",
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The framework is primarily written in Ruby (94.8%), with additional components in PowerShell (2.7%), C (1.3%), and Python (0.5%).",
+              "It includes exploit modules, such as those for CVE-2026-9082 (Drupal Core SQLi), CVE-2024-27822 (macOS priv-esc), CVE-2026-34197 (ActiveMQ Jolokia RCE), CVE-2026-45087 (Dalfox RCE), and Peyara Remote Mouse RCE.",
+              "Persistence modules are available, including a new Windows Print Processor module.",
+              "Ongoing work involves improving existing modules (e.g., SSH modules, persistence modules using `create_process`).",
+              "Scanner modules include `gitlab_version` and `http_version`, with ongoing fixes.",
+              "Module disclosure dates are being standardized to YYYY-MM-DD format."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Ruby",
+              "PowerShell",
+              "C",
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The primary command-line interface is `msfconsole`.",
+              "The `msfvenom` tool uses flags such as `--list formats` and `--list-options`.",
+              "Social media presence includes @metasploit on X and @infosec.exchange, @metasploit.com, @rapid7.com on Mastodon."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "msfconsole",
+              "--list formats",
+              "--list-options",
+              "@infosec.exchange",
+              "@metasploit.com",
+              "@rapid7.com"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Recommended installation is via official nightly installers for Linux or macOS.",
+              "The framework comes pre-installed with Kali Linux.",
+              "Contributions can be code-free (e.g., bug reports, testing PRs, documentation) or code-based.",
+              "New developers are guided to port verified proof-of-concept exploits from ExploitDB."
+            ],
+            "heading": "Operational guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "official nightly installers for Linux or macOS",
+              "pre-installed with Kali Linux"
+            ]
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=2"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.6
+        },
+        "architecture_overview": "The rapid7/metasploit-framework is an open-source tool written primarily in Ruby (94.8%), with smaller portions in PowerShell (2.7%), C (1.3%), and Python (0.5%). It functions as a penetration testing framework, featuring exploit modules (e.g., for CVE-2026-9082, CVE-2024-27822, CVE-2026-34197, CVE-2026-45087, Peyara Remote Mouse RCE), persistence modules (e.g., Windows Print Processor), and scanners (`gitlab_version`, `http_version`). The project uses GitHub Actions for workflows and a `build.r",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2885,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/rapid7/metasploit-framework"
+  }
+}

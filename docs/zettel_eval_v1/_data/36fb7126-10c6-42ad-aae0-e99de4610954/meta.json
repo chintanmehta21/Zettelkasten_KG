@@ -1,0 +1,235 @@
+{
+  "workspace_zettel_id": "36fb7126-10c6-42ad-aae0-e99de4610954",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "eecf6666-ed60-4ed1-b7a6-d394661a6404",
+  "normalized_url": "https://github.com/BindsNET/bindsnet",
+  "title": "BindsNET/bindsnet",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:33:42.119088+00:00",
+  "ai_summary_len": 3792,
+  "body_md_len": 3348,
+  "content_hash_hex": "fcfa06efbdda3ec4d6c95c8bd8679a266072529326e58bcb122e61983134e4cb",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/BindsNET/bindsnet",
+      "author": "BindsNET",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "bindsnet",
+        "forks": 348,
+        "owner": "BindsNET",
+        "stars": 1677,
+        "topics": [
+          "dynamic",
+          "gpu-computing",
+          "machine-learning",
+          "neurons",
+          "pytorch",
+          "reinforcement-learning",
+          "simulation",
+          "snn",
+          "spiking-neural-networks",
+          "stdp",
+          "synapse"
+        ],
+        "license": "AGPL-3.0",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "Multicompartment Connection",
+            "tag_name": "0.3.3",
+            "prerelease": false,
+            "published_at": "2024-10-18T17:36:47Z"
+          },
+          {
+            "name": "0.3.1",
+            "tag_name": "0.3.1",
+            "prerelease": false,
+            "published_at": "2022-02-13T22:57:06Z"
+          },
+          {
+            "name": "0.3.0",
+            "tag_name": "0.3.0",
+            "prerelease": false,
+            "published_at": "2021-09-20T01:16:50Z"
+          },
+          {
+            "name": "0.2.9",
+            "tag_name": "0.2.9",
+            "prerelease": false,
+            "published_at": "2021-04-26T00:41:17Z"
+          },
+          {
+            "name": " 0.2.8",
+            "tag_name": "0.2.8",
+            "prerelease": false,
+            "published_at": "2020-10-25T15:40:44Z"
+          }
+        ],
+        "full_name": "BindsNET/bindsnet",
+        "has_tests": true,
+        "languages": [
+          [
+            "Python",
+            99.63577922473452
+          ],
+          [
+            "Dockerfile",
+            0.36422077526547353
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-27T06:09:10Z",
+        "has_docs_dir": true,
+        "has_examples": true,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 8,
+        "extra_doc_files": [
+          "CONTRIBUTING.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "BindsNET is a Python package for simulating spiking neural networks using PyTorch. Its core library functionality is demonstrated through various experiments found in the `examples` directory, while the `tests` directory contains validation scripts. The `docs` directory holds related documentation assets."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 19298,
+      "confidence_reason": "repo metadata, README, and 1 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2664,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-bindsnet-bindsnet",
+          "python",
+          "spiking-neural-networks",
+          "snn",
+          "pytorch",
+          "machine-learning",
+          "reinforcement-learning",
+          "neural-networks",
+          "simulation",
+          "gpu-acceleration"
+        ],
+        "mini_title": "BindsNET/bindsnet",
+        "owner_login": "BindsNET",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "BindsNET is a Python package for simulating spiking neural networks (SNNs) on CPUs or GPUs, built on PyTorch and numpy. It approximates neuron dynamics as difference equations, using PyTorch Tensors for GPU acceleration and STDP for learning. Users can install it via pip from GitHub or source, or use a provided Dockerfile. The summary does not document specific public API names.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "BindsNET is a Python package for simulating spiking neural networks (SNNs) on CPUs or GPUs.",
+              "Leverages PyTorch's `Tensor` functionality for computation.",
+              "Developed for research on biologically inspired algorithms for machine learning (ML) and reinforcement learning (RL).",
+              "Targeted for use at the BINDS lab and the Allen Discovery Center at Tufts University."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python",
+              "numpy",
+              "pytorch"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Approximates ordinary differential equations (ODEs) of neuron dynamics by solving them as difference equations at short intervals (e.g., dt=1ms).",
+              "Utilizes PyTorch's `torch.Tensor` for GPU acceleration.",
+              "Reuses `torch.nn.functional` components, such as convolutions.",
+              "Learning mechanisms are based on spike-timing-dependent plasticity (STDP), an extension of Hebbian learning."
+            ],
+            "heading": "Architecture / Core Concepts",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Core Concepts",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Requires Python version >=3.9 and <3.12.",
+              "Installation via pip from GitHub repository.",
+              "Installation from source or in editable mode.",
+              "A Dockerfile is provided for containerized deployment.",
+              "Uses Poetry for dependency management.",
+              "`pre-commit` with `black` is used for code formatting.",
+              "Licensed under the GNU Affero General Public License v3.0."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install git+https://github.com/BindsNET/bindsnet.git",
+              "pip install .",
+              "pip install -e .",
+              "Dockerfile"
+            ]
+          },
+          {
+            "bullets": [
+              "Example scripts demonstrate applications in unsupervised learning (representation learning via STDP).",
+              "Examples include supervised learning (clamping output neurons).",
+              "Reinforcement learning examples, such as converting Atari Space Invaders observations into SNN inputs and actions.",
+              "A benchmark study compared BindsNET (CPU/GPU) against BRIAN2, PyNEST, ANNarchy, and BRIAN2genn.",
+              "The benchmark involved an all-to-all network of Poisson input neurons and leaky integrate-and-fire (LIF) neurons, with neuron counts from 250 to 10,000.",
+              "BindsNET demonstrated superior performance, attributed to its use of the PyTorch computational model.",
+              "The benchmark was run on Ubuntu 16.04 with an Intel Xeon E5-2687W v3 CPU, 128Gb RAM, and two GeForce GTX TITAN X GPUs."
+            ],
+            "heading": "Benchmarks, Tests, and Examples",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Benchmark Study",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "docs_markers=3"
+          ],
+          "archetype": "docs_heavy",
+          "confidence": 0.667
+        },
+        "architecture_overview": "BindsNET simulates spiking neural networks by approximating neuron dynamics as difference equations, leveraging PyTorch's `torch.Tensor` for GPU acceleration and `torch.nn.functional` components. Its learning mechanisms are based on spike-timing-dependent plasticity (STDP), an extension of Hebbian learning.",
+        "benchmarks_tests_examples": [
+          "A benchmark study compared BindsNET (CPU/GPU) against BRIAN2, PyNEST, ANNarchy, and BRIAN2genn, demonstrating superior performance for BindsNET in an all-to-all network of Poisson input and leaky integrate-and-fire (LIF) neurons, varying from 250 to 10,000 neurons.",
+          "Example scripts illustrate unsupervised learning (representation learning via STDP), supervised learning (clamping output neurons), and reinforcement learning (e.g., converting Atari Space Invaders observations into SNN inputs and actions)."
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2664,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/BindsNET/bindsnet"
+  }
+}

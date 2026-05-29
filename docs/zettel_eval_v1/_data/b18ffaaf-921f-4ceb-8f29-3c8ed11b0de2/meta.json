@@ -1,0 +1,187 @@
+{
+  "workspace_zettel_id": "b18ffaaf-921f-4ceb-8f29-3c8ed11b0de2",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "4f930d23-00be-435d-84ae-190bea792d25",
+  "normalized_url": "https://www.youtube.com/watch?v=KtL5fafpRKc",
+  "title": "Psychedelics Problem-Solving Research",
+  "source_type": "youtube",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T06:17:48.46683+00:00",
+  "ai_summary_len": 5087,
+  "body_md_len": 6253,
+  "content_hash_hex": "66d51853c4e3893350f9ebdfb559c27b045d6f7d4713c47149a7934872e9f846",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=KtL5fafpRKc",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "KtL5fafpRKc",
+        "key_index": 0,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 132890
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 132890,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 132890
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 24835,
+      "confidence_reason": "transcript via tier=gemini_filedata len=26018",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3593,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "psychedelics",
+          "problem-solving",
+          "creativity",
+          "research",
+          "lsd",
+          "mescaline",
+          "lecture",
+          "science",
+          "innovation",
+          "cognitive-enhancement"
+        ],
+        "guests": null,
+        "speakers": [
+          "The speaker"
+        ],
+        "mini_title": "Psychedelics Problem-Solving Research",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this lecture, The speaker argues that the speaker's research explores the potential of psychedelics, specifically lsd and mescaline, as tools to enhance problem-solving capabilities in highly motivated experts. The closing point is that the speaker concludes by advocating for the ethical imperative of psychedelic research, envisioning a future where these substances are culturally accepted as tools for productivity and personal exploration, much like common workplace amenities.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "explainer",
+          "confidence": 0.6
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "lecture",
+          "thesis": "The speaker's research explores the potential of psychedelics, specifically LSD and mescaline, as tools to enhance problem-solving capabilities in highly motivated experts. This application focuses on achieving deeper understanding and overcoming obstacles in complex, real-world challenges, rather than general creativity or learning new subjects.",
+          "demonstrations": [
+            "Examples of 44 real-world problems attempted by participants, including photoconductivity decay, vibratory microtome design, solar probe experiments, magnetic tape recorder improvements, dining room chair design, NOR gate circuit theorems, a conceptual model of the photon, and architectural designs.",
+            "An architect's experience of creating three client-accepted designs in three hours and solving a complex problem in 20 minutes.",
+            "An engineer's detailed visualization for a thermal imaging device."
+          ],
+          "closing_takeaway": "The speaker concludes by advocating for the ethical imperative of psychedelic research, envisioning a future where these substances are culturally accepted as tools for productivity and personal exploration, much like common workplace amenities. This perspective suggests a shift towards embracing scientific freedom and individual cognitive enhancement.",
+          "chapters_or_segments": [
+            {
+              "title": "Introduction and Context",
+              "bullets": [
+                "The speaker initiates the discussion by referencing an online comment that highlights the cultural and ritualistic context (set and setting) as crucial for psychedelic effects, beyond the substance itself.",
+                "He notes the parallel emergence of personal computers, Silicon Valley, Burning Man, and increased psychedelic use during a specific historical period.",
+                "The primary focus of his talk is on the under-researched area of utilizing psychedelics to enhance problem-solving abilities.",
+                "This research aims to help experts achieve a deeper understanding of complex, real-world problems rather than teaching new subjects.",
+                "The speaker contrasts this specific application with general creativity research, where known effective methods are often underutilized across various sectors."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Research Framework and Problem Validation",
+              "bullets": [
+                "The speaker's research group established specific guidelines concerning set, setting, substance, and dosage to facilitate scientists working on real-world problems.",
+                "The study targeted problems that were measurable, provable, buildable, or patentable, ensuring concrete outcomes.",
+                "A solution was validated if the problem was solved or closer to resolution, an obstacle was overcome, and the psychedelic session was identified as the direct cause.",
+                "The speaker dismisses the concept of 'unnatural' molecules, emphasizing the chemical nature of substances.",
+                "This application of psychedelics for problem-solving was novel in the late 1960s, differing from traditional indigenous uses for shaman-led diagnosis and divination."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Psychedelic Effects on Problem-Solving",
+              "bullets": [
+                "Potential hindrances from psychedelic use include diminished logic, reduced concentration, uncontrolled imagery, anxiety, constricted communication, and a tendency to view real-world tasks as trivial.",
+                "Conversely, benefits encompass access to unconscious data, free association, and spontaneous play with hypotheses.",
+                "Participants also experienced heightened visual imagery, relaxation, openness, and heightened sensory input.",
+                "Other advantages included empathy with objects, an enhanced sense of 'rightness' to discern false solutions, and lessened inhibitions.",
+                "A heightened motivation to solve the problem was also observed as a significant benefit."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Participant and Problem Selection",
+              "bullets": [
+                "The research primarily used synthetic psychedelics like LSD and mescaline, as their effects are more influenced by set and setting compared to substances like ayahuasca.",
+                "Participant selection criteria required individuals to be obsessed with a problem and possess the necessary technical knowledge, often being paid to solve it.",
+                "Participants must have worked on their problem for months without success, ideally feeling frustrated or angry about their failure.",
+                "This high level of motivation was considered comparable to that of a person with a serious disease seeking a cure.",
+                "A sample of the 44 problems attempted included photoconductivity decay, vibratory microtome design, solar probe experiments, and architectural designs."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Study Outcomes and Lasting Effects",
+              "bullets": [
+                "Solutions were found for all but four of the 44 problems attempted during the study.",
+                "One architect reported a massive increase in concentration, creating three client-accepted designs in three hours, feeling he became a 'better' version of himself.",
+                "This architect also solved a problem in 20 minutes that would typically take weeks and later created complex working drawings from memory.",
+                "Other participants described breaking 'airtight deadlocks' and experiencing a feverish flow of ideas, with an engineer detailing a complex visualization for a thermal imaging device.",
+                "The study used 100 micrograms of LSD or 200 milligrams of mescaline interchangeably, finding no difference in effectiveness.",
+                "After the session, participants reported 1 to 8 weeks of enhanced creativity, with one participant becoming a serious artist and retaining the benefit without further psychedelic use."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Protocol and Future Vision",
+              "bullets": [
+                "The speaker advises against using psychedelics to learn new subjects, though he shares an anecdote of a student acing an exam by visualizing lecture slides.",
+                "The preferred protocol involves a sober guide providing minimal intervention, with the participant lying down with headphones and music.",
+                "The speaker concludes by quoting Julie Holland, stating, 'It is unethical not to be doing psychedelic research.'",
+                "He envisions a future culture that embraces freedom of science and personal exploration.",
+                "This future views psychedelics as another tool for productivity, akin to how companies provide coffee to employees."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "LSD",
+          "mescaline",
+          "ayahuasca"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3593,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=KtL5fafpRKc"
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "workspace_zettel_id": "42add64b-d27a-4509-9497-ed837f2daa8d",
+  "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+  "canonical_zettel_id": "10f25ff8-4b56-45f4-9d26-69960ba2ff9c",
+  "normalized_url": "https://www.youtube.com/watch?v=2PB1ti2hFTM",
+  "title": "Contested Kuril Islands Japan-Russia Dispute",
+  "source_type": "youtube",
+  "publication_date": "2026-05-26",
+  "captured_at": "2026-05-26T08:58:44.784986+00:00",
+  "ai_summary_len": 3795,
+  "body_md_len": 3449,
+  "content_hash_hex": "d2557b3b4203a6d0697db0e26085c9f8c648d8c675f55bdd90656dc49877e2d0",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=2PB1ti2hFTM",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English",
+        "video_id": "2PB1ti2hFTM",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6568
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 21
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 6568,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6568
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 21
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 29866,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=16187",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2608,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "kuril-islands",
+          "japan-russia-dispute",
+          "geopolitics",
+          "territorial-disputes",
+          "world-war-ii",
+          "ainu-people",
+          "documentary",
+          "international-relations",
+          "history",
+          "walkthrough"
+        ],
+        "guests": null,
+        "speakers": [
+          "The filmmakers"
+        ],
+        "mini_title": "Contested Kuril Islands Japan-Russia Dispute",
+        "_dense_verify": {
+          "format_label": "vlog",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this walkthrough, The filmmakers argues that the video explores the ongoing territorial dispute over the kuril islands between russia and japan, tracing its historical roots from indigenous habitation and imperial expansion to the aftermath of wwii and current geopolitical tensions. The closing point is that the video underscores how historical conflicts, even decades old, continue to shape geopolitical landscapes and impact individual lives, demonstrating resilience and personal diplomacy am",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "lecture",
+          "confidence": 0.75
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "walkthrough",
+          "thesis": "The video explores the ongoing territorial dispute over the Kuril Islands between Russia and Japan, tracing its historical roots from indigenous habitation and imperial expansion to the aftermath of WWII and current geopolitical tensions. It highlights the human impact of this unresolved conflict on local communities and displaced former residents.",
+          "demonstrations": [],
+          "closing_takeaway": "The video underscores how historical conflicts, even decades old, continue to shape geopolitical landscapes and impact individual lives, demonstrating resilience and personal diplomacy amidst international disputes. It highlights the complex interplay between national claims and the enduring human desire for connection and remembrance.",
+          "chapters_or_segments": [
+            {
+              "title": "Journey to Japan's Northern Edge",
+              "bullets": [
+                "The video begins by introducing the Kuril Islands, a territory controlled by Russia but claimed by Japan, situated just kilometers from Japan's northern edge.",
+                "The dispute over these islands dates back to World War II, forming a significant point of contention between the two nations.",
+                "Filmmakers embark on a journey along Japan's coast, traveling from Rausu to Shibetu and Nemuro, seeking direct experiences related to the conflict.",
+                "The town of Nemuro is identified as a central hub for understanding the local impact and proximity to the disputed islands.",
+                "During their travels, the filmmakers encounter local tension, including a confrontation with an elderly woman and the widespread presence of signs demanding the islands' return."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Historical Roots of the Conflict",
+              "bullets": [
+                "Historically, the indigenous Ainu people inhabited the Kuril Islands until the 1700s, predating Russian and Japanese imperial claims.",
+                "The 18th and 19th centuries saw increasing competition between the expanding Russian and Japanese empires for control over the territory.",
+                "By the 19th century, Japan had incorporated the islands and implemented assimilation policies targeting the Ainu population.",
+                "During World War II, the Kuril Islands served as a crucial Japanese military base, notably as the launch point for the 1941 Pearl Harbor attack.",
+                "In the final days of WWII in 1945, the Soviet Union invaded the islands, leading to the displacement of an estimated 17,000-20,000 Japanese residents after Japan's surrender."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Contemporary Realities and Human Impact",
+              "bullets": [
+                "From Nemuro, the filmmakers observe houses on the islands, speculating that these structures now primarily serve as military bases.",
+                "At the Northern Territories Museum, they meet a historian who is also a former resident of the islands.",
+                "The historian explains that visa-free visits, previously allowed for former residents to visit ancestral graves, were indefinitely suspended following the war in Ukraine.",
+                "Despite his personal displacement and the ongoing geopolitical tensions, the former resident expresses no resentment towards Russians.",
+                "He maintains a \"Russian room\" in his home, filled with souvenirs from past Russian visitors, symbolizing a desire for personal connection despite political divides."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Kuril Islands",
+          "Rausu",
+          "Shibetu",
+          "Nemuro",
+          "Ainu people",
+          "Pearl Harbor attack",
+          "Soviet Union",
+          "Northern Territories Museum",
+          "Ukraine"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2608,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=2PB1ti2hFTM"
+  }
+}

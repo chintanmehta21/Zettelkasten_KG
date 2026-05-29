@@ -1,0 +1,191 @@
+{
+  "workspace_zettel_id": "4cc79f34-6ac6-45cf-9ee4-80f1d079ec67",
+  "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+  "canonical_zettel_id": "e7a84015-33e3-4e9e-a0e7-72a8b5196b72",
+  "normalized_url": "https://www.youtube.com/watch?v=hKLIxxBrM-o",
+  "title": "Serbian Mafia's Slaughterhouse Uncovered",
+  "source_type": "youtube",
+  "publication_date": "2026-05-25",
+  "captured_at": "2026-05-25T15:19:33.12106+00:00",
+  "ai_summary_len": 5652,
+  "body_md_len": 5208,
+  "content_hash_hex": "a277ba5dac5e8dce2dfc75ad0156311cc56a733536134b75404c36879f617d02",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=hKLIxxBrM-o",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English (auto-generated)",
+        "video_id": "hKLIxxBrM-o",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6973
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 11
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 6973,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 6973
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 11
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 44181,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=25359",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3613,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "serbian-mafia",
+          "organized-crime",
+          "balkan-drug-war",
+          "veljko-belivuk",
+          "sky-ecc",
+          "aleksandar-vucic",
+          "political-corruption",
+          "crime-investigation",
+          "commentary",
+          "true-crime"
+        ],
+        "guests": null,
+        "speakers": [
+          "Sky ECC"
+        ],
+        "mini_title": "Serbian Mafia's Slaughterhouse Uncovered",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this commentary, The speaker argues that the video details the brutal operations of veljko belivuk's principi gang, an ally of the kavach drug clan, which allegedly used a \"slaughterhouse\" in serbia to eliminate rivals, and explores the profound political implications, including accusations of complicity against serbian president aleksandar vučić. The closing point is that despite the arrests of belivuk's gang, critics argue that the political system which allegedly supported them remains lar",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "interview",
+          "confidence": 0.444
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "The video details the brutal operations of Veljko Belivuk's Principi gang, an ally of the Kavach drug clan, which allegedly used a \"slaughterhouse\" in Serbia to eliminate rivals, and explores the profound political implications, including accusations of complicity against Serbian President Aleksandar Vučić. This narrative relies on information from a Serbian prosecutor's indictment and reporting by OCCRP and the Serbian portal Creek.",
+          "demonstrations": [],
+          "closing_takeaway": "Despite the arrests of Belivuk's gang, critics argue that the political system which allegedly supported them remains largely intact, with few officials facing prosecution. The Serbian president's office did not respond to requests for comment, leaving questions about accountability unanswered and suggesting ongoing challenges in addressing systemic corruption.",
+          "chapters_or_segments": [
+            {
+              "title": "Belivuk's Gang and the \"Slaughterhouse\"",
+              "bullets": [
+                "A house in Serbia with a hidden basement room containing an industrial meat grinder was allegedly used by the Balkan mafia for torture, killing, and disposal of rivals.",
+                "This operation was reportedly run by a group led by Veljko Belivuk, a key Serbian ally of the Montenegrin Kavach drug clan.",
+                "Belivuk, a former football hooligan, took over the Janjičari group, renamed it Principi, and aligned it with the Kavach clan.",
+                "In 2020, his group established the \"slaughterhouse\" on the outskirts of Belgrade, luring victims, primarily rival gang members, through trusted associates.",
+                "The brutal methods employed by the gang were designed to instill fear and eliminate opposition within the criminal underworld."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Origins of the Clan War",
+              "bullets": [
+                "The Kavach and Škaljari clans emerged from the original Kotor clan after a cocaine deal in Spain went awry.",
+                "The original Kotor clan was previously led by drug lord Darko Šarić until his arrest in 2014, which contributed to the subsequent power vacuum and split.",
+                "This division initiated a violent war between the Kavach and Škaljari clans, resulting in over 100 murders across the Balkans.",
+                "Belivuk's Principi group became a significant enforcer for the Kavach clan in Serbia, extending their reach and influence.",
+                "The conflict escalated with targeted assassinations and brutal retaliations, marking a period of intense criminal violence."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "High-Profile Victims",
+              "bullets": [
+                "One victim, a rival hooligan leader pseudonymously named \"Luka Marić,\" was ambushed in August 2020.",
+                "\"Luka Marić\" was reportedly tortured, beheaded with an axe, and had his boss's name written on his back in blood before his body was ground up and dumped in the Danube river.",
+                "Another high-level victim was Milan Ljepoja, a former member of the notorious \"Pink Panthers\" jewel thieves.",
+                "Ljepoja had allied with the Škaljari clan after serving a 9-year prison sentence for his role in the 2007 Wafi Mall heist.",
+                "He was allegedly involved in a 2020 attempt to assassinate the Kavach leader in Ukraine and was subsequently lured to the house and killed."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Downfall via Sky ECC Decryption",
+              "bullets": [
+                "The gang's downfall began when European authorities decrypted the Sky ECC encrypted messaging network, operated by Canadian company Sky Global.",
+                "In 2021, a joint team of French, Belgian, and Dutch law enforcement gained access to Sky's servers in France, intercepting approximately one billion messages.",
+                "Authorities discovered Belivuk's gang, whose leader used the nickname \"Soprano,\" sharing gruesome photos and explicit details of their crimes.",
+                "The gang had inadvertently preserved incriminating evidence by resending messages before the system's monthly data wipe, making them accessible to investigators.",
+                "This crucial evidence led to the arrest of Belivuk and his associates on charges including murder and drug trafficking.",
+                "The gang's tech specialist, known as the \"smiling butcher,\" cooperated with authorities, who believe at least seven people were killed in the house."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Political Dimensions and Allegations",
+              "bullets": [
+                "The case carries significant political weight, with Serbian President Aleksandar Vučić, in power since 2017, accused of enabling Belivuk's gang.",
+                "Evidence from a 2017 phone seizure allegedly showed Belivuk communicating with a high-ranking member of the Serbian Gendarmerie.",
+                "This Gendarmerie member reportedly reported to Dijana Hrkalović, the number two official in the police, suggesting a chain of command.",
+                "The messages also referenced a \"boss\" and \"big boss,\" speculated to be the Minister of Police and President Vučić, respectively.",
+                "Belivuk later testified that his gang was organized on Vučić's orders to intimidate anti-government protesters, a claim Vučić denies.",
+                "It is believed Vučić only ordered the arrests after the Sky ECC breach made the gang an international liability, forcing his hand."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Sky ECC",
+          "Sky Global",
+          "Janjičari",
+          "Principi",
+          "Kavach clan",
+          "Škaljari clan",
+          "Pink Panthers",
+          "Wafi Mall heist",
+          "OCCRP",
+          "Creek"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3613,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=hKLIxxBrM-o"
+  }
+}

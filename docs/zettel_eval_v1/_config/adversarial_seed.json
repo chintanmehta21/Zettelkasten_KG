@@ -1,0 +1,27 @@
+{
+  "version": "adversarial_seed.v1",
+  "purpose": "Placeholder seed for the adversarial-overlay slice (Sub-3 sweep recommendation). The 47 production zettels are a directional dev set; per Sub-3, industry practice in 2026 augments the natural set with ~20-30 hard negatives from one of three sources, in priority order:",
+  "growth_sources": [
+    {
+      "priority": 1,
+      "name": "production_failure_mining",
+      "description": "Zettels the operator hand-flags as 'this summary is wrong / misleading' in the wild. Source: ad-hoc operator review. ~Free.",
+      "tooling_hook": "Add a 'flag for eval' button to the production zettel UI (NOT in v1 scope)."
+    },
+    {
+      "priority": 2,
+      "name": "nano_flux_synthesis",
+      "description": "Adversarial dual-LLM mining: attacker LLM generates hard summary-input pairs by concept-stitching across the 47-set, defender attempts to summarize, failures retained. Reference: NanoFlux (arxiv 2509.23252).",
+      "tooling_hook": "scripts/10_synthesise_adversarial.py (out of v1 scope)."
+    },
+    {
+      "priority": 3,
+      "name": "evalassist_synthesis",
+      "description": "IBM EvalAssist (EMNLP 2025) — synthetic data tied to rubrics with explicit circularity/bias guards.",
+      "tooling_hook": "Same script; selectable backend."
+    }
+  ],
+  "out_of_scope_in_v1": true,
+  "v1_action": "Leave this file as a placeholder so the harness knows the slot exists. v1 ships with the natural 47-zettel set only; the adversarial slice is wired in v2 once production-failure mining is operationalised.",
+  "items": []
+}

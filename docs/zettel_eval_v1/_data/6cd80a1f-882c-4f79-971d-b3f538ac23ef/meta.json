@@ -1,0 +1,157 @@
+{
+  "workspace_zettel_id": "6cd80a1f-882c-4f79-971d-b3f538ac23ef",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "b4885b17-f1c4-49c1-a6f3-1190620d9b2e",
+  "normalized_url": "https://en.wikipedia.org/wiki/Zettelkasten",
+  "title": "Zettelkasten: History, Users, and Impact",
+  "source_type": "web",
+  "publication_date": "2026-05-22",
+  "captured_at": "2026-05-22T12:08:35.775941+00:00",
+  "ai_summary_len": 3514,
+  "body_md_len": 3048,
+  "content_hash_hex": "58c3be093fd174f2145f6c49260978996db0b0e70d9691f9597252ded17ce4b5",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://en.wikipedia.org/wiki/Zettelkasten",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Zettelkasten - Wikipedia",
+        "route_subtype": "page",
+        "route_supported": true
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 35181,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2434,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Zettelkasten",
+          "Knowledge Management",
+          "Information Systems",
+          "History of Ideas",
+          "Research Methods",
+          "Notable Users"
+        ],
+        "mini_title": "Zettelkasten: History, Users, and Impact",
+        "brief_summary": "The Zettelkasten, a personal knowledge management system using linked information slips, evolved from commonplace books with early proponents like Gessner and Linnaeus. It gained prominence through 20th-century research manuals and was notably used by prolific figures such as Niklas Luhmann and Walter Benjamin. Its influence extends to modern hypertext systems and literary references.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "A Zettelkasten (German for 'slipbox') is a personal knowledge management system.",
+              "It uses information on slips or cards (Zetteln) linked by metadata (subject headings, numbers, or tags).",
+              "Primarily used for research, study, and writing."
+            ],
+            "heading": "Definition and Core Concept",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Originated from the commonplace book tradition."
+            ],
+            "heading": "Historical Origins and Early Development",
+            "sub_sections": {
+              "Early Adoption Context": [
+                "Still considered a novelty in America in the 1890s."
+              ],
+              "Key Figures and Contributions": [
+                "Conrad Gessner (1516–1565): Proposed rearranging notes by gluing slips onto sheets.",
+                "Thomas Harrison (c. 1640s): Designed a card cabinet called the 'ark of studies' (Arca studiorum).",
+                "Vincent Placcius (1689): Improved the system in his book *De arte excerpendi*.",
+                "Gottfried Wilhelm Leibniz (1646–1716): Utilized the system.",
+                "Carl Linnaeus (1767): Used over 1,000 five-by-three-inch paper slips for his research.",
+                "Johann Jacob Moser (1701–1785): Described algorithms for his card boxes.",
+                "Jean Paul (1796): Structured his idyll *Leben des Quintus Fixlein* based on a Zettelkasten; assembled 12,000 paper scraps.",
+                "Charles-Victor Langlois and Charles Seignobos (1897): Recommended the system for historians."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "Antonin Sertillanges' *The Intellectual Life* (1921) detailed a card-file method, referencing Paul Chavigny's 1918 decimal system.",
+              "Numerous English-language research manuals published from the 1920s to the 1980s provided instructions."
+            ],
+            "heading": "20th Century Evolution and Manuals",
+            "sub_sections": {
+              "Notable Manual Authors": [
+                "Earle W. Dow",
+                "Homer C. Hockett",
+                "The Webbs",
+                "Carter Alexander",
+                "Cecil B. Williams",
+                "Louis R. Gottschalk",
+                "Chauncey Sanders",
+                "Jacques Barzun",
+                "Henry F. Graff",
+                "Robert Jones Shafer"
+              ]
+            }
+          },
+          {
+            "bullets": [],
+            "heading": "Prominent Users and Their Systems",
+            "sub_sections": {
+              "Writers": [
+                "Arno Schmidt (German writer): Over 100,000 cards for *Zettels Traum*.",
+                "Walter Kempowski (German writer).",
+                "Michael Ende (German writer).",
+                "Kate Grenville (writer).",
+                "Anne Lamott (writer)."
+              ],
+              "Comedians": [
+                "Phyllis Diller: 52,000 cards.",
+                "Joan Rivers: Over 1 million cards.",
+                "Bob Hope: 85,000 pages.",
+                "George Carlin."
+              ],
+              "Political Figures": [
+                "U.S. President Ronald Reagan."
+              ],
+              "Academics and Theorists": [
+                "Frederic L. Paxson (historian): Used 80 drawers of 3x5-inch slips.",
+                "Walter Benjamin (philosopher): Used a numbered system for his *Arcades Project* (1927-1940).",
+                "Roland Barthes (theorist): Bequest includes 12,250 slips; used for works like *Michelet* and *Mourning Diary*.",
+                "Hans Blumenberg (philosopher): Maintained over 30,000 cards.",
+                "Niklas Luhmann (sociologist): Credited his 90,000-card system (digitized in 2019) for his prolific output (about 50 books and 550 articles).",
+                "Mario Bunge (philosopher-scientist): Produced c. 70 books and 540 articles."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "In the 1980s, the card file became a metaphor for hypertext software like Xerox PARC's NoteCards.",
+              "Inspired the invention of wikis in the 1990s.",
+              "Referenced in literary works by Jean Paul (1796), Anatole France (1908), Robert M. Pirsig (1991).",
+              "Analyzed in Markus Krajewski's *Paper Machines* (2002)."
+            ],
+            "heading": "Modern Influence and Cultural Footprint",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2434,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://en.wikipedia.org/wiki/Zettelkasten"
+  }
+}

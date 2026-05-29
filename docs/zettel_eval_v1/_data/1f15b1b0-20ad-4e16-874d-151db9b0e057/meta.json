@@ -1,0 +1,120 @@
+{
+  "workspace_zettel_id": "1f15b1b0-20ad-4e16-874d-151db9b0e057",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "287b5d8e-f764-4e0f-92a2-9b6c1f815ad3",
+  "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/na8pe1/what_are_some_of_the_most_interesting_little",
+  "title": "r/AskEconomics first-year economics teacher seeks interestin",
+  "source_type": "reddit",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T08:31:57.70386+00:00",
+  "ai_summary_len": 3189,
+  "body_md_len": 2253,
+  "content_hash_hex": "a928f1f7e55582bf49425579dea6f7c0f399777b50635e6c8f4b4cef07253bc5",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.reddit.com/r/AskEconomics/comments/na8pe1/what_are_some_of_the_most_interesting_little",
+      "author": "lmac187",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "reddit",
+      "raw_metadata": {
+        "score": 2,
+        "title": "What are some of the most interesting, little known stories in the world of economics?",
+        "author": "lmac187",
+        "permalink": "/r/AskEconomics/comments/na8pe1/what_are_some_of_the_most_interesting_little/",
+        "subreddit": "AskEconomics",
+        "num_comments": 5,
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "pullpush_enabled": true,
+        "pullpush_fetched": 0,
+        "nested_reply_count": 0,
+        "comment_divergence_pct": 0.0,
+        "rendered_comment_count": 5
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 18043,
+      "confidence_reason": "json endpoint ok; rendered=5/5 divergence=0.0%",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1759,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "r-askeconomics",
+          "discussion",
+          "economics",
+          "teaching",
+          "high-school",
+          "economic-history",
+          "game-theory",
+          "market-anomalies",
+          "government-policy",
+          "environmental-economics"
+        ],
+        "op_author": "u/lmac187",
+        "mini_title": "r/AskEconomics first-year economics teacher seeks interestin",
+        "_dense_verify": {
+          "missing_fact_count": 0
+        },
+        "brief_summary": "OP's main point was The original poster, a first-year economics teacher, seeks interesting, little-known economic stories, theories, phenomena. The dominant replies focused on Government Intervention and Unintended Consequences. Consensus stayed around government intervention and unintended consequences while evolution of property rights in environmental. Dissent centered on some replies challenged the strongest thread narrative. Caveat: Top-level comments by non-approved users require manual approval by a mod to.",
+        "route_subtype": "reddit",
+        "route_supported": true,
+        "detailed_summary": {
+          "op_intent": "The original poster, a first-year economics teacher, seeks interesting, little-known economic stories, theories, phenomena, experiments, scandals, and events suitable for high school students' end-of-year projects, similar to the Bernie Madoff scheme or narconomics, as the school year concludes.",
+          "reply_clusters": [
+            {
+              "theme": "Government Intervention and Unintended Consequences",
+              "examples": [
+                "The 'government cheese' program, where the US government bought surplus cheese to support dairy farmers, leading to massive stockpiles of low-quality cheese and the employment of cheese tasters."
+              ],
+              "reasoning": "Government attempts to support an industry can lead to unexpected and sometimes humorous outcomes, demonstrating market distortions and the challenges of central planning."
+            },
+            {
+              "theme": "Evolution of Property Rights in Environmental Economics",
+              "examples": [
+                "The Maine lobster fisheries, where local communities established property rights in lobster beds to manage the resource, despite existing US law."
+              ],
+              "reasoning": "Local communities can develop effective, informal property rights systems to manage common resources, even in defiance of formal legal frameworks, illustrating solutions to the tragedy of the commons."
+            },
+            {
+              "theme": "Market Manipulation and Futures Trading",
+              "examples": [
+                "The attempted cornering of the onion market, which led to the Onion Futures Act, prohibiting futures trading in onions."
+              ],
+              "reasoning": "Historical attempts to corner commodity markets highlight the risks and regulatory responses to speculative trading and market power."
+            },
+            {
+              "theme": "Game Theory and the Evolution of Trust",
+              "examples": [
+                "The concept of the 'evolution of trust' as an extension of game theory, with interactive online resources available for teaching."
+              ],
+              "reasoning": "Exploring the evolution of trust provides an interdisciplinary approach to understanding cooperation, challenging assumptions of purely rational actors in economic theory, and is highly engaging for students."
+            }
+          ],
+          "counterarguments": [],
+          "moderation_context": "Top-level comments by non-approved users require manual approval by a mod to maintain content quality and minimize misinformation, with approval potentially taking 24-48 hours.",
+          "unresolved_questions": []
+        }
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1759,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.reddit.com/r/AskEconomics/comments/na8pe1/what_are_some_of_the_most_interesting_little"
+  }
+}

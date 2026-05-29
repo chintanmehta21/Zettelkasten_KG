@@ -1,0 +1,172 @@
+{
+  "workspace_zettel_id": "88b63f46-c03a-4553-82b9-cf20a0bc1c1d",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "79161ea2-873e-4c2c-82a2-e688f8568cdc",
+  "normalized_url": "https://www.youtube.com/watch?v=W0ltbBby9FU",
+  "title": "Peptides Silicon Valley's Unregulated Trend",
+  "source_type": "youtube",
+  "publication_date": "2026-05-21",
+  "captured_at": "2026-05-21T10:11:59.883772+00:00",
+  "ai_summary_len": 6024,
+  "body_md_len": 4013,
+  "content_hash_hex": "5a89119b003058aaef35fcc86543e8b0433910a1cbd2d0ec9af6b6c9b1b0d5c3",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=W0ltbBby9FU",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "W0ltbBby9FU",
+        "key_index": 0,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 155070
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 155070,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 155070
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 24759,
+      "confidence_reason": "transcript via tier=gemini_filedata len=18858",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3053,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "peptides",
+          "health-trends",
+          "silicon-valley",
+          "unregulated-substances",
+          "biohacking",
+          "ezra-marcus",
+          "eric-topol",
+          "health-risks",
+          "commentary",
+          "injectable-drugs"
+        ],
+        "guests": null,
+        "speakers": [
+          "Ezra Marcus",
+          "Jasmine Sun",
+          "Tore Pastore",
+          "Max Marchione",
+          "Eric Topol"
+        ],
+        "mini_title": "Peptides Silicon Valley's Unregulated Trend",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this commentary, Ezra Marcus argues that the central thesis is that synthetic peptides are experiencing a surge in popularity, particularly in silicon valley, for their purported health and performance benefits, despite being largely unregulated, lacking clinical evidence for safety and efficacy, and carrying significant health risks. The closing point is that the widespread use of unregulated synthetic peptides, driven by a desire for enhanced health and performance, presents significant ris",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "lecture",
+          "confidence": 0.6
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "The central thesis is that synthetic peptides are experiencing a surge in popularity, particularly in Silicon Valley, for their purported health and performance benefits, despite being largely unregulated, lacking clinical evidence for safety and efficacy, and carrying significant health risks.",
+          "demonstrations": [],
+          "closing_takeaway": "The widespread use of unregulated synthetic peptides, driven by a desire for enhanced health and performance, presents significant risks due to a lack of scientific validation and regulatory oversight. Despite anecdotal claims of benefits, medical experts caution against their use, emphasizing the absence of clinical trials and the potential for serious side effects.",
+          "chapters_or_segments": [
+            {
+              "title": "The Peptide Phenomenon",
+              "bullets": [
+                "Peptides, defined as chains of amino acids, are experiencing an explosion in popularity in Silicon Valley and with the general public.",
+                "Users seek purported benefits such as fat burning, skin tanning, improved focus, better sleep, and increased libido.",
+                "While some peptides like insulin and oxytocin occur naturally, the current trend focuses on synthetic versions created in labs and injected.",
+                "The success of legal GLP-1 drugs like Ozempic and Wegovy has spurred a hunt for other experimental and off-label injectable peptides.",
+                "These substances are frequently combined into 'stacks' like the 'Wolverine' or 'Glow' stacks, aiming for synergistic effects."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Sourcing and Regulation Challenges",
+              "bullets": [
+                "The vast majority of these synthetic peptides are not federally regulated and are often listed by the FDA as potentially harmful.",
+                "Many peptides are sourced from unregulated factories, primarily in China, and are frequently sold online labeled 'for research purposes only.'",
+                "Reporter Ezra Marcus described two sourcing routes: regulated med spas offering legally obtainable substances like NAD+, and unregulated channels via Reddit and Discord.",
+                "Marcus purchased 10 vials of Retatrutide for $150 in Bitcoin directly from a Chinese factory representative, noting a significant price difference compared to middleman pricing.",
+                "Influencers may refer to these substances as 'peppers' to bypass social media censorship when discussing them."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "User Experiences and Industry Perspectives",
+              "bullets": [
+                "Reporter Jasmine Sun observed the trend went viral on Twitter/X, with Silicon Valley users treating peptide use like beta-testing a new app and accepting associated risks.",
+                "User Tore Pastore began using peptides for weight loss after her insurance denied coverage for a prescription drug, despite experiencing severe side effects for months.",
+                "Pastore endured daily vomiting and incontinence for 2-3 months but ultimately found the weight loss worthwhile.",
+                "Max Marchione, co-founder of Superpower, predicts peptides will become a trillion-dollar category, representing 'Pharma 2.0.'",
+                "Marchione claims to use Thymosin alpha-1 to prevent illness, illustrating a perceived benefit among proponents."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Skepticism and Origins",
+              "bullets": [
+                "Cardiologist Eric Topol expresses skepticism, stating there are no clinical trials to prove these substances are safe or effective, calling it 'bro science.'",
+                "Topol attributes reported benefits to anecdotes and confirmation bias, especially considering the high cost of these substances, often hundreds of dollars per shot.",
+                "The trend is thought to have origins in bodybuilding, with an estimate that 99% of competitive bodybuilders use them.",
+                "Proponents often feel they are taking health into their own hands, with some monitoring themselves through blood work every 3-4 months."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Ipamorelin",
+          "BPC-157",
+          "GHK-Cu",
+          "Dihexa",
+          "Retatrutide",
+          "Tesamorelin",
+          "Thymosin alpha-1",
+          "Ozempic",
+          "Wegovy",
+          "GLP-1",
+          "NAD+",
+          "Superpower"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3053,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=W0ltbBby9FU"
+  }
+}

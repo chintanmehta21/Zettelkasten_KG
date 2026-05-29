@@ -1,0 +1,185 @@
+{
+  "workspace_zettel_id": "4a44320c-981a-4458-a168-40970091505f",
+  "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+  "canonical_zettel_id": "9d6de9a0-ecbc-4e0f-879a-9b0ad09e1d21",
+  "normalized_url": "https://www.youtube.com/watch?v=fNNz9a2OIn4",
+  "title": "India's Super El Ni o",
+  "source_type": "youtube",
+  "publication_date": "2026-05-23",
+  "captured_at": "2026-05-23T10:32:36.597409+00:00",
+  "ai_summary_len": 5519,
+  "body_md_len": 5141,
+  "content_hash_hex": "5adf9f8f061f7839954ded63a3ac0798aba877d1849840f67389f6180286a65b",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=fNNz9a2OIn4",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "fNNz9a2OIn4",
+        "key_index": 0,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 89378
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 89378,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 89378
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 25040,
+      "confidence_reason": "transcript via tier=gemini_filedata len=18221",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3650,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "india",
+          "super-el-nino",
+          "climate-change",
+          "monsoon",
+          "agriculture",
+          "economic-impact",
+          "disaster-preparedness",
+          "imd",
+          "food-security",
+          "walkthrough"
+        ],
+        "guests": null,
+        "speakers": [
+          "Food Corporation of India"
+        ],
+        "mini_title": "India's Super El Ni o",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this walkthrough, The speaker argues that the speaker argues that india faces a severe threat from a predicted super el niño in 2026, which could devastate its agriculture-dependent economy and lead to widespread famine if significant mitigation measures are not implemented. The closing point is that india faces an urgent need to invest in advanced irrigation technologies and accelerate economic diversification to protect its population from the severe impacts of future climate events like th",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "explainer",
+          "confidence": 0.6
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "walkthrough",
+          "thesis": "The speaker argues that India faces a severe threat from a predicted Super El Niño in 2026, which could devastate its agriculture-dependent economy and lead to widespread famine if significant mitigation measures are not implemented. This impending crisis highlights India's vulnerability despite its economic advancements and the critical need for structural changes.",
+          "demonstrations": [],
+          "closing_takeaway": "India faces an urgent need to invest in advanced irrigation technologies and accelerate economic diversification to protect its population from the severe impacts of future climate events like the predicted Super El Niño. While current food reserves offer some immediate relief, long-term resilience requires a fundamental shift in agricultural practices and workforce distribution.",
+          "chapters_or_segments": [
+            {
+              "title": "The Impending Crisis and PM's Warning",
+              "bullets": [
+                "The Prime Minister of India recently urged citizens to reduce fuel consumption, conserve foreign exchange, and postpone foreign travel for one year.",
+                "This speech is interpreted as a precursor to a larger crisis, specifically a Super El Niño forming in the Pacific Ocean.",
+                "A Super El Niño, a rare and dangerous weather phenomenon, is predicted to form in May 2026 and could be the strongest ever recorded.",
+                "The last Super El Niño in 1876 caused the Great Famine, leading to the deaths of 5 to 10 million Indians due to monsoon failure and crop loss.",
+                "The 1876 event wiped out 3-4% of the world's population, underscoring the severe potential impact of such a phenomenon."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "India's Agricultural Vulnerability",
+              "bullets": [
+                "The Indian monsoon is critical as it provides 80% of India's water supply.",
+                "Despite being a major economy with 130 unicorns, India remains an agricultural economy.",
+                "The agricultural sector employs 43% of the workforce but contributes only 17% to the GDP.",
+                "Crucially, 44% of farmlands lack irrigation, making 600 million people dependent on rain.",
+                "Rural India contributes 37% of FMCG spending, and the Asian Development Bank estimates a 1% increase in rain boosts GDP by 0.16%."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Historical Economic Impacts of El Niño",
+              "bullets": [
+                "The IMD has already predicted 8% less rain than normal for 2026 due to the developing Super El Niño.",
+                "Historically, Super El Niños have significantly damaged India's economy.",
+                "In 1972, GDP growth fell to -0.6% following an El Niño event.",
+                "India was forced to import wheat in 1987 due to drought conditions.",
+                "The 2002 El Niño caused GDP growth to fall from 6% to 4%, and in 2015, food inflation hit 6-7% with 12,000 farmer suicides.",
+                "Ten of the twelve worst droughts in India since 1950 were caused by El Niño."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "The Mechanism of Monsoon and El Niño",
+              "bullets": [
+                "The monsoon normally occurs because the Indian subcontinent heats up, creating a low-pressure zone that pulls in moist, high-pressure air from the cooler Indian Ocean.",
+                "A second low-pressure pull is created by trade winds pushing warm Pacific water towards Indonesia.",
+                "During an El Niño, these trade winds weaken or reverse, causing the warm water pool to slide back east towards Peru.",
+                "This shift creates a high-pressure zone near Indonesia, which pushes moisture away from India.",
+                "El Niño intensity is measured by temperature anomalies near Peru: +0.5°C is El Niño, +1.5°C is strong, and +2.0°C is a Super El Niño.",
+                "The 2026 forecast is for a +2.5°C anomaly, indicating an exceptionally strong Super El Niño."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Predicted Impact and Mitigation",
+              "bullets": [
+                "The 2026 Super El Niño will attack India's monsoon in three ways, primarily by weakening pressure differentials and inverting low-pressure zones.",
+                "The Indian Ocean heating up will reduce the crucial pressure differential needed to pull in moist air.",
+                "The low-pressure pull near Indonesia will invert into a high-pressure wall, actively pushing moisture away.",
+                "Dying trade winds will result in late, weak, and patchy rain, particularly when crops need it most in August and September.",
+                "To mitigate this, India needs to implement widespread drip, sprinkler, and solar-powered micro-irrigation systems.",
+                "A crucial long-term strategy involves transitioning its workforce from agriculture to manufacturing and intellectual property, similar to South Korea's development path."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Current Preparedness and Future Outlook",
+              "bullets": [
+                "As of April 1, 2026, the Food Corporation of India (FCI) holds 604 lakh tonnes of grain.",
+                "This buffer is nearly three times the mandatory 210 lakh tonne requirement, a significant improvement compared to 1876.",
+                "However, with 40% of farmland still unirrigated, a large portion of the population remains vulnerable.",
+                "The current measures suggest India is preparing for the disaster's aftermath rather than its prevention.",
+                "Effective prevention requires large-scale infrastructure and economic transformation."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "IMD",
+          "Food Corporation of India",
+          "Asian Development Bank"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3650,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=fNNz9a2OIn4"
+  }
+}

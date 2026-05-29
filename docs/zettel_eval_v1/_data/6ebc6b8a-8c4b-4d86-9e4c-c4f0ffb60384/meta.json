@@ -1,0 +1,279 @@
+{
+  "workspace_zettel_id": "6ebc6b8a-8c4b-4d86-9e4c-c4f0ffb60384",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "7f3d6236-e5aa-40d1-8e51-a48b6a05f612",
+  "normalized_url": "https://github.com/py-why/EconML",
+  "title": "py-why/EconML",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:39:38.102027+00:00",
+  "ai_summary_len": 3891,
+  "body_md_len": 3506,
+  "content_hash_hex": "3012571bd3f145a6b8e6e19b43b81b038b1bb8747f106969085d09277623f446",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/py-why/EconML",
+      "author": "py-why",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "EconML",
+        "forks": 811,
+        "owner": "py-why",
+        "stars": 4644,
+        "topics": [
+          "causal-inference",
+          "causality",
+          "econometrics",
+          "economics",
+          "machine-learning",
+          "treatment-effects"
+        ],
+        "license": "NOASSERTION",
+        "has_demo": false,
+        "language": "Jupyter Notebook",
+        "releases": [
+          {
+            "name": "v0.16.0",
+            "tag_name": "v0.16.0",
+            "prerelease": false,
+            "published_at": "2025-07-14T16:49:08Z"
+          },
+          {
+            "name": "v0.15.1",
+            "tag_name": "v0.15.1",
+            "prerelease": false,
+            "published_at": "2024-07-04T19:00:22Z"
+          },
+          {
+            "name": "v0.15.0",
+            "tag_name": "v0.15.0",
+            "prerelease": false,
+            "published_at": "2024-02-27T17:42:09Z"
+          },
+          {
+            "name": "v0.15.0b1",
+            "tag_name": "v0.15.0b1",
+            "prerelease": true,
+            "published_at": "2024-02-27T17:38:11Z"
+          },
+          {
+            "name": "v0.14.1",
+            "tag_name": "v0.14.1",
+            "prerelease": false,
+            "published_at": "2023-05-22T14:21:32Z"
+          }
+        ],
+        "full_name": "py-why/EconML",
+        "has_tests": false,
+        "languages": [
+          [
+            "Jupyter Notebook",
+            81.55049384922835
+          ],
+          [
+            "Python",
+            16.997645661934143
+          ],
+          [
+            "Cython",
+            1.3333622567834007
+          ],
+          [
+            "TeX",
+            0.08804289409184246
+          ],
+          [
+            "R",
+            0.022846448590446652
+          ],
+          [
+            "Shell",
+            0.007608889371825522
+          ]
+        ],
+        "pages_url": "http://www.pywhy.org/EconML/",
+        "updated_at": "2026-05-28T06:25:54Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 5,
+        "extra_doc_files": [
+          "SECURITY.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "EconML is a Python package for estimating heterogeneous treatment effects from observational data using machine learning and econometrics. The package provides a unified API for various estimation methods, interpretability, causal model selection, inference, and policy learning, with its documentation located in the docs_dir."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 20148,
+      "confidence_reason": "repo metadata, README, and 1 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2929,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-py-why-econml",
+          "python",
+          "library",
+          "testing",
+          "machine-learning",
+          "econometrics",
+          "causal-inference",
+          "heterogeneous-treatment-effects",
+          "observational-data",
+          "data-science"
+        ],
+        "mini_title": "py-why/EconML",
+        "owner_login": "py-why",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "EconML is a Python package designed for estimating heterogeneous treatment effects from observational data by combining machine learning with econometrics. It aims to measure the causal effect of treatment variables (T) on an outcome variable (Y), controlling for features (X, W), and determine how that effect varies with X. The library provides a unified API for various causal inference methods, including Double Machine Learning (e.g., LinearDML, NonParamDML), Causal Forests (CausalForestDML), M",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "EconML is a Python package from a Microsoft Research project called ALICE (Automated Learning and Intelligence for Causation and Economics), now part of the PyWhy organization.",
+              "It is designed for estimating heterogeneous treatment effects from observational data by combining machine learning with econometrics.",
+              "The toolkit aims to measure the causal effect of treatment variables (T) on an outcome variable (Y), controlling for a set of features (X, W), and determine how that effect varies with X.",
+              "Most methods provide confidence intervals and inference results, accessible via an `InferenceResults` object and a `summary()` method for linear models.",
+              "Security vulnerabilities should be reported to the Microsoft Security Response Center (MSRC), not via public GitHub issues."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Jupyter Notebook",
+              "Python",
+              "Cython",
+              "click",
+              "numpy"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The library provides a unified API for various methods.",
+              "Methods include Double Machine Learning (e.g., `LinearDML`, `NonParamDML`), Dynamic DML, Causal Forests (`CausalForestDML`), Orthogonal Random Forests, Meta-Learners (`XLearner`, `SLearner`, `TLearner`), and Doubly Robust (DR) Learners.",
+              "Supports instrumental variable (IV) methods (e.g., `OrthoIV`, `LinearDRIV`).",
+              "Some methods assume no unobserved confounders, while others can use an observed instrument (Z).",
+              "Includes tools for interpretability (e.g., `SingleTreeCateInterpreter`, SHAP values), causal model selection (`RScorer`), and policy learning (`DRPolicyTree`)."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Causal Inference Methods",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The library provides a unified API for various causal inference methods."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "LinearDML",
+              "NonParamDML",
+              "CausalForestDML",
+              "XLearner",
+              "SLearner",
+              "TLearner",
+              "OrthoIV",
+              "LinearDRIV",
+              "InferenceResults",
+              "summary()",
+              "SingleTreeCateInterpreter",
+              "RScorer",
+              "DRPolicyTree",
+              "@microsoft.com",
+              "@gmail.com",
+              "@outlook.com",
+              "@gmail.co"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Install via `pip install econml`.",
+              "Development uses `setuptools`, `pytest`, and `pre-commit`.",
+              "Documentation is generated by Sphinx.",
+              "Recent activity includes adding support for survival/competing-risk HTE learners (#1027), fixing bugs (#1029, #1025), and updating compatibility for scikit-learn 1.7+, pandas 3.0, numpy 2.4, and Python 3.14.",
+              "The latest release mentioned is v0.16.0."
+            ],
+            "heading": "Operational guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install econml",
+              "pip install setuptools --upgrade",
+              "pip install -e .",
+              "pip install -e .[plt]"
+            ]
+          },
+          {
+            "bullets": [
+              "The repository is primarily composed of Jupyter Notebooks (81.6%) which likely serve as examples.",
+              "Development uses `pytest` for testing."
+            ],
+            "heading": "Tests / Benchmarks / Examples",
+            "main_stack": [],
+            "sub_sections": {
+              "Tests": [
+                "`pytest` is used for development and testing."
+              ],
+              "Examples": [
+                "Jupyter Notebooks (81.6%) demonstrate usage patterns and applications."
+              ]
+            },
+            "module_or_feature": "Tests / Benchmarks / Examples",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=2"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.75
+        },
+        "architecture_overview": "EconML is a Python package designed for estimating heterogeneous treatment effects from observational data by combining machine learning with econometrics. It aims to measure the causal effect of treatment variables (T) on an outcome variable (Y), controlling for features (X, W), and determine how that effect varies with X. The library provides a unified API for various causal inference methods, including Double Machine Learning (e.g., LinearDML, NonParamDML), Causal Forests (CausalForestDML), M",
+        "benchmarks_tests_examples": [
+          "Jupyter Notebooks (81.6%) demonstrate usage patterns and applications.",
+          "`pytest` is used for testing."
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2929,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/py-why/EconML"
+  }
+}

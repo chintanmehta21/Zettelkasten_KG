@@ -1,0 +1,150 @@
+{
+  "workspace_zettel_id": "793f2563-28c6-42aa-a8e4-11b64f370b40",
+  "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+  "canonical_zettel_id": "6710f462-0216-4136-872c-798da8d7528d",
+  "normalized_url": "https://docs.python.org/3/library/zoneinfo.html",
+  "title": "Python's `zoneinfo` Module",
+  "source_type": "web",
+  "publication_date": "2026-05-17",
+  "captured_at": "2026-05-17T12:14:09.630339+00:00",
+  "ai_summary_len": 3865,
+  "body_md_len": 3358,
+  "content_hash_hex": "06c90c8743b1e65691c818b3a7f65c8e5a87eec41df0d57449b64a2bf7a02ff9",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://docs.python.org/3/library/zoneinfo.html",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "zoneinfo — IANA time zone support — Python 3.14.5 documentation",
+        "description": "Source code: Lib/zoneinfo The zoneinfo module provides a concrete time zone implementation to support the IANA time zone database as originally specified in PEP 615. By default, zoneinfo uses the s...",
+        "og_description": "Source code: Lib/zoneinfo The zoneinfo module provides a concrete time zone implementation to support the IANA time zone database as originally specified in PEP 615. By default, zoneinfo uses the s..."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 31772,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2244,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Python",
+          "zoneinfo",
+          "datetime",
+          "time zones",
+          "IANA",
+          "PEP 615",
+          "tzinfo"
+        ],
+        "mini_title": "Python's `zoneinfo` Module",
+        "brief_summary": "Python's `zoneinfo` module (3.9+, PEP 615) provides `ZoneInfo`, a `datetime.tzinfo` implementation for IANA time zones. It manages data sources (system or `tzdata`), handles DST and the `fold` attribute, and offers flexible `TZPATH` configuration. The module includes various constructors with specific caching and pickling behaviors, and provides functions for managing available time zones and the search path.",
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Python's `zoneinfo` module, added in version 3.9 and specified in PEP 615, provides `zoneinfo.ZoneInfo`.",
+              "`ZoneInfo` is a concrete `datetime.tzinfo` implementation for the IANA time zone database.",
+              "It is not available on WebAssembly (WASI).",
+              "By default, `zoneinfo` uses the system's time zone data, falling back to the `tzdata` PyPI package if system data is unavailable.",
+              "If neither source is found, `ZoneInfoNotFoundError` is raised.",
+              "For cross-platform compatibility, especially on systems like Windows without a system IANA database, a dependency on `tzdata` is recommended."
+            ],
+            "heading": "Introduction and Overview",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "`ZoneInfo` objects can be attached to `datetime` objects via the constructor, `replace()`, or `astimezone()`.",
+              "They automatically handle daylight saving time transitions in datetime arithmetic.",
+              "They support the `fold` attribute from PEP 495 for ambiguous times."
+            ],
+            "heading": "`ZoneInfo` Object Integration",
+            "sub_sections": {
+              "Fold Attribute Behavior": [
+                "`fold=0` uses the pre-transition offset.",
+                "`fold=1` uses the post-transition offset."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "The data source search path, `TZPATH`, is configured by searching specified directories first, then the `tzdata` package.",
+              "Configuration can be done at compile-time, via an environment variable, or at runtime."
+            ],
+            "heading": "Time Zone Data Source Configuration (`TZPATH`)",
+            "sub_sections": {
+              "Warnings": [
+                "`PYTHONTZPATH` with relative paths raises `InvalidTZPathWarning` in CPython."
+              ],
+              "Configuration Methods": [
+                "Compile-time: via the `TZPATH` option or `--with-tzpath` flag on POSIX.",
+                "Environment variable: `PYTHONTZPATH` (an `os.pathsep`-separated string of absolute paths); an empty string forces `tzdata` use.",
+                "Runtime: with `zoneinfo.reset_tzpath(to=...)`."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "The `ZoneInfo(key)` constructor takes a relative, normalized POSIX path string `key` and raises `ValueError` for non-conforming keys or `ZoneInfoNotFoundError` if the key is not found.",
+              "`ZoneInfo(key)` returns cached, identical objects for the same key.",
+              "Alternate constructor `ZoneInfo.from_file(file_obj, key=None)` always creates a new, unpicklable object from a file-like object.",
+              "Alternate constructor `ZoneInfo.no_cache(key)` bypasses the cache to always return a new object.",
+              "The cache can be invalidated with `ZoneInfo.clear_cache(only_keys=None)`."
+            ],
+            "heading": "`ZoneInfo` Constructors and Caching",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The read-only `ZoneInfo.key` attribute stores the lookup key.",
+              "The `key` is intended as a primary key, not a user-facing string; CLDR is recommended for user-friendly names.",
+              "`str(zone)` returns `zone.key`."
+            ],
+            "heading": "`ZoneInfo.key` and String Representation",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "When pickling, `ZoneInfo` objects are serialized by key.",
+              "Objects from the primary constructor deserialize to the same cached instance.",
+              "Objects from `no_cache` deserialize to new instances.",
+              "Objects from `from_file` cannot be pickled.",
+              "Pickling requires the key's data to be available in the deserializing environment.",
+              "There are no consistency guarantees across different time zone data versions during deserialization."
+            ],
+            "heading": "Pickling Behavior",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "`zoneinfo.available_timezones()` returns a set of all canonical IANA keys found on the `TZPATH` (excluding special directories like `posix/`).",
+              "`zoneinfo.reset_tzpath(to=None)` modifies the search path using a sequence of absolute paths.",
+              "The module global `zoneinfo.TZPATH` is a read-only sequence representing the current search path."
+            ],
+            "heading": "Module-Level Functions and Globals",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2244,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://docs.python.org/3/library/zoneinfo.html"
+  }
+}

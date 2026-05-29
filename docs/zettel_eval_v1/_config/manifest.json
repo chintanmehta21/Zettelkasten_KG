@@ -1,0 +1,823 @@
+{
+  "schema_version": "1.0",
+  "frozen_at": "2026-05-28T12:05:58.594024+00:00",
+  "frozen_from": {
+    "supabase_project_ref": "icmnskseuoteyirljswd",
+    "git_sha": "8f22f5906ed9045e3cbc04c5a437cf3eeae6ba38",
+    "selection_query": "SELECT wz.id, wz.workspace_id, wz.canonical_zettel_id, wz.created_at, wz.ai_summary, cz.normalized_url, cz.title, cz.source_type, cz.content_hash, length(wz.ai_summary) AS ai_summary_len FROM content.workspace_zettels wz JOIN content.canonical_zettels cz ON cz.id = wz.canonical_zettel_id WHERE wz.deleted_at IS NULL AND length(wz.ai_summary) > 2000 ORDER BY wz.created_at",
+    "selection_predicate": "live workspace_zettels with ai_summary length > 2000 chars",
+    "expected_count": 81
+  },
+  "zettels": [
+    {
+      "workspace_zettel_id": "51750374-0287-4f90-bd33-ec672f2d1d22",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "f7a287b9-1ea7-41f3-a36c-caa4c35ecd2d",
+      "normalized_url": "https://peps.python.org/pep-0701/",
+      "title": "PEP 701: F-string Formalization",
+      "source_type": "web",
+      "ai_summary_len": 3634,
+      "content_hash_hex": "780b6e239d253173591b5d0a22f91d12a5e0c38c49ea2cfcce957741fb78afed"
+    },
+    {
+      "workspace_zettel_id": "90a7a8f1-73b6-45da-89f4-6bef2ca18f97",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "212875e9-ea27-4ad3-8c96-3ba0f6ceddcd",
+      "normalized_url": "https://docs.python.org/3/library/contextvars.html",
+      "title": "Python's `contextvars` Module",
+      "source_type": "web",
+      "ai_summary_len": 2510,
+      "content_hash_hex": "1dc274d8a24610eccc9cfaf18a19dc67f833040a0704090a77101925c6ddfd1b"
+    },
+    {
+      "workspace_zettel_id": "793f2563-28c6-42aa-a8e4-11b64f370b40",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "6710f462-0216-4136-872c-798da8d7528d",
+      "normalized_url": "https://docs.python.org/3/library/zoneinfo.html",
+      "title": "Python's `zoneinfo` Module",
+      "source_type": "web",
+      "ai_summary_len": 3865,
+      "content_hash_hex": "06c90c8743b1e65691c818b3a7f65c8e5a87eec41df0d57449b64a2bf7a02ff9"
+    },
+    {
+      "workspace_zettel_id": "881865c9-2e11-4935-9f9e-16588e0dc9d4",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "12027f62-6142-412e-a59c-00e20ec1ee20",
+      "normalized_url": "https://github.com/psf/requests",
+      "title": "psf/requests",
+      "source_type": "github",
+      "ai_summary_len": 3875,
+      "content_hash_hex": "e572043bdb9259559bd0289ea5ee680f710727d892cdfd1e70b4d02143b44fa2"
+    },
+    {
+      "workspace_zettel_id": "628789b4-72bb-4cfe-b9b6-ad7a398e5cdc",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "675f86d3-a98b-4bfc-860d-93ea33a9cbf4",
+      "normalized_url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+      "title": "DMT History Science Consciousness",
+      "source_type": "youtube",
+      "ai_summary_len": 5854,
+      "content_hash_hex": "f78f6dd24d662d15ca00f299119c7721ebd2c1706c5448ed785e943aed992501"
+    },
+    {
+      "workspace_zettel_id": "b18ffaaf-921f-4ceb-8f29-3c8ed11b0de2",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "4f930d23-00be-435d-84ae-190bea792d25",
+      "normalized_url": "https://www.youtube.com/watch?v=KtL5fafpRKc",
+      "title": "Psychedelics Problem-Solving Research",
+      "source_type": "youtube",
+      "ai_summary_len": 5087,
+      "content_hash_hex": "66d51853c4e3893350f9ebdfb559c27b045d6f7d4713c47149a7934872e9f846"
+    },
+    {
+      "workspace_zettel_id": "98ae915c-b29c-4050-ba94-bd50ef77d28b",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "e9b6f94e-9104-4c0d-a2ae-0b10c831ff38",
+      "normalized_url": "https://www.reddit.com/r/consciousness/comments/1izjzk0/if_psychedelics_alter_the_perception_of",
+      "title": "r/consciousness explore if perceptual experiential changes",
+      "source_type": "reddit",
+      "ai_summary_len": 9941,
+      "content_hash_hex": "f57b516cb1e1905969eaa38a269e7acb59e0fa3098c31466d6ec3752a6f2a76b"
+    },
+    {
+      "workspace_zettel_id": "c71afcb6-fada-4871-96d5-f657093c496e",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "0cdc9bf7-a538-45e3-b1e0-a7bbd3b5138e",
+      "normalized_url": "https://www.reddit.com/r/philosophy/comments/1fzo0f4/psychedelic_experiences_disrupt_the_certainty_of",
+      "title": "r/philosophy argue psychedelic experiences fundamentally dis",
+      "source_type": "reddit",
+      "ai_summary_len": 7913,
+      "content_hash_hex": "1fd351c378b2ebc7d3dde315be627a2b08741a50b840ed9f7cbc7ca05b0d0979"
+    },
+    {
+      "workspace_zettel_id": "879f3562-46c1-4551-906a-aa9a15431ebc",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "9021e570-ce11-45f0-b73c-77ac3e2984c5",
+      "normalized_url": "https://www.youtube.com/watch?v=eOGG_5FzlJ4",
+      "title": "Microdosing Psilocybin Benefits Practice",
+      "source_type": "youtube",
+      "ai_summary_len": 4716,
+      "content_hash_hex": "9870340fc783d8a2e51d28708699a34bc193e7a2decda443e9fcb399409f5cff"
+    },
+    {
+      "workspace_zettel_id": "cd73b78e-1ed4-40b8-8d65-e64f4b269658",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "40e1a993-5d2c-4752-903f-a683d0b10bdb",
+      "normalized_url": "https://www.youtube.com/watch?v=CtrhU7GOjOg",
+      "title": "Petrodollar System's Potential Erosion",
+      "source_type": "youtube",
+      "ai_summary_len": 5112,
+      "content_hash_hex": "19ad97519b16198d5e4cb40d6209bcb4bf9af72f5053ef42fbb0d577e64601e6"
+    },
+    {
+      "workspace_zettel_id": "f6139a40-83d7-41b1-b7f0-e918e46e3b3c",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "a67345b3-56e9-46ab-a1a4-ea25d1995b87",
+      "normalized_url": "https://www.youtube.com/watch?v=HGe-SUyPZ38",
+      "title": "Economic Principles Explained",
+      "source_type": "youtube",
+      "ai_summary_len": 7702,
+      "content_hash_hex": "7ca7848539017e8f8e1d56325d084daa60922742e60f79a2385dd11a42d977a0"
+    },
+    {
+      "workspace_zettel_id": "1f15b1b0-20ad-4e16-874d-151db9b0e057",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "287b5d8e-f764-4e0f-92a2-9b6c1f815ad3",
+      "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/na8pe1/what_are_some_of_the_most_interesting_little",
+      "title": "r/AskEconomics first-year economics teacher seeks interestin",
+      "source_type": "reddit",
+      "ai_summary_len": 3189,
+      "content_hash_hex": "a928f1f7e55582bf49425579dea6f7c0f399777b50635e6c8f4b4cef07253bc5"
+    },
+    {
+      "workspace_zettel_id": "af39dd2c-1e07-4176-9cd4-8a0cf8a738d0",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "fc376266-707f-42fb-9376-109d5071c722",
+      "normalized_url": "https://www.reddit.com/r/AskHistorians/comments/emq127/the_incas_were_able_to_construct_one_of_the",
+      "title": "r/AskHistorians understand Inca Empire described as",
+      "source_type": "reddit",
+      "ai_summary_len": 6771,
+      "content_hash_hex": "d2d4defe5f2f274b31be80c2c2508268471b06a1a234fabb041ddeeeaa844ed7"
+    },
+    {
+      "workspace_zettel_id": "6a3be69d-00e6-49bd-8417-604554cb7880",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "5c139a52-bfde-4c41-ab0c-cf2150e69aa0",
+      "normalized_url": "https://github.com/TheEconomist/big-mac-data",
+      "title": "TheEconomist/big-mac-data",
+      "source_type": "github",
+      "ai_summary_len": 3976,
+      "content_hash_hex": "0e12bb3444648e96f02ee312d1958ec388bd4f3c4ea2f4a9fbd44bf63b9d0782"
+    },
+    {
+      "workspace_zettel_id": "a1890557-4987-4aa8-b44b-f94b2a9da431",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "b440d791-0130-4c23-8c54-172405d850d8",
+      "normalized_url": "https://www.youtube.com/watch?v=it8urKsgs44",
+      "title": "India's 1991 Economic Reforms Legacy",
+      "source_type": "youtube",
+      "ai_summary_len": 5656,
+      "content_hash_hex": "1f91ef680d6d1863673dfcbf1d8a68d14afbf0781e12183f285754ca695265f1"
+    },
+    {
+      "workspace_zettel_id": "99790339-9e8b-4ba2-9721-ee7c6b6a2f1b",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "19df3a35-8ad8-44c8-b82a-e256ae93a244",
+      "normalized_url": "https://www.reddit.com/r/philosophy/comments/9il3p/what_does_philosophy_reddit_know_about_drugs",
+      "title": "r/philosophy seeks philosophical perspectives personal exper",
+      "source_type": "reddit",
+      "ai_summary_len": 6779,
+      "content_hash_hex": "20565d9e6b4a1146e1d498c0b8008a4d7de20f0dca0182eafb1d31ea6f457914"
+    },
+    {
+      "workspace_zettel_id": "fa2a34f6-222e-4790-9df6-9a656785ccf9",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "50a4ee13-02bd-4e62-862e-551ec267fcce",
+      "normalized_url": "https://www.reddit.com/r/IAmA/comments/9ke63/i_did_heroin_yesterday_i_am_not_a_drug_user_and",
+      "title": "r/IAmA first-time heroin risks",
+      "source_type": "reddit",
+      "ai_summary_len": 8184,
+      "content_hash_hex": "5a30da3f0f7c1a07648236947913a6532ae859095f3a7397db473490f9ec74d4"
+    },
+    {
+      "workspace_zettel_id": "f96f2352-0e2e-404a-90d8-4c22ed6e7cc3",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "76ce1597-9660-45f8-a454-a743019edee5",
+      "normalized_url": "https://adamtooze.substack.com/p/chartbook-448-price-controls-nationalization",
+      "title": "Analysis of FT Piece: Rethinking Heterodox Policies in Polyc",
+      "source_type": "newsletter",
+      "ai_summary_len": 4672,
+      "content_hash_hex": "f9193a4dedd629ef09ccacfd04f96a013f3a3517cb0a00e811a53e1403833608"
+    },
+    {
+      "workspace_zettel_id": "681a07c3-d5a5-456e-b54c-4daa3452836b",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "cf15d1c2-b9b8-4a14-a0bb-b894c10220a9",
+      "normalized_url": "https://www.youtube.com/watch?v=HBTYVVUBAGs",
+      "title": "Silk Road's Rise Fall",
+      "source_type": "youtube",
+      "ai_summary_len": 6363,
+      "content_hash_hex": "378957e9d6bd9800c065dfaf7c1463e9f8eb7690d5178799d5e3901086fe48ba"
+    },
+    {
+      "workspace_zettel_id": "d3de06c5-7e47-45b8-9e01-11f482d1fa21",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "80d484dc-be29-4b48-960d-ba74ed08fa1d",
+      "normalized_url": "https://www.reddit.com/r/india/comments/1rrilqz/indias_20_years_of_gdp_misestimation_new_evidence",
+      "title": "r/india present new evidence from working",
+      "source_type": "reddit",
+      "ai_summary_len": 5299,
+      "content_hash_hex": "f63d8fff3a9512e77f3087a97074908668b564a7ece4faf78329b0217a5fe4b0"
+    },
+    {
+      "workspace_zettel_id": "00b4f856-1801-4d41-9353-68c041f4b180",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "976deede-e614-4c7c-b487-ccee3c15edc9",
+      "normalized_url": "https://www.youtube.com/watch?v=ZxZO0jd8VoU",
+      "title": "BlackRock's Power Universal Ownership",
+      "source_type": "youtube",
+      "ai_summary_len": 5306,
+      "content_hash_hex": "b8d04f697b41bb4984d60f3946124f7f02131567461b631964950ed94d4c2558"
+    },
+    {
+      "workspace_zettel_id": "707a6e53-8ea4-4f48-9579-d857917b75c8",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "c2a289b8-89f8-4755-b80a-b0ffbb4abe32",
+      "normalized_url": "https://www.youtube.com/watch?v=HBluLfX2F_k",
+      "title": "Go WebAssembly Hello World Tutorial",
+      "source_type": "youtube",
+      "ai_summary_len": 4105,
+      "content_hash_hex": "811f64b2fee03170633747ee7cb36a9158e81b2dc16e5bc91784a088d3cd89fc"
+    },
+    {
+      "workspace_zettel_id": "1c0af8ec-0ba8-42dc-bc53-cf2c1f3089d1",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "8dae23d8-2957-43d7-9d64-d1ec7d6de7e3",
+      "normalized_url": "https://www.youtube.com/watch?v=A5w-dEgIU1M",
+      "title": "Physics Equation Transforms Finance",
+      "source_type": "youtube",
+      "ai_summary_len": 6828,
+      "content_hash_hex": "d02cd5c19ac5dd101e647d3baa710eb9c10753bf1a6de880aca3082570a9f3ee"
+    },
+    {
+      "workspace_zettel_id": "183caad5-d4df-4c88-8175-85fe8c8358fa",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "2f5f7fe3-7bd3-4fb5-af0f-3703dc3faa9c",
+      "normalized_url": "https://www.youtube.com/watch?v=ZoibAbdQf58",
+      "title": "Private Equity Acquires YouTube Channels",
+      "source_type": "youtube",
+      "ai_summary_len": 6825,
+      "content_hash_hex": "6c4f751adc80d8b7d0849a2c0a7076b26765a0e02b5893e901982f087d2683db"
+    },
+    {
+      "workspace_zettel_id": "47dcf7db-5177-4d61-9d3e-fe51a5320a30",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "ebb85609-b704-49d0-8acb-631a760e73ce",
+      "normalized_url": "https://www.youtube.com/watch?v=AWRk46h2ySI",
+      "title": "Aswath Damodaran on ESG Investing",
+      "source_type": "youtube",
+      "ai_summary_len": 5655,
+      "content_hash_hex": "da50ee19d83976ccbcba6a308280e53c9cb67e1bc434e89d59ba4cb0b2d47db2"
+    },
+    {
+      "workspace_zettel_id": "88b63f46-c03a-4553-82b9-cf20a0bc1c1d",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "79161ea2-873e-4c2c-82a2-e688f8568cdc",
+      "normalized_url": "https://www.youtube.com/watch?v=W0ltbBby9FU",
+      "title": "Peptides Silicon Valley's Unregulated Trend",
+      "source_type": "youtube",
+      "ai_summary_len": 6024,
+      "content_hash_hex": "5a89119b003058aaef35fcc86543e8b0433910a1cbd2d0ec9af6b6c9b1b0d5c3"
+    },
+    {
+      "workspace_zettel_id": "6cd80a1f-882c-4f79-971d-b3f538ac23ef",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "b4885b17-f1c4-49c1-a6f3-1190620d9b2e",
+      "normalized_url": "https://en.wikipedia.org/wiki/Zettelkasten",
+      "title": "Zettelkasten: History, Users, and Impact",
+      "source_type": "web",
+      "ai_summary_len": 3514,
+      "content_hash_hex": "58c3be093fd174f2145f6c49260978996db0b0e70d9691f9597252ded17ce4b5"
+    },
+    {
+      "workspace_zettel_id": "0aa336fe-2ce8-4e1a-a5c2-190977affe63",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "60a43cf6-f444-4346-b04d-3511aeb54ebe",
+      "normalized_url": "https://www.youtube.com/watch?v=heBErnN3ZPk",
+      "title": "Majestic Monolith vs Microservices",
+      "source_type": "youtube",
+      "ai_summary_len": 3579,
+      "content_hash_hex": "ffdff84a1ee011b9c191ac5e35669006b01be01598d4bb887efd17a131ce30e6"
+    },
+    {
+      "workspace_zettel_id": "e00c622f-4402-4be9-a01f-b4cadde09f1b",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "a1da9daf-c16f-48eb-b0db-773514414881",
+      "normalized_url": "https://www.youtube.com/watch?v=AGglJehON5g",
+      "title": "Python Function Overloading Techniques",
+      "source_type": "youtube",
+      "ai_summary_len": 4521,
+      "content_hash_hex": "95904fa26ee2c11cd02c43dbf439dbb861b4adacd7ebcff2ade76fcea75a9f1b"
+    },
+    {
+      "workspace_zettel_id": "8fb2f662-4cbe-4207-a599-a2de2744c1a9",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "60c97764-80f8-4b50-b523-b88d677df322",
+      "normalized_url": "https://www.youtube.com/watch?v=9OQ5vaYbGV0",
+      "title": "Google I O Gemini AI",
+      "source_type": "youtube",
+      "ai_summary_len": 4249,
+      "content_hash_hex": "5c1ccfbc7c03c0dc91507eabb6e86c5fb43cd13a00b16b83dccc4eac7062b6be"
+    },
+    {
+      "workspace_zettel_id": "91557c83-0580-4781-ae9b-ef5e474fe7ec",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "19aca36e-b43f-49c6-9a29-509b14988653",
+      "normalized_url": "https://www.youtube.com/watch?v=Ukt2gVz25PQ",
+      "title": "Kali Linux Ethical Hacking Tools",
+      "source_type": "youtube",
+      "ai_summary_len": 7085,
+      "content_hash_hex": "2d4dd84b3f99d0bcbaaee42bce772322161465b33487bfffe45552ec8c93a836"
+    },
+    {
+      "workspace_zettel_id": "4a44320c-981a-4458-a168-40970091505f",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "9d6de9a0-ecbc-4e0f-879a-9b0ad09e1d21",
+      "normalized_url": "https://www.youtube.com/watch?v=fNNz9a2OIn4",
+      "title": "India's Super El Ni o",
+      "source_type": "youtube",
+      "ai_summary_len": 5519,
+      "content_hash_hex": "5adf9f8f061f7839954ded63a3ac0798aba877d1849840f67389f6180286a65b"
+    },
+    {
+      "workspace_zettel_id": "dfc93ef9-20a1-4f24-bea1-416a62490e73",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "bf1134d2-a688-4a7c-9926-6688270846a5",
+      "normalized_url": "https://www.youtube.com/watch?v=ZvO5kikFVOk",
+      "title": "Quantum Computing Threat Encryption",
+      "source_type": "youtube",
+      "ai_summary_len": 4535,
+      "content_hash_hex": "9bb274bed529d55e09c607116ea3e7cfb225cd48fc55c3e05191d9733c8d2ecc"
+    },
+    {
+      "workspace_zettel_id": "6557d0f4-0a80-4eef-a1d2-8f465e728c5d",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "6eb48c4d-d804-4550-aa22-b0699a1044f3",
+      "normalized_url": "https://www.youtube.com/watch?v=ItSLny8on5I",
+      "title": "AI Job Replacement Unfounded Claims",
+      "source_type": "youtube",
+      "ai_summary_len": 6588,
+      "content_hash_hex": "447b4c793fe2b11c70205730bcd8634fb1bccb29f537bec175b6f993087b0f52"
+    },
+    {
+      "workspace_zettel_id": "ddfb4689-ec1d-4ebd-b915-7b7c0caa80a7",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "eedd099d-d973-44d7-a55d-cd6ed1d89e30",
+      "normalized_url": "https://www.youtube.com/watch?v=jfiBDuUVc-A",
+      "title": "Happiness Overrated Struggle for Meaning",
+      "source_type": "youtube",
+      "ai_summary_len": 4956,
+      "content_hash_hex": "76c1ef28ea5c62e1baf9a530327af450020b372e1fd6ca761f134586ceb23981"
+    },
+    {
+      "workspace_zettel_id": "96ef92bc-67aa-4932-a11b-1bd9072d0087",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "c0442c45-e43b-49ad-a293-d60ab87cea3c",
+      "normalized_url": "https://www.youtube.com/watch?v=juHv_Vi4giU",
+      "title": "AI's New Forward Deployed Engineer",
+      "source_type": "youtube",
+      "ai_summary_len": 4810,
+      "content_hash_hex": "4a84c6f74396a2ba3732ab1d7fd1627ee12a0353a6b35b90e01fb9bc2dc651e5"
+    },
+    {
+      "workspace_zettel_id": "4cc79f34-6ac6-45cf-9ee4-80f1d079ec67",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "e7a84015-33e3-4e9e-a0e7-72a8b5196b72",
+      "normalized_url": "https://www.youtube.com/watch?v=hKLIxxBrM-o",
+      "title": "Serbian Mafia's Slaughterhouse Uncovered",
+      "source_type": "youtube",
+      "ai_summary_len": 5652,
+      "content_hash_hex": "a277ba5dac5e8dce2dfc75ad0156311cc56a733536134b75404c36879f617d02"
+    },
+    {
+      "workspace_zettel_id": "6ac4c5f0-5c73-426b-9d9b-0f8ac4a9cd43",
+      "workspace_id": "bacb4a4f-f892-4159-85fd-715980f3d108",
+      "canonical_zettel_id": "19d5eba8-e5e5-455d-9ce0-2bdf26aa240c",
+      "normalized_url": "https://paperboy.com/blog/the-last-interface",
+      "title": "Paperboy AI: An Always-On Personal Presence",
+      "source_type": "web",
+      "ai_summary_len": 3722,
+      "content_hash_hex": "eadd25e9930c058bef409e0a6646020d44ac19470cf750d3347453d22ccf94d0"
+    },
+    {
+      "workspace_zettel_id": "e8e4c1ae-4490-42e4-8001-ccd580dafd29",
+      "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+      "canonical_zettel_id": "780b3961-2a90-4535-bd41-b6fd59461cf0",
+      "normalized_url": "https://www.youtube.com/watch?v=7Q5JTy88JfQ",
+      "title": "Lin Chun-yi's Historic All England",
+      "source_type": "youtube",
+      "ai_summary_len": 3834,
+      "content_hash_hex": "7fec5daf3e8c0869517ea6099b8198b36b728d9b77d2701df919f9cbe4e90ea0"
+    },
+    {
+      "workspace_zettel_id": "7a080c3a-97f3-43d2-8d17-1437b4ca1683",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "55e9e7ae-9fe3-44dd-92f1-14780d8be946",
+      "normalized_url": "https://www.youtube.com/watch?v=Kcpq4ugob2U",
+      "title": "Free ChatGPT's Unsustainable Costs",
+      "source_type": "youtube",
+      "ai_summary_len": 4276,
+      "content_hash_hex": "ed8d9ba4eff403ba05a071f1e5f787c4178ffb62c8262466e2c1c7c2d50329d3"
+    },
+    {
+      "workspace_zettel_id": "04ccd190-3e8e-4998-a96d-95bef11dbfea",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "527de882-b6ed-4538-a33c-1c2fcfb9d62d",
+      "normalized_url": "https://www.youtube.com/watch?v=WJ8clVdaRKA",
+      "title": "Google's Extensive User Data Collection",
+      "source_type": "youtube",
+      "ai_summary_len": 5802,
+      "content_hash_hex": "dfb666bd39da36c1f099dd3a05a83648a79385969ee70ccdef4bf4eccb3b3622"
+    },
+    {
+      "workspace_zettel_id": "951bad75-3765-4436-902c-d9984695fe79",
+      "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+      "canonical_zettel_id": "5c6df67e-6d1d-467f-9c93-34d2fb544639",
+      "normalized_url": "https://www.youtube.com/watch?v=SG_mlwiD-PQ",
+      "title": "Mateus Asato's Pentatonic Workout",
+      "source_type": "youtube",
+      "ai_summary_len": 3292,
+      "content_hash_hex": "cbb3f6f5e7580046f670129fb3de865ed29247781c8993df1085f1a5c0025deb"
+    },
+    {
+      "workspace_zettel_id": "0d3c0dee-dcab-439c-9a2b-17b59d5696f9",
+      "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+      "canonical_zettel_id": "1885d9c2-273d-4efb-8df5-523bb7ca260d",
+      "normalized_url": "https://www.youtube.com/watch?v=WtU66OYkJIE",
+      "title": "Intensity Over Volume Training",
+      "source_type": "youtube",
+      "ai_summary_len": 3566,
+      "content_hash_hex": "2993c7b94576311f8ee51c74fd8aac5087f5d34dd15cd8061cac5df68896bfcb"
+    },
+    {
+      "workspace_zettel_id": "c21e48ec-f7a7-418d-b726-aed602f34b48",
+      "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+      "canonical_zettel_id": "d4bdd04b-49ba-44dd-8d1e-019eb2477a10",
+      "normalized_url": "https://www.youtube.com/watch?v=qTMBlOyNlqc",
+      "title": "Dutch Urinals Prevent Drownings",
+      "source_type": "youtube",
+      "ai_summary_len": 4221,
+      "content_hash_hex": "31438931af65cecc3c03c52a03ca94395f3b31790a6ec374881ec50a46ada966"
+    },
+    {
+      "workspace_zettel_id": "42add64b-d27a-4509-9497-ed837f2daa8d",
+      "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+      "canonical_zettel_id": "10f25ff8-4b56-45f4-9d26-69960ba2ff9c",
+      "normalized_url": "https://www.youtube.com/watch?v=2PB1ti2hFTM",
+      "title": "Contested Kuril Islands Japan-Russia Dispute",
+      "source_type": "youtube",
+      "ai_summary_len": 3795,
+      "content_hash_hex": "d2557b3b4203a6d0697db0e26085c9f8c648d8c675f55bdd90656dc49877e2d0"
+    },
+    {
+      "workspace_zettel_id": "2e12cc8a-a412-4801-808b-c9658deab4fd",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "6633069c-bb95-41eb-9c6c-4bebe2d7c713",
+      "normalized_url": "https://www.youtube.com/watch?v=xL77Py39JQA",
+      "title": "Fluid Dynamics Effortless Achievement",
+      "source_type": "youtube",
+      "ai_summary_len": 4357,
+      "content_hash_hex": "830f18964180e54986b9922de9fdbb6ed640ac5ced925712d5073d8e0bf7e7a7"
+    },
+    {
+      "workspace_zettel_id": "ea7c0ca0-7bd9-490b-a499-ca3edec1c5f7",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "366d11aa-ac04-4690-a145-8965bb3aad51",
+      "normalized_url": "https://www.youtube.com/watch?v=mScpHTIi-kM",
+      "title": "Prisoner's Dilemma Cooperation's Emergence",
+      "source_type": "youtube",
+      "ai_summary_len": 6002,
+      "content_hash_hex": "1fe740310ea77e53321558fa50dea6961fa32b4ff940be1ecd35036b7abcd9fe"
+    },
+    {
+      "workspace_zettel_id": "3dcba4c9-9c8e-4dc8-b6fd-a4de4a1e89ca",
+      "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+      "canonical_zettel_id": "f1a0249a-ecca-4d51-b3dd-19a5622739fd",
+      "normalized_url": "https://www.youtube.com/watch?v=A654vzQTGbQ",
+      "title": "Prediction Markets Truth or Gambling",
+      "source_type": "youtube",
+      "ai_summary_len": 5116,
+      "content_hash_hex": "d6c05b14522b5af9f0db5bbcdafeb22d198121235499ae99895726b37d7b71b1"
+    },
+    {
+      "workspace_zettel_id": "ac60e521-4b1a-455c-9441-2fe8f0e499c1",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "33957f76-2c8a-483f-9c49-9e93f9a3becb",
+      "normalized_url": "https://www.hubermanlab.com/newsletter/improve-working-memory-attention",
+      "title": "Dopamine and Working Memory Enhancement",
+      "source_type": "web",
+      "ai_summary_len": 3093,
+      "content_hash_hex": "410f632f3a839bbe3d96f938c558e32ad4a19516cfc44c185e2ef8535a980fb0"
+    },
+    {
+      "workspace_zettel_id": "55bf9ba4-078d-4d18-a5a8-82e771ec67f0",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "3178d3ee-1fff-4eec-a9ba-1a3a557797af",
+      "normalized_url": "https://www.hubermanlab.com/newsletter/breathwork-protocols-for-health-focus-stress",
+      "title": "Huberman Lab: Breathing Protocols",
+      "source_type": "web",
+      "ai_summary_len": 2784,
+      "content_hash_hex": "269f2cf373ba0a7466172748d860bf4dd40e8e535bc8b3ce1a181ef88f2e36d7"
+    },
+    {
+      "workspace_zettel_id": "a2928645-af37-4605-87dc-61f3c7d32c67",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "e473db13-f870-4d58-b4f4-d4fc442a1a8d",
+      "normalized_url": "https://www.brainpost.co/weekly-brainpost/2026/5/9/o23a9cxxj8cxdfk3lwx4c34gebyyjs",
+      "title": "Psychedelics and Brain Connectivity: A Mega-Analysis",
+      "source_type": "web",
+      "ai_summary_len": 2067,
+      "content_hash_hex": "9dd82bd195c4c7dee65089b5ee697eb858fdd39c94db5afb9198e6012613301e"
+    },
+    {
+      "workspace_zettel_id": "ec1c363c-952b-4cfc-ac4d-e66f38235d72",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "a7ca353b-5b14-4b11-ba84-ebe012a6f37e",
+      "normalized_url": "https://www.brainpost.co/weekly-brainpost?month=06-2025",
+      "title": "Neural Circuit for Recovery Sleep",
+      "source_type": "web",
+      "ai_summary_len": 2023,
+      "content_hash_hex": "36286f3d14d0122c0a0dc456ce579e3e4884e81439453374cc694b6a6007d790"
+    },
+    {
+      "workspace_zettel_id": "13261811-baf0-42e6-9b70-266c21da5c1a",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "0b23b2e7-d951-49db-b904-5fa2e1c649d7",
+      "normalized_url": "https://themarkup.org/working-for-an-algorithm/2022/06/09/an-amazon-warehouse-workers-life-turned-upside-down-after-she-was-hospitalized-for-covid",
+      "title": "Amazon's Pandemic Sick Leave Challenges",
+      "source_type": "web",
+      "ai_summary_len": 3279,
+      "content_hash_hex": "82c1d4754a7ee32a84e6ca648948be73cda9195418eeb3720da9cff685bc3450"
+    },
+    {
+      "workspace_zettel_id": "f8de85f8-37ed-4c70-8e09-f41cd94a45e7",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "ca57d3df-db5c-4766-a21b-88ae770adefa",
+      "normalized_url": "https://importai.substack.com/p/import-ai-455-automating-ai-research",
+      "title": "Import AI #455: AI to autonomously build successors by 2028",
+      "source_type": "newsletter",
+      "ai_summary_len": 6131,
+      "content_hash_hex": "cfb14ac9cf525952c3ceed291cae25e0e19262f8594021818cb94829e2e0f889"
+    },
+    {
+      "workspace_zettel_id": "7883c431-7e09-47bc-91ec-d8d61e63a70d",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "0dcc9120-0f75-44dd-966d-b8381c1481ce",
+      "normalized_url": "https://popular.info/p/the-money-behind-the-new-iran-war",
+      "title": "Lobbying for War: Financial Ties and Geopolitical Influence",
+      "source_type": "web",
+      "ai_summary_len": 3602,
+      "content_hash_hex": "5fa1ec159590546db1d85559b3548e200522ff1cf2fa0fc518881abe26b42324"
+    },
+    {
+      "workspace_zettel_id": "ec02d661-780e-426a-8887-e1fd51d97127",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "1630a9cc-bdb1-45c2-86e4-d805c56758ff",
+      "normalized_url": "https://www.noahpinion.blog/p/the-fall-of-the-nerds",
+      "title": "AI's Impact on Software Engineering and the Tech Economy",
+      "source_type": "web",
+      "ai_summary_len": 3051,
+      "content_hash_hex": "2194052470052f8bcbfc85345609d1e41a29c2527557f200afd7bf7c79fc56f1"
+    },
+    {
+      "workspace_zettel_id": "2e0447fb-1269-45c4-bff1-c618f06dfa57",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "b5df3508-f528-469b-b62c-fdf90fcb8185",
+      "normalized_url": "https://www.noahpinion.blog/p/china-is-quietly-looking-weaker",
+      "title": "Revisiting the 'Chinese Century' Thesis",
+      "source_type": "web",
+      "ai_summary_len": 2199,
+      "content_hash_hex": "0b9bb94669ecc85b64d7eb0a5d91843721279b61e052558e0c9fad8b5f785b13"
+    },
+    {
+      "workspace_zettel_id": "67ed05d0-afb2-41a9-a46b-5021a1a1e404",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "95592dc7-c027-497b-8e3c-50acd74f3880",
+      "normalized_url": "https://gwern.net/silk-road",
+      "title": "Silk Road 1: Operations, Ideology, and Vulnerabilities",
+      "source_type": "web",
+      "ai_summary_len": 4372,
+      "content_hash_hex": "786a7dd4db69faffe1dc5d0fdf9e6df6b21d226a109a626d9041003cd6a73a9a"
+    },
+    {
+      "workspace_zettel_id": "a5d22e48-ccc0-4607-b0c5-c59eb4ffd4c6",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "cd51b341-e2b9-4d09-b975-59bea83b0ce6",
+      "normalized_url": "https://refractor.io/mental-health/serotonin-dopamine-real-time-tracking-brain/",
+      "title": "Real-time Dopamine & Serotonin Monitoring in Human Brain",
+      "source_type": "web",
+      "ai_summary_len": 2640,
+      "content_hash_hex": "a95f9f053e5fcbe80a9df734ff8d0f1bc34cfd76454665e7921153b46ae212be"
+    },
+    {
+      "workspace_zettel_id": "fabdb544-95ac-4421-a771-c4fe05dc6b54",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "1d3120b2-4d3e-4a7f-9d38-6d8cd5bd99c6",
+      "normalized_url": "https://quantum.country/search",
+      "title": "Grover's Quantum Search Algorithm",
+      "source_type": "web",
+      "ai_summary_len": 3477,
+      "content_hash_hex": "ac211c0fc655c1b7f87223c819cfddd1cc92ce3f06410d4d7804694008fb6ab2"
+    },
+    {
+      "workspace_zettel_id": "b621aeec-6f81-4b67-bc5b-21195d1423e1",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "0a78bd3e-41cd-40ac-99f3-4fbe23974f09",
+      "normalized_url": "https://www.icij.org/investigations/panama-papers/20160403-panama-papers-global-overview/",
+      "title": "Panama Papers Leak",
+      "source_type": "web",
+      "ai_summary_len": 3757,
+      "content_hash_hex": "7f6db842b080dc259241337d3a8baffb3c3f4e5a8c22f8379ac0af9b3f30b357"
+    },
+    {
+      "workspace_zettel_id": "0061ad33-2f41-444f-b742-4786d15470a6",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "e6e297be-7afd-4751-b90a-b179048d885e",
+      "normalized_url": "https://www.icij.org/investigations/pandora-papers/global-investigation-tax-havens-offshore/",
+      "title": "Pandora Papers Investigation Findings",
+      "source_type": "web",
+      "ai_summary_len": 3226,
+      "content_hash_hex": "08226dfe69a17c5a863ede47d56e2bb0d7619875aa01702d84587cae5c5fd207"
+    },
+    {
+      "workspace_zettel_id": "6dce6963-2866-48e1-a8b0-ce4ce19170ba",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "6ab9a6db-77b8-44b6-a147-4e6c1c4a669b",
+      "normalized_url": "https://www.bellingcat.com/news/2026/05/11/active-club-colombia-politics/",
+      "title": "Colombian Politician Linked to Neo-Nazi Group",
+      "source_type": "web",
+      "ai_summary_len": 3902,
+      "content_hash_hex": "a5b52ccc1313a6a8097f6f027c799824765d6218c50b21f0bed37461826484e7"
+    },
+    {
+      "workspace_zettel_id": "36fb7126-10c6-42ad-aae0-e99de4610954",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "eecf6666-ed60-4ed1-b7a6-d394661a6404",
+      "normalized_url": "https://github.com/BindsNET/bindsnet",
+      "title": "BindsNET/bindsnet",
+      "source_type": "github",
+      "ai_summary_len": 3792,
+      "content_hash_hex": "fcfa06efbdda3ec4d6c95c8bd8679a266072529326e58bcb122e61983134e4cb"
+    },
+    {
+      "workspace_zettel_id": "ee73f1fa-59a2-4eee-a548-58c52025bf26",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "679a0fea-b94f-4df8-8812-810b9ad6f3e9",
+      "normalized_url": "https://github.com/psychopy/psychopy",
+      "title": "psychopy/psychopy",
+      "source_type": "github",
+      "ai_summary_len": 3513,
+      "content_hash_hex": "d9a9e55c1bbc1cfe64dca097e81f38a1b871dec9f50097fab40f7e671a13eb35"
+    },
+    {
+      "workspace_zettel_id": "b52a80d6-c4ca-414c-9448-7f5f0f8e7ccd",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "c953d137-fc6a-4de6-ac48-728d9d0544fa",
+      "normalized_url": "https://github.com/theiagen/public_health_bioinformatics",
+      "title": "theiagen/public_health_bioinformatics",
+      "source_type": "github",
+      "ai_summary_len": 3551,
+      "content_hash_hex": "346b61e6f0fa0efae645497a32b4076d5fcd90d7ee892875f4ea6b8fe977b37c"
+    },
+    {
+      "workspace_zettel_id": "2a36ba0a-d7e0-4e7a-975f-dfacfd975aa4",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "64719860-6eb1-4012-9d57-b87b9d84e2f1",
+      "normalized_url": "https://github.com/onionshare/onionshare",
+      "title": "onionshare/onionshare",
+      "source_type": "github",
+      "ai_summary_len": 2910,
+      "content_hash_hex": "abdd80e3db6e05743ea7657e2567269e6e10c6adb83aeab77e91b6120f10f83d"
+    },
+    {
+      "workspace_zettel_id": "b00df24f-f8a6-410a-87db-2eccbd1a6005",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "9511ea28-7b5f-48de-ad00-3e7820a62996",
+      "normalized_url": "https://github.com/rapid7/metasploit-framework",
+      "title": "rapid7/metasploit-framework",
+      "source_type": "github",
+      "ai_summary_len": 3715,
+      "content_hash_hex": "a16557fbb99b39c194b6ad9750c29be7773641ccd99593dfcecbd85544620ff4"
+    },
+    {
+      "workspace_zettel_id": "24d1a13a-bf7e-4848-b54d-83eafe327fee",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "6edd8f35-27ce-4f0e-99e5-a9d4937a47b7",
+      "normalized_url": "https://github.com/sherlock-project/sherlock",
+      "title": "sherlock-project/sherlock",
+      "source_type": "github",
+      "ai_summary_len": 3433,
+      "content_hash_hex": "598512e04e6b3e6a503746f306e9018924bcc58d2692595853e4aedb531ab25f"
+    },
+    {
+      "workspace_zettel_id": "591880fb-a4a5-4688-81fb-9e0d55237114",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "3ee05fd9-d525-46e4-9df3-6cc5893660d4",
+      "normalized_url": "https://github.com/OpenBB-finance/OpenBB",
+      "title": "OpenBB-finance/OpenBB",
+      "source_type": "github",
+      "ai_summary_len": 3008,
+      "content_hash_hex": "db17d45c28fcae1e9353906cbca5b86e8ff765a877ee6433e433feb78cf81a7e"
+    },
+    {
+      "workspace_zettel_id": "c54e4852-6eca-42a0-b619-527456d907c0",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "39cc4810-40e2-45f8-b983-0373698a2442",
+      "normalized_url": "https://github.com/athensresearch/athens",
+      "title": "athensresearch/athens",
+      "source_type": "github",
+      "ai_summary_len": 3244,
+      "content_hash_hex": "1fe885cc39e224679d5ba19cad50e700a358dc98a7f10d86cf918ed71a037e91"
+    },
+    {
+      "workspace_zettel_id": "d5650ab7-d687-4e4f-994b-1bc500e43000",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "027292cd-cd90-4c62-a21f-138bdbd74c69",
+      "normalized_url": "https://github.com/dendronhq/dendron",
+      "title": "dendronhq/dendron",
+      "source_type": "github",
+      "ai_summary_len": 3256,
+      "content_hash_hex": "c46118a8adc8890a2135b61f3480f47fb9a10186dedb60e62767d750ca8b184c"
+    },
+    {
+      "workspace_zettel_id": "cdc94776-b091-4867-b1fc-ac6961ac4d13",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "4f3c31c1-d74b-4413-bc03-1093c74ed883",
+      "normalized_url": "https://www.reddit.com/r/neuroscience/comments/1pbb0se/best_neuroscience_discoveries_of_the_year_2025",
+      "title": "r/neuroscience solicit community opinions most interesting",
+      "source_type": "reddit",
+      "ai_summary_len": 3721,
+      "content_hash_hex": "f33ebdb1ad8d55da4978a737d9e4a6f46c0c9804a5eb8c7e540178c71c95c714"
+    },
+    {
+      "workspace_zettel_id": "6ebc6b8a-8c4b-4d86-9e4c-c4f0ffb60384",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "7f3d6236-e5aa-40d1-8e51-a48b6a05f612",
+      "normalized_url": "https://github.com/py-why/EconML",
+      "title": "py-why/EconML",
+      "source_type": "github",
+      "ai_summary_len": 3891,
+      "content_hash_hex": "3012571bd3f145a6b8e6e19b43b81b038b1bb8747f106969085d09277623f446"
+    },
+    {
+      "workspace_zettel_id": "de4e68df-25c7-4549-82d0-0fc92b6ccd86",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "63afcaeb-1700-45ba-8051-1c3c026ced96",
+      "normalized_url": "https://www.reddit.com/r/MachineLearning/comments/1tdje2d/arxiv_implements_1year_ban_for_papers_containing",
+      "title": "r/MachineLearning inform r/MachineLearning community arXiv s",
+      "source_type": "reddit",
+      "ai_summary_len": 7237,
+      "content_hash_hex": "c09df6627c852b089885ee73c206030bdb0411345d28f1eb15cd4d781cde3769"
+    },
+    {
+      "workspace_zettel_id": "bbae060f-96dd-4316-8814-cc66c4e210ae",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "e34f36f3-bb53-494d-b6f3-3de0bc8b6619",
+      "normalized_url": "https://www.reddit.com/r/Defcon/comments/1p5nvdr/famous_fictional_hackers",
+      "title": "r/Defcon share image compilation famous fictional",
+      "source_type": "reddit",
+      "ai_summary_len": 3217,
+      "content_hash_hex": "70d7b0c302b399779a80e86048dc294365f64b47a26ea73f36324c8117a7ed02"
+    },
+    {
+      "workspace_zettel_id": "5dd18062-1a75-499c-a26c-a044fc2a9468",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "dae6c970-9f21-4b33-b373-1cd2e1f19345",
+      "normalized_url": "https://www.reddit.com/r/darknet/comments/1ohbzod/what_kind_of_communities_exist_on_the_dark_web",
+      "title": "r/darknet discover non-stereotypical useful legal gray-area",
+      "source_type": "reddit",
+      "ai_summary_len": 4592,
+      "content_hash_hex": "4d1b2ae4de26b8ae229dd13d20d3f5714c36ffe792bc8a2d2bf30d8d044778a8"
+    },
+    {
+      "workspace_zettel_id": "23f1cc68-6527-4768-8db2-8dfeaea215b0",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "b21e1f03-15d5-4182-a8eb-1ce49dc1e3ae",
+      "normalized_url": "https://www.reddit.com/r/badeconomics/comments/1mxgdxa/how_money_works_does_not_understand_how_housing",
+      "title": "r/badeconomics critique debunk claims made Money",
+      "source_type": "reddit",
+      "ai_summary_len": 9342,
+      "content_hash_hex": "32963a2c617d83bf3a4443892df5a128673df0c36c6e9496e89a93acbbe3c920"
+    },
+    {
+      "workspace_zettel_id": "5a0e0654-0580-4ce2-8b2c-62377044b6b5",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "7fde6911-cd7a-42ec-900b-50a90bf327f1",
+      "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/1oghgwl/eli5_the_richest_person_in_1993_had_a_networth_of",
+      "title": "r/AskEconomics understand underlying causes dramatic rise",
+      "source_type": "reddit",
+      "ai_summary_len": 3655,
+      "content_hash_hex": "6dde1bf54302cc8a75d44940d09805e6ba743c025f4a9d4765260df5da42017d"
+    },
+    {
+      "workspace_zettel_id": "f35623f2-a78c-4e97-9771-24e524db530f",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "b0923bc7-2475-48be-bc1f-e59da0e542e3",
+      "normalized_url": "https://www.reddit.com/r/AskEconomics/comments/1q37pg4/why_isnt_russia_collapsing",
+      "title": "r/AskEconomics understand Russia's economy has",
+      "source_type": "reddit",
+      "ai_summary_len": 8946,
+      "content_hash_hex": "69fce4ca80a45246bf8d7ae40fa52456993511f9efbce76a70f4303a8cc402e0"
+    },
+    {
+      "workspace_zettel_id": "a9de82e8-5753-4212-9bfa-85b1e9f780dd",
+      "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+      "canonical_zettel_id": "9c2d4d31-8d53-4912-84e1-11e46ff41ec7",
+      "normalized_url": "https://www.reddit.com/r/IAmA/comments/blv3r8/im_ray_dalio_founder_of_bridgewater_associates_im",
+      "title": "r/IAmA Ray Dalio founder Bridgewater Associates",
+      "source_type": "reddit",
+      "ai_summary_len": 8062,
+      "content_hash_hex": "dec0303f6302b2ed816e980a03d56c4d16553567860ba3846071e71f33cd5995"
+    }
+  ]
+}

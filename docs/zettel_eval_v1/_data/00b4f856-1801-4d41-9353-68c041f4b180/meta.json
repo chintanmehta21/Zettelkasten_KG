@@ -1,0 +1,184 @@
+{
+  "workspace_zettel_id": "00b4f856-1801-4d41-9353-68c041f4b180",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "976deede-e614-4c7c-b487-ccee3c15edc9",
+  "normalized_url": "https://www.youtube.com/watch?v=ZxZO0jd8VoU",
+  "title": "BlackRock's Power Universal Ownership",
+  "source_type": "youtube",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T12:32:39.381534+00:00",
+  "ai_summary_len": 5306,
+  "body_md_len": 4892,
+  "content_hash_hex": "b8d04f697b41bb4984d60f3946124f7f02131567461b631964950ed94d4c2558",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=ZxZO0jd8VoU",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "ZxZO0jd8VoU",
+        "key_index": 2,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 126344
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 126344,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 126344
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 34869,
+      "confidence_reason": "transcript via tier=gemini_filedata len=16044",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3459,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "blackrock",
+          "vanguard",
+          "state-street",
+          "asset-management",
+          "passive-investing",
+          "universal-ownership",
+          "financial-system",
+          "corporate-governance",
+          "economic-inequality",
+          "lecture"
+        ],
+        "guests": null,
+        "speakers": [
+          "US Treasury"
+        ],
+        "mini_title": "BlackRock's Power Universal Ownership",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this lecture, The speaker argues that blackrock, alongside vanguard and state street, wields immense, often unchecked, power through its \"universal ownership\" model, influencing corporate governance, wealth distribution, and market competition, while actively resisting regulatory oversight. The closing point is that the lecture underscores that the concentrated power of \"the big 3\" asset managers, particularly blackrock, presents significant challenges to market competition, wealth distributi",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "lecture",
+          "confidence": 0.727
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "lecture",
+          "thesis": "BlackRock, alongside Vanguard and State Street, wields immense, often unchecked, power through its \"universal ownership\" model, influencing corporate governance, wealth distribution, and market competition, while actively resisting regulatory oversight. This system, driven by passive investing, concentrates wealth and creates a \"shareholder oligarchy\" rather than a true market democracy.",
+          "demonstrations": [],
+          "closing_takeaway": "The lecture underscores that the concentrated power of \"the Big 3\" asset managers, particularly BlackRock, presents significant challenges to market competition, wealth distribution, and democratic oversight, necessitating ongoing scrutiny and regulatory efforts.",
+          "chapters_or_segments": [
+            {
+              "title": "Introduction to the Big 3 Asset Managers",
+              "bullets": [
+                "BlackRock manages $10.6 trillion, exceeding half the US GDP, and holds stock in 95% of Fortune 500 companies.",
+                "BlackRock, Vanguard, and State Street are collectively known as \"the Big 3\" in asset management.",
+                "Their managed funds originate from institutional clients like pension funds and university endowments, ultimately sourced from individuals' 401ks and insurance policies.",
+                "Their primary products are index funds and ETFs, which involve buying small stakes across an entire market index.",
+                "This \"passive investing\" strategy grants them significant legal flexibility and profits from fees based on total assets under management, not direct investment returns."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Universal Ownership and Corporate Influence",
+              "bullets": [
+                "The \"Big 3\" collectively own shares in nearly every publicly listed company, typically holding 3-10% individually and up to 25% combined.",
+                "A 5% stake is often considered a threshold for significant control, frequently making them the largest single shareholder in many companies.",
+                "For instance, the Big 3 own 16% of Amazon, surpassing Jeff Bezos's 9% stake.",
+                "They exercise substantial voting power, derived from individual investors through pension fund managers.",
+                "A 2017 study indicated that asset managers predominantly vote in alignment with company management's recommendations.",
+                "This alignment is partly due to executive compensation being tied to stock performance since the 1980s, incentivizing profit maximization over other concerns.",
+                "This system contributes to wage stagnation by prioritizing shareholder returns over employee wages."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Wealth Concentration and Anti-Competitive Effects",
+              "bullets": [
+                "The system has led to a significant concentration of wealth, with household stock ownership declining from 94% in 1945 to about 40% today.",
+                "Currently, the top 1% of Americans own 50% of corporate equity and mutual funds, while the bottom 50% own virtually none.",
+                "This \"universal ownership\" model fosters anti-competitive effects, described as a \"neo-monopoly.\"",
+                "Since the Big 3 hold stakes in competing companies, such as Nike and Adidas or all major airlines, they lack incentive to encourage price competition.",
+                "Such competition could potentially lower overall market value, negatively impacting their diverse portfolios."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "BlackRock's Political and Regulatory Influence",
+              "bullets": [
+                "BlackRock exerts influence through private engagements, conducting over 1,500 such meetings between 2014 and 2015, preferring them over public votes against management.",
+                "A \"revolving door\" exists between BlackRock and government bodies, with at least 84 former government officials hired since 2004.",
+                "BlackRock CEO Larry Fink serves on the board of the World Economic Forum and sought to become Hillary Clinton's Treasury Secretary in 2016.",
+                "Following the 2008 financial crisis, the Financial Stability Oversight Council (FSOC) identified BlackRock as a systemic risk.",
+                "BlackRock responded by doubling its lobbying spending, including a targeted ad campaign, successfully avoiding additional oversight.",
+                "The firm self-certifies its compliance with passive investor rules through annual letters."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Systemic Issues and Future Regulation",
+              "bullets": [
+                "The financial sector exhibits self-ownership, as BlackRock, Vanguard, and State Street are the largest shareholders in each other.",
+                "This interconnected system is characterized as a \"shareholder oligarchy\" rather than a democratic market.",
+                "While BlackRock did not create this system, it effectively leverages it for its advantage.",
+                "The Consumer Financial Protection Bureau (CFPB) and FDIC are developing new regulations specifically for asset managers with substantial stakes in banks.",
+                "These powerful financial firms are actively lobbying against the proposed regulatory changes."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "BlackRock",
+          "Vanguard",
+          "State Street",
+          "Fortune 500",
+          "Amazon",
+          "Nike",
+          "Adidas",
+          "US Treasury",
+          "Federal Reserve",
+          "World Economic Forum",
+          "Financial Stability Oversight Council (FSOC)",
+          "Consumer Financial Protection Bureau (CFPB)",
+          "FDIC"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3459,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=ZxZO0jd8VoU"
+  }
+}

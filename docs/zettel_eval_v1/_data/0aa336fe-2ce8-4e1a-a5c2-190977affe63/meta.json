@@ -1,0 +1,171 @@
+{
+  "workspace_zettel_id": "0aa336fe-2ce8-4e1a-a5c2-190977affe63",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "60a43cf6-f444-4346-b04d-3511aeb54ebe",
+  "normalized_url": "https://www.youtube.com/watch?v=heBErnN3ZPk",
+  "title": "Majestic Monolith vs Microservices",
+  "source_type": "youtube",
+  "publication_date": "2026-05-22",
+  "captured_at": "2026-05-22T12:16:15.940479+00:00",
+  "ai_summary_len": 3579,
+  "body_md_len": 3083,
+  "content_hash_hex": "ffdff84a1ee011b9c191ac5e35669006b01be01598d4bb887efd17a131ce30e6",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=heBErnN3ZPk",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        },
+        {
+          "role": "repair",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-unavailable"
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "video_id": "heBErnN3ZPk",
+        "tier_used": "metadata_only",
+        "quality_flag": "thin",
+        "tier_results": [
+          {
+            "tier": "tier_timeout",
+            "reason": "tier exceeded remaining budget 90000ms",
+            "status": "timeout",
+            "latency_ms": 90002
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 90002
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 0,
+        "all_tier_results": [
+          {
+            "tier": "tier_timeout",
+            "reason": "tier exceeded remaining budget 90000ms",
+            "status": "timeout",
+            "latency_ms": 90002
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 90002
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 23391,
+      "confidence_reason": "All transcript tiers failed; metadata-only fallback (composite capped at 75)",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 5350,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "software-architecture",
+          "microservices",
+          "monolith",
+          "david-heinemeier-hansson",
+          "ruby-on-rails",
+          "basecamp",
+          "hey",
+          "programming",
+          "commentary",
+          "software-development"
+        ],
+        "guests": null,
+        "speakers": [
+          "David Heinemeier Hansson"
+        ],
+        "mini_title": "Majestic Monolith vs Microservices",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this commentary, David Heinemeier Hansson argues that david heinemeier hansson argues that the \"majestic monolith\" is a superior and often overlooked architectural choice for most companies compared to microservices. The commentary moves through The Microservices Fallacy, The Cost of Distribution, and Defining the Majestic Monolith. Along the way David Heinemeier Hansson references Netflix, Amazon, and Google.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "commentary",
+          "confidence": 0.2
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "David Heinemeier Hansson argues that the \"Majestic Monolith\" is a superior and often overlooked architectural choice for most companies compared to microservices. He asserts that microservices are frequently adopted prematurely due to \"cargo culting\" without understanding the inherent complexities and costs.",
+          "demonstrations": [],
+          "closing_takeaway": "DHH advocates a \"monolith first\" strategy, where the application remains a single unit until organizational scaling—contention from hundreds or thousands of developers—makes the pain of the monolith greater than the pain of distributed systems. Only then should services be extracted, mirroring the evolutionary path of companies like Amazon, which also began as a monolith.",
+          "chapters_or_segments": [
+            {
+              "title": "The Microservices Fallacy",
+              "bullets": [
+                "DHH introduces the idea that microservices are often adopted without proper justification by many companies.",
+                "He describes this widespread adoption as \"cargo culting,\" where businesses mimic large tech giants like Netflix, Amazon, and Google.",
+                "The core issue is that most companies lack the immense scale and thousands of engineers that genuinely necessitate distributed systems.",
+                "Prematurely adopting microservices introduces an unnecessary \"tax\" of distributed computing.",
+                "This tax includes significant complexities such as network latency, fault tolerance, and data consistency challenges."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "The Cost of Distribution",
+              "bullets": [
+                "DHH cites Martin Fowler's \"first law of distributed objects,\" which advises against distributing objects unnecessarily.",
+                "He also invokes the YAGNI (You Ain't Gonna Need It) principle, framing microservices as a premature optimization for most contexts.",
+                "The inherent complexities of distributed systems are significant and should not be taken on lightly by development teams.",
+                "These complexities encompass managing multiple deployments, separate databases, and intricate inter-service communication.",
+                "The perceived benefits of microservices often do not outweigh their substantial costs for typical organizational sizes and project scales."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Defining the Majestic Monolith",
+              "bullets": [
+                "DHH clarifies that the \"Majestic Monolith\" is not synonymous with a \"big ball of mud\" but rather a well-structured application.",
+                "It emphasizes high cohesion and low coupling within a single, unified codebase.",
+                "He uses the analogy of a well-planned city with distinct districts that share common underlying infrastructure.",
+                "Benefits of this approach include a single codebase, a streamlined deployment process, and a unified test suite.",
+                "Further benefits include mature tooling and simple local ACID transactions, making it ideal for smaller teams.",
+                "Basecamp and HEY, built on Ruby on Rails and serving millions, are cited as successful monolithic examples."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Netflix",
+          "Amazon",
+          "Google",
+          "Basecamp",
+          "HEY",
+          "Ruby on Rails",
+          "Martin Fowler's first law of distributed objects",
+          "YAGNI principle"
+        ],
+        "attribution_confidence": "high"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 5350,
+      "extraction_confidence": "low",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=heBErnN3ZPk"
+  }
+}

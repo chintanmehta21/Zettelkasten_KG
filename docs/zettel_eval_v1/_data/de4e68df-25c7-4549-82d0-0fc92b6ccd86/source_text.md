@@ -1,0 +1,49 @@
+## OP Intent
+- To inform the r/MachineLearning community about arXiv's new policy regarding unchecked LLM-generated content in submissions, specifically the 1-year ban and the subsequent requirement for peer-reviewed acceptance.
+
+## Reply Clusters
+- Strong Support for the Ban / Call for Harsher Penalties: Many users believe the ban is necessary to uphold scientific integrity, viewing unchecked LLM usage as akin to falsifying data or fraud. They argue that hallucinated content undermines trust, wastes reviewer time, and constitutes a 'DDOS attack' on the scientific community. Some feel the current 1-year ban is too lenient given the severity of the offense.
+- Concerns about Enforcement & Definition of 'Incontrovertible Evidence': Users express skepticism about the policy's effectiveness, arguing that 'incontrovertible evidence' (e.g., fake DOIs, meta-comments) only catches the most blatant errors. They worry that subtler LLM artifacts, such as rephrased conclusions or plausible but unsupported references, will be difficult to detect or prove as AI-generated. The unreliability of AI detection tools is also a significant concern.
+- Impact of the Post-Ban Peer Review Requirement: The requirement for peer-reviewed acceptance after the ban is seen as a significant hurdle, potentially creating a 'catch-22' for authors. Since many journals expect a preprint on arXiv prior to submission, banned authors might struggle to get papers accepted by journals, effectively extending their ban indefinitely, especially for those without strong institutional support.
+- Broader Academic Culture Issues: Some comments link the problem of unchecked LLM content to existing issues within academia, such as the prevalence of 'frivolous co-authorship' where not all authors thoroughly review a paper. The sheer volume of daily submissions to arXiv is also cited as a factor making comprehensive moderation challenging.
+
+### Strong Support for the Ban / Call for Harsher Penalties
+- unchecked LLM usage is same as falsifying data as it's likely hallucinating results that didn't happen and eliminates trust in the entire paper, which in a traditional journal would earn you a permanent lifetime ban.
+- About time. Was getting tired of seeing papers with completely fake citations and obviously generated tables with placeholder text still in them.
+- I am all for this, too. It's ridiculous. People are posting completely hallucinated sources and feel no shame in getting caught... Anything else is fraud!
+- at this point I would be in for a 3-5 years ban of all co-author. The current state is almost a DDOS attack on the scientific community.
+- a 1-year ban for incontrovertible evidence of unchecked AI errors honestly feels pretty lenient, if, you're submitting fabricated citations you clearly didn't bother verifying, that's a serious breach of scientific integrity.
+- 1 year feels light tbh. if you cant be bothered to ctrl+f your own references before hitting submit you probably shouldnt be publishing papers.
+
+### Concerns about Enforcement & Definition of 'Incontrovertible Evidence'
+- The threshold here is the thing nobody is addressing. Incontrovertible evidence means hallucinated references which are easy to catch but most LLM errors in papers are much subtler things like rephrased conclusions or smoothed over methodology sections that nobody can prove came from a model.
+- AI detection tools won't help here - they flag well-written human text as AI and miss actual AI slop regularly.
+- I'm skeptical about how this will be enforced. They have said that standard AI detection algorithms will be used, but those are unreliable at best and when applied to scientific text, they are just awful.
+- How do they know who is using generative AI? What if you get accused of AI, even though you know you didn't use AI?
+
+### Impact of the Post-Ban Peer Review Requirement
+- it says they won't accept submissions from those authors until they have had a paper accepted in a good journal, which can be hard to do if no pre-print exists.
+- oh that's actually harsher than it sounds, if the policy really requires peer-reviewed acceptance before resubmission, that's a pretty nasty catch-22 for authors who depend on arXiv first to get visibility and feedback.
+- the peer-reviewed acceptance requirement after the ban is the part that actually bites you need a journal acceptance to come back to arXiv, but most journals expect a preprint first. so the ban effectively extends itself indefinitely for anyone without an institutional safety net.
+
+### Broader Academic Culture Issues
+- A co-author can make very minor contributions and be added. It's usually not expected that they proof read the entire thing and check all references... Your suggestion could work but you first need to change academic culture away from frivolous co-authorship.
+- Frivolous co-authorship is also a current widespread problem :)
+- There are 100-300 new machine learning paper uploaded to Arxiv everyday just in one subcategory (cs.LG). Calling it a DDOS attack is appropriate.
+
+## Counterarguments
+- The 1-year ban is considered too lenient by many, who advocate for harsher, longer, or permanent bans given the severity of scientific misconduct.
+- The focus on 'incontrovertible evidence' may only catch the most obvious LLM errors, allowing more subtle but equally problematic AI-generated content to slip through.
+- AI detection tools are unreliable and prone to false positives, potentially leading to unfair accusations against authors who did not use LLMs or thoroughly checked their work.
+- The post-ban requirement for peer-reviewed acceptance creates a 'catch-22' for authors, as many journals expect a preprint, effectively extending the ban indefinitely for those without alternative publishing avenues.
+- The policy does not fully address the issue of 'frivolous co-authorship,' where not all listed authors may have thoroughly reviewed the paper, complicating responsibility for LLM-generated errors.
+
+## Unresolved Questions
+- How will arXiv reliably detect subtle LLM errors that do not constitute 'incontrovertible evidence'?
+- What specific AI detection algorithms, if any, will arXiv use, given their documented unreliability for scientific text?
+- How will arXiv address the 'catch-22' for banned authors who need a preprint for journal acceptance but are prohibited from submitting to arXiv?
+- How will the policy impact co-authors who may have made minor contributions and not thoroughly checked the entire paper?
+- Are there any statistics on the frequency of blatant LLM hallucinations or meta-comments in arXiv submissions?
+
+## Moderation Context
+- Rendered comments covered only part of the thread (21/79 visible; divergence 73.42%).

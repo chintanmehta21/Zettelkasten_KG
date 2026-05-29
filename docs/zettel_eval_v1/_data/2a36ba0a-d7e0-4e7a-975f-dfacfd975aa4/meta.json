@@ -1,0 +1,256 @@
+{
+  "workspace_zettel_id": "2a36ba0a-d7e0-4e7a-975f-dfacfd975aa4",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "64719860-6eb1-4012-9d57-b87b9d84e2f1",
+  "normalized_url": "https://github.com/onionshare/onionshare",
+  "title": "onionshare/onionshare",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:35:59.822443+00:00",
+  "ai_summary_len": 2910,
+  "body_md_len": 2540,
+  "content_hash_hex": "abdd80e3db6e05743ea7657e2567269e6e10c6adb83aeab77e91b6120f10f83d",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/onionshare/onionshare",
+      "author": "onionshare",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "onionshare",
+        "forks": 701,
+        "owner": "onionshare",
+        "stars": 6978,
+        "topics": [
+          "cross-platform",
+          "file-sharing",
+          "onion-service",
+          "onionshare",
+          "open-source",
+          "python",
+          "security",
+          "tor",
+          "tor-onion-service"
+        ],
+        "license": "NOASSERTION",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "OnionShare 2.6.3",
+            "tag_name": "v2.6.3",
+            "prerelease": false,
+            "published_at": "2025-02-25T09:34:51Z"
+          },
+          {
+            "name": "OnionShare 2.6.2",
+            "tag_name": "v2.6.2",
+            "prerelease": false,
+            "published_at": "2024-03-21T16:25:57Z"
+          },
+          {
+            "name": "OnionShare 2.6.1",
+            "tag_name": "v2.6.1",
+            "prerelease": false,
+            "published_at": "2024-02-28T17:03:49Z"
+          },
+          {
+            "name": "OnionShare 2.6.1.dev1",
+            "tag_name": "v2.6.1.dev1",
+            "prerelease": true,
+            "published_at": "2023-10-21T03:06:37Z"
+          },
+          {
+            "name": "OnionShare 2.6",
+            "tag_name": "v2.6",
+            "prerelease": false,
+            "published_at": "2022-10-10T00:34:11Z"
+          }
+        ],
+        "full_name": "onionshare/onionshare",
+        "has_tests": false,
+        "languages": [
+          [
+            "Python",
+            95.04630976718525
+          ],
+          [
+            "JavaScript",
+            1.6435464225027805
+          ],
+          [
+            "HTML",
+            1.5201040946324
+          ],
+          [
+            "CSS",
+            0.8474693692978776
+          ],
+          [
+            "Shell",
+            0.7956991685277488
+          ],
+          [
+            "PowerShell",
+            0.12936252114579674
+          ],
+          [
+            "Batchfile",
+            0.017508656708145807
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-27T04:21:30Z",
+        "has_docs_dir": true,
+        "has_examples": false,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 3,
+        "extra_doc_files": [
+          "CHANGELOG.md",
+          "docs/README.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "OnionShare is an open-source tool enabling secure file sharing, website hosting, and chat over the Tor network. The `docs` directory provides comprehensive documentation, detailing how the tool works, its security properties, usage instructions, and guidelines for contributing to the project."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 32448,
+      "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2315,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-onionshare-onionshare",
+          "python",
+          "cli-tool",
+          "tor",
+          "file-sharing",
+          "anonymous",
+          "secure",
+          "cli",
+          "cross-platform",
+          "chat"
+        ],
+        "mini_title": "onionshare/onionshare",
+        "owner_login": "onionshare",
+        "_dense_verify": {
+          "archetype": "cli_tool",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "OnionShare is predominantly a Python application (~95%) designed for secure and anonymous communication over the Tor network. Its architecture integrates Python for core logic, click for command-line interface parsing, and flask for serving temporary web services, which are rendered using JavaScript and HTML. This setup allows it to provide functionalities like anonymous file sharing, temporary website hosting, and private chat, all routed through Tor to ensure user privacy and censorship circum",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "OnionShare is an open-source, cross-platform tool for secure and anonymous file sharing, website hosting, and chat using the Tor network.",
+              "Available for Windows, macOS (direct download or Homebrew), and Linux (Flatpak or Snap package).",
+              "Documentation built with Poetry and Sphinx, with translations managed on Weblate (requiring >90% completion for release inclusion)."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python",
+              "JavaScript",
+              "HTML",
+              "click",
+              "flask"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": [
+              "poetry install"
+            ]
+          },
+          {
+            "bullets": [
+              "Primarily written in Python (~95%).",
+              "Utilizes the Tor network for secure and anonymous communication.",
+              "Web interfaces likely use JavaScript and HTML.",
+              "The CLI is built with click."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Python",
+              "JavaScript",
+              "HTML",
+              "click",
+              "flask"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The tool is a command-line interface.",
+              "Notable flags and paths include: `/OpenBSD`, `/.cache/onionshare`, `--cask`, `--log-filenames`, `--persistent`."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "/OpenBSD",
+              "/.cache/onionshare",
+              "--cask",
+              "--log-filenames",
+              "--persistent"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "Installation via `poetry install` is documented.",
+              "Supports Python versions `>=3.10,<3.13`.",
+              "Recent releases (v2.6.x) introduced a 'Quickstart' screen and automated censorship circumvention by fetching Tor bridges via an API.",
+              "Version 2.6.3 added Gaeilge, Slovenčina, and Tamil locales and updated Snap packaging for Ubuntu 24.04, dropping armhf support while retaining ARM64.",
+              "Version 2.6.2 set a 524,288-character limit for chat messages and restricted usernames to specific ASCII characters.",
+              "Version 2.6.1 automated builds via CI and introduced a universal2 binary for macOS."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "poetry install"
+            ]
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=1"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 0.429
+        },
+        "architecture_overview": "OnionShare is predominantly a Python application (~95%) designed for secure and anonymous communication over the Tor network. Its architecture integrates Python for core logic, click for command-line interface parsing, and flask for serving temporary web services, which are rendered using JavaScript and HTML. This setup allows it to provide functionalities like anonymous file sharing, temporary website hosting, and private chat, all routed through Tor to ensure user privacy and censorship circum",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2315,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/onionshare/onionshare"
+  }
+}

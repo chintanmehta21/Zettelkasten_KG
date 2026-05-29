@@ -1,0 +1,61 @@
+{
+  "version": "canary_set.v1",
+  "purpose": "Daily/weekly drift hash: 5-10 deterministic prompts run at temperature 0 against the same judge config. SHA256 of the JSON-serialised response is compared to baseline; any change signals a silent vendor model update (Sub-4 + Sub-5 sweeps).",
+  "scope_guard": "Eval-time only on operator laptop. NEVER scheduled against the production droplet.",
+  "execution": {
+    "judge_temperature": 0.0,
+    "judge_max_output_tokens": 1024,
+    "frequency_recommendation": "manual daily (v1); GitHub Actions cron later (v2)",
+    "hash_algorithm": "sha256",
+    "alert_on": "any change to response_hash for any item compared to last successful baseline; alert payload includes (item_id, prev_hash, new_hash, gemini_model_version_seen)"
+  },
+  "items": [
+    {
+      "id": "canary_001_factual_simple",
+      "system_instruction": "Summarize the following in exactly 2 sentences.",
+      "user_prompt": "Photosynthesis is the process by which green plants and some other organisms use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of sugar. The process occurs in chloroplasts, primarily in leaves. It is the foundation of nearly all life on Earth because it produces atmospheric oxygen and forms the base of most food chains."
+    },
+    {
+      "id": "canary_002_negation",
+      "system_instruction": "Answer yes or no with one short sentence.",
+      "user_prompt": "Is it true that humans cannot survive without water for more than three weeks?"
+    },
+    {
+      "id": "canary_003_numeric_extraction",
+      "system_instruction": "Return ONLY a JSON object with the numeric values mentioned, no other text.",
+      "user_prompt": "The droplet has 2 GB of RAM and 1 vCPU, and the SSD is 70 GB. The Reserved IP is attached. There are 2 gunicorn workers."
+    },
+    {
+      "id": "canary_004_rubric_evaluator",
+      "system_instruction": "You are a summary quality evaluator. Be strict, source-grounded, and terse. Use temperature 0.0 judgment. Do not editorialize. Output JSON only.",
+      "user_prompt": "Source: 'Tea has been cultivated in China for over 4000 years.' Summary: 'Tea was invented in Japan in 2023.' Return JSON {faithful: bool, error_class: str}."
+    },
+    {
+      "id": "canary_005_atomic_facts",
+      "system_instruction": "Extract a JSON array of atomic facts from the source. Each fact is a short self-contained statement.",
+      "user_prompt": "The Voyager 1 spacecraft was launched by NASA in 1977. It crossed the heliopause in August 2012. As of 2024, it is the most distant human-made object from Earth."
+    },
+    {
+      "id": "canary_006_modal_drift_probe",
+      "system_instruction": "Paraphrase preserving epistemic strength.",
+      "user_prompt": "The team reported that the new catalyst might enable a higher yield under controlled conditions."
+    },
+    {
+      "id": "canary_007_attribution_probe",
+      "system_instruction": "Who said what? Return JSON {speaker: claim}.",
+      "user_prompt": "A: 'I think Rust is faster than Go.' B: 'I disagree, Go is faster for IO-bound work.' C: 'Both wrong; Zig wins.'"
+    }
+  ],
+  "baselines": {
+    "primary_judge_gemini": {
+      "canary_001_factual_simple": "29e586ced575a8a8bb49558b8ccb1aaf3ad8edb95eaf45fbbd826510e3a4351b",
+      "canary_002_negation": "2a70030cbde3c8e76e9d949849d2ebb48e99ddbbf6f928233358591b35a827d1",
+      "canary_003_numeric_extraction": "ba4902522c028ac78f3048b9f2593c4fcfa3837d683508c951dca0a8315056d0",
+      "canary_004_rubric_evaluator": "650821a5e661644b64009e418d60f80abdf46368e2fa0f9d3b1405a51bd1b51d",
+      "canary_005_atomic_facts": "3a9085352fec17bbc4ef2fd7aad572e2cc025e17e456ec891fd29e12138191fd",
+      "canary_006_modal_drift_probe": "7fb2b69f9959bec38e3c0866e6f2636d469ebeaf60f45a4863b61418eef95ef0",
+      "canary_007_attribution_probe": "95c436dd787738369be34143626b85b890271eef04c4506285ebf77a47eb570a"
+    },
+    "secondary_judge_claude": {}
+  }
+}

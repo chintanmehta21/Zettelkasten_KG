@@ -1,0 +1,77 @@
+{
+  "version": "run_telemetry_schema.v1",
+  "rationale": "OpenTelemetry GenAI Semantic Conventions (stable since 2025) + OpenInference evaluator-span kinds. Sub-5 sweep cites these as the 2026 canonical contracts that LangSmith / Braintrust / Phoenix / MLflow 3.0 / Pydantic Evals all consume.",
+  "required_per_run_record": {
+    "identity": [
+      "run_id (uuid)",
+      "run_started_at (iso8601 UTC)",
+      "run_finished_at",
+      "git_sha",
+      "git_dirty (bool)",
+      "harness_version (semver)",
+      "python_version",
+      "os",
+      "hostname",
+      "dataset_id",
+      "dataset_sha256",
+      "config_sha256"
+    ]
+  },
+  "required_per_llm_call_span": {
+    "_comment": "OpenTelemetry GenAI attribute names. gen_ai.system is DEPRECATED; use gen_ai.provider.name.",
+    "fields": [
+      "gen_ai.operation.name      (chat|embeddings|judge|nli|extract|canary)",
+      "gen_ai.provider.name       (google|anthropic|huggingface)",
+      "gen_ai.request.model       (what we ASKED for, e.g. gemini-2.5-flash-002)",
+      "gen_ai.response.model      (what they SERVED — DRIFT SIGNAL)",
+      "gen_ai.response.id",
+      "gen_ai.response.finish_reasons (array)",
+      "gen_ai.usage.input_tokens",
+      "gen_ai.usage.output_tokens",
+      "prompt_cache_input_tokens",
+      "cost_usd",
+      "latency_ms",
+      "ttft_ms",
+      "tokens_per_second"
+    ]
+  },
+  "required_per_evaluator_span": {
+    "_comment": "OpenInference: openinference.span.kind=EVALUATOR.",
+    "fields": [
+      "evaluator.name             (rubric_evaluator | nli_check | atomic_facts | composite)",
+      "prompt_version",
+      "rubric_sha256",
+      "model_used",
+      "implementation_fingerprint (sha of the eval code path)",
+      "score",
+      "verdict",
+      "reasoning",
+      "parent_trace_id"
+    ]
+  },
+  "vendor_fingerprinting": {
+    "google_gemini": {
+      "field": "GenerateContentResponse.modelVersion",
+      "reliability": "alias resolution only; no infra-config fingerprint exists in 2026",
+      "mitigation": "pin to DATED alias (e.g. gemini-2.5-flash-002), reject runs where response.modelVersion is null or differs from request",
+      "log_to": "evaluator_metadata.gemini_model_version + llm_calls.response_model"
+    },
+    "anthropic_claude": {
+      "field": "response.model",
+      "reliability": "reliable; Anthropic version-pins via dated suffix (e.g. claude-haiku-4-5-20251001)",
+      "mitigation": "request must equal response; reject otherwise",
+      "log_to": "evaluator_metadata.claude_model_version + llm_calls.response_model"
+    },
+    "openai_chatgpt": {
+      "field": "response.system_fingerprint",
+      "reliability": "LOW; not unique across infra config, missing for some models",
+      "note": "Logged for posterity only. Not used in zettel_eval_v1 v1."
+    }
+  },
+  "non_negotiable_invariants": [
+    "Every llm_calls row MUST have non-null response_model unless the SDK does not surface it; null response_model triggers a per-run report flag.",
+    "cache_hit=1 rows DO NOT increment cost_usd or token counts; aggregate cost dashboards must filter cache_hit=0.",
+    "All ISO timestamps are UTC (Z suffix).",
+    "All sha256 fields are lowercase hex (no \\x prefix)."
+  ]
+}

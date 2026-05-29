@@ -1,0 +1,219 @@
+{
+  "version": "calibration_oracle.v1",
+  "purpose": "Ground-truth answer keys for _config/judge_calibration_set.json. Joined by 'id'. NEVER read by 02_run_judge.py or any judge-prompt construction code path. Loaded only by 10_judge_calibration.py AFTER the judge has returned its verdict, for scoring.",
+  "defense_in_depth_assertions": [
+    "judge prompt builders must contain zero references to the string '_oracle'",
+    "judge model context must NEVER include any field from this file",
+    "if 10_judge_calibration.py is ever modified to include oracle fields in the prompt, that change must be flagged in code review as a calibration-integrity break"
+  ],
+  "answers": {
+    "calib_01_EntE_worked_example": {
+      "frank_class": "EntE",
+      "error_span_in_summary": "published in 2018",
+      "source_evidence": "Published 2020",
+      "ground_truth_label": "EntE",
+      "brief_rationale": "Year attribute swapped 2020 -> 2018."
+    },
+    "calib_02_OutE_worked_example": {
+      "frank_class": "OutE",
+      "error_span_in_summary": "now uses Rust under the hood for HTTP parsing, released in version 3.0",
+      "source_evidence": "NOT_IN_SOURCE",
+      "ground_truth_label": "OutE",
+      "brief_rationale": "Pure fabrication; neither Rust nor v3.0 is in the README."
+    },
+    "calib_03_PredE_example": {
+      "frank_class": "PredE",
+      "error_span_in_summary": "ENDORSES",
+      "source_evidence": "I'm skeptical of this paper's methodology",
+      "ground_truth_label": "PredE",
+      "brief_rationale": "Stance verb flipped: source says skeptical (negative), summary says endorses (positive). Pure polarity flip."
+    },
+    "calib_04_CircE_modality_drift": {
+      "frank_class": "CircE",
+      "error_span_in_summary": "WILL break ... within 5 years",
+      "source_evidence": "MIGHT break ... within 5-15 years, contingent on error-correction scaling",
+      "ground_truth_label": "CircE",
+      "brief_rationale": "Epistemic strength + time-window both drifted. 'Might' -> 'Will' is modality flip; '5-15 years' -> '5 years' is range collapse. Classic CircE."
+    },
+    "calib_05_LinkE_causal_flip": {
+      "frank_class": "LinkE",
+      "error_span_in_summary": "failed BECAUSE governments imposed nationalization",
+      "source_evidence": "nationalization ... precisely because orthodox tools had failed",
+      "ground_truth_label": "LinkE",
+      "brief_rationale": "Causal direction flipped. Source: orthodox failure -> nationalization. Summary: nationalization -> heterodox failure. Same words, opposite causality."
+    },
+    "calib_06_EntE_language_swap": {
+      "frank_class": "EntE",
+      "error_span_in_summary": "primarily in Python (94.8%)",
+      "source_evidence": "primarily in Ruby (94.8%)",
+      "ground_truth_label": "EntE",
+      "brief_rationale": "Programming-language attribute swapped: Ruby <-> Python. Repository identity error; same-type entity substitution."
+    },
+    "calib_07_PredE_stance_flip": {
+      "frank_class": "PredE",
+      "error_span_in_summary": "endorse and amplify the claims",
+      "source_evidence": "critique and debunk the claims",
+      "ground_truth_label": "PredE",
+      "brief_rationale": "OP's stance verb flipped from negative (critique/debunk) to positive (endorse/amplify). Pure polarity reversal on the OP's intent."
+    },
+    "calib_08_PredE_celebratory_stance": {
+      "frank_class": "PredE",
+      "error_span_in_summary": "celebratory stance",
+      "source_evidence": "cautionary stance",
+      "ground_truth_label": "PredE",
+      "brief_rationale": "Newsletter stance verb flipped: cautionary -> celebratory. Pred frame inverted on the same noun."
+    },
+    "calib_09_CircE_date_drift": {
+      "frank_class": "CircE",
+      "error_span_in_summary": "First published in German in 1869",
+      "source_evidence": "First published in German in 1867",
+      "ground_truth_label": "CircE",
+      "brief_rationale": "Date attributes drifted: 1867 -> 1869 and 1887 -> 1885. Multiple temporal CircE errors in adjacent sentences."
+    },
+    "calib_10_CircE_location_swap": {
+      "frank_class": "CircE",
+      "error_span_in_summary": "Buenos Aires's Restrepo neighborhood",
+      "source_evidence": "Bogota's Restrepo neighborhood",
+      "ground_truth_label": "CircE",
+      "brief_rationale": "Location swapped: Bogota -> Buenos Aires (different country entirely). Same-type place-name CircE error."
+    },
+    "calib_11_CorefE_OP_vs_commenter": {
+      "frank_class": "CorefE",
+      "error_span_in_summary": "OP's main point was that radical transparency and thoughtful disagreement are ineffective",
+      "source_evidence": "Ray Dalio ... hosted an Ask Me Anything (AMA) to share his principles ... Implementing Radical Transparency and Thoughtful Disagreement",
+      "ground_truth_label": "CorefE",
+      "brief_rationale": "OP and replies are swapped. The source has Ray Dalio AS OP promoting radical transparency; the modified summary makes OP a critic and Dalio a respondent. Speaker-role attribution flipped."
+    },
+    "calib_12_CorefE_speaker_pronoun": {
+      "frank_class": "CorefE",
+      "error_span_in_summary": "the interviewer argues that Mark Manson is wrong",
+      "source_evidence": "Format: Commentary. Speakers: Mark Manson. Core argument: Mark Manson argues that the modern pursuit of happiness is often counterproductive.",
+      "ground_truth_label": "CorefE",
+      "brief_rationale": "Speaker attribution flipped. Source is a Mark Manson commentary (single speaker); modified summary invents an interviewer disagreeing with him. Antecedent of 'argues' bound to wrong speaker."
+    },
+    "calib_13_LinkE_temporal_flip": {
+      "frank_class": "LinkE",
+      "error_span_in_summary": "after q-day occurred, at which point quantum computers had already broken all existing encryption",
+      "source_evidence": "q-day, a future event when quantum computers will break all current encryption",
+      "ground_truth_label": "LinkE",
+      "brief_rationale": "Temporal direction reversed. Source: q-day is a future event being prepared for. Modified: q-day already happened. Future->past temporal flip with corresponding causal-chain inversion."
+    },
+    "calib_14_GramE_attribution_loop": {
+      "frank_class": "GramE",
+      "error_span_in_summary": "the speaker argues that the speaker argues that the speaker argues that the speaker posits",
+      "source_evidence": "The speaker argues that the speaker posits that effortless achievement can be understood",
+      "ground_truth_label": "GramE",
+      "brief_rationale": "Self-attribution loop: 'X argues that X argues that X argues that...' Repeated speaker-attribution clause corrupts the proposition's grammatical scope. Classic YouTube-transcript GramE regression."
+    },
+    "calib_15_OutE_fabricated_feature": {
+      "frank_class": "OutE",
+      "error_span_in_summary": "built-in Bloomberg Terminal integration that requires a Series 7 license. OpenBB version 5.0 (released January 2026) added direct broker-execution capabilities",
+      "source_evidence": "NOT_IN_SOURCE",
+      "ground_truth_label": "OutE",
+      "brief_rationale": "Fabricated additions: Bloomberg Terminal integration, Series 7 license requirement, OpenBB v5.0, January 2026 release, broker-execution capabilities. None of these appear in the OpenBB README. Pure OutE."
+    },
+    "calib_16_completeness_drop_thesis": {
+      "frank_class": "completeness",
+      "error_span_in_summary": "Import AI newsletter #455 reports on recent trends in AI capability research.",
+      "source_evidence": "60%+ probability that AI systems will autonomously develop their own successors by late 2028, achieving no-human-involved AI R&D",
+      "ground_truth_label": "completeness",
+      "brief_rationale": "The core argument (60%+ probability + 2028 deadline + autonomous AI R&D) is the entire thesis of the issue. Modified summary keeps only generic framing; the load-bearing prediction is dropped. P0 keyfact omission."
+    },
+    "calib_17_completeness_drop_finding": {
+      "frank_class": "completeness",
+      "error_span_in_summary": "Bellingcat and Colombian media outlet Cerosetenta published a piece on activity in Bogota's Restrepo neighborhood.",
+      "source_evidence": "linked Colombian politician and businessman Jorge Rodriguez to the neo-Nazi group Active Club Bogota",
+      "ground_truth_label": "completeness",
+      "brief_rationale": "The investigation's core finding (politician<->neo-Nazi-group linkage) is dropped. Summary mentions only the neutral location of activity. Material P0 omission of the article's entire point."
+    },
+    "calib_18_conciseness_duplicate_paraphrase": {
+      "frank_class": "conciseness",
+      "error_span_in_summary": "Dendron's design uses plaintext markdown stored in Git as vaults for organization. The system architecture is built around markdown files in Git-managed vaults.",
+      "source_evidence": "Dendron's architecture centers on plaintext markdown files, managed with Git, and organized into \"vaults.\"",
+      "ground_truth_label": "conciseness",
+      "brief_rationale": "The architecture-overview claim is paraphrased two additional times in immediate succession. Three sentences saying the same thing. Pure conciseness failure (redundant paraphrase)."
+    }
+  },
+  "pending_curation_log": {
+    "_comment": "Track what's planned vs done. Each entry, once curated, gets a new id under 'answers' and the counter under items_pending in the set file is decremented.",
+    "next_15_items_target_sourcing": [
+      {
+        "slot": "calib_06_EntE",
+        "target_source_type": "github",
+        "candidate": "TBD — pick a github zettel from Naruto's set with a clear named API or version, swap one identifier"
+      },
+      {
+        "slot": "calib_07_PredE_polarity",
+        "target_source_type": "reddit",
+        "candidate": "TBD — pick a reddit thread with a clear stance verb (skeptical/endorsed) and flip it"
+      },
+      {
+        "slot": "calib_08_PredE_agent_patient",
+        "target_source_type": "newsletter",
+        "candidate": "TBD — flip an agent/patient pair in an Adam Tooze-style essay"
+      },
+      {
+        "slot": "calib_09_CircE_date",
+        "target_source_type": "web",
+        "candidate": "TBD — pick a date from a gwern essay or PEP 701, shift by years"
+      },
+      {
+        "slot": "calib_10_CircE_location",
+        "target_source_type": "web",
+        "candidate": "TBD — pick a place name from an ICIJ investigation, swap continent"
+      },
+      {
+        "slot": "calib_11_CorefE_speaker",
+        "target_source_type": "reddit",
+        "candidate": "TBD — swap OP and top-commenter quote in r/AskEconomics or r/IAmA"
+      },
+      {
+        "slot": "calib_12_CorefE_pronoun",
+        "target_source_type": "newsletter",
+        "candidate": "TBD — rebind a 'she'/'he' to a different antecedent in a Huberman newsletter"
+      },
+      {
+        "slot": "calib_13_LinkE_temporal",
+        "target_source_type": "youtube",
+        "candidate": "TBD — flip before/after in a YouTube transcript event sequence"
+      },
+      {
+        "slot": "calib_14_GramE_attribution_loop",
+        "target_source_type": "youtube",
+        "candidate": "TBD — inject 'X argues that X argues that' regression into a YouTube transcript summary"
+      },
+      {
+        "slot": "calib_15_OutE_world_knowledge",
+        "target_source_type": "github",
+        "candidate": "TBD — inject a plausible feature claim into a repo summary (e.g. 'now supports CUDA' when the README doesn't say so)"
+      },
+      {
+        "slot": "calib_16_completeness_thesis",
+        "target_source_type": "newsletter",
+        "candidate": "TBD — drop the primary thesis from a Tooze essay; rest of summary stays"
+      },
+      {
+        "slot": "calib_17_completeness_outcome",
+        "target_source_type": "web",
+        "candidate": "TBD — drop the final result from a uniqure press release"
+      },
+      {
+        "slot": "calib_18_conciseness_redundant",
+        "target_source_type": "github",
+        "candidate": "TBD — duplicate one bullet in a repo summary, paraphrased"
+      }
+    ],
+    "still_needed_by_class": {
+      "EntE": 0,
+      "PredE": 0,
+      "CircE": 0,
+      "CorefE": 0,
+      "LinkE": 0,
+      "GramE": 0,
+      "OutE": 0,
+      "completeness": 0,
+      "conciseness": 0
+    },
+    "total_pending": 0
+  }
+}

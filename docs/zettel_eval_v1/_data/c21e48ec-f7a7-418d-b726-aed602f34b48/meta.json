@@ -1,0 +1,180 @@
+{
+  "workspace_zettel_id": "c21e48ec-f7a7-418d-b726-aed602f34b48",
+  "workspace_id": "4c8b185f-bba5-475d-aaf7-e3aeb5cf5028",
+  "canonical_zettel_id": "d4bdd04b-49ba-44dd-8d1e-019eb2477a10",
+  "normalized_url": "https://www.youtube.com/watch?v=qTMBlOyNlqc",
+  "title": "Dutch Urinals Prevent Drownings",
+  "source_type": "youtube",
+  "publication_date": "2026-05-26",
+  "captured_at": "2026-05-26T05:41:26.561245+00:00",
+  "ai_summary_len": 4221,
+  "body_md_len": 3694,
+  "content_hash_hex": "31438931af65cecc3c03c52a03ca94395f3b31790a6ec374881ec50a46ada966",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=qTMBlOyNlqc",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English (auto-generated)",
+        "video_id": "qTMBlOyNlqc",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 12387
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 11
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 12387,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 12387
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 11
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 20687,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=7690",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2821,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "dutch-urinals",
+          "public-health",
+          "urban-design",
+          "amsterdam",
+          "engineering",
+          "infrastructure",
+          "plaskrul",
+          "uri-lift",
+          "skillshare",
+          "lecture"
+        ],
+        "guests": null,
+        "speakers": [
+          "Shima Bulgaria"
+        ],
+        "mini_title": "Dutch Urinals Prevent Drownings",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this lecture, The speaker argues that public urinals in dutch cities like amsterdam are a critical urban design solution specifically engineered to mitigate the significant public safety hazard of intoxicated individuals drowning in canals. The closing point is that the video concludes by promoting skillshare, offering a one-month free trial to the first 1000 users who utilize a specific link, and mentioning courses by polymatter and shima bulgaria.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "lecture",
+          "confidence": 0.5
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "lecture",
+          "thesis": "Public urinals in Dutch cities like Amsterdam are a critical urban design solution specifically engineered to mitigate the significant public safety hazard of intoxicated individuals drowning in canals.",
+          "demonstrations": [
+            "The video uses animations made in Blender to illustrate the concepts and designs of the urinals."
+          ],
+          "closing_takeaway": "The video concludes by promoting Skillshare, offering a one-month free trial to the first 1000 users who utilize a specific link, and mentioning courses by Polymatter and Shima Bulgaria.",
+          "chapters_or_segments": [
+            {
+              "title": "Canal Drowning Hazard",
+              "bullets": [
+                "Public urinals in the Netherlands address the danger of drunk tourists, particularly British males, falling into canals and drowning while urinating.",
+                "\"Piss-related drownings\" are a significant cause of death, often identified by victims' unzipped flies.",
+                "Alcohol consumption lowers blood pressure, and emptying the bladder accelerates this process, leading to light-headedness and stumbling.",
+                "Canals are inherently difficult to climb out of, further increasing the risk for inebriated individuals.",
+                "Impaired motor function due to intoxication exacerbates the danger of falling into the water."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "The Plaskrul Solution",
+              "bullets": [
+                "The \"Plaskrul\" (piss curl) was the first major solution, constructed from affordable, long-lasting cast iron bent into a golden ratio curve.",
+                "Its design features an open bottom to indicate occupancy without revealing the user, ensuring a degree of privacy.",
+                "The urinal's bladder-shaped legs were intended to provide intuitive understanding of its purpose.",
+                "A dark green color was chosen for the Plaskrul to help it blend seamlessly into the urban cityscape.",
+                "Older models incorporate Saint Andrew's crosses, which serve as city advertising, ventilation, and a viewpoint for the user.",
+                "The design also includes Dutch tiling and bricks, likely sourced from the Rhine region, contributing to its local aesthetic.",
+                "Plaskruls are strategically positioned near water bodies and in tourist-heavy areas like the Red Light District."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Evolution to Uri-lift",
+              "bullets": [
+                "Amsterdam's government is removing Plaskruls due to several drawbacks, including their lack of space efficiency.",
+                "Plaskruls are not connected to a municipal water system, necessitating manual cleaning, which is labor-intensive.",
+                "Attempts to develop handicap-accessible and female-friendly versions of the Plaskrul were unsuccessful.",
+                "The \"Uri-lift\" is introduced as the successor, a retractable urinal that emerges from the ground specifically at night.",
+                "This modern solution is integrated into the city's water management system, allowing for self-rinsing capabilities."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Uri-lift Engineering",
+              "bullets": [
+                "The Uri-lift is constructed from corrosion-resistant brushed stainless steel, ensuring durability and longevity.",
+                "Its single-pillar design is capable of serving three users simultaneously, optimizing space utilization.",
+                "The structure is precisely cut to provide adequate privacy for users.",
+                "Unlike the Plaskrul, some Uri-lift models are designed to be unisex and handicap-accessible, addressing previous limitations.",
+                "The video draws a comparison between the Uri-lift's engineering and that of prominent Dutch companies like ASML, highlighting its advanced design.",
+                "The Uri-lift system is described as AI-powered, indicating advanced operational capabilities."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Plaskrul",
+          "Uri-lift",
+          "Blender",
+          "Skillshare",
+          "Polymatter",
+          "Shima Bulgaria",
+          "ASML"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2821,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=qTMBlOyNlqc"
+  }
+}

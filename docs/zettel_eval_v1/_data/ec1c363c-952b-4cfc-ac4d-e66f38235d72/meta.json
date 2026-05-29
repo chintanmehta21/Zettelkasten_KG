@@ -1,0 +1,116 @@
+{
+  "workspace_zettel_id": "ec1c363c-952b-4cfc-ac4d-e66f38235d72",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "a7ca353b-5b14-4b11-ba84-ebe012a6f37e",
+  "normalized_url": "https://www.brainpost.co/weekly-brainpost?month=06-2025",
+  "title": "Neural Circuit for Recovery Sleep",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:25:57.040869+00:00",
+  "ai_summary_len": 2023,
+  "body_md_len": 1733,
+  "content_hash_hex": "36286f3d14d0122c0a0dc456ce579e3e4884e81439453374cc694b6a6007d790",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.brainpost.co/weekly-brainpost?month=06-2025",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "Weekly BrainPost — BrainPost | Easy-to-read summaries of the latest neuroscience publications",
+        "route_subtype": "page",
+        "route_supported": true
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 20337,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 1207,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Neuroscience",
+          "Sleep",
+          "Thalamus",
+          "Zona Incerta",
+          "Chemogenetics",
+          "Optogenetics",
+          "Mice",
+          "Homeostasis"
+        ],
+        "mini_title": "Neural Circuit for Recovery Sleep",
+        "brief_summary": "A study by Lee and colleagues identified a neural circuit in mice, specifically an excitatory pathway from the thalamic nucleus reuniens to the zona incerta, responsible for homeostatic non-REM recovery sleep following sleep deprivation.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "A neural circuit in mice responsible for homeostatic, non-REM recovery sleep following sleep deprivation was identified for the first time by Lee and colleagues in *Science*.",
+              "Sleep is governed by homeostatic control, where an accumulation of 'sleep debt' triggers a period of persistent, deep recovery sleep."
+            ],
+            "heading": "Core Discovery",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The study focused on a group of excitatory neurons in the thalamic nucleus reuniens (nRe), a major sensory and motor relay station.",
+              "These nRe neurons project to non-REM sleep-promoting brain regions.",
+              "The authors traced projections from these nRe neurons to the zona incerta (ZI), a small subthalamic region.",
+              "This nRe-ZI pathway was identified as the generator of non-REM recovery sleep."
+            ],
+            "heading": "Identified Neural Pathway",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [],
+            "heading": "Experimental Findings",
+            "sub_sections": {
+              "Chemogenetic Inhibition": [
+                "Inhibiting nRe neurons during sleep deprivation decreased the quality of subsequent non-REM recovery sleep."
+              ],
+              "Optogenetic Stimulation": [
+                "Stimulating nRe neurons with light pulses resulted in mice exhibiting longer, deeper non-REM sleep after a delay.",
+                "Stimulation also induced pre-sleep behaviors like self-grooming."
+              ],
+              "Neuronal Activity Changes": [
+                "After extended sleep deprivation, nRe neurons fired more frequently while the mice were awake.",
+                "This increased firing diminished with recovery sleep."
+              ],
+              "Pathway Interaction and Plasticity": [
+                "Sleep deprivation enhanced the interaction between the nucleus reuniens and zona incerta.",
+                "Disrupting synaptic plasticity in the nucleus reuniens impaired this interaction and reduced non-REM sleep."
+              ]
+            }
+          },
+          {
+            "bullets": [
+              "This research provides insight into brain mechanisms supporting recovery sleep.",
+              "Findings may be relevant to human conditions like idiopathic hypersomnia."
+            ],
+            "heading": "Significance",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 1207,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.brainpost.co/weekly-brainpost?month=06-2025"
+  }
+}

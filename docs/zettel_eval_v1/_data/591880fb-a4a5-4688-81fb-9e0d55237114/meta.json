@@ -1,0 +1,242 @@
+{
+  "workspace_zettel_id": "591880fb-a4a5-4688-81fb-9e0d55237114",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "3ee05fd9-d525-46e4-9df3-6cc5893660d4",
+  "normalized_url": "https://github.com/OpenBB-finance/OpenBB",
+  "title": "OpenBB-finance/OpenBB",
+  "source_type": "github",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:37:47.514769+00:00",
+  "ai_summary_len": 3008,
+  "body_md_len": 2574,
+  "content_hash_hex": "db17d45c28fcae1e9353906cbca5b86e8ff765a877ee6433e433feb78cf81a7e",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/OpenBB-finance/OpenBB",
+      "author": "OpenBB-finance",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": "gemini-2.5-flash-rate-limited"
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "OpenBB",
+        "forks": 6855,
+        "owner": "OpenBB-finance",
+        "stars": 68197,
+        "topics": [
+          "ai",
+          "crypto",
+          "derivatives",
+          "economics",
+          "equity",
+          "finance",
+          "fixed-income",
+          "machine-learning",
+          "openbb",
+          "options",
+          "python",
+          "quantitative-finance",
+          "stocks"
+        ],
+        "license": "NOASSERTION",
+        "has_demo": false,
+        "language": "Python",
+        "releases": [
+          {
+            "name": "ODP Desktop v1.0.2",
+            "tag_name": "Open-Data-Platform-v1.0.2",
+            "prerelease": false,
+            "published_at": "2026-04-25T04:18:48Z"
+          },
+          {
+            "name": "ODP Desktop (Latest Stable)",
+            "tag_name": "ODP",
+            "prerelease": false,
+            "published_at": "2026-04-25T04:19:09Z"
+          },
+          {
+            "name": "OpenBB V4.7.0",
+            "tag_name": "v4.7.0",
+            "prerelease": false,
+            "published_at": "2026-03-09T17:36:09Z"
+          },
+          {
+            "name": "ODP Desktop v1.0.1",
+            "tag_name": "Open-Data-Platform-v1.0.1",
+            "prerelease": false,
+            "published_at": "2026-02-09T21:17:37Z"
+          },
+          {
+            "name": "OpenBB Platform v4.6.0",
+            "tag_name": "v4.6.0",
+            "prerelease": false,
+            "published_at": "2026-01-07T16:28:52Z"
+          }
+        ],
+        "full_name": "OpenBB-finance/OpenBB",
+        "has_tests": false,
+        "languages": [
+          [
+            "Python",
+            100.0
+          ]
+        ],
+        "pages_url": "https://openbb-finance.github.io/OpenBB/",
+        "updated_at": "2026-05-28T09:28:35Z",
+        "has_docs_dir": false,
+        "has_examples": true,
+        "has_workflows": true,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 34,
+        "extra_doc_files": [
+          "SECURITY.md",
+          "CODE_OF_CONDUCT.md"
+        ],
+        "route_supported": true,
+        "architecture_overview": "The Open Data Platform (ODP) is an open-source Python toolset for integrating and exposing financial data. It provides a Python package, a FastAPI server (`openbb-api`), and a CLI (`openbb-cli`) to consolidate data for various applications, with the `examples` directory demonstrating its usage. The ODP backend can also be integrated with the OpenBB Workspace UI."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 31786,
+      "confidence_reason": "repo metadata, README, and 2 extra doc(s) fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2497,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-openbb-finance-openbb",
+          "python",
+          "financial-data",
+          "open-source",
+          "api",
+          "data-platform",
+          "investment",
+          "trading",
+          "ai-agents",
+          "rest-api"
+        ],
+        "mini_title": "OpenBB-finance/OpenBB",
+        "owner_login": "OpenBB-finance",
+        "_dense_verify": {
+          "archetype": "framework_api",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "The Open Data Platform (ODP) is designed as a 'connect once, consume everywhere' infrastructure layer to integrate proprietary, licensed, and public data sources. It exposes data through multiple surfaces including Python environments, the enterprise UI OpenBB Workspace, Excel, MCP servers for AI agents, and REST APIs, providing a unified access point for financial data.",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "The OpenBB-finance/OpenBB repository contains the Open Data Platform (ODP), an open-source financial data platform.",
+              "It is designed for analysts, quants, and AI agents.",
+              "ODP functions as a 'connect once, consume everywhere' infrastructure layer.",
+              "It integrates proprietary, licensed, and public data sources.",
+              "The platform covers topics such as equity, crypto, derivatives, economics, fixed-income, and options."
+            ],
+            "heading": "Overview",
+            "main_stack": [
+              "Python"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The ODP exposes data through multiple surfaces.",
+              "These surfaces include Python environments, the enterprise UI OpenBB Workspace (available at pro.openbb.co), Excel, MCP servers for AI agents, and REST APIs."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "uvicorn",
+              "click",
+              "fastapi"
+            ],
+            "sub_sections": {},
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The platform exposes data via REST APIs.",
+              "Specific endpoints and decorators mentioned include: `@openbb.co`, `@campus.fct.unl.pt`, `/summary`."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "@openbb.co",
+              "@campus.fct.unl.pt",
+              "/summary"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The ODP can be installed via `pip install openbb`.",
+              "A separate CLI is available via `pip install openbb-cli`.",
+              "To integrate the ODP backend with the OpenBB Workspace, users need Python 3.9.21-3.12.",
+              "Dependencies for Workspace integration are installed with `pip install \"openbb[all]\"`.",
+              "A local FastAPI server is run via Uvicorn with the `openbb-api` command, which launches at `127.0.0.1:6900`."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install openbb",
+              "pip install \"openbb[all]\"",
+              "pip install openbb-cli",
+              "openbb-api"
+            ]
+          },
+          {
+            "bullets": [
+              "Provider extensions are being refactored for V5 standards, often targeting 100% test coverage."
+            ],
+            "heading": "Tests",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Tests",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "framework_tokens=5"
+          ],
+          "archetype": "framework_api",
+          "confidence": 0.526
+        },
+        "architecture_overview": "The Open Data Platform (ODP) is designed as a 'connect once, consume everywhere' infrastructure layer to integrate proprietary, licensed, and public data sources. It exposes data through multiple surfaces including Python environments, the enterprise UI OpenBB Workspace, Excel, MCP servers for AI agents, and REST APIs, providing a unified access point for financial data.",
+        "benchmarks_tests_examples": [
+          "Provider extensions are being refactored for V5 standards, often targeting 100% test coverage."
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2497,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/OpenBB-finance/OpenBB"
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "workspace_zettel_id": "91557c83-0580-4781-ae9b-ef5e474fe7ec",
+  "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+  "canonical_zettel_id": "19aca36e-b43f-49c6-9a29-509b14988653",
+  "normalized_url": "https://www.youtube.com/watch?v=Ukt2gVz25PQ",
+  "title": "Kali Linux Ethical Hacking Tools",
+  "source_type": "youtube",
+  "publication_date": "2026-05-23",
+  "captured_at": "2026-05-23T08:59:58.52242+00:00",
+  "ai_summary_len": 7085,
+  "body_md_len": 5712,
+  "content_hash_hex": "2d4dd84b3f99d0bcbaaee42bce772322161465b33487bfffe45552ec8c93a836",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=Ukt2gVz25PQ",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "gemini_filedata",
+        "model": "gemini-2.5-flash",
+        "video_id": "Ukt2gVz25PQ",
+        "key_index": 0,
+        "tier_used": "gemini_filedata",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 55078
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 55078,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 55078
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 24281,
+      "confidence_reason": "transcript via tier=gemini_filedata len=12463",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3737,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "ethical-hacking",
+          "penetration-testing",
+          "kali-linux",
+          "cybersecurity",
+          "open-source-tools",
+          "network-security",
+          "vulnerability-scanning",
+          "social-engineering",
+          "tutorial",
+          "walkthrough"
+        ],
+        "guests": null,
+        "speakers": [
+          "Kali Linux"
+        ],
+        "mini_title": "Kali Linux Ethical Hacking Tools",
+        "_dense_verify": {
+          "format_label": "tutorial",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this walkthrough, The speaker argues that the video aims to educate viewers on the capabilities of ten free, open-source ethical hacking and penetration testing tools found in kali linux, illustrating their functions and the critical importance of using them legally and ethically to identify system vulnerabilities. The closing point is that the video concludes by reiterating the immense power of these ethical hacking tools and the critical responsibility that comes with their use.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "explainer",
+          "confidence": 0.429
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "walkthrough",
+          "thesis": "The video aims to educate viewers on the capabilities of ten free, open-source ethical hacking and penetration testing tools found in Kali Linux, illustrating their functions and the critical importance of using them legally and ethically to identify system vulnerabilities.",
+          "demonstrations": [
+            "Using Nmap to scan an IP range for hosts and open ports.",
+            "Capturing and inspecting network traffic with Wireshark.",
+            "Exploiting a Windows 7 machine using Metasploit's EternalBlue vulnerability to gain a reverse shell.",
+            "Cracking a WPA key with Aircrack-ng to intercept unencrypted HTTP traffic.",
+            "Cracking password hashes (MD5, Bcrypt) using Hashcat with a dictionary file.",
+            "Scanning a web application for vulnerabilities like XSS and SQL injection with Skipfish.",
+            "Recovering files from a disk image using Foremost.",
+            "Automating SQL injection attacks with SQLMap to discover databases and schemas.",
+            "Launching a Denial of Service (DoS) attack using Hping3's flood option.",
+            "Creating a phishing attack by cloning a legitimate website with The Social Engineering Toolkit (SET)."
+          ],
+          "closing_takeaway": "The video concludes by reiterating the immense power of these ethical hacking tools and the critical responsibility that comes with their use. It strongly advises against any illegal activities, emphasizing that these tools are intended for legitimate security testing and vulnerability assessment.",
+          "chapters_or_segments": [
+            {
+              "title": "Introduction to Ethical Hacking & Setup",
+              "bullets": [
+                "The transcript categorizes computer users into three types: users, programmers, and hackers, with hackers exploiting vulnerabilities.",
+                "The video introduces 10 free, open-source ethical hacking and penetration testing tools available by default on Kali Linux.",
+                "A critical warning is issued that using these tools on unauthorized networks or websites is illegal and can lead to imprisonment.",
+                "Setup recommendations include installing Kali Linux (desktop or via WSL) or installing individual tools.",
+                "The sponsor, Hostinger, offers Linux servers with NVMe SSD storage and AMD EPYC chips, suitable for running Kali Linux.",
+                "The demonstration uses a Kali Linux VPS from Hostinger, accessed via SSH."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Network Discovery & Traffic Analysis",
+              "bullets": [
+                "Nmap is a network mapper that sends packets over an IP range to discover hosts, open ports (e.g., 80, 443), and operating systems.",
+                "The `-A` option in Nmap enables a more aggressive scan, including OS detection and traceroute.",
+                "Wireshark is a network protocol analyzer with a GUI that captures and inspects network traffic from hundreds of protocols in real-time.",
+                "Wireshark allows for offline analysis of captured network data, aiding in understanding communication patterns.",
+                "Hping3 is a tool for sending custom TCP/IP packets, allowing for precise control over network communication.",
+                "Using the `--flood` option, Hping3 can launch a Denial of Service (DoS) attack by sending packets as fast as possible to an IP address.",
+                "When distributed across a botnet, an Hping3 flood becomes a Distributed Denial of Service (DDoS) attack."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Exploitation & Vulnerability Assessment",
+              "bullets": [
+                "Metasploit is a powerful exploitation framework demonstrated by using the EternalBlue vulnerability to gain a reverse shell on a Windows 7 machine.",
+                "Gaining a reverse shell allows for actions like file access and malware installation on the compromised system.",
+                "Skipfish is a web application vulnerability scanner that recursively crawls a site to find issues like cross-site scripting and SQL injection.",
+                "Skipfish generates a detailed HTML report of its findings and can use provided credentials to scan non-public areas.",
+                "SQLMap automates finding and exploiting SQL injection vulnerabilities, capable of scanning servers to find databases and map their schemas.",
+                "SQLMap can launch automated attacks to extract data or manipulate the database, highlighting critical web security flaws."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Password Cracking & Data Recovery",
+              "bullets": [
+                "Aircrack-ng is a suite for Wi-Fi network security, involving `Airmon` and `Airodump` to find a target network.",
+                "`Aircrack` is then used to crack the Wi-Fi Protected Access (WPA) key, enabling the interception of unencrypted HTTP traffic.",
+                "The video stresses the importance of HTTPS for encrypting web traffic to prevent such interception.",
+                "Hashcat is a password cracking tool that explains passwords are hashed (e.g., SHA, Bcrypt) and salted, not stored in plaintext.",
+                "Hashcat can use techniques like brute force or dictionary attacks with files like `rockyou.txt` to find original passwords from hashes.",
+                "Cracking an MD5 hash is shown to be fast, while a Bcrypt hash could take days due to its computational complexity.",
+                "Foremost is a forensic data recovery tool that uses \"file carving\" to reconstruct files from a disk image byte by byte."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Social Engineering Toolkit",
+              "bullets": [
+                "The Social Engineering Toolkit (SET) is a framework designed for creating various phishing attacks.",
+                "It supports multiple vectors, including email, QR codes, SMS, and malicious websites.",
+                "SET can clone legitimate websites, such as PayPal, to capture user credentials from unsuspecting victims.",
+                "This tool demonstrates the significant role of human factors in cybersecurity breaches.",
+                "The framework simplifies the creation of sophisticated social engineering campaigns."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Kali Linux",
+          "Nmap",
+          "Wireshark",
+          "Metasploit",
+          "Aircrack-ng",
+          "Airmon",
+          "Airodump",
+          "Aircrack",
+          "Hashcat",
+          "rockyou.txt",
+          "Skipfish",
+          "Foremost",
+          "SQLMap",
+          "Hping3",
+          "The Social Engineering Toolkit (SET)",
+          "John the Ripper",
+          "Nikto",
+          "Burp Suite",
+          "Hostinger",
+          "Docker",
+          "Supabase",
+          "Windows 7",
+          "PayPal"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3737,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=Ukt2gVz25PQ"
+  }
+}

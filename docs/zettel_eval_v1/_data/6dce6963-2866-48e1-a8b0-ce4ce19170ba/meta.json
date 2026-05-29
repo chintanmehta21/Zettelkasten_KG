@@ -1,0 +1,136 @@
+{
+  "workspace_zettel_id": "6dce6963-2866-48e1-a8b0-ce4ce19170ba",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "6ab9a6db-77b8-44b6-a147-4e6c1c4a669b",
+  "normalized_url": "https://www.bellingcat.com/news/2026/05/11/active-club-colombia-politics/",
+  "title": "Colombian Politician Linked to Neo-Nazi Group",
+  "source_type": "web",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T09:32:40.16238+00:00",
+  "ai_summary_len": 3902,
+  "body_md_len": 3432,
+  "content_hash_hex": "a5b52ccc1313a6a8097f6f027c799824765d6218c50b21f0bed37461826484e7",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.bellingcat.com/news/2026/05/11/active-club-colombia-politics/",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "web",
+      "raw_metadata": {
+        "title": "A Colombian Politician’s Links to Neo-Nazi Group Active Club",
+        "description": "Jorge Rodriguez, who stood in Colombia’s March 2026 parliamentary elections, follows Active Club Bogota’s Instagram account and has “liked” an image featuring a neo-Nazi flag.",
+        "route_subtype": "page",
+        "og_description": "Jorge Rodriguez, who stood in Colombia’s March 2026 parliamentary elections, follows Active Club Bogota’s Instagram account and has “liked” an image featuring a neo-Nazi flag.",
+        "route_supported": true
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 37110,
+      "confidence_reason": "HTML article text extracted",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2073,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "Bellingcat",
+          "Cerosetenta",
+          "Jorge Rodriguez",
+          "Active Club Bogota",
+          "Neo-Nazism",
+          "Colombia",
+          "Centro Democratico",
+          "Javier Ruiz",
+          "Robert Rundo",
+          "Blood & Honour",
+          "Combat 18"
+        ],
+        "mini_title": "Colombian Politician Linked to Neo-Nazi Group",
+        "brief_summary": "An investigation by Bellingcat and Cerosetenta links Colombian politician and businessman Jorge Rodriguez to the neo-Nazi group Active Club Bogota through video evidence, social media interactions, and shared activities, despite Rodriguez's denials and legal threats. The report details Active Club Bogota's international connections and activities, and the potential implications of such affiliations.",
+        "route_subtype": "page",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "Bellingcat and Colombian media outlet Cerosetenta linked Colombian politician and businessman Jorge Rodriguez to the neo-Nazi group Active Club Bogota.",
+              "A video from February 26 shows Rodriguez and other men painting over graffiti in Bogota's Restrepo neighborhood.",
+              "Rodriguez claimed on Instagram they were 'defending public space to stop generating hatred,' but they covered a message reading, 'Creole Nazis will not pass.'"
+            ],
+            "heading": "Investigation Findings",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "A pixelated man in the video has tattoos with multiple similarities to Javier “Orlik” Ruiz, a prominent member of Active Club Bogota.",
+              "Bellingcat identified Ruiz by matching tattoos on his hands, fingers (including an arrow on his left middle finger), and arms from unpixelated frames with numerous public photos.",
+              "Rodriguez follows Ruiz on Instagram.",
+              "Ruiz 'liked' the video posted by Rodriguez.",
+              "Active Club Bogota's official Instagram account is one of just over 60 accounts that follows Rodriguez.",
+              "In March, Rodriguez also 'liked' a March 2026 post from the group featuring a neo-Nazi movement flag."
+            ],
+            "heading": "Evidence Linking Rodriguez to Active Club Bogota",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Active Club Bogota has been online since early 2024.",
+              "It is the only official South American chapter of the international network started by US white supremacist Robert Rundo.",
+              "The network uses fitness and fighting to recruit young men.",
+              "The Bogota chapter hosted Adolf Hitler birthday celebrations at a community centre in 2025 (with a book burning) and 2026 (with swastika cupcakes and a 1940 Nazi propaganda film)."
+            ],
+            "heading": "Active Club Bogota Profile and Activities",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Rodriguez unsuccessfully ran for congress in the March 2026 elections with the Centro Democratico party, receiving 4,401 votes.",
+              "He presents himself as a prominent Centro Democratico member and has appeared with party figures including Rafael Nieto Loaiza, Gabriel Vallejo, Paloma Valencia, and Alvaro Uribe Velez.",
+              "Centro Democratico's National Director stated the party was unaware of any proven links and does not endorse groups that incite hate.",
+              "Experts Alexander Ritzmann (CEP) and Heidi Beirich (GPAHE) warned that such affiliations lend legitimacy to neo-Nazi groups and that even small chapters can be recruitment hubs for transnational networks."
+            ],
+            "heading": "Political Context and Reactions",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "Both Rodriguez and Ruiz responded to Bellingcat's queries with legal threats, citing Colombian data protection laws, but did not answer questions.",
+              "Bellingcat and Cerosetenta consulted legal experts and determined their reporting is protected by freedom of expression.",
+              "They cited public interest and the subjects' status as 'public figures' as justification for their reporting."
+            ],
+            "heading": "Legal Responses and Journalistic Justification",
+            "sub_sections": {}
+          },
+          {
+            "bullets": [
+              "The investigation suggests Active Club Bogota has links to international neo-Nazi networks Blood & Honour and Combat 18.",
+              "There is no evidence connecting Rodriguez directly to Blood & Honour or Combat 18.",
+              "Evidence includes a May 2024 photo of a man with Ruiz's tattoos next to Blood & Honour musician Ken McLellan in Bogota.",
+              "Another associate sent gifts (including an Active Club Bogota sticker) to the alleged leader of Combat 18 in Spain.",
+              "A neo-Nazi fashion retailer listing Ruiz as a contact was banned from WhatsApp by Meta after Bellingcat reached out.",
+              "Combat 18 is designated a terrorist organization in Canada and is subject to UK financial sanctions."
+            ],
+            "heading": "International Neo-Nazi Network Links",
+            "sub_sections": {}
+          }
+        ]
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2073,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.bellingcat.com/news/2026/05/11/active-club-colombia-politics/"
+  }
+}

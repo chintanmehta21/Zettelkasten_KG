@@ -1,0 +1,194 @@
+{
+  "workspace_zettel_id": "707a6e53-8ea4-4f48-9579-d857917b75c8",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "c2a289b8-89f8-4755-b80a-b0ffbb4abe32",
+  "normalized_url": "https://www.youtube.com/watch?v=HBluLfX2F_k",
+  "title": "Go WebAssembly Hello World Tutorial",
+  "source_type": "youtube",
+  "publication_date": "2026-05-19",
+  "captured_at": "2026-05-19T08:08:45.760462+00:00",
+  "ai_summary_len": 4105,
+  "body_md_len": 3535,
+  "content_hash_hex": "811f64b2fee03170633747ee7cb36a9158e81b2dc16e5bc91784a088d3cd89fc",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=HBluLfX2F_k",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "video_id": "HBluLfX2F_k",
+        "tier_used": "gemini_filedata",
+        "quality_flag": "thin",
+        "tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "retryable: 504 DEADLINE_EXCEEDED. {'error': {'code': 504, 'message': 'The request timed out. Please try again.', 'status': 'DEADLINE_EXCEEDED'}}",
+            "status": "failed",
+            "latency_ms": 1080241
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 1080241
+          }
+        ],
+        "non_retryable": false,
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 1080241,
+        "all_tier_results": [
+          {
+            "tier": "gemini_filedata",
+            "reason": "retryable: 504 DEADLINE_EXCEEDED. {'error': {'code': 504, 'message': 'The request timed out. Please try again.', 'status': 'DEADLINE_EXCEEDED'}}",
+            "status": "failed",
+            "latency_ms": 1080241
+          },
+          {
+            "tier": "budget_exhausted",
+            "reason": "budget 90000ms exceeded",
+            "status": "skipped",
+            "latency_ms": 1080241
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 29598,
+      "confidence_reason": "All tiers failed; last error: retryable: 504 DEADLINE_EXCEEDED. {'error': {'code': 504, 'message': 'The request timed out. Please try again.', 'status': 'DEADLINE_EXCEEDED'}}",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 2925,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "go-lang",
+          "webassembly",
+          "wasm",
+          "browser-development",
+          "tutorial",
+          "programming",
+          "syscall-js",
+          "web-development",
+          "go-runtime",
+          "frontend"
+        ],
+        "guests": null,
+        "speakers": [
+          "The speaker"
+        ],
+        "mini_title": "Go WebAssembly Hello World Tutorial",
+        "_dense_verify": {
+          "format_label": "tutorial",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this tutorial, The speaker argues that the video demonstrates how to successfully compile and execute a go \"hello world\" application within a web browser using webassembly. The tutorial moves through Initial Project Setup, Writing the Go Code, and Compiling Go to Wasm. Along the way The speaker references Go, WebAssembly, and main.go. The closing point is that go can be effectively compiled to webassembly, allowing developers to run go applications directly in web browsers.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "commentary",
+          "confidence": 0.2
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "tutorial",
+          "thesis": "The video demonstrates how to successfully compile and execute a Go \"Hello World\" application within a web browser using WebAssembly. It outlines the specific files, compilation steps, and JavaScript integration required to achieve this functionality.",
+          "demonstrations": [
+            "A \"Hello World\" application demonstrating basic Go code execution in a browser.",
+            "An example of Go code interacting with the browser's DOM to create and append HTML elements."
+          ],
+          "closing_takeaway": "Go can be effectively compiled to WebAssembly, allowing developers to run Go applications directly in web browsers. This capability opens up new possibilities for web development by leveraging Go's performance and concurrency features on the client side.",
+          "chapters_or_segments": [
+            {
+              "title": "Initial Project Setup",
+              "bullets": [
+                "Building a \"Hello World\" application in Go for browser execution via WebAssembly requires Go version 1.11 or later.",
+                "The speaker specifically uses Go version 1.12 for the demonstration.",
+                "The project necessitates four core files: `main.go`, `index.html`, the compiled `main.wasm`, and a JavaScript support file.",
+                "The `wasm_exec.js` file is crucial for WebAssembly execution and is found within the Go installation at `$GOROOT/misc/wasm/`.",
+                "A simple web server is needed to serve these files for browser access."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Writing the Go Code",
+              "bullets": [
+                "The `main.go` file contains the primary `main` function for the application.",
+                "Output to the browser's developer console is achieved using `fmt.Println`.",
+                "To prevent the Go program from immediately exiting after execution, an empty channel is used to block the main goroutine.",
+                "The blocking mechanism is implemented with `<-make(chan bool)`.",
+                "This ensures the Wasm module remains active in the browser environment."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Compiling Go to Wasm",
+              "bullets": [
+                "Go code is compiled into a WebAssembly module using a specific command.",
+                "The compilation command is `GOOS=js GOARCH=wasm go build -o main.wasm`.",
+                "`GOOS=js` targets the JavaScript environment, and `GOARCH=wasm` specifies the WebAssembly architecture.",
+                "The output file, `main.wasm`, is generated from the Go source.",
+                "A simple \"Hello World\" `main.wasm` file is approximately 2 MB due to the inclusion of the Go runtime."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Loading Wasm in HTML",
+              "bullets": [
+                "The `index.html` file must first include the `wasm_exec.js` script to provide necessary WebAssembly support.",
+                "A script within the HTML instantiates the Wasm module using `WebAssembly.instantiateStreaming`.",
+                "This instantiation fetches the `main.wasm` file from the server.",
+                "It also passes `go.importObject` from a new `Go()` instance, which handles Go-specific imports.",
+                "Finally, `go.run(result.instance)` executes the compiled Go WebAssembly code within the browser."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "DOM Interaction",
+              "bullets": [
+                "The `syscall/js` package in Go enables direct interaction with the browser's Document Object Model (DOM).",
+                "The global document object can be accessed via `js.Global().Get(\"document\")`.",
+                "New HTML elements are created using `document.Call(\"createElement\", \"h2\")`.",
+                "Properties of elements, such as `innerHTML`, are set using `element.Set(...)`.",
+                "Elements are appended to the DOM, for example, to the body, using `document.Get(\"body\").Call(\"appendChild\", element)`.",
+                "This package allows Go code to dynamically manipulate web page content."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Go",
+          "WebAssembly",
+          "main.go",
+          "index.html",
+          "main.wasm",
+          "wasm_exec.js",
+          "fmt.Println",
+          "syscall/js",
+          "WebAssembly.instantiateStreaming",
+          "go.importObject",
+          "go.run"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 2925,
+      "extraction_confidence": "low",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=HBluLfX2F_k"
+  }
+}

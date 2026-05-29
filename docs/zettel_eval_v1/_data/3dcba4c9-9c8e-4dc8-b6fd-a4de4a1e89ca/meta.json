@@ -1,0 +1,193 @@
+{
+  "workspace_zettel_id": "3dcba4c9-9c8e-4dc8-b6fd-a4de4a1e89ca",
+  "workspace_id": "c4fa6870-7df1-4c73-bf14-a7465d9a27ff",
+  "canonical_zettel_id": "f1a0249a-ecca-4d51-b3dd-19a5622739fd",
+  "normalized_url": "https://www.youtube.com/watch?v=A654vzQTGbQ",
+  "title": "Prediction Markets Truth or Gambling",
+  "source_type": "youtube",
+  "publication_date": "2026-05-28",
+  "captured_at": "2026-05-28T05:58:57.554187+00:00",
+  "ai_summary_len": 5116,
+  "body_md_len": 4537,
+  "content_hash_hex": "d6c05b14522b5af9f0db5bbcdafeb22d198121235499ae99895726b37d7b71b1",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=A654vzQTGbQ",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "path": "transcript_api_webshare",
+        "language": "English",
+        "video_id": "A654vzQTGbQ",
+        "tier_used": "transcript_api_direct",
+        "tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 9611
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 12
+          }
+        ],
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 9611,
+        "all_tier_results": [
+          {
+            "tier": "race:transcript_api_webshare",
+            "reason": "",
+            "status": "success",
+            "latency_ms": 9611
+          },
+          {
+            "tier": "race:ytdlp_cookies_impersonate",
+            "reason": "all player clients failed even with cookies+impersonate+PO-token",
+            "status": "failed",
+            "latency_ms": 12
+          }
+        ]
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 29273,
+      "confidence_reason": "transcript via tier=transcript_api_direct len=21170",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3207,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "prediction-markets",
+          "polymarket",
+          "kalshi",
+          "gambling",
+          "financial-regulation",
+          "cftc",
+          "more-perfect-union",
+          "market-accuracy",
+          "insider-trading",
+          "commentary"
+        ],
+        "guests": [
+          "Polymarket's CEO",
+          "Kalshi's CEO",
+          "Dr. Robin Hanson",
+          "Dustin Gouker",
+          "Senator Chris Murphy",
+          "Donald Trump Jr."
+        ],
+        "speakers": [
+          "More Perfect Union"
+        ],
+        "mini_title": "Prediction Markets Truth or Gambling",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "More Perfect Union's commentary critically examines prediction market platforms Polymarket and Kalshi. It argues these prediction markets are exploitative gambling, not \"truth machines,\" targeting young men. The video details theoretical claims, insider trading issues, and market accuracy. It highlights profit concentration and regulatory challenges, including lawsuits and CFTC involvement. The closing takeaway urges state-level regulation, advertising bans, and prohibiting rigged markets.",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "interview",
+          "confidence": 0.333
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "commentary",
+          "thesis": "Prediction market platforms like Polymarket and Kalshi claim to be highly accurate \"truth machines\" that enhance democracy and offer financial opportunities, but evidence suggests they primarily operate as exploitative gambling platforms with questionable accuracy and significant risks. These platforms leverage financial jargon to mask their true nature, contributing to a public health crisis in gambling while seeking to avoid robust state-level regulation.",
+          "demonstrations": [],
+          "closing_takeaway": "The video concludes that prediction markets, in their current form, are exploitative gambling platforms rather than the theoretical \"truth machines\" they claim to be. It advocates for stronger state-level regulation, a ban on advertising as proposed by AOC, and a prohibition on rigged markets as suggested by Senator Murphy.",
+          "chapters_or_segments": [
+            {
+              "title": "Prediction Market Claims and Purpose",
+              "bullets": [
+                "Prediction market platforms Polymarket and Kalshi have gained popularity, with Polymarket approaching More Perfect Union for a collaboration.",
+                "Polymarket's CEO claims their platform is \"the most accurate thing we have as mankind,\" while Kalshi's CEO states it \"enhances democracy.\"",
+                "These platforms market themselves to working-class individuals, suggesting they can profit from chaos to make rent or quit jobs.",
+                "The long-term vision articulated by these companies is to \"financialize everything.\"",
+                "A prediction market allows trading on binary outcomes of real-world events, where the market price theoretically represents the event's probability.",
+                "The underlying theory suggests financial incentives create a \"truth machine\" by encouraging accurate predictions."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Accuracy and Insider Trading Concerns",
+              "bullets": [
+                "For prediction markets to be accurate, they inherently incentivize insider trading, a practice supported by advocates like Dr. Robin Hanson, considered the \"godfather\" of modern prediction markets.",
+                "Platforms like Kalshi, with ID verification, and Polymarket, with new rules, claim to police insider trading.",
+                "Critics such as journalist Dustin Gouker and Senator Chris Murphy argue that it is impossible to effectively define or police the tens of thousands of potential insiders.",
+                "Senator Murphy contends that markets where insiders already know the outcome are rigged and should not be offered to the public.",
+                "The platforms' advertised accuracy is often overstated, as demonstrated by specific forecast errors."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Market Performance and Profit Distribution",
+              "bullets": [
+                "A February jobs report forecast on these platforms was significantly inaccurate, off by a delta of 150,000 jobs.",
+                "A Vanderbilt University study on 2024 election markets found Polymarket's accuracy at 67%, barely better than a coin flip.",
+                "Kalshi's accuracy in the same study was 78%, while PredictIt achieved 93% accuracy.",
+                "Profits on these platforms are highly concentrated, with one analysis indicating that 0.04% of traders capture nearly 70% of all profits.",
+                "This concentration suggests that the vast majority of users are not profitable."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Gambling Disguised as Finance",
+              "bullets": [
+                "These platforms are primarily used for gambling, with Dustin Gouker estimating 85-90% of US activity on them is sports betting.",
+                "On Kalshi, 85-90% of activity is sports-related, and on Polymarket, approximately 40% is sports betting.",
+                "The platforms use sophisticated financial jargon to obscure their gambling nature, contributing to a public health crisis, particularly among young men.",
+                "The participation age for these platforms is 18, which is lower than the typical 21 for traditional gambling.",
+                "A Citizens Bank analyst found that traders lost more money on these platforms in the first three months than on traditional sportsbooks."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Regulatory Landscape and Legal Challenges",
+              "bullets": [
+                "By seeking regulation from the federal CFTC, these platforms aim to bypass stricter state-level gambling laws.",
+                "State-level regulations can include significant taxes, such as a 51% tax in New York, along with licensing fees and requirements for problem gambling resources.",
+                "Kalshi is currently facing lawsuits from over a dozen states regarding its operations.",
+                "A class-action lawsuit alleges that Kalshi sometimes acts as the counterparty in trades, contradicting its claim of having \"no house.\"",
+                "Donald Trump Jr. serves as a strategic advisor to both Polymarket and Kalshi."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Polymarket",
+          "Kalshi",
+          "More Perfect Union",
+          "PredictIt",
+          "Citizens Bank",
+          "CFTC"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3207,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=A654vzQTGbQ"
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "workspace_zettel_id": "628789b4-72bb-4cfe-b9b6-ad7a398e5cdc",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "675f86d3-a98b-4bfc-860d-93ea33a9cbf4",
+  "normalized_url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+  "title": "DMT History Science Consciousness",
+  "source_type": "youtube",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T06:15:54.70816+00:00",
+  "ai_summary_len": 5854,
+  "body_md_len": 6392,
+  "content_hash_hex": "f78f6dd24d662d15ca00f299119c7721ebd2c1706c5448ed785e943aed992501",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://www.youtube.com/watch?v=hhjhU5MXZOo",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": "gemini-2.5-pro-rate-limited"
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "youtube",
+      "raw_metadata": {
+        "title": "The Strangest Drug Ever Studied",
+        "video_id": "hhjhU5MXZOo",
+        "tier_used": "ytdlp_player_rotation",
+        "player_client": "android_embedded",
+        "route_subtype": "video",
+        "route_supported": true,
+        "tier_latency_ms": 3438
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "fallback_reason": "gemini-2.5-pro-rate-limited",
+      "total_latency_ms": 42796,
+      "confidence_reason": "transcript via tier=ytdlp_player_rotation len=34612",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 4083,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "dmt",
+          "psychedelics",
+          "neuroscience",
+          "consciousness",
+          "ayahuasca",
+          "rick-strassman",
+          "albert-hofmann",
+          "lecture",
+          "drug-research",
+          "entheogens"
+        ],
+        "guests": null,
+        "speakers": [
+          "The speaker"
+        ],
+        "mini_title": "DMT History Science Consciousness",
+        "_dense_verify": {
+          "format_label": "talk",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "In this lecture, The speaker argues that dimethyltryptamine (dmt) is a naturally occurring, powerful psychedelic that induces profound altered states of consciousness, including entity encounters, through specific neurological mechanisms like global hyperconnectivity, and holds potential for therapeutic applications and understanding consciousness itself. The closing point is that dmt offers a unique window into altered states of consciousness, providing insights into brain function, the nature",
+        "route_subtype": "video",
+        "_youtube_format": {
+          "format": "lecture",
+          "confidence": 0.5
+        },
+        "route_supported": true,
+        "detailed_summary": {
+          "format": "lecture",
+          "thesis": "Dimethyltryptamine (DMT) is a naturally occurring, powerful psychedelic that induces profound altered states of consciousness, including entity encounters, through specific neurological mechanisms like global hyperconnectivity, and holds potential for therapeutic applications and understanding consciousness itself.",
+          "demonstrations": [],
+          "closing_takeaway": "DMT offers a unique window into altered states of consciousness, providing insights into brain function, the nature of reality, and potential therapeutic avenues for mental health conditions. Its study may ultimately contribute to a deeper understanding of consciousness itself and the possibility of altering entrenched negative thought patterns.",
+          "chapters_or_segments": [
+            {
+              "title": "Introduction to DMT",
+              "bullets": [
+                "Dimethyltryptamine (DMT) is a potent psychedelic crystalline powder reported to induce sensations of being launched into space, near-death experiences, and encounters with spiritual beings.",
+                "Indigenous cultures have utilized DMT for thousands of years, as it occurs naturally in plants, animals, and the human body.",
+                "British botanist Richard Spruce observed indigenous tribes in Brazil using a ritual brew called \"capi\" from *Banisteria caapi* in 1852.",
+                "Spruce later encountered a similar brew, \"iawaska\" (ayahuasca), in Peru, which combined the vine with other plants containing N,N-dimethyltryptamine.",
+                "DMT was first synthesized by chemist Richard Manske in the early 1930s."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Chemical Basis and Early Research",
+              "bullets": [
+                "DMT's molecular structure, featuring an indole ring, is similar to LSD, psilocybin, and serotonin, enabling it to bind to serotonin receptors.",
+                "Ayahuasca is prepared by boiling DMT-containing plants with the *B. caapi* vine, which renders the DMT orally psychoactive.",
+                "Psychedelics are generally considered physiologically safe and non-addictive, distinguishing them from stimulants like cocaine.",
+                "The modern era of psychedelic research began on April 19, 1943, when Swiss chemist Albert Hofmann self-administered LSD, which he isolated from ergot fungus.",
+                "Hofmann also isolated psilocybin in the 1950s, further advancing psychedelic understanding."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Endogenous DMT and Counterculture",
+              "bullets": [
+                "Research in the 1960s identified DMT in at least 50 plant species, in mammals like rats, and as an endogenous compound in human blood and brains.",
+                "During the 1960s counterculture, writer Terrence McKenna popularized DMT through his descriptions of \"self-transforming machine elves\" after smoking it.",
+                "By the late 1960s, a regulatory crackdown began, leading to LSD being banned in the US by 1968.",
+                "The 1971 UN Convention on Psychotropic Substances effectively halted most psychedelic research for approximately 40 years.",
+                "McKenna's extensive audio archive continues to influence discussions on psychedelics."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Dr. Rick Strassman's \"Spirit Molecule\" Study",
+              "bullets": [
+                "In the 1990s, psychiatrist Dr. Rick Strassman conducted the first US human study on DMT in over two decades, administering about 400 doses to 60 volunteers over five years.",
+                "Strassman coined the term \"the spirit molecule\" to describe DMT's profound effects.",
+                "One participant, \"Sarah,\" reported being \"blasted\" out of her body, experiencing terrifying colors, clowns, and a \"Tinkerbell-like\" entity.",
+                "Sarah later perceived herself as a spiritual emissary to beings in deep space, illustrating the profound nature of the experiences.",
+                "This study reignited scientific interest in DMT's effects on human consciousness."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Administration and Related Substances",
+              "bullets": [
+                "DMT can be smoked, leading to effects in under one minute, or snorted, which results in a slower onset.",
+                "When consumed as ayahuasca, DMT's effects typically begin around 45 minutes after ingestion and can last for several hours.",
+                "Intravenous injection is primarily used in controlled clinical settings for precise dosing and monitoring.",
+                "A related substance, 5-MeO-DMT, is found in Colorado River toad secretions but is more commonly used in its synthetic form.",
+                "Safe use of psychedelics necessitates careful attention to \"set and setting,\" and they are contraindicated for individuals with psychotic disorders."
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "Neurological Basis of Entity Encounters",
+              "bullets": [
+                "Research by neuroscientist Chris Timberman and a Johns Hopkins survey of over 2,500 users indicate that entity encounters are a common feature of DMT experiences.",
+                "The Johns Hopkins survey found that 85% of these encounters were described as telepathic, with common entity labels including \"beings,\" \"guides,\" and \"spirits.\"",
+                "Primary emotions reported during these encounters were love and trust, suggesting a positive overall experience for many.",
+                "Such profound experiences can decrease atheism, with one study showing a drop from 25% to 7% among users reporting \"God encounters.\"",
+                "Neurologically, DMT appears to cause the brain's hierarchical, modular organization to collapse into a state of \"global hyperconnectivity.\""
+              ],
+              "timestamp": ""
+            },
+            {
+              "title": "DMT, NDEs, and Therapeutic Potential",
+              "bullets": [
+                "Timberman proposes that DMT induces \"functional deafferentation,\" where the brain disconnects from external sensory input and enters a vivid internal simulation, similar to REM sleep.",
+                "This internal simulation correlates with theta wave patterns, also observed during REM sleep, suggesting a shared neurological basis.",
+                "Entity encounters may be explained by the hyper-activation of brain regions involved in social cognition.",
+                "DMT experiences share similarities with near-death experiences (NDEs), possibly because the extreme hyperconnected brain state signals impending death, though DMT trips are typically more visual.",
+                "Dr. Rick Strassman hypothesized that DMT is released at birth and death, with studies in rats showing increased DMT levels after cardiac arrest, potentially indicating a neuroprotective function.",
+                "Current research, such as that by psychiatrist Simon Ruffell, explores ayahuasca's potential for treating PTSD, though results remain inconclusive.",
+                "Timberman theorizes DMT could help treat depression by altering rigid negative beliefs and ultimately aims to use it to understand consciousness itself."
+              ],
+              "timestamp": ""
+            }
+          ]
+        },
+        "entities_discussed": [
+          "Dimethyltryptamine (DMT)",
+          "N,N-dimethyltryptamine",
+          "Banisteria caapi",
+          "LSD",
+          "psilocybin",
+          "serotonin",
+          "5-MeO-DMT",
+          "Colorado River toad"
+        ],
+        "attribution_confidence": "missing"
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 4083,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://www.youtube.com/watch?v=hhjhU5MXZOo"
+  }
+}

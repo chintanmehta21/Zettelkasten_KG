@@ -1,0 +1,254 @@
+{
+  "workspace_zettel_id": "6a3be69d-00e6-49bd-8417-604554cb7880",
+  "workspace_id": "fc336067-87e9-409f-b15e-bbd960c02050",
+  "canonical_zettel_id": "5c139a52-bfde-4c41-ab0c-cf2150e69aa0",
+  "normalized_url": "https://github.com/TheEconomist/big-mac-data",
+  "title": "TheEconomist/big-mac-data",
+  "source_type": "github",
+  "publication_date": "2026-05-18",
+  "captured_at": "2026-05-18T08:34:12.601549+00:00",
+  "ai_summary_len": 3976,
+  "body_md_len": 3065,
+  "content_hash_hex": "0e12bb3444648e96f02ee312d1958ec388bd4f3c4ea2f4a9fbd44bf63b9d0782",
+  "source_metadata": {
+    "metadata": {
+      "url": "https://github.com/TheEconomist/big-mac-data",
+      "author": "TheEconomist",
+      "model_used": [
+        {
+          "role": "dense_verify",
+          "model": "gemini-2.5-pro",
+          "starting_model": "gemini-2.5-pro",
+          "fallback_reason": null
+        },
+        {
+          "role": "summarizer",
+          "model": "gemini-2.5-flash",
+          "starting_model": "gemini-2.5-flash",
+          "fallback_reason": null
+        }
+      ],
+      "source_type": "github",
+      "raw_metadata": {
+        "repo": "big-mac-data",
+        "forks": 439,
+        "owner": "TheEconomist",
+        "stars": 1732,
+        "topics": [],
+        "license": "MIT",
+        "has_demo": false,
+        "language": "Jupyter Notebook",
+        "releases": [
+          {
+            "name": "January 2025 data release",
+            "tag_name": "2025-01",
+            "prerelease": false,
+            "published_at": "2025-02-18T21:22:43Z"
+          },
+          {
+            "name": "July 2024 data release",
+            "tag_name": "2024-07",
+            "prerelease": false,
+            "published_at": "2024-08-05T11:00:13Z"
+          },
+          {
+            "name": "January 2024 data release",
+            "tag_name": "2024-01",
+            "prerelease": false,
+            "published_at": "2024-05-02T11:25:12Z"
+          },
+          {
+            "name": "July 2023 data release",
+            "tag_name": "2023-07",
+            "prerelease": false,
+            "published_at": "2023-11-17T13:10:45Z"
+          },
+          {
+            "name": "January 2023 data release",
+            "tag_name": "2023-01",
+            "prerelease": false,
+            "published_at": "2023-11-17T13:09:06Z"
+          }
+        ],
+        "full_name": "TheEconomist/big-mac-data",
+        "has_tests": false,
+        "languages": [
+          [
+            "Jupyter Notebook",
+            99.22054892841716
+          ],
+          [
+            "R",
+            0.7794510715828378
+          ]
+        ],
+        "pages_url": null,
+        "updated_at": "2026-05-12T17:56:17Z",
+        "has_docs_dir": false,
+        "has_examples": false,
+        "has_workflows": false,
+        "route_subtype": "repo",
+        "github_subtype": "repo",
+        "has_benchmarks": false,
+        "workflow_count": 0,
+        "extra_doc_files": [],
+        "route_supported": true,
+        "architecture_overview": "This repository contains R code, provided as a Jupyter Notebook or a standalone script, that processes external Big Mac price, exchange rate, and GDP data. This code generates three output CSV files: big-mac-raw-index.csv, big-mac-adjusted-index.csv, and big-mac-full-index.csv, which contain the raw, adjusted, and full Big Mac index data respectively."
+      },
+      "patch_applied": false,
+      "engine_version": "2.0.0",
+      "total_latency_ms": 24623,
+      "confidence_reason": "repo metadata and README fetched",
+      "gemini_pro_tokens": 0,
+      "total_tokens_used": 3055,
+      "is_schema_fallback": false,
+      "structured_payload": {
+        "tags": [
+          "gh-theeconomist-big-mac-data",
+          "python",
+          "data-analysis",
+          "r",
+          "jupyter-notebook",
+          "economics",
+          "big-mac-index",
+          "csv",
+          "data-generation",
+          "financial-data"
+        ],
+        "mini_title": "TheEconomist/big-mac-data",
+        "owner_login": "TheEconomist",
+        "_dense_verify": {
+          "archetype": "unknown",
+          "missing_fact_count": 0
+        },
+        "brief_summary": "This repository contains the data and R code for The Economist's Big Mac index. The core logic resides in a Jupyter Notebook (`Big Mac data generator.ipynb`) and a standalone R script (`data-generator-v2.R`), which process various source data inputs (Big Mac prices, exchange rates, GDP/population) to generate three primary output CSV files: `big-mac-raw-index.csv`, `big-mac-adjusted-index.csv`, and `big-mac-full-index.csv`. The methodology was updated in July 2022, affecting US price sourcing an",
+        "route_subtype": "repo",
+        "route_supported": true,
+        "detailed_summary": [
+          {
+            "bullets": [
+              "TheEconomist/big-mac-data contains the data and R code for The Economist's Big Mac index.",
+              "The codebase is primarily a Jupyter Notebook (99.2% of the codebase).",
+              "Data can be downloaded from the releases page in CSV or Excel format.",
+              "In July 2022, the methodology was updated: the US price is now sourced directly from McDonald's, and the GDP-adjusted index adjusts GDP per person by the difference in Big Mac prices.",
+              "This methodology change means the historical GDP-adjusted series may change over time as the IMF refines its data."
+            ],
+            "heading": "Overview",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Overview",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The repository's core logic is implemented in `Big Mac data generator.ipynb` (Jupyter Notebook) and `data-generator-v2.R` (standalone R script).",
+              "These scripts process source data to generate three output files: `big-mac-raw-index.csv`, `big-mac-adjusted-index.csv`, and `big-mac-full-index.csv`.",
+              "The codebook defines variables including raw and adjusted indices relative to USD, EUR, GBP, JPY, and CNY.",
+              "The Jupyter Notebook and R script may produce minor rounding differences."
+            ],
+            "heading": "Architecture / Modules",
+            "main_stack": [
+              "Jupyter Notebook",
+              "R",
+              "tidyverse",
+              "data.table"
+            ],
+            "sub_sections": {
+              "Output Files": [
+                "`big-mac-raw-index.csv` (raw index)",
+                "`big-mac-adjusted-index.csv` (adjusted index)",
+                "`big-mac-full-index.csv` (combined indices and source data)"
+              ],
+              "Input Data Sources": [
+                "Big Mac prices from McDonald's and global reporting",
+                "Exchange rates from Thomson Reuters (pre-Jan 2022) and Refinitiv Datastream (post-July 2022)",
+                "GDP/population data from Eurostat and the IMF"
+              ]
+            },
+            "module_or_feature": "Architecture / Modules",
+            "public_interfaces": [],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "The primary user-facing components are the data generation scripts and the resulting data files."
+            ],
+            "heading": "Public API / Interfaces",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Public API / Interfaces",
+            "public_interfaces": [
+              "`Big Mac data generator.ipynb`",
+              "`data-generator-v2.R`",
+              "`big-mac-raw-index.csv`",
+              "`big-mac-adjusted-index.csv`",
+              "`big-mac-full-index.csv`"
+            ],
+            "usability_signals": []
+          },
+          {
+            "bullets": [
+              "To run the data generation code, users need to install Python 3, Jupyter, R, IRkernel, and the R packages `tidyverse` and `data.table`.",
+              "Installation instructions are provided for Mac and Ubuntu, but are missing for Windows."
+            ],
+            "heading": "Operational Guidance",
+            "main_stack": [],
+            "sub_sections": {
+              "Licensing": [
+                "Software: MIT licence",
+                "Data: Creative Commons Attribution 4.0 International License"
+              ],
+              "Dependencies": [
+                "Python 3",
+                "Jupyter",
+                "R",
+                "IRkernel",
+                "R package: `tidyverse`",
+                "R package: `data.table`"
+              ]
+            },
+            "module_or_feature": "Operational Guidance",
+            "public_interfaces": [],
+            "usability_signals": [
+              "pip install jupyter",
+              "install.packages(\"IRkernel\")",
+              "install.packages(\"tidyverse\")",
+              "install.packages(\"data.table\")"
+            ]
+          },
+          {
+            "bullets": [
+              "Frequent delays in updating the repository's data compared to The Economist's website (issues #39, #38, #37, #32), leading some to believe the project is abandoned (issue #38).",
+              "The official website is now behind a paywall (issue #35).",
+              "Users have reported data inaccuracies for countries like Turkey, Lebanon, and Mexico (issues #28, #27, #26).",
+              "There are requests for methodology clarifications (issue #31) and considerations for product size changes (issue #33).",
+              "Suggestions for technical improvements include adding a devcontainer, Docker support, or CI (issues #34, #15, #16).",
+              "A pull request (#40) aims to add data visualization and an API."
+            ],
+            "heading": "Uncertainties / Caveats",
+            "main_stack": [],
+            "sub_sections": {},
+            "module_or_feature": "Uncertainties / Caveats",
+            "public_interfaces": [],
+            "usability_signals": []
+          }
+        ],
+        "_github_archetype": {
+          "reasons": [
+            "cli_tokens=3"
+          ],
+          "archetype": "cli_tool",
+          "confidence": 1.0
+        },
+        "architecture_overview": "This repository contains the data and R code for The Economist's Big Mac index. The core logic resides in a Jupyter Notebook (`Big Mac data generator.ipynb`) and a standalone R script (`data-generator-v2.R`), which process various source data inputs (Big Mac prices, exchange rates, GDP/population) to generate three primary output CSV files: `big-mac-raw-index.csv`, `big-mac-adjusted-index.csv`, and `big-mac-full-index.csv`. The methodology was updated in July 2022, affecting US price sourcing an",
+        "benchmarks_tests_examples": null
+      },
+      "cod_iterations_used": 0,
+      "gemini_flash_tokens": 3055,
+      "extraction_confidence": "high",
+      "self_check_missing_count": 0
+    },
+    "source_url": "https://github.com/TheEconomist/big-mac-data"
+  }
+}
