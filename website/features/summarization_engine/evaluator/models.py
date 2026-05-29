@@ -216,7 +216,11 @@ class EditorializationFlag(BaseModel):
 class EvalResult(BaseModel):
     g_eval: GEvalScores
     finesure: FineSurEScores
-    summac_lite: SummaCLite
+    # Optional: judges occasionally omit the summac_lite block on very long
+    # summaries under token pressure. Tolerated as None to avoid hard-failing
+    # the whole eval; downstream (filter_judge_false_positives) treats None
+    # as "no contradictions to filter". Composite score does not reference it.
+    summac_lite: SummaCLite | None = None
     rubric: RubricBreakdown
     maps_to_metric_summary: dict[str, float]
     editorialization_flags: list[EditorializationFlag] = Field(default_factory=list)

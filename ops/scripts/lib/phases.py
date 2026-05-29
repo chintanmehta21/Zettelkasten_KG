@@ -68,8 +68,12 @@ def filter_judge_false_positives(eval_result, source_text: str):
     is_model = hasattr(eval_result, "summac_lite")
 
     # --- summac_lite.contradicted_sentences ---
+    # summac_lite is Optional on EvalResult (judge may omit under token pressure);
+    # treat None as "no contradictions to filter" — write-back is also skipped.
+    summac_obj = None
     if is_model:
-        summac_list = list(eval_result.summac_lite.contradicted_sentences)
+        summac_obj = eval_result.summac_lite
+        summac_list = list(summac_obj.contradicted_sentences) if summac_obj is not None else []
     else:
         summac = (eval_result.get("summac_lite") or {}) if isinstance(eval_result, dict) else {}
         summac_list = list(summac.get("contradicted_sentences") or [])
@@ -88,7 +92,8 @@ def filter_judge_false_positives(eval_result, source_text: str):
         kept_summac.append(item)
 
     if is_model:
-        eval_result.summac_lite.contradicted_sentences = kept_summac
+        if summac_obj is not None:
+            summac_obj.contradicted_sentences = kept_summac
     else:
         if isinstance(eval_result, dict):
             summac = eval_result.setdefault("summac_lite", {})
