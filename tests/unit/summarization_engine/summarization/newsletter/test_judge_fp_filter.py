@@ -188,3 +188,44 @@ def test_pydantic_eval_result_path():
     assert model.rubric.anti_patterns_triggered == []
     assert model.rubric.caps_applied["hallucination_cap"] is None
     assert "judge_false_positives_dropped" in model.evaluator_metadata
+
+
+def test_pydantic_eval_result_with_none_summac_lite_does_not_crash():
+    """Regression: when the judge omits the summac_lite block (e.g. dropped
+    under token pressure on very long summaries — observed iter-001-baseline
+    2026-05-28 wz=1c0af8ec), EvalResult.summac_lite is None. The filter must
+    still run, process invented_number FPs from rubric.anti_patterns_triggered,
+    and not crash trying to dereference None.summac_lite."""
+    from website.features.summarization_engine.evaluator.models import EvalResult
+
+    payload = {
+        "g_eval": {
+            "coherence": {"score": 3, "anchor": "", "reasoning": ""},
+            "fluency": {"score": 3, "anchor": "", "reasoning": ""},
+        },
+        "finesure": {
+            "faithfulness": {"score": 0.9, "items": []},
+            "completeness": {"score": 0.85, "items": []},
+            "conciseness": {"score": 0.9, "items": []},
+        },
+        # summac_lite intentionally omitted — judge dropped it.
+        "rubric": {
+            "components": [],
+            "caps_applied": {"hallucination_cap": 40, "omission_cap": None, "generic_cap": None},
+            "anti_patterns_triggered": [
+                {"id": "invented_number", "source_region": "4000 0000 0000 9995", "auto_cap": 40}
+            ],
+        },
+        "maps_to_metric_summary": {},
+        "editorialization_flags": [],
+        "evaluator_metadata": {},
+    }
+    model = EvalResult.model_validate(payload)
+    assert model.summac_lite is None
+    source = "Stripe test card 4000 0000 0000 9995 — use this."
+    # Must not raise AttributeError on None.contradicted_sentences
+    filter_judge_false_positives(model, source)
+    # Invented-number FP path still works → removed AP + cleared cap
+    assert model.rubric.anti_patterns_triggered == []
+    assert model.rubric.caps_applied["hallucination_cap"] is None
+    assert "judge_false_positives_dropped" in model.evaluator_metadata

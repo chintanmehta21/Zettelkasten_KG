@@ -12,6 +12,30 @@ from website.features.summarization_engine.core.errors import GeminiError
 Tier = Literal["pro", "flash"]
 
 
+def _extract_finish_reason(response: Any) -> str | None:
+    """Pluck ``finish_reason`` from a Gemini SDK response without crashing.
+
+    Canonical SDK shape: ``response.candidates[0].finish_reason`` (an enum that
+    str-coerces to ``"MAX_TOKENS"`` / ``"STOP"`` / ``"SAFETY"`` / etc.).
+    Older / mocked responses may not expose ``candidates`` at all — in which
+    case we return ``None`` rather than raising. Both the enum and string
+    forms are accepted; enum is stringified for caller convenience.
+    """
+    try:
+        candidates = getattr(response, "candidates", None)
+        if not candidates:
+            return None
+        first = candidates[0]
+        reason = getattr(first, "finish_reason", None)
+        if reason is None:
+            return None
+        # Normalize enum → "MAX_TOKENS" string, leave plain strings alone.
+        name = getattr(reason, "name", None)
+        return name if isinstance(name, str) else str(reason)
+    except Exception:
+        return None
+
+
 @dataclass(frozen=True)
 class GenerateResult:
     """Result of a single Gemini generate call."""
@@ -28,6 +52,11 @@ class GenerateResult:
     # that don't care can ignore both fields; they default to safe values.
     starting_model: str | None = None
     fallback_reason: str | None = None
+    # Lane 1 (2026-05-30) — Gemini's candidate.finish_reason surfaced so callers
+    # can detect MAX_TOKENS / SAFETY / RECITATION outcomes before downstream
+    # parse logic blows up on truncated output. Defaults to None so legacy
+    # call sites and tests don't need to set it.
+    finish_reason: str | None = None
 
 
 class TieredGeminiClient:
@@ -118,6 +147,7 @@ class TieredGeminiClient:
             key_index=key_index,
             starting_model=model,
             fallback_reason=fallback_reason,
+            finish_reason=_extract_finish_reason(response),
         )
 
     async def generate(
@@ -126,6 +156,7 @@ class TieredGeminiClient:
         *,
         tier: Tier = "pro",
         response_schema: type[BaseModel] | None = None,
+        response_mime_type: str | None = None,
         system_instruction: str | None = None,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
@@ -148,6 +179,14 @@ class TieredGeminiClient:
             # Don't pass response_schema to Gemini — Pydantic v2 emits
             # additionalProperties which Gemini rejects.  JSON mode +
             # prompt-based structure + parse_json_object is reliable enough.
+        # Explicit response_mime_type wins over the schema-derived default.
+        # Use case: atomic_facts extraction wants JSON mode without a schema
+        # (the response is a flat array, not a Pydantic-modelled object).
+        # Setting this to "application/json" forces Gemini to skip prose
+        # narration and emit strict JSON from the first token — addresses
+        # the truncation pattern caught on the DMT zettel 2026-05-28.
+        if response_mime_type is not None:
+            call_config["response_mime_type"] = response_mime_type
 
         if system_instruction:
             call_config["system_instruction"] = system_instruction
@@ -191,4 +230,5 @@ class TieredGeminiClient:
             key_index=key_index,
             starting_model=chain[0],
             fallback_reason=fallback_reason,
+            finish_reason=_extract_finish_reason(response),
         )

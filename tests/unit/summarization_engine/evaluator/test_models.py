@@ -106,3 +106,62 @@ def test_composite_score_hallucination_cap_overrides_high_scores():
 
 def test_apply_caps_returns_original_score_without_caps():
     assert apply_caps(87.5, {}) == 87.5
+
+
+def test_eval_result_tolerates_missing_summac_lite():
+    """Regression: judges occasionally omit summac_lite under token pressure on
+    very long summaries (observed iter-001-baseline 2026-05-28 on wz=1c0af8ec,
+    6828-char summary). EvalResult must parse the partial payload to None
+    instead of raising ValidationError, so the rest of the eval is salvageable.
+    """
+    payload = {
+        "g_eval": {
+            "coherence": {"score": 2, "anchor": "", "reasoning": ""},
+            "fluency": {"score": 3, "anchor": "", "reasoning": ""},
+        },
+        "finesure": {
+            "faithfulness": {"score": 0.9, "items": []},
+            "completeness": {"score": 0.8, "items": []},
+            "conciseness": {"score": 0.85, "items": []},
+        },
+        # summac_lite intentionally omitted (judge dropped it under length pressure).
+        "rubric": {
+            "components": [],
+            "caps_applied": {"hallucination_cap": None, "omission_cap": None, "generic_cap": None},
+            "anti_patterns_triggered": [],
+        },
+        "maps_to_metric_summary": {"g_eval": 80.0, "finesure": 85.0, "qafact": 0.0, "summac": 0.0},
+        "evaluator_metadata": {},
+    }
+    result = EvalResult.model_validate(payload)
+    assert result.summac_lite is None
+    # composite_score does not reference summac_lite → must still compute cleanly
+    assert isinstance(composite_score(result), float)
+
+
+def test_eval_result_summac_lite_present_validates_normally():
+    """Happy path: when summac_lite IS present (the common case), it validates
+    as SummaCLite — the Optional change must not regress existing behavior."""
+    summac = SummaCLite(score=0.9, contradicted_sentences=[], neutral_sentences=[])
+    payload = {
+        "g_eval": {
+            "coherence": {"score": 2, "anchor": "", "reasoning": ""},
+            "fluency": {"score": 3, "anchor": "", "reasoning": ""},
+        },
+        "finesure": {
+            "faithfulness": {"score": 0.9, "items": []},
+            "completeness": {"score": 0.8, "items": []},
+            "conciseness": {"score": 0.85, "items": []},
+        },
+        "summac_lite": summac.model_dump(),
+        "rubric": {
+            "components": [],
+            "caps_applied": {"hallucination_cap": None, "omission_cap": None, "generic_cap": None},
+            "anti_patterns_triggered": [],
+        },
+        "maps_to_metric_summary": {"g_eval": 80.0, "finesure": 85.0, "qafact": 0.0, "summac": 90.0},
+        "evaluator_metadata": {},
+    }
+    result = EvalResult.model_validate(payload)
+    assert result.summac_lite is not None
+    assert result.summac_lite.score == 0.9
